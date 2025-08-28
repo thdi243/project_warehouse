@@ -1,0 +1,509 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use App\Models\Tkbm\TkbmFeeModel;
+use App\Models\Tkbm\TkbmModel;
+
+class TkbmController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        $data = TkbmModel::orderBy('date', 'desc')->get();
+
+        // ambil ppn pph terakhir
+        $feeMaster = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+        $fee = $feeMaster ? $feeMaster->fee : 0;
+        $ppn = $feeMaster ? $feeMaster->ppn : 0;
+        $pph = $feeMaster ? $feeMaster->pph : 0;
+
+        return view('tkbm.data_tkbm', compact('data', 'fee', 'ppn', 'pph'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        //
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        // Validasi data yang diterima dari request
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'petugas' => 'required|string|max:255',
+            'shift' => 'required',
+            'qtyTerpal' => 'integer|min:0',
+            'qtySlipsheet' => 'integer|min:0',
+            'qtyPallet' => 'integer|min:0',
+            'jml_tkbm' => 'integer|min:0',
+            'keterangan' => 'nullable|string|max:255',
+        ]);
+
+        // cek data duplikat berdasarkan tanggal dan shift
+        $exist = TkbmModel::where('date', $request->date)
+            ->where('shift', $request->shift)
+            ->first();
+
+        if ($exist) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Data untuk tanggal ' . $validated['date'] . ' dan shift ' . $validated['shift'] . ' sudah ada',
+            ], 422);
+        }
+
+        // hitung total qty
+        $totalQty = (($request->qtyTerpal ?? 0) * 770) +
+            (($request->qtySlipsheet ?? 0) * 440) +
+            (($request->qtyPallet ?? 0) * 1100);
+
+        // ambil data fee terakhir
+        $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+        $fee = $lastFeeData ? $lastFeeData->fee : 0;
+        // $ppn = $lastFeeData ? $lastFeeData->ppn : 0;
+        // $pph = $lastFeeData ? $lastFeeData->pph : 0;
+        $feeAct = ($fee / 100) * $totalQty;
+
+        // Simpan data ke database (fee simpan nilai fee, bukan id)
+        $save = TkbmModel::create([
+            'date' => $request->date,
+            'petugas' => $request->petugas,
+            'shift' => $request->shift,
+            'qty_terpal' => $request->qtyTerpal ?? 0,
+            'qty_slipsheet' => $request->qtySlipsheet ?? 0,
+            'qty_pallet' => $request->qtyPallet ?? 0,
+            'jml_tkbm' => $request->jml_tkbm ?? 0,
+            'keterangan' => $request->keterangan ?? null,
+            'total_qty' => $totalQty,
+            'total_fee' => $feeAct,
+            'fee_id' => $fee,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Data TKBM berhasil disimpan!',
+            'data' => $save,
+        ], 200);
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(string $id = null)
+    {
+        $bulan = request()->query('bulan'); // expect "YYYY-MM" or "MM" or "M"
+        if ($bulan) {
+            // Parse month & optional year
+            $year = null;
+            $month = null;
+            if (preg_match('/^\d{4}-\d{2}$/', $bulan)) {
+                [$year, $month] = explode('-', $bulan);
+                $year = (int) $year;
+                $month = (int) $month;
+            } elseif (preg_match('/^\d{1,2}$/', $bulan)) {
+                $month = (int) $bulan;
+                $year = (int) date('Y');
+            } else {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Format bulan tidak dikenali. Gunakan YYYY-MM atau MM.',
+                ], 400);
+            }
+            // Validasi bulan
+            if ($month < 1 || $month > 12) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Bulan harus antara 1-12.',
+                ], 400);
+            }
+        }
+        if ($bulan) {
+            $data = TkbmModel::whereYear('date', $year)
+                ->whereMonth('date', $month)
+                ->orderBy('date', 'asc')
+                ->get();
+        } else {
+            $data = TkbmModel::orderBy('date', 'desc')->get();
+        }
+
+        if ($data) {
+            return response()->json([
+                'ok' => true,
+                'data' => $data,
+            ], 200);
+        } else {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Data tidak ditemukan',
+            ], 404);
+        }
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        $data = TkbmModel::find($id);
+
+        if ($data) {
+            return response()->json([
+                'ok' => true,
+                'data' => $data,
+            ], 200);
+        } else {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Data tidak ditemukan',
+            ], 404);
+        }
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, string $id)
+    {
+        // Validasi data yang diterima dari request
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'petugas' => 'required|string|max:255',
+            'shift' => 'required',
+            'qty_terpal' => 'integer|min:0',
+            'qty_slipsheet' => 'integer|min:0',
+            'qty_pallet' => 'integer|min:0',
+            'jml_tkbm' => 'integer|min:0',
+            'keterangan' => 'nullable|string|max:255',
+        ]);
+
+        $data = TkbmModel::find($id);
+
+        if (!$data) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Data tidak ditemukan',
+            ], 404);
+        }
+
+        // cek data duplikat berdasarkan tanggal dan shift, kecuali data yang sedang diupdate
+        $exist = TkbmModel::where('date', $request->date)
+            ->where('shift', $request->shift)
+            ->where('id', '!=', $id)
+            ->first();
+
+        if ($exist) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Data untuk tanggal ' . $validated['date'] . ' dan shift ' . $validated['shift'] . ' sudah ada',
+            ], 422);
+        }
+
+        // hitung total qty
+        $totalQty = (($request->qty_terpal ?? 0) * 770) +
+            (($request->qty_slipsheet ?? 0) * 440) +
+            (($request->qty_pallet ?? 0) * 1100);
+
+        // ambil data fee terakhir
+        $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+        $fee = $lastFeeData ? $lastFeeData->fee : 0;
+        $feeAct = ($fee / 100) * $totalQty;
+
+        try {
+            // Update data di database (fee simpan nilai fee, bukan id)
+            $data->update([
+                'date' => $request->date,
+                'petugas' => $request->petugas,
+                'shift' => $request->shift,
+                'qty_terpal' => $request->qty_terpal ?? 0,
+                'qty_slipsheet' => $request->qty_slipsheet ?? 0,
+                'qty_pallet' => $request->qty_pallet ?? 0,
+                'jml_tkbm' => $request->jml_tkbm ?? 0,
+                'keterangan' => $request->keterangan ?? null,
+                'total_qty' => $totalQty,
+                'total_fee' => $feeAct,
+                'fee_id' => $fee,
+            ]);
+            return response()->json([
+                'ok' => true,
+                'message' => 'Data berhasil diupdate',
+                'data' => $data,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Gagal mengupdate data: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(string $id)
+    {
+        $data = TkbmModel::find($id);
+
+        if (!$data) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Data tidak ditemukan',
+            ], 404);
+        }
+
+        try {
+            $data->delete();
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Data berhasil dihapus',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Gagal menghapus data: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Export data to Excel based on the selected month.
+     */
+    public function export(Request $request)
+    {
+        $bulan = $request->query('bulan'); // expect "YYYY-MM" or "MM" or "M"
+        if (!$bulan) {
+            return redirect()->back()->with('error', 'Bulan tidak valid.');
+        }
+
+        // Parse month & optional year
+        $year = null;
+        $month = null;
+        if (preg_match('/^\d{4}-\d{2}$/', $bulan)) {
+            [$year, $month] = explode('-', $bulan);
+            $year = (int) $year;
+            $month = (int) $month;
+        } elseif (preg_match('/^\d{1,2}$/', $bulan)) {
+            $month = (int) $bulan;
+            $year = (int) date('Y');
+        } else {
+            return redirect()->back()->with('error', 'Format bulan tidak dikenali. Gunakan YYYY-MM atau MM.');
+        }
+
+        // Validasi bulan
+        if ($month < 1 || $month > 12) {
+            return redirect()->back()->with('error', 'Bulan harus antara 1-12.');
+        }
+
+        // Ambil data dari database berdasarkan bulan dan tahun
+        $data = TkbmModel::whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->orderBy('date', 'asc')
+            ->get();
+
+        if ($data->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada data untuk bulan yang dipilih.');
+        }
+
+        // Load template Excel
+        $templatePath = public_path('assets/template/excel/template_excel_tkbm.xlsx');
+        if (!file_exists($templatePath)) {
+            return redirect()->back()->with('error', 'Template Excel tidak ditemukan di: ' . $templatePath);
+        }
+
+        try {
+            // Baca file template
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+            $templateSpreadsheet = $reader->load($templatePath);
+
+            // Clone spreadsheet agar template asli tidak berubah
+            $spreadsheet = clone $templateSpreadsheet;
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Atur judul periode di sheet
+            $periodeText = Carbon::now()->format('j F Y');
+            $sheet->setCellValue('V3', $periodeText);
+
+            // Mulai menulis data dari baris 9
+            $startRow = 9;
+            $currentRow = $startRow;
+
+            // Salin style dari template row untuk consistency
+            $templateRowRange = 'A' . $startRow . ':AC' . $startRow;
+
+            foreach ($data as $index => $item) {
+                // Mapping data ke kolom Excel
+                $sheet->setCellValue('A' . $currentRow, $item->date ? Carbon::parse($item->date)->format('d/m/Y') : '');
+                $sheet->setCellValue('G' . $currentRow, $item->qty_terpal ?? 0);
+                $sheet->setCellValue('K' . $currentRow, $item->qty_slipsheet ?? 0);
+                $sheet->setCellValue('O' . $currentRow, $item->qty_pallet ?? 0);
+                $sheet->setCellValue('S' . $currentRow, $item->total_qty ?? 0);
+                $sheet->setCellValue('X' . $currentRow, $item->total_fee ?? 0); // Perbaikan: kolom F bukan E lagi
+
+                // Salin style dari template row jika ada
+                try {
+                    $sheet->duplicateStyle(
+                        $sheet->getStyle($templateRowRange),
+                        'A' . $currentRow . ':AC' . $currentRow
+                    );
+                } catch (\Exception $e) {
+                    // Jika gagal copy style, lanjutkan tanpa style
+                }
+
+                $currentRow++;
+            }
+
+            // Isi total di baris terakhir
+            $startRowTotal = 40;
+            // $sheet->setCellValue('A' . $startRowTotal, 'TOTAL');
+            $sheet->setCellValue('G' . $startRowTotal, '=SUM(G' . $startRow . ':G' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('K' . $startRowTotal, '=SUM(K' . $startRow . ':K' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('O' . $startRowTotal, '=SUM(O' . $startRow . ':O' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('S' . $startRowTotal, '=SUM(S' . $startRow . ':S' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('X' . $startRowTotal, '=SUM(X' . $startRow . ':X' . ($startRowTotal - 1) . ')');
+
+            // style qty
+            $sheet->getStyle('G' . $startRow . ':G' . $startRowTotal)
+                ->getNumberFormat()
+                ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
+            $sheet->getStyle('K' . $startRow . ':K' . $startRowTotal)
+                ->getNumberFormat()
+                ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
+            $sheet->getStyle('O' . $startRow . ':O' . $startRowTotal)
+                ->getNumberFormat()
+                ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
+
+            // Format kolom fee (X) dan total fee (X) sebagai Rupiah sesuai format custom
+            $rupiahFormat = '_-"Rp"* #,##0_-;-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-';
+            $sheet->getStyle('X' . $startRow . ':X' . $startRowTotal)
+                ->getNumberFormat()
+                ->setFormatCode($rupiahFormat);
+            $sheet->getStyle('X' . $startRowTotal)
+                ->getNumberFormat()
+                ->setFormatCode($rupiahFormat);
+
+            // Format kolom total_qty (S) dan total total_qty (S) sebagai Rupiah sesuai format custom
+            $sheet->getStyle('S' . $startRow . ':S' . $startRowTotal)
+                ->getNumberFormat()
+                ->setFormatCode($rupiahFormat);
+            $sheet->getStyle('S' . $startRowTotal)
+                ->getNumberFormat()
+                ->setFormatCode($rupiahFormat);
+
+            // Ambil data fee, ppn, pph terakhir untuk perhitungan di bawah
+            $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+
+            $sheet->setCellValue(
+                'X7',
+                "Keterangan (Fee " . ($lastFeeData->fee ?? 0) . "%)"
+            );
+
+            $sheet->setCellValue(
+                'A42',
+                "PPn " . ($lastFeeData->ppn ?? 0)
+            );
+
+            $sheet->setCellValue(
+                'A44',
+                "PPh " . ($lastFeeData->pph ?? 0)
+            );
+
+
+            $startRowPpn = 42;
+            $sheet->setCellValue('S' . $startRowPpn, '=X' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->ppn : 0) . '/100)');
+            $sheet->getStyle('X' . $startRowPpn)
+                ->getNumberFormat()
+                ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
+
+            $startRowPph = 44;
+            $sheet->setCellValue('S' . $startRowPph, '=-X' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->pph : 0) . '/100)');
+            $sheet->getStyle('X' . $startRowPph)
+                ->getNumberFormat()
+                ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
+
+            $startRowGrandTotal = 46;
+            // Grand total = total_qty (S) + total fee (X) + ppn (S42) + pph (S44)
+            $sheet->setCellValue('S' . $startRowGrandTotal, '=S' . $startRowTotal . '+X' . $startRowTotal . '+S' . $startRowPpn . '+S' . $startRowPph);
+            $sheet->getStyle('S' . $startRowGrandTotal)
+                ->getNumberFormat()
+                ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
+
+            // Generate filename
+            $fileName = 'Data_TKBM_' . $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '.xlsx';
+
+            // Save ke temporary file
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $tempPath = tempnam(sys_get_temp_dir(), 'tkbm_export_');
+            $writer->save($tempPath);
+
+            // Cleanup memory
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet);
+
+            return response()->download($tempPath, $fileName, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])->deleteFileAfterSend(true);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal membuat file Excel: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle fee TKBM view
+     */
+    public function simpanFeeTkbm(Request $request)
+    {
+        $validated = $request->validate([
+            'fee' => 'numeric',
+            'ppn' => 'numeric',
+            'pph' => 'numeric',
+        ]);
+
+        // Ambil data terakhir dari database
+        $lastData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+
+        // Jika fee, ppn, atau pph bernilai 0 atau null, gunakan nilai dari data terakhir (jika ada)
+        $fee = ($request->fee !== null && $request->fee != 0) ? $request->fee : ($lastData->fee ?? 0);
+        $ppn = ($request->ppn !== null && $request->ppn != 0) ? $request->ppn : ($lastData->ppn ?? 0);
+        $pph = ($request->pph !== null && $request->pph != 0) ? $request->pph : ($lastData->pph ?? 0);
+
+        // Simpan data ke database
+        $save = TkbmFeeModel::create([
+            'fee' => $fee,
+            'ppn' => $ppn,
+            'pph' => $pph,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Data Fee TKBM berhasil disimpan!',
+            'data' => $save,
+        ], 200);
+    }
+
+    /**
+     * Handle fee TKBM view
+     */
+    public function historyFeeTkbm()
+    {
+        $data = TkbmFeeModel::orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'ok' => true,
+            'data' => $data,
+        ], 200);
+    }
+}
