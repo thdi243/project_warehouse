@@ -65,7 +65,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-md-6">
+                {{-- <div class="col-xl-3 col-md-6">
                     <div class="" data-aos="fade-up" data-aos-delay="200">
                         <div class="card card-animate shadow-sm border-0 rounded-3">
                             <div class="card-body">
@@ -83,7 +83,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> --}}
                 <div class="col-xl-3 col-md-6">
                     <div class="" data-aos="fade-up" data-aos-delay="200">
                         <div class="card card-animate shadow-sm border-0 rounded-3">
