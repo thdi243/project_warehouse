@@ -45,7 +45,7 @@ class AuthController extends Controller
             $user = Auth::user();
 
             $imageUrl = $user->image && Storage::disk('public')->exists($user->image)
-                ? Storage::url($user->image) // -> /storage/...
+                ? url(Storage::url($user->image)) // -> /storage/...
                 : asset('material/assets/images/users/user-dummy-img.jpg');
 
             Session::put('username', $user->username);
