@@ -173,12 +173,6 @@ class UserController extends Controller
                 'message' => 'User berhasil diupdate',
                 'data'    => $user->fresh(), // Get updated data
             ], 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
-            ], 422);
         } catch (\Exception $e) {
             Log::error('User update error: ' . $e->getMessage(), [
                 'id' => $id,

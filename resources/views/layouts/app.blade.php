@@ -10,6 +10,17 @@
         <title>Monitoring Warehouse</title>
         <meta content="Themesbrand" name="author" />
 
+        <script>
+            (function() {
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme === 'dark') {
+                    document.documentElement.setAttribute('data-layout-mode', 'dark');
+                } else {
+                    document.documentElement.setAttribute('data-layout-mode', 'light');
+                }
+            })();
+        </script>
+
         {{-- app favicon --}}
         <link rel="shortcut icon" href="{{ asset('assets/images/logo/kecap.png') }}">
 
@@ -37,15 +48,13 @@
         @yield('styles')
         <style>
             .profil-avt {
-                /* height: 250px; */
-                /* semua gambar tingginya sama */
                 object-fit: cover;
-                /* crop supaya tetap proporsional */
             }
         </style>
+
     </head>
 
-    <body>
+    <body class="dark">
         {{-- Begin page --}}
         <div class="layout-wrapper">
             @include('layouts.partials.topbar')
@@ -79,6 +88,8 @@
         <!-- Sweet alert init js-->
         <script src="{{ asset('material/assets/js/pages/sweetalerts.init.js') }}"></script>
 
+        {{-- Chart --}}
+        <script src="{{ asset('material/assets/libs/apexcharts/apexcharts.min.js') }}"></script>
         <script src="{{ asset('material/assets/js/highcharts.js') }}"></script>
         <!-- App js -->
         <script src="{{ asset('material/assets/libs/aos/aos.js') }}"></script>
@@ -87,6 +98,7 @@
 
         <script>
             $(document).ready(function() {
+
                 // Initialize AOS
                 AOS.init({
                     duration: 1200,
@@ -143,6 +155,48 @@
                         }
                     });
                 });
+
+                // light dark mode
+                if (!localStorage.getItem('theme')) {
+                    localStorage.setItem('theme', 'light');
+                }
+
+                const savedTheme = localStorage.getItem('theme');
+
+                // Apply theme
+                applyTheme(savedTheme);
+                updateThemeIcon(savedTheme === 'dark');
+
+                // Event listener untuk button toggle
+                $('#btn-darkmode').on('click', function() {
+                    const currentTheme = localStorage.getItem('theme') || 'light';
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+                    // Apply theme
+                    applyTheme(newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    updateThemeIcon(newTheme === 'dark');
+
+                    console.log('Theme changed to:', newTheme); // Debug
+                });
+
+                function applyTheme(theme) {
+                    $('html').attr('data-layout-mode', theme);
+                    $('body').attr('data-layout-mode', theme);
+                    console.log('Theme applied:', theme); // Debug
+                }
+
+                function updateThemeIcon(isDark) {
+                    const $icon = $('#btn-darkmode i');
+                    if ($icon.length) {
+                        if (isDark) {
+                            $icon.attr('class', 'bx bx-sun fs-22');
+                        } else {
+                            $icon.attr('class', 'bx bx-moon fs-22');
+                        }
+                        console.log('Icon updated, isDark:', isDark); // Debug
+                    }
+                }
             });
         </script>
 

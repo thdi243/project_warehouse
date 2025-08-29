@@ -130,7 +130,7 @@
                 let keterangan = $('#keterangan').val();
 
                 // Validasi input
-                if (!date || !petugas || !shift || !jmlTkbm) {
+                if (!date || !petugas || !shift) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
@@ -150,7 +150,7 @@
                         qtyTerpal: qtyTerpal || 0,
                         qtySlipsheet: qtySlipsheet || 0,
                         qtyPallet: qtyPallet || 0,
-                        jml_tkbm: jmlTkbm,
+                        jml_tkbm: jmlTkbm || 0,
                         keterangan: keterangan,
                         _token: '{{ csrf_token() }}'
                     },

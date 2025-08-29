@@ -27,6 +27,7 @@
         <link href="{{ asset('material/assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
         <!-- App Css-->
         <link href="{{ asset('material/assets/css/app.min.css') }}" rel="stylesheet" type="text/css" />
+        <link href="{{ asset('material/assets/css/app.css') }}" rel="stylesheet" type="text/css" />
         <!-- custom Css-->
         <link href="{{ asset('material/assets/css/custom.min.css') }}" rel="stylesheet" type="text/css" />
         <!-- Sweet Alerts js -->
@@ -36,14 +37,12 @@
         <script src="{{ asset('material/assets/js/pages/sweetalerts.init.js') }}"></script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <style>
-            .auth-one-bg-position {
-                background-image: url("{{ asset('assets/images/signin.jpg') }}");
+            /* .auth-one-bg-position {
+                background-image: url("{{ asset('assets/images/company.jpg') }}");
                 background-size: cover;
-                /* Menyesuaikan gambar dengan seluruh area */
                 background-position: center;
-                /* Memusatkan gambar */
                 background-repeat: no-repeat;
-            }
+            } */
         </style>
 
     </head>
@@ -51,7 +50,7 @@
     <body>
         <div class="auth-page-wrapper pt-5">
             <!-- auth page bg -->
-            <div class="auth-one-bg-position" id="auth-particles">
+            <div class="auth-one-bg-position auth-one-bg" id="auth-particles">
                 <div class="bg-overlay"></div>
 
                 <div class="shape">
@@ -68,8 +67,13 @@
                 <div class="container">
                     <div class="row">
                         <div class="col-lg-12">
-                            <div class="text-center mt-sm-5 mb-4 text-white-50">
-
+                            <div class="text-center mt-sm-5 mb-2 text-white-50">
+                                <div>
+                                    <a href="{{ route('signin') }}" class="d-inline-block auth-logo">
+                                        <img src="{{ asset('assets/images/logo/wings.png') }}" alt="PT.Bumi Alam Segar"
+                                            height="70">
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -80,8 +84,8 @@
                             <div class="card mt-4">
                                 <div class="card-body p-4">
                                     <div class="text-center mt-2">
-                                        <img src="{{ asset('assets/images/logo/wings.png') }}" alt="PT.Bumi Alam Segar"
-                                            style="width: 150px;">
+                                        {{-- <img src="{{ asset('assets/images/logo/wings.png') }}" alt="PT.Bumi Alam Segar"
+                                            style="width: 150px;"> --}}
                                         <h5 class="text-primary">Welcome Back to BAS SmartOps!</h5>
                                         <p class="text-muted">Sign in to access your dashboard</p>
                                     </div>
@@ -93,7 +97,7 @@
                                                     name="username" required placeholder="Enter username">
                                             </div>
                                             <div class="mb-3">
-                                                <label class="form-label" for="password-input">Password</label>
+                                                <label class="form-label" for="password">Password</label>
                                                 <div class="position-relative auth-pass-inputgroup mb-3">
                                                     <input type="password" class="form-control pe-5 password-input"
                                                         placeholder="Enter password" id="password" name="password"
@@ -148,7 +152,7 @@
                     });
 
                     $.ajax({
-                        url: "{{ route('login') }}",
+                        url: "{{ route('signin') }}",
                         method: "POST",
                         data: {
                             username: $('#username').val(),

@@ -12,10 +12,10 @@ use Illuminate\Support\Facades\Storage;
 class AuthController extends Controller
 {
     private $redirects = [
-        'dept_head' => '/dashboard',
-        'supervisor' => '/dashboard',
-        'foreman' => '/dashboard',
-        'operator' => '/dashboard',
+        'dept_head' => '/dashboard/main',
+        'supervisor' => '/dashboard/main',
+        'foreman' => '/dashboard/main',
+        'operator' => '/dashboard/tkbm',
     ];
 
     public function showLoginForm()

@@ -215,19 +215,19 @@
                         bulan: bulan
                     } : {},
                     success: function(response) {
-                        tbody.empty(); // bersihkan isi lama agar tidak dobel
+                        tbody.empty();
 
                         // Akumulator total
                         let sumQtyTerpal = 0;
                         let sumQtySlipsheet = 0;
                         let sumQtyPallet = 0;
-                        let sumTotalQty = 0; // asumsi ini nominal (Rp)
+                        let sumTotalQty = 0;
                         let sumFee = 0;
 
                         if (!response.data || response.data.length === 0) {
-                            // kosong -> tampilkan row kosong
                             tbody.append(
-                                `<tr><td colspan="10" class="text-center">No data found.</td></tr>`);
+                                `<tr><td colspan="10" class="text-center bg-danger text-white">No data found.</td></tr>`
+                            );
                         } else {
                             response.data.forEach((item, index) => {
                                 const row = `

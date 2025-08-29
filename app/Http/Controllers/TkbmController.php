@@ -126,17 +126,18 @@ class TkbmController extends Controller
                     'message' => 'Bulan harus antara 1-12.',
                 ], 400);
             }
-        }
-        if ($bulan) {
-            $data = TkbmModel::whereYear('date', $year)
-                ->whereMonth('date', $month)
-                ->orderBy('date', 'asc')
-                ->get();
         } else {
-            $data = TkbmModel::orderBy('date', 'desc')->get();
+            // default ke bulan & tahun sekarang
+            $year = (int) date('Y');
+            $month = (int) date('m');
         }
 
-        if ($data) {
+        $data = TkbmModel::whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->orderBy('date', 'asc')
+            ->get();
+
+        if ($data->isNotEmpty()) {
             return response()->json([
                 'ok' => true,
                 'data' => $data,
@@ -144,8 +145,8 @@ class TkbmController extends Controller
         } else {
             return response()->json([
                 'ok' => false,
-                'message' => 'Data tidak ditemukan',
-            ], 404);
+                'message' => 'data tidak ditemukan.'
+            ], 200);
         }
     }
 
@@ -363,6 +364,11 @@ class TkbmController extends Controller
                     // Jika gagal copy style, lanjutkan tanpa style
                 }
 
+                // Jadikan teks di baris ini bold
+                $sheet->getStyle('S' . $currentRow . ':AC' . $currentRow)
+                    ->getFont()
+                    ->setBold(true);
+
                 $currentRow++;
             }
 
@@ -413,12 +419,12 @@ class TkbmController extends Controller
 
             $sheet->setCellValue(
                 'A42',
-                "PPn " . ($lastFeeData->ppn ?? 0)
+                "PPn " . ($lastFeeData->ppn ?? 0) . "%"
             );
 
             $sheet->setCellValue(
                 'A44',
-                "PPh " . ($lastFeeData->pph ?? 0)
+                "PPh " . ($lastFeeData->pph ?? 0) . "%"
             );
 
 
@@ -462,7 +468,7 @@ class TkbmController extends Controller
     }
 
     /**
-     * Handle fee TKBM view
+     * Handle fee TKBM store
      */
     public function simpanFeeTkbm(Request $request)
     {
@@ -495,7 +501,7 @@ class TkbmController extends Controller
     }
 
     /**
-     * Handle fee TKBM view
+     * Handle history fee TKBM
      */
     public function historyFeeTkbm()
     {

@@ -4,9 +4,7 @@
     <style>
         .img-fixed {
             height: 250px;
-            /* semua gambar tingginya sama */
             object-fit: cover;
-            /* crop supaya tetap proporsional */
         }
     </style>
 @endsection
@@ -35,7 +33,7 @@
                         <div class="col-sm-4">
                             <div class="search-box">
                                 <input type="text" class="form-control" id="searchMemberList"
-                                    placeholder="Search for name or designation..." />
+                                    placeholder="Search for name or etc..." />
                                 <i class="ri-search-line search-icon"></i>
                             </div>
                         </div>
@@ -181,7 +179,7 @@
                                 <div class="mb-3">
                                     <label for="editUsername" class="form-label">Username <span
                                             class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="editUsername" name="username"
+                                    <input type="text" class="form-control" id="editUsername" name="editUsername"
                                         required>
                                 </div>
                             </div>
@@ -189,7 +187,7 @@
                                 <div class="mb-3">
                                     <label for="editEmail" class="form-label">Email <span
                                             class="text-danger">*</span></label>
-                                    <input type="email" class="form-control" id="editEmail" name="email" required>
+                                    <input type="email" class="form-control" id="editEmail" name="editEmail" required>
                                 </div>
                             </div>
                         </div>
@@ -199,7 +197,7 @@
                                 <div class="mb-3">
                                     <label for="editPassword" class="form-label">Password <small
                                             class="text-muted">(kosongkan jika tidak ingin mengubah)</small></label>
-                                    <input type="password" class="form-control" id="editPassword" name="password"
+                                    <input type="password" class="form-control" id="editPassword" name="editPassword"
                                         placeholder="Masukkan password baru">
                                 </div>
                             </div>
@@ -207,7 +205,7 @@
                                 <div class="mb-3">
                                     <label for="editNik" class="form-label">NIK <span
                                             class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="editNik" name="nik" required>
+                                    <input type="text" class="form-control" id="editNik" name="editNik" required>
                                 </div>
                             </div>
                         </div>
@@ -217,24 +215,21 @@
                                 <div class="mb-3">
                                     <label for="editJabatan" class="form-label">Jabatan <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-control" id="editJabatan" name="jabatan" required>
+                                    <select class="form-select" id="editJabatan" name="editJabatan" required>
                                         <option value="">Pilih Jabatan</option>
-                                        <option value="admin">Admin</option>
-                                        <option value="user">User</option>
+                                        <option value="dept_head">Head of Departement</option>
                                         <option value="supervisor">Supervisor</option>
-                                        <option value="manager">Manager</option>
+                                        <option value="foreman">Foreman</option>
+                                        <option value="operator">Operator</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editDepartemen" class="form-label">Departemen</label>
-                                    <select class="form-control" id="editDepartemen" name="departemen">
+                                    <select class="form-select" id="editDepartemen" name="editDepartemen" required>
+                                        <option value="">Pilih Departemen</option>
                                         <option value="warehouse">Warehouse</option>
-                                        <option value="production">Production</option>
-                                        <option value="quality">Quality</option>
-                                        <option value="maintenance">Maintenance</option>
-                                        <option value="admin">Admin</option>
                                     </select>
                                 </div>
                             </div>
@@ -245,7 +240,14 @@
                                 <div class="mb-3">
                                     <label for="editBagian" class="form-label">Bagian <span
                                             class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="editBagian" name="bagian" required>
+                                    <select class="form-select" id="editBagian" name="editBagian" required>
+                                        <option value="" disabled>Pilih Bagian</option>
+                                        <option value="warehouse">Warehouse</option>
+                                        <option value="warehouse_co_product">Warehouse Co Product</option>
+                                        <option value="warehouse_finish_good">Warehouse Finish Good</option>
+                                        <option value="warehouse_raw_material">Warehouse Raw Material</option>
+                                        <option value="warehouse_sparepart">Warehouse Sparepart</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -307,6 +309,36 @@
                 reader.readAsDataURL(event.target.files[0]);
             });
 
+            $("#searchMemberList").on("keyup", function() {
+                let searchText = $(this).val().toLowerCase();
+                console.log("Search Text:", searchText); // Debug
+
+                $(".team-card").each(function() {
+                    let username = $(this).find(".username").text().toLowerCase().trim();
+                    let jabatan = $(this).find(".badge.jabatan").text().toLowerCase().trim()
+                        .replace(/_/g, ' ');
+                    let bagian = $(this).find(".card-text i.bagian").parent().text().toLowerCase()
+                    let nik = $(this).find(".card-text i.nik").parent().text().toLowerCase()
+                    let email = $(this).find(".card-text i.email").parent().text().toLowerCase()
+                        .trim();
+
+                    username = username.trim();
+                    jabatan = jabatan.trim();
+                    bagian = bagian.trim();
+                    nik = nik.trim();
+                    email = email.trim();
+
+                    if (username.includes(searchText) || jabatan.includes(searchText) || bagian
+                        .includes(searchText) || nik.includes(searchText) || email.includes(
+                            searchText)) {
+                        $(this).closest(".col-md-4").show(); // pastikan elemen kolom tampil
+                    } else {
+                        $(this).closest(".col-md-4").hide();
+                    }
+                });
+            });
+
+
             getData();
 
             function getData() {
@@ -315,7 +347,7 @@
                     method: "GET",
 
                     success: function(res) {
-                        res.data.forEach(user => {
+                        res.data.forEach((user, index) => {
                             let badgeClass = '';
                             switch (user.jabatan.toLowerCase()) {
                                 case 'dept_head':
@@ -335,28 +367,37 @@
                                         'bg-secondary';
                             }
 
-                            const imgSrc = user.image_url;;
+                            const bagianFormatted = user.bagian
+                                .replace(/_/g, " ") // ganti semua "_" jadi spasi
+                                .replace(/\b\w/g, c => c.toUpperCase()); // kapital tiap kata
+
+                            const imgSrc = user.image_url;
+                            const delay = index * 200;
 
                             const card = `
                                 <div class="col-md-4">
-                                    <div class="card shadow-sm border-0 rounded-3">
-                                        <img src="${imgSrc}" class="card-img-top rounded-top img-fixed" alt="foto ${user.username}">
-                                        <div class="card-body">
-                                            <h4 class="card-title">${user.username}</h4>
-                                            <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7">${user.jabatan}</span>
-                                            <p class="card-text text-muted mb-1"><i class="bi bi-envelope"></i> ${user.email}</p>
-                                            <p class="card-text text-muted mb-1"><i class="bi bi-telephone"></i> ${user.nik}</p>
-                                            <p class="card-text text-muted mb-1"><i class="bi bi-envelope"></i> ${user.bagian}</p>
-                                        </div>
-                                        <div class="card-footer bg-white border-0 d-flex justify-content-between">
-                                            <button class="btn btn-outline-primary btn-sm editBtn" data-id="${user.id}">Edit</button>
-                                            <button class="btn btn-outline-danger btn-sm deleteBtn" data-id="${user.id}">Delete</button>
+                                    <div data-aos="fade-up" data-aos-delay="${delay}">
+                                        <div class="card card-animate shadow-sm border-0 rounded-3 team-card">
+                                            <img src="${imgSrc}" class="card-img-top rounded-top img-fixed" alt="foto ${user.username}">
+                                            <div class="card-body">
+                                                <h4 class="card-title text-capitalize username">${user.username}</h4>
+                                                <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7 jabatan">${user.jabatan}</span>
+                                                <p class="card-text text-muted mb-1"><i class="bi bi-envelope email"></i> ${user.email}</p>
+                                                <p class="card-text text-muted mb-1"><i class="bi bi-telephone nik"></i> ${user.nik}</p>
+                                                <p class="card-text text-muted mb-1"><i class="bi bi-envelope bagian"></i> ${bagianFormatted}</p>
+                                            </div>
+                                            <div class="card-footer border-0 d-flex justify-content-between">
+                                                <button class="btn btn-outline-primary btn-sm editBtn" data-id="${user.id}">Edit</button>
+                                                <button class="btn btn-outline-danger btn-sm deleteBtn" data-id="${user.id}">Delete</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             `;
                             $("#userRow").append(card);
                         });
+
+                        AOS.refresh();
                     },
                     error: function(err) {
                         console.error("Error load data:", err);

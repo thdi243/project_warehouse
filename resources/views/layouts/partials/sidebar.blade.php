@@ -2,7 +2,8 @@
     <!-- LOGO -->
     <div class="navbar-brand-box">
         <div class="navbar-brand-box ">
-            <a href="{{ route('dashboard') }}" class="logo logo-dark">
+            <a href="{{ session('jabatan') != 'operator' ? route('main.dashboard') : route('dashboard.tkbm') }}"
+                class="logo logo-dark">
                 <span class="logo-sm">
                     <img src="{{ asset('assets/images/logo/kecap.png') }}" alt="" height="22">
                 </span>
@@ -10,7 +11,8 @@
                     <img src="{{ asset('assets/images/logo/kecap.png') }}" alt="" height="100">
                 </span>
             </a>
-            <a href="{{ route('dashboard') }}" class="logo logo-light">
+            <a href="{{ session('jabatan') != 'operator' ? route('main.dashboard') : route('dashboard.tkbm') }}"
+                class="logo logo-light">
                 <span class="logo-sm">
                     <img src="{{ asset('assets/images/logo/kecap.png') }}" alt="" height="22">
                 </span>
@@ -32,6 +34,23 @@
             </div>
             @if (in_array(Session::get('jabatan'), ['dept_head', 'foreman', 'operator', 'supervisor']))
                 <ul class="navbar-nav" id="navbar-nav">
+                    <li class="menu-title"><span data-key="t-menu">Dashboard</span></li>
+                    <li class="nav-item">
+                        @if (Session::get('jabatan') !== 'operator')
+                            <a href="{{ route('main.dashboard') }}"
+                                class="nav-link menu-link {{ request()->routeIs('main.dashboard') ? 'active' : '' }}">
+                                <i class="mdi mdi-chart-bar"></i> <span data-key="main-dashboard">Main
+                                    Dashboard</span>
+                            </a>
+                        @endif
+                        @if (Session::get('jabatan') == 'operator')
+                            <a href="{{ route('dashboard.tkbm') }}"
+                                class="nav-link menu-link {{ request()->routeIs('dashboard.tkbm') ? 'active' : '' }}">
+                                <i class="mdi mdi-account-hard-hat"></i> <span data-key="tkbm-dashboard">TKBM
+                                    Dashboard</span>
+                            </a>
+                        @endif
+                    </li>
                     <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
                     <li class="nav-item">
                         <a class="nav-link menu-link  {{ request()->routeIs('tkbm.*') ? '' : 'collapsed' }}"
