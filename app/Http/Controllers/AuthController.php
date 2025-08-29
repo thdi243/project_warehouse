@@ -44,7 +44,7 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
 
-            $imageUrl = $user->image && Storage::disk('public')->exists($user->image)
+            $imageUrl = $user->image && url(Storage::disk('public')->exists($user->image))
                 ? url(Storage::url($user->image)) // -> /storage/...
                 : asset('material/assets/images/users/user-dummy-img.jpg');
 
