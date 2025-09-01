@@ -309,6 +309,7 @@
                 reader.readAsDataURL(event.target.files[0]);
             });
 
+            // search fitur
             $("#searchMemberList").on("keyup", function() {
                 let searchText = $(this).val().toLowerCase();
                 console.log("Search Text:", searchText); // Debug
@@ -336,8 +337,9 @@
                         $(this).closest(".col-md-4").hide();
                     }
                 });
-            });
 
+                AOS.refresh();
+            });
 
             getData();
 
