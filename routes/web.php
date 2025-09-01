@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TkbmController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\P2hController;
 use App\Http\Controllers\WarehouseController;
 
 Route::get('/', function () {
@@ -42,6 +43,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/fee', [WarehouseController::class, 'feeTkbm'])->name('tkbm.fee');
         Route::post('/fee/simpan', [TkbmController::class, 'simpanFeeTkbm'])->name('tkbm.fee.simpan');
         Route::get('/fee/history', [TkbmController::class, 'historyFeeTkbm'])->name('tkbm.fee.history');
+    });
+
+    // P2H
+    Route::prefix('p2h')->group(function () {
+        Route::get('/index', [P2hController::class, 'index'])->name('p2h.index');
+        Route::get('/data', [WarehouseController::class, 'p2hData'])->name('p2h.data');
     });
 
     // User

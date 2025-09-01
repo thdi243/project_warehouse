@@ -28,4 +28,9 @@ class WarehouseController extends Controller
 
         return view('tkbm.fees_taxes', compact('data'));
     }
+
+    public function p2hData()
+    {
+        return view('p2h.data_p2h');
+    }
 }

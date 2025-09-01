@@ -81,6 +81,7 @@
         <script src="{{ asset('material/assets/libs/feather-icons/feather.min.js') }}"></script>
         <script src="{{ asset('material/assets/js/pages/plugins/lord-icon-2.1.0.js') }}"></script>
         <script src="{{ asset('/material/assets/js/plugins.js') }}"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
         <!-- Sweet Alerts js -->
         <script src="{{ asset('material/assets/libs/sweetalert2/sweetalert2.min.js') }}"></script>

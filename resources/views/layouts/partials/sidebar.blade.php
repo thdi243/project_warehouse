@@ -66,7 +66,7 @@
                                     <a href="{{ route('tkbm.stock') }}"
                                         class="nav-link {{ request()->routeIs('tkbm.stock') ? 'active' : '' }}"
                                         data-key="t-input-tkbm">
-                                        Input TKBM </a>
+                                        Form TKBM </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="{{ route('tkbm.data') }}"
@@ -82,6 +82,31 @@
                                         </a>
                                     </li>
                                 @endif
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link menu-link  {{ request()->routeIs('p2h.*') ? '' : 'collapsed' }}"
+                            href="#sideBarP2h" data-bs-toggle="collapse" role="button"
+                            aria-expanded="{{ request()->routeIs('p2h.*') ? 'true' : 'false' }}"
+                            aria-controls="sideBarP2h">
+                            <i class="mdi mdi-clipboard-check-multiple"></i> <span data-key="t-tkbm">P2H</span>
+                        </a>
+                        <div class="collapse menu-dropdown {{ request()->routeIs('p2h.*') ? 'show' : '' }}"
+                            id="sideBarP2h">
+                            <ul class="nav nav-sm flex-column">
+                                <li class="nav-item">
+                                    <a href="{{ route('p2h.index') }}"
+                                        class="nav-link {{ request()->routeIs('p2h.index') ? 'active' : '' }}"
+                                        data-key="t-input-p2h">
+                                        Form P2H </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('p2h.data') }}"
+                                        class="nav-link {{ request()->routeIs('p2h.data') ? 'active' : '' }}"
+                                        data-key="t-chat">
+                                        Data P2H </a>
+                                </li>
                             </ul>
                         </div>
                     </li>
