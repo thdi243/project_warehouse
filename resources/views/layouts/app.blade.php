@@ -177,13 +177,13 @@
                     localStorage.setItem('theme', newTheme);
                     updateThemeIcon(newTheme === 'dark');
 
-                    console.log('Theme changed to:', newTheme); // Debug
+                    // console.log('Theme changed to:', newTheme); // Debug
                 });
 
                 function applyTheme(theme) {
                     $('html').attr('data-layout-mode', theme);
                     $('body').attr('data-layout-mode', theme);
-                    console.log('Theme applied:', theme); // Debug
+                    // console.log('Theme applied:', theme); // Debug
                 }
 
                 function updateThemeIcon(isDark) {
@@ -194,7 +194,7 @@
                         } else {
                             $icon.attr('class', 'bx bx-moon fs-22');
                         }
-                        console.log('Icon updated, isDark:', isDark); // Debug
+                        // console.log('Icon updated, isDark:', isDark); // Debug
                     }
                 }
             });

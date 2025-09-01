@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\Storage;
 class AuthController extends Controller
 {
     private $redirects = [
-        'dept_head' => '/dashboard/main',
-        'supervisor' => '/dashboard/main',
-        'foreman' => '/dashboard/main',
+        'dept_head' => '/dashboard/tkbm',
+        'supervisor' => '/dashboard/tkbm',
+        'foreman' => '/dashboard/tkbm',
         'operator' => '/dashboard/tkbm',
     ];
 

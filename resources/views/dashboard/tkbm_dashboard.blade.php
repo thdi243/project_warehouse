@@ -123,8 +123,6 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-
-
             tkbmChart();
             pieProdukTkbm();
             tkbmTotalQty();
@@ -277,8 +275,18 @@
                                 },
                                 dataLabels: {
                                     enabled: true,
+                                    formatter: function(val) {
+                                        if (val >= 1000000000) {
+                                            return 'Rp ' + (val / 1000000000).toFixed(1) + 'M';
+                                        } else if (val >= 1000000) {
+                                            return 'Rp ' + (val / 1000000).toFixed(1) + 'Jt';
+                                        } else if (val >= 1000) {
+                                            return 'Rp ' + (val / 1000).toFixed(0) + 'K';
+                                        }
+                                        return '';
+                                    },
                                     style: {
-                                        fontSize: '12px',
+                                        fontSize: '8px',
                                     }
                                 },
                                 colors: ['#4968A6'],
@@ -337,9 +345,10 @@
                                 }],
                                 xaxis: {
                                     categories: categories,
-                                    // title: {
-                                    //     text: 'Bulan'
-                                    // }
+                                    title: {
+                                        text: 'Month',
+                                        offsetY: 90, // Tambahkan ini untuk menurunkan posisi title
+                                    }
                                 },
                                 colors: ['#3FBFBF'],
                                 yaxis: {
@@ -355,8 +364,25 @@
                                 dataLabels: {
                                     enabled: true,
                                     formatter: function(val) {
-                                        return 'Rp ' + val.toLocaleString("id-ID");
-                                    }
+                                        if (val >= 1000000000) {
+                                            return 'Rp ' + (val / 1000000000).toFixed(1) + 'M';
+                                        } else if (val >= 1000000) {
+                                            return 'Rp ' + (val / 1000000).toFixed(1) + 'Jt';
+                                        } else if (val >= 1000) {
+                                            return 'Rp ' + (val / 1000).toFixed(0) + 'K';
+                                        }
+                                        return '';
+                                    },
+                                    style: {
+                                        fontSize: '12px',
+                                        fontWeight: 'bold',
+                                        rotation: 90
+                                    },
+                                    background: {
+                                        enabled: false
+                                    },
+                                    offsetY: 0,
+                                    textAnchor: 'middle'
                                 },
                                 tooltip: {
                                     y: {
