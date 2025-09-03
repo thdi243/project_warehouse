@@ -88,8 +88,8 @@
             }
 
             /* Active effect untuk menu utama (level 1) */
-            .navbar-nav>.nav-item>.nav-link.active {
-                background-color: #4bb2f3;
+            a.nav-link.menu-link.active {
+                background-color: #4bb2f3 !important;
                 color: #fff !important;
                 border-radius: 8px;
                 padding-left: 1rem;
