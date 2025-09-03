@@ -382,7 +382,7 @@
                             const delay = (index * 200) % 1000; // delay muter tiap 1000ms
 
                             const card = `
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div data-aos="fade-up" data-aos-delay="${delay}" data-aos-anchor-placement="top-bottom">
                                         <div class="card card-animate shadow-sm border-0 rounded-3 team-card">
                                             <img src="${imgSrc}" class="card-img-top rounded-top img-fixed" alt="foto ${user.username}">
