@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
+use App\Models\ForkliftModel;
 use App\Models\P2HForklfitModel;
+use App\Models\PalletMoverModel;
 use App\Models\P2HPalletMoverModel;
 use App\Models\PalletAssignmentModel;
 use Illuminate\Support\Facades\Session;
@@ -253,8 +256,152 @@ class P2hController extends Controller
         }
     }
 
+    public function storeForkliftRegistration(Request $request)
+    {
+        // if (!in_array(Session::get('jabatan'), ['supervisor', 'dept_head', 'foreman'])) {
+        //     return response()->json(['error' => 'Unauthorized'], 403);
+        // }
+
+        $request->validate([
+            'nomor_unit' => 'required|string|max:10|unique:forklifts,nomor_unit',
+            'departemen' => 'required|in:warehouse,produksi',
+            'status' => 'required|in:active,maintenance,inactive',
+            'description' => 'nullable|string|max:255'
+        ]);
+
+        try {
+            $forklift = ForkliftModel::create([
+                'nomor_unit' => strtoupper(trim($request->nomor_unit)),
+                'departemen' => $request->departemen,
+                'status' => $request->status,
+                'description' => $request->description
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Forklift berhasil didaftarkan',
+                'data' => $forklift
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function storeForkliftAssignment(Request $request)
+    {
+        // if (!in_array(Session::get('jabatan'), ['supervisor', 'dept_head', 'foreman'])) {
+        //     return response()->json(['error' => 'Unauthorized'], 403);
+        // }
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'forklift_id' => 'required|exists:forklifts,id',
+            'is_primary' => 'required|boolean',
+            'notes' => 'nullable|string|max:255'
+        ]);
+
+        // Validasi user adalah operator warehouse
+        $user = User::find($request->user_id);
+        if ($user->jabatan !== 'operator' || $user->departemen !== 'warehouse') {
+            return response()->json([
+                'success' => false,
+                'message' => 'User harus memiliki jabatan operator dan departemen warehouse'
+            ], 422);
+        }
+
+        try {
+            // Check if assignment already exists and is active
+            $existingAssignment = UserForkliftAssignmentModel::where('user_id', $request->user_id)
+                ->where('forklift_id', $request->forklift_id)
+                ->where('is_active', true)
+                ->first();
+
+            if ($existingAssignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User sudah di-assign ke forklift ini'
+                ], 422);
+            }
+
+            // Create assignment - menggunakan model method untuk handle primary logic
+            $assignment = UserForkliftAssignmentModel::create([
+                'user_id' => $request->user_id,
+                'forklift_id' => $request->forklift_id,
+                'is_primary' => $request->is_primary,
+                'assigned_date' => now(),
+                'assigned_by' => Session::get('user_id'),
+                'notes' => $request->notes,
+                'is_active' => true
+            ]);
+
+            // Jika set sebagai primary, model boot event akan handle logic
+            // atau bisa dipanggil manual jika menggunakan method model
+            if ($request->is_primary) {
+                $assignment->setPrimary();
+            }
+
+            $forklift = ForkliftModel::find($request->forklift_id);
+            $assignmentType = $request->is_primary ? 'Primary' : 'Backup';
+
+            return response()->json([
+                'success' => true,
+                'message' => "User {$user->username} berhasil di-assign sebagai {$assignmentType} operator untuk {$forklift->nomor_unit}",
+                'data' => $assignment
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function storePallMovReg(Request $request)
+    {
+        $request->validate([
+            'nomor_unit' => 'required|string|max:10|unique:pallet_mover,nomor_unit',
+            'departemen' => 'required|in:warehouse,produksi',
+            'status' => 'required|in:active,maintenance,inactive',
+            'description' => 'nullable|string|max:255'
+        ]);
+
+        $pallet = PalletMoverModel::create([
+            'nomor_unit' => strtoupper(trim($request->nomor_unit)),
+            'departemen' => $request->departemen,
+            'status' => $request->status,
+            'description' => $request->description
+        ]);
+
+        return response()->json(['success' => true, 'data' => $pallet]);
+    }
+
+    public function storePallMovAssignment(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'pallet_mover_id' => 'required|exists:pallet_mover,id',
+            'is_primary' => 'required|boolean'
+        ]);
+
+        $user = User::findOrFail($request->user_id);
+        if ($user->jabatan !== 'operator' || $user->departemen !== 'warehouse') {
+            return response()->json(['success' => false, 'message' => 'User bukan operator warehouse'], 422);
+        }
+
+        $exists = PalletMoverModel::findOrFail($request->pallet_mover_id)
+            ->assignedOperators()
+            ->wherePivot('user_id', $user->id)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['success' => false, 'message' => 'User sudah di-assign ke pallet mover ini'], 422);
+        }
+
+        $pallet = PalletMoverModel::findOrFail($request->pallet_mover_id);
+        $pallet->assignedOperators()->attach($user->id, ['is_primary' => $request->is_primary]);
+
+        return response()->json(['success' => true, 'message' => 'Assignment berhasil']);
+    }
+
     /**
-     * Display the specified resource.
+     * Display the forklift resource.
      */
     public function showForklift()
     {
@@ -283,6 +430,74 @@ class P2hController extends Controller
         return response()->json($result);
     }
 
+    public function showRegForklift()
+    {
+        $forklifts = ForkliftModel::with('assignedOperators')->orderBy('nomor_unit')->get();
+
+        $data = $forklifts->map(function ($forklift) {
+            $primary = $forklift->assignedOperators->where('pivot.is_primary', true)->first();
+            $backup = $forklift->assignedOperators->where('pivot.is_primary', false);
+
+            return [
+                'id' => $forklift->id,
+                'nomor_unit' => $forklift->nomor_unit,
+                'status' => ucfirst($forklift->status),
+                'notes' => ucfirst($forklift->notes),
+                'departemen' => ucfirst($forklift->departemen),
+                'primary_operator' => $primary ? $primary->username : '-',
+                'backup_count' => $backup->count(),
+                'created_at' => $forklift->created_at->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function showForkliftDetail($id)
+    {
+        // if (!in_array(Session::get('jabatan'), ['supervisor', 'dept_head', 'foreman'])) {
+        //     return response()->json(['error' => 'Unauthorized'], 403);
+        // }
+
+        try {
+            $forklift = ForkliftModel::findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $forklift->id,
+                    'nomor_unit' => $forklift->nomor_unit,
+                    'departemen' => $forklift->departemen,
+                    'status' => $forklift->status,
+                    'description' => $forklift->description
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function showForkliftAssignment($id)
+    {
+        $forklift = ForkliftModel::with('assignedOperators')->findOrFail($id);
+
+        $primary = $forklift->assignedOperators->where('pivot.is_primary', true)->first();
+        $backups = $forklift->assignedOperators->where('pivot.is_primary', false)->pluck('id')->toArray();
+
+        $operators = User::where('jabatan', 'operator')
+            ->where('departemen', 'warehouse')
+            ->select('id', 'username', 'nik')->get();
+
+        return response()->json([
+            'primary_operator_id' => $primary ? $primary->id : null,
+            'backup_operator_ids' => $backups,
+            'operators' => $operators
+        ]);
+    }
+
+    /**
+     * Display the pallet mover resource.
+     */
     public function showPalletMover()
     {
         $data = P2HPalletMoverModel::orderBy('tanggal', 'desc')->get()
@@ -310,27 +525,233 @@ class P2hController extends Controller
         return response()->json($result);
     }
 
+    public function getPalletData()
+    {
+        $pallets = PalletMoverModel::with('assignedOperators')->orderBy('nomor_unit')->get();
+
+        $data = $pallets->map(function ($pallet) {
+            $primary = $pallet->assignedOperators->where('pivot.is_primary', true)->first();
+            $backup = $pallet->assignedOperators->where('pivot.is_primary', false);
+
+            return [
+                'id' => $pallet->id,
+                'nomor_unit' => $pallet->nomor_unit,
+                'status' => ucfirst($pallet->status),
+                'notes' => ucfirst($pallet->notes),
+                'departemen' => ucfirst($pallet->departemen),
+                'primary_operator' => $primary ? $primary->username : '-',
+                'backup_count' => $backup->count(),
+                'created_at' => $pallet->created_at->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function showPallMovDetail($id)
+    {
+        $pallet = PalletMoverModel::findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $pallet->id,
+                'nomor_unit' => $pallet->nomor_unit,
+                'departemen' => $pallet->departemen,
+                'status' => $pallet->status,
+                'description' => $pallet->description
+            ]
+        ]);
+    }
+
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function editPallMovAssignment(string $id)
     {
-        //
+        $pallet = PalletMoverModel::with('assignedOperators')->findOrFail($id);
+
+        $primary = $pallet->assignedOperators->where('pivot.is_primary', true)->first();
+        $backups = $pallet->assignedOperators->where('pivot.is_primary', false)->pluck('id')->toArray();
+
+        $operators = User::where('jabatan', 'operator')
+            ->where('departemen', 'warehouse')
+            ->select('id', 'username', 'nik')
+            ->get();
+
+        return response()->json([
+            'primary_operator_id' => $primary?->id,
+            'backup_operator_ids' => $backups,
+            'operators' => $operators
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function updateForklift(Request $request, string $id)
     {
-        //
+        // if (!in_array(Session::get('jabatan'), ['supervisor', 'dept_head', 'foreman'])) {
+        //     return response()->json(['error' => 'Unauthorized'], 403);
+        // }
+
+        $request->validate([
+            'nomor_unit' => 'required|string|max:10|unique:forklifts,nomor_unit,' . $id,
+            'departemen' => 'required|in:warehouse,produksi',
+            'status' => 'required|in:active,maintenance,inactive',
+            'description' => 'nullable|string|max:255'
+        ]);
+
+        try {
+            $forklift = ForkliftModel::findOrFail($id);
+
+            $forklift->update([
+                'nomor_unit' => strtoupper(trim($request->nomor_unit)),
+                'departemen' => $request->departemen,
+                'status' => $request->status,
+                'description' => $request->description
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data forklift berhasil diupdate',
+                'data' => $forklift
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function updateForkliftAssignment(Request $request)
+    {
+        $request->validate([
+            'forklift_id' => 'required|exists:forklifts,id',
+            'primary_operator_id' => 'nullable|exists:users,id',
+            'backup_operator_ids' => 'array'
+        ]);
+
+        $forklift = ForkliftModel::findOrFail($request->forklift_id);
+
+        // Reset assignment
+        $forklift->assignedOperators()->detach();
+
+        // Assign operator utama
+        if ($request->primary_operator_id) {
+            $forklift->assignedOperators()->attach($request->primary_operator_id, ['is_primary' => true]);
+        }
+
+        // Assign backup
+        if ($request->has('backup_operator_ids')) {
+            foreach ($request->backup_operator_ids as $id) {
+                $forklift->assignedOperators()->attach($id, ['is_primary' => false]);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Assignment berhasil diupdate']);
+    }
+
+    public function updatePallMov(Request $request, $id)
+    {
+        $request->validate([
+            'nomor_unit' => 'required|string|max:10|unique:pallet_movers,nomor_unit,' . $id,
+            'departemen' => 'required|in:warehouse,produksi',
+            'status' => 'required|in:active,maintenance,inactive',
+            'description' => 'nullable|string|max:255'
+        ]);
+
+        $pallet = PalletMoverModel::findOrFail($id);
+        $pallet->update($request->only(['nomor_unit', 'departemen', 'status', 'description']));
+
+        return response()->json(['success' => true, 'data' => $pallet]);
+    }
+
+    public function updatePallMovAssignment(Request $request)
+    {
+        $request->validate([
+            'pallet_mover_id' => 'required|exists:pallet_mover,id',
+            'primary_operator_id' => 'nullable|exists:users,id',
+            'backup_operator_ids' => 'array'
+        ]);
+
+        $pallet = PalletMoverModel::findOrFail($request->pallet_mover_id);
+        $pallet->assignedOperators()->detach();
+
+        if ($request->primary_operator_id) {
+            $pallet->assignedOperators()->attach($request->primary_operator_id, ['is_primary' => true]);
+        }
+
+        if ($request->backup_operator_ids) {
+            foreach ($request->backup_operator_ids as $id) {
+                $pallet->assignedOperators()->attach($id, ['is_primary' => false]);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Assignment berhasil diperbarui']);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroyForklift(string $id)
     {
-        //
+        // if (!in_array(Session::get('jabatan'), ['supervisor', 'dept_head','foreman'])) {
+        //     return response()->json(['error' => 'Unauthorized'], 403);
+        // }
+
+        try {
+            $forklift = ForkliftModel::findOrFail($id);
+
+            // Hapus semua assignment terlebih dahulu
+            $forklift->userAssignments()->delete();
+
+            // Lanjut hapus forklift
+            $forklift->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Forklift dan semua assignment berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function destroyPallMov($id)
+    {
+        $pallet = PalletMoverModel::findOrFail($id);
+        $pallet->assignedOperators()->detach();
+        $pallet->delete();
+
+        return response()->json(['success' => true, 'message' => 'Pallet mover berhasil dihapus.']);
+    }
+
+
+    /**
+     * Backcup Data
+     */
+    public function getBackupForklift($id)
+    {
+        $forklift = ForkliftModel::with('assignedOperators')->findOrFail($id);
+
+        $backups = $forklift->assignedOperators
+            ->where('pivot.is_primary', false)
+            ->map(function ($user) {
+                return [
+                    'username' => $user->username,
+                    'nik' => $user->nik
+                ];
+            });
+
+        return response()->json(['backups' => $backups]);
+    }
+
+    public function getBackupPallMov($id)
+    {
+        $pallet = PalletMoverModel::with('assignedOperators')->findOrFail($id);
+        $backups = $pallet->assignedOperators
+            ->where('pivot.is_primary', false)
+            ->map(fn($u) => ['username' => $u->username, 'nik' => $u->nik]);
+
+        return response()->json(['backups' => $backups]);
     }
 }

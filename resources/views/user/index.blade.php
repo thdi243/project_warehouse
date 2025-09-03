@@ -369,9 +369,14 @@
                                         'bg-secondary';
                             }
 
-                            const bagianFormatted = user.bagian
+                            const bagianFormatted = user.bagian ?
+                                user.bagian
                                 .replace(/_/g, " ") // ganti semua "_" jadi spasi
-                                .replace(/\b\w/g, c => c.toUpperCase()); // kapital tiap kata
+                                .replace(/\b\w/g, c => c
+                                    .toUpperCase()) // huruf awal jadi kapital
+                                :
+                                "-";
+                            // kapital tiap kata
 
                             const imgSrc = user.image_url;
                             const delay = index * 200;
@@ -670,7 +675,7 @@
                 });
             });
 
-            // Optional: Preview image sebelum upload
+            // Preview image sebelum upload
             $("#imgEdit").change(function(e) {
                 const file = e.target.files[0];
                 if (file) {

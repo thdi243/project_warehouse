@@ -42,13 +42,75 @@
 
         <!-- jQuery should be included before DataTables -->
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        {{-- <link href="{{ asset('assetswebbased/DataTables/datatables.min.css') }}" rel="stylesheet" type="text/css" />
-        <script src="{{ asset('assetswebbased/DataTables/datatables.min.js') }}"></script> --}}
+        <link href="{{ asset('material/assets/css/datatables.min.css') }}" rel="stylesheet" type="text/css" />
+        <script src="{{ asset('material/assets/js/datatables.min.js') }}"></script>
 
         @yield('styles')
         <style>
             .profil-avt {
                 object-fit: cover;
+            }
+
+            /* Hilangkan bullet / simbol di nav-item dan sub-menu */
+            .navbar-nav .nav-item,
+            .navbar-nav .nav-item::before,
+            .navbar-nav .nav-link::before {
+                list-style: none !important;
+                content: none !important;
+                /* hilangkan pseudo-element */
+            }
+
+            /* Pastikan padding/indent sub-menu tetap rapi */
+            .navbar-nav .nav-item ul {
+                padding-left: 0;
+                margin: 0;
+            }
+
+
+            /* Hover menu link */
+            .navbar-nav .nav-link {
+                transition: all 0.3s ease;
+                /* transisi semua properti lebih halus */
+                display: flex;
+                align-items: center;
+            }
+
+            /* Hover effect umum */
+            .navbar-nav .nav-link:hover {
+                background-color: #4bb2f3;
+                color: #fff !important;
+                border-radius: 8px;
+                padding-left: 1rem;
+                padding-right: 1rem;
+                margin: 2px 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                transition: all 0.2s ease-in-out;
+            }
+
+            /* Active effect untuk menu utama (level 1) */
+            .navbar-nav>.nav-item>.nav-link.active {
+                background-color: #4bb2f3;
+                color: #fff !important;
+                border-radius: 8px;
+                padding-left: 1rem;
+                padding-right: 1rem;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            /* Submenu level 2 (misal: P2H Online) → tidak ada background */
+            .navbar-nav .menu-dropdown>.nav-item>.nav-link.active {
+                background: transparent !important;
+                color: #4bb2f3 !important;
+                font-weight: 600;
+                box-shadow: none !important;
+            }
+
+            /* Sub-submenu level 3 → hanya item diklik yg aktif */
+            .navbar-nav .menu-dropdown .nav-sm .nav-link.active {
+                background-color: #4bb2f3 !important;
+                color: #fff !important;
+                border-radius: 6px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
         </style>
 

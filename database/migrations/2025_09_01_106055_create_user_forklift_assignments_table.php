@@ -13,23 +13,19 @@ return new class extends Migration
     {
         Schema::create('user_forklift_assignments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('forklift_id')->constrained('forklifts')->onDelete('cascade');
-            $table->boolean('is_primary')->default(false); // true = operator utama
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('forklift_id')->constrained()->onDelete('cascade');
+            $table->boolean('is_primary')->default(false);
             $table->date('assigned_date')->default(now());
             $table->foreignId('assigned_by')->nullable()->constrained('users');
             $table->text('notes')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            // Index untuk performance
-            $table->index(['user_id', 'is_active']);
-            $table->index(['forklift_id', 'is_primary']);
+            $table->unique(['user_id', 'forklift_id'], 'unique_user_forklift');
 
-            // Constraint: hanya boleh ada 1 primary operator per forklift yang aktif
-            $table->unique(['forklift_id', 'is_primary'], 'unique_primary_per_forklift')
-                ->where('is_primary', true)
-                ->where('is_active', true);
+            // bikin index supaya query lebih cepat
+            $table->index(['forklift_id', 'is_primary'], 'idx_forklift_primary');
         });
     }
 

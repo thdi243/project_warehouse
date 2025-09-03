@@ -253,7 +253,7 @@
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Shift</label>
-                                        <select class="form-control" name="shift" required>
+                                        <select class="form-select" name="shift" required>
                                             <option value="">-- Pilih Shift --</option>
                                             <option value="1">Shift 1</option>
                                             <option value="2">Shift 2</option>
@@ -270,9 +270,9 @@
                                             name="operator_name" readonly>
                                     </div>
                                     <!-- <div class="col-md-12 mb-3">
-                                                                                                    <label>Catatan</label>
-                                                                                                    <textarea class="form-control" name="catatan"></textarea>
-                                                                                                </div> -->
+                                                                                                                <label>Catatan</label>
+                                                                                                                <textarea class="form-control" name="catatan"></textarea>
+                                                                                                            </div> -->
                                 </div>
 
                                 <hr>
@@ -442,7 +442,7 @@
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Shift</label>
-                                        <select class="form-control" name="shift" required>
+                                        <select class="form-select" name="shift" required>
                                             <option value="">-- Pilih Shift --</option>
                                             <option value="1">Shift 1</option>
                                             <option value="2">Shift 2</option>
