@@ -231,25 +231,48 @@
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Nomor Unit</label>
-                                        @if ($forklifts->count() > 1)
-                                            <select name="nomor_unit" id="forkliftSelect" class="form-select">
-                                                @foreach ($forklifts as $unit)
-                                                    <option value="{{ $unit['nomor_unit'] }}"
-                                                        data-departemen="{{ $unit['departemen'] }}">
-                                                        {{ $unit['nomor_unit'] }}
-                                                        ({{ $unit['is_primary'] ? 'Primary' : 'Backup' }})
+
+                                        @if (Session::get('jabatan') === 'operator')
+                                            {{-- Untuk operator --}}
+                                            @if ($forklifts->count() > 1)
+                                                <select name="nomor_unit" id="forkliftSelect" class="form-select">
+                                                    @foreach ($forklifts as $unit)
+                                                        <option value="{{ $unit['nomor_unit'] }}"
+                                                            data-departemen="{{ $unit['departemen'] }}">
+                                                            {{ $unit['nomor_unit'] }}
+                                                            ({{ $unit['is_primary'] ? 'Primary' : 'Backup' }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            @elseif($forklifts->count() === 1)
+                                                <input type="text" name="nomor_unit" class="form-control"
+                                                    value="{{ $forklifts[0]['nomor_unit'] }}" readonly>
+                                            @endif
+                                        @else
+                                            {{-- Selain operator --}}
+                                            <select name="nomor_unit" class="form-select">
+                                                <option value="">-- Pilih Nomor Unit --</option>
+                                                @foreach ($data_forklift as $forklift)
+                                                    <option value="{{ $forklift->nomor_unit }}">
+                                                        {{ $forklift->nomor_unit }}
                                                     </option>
                                                 @endforeach
                                             </select>
-                                        @elseif($forklifts->count() === 1)
-                                            <input type="text" name="nomor_unit" class="form-control"
-                                                value="{{ $forklifts[0]['nomor_unit'] }}" readonly>
                                         @endif
                                     </div>
+
                                     <div class="col-md-3 mb-3">
                                         <label>Departemen</label>
-                                        <input type="text" class="form-control" id="departemenInput" name="dept"
-                                            value="{{ ucfirst($departemen) }}" readonly>
+                                        @if (Session::get('jabatan') === 'operator')
+                                            <input type="text" class="form-control" id="departemenInput" name="dept"
+                                                value="{{ ucfirst($departemen) }}" readonly>
+                                        @else
+                                            <select name="dept" class="form-select">
+                                                <option value="">Pilih Dept</option>
+                                                <option value="warehouse">Warehouse</option>
+                                                <option value="produksi">Produksi</option>
+                                            </select>
+                                        @endif
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Shift</label>
@@ -270,9 +293,9 @@
                                             name="operator_name" readonly>
                                     </div>
                                     <!-- <div class="col-md-12 mb-3">
-                                                                                                                <label>Catatan</label>
-                                                                                                                <textarea class="form-control" name="catatan"></textarea>
-                                                                                                            </div> -->
+                                                                                                                                                                            <label>Catatan</label>
+                                                                                                                                                                            <textarea class="form-control" name="catatan"></textarea>
+                                                                                                                                                                        </div> -->
                                 </div>
 
                                 <hr>
@@ -420,25 +443,45 @@
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Nomor Unit</label>
-                                        @if ($pallets->count() > 1)
-                                            <select name="nomor_unit" id="palletselect" class="form-select">
-                                                @foreach ($pallets as $unit)
-                                                    <option value="{{ $unit['nomor_unit'] }}"
-                                                        data-departemen="{{ $unit['departemenpallet'] }}">
-                                                        {{ $unit['nomor_unit'] }}
-                                                        ({{ $unit['is_primary'] ? 'Primary' : 'Backup' }})
+                                        @if (Session::get('jabatan') === 'operator')
+                                            @if ($pallets->count() > 1)
+                                                <select name="nomor_unit" id="palletselect" class="form-select">
+                                                    @foreach ($pallets as $unit)
+                                                        <option value="{{ $unit['nomor_unit'] }}"
+                                                            data-departemen="{{ $unit['departemenpallet'] }}">
+                                                            {{ $unit['nomor_unit'] }}
+                                                            ({{ $unit['is_primary'] ? 'Primary' : 'Backup' }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            @elseif($pallets->count() === 1)
+                                                <input type="text" name="nomor_unit" class="form-control"
+                                                    value="{{ $pallets[0]['nomor_unit'] }}" readonly>
+                                            @endif
+                                        @else
+                                            {{-- Selain operator --}}
+                                            <select name="nomor_unit" class="form-select">
+                                                <option value="">-- Pilih Nomor Unit --</option>
+                                                @foreach ($data_pallet as $pallet)
+                                                    <option value="{{ $pallet->nomor_unit }}">
+                                                        {{ $pallet->nomor_unit }}
                                                     </option>
                                                 @endforeach
                                             </select>
-                                        @elseif($pallets->count() === 1)
-                                            <input type="text" name="nomor_unit" class="form-control"
-                                                value="{{ $pallets[0]['nomor_unit'] }}" readonly>
                                         @endif
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Departemen</label>
-                                        <input type="text" class="form-control" id="departemenInputpallet"
-                                            name="dept" value="{{ ucfirst($departemenpallet) }}" readonly>
+                                        @if (Session::get('jabatan') === 'operator')
+                                            <input type="text" class="form-control" id="departemenInputpallet"
+                                                name="dept" value="{{ ucfirst($departemenpallet) }}" readonly>
+                                        @else
+                                            <select name="dept" class="form-select">
+                                                <option value="">Pilih Dept</option>
+                                                <option value="warehouse">Warehouse</option>
+                                                <option value="produksi">Produksi</option>
+                                            </select>
+                                        @endif
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Shift</label>

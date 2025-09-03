@@ -55,7 +55,11 @@ class P2hController extends Controller
 
         $departemenpallet = $pallets->first()['departemen'] ?? '';
         $nomorUnitpallet = $pallets->first()['nomor_unit'] ?? '';
-        return view('p2h.index', compact('forklifts', 'pallets', 'departemen', 'nomorUnit', 'departemenpallet', 'nomorUnitpallet'));
+
+        $data_forklift = ForkliftModel::all();
+        $data_pallet = PalletMoverModel::all();
+
+        return view('p2h.index', compact('forklifts', 'pallets', 'departemen', 'nomorUnit', 'departemenpallet', 'nomorUnitpallet', 'data_forklift', 'data_pallet'));
         // }
         // return redirect('/')->with('error', 'Anda tidak memiliki akses ke halaman ini.');
     }
