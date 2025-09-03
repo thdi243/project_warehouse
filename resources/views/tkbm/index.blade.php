@@ -21,7 +21,7 @@
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript: void(0);">TKBM</a></li>
-                                <li class="breadcrumb-item active">Input TKBM</li>
+                                <li class="breadcrumb-item active">Input BPS</li>
                             </ol>
                         </div>
                     </div>
@@ -32,7 +32,7 @@
                 <div class="col-lg-12">
                     <div class="card">
                         <div class="card-header">
-                            <h4 class="card-title mb-0">Form Input TKBM</h4>
+                            <h4 class="card-title mb-0">Form Input BPS</h4>
                         </div>
                         <div class="card-body">
                             <div class="live-preview">
@@ -86,8 +86,15 @@
                                     <div class="col-xxl-3 col-md-6">
                                         <div>
                                             <label for="jmlTkbm" class="form-label">Jumlah TKBM</label>
-                                            <input type="number" class="form-control" id="jmlTkbm" name="jmlTkbm"
-                                                placeholder="Masukkan Jumlah TKBM">
+                                            <select name="jmlTkbm" id="jmlTkbm" class="form-select">
+                                                <option value="" selected disabled>Pilih Jumlah TKBM</option>
+                                                <option value="1">1 Orang</option>
+                                                <option value="2">2 Orang</option>
+                                                <option value="3">3 Orang</option>
+                                                <option value="4">4 Orang</option>
+                                            </select>
+                                            {{-- <input type="number" class="form-control" id="jmlTkbm" name="jmlTkbm"
+                                                placeholder="Masukkan Jumlah TKBM"> --}}
                                         </div>
                                     </div>
                                     <div class="col-xxl-3 col-md-6">
@@ -116,6 +123,12 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+
+            let today = new Date().toISOString().split('T')[0];
+
+            // Set value dan jadikan readonly
+            $('#date').val(today).prop('readonly', true);
+
             // simpan data form
             $('#simpanBtn').click(function(e) {
                 e.preventDefault();
@@ -128,6 +141,8 @@
                 let qtyPallet = $('#qtyPallet').val();
                 let jmlTkbm = $('#jmlTkbm').val();
                 let keterangan = $('#keterangan').val();
+
+                console.log(date);
 
                 // Validasi input
                 if (!date || !petugas || !shift) {
@@ -166,9 +181,9 @@
                         });
 
                         // Reset form
-                        $('#date').val('');
+                        // $('#date').val('');
                         $('#petugas').val('');
-                        $('#shift').val('shift_1');
+                        $('#shift').val('');
                         $('#qtyTerpal').val('');
                         $('#qtySlipsheet').val('');
                         $('#qtyPallet').val('');

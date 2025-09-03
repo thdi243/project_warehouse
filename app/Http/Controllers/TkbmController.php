@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Models\Tkbm\TkbmFeeModel;
+use App\Models\Tkbm\TkbmHargaProdukModel;
 use App\Models\Tkbm\TkbmModel;
 
 class TkbmController extends Controller
@@ -62,13 +63,30 @@ class TkbmController extends Controller
             ], 422);
         }
 
-        // hitung total qty
-        $totalQty = (($request->qtyTerpal ?? 0) * 770) +
-            (($request->qtySlipsheet ?? 0) * 440) +
-            (($request->qtyPallet ?? 0) * 1100);
+        // Harga Produk
+        $hargaTerbaru = TkbmHargaProdukModel::orderBy('created_at', 'desc')->first();
+
+        if (!$hargaTerbaru) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Data harga belum tersedia.'
+            ]);
+        }
+
+        // hitung total qty berdasarkan harga terbaru
+        $totalQty = (($request->qtyTerpal ?? 0) * $hargaTerbaru['harga_terpal']) +
+            (($request->qtySlipsheet ?? 0) * $hargaTerbaru['harga_slipsheet']) +
+            (($request->qtyPallet ?? 0) * $hargaTerbaru['harga_pallet']);
 
         // ambil data fee terakhir
         $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+
+        if (!$lastFeeData) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Data Fees & Taxes belum tersedia.'
+            ]);
+        }
         $fee = $lastFeeData ? $lastFeeData->fee : 0;
         // $ppn = $lastFeeData ? $lastFeeData->ppn : 0;
         // $pph = $lastFeeData ? $lastFeeData->pph : 0;
@@ -101,41 +119,42 @@ class TkbmController extends Controller
      */
     public function show(string $id = null)
     {
-        $bulan = request()->query('bulan'); // expect "YYYY-MM" or "MM" or "M"
-        if ($bulan) {
-            // Parse month & optional year
-            $year = null;
-            $month = null;
-            if (preg_match('/^\d{4}-\d{2}$/', $bulan)) {
-                [$year, $month] = explode('-', $bulan);
-                $year = (int) $year;
-                $month = (int) $month;
-            } elseif (preg_match('/^\d{1,2}$/', $bulan)) {
-                $month = (int) $bulan;
-                $year = (int) date('Y');
-            } else {
+        $start = request()->query('start_date'); // format: YYYY-MM-DD
+        $end   = request()->query('end_date');   // format: YYYY-MM-DD
+
+        $query = TkbmModel::query();
+
+        if ($start && $end) {
+            // validasi format tanggal
+            $startDate = date_create_from_format('Y-m-d', $start);
+            $endDate   = date_create_from_format('Y-m-d', $end);
+
+            if (!$startDate || !$endDate) {
                 return response()->json([
                     'ok' => false,
-                    'message' => 'Format bulan tidak dikenali. Gunakan YYYY-MM atau MM.',
+                    'message' => 'Format tanggal tidak valid. Gunakan YYYY-MM-DD.'
                 ], 400);
             }
-            // Validasi bulan
-            if ($month < 1 || $month > 12) {
+
+            // Pastikan end >= start
+            if ($end < $start) {
                 return response()->json([
                     'ok' => false,
-                    'message' => 'Bulan harus antara 1-12.',
+                    'message' => 'Tanggal akhir harus lebih besar atau sama dengan tanggal awal.'
                 ], 400);
             }
+
+            $query->whereBetween('date', [$start, $end]);
         } else {
             // default ke bulan & tahun sekarang
             $year = (int) date('Y');
             $month = (int) date('m');
+
+            $query->whereYear('date', $year)
+                ->whereMonth('date', $month);
         }
 
-        $data = TkbmModel::whereYear('date', $year)
-            ->whereMonth('date', $month)
-            ->orderBy('date', 'asc')
-            ->get();
+        $data = $query->orderBy('date', 'asc')->get();
 
         if ($data->isNotEmpty()) {
             return response()->json([
@@ -145,7 +164,7 @@ class TkbmController extends Controller
         } else {
             return response()->json([
                 'ok' => false,
-                'message' => 'data tidak ditemukan.'
+                'message' => 'Data tidak ditemukan.'
             ], 200);
         }
     }
@@ -285,38 +304,32 @@ class TkbmController extends Controller
      */
     public function export(Request $request)
     {
-        $bulan = $request->query('bulan'); // expect "YYYY-MM" or "MM" or "M"
-        if (!$bulan) {
-            return redirect()->back()->with('error', 'Bulan tidak valid.');
+        $startDate = $request->query('start_date');
+        $endDate   = $request->query('end_date');
+
+        // Validasi input
+        if (!$startDate || !$endDate) {
+            return redirect()->back()->with('error', 'Tanggal awal dan akhir wajib diisi.');
         }
 
-        // Parse month & optional year
-        $year = null;
-        $month = null;
-        if (preg_match('/^\d{4}-\d{2}$/', $bulan)) {
-            [$year, $month] = explode('-', $bulan);
-            $year = (int) $year;
-            $month = (int) $month;
-        } elseif (preg_match('/^\d{1,2}$/', $bulan)) {
-            $month = (int) $bulan;
-            $year = (int) date('Y');
-        } else {
-            return redirect()->back()->with('error', 'Format bulan tidak dikenali. Gunakan YYYY-MM atau MM.');
+        try {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end   = Carbon::parse($endDate)->endOfDay();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Format tanggal tidak valid.');
         }
 
-        // Validasi bulan
-        if ($month < 1 || $month > 12) {
-            return redirect()->back()->with('error', 'Bulan harus antara 1-12.');
+        if ($end->lt($start)) {
+            return redirect()->back()->with('error', 'Tanggal akhir harus lebih besar atau sama dengan tanggal awal.');
         }
 
-        // Ambil data dari database berdasarkan bulan dan tahun
-        $data = TkbmModel::whereYear('date', $year)
-            ->whereMonth('date', $month)
+        // Ambil data dari database berdasarkan rentang tanggal
+        $data = TkbmModel::whereBetween('date', [$start, $end])
             ->orderBy('date', 'asc')
             ->get();
 
         if ($data->isEmpty()) {
-            return redirect()->back()->with('error', 'Tidak ada data untuk bulan yang dipilih.');
+            return redirect()->back()->with('error', 'Tidak ada data pada rentang tanggal tersebut.');
         }
 
         // Load template Excel
@@ -448,7 +461,7 @@ class TkbmController extends Controller
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
 
             // Generate filename
-            $fileName = 'Data_TKBM_' . $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '.xlsx';
+            $fileName = 'Data_TKBM_' . $startDate . '-' . str_pad($endDate, 2, '0', STR_PAD_LEFT) . '.xlsx';
 
             // Save ke temporary file
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
@@ -468,7 +481,7 @@ class TkbmController extends Controller
     }
 
     /**
-     * Handle fee TKBM store
+     * Handle Master Fees & Harga TKBM store
      */
     public function simpanFeeTkbm(Request $request)
     {
@@ -500,12 +513,52 @@ class TkbmController extends Controller
         ], 200);
     }
 
+    public function simpanHargaProduk(Request $request)
+    {
+        $validated = $request->validate([
+            'terpal' => 'numeric',
+            'slipsheet' => 'numeric',
+            'pallet' => 'numeric',
+        ]);
+
+        // Ambil data terakhir dari database
+        $lastData = TkbmHargaProdukModel::orderBy('created_at', 'desc')->first();
+
+        // Jika harga produk bernilai 0 atau null, gunakan nilai dari data terakhir (jika ada)
+        $terpal = ($request->terpal !== null && $request->terpal != 0) ? $request->terpal : ($lastData->terpal ?? 0);
+        $slipsheet = ($request->slipsheet !== null && $request->slipsheet != 0) ? $request->slipsheet : ($lastData->slipsheet ?? 0);
+        $pallet = ($request->pallet !== null && $request->pallet != 0) ? $request->pallet : ($lastData->pallet ?? 0);
+
+        // Simpan data ke database
+        $save = TkbmHargaProdukModel::create([
+            'harga_terpal' => $terpal,
+            'harga_slipsheet' => $slipsheet,
+            'harga_pallet' => $pallet,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Data Fee TKBM berhasil disimpan!',
+            'data' => $save,
+        ], 200);
+    }
+
     /**
      * Handle history fee TKBM
      */
     public function historyFeeTkbm()
     {
         $data = TkbmFeeModel::orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'ok' => true,
+            'data' => $data,
+        ], 200);
+    }
+
+    public function historyProductPrice()
+    {
+        $data = TkbmHargaProdukModel::orderBy('created_at', 'desc')->get();
 
         return response()->json([
             'ok' => true,

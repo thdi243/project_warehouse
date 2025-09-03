@@ -27,13 +27,23 @@
                     </div>
                 </div>
             </div> --}}
-
             <div class="row mb-3">
-                <div class="col-lg-12">
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="month" id="bulanFilter" class="form-control w-auto">
-                        <button class="btn btn-info" id="applyFilter">Filter</button>
-                    </div>
+                <!-- Start Date -->
+                <div class="col-md-3 mb-3">
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="date" id="startDate" class="form-control">
+                </div>
+
+                <!-- End Date -->
+                <div class="col-md-3">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="date" id="endDate" class="form-control">
+                </div>
+
+                <!-- Button Filter -->
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-info w-100" id="applyFilter">Filter</button>
                 </div>
             </div>
 
@@ -57,9 +67,7 @@
                                             <th>Total</th>
                                             <th>Keterangan Fee</th>
                                             <th></th>
-                                            @if (Session::get('jabatan') === 'dept_head' ||
-                                                    Session::get('jabatan' === 'supervisor') ||
-                                                    Session::get('jabatan') === 'foreman')
+                                            @if (Session::get('jabatan') !== 'operator')
                                                 <th data-orderable="false">Action</th>
                                             @endif
                                         </tr>
@@ -91,9 +99,12 @@
                                     </tfoot>
 
                                 </table>
-                                <div class="export">
-                                    <button class="btn btn-success" id="exportExcel">Export Excel</button>
-                                </div>
+                                @if (Session::get('jabatan') !== 'operator')
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-success" id="exportExcel">Export Excel</button>
+                                        <button class="btn btn-danger" id="downloadPdf">Download PDF</button>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -107,11 +118,20 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Pilih Bulan untuk Export</h5>
+                    <h5 class="modal-title">Select Date Range for Export</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="month" id="bulanPicker" class="form-control">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label for="startDateModal" class="form-label">Start Date</label>
+                            <input type="date" id="startDateModal" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label for="endDateModal" class="form-label">Start Date</label>
+                            <input type="date" id="endDateModal" class="form-control">
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-light" data-bs-dismiss="modal">Batal</button>
@@ -120,6 +140,7 @@
             </div>
         </div>
     </div>
+
 
     {{-- Modal Edit Button --}}
     <div class="modal fade" id="editModal" tabindex="-1">
@@ -205,14 +226,15 @@
             const PPN = {{ $ppn ?? 11 }};
             const PPH = {{ $pph ?? 2 }};
 
-            function getData(bulan = null) {
+            function getData(startDate = null, endDate = null) {
                 const tbody = $("#tkbmTable tbody");
 
                 $.ajax({
                     url: "{{ route('tkbm.data.show') }}",
                     method: "GET",
-                    data: bulan ? {
-                        bulan: bulan
+                    data: (startDate && endDate) ? {
+                        start_date: startDate,
+                        end_date: endDate
                     } : {},
                     success: function(response) {
                         tbody.empty();
@@ -241,14 +263,14 @@
                                         <td>Rp ${fmtID(item.total_qty)}</td>
                                         <td>Rp ${fmtID(item.total_fee)}</td>
                                         <td class="text-white"><span class="badge bg-success px-2 py-2 rounded-pill">${item.fee_id}%</span></td>
-                                       @if (Session::get('jabatan') === 'dept_head' ||
-                                               Session::get('jabatan') === 'supervisor' ||
-                                               Session::get('jabatan') === 'foreman')
-                                                <td class="text-center gap-2 d-flex justify-content-center">
-                                                    <button class="btn btn-sm btn-info editBtn" data-id="${item.id}">Edit</button>
-                                                    <button class="btn btn-sm btn-danger deleteBtn" data-id="${item.id}">Delete</button>
-                                                </td>
-                                       @endif     
+                                    @if (Session::get('jabatan') === 'dept_head' ||
+                                            Session::get('jabatan') === 'supervisor' ||
+                                            Session::get('jabatan') === 'foreman')
+                                            <td class="text-center gap-2 d-flex justify-content-center">
+                                                <button class="btn btn-sm btn-info editBtn" data-id="${item.id}">Edit</button>
+                                                <button class="btn btn-sm btn-danger deleteBtn" data-id="${item.id}">Delete</button>
+                                            </td>
+                                    @endif     
                                     </tr>
                                 `;
                                 tbody.append(row);
@@ -278,11 +300,18 @@
                         $('#tPphAct').text(fmtID(pphAct));
                         $('#tGrandTotal').text(fmtID(grandTotal));
                     },
-                    error: function(err) {
-                        console.error("Error load data:", err);
+                    error: function(xhr, status, error) {
+                        console.error("Error load data:", error);
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error",
+                            text: xhr.responseJSON?.message ||
+                                "Terjadi kesalahan saat mengambil data.",
+                        });
                     }
                 });
             }
+
 
             // modal export excel
             $("#exportExcel").click(function() {
@@ -291,32 +320,57 @@
 
             // tombol confirm export
             $("#confirmExport").click(function() {
-                let bulan = $("#bulanPicker").val();
-                if (!bulan) {
+                let startDate = $("#startDateModal").val();
+                let endDate = $("#endDateModal").val();
+
+                // validasi kalau kosong
+                if (!startDate || !endDate) {
                     Swal.fire({
                         icon: 'warning',
-                        title: 'Pilih bulan terlebih dahulu.',
+                        title: 'Pilih tanggal awal dan akhir terlebih dahulu.',
                     });
                     return;
                 }
 
-                window.location.href = "{{ route('tkbm.data.export') }}?bulan=" + bulan;
+                // validasi kalau endDate < startDate
+                if (new Date(endDate) < new Date(startDate)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Tanggal akhir harus lebih besar atau sama dengan tanggal awal.',
+                    });
+                    return;
+                }
+
+                // arahkan ke route export dengan query string
+                window.location.href =
+                    "{{ route('tkbm.data.export') }}" +
+                    "?start_date=" +
+                    startDate +
+                    "&end_date=" +
+                    endDate;
+
+                // tutup modal
                 $("#bulanModal").modal("hide");
             });
 
-            // tombol filter
+
+            // Tombol filter
             $("#applyFilter").click(function() {
-                let bulan = $("#bulanFilter").val();
-                if (!bulan) {
+                let startDate = $("#startDate").val();
+                let endDate = $("#endDate").val();
+
+                if (!startDate || !endDate) {
                     Swal.fire({
                         icon: 'warning',
-                        title: 'Pilih bulan terlebih dahulu.',
+                        title: 'Pilih Start date dan End date terlebih dahulu.',
                     });
                     return;
                 }
 
-                getData(bulan);
+                // Kirim ke fungsi getData
+                getData(startDate, endDate);
             });
+
 
             // tombol delete
             $(document).on('click', '.deleteBtn', function() {
