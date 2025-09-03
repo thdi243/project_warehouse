@@ -124,9 +124,7 @@
                                         <a href="#" data-bs-target="#sidebarRegUnitP2h"
                                             data-bs-toggle="collapse" role="button"
                                             aria-expanded="{{ request()->routeIs('p2h.registration.*') ? 'true' : 'false' }}"
-                                            aria-controls="sidebarRegUnitP2h"
-                                            class="nav-link {{ request()->routeIs('p2h.registration.*') ? 'active' : '' }}"
-                                            data-key="t-m-tkbm">
+                                            aria-controls="sidebarRegUnitP2h" class="nav-link" data-key="t-m-tkbm">
                                             Registrasi Unit P2H
                                         </a>
                                         <div class="collapse menu-dropdown {{ request()->routeIs('p2h.registration.*') ? 'show' : '' }}"
