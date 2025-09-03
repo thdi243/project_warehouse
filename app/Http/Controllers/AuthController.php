@@ -15,7 +15,7 @@ class AuthController extends Controller
         'dept_head' => '/dashboard/tkbm',
         'supervisor' => '/dashboard/tkbm',
         'foreman' => '/dashboard/tkbm',
-        'operator' => '/dashboard/tkbm',
+        'operator' => '/tkbm/input',
     ];
 
     public function showLoginForm()

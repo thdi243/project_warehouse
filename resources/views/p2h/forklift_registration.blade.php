@@ -118,25 +118,25 @@
                 <div class="card-header">Daftar Forklift Terdaftar</div>
                 <div class="card-body">
                     <!-- Tambahkan wrapper untuk horizontal scroll di mobile -->
-                    <div class="table-responsive">
-                        <table id="forkliftTable" class="table table-bordered table-striped nowrap" style="width:100%">
-                            <thead>
-                                <tr>
-                                    <th>Unit</th>
-                                    <th>Status</th>
-                                    <th>Departemen</th>
-                                    <th>Deskripsi</th>
-                                    <th>Operator Utama</th>
-                                    <th>Jumlah Cadangan</th>
-                                    <th>Waktu Buat</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {{-- AJAX akan inject data di sini --}}
-                            </tbody>
-                        </table>
-                    </div>
+                    {{-- <div class="table-responsive"> --}}
+                    <table id="forkliftTable" class="table table-bordered table-striped nowrap" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Unit</th>
+                                <th>Status</th>
+                                <th>Departemen</th>
+                                <th>Deskripsi</th>
+                                <th>Operator Utama</th>
+                                <th>Jumlah Cadangan</th>
+                                <th>Waktu Buat</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{-- AJAX akan inject data di sini --}}
+                        </tbody>
+                    </table>
+                    {{-- </div> --}}
                 </div>
             </div>
         </div>

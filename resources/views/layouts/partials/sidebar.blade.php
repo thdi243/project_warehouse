@@ -2,7 +2,7 @@
     <!-- LOGO -->
     <div class="navbar-brand-box">
         <div class="navbar-brand-box ">
-            <a href="{{ session('jabatan') != 'operator' ? route('main.dashboard') : route('dashboard.tkbm') }}"
+            <a href="{{ session('jabatan') != 'operator' ? route('dashboard.tkbm') : route('tkbm.stock') }}"
                 class="logo logo-dark">
                 <span class="logo-sm">
                     <img src="{{ asset('assets/images/logo/kecap.png') }}" alt="" height="22">
@@ -11,7 +11,7 @@
                     <img src="{{ asset('assets/images/logo/kecap.png') }}" alt="" height="100">
                 </span>
             </a>
-            <a href="{{ session('jabatan') != 'operator' ? route('main.dashboard') : route('dashboard.tkbm') }}"
+            <a href="{{ session('jabatan') != 'operator' ? route('dashboard.tkbm') : route('tkbm.stock') }}"
                 class="logo logo-light">
                 <span class="logo-sm">
                     <img src="{{ asset('assets/images/logo/kecap.png') }}" alt="" height="22">
@@ -42,13 +42,15 @@
                                 <i class="mdi mdi-chart-box"></i> <span data-key="p2h-dashboard">P2H
                                     Dashboard</span>
                             </a>
+                        </li>
+                        <li class="nav-item">
                             <a href="{{ route('dashboard.tkbm') }}"
                                 class="nav-link menu-link {{ request()->routeIs('dashboard.tkbm') ? 'active' : '' }}">
                                 <i class="mdi mdi-account-hard-hat"></i> <span data-key="tkbm-dashboard">TKBM
                                     Dashboard</span>
                             </a>
+                        </li>
                     @endif
-                    </li>
                     <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
                     <li class="nav-item">
                         <a class="nav-link menu-link  {{ request()->routeIs('tkbm.*') ? '' : 'collapsed' }}"
