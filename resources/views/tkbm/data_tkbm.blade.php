@@ -141,6 +141,62 @@
         </div>
     </div>
 
+    <!-- Modal Pilih Bulan Export Pdf-->
+    <div class="modal fade" id="bulanModalPdf" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select Date Range for Download</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-12">
+                            @php
+                                $bulanRomawi = [
+                                    1 => 'I',
+                                    2 => 'II',
+                                    3 => 'III',
+                                    4 => 'IV',
+                                    5 => 'V',
+                                    6 => 'VI',
+                                    7 => 'VII',
+                                    8 => 'VIII',
+                                    9 => 'IX',
+                                    10 => 'X',
+                                    11 => 'XI',
+                                    12 => 'XII',
+                                ];
+                                $now = now(); // atau \Carbon\Carbon::now();
+                                $romawiBulan = $bulanRomawi[$now->month];
+                                $tahun = $now->year;
+                                $noDokDefault = "001/WCP/{$romawiBulan}/{$tahun}";
+                            @endphp
+                            <label for="noDok" class="form-label">No Dok</label>
+                            <select id="noDok" class="form-select">
+                                <option value="{{ $noDokDefault }}">{{ $noDokDefault }}</option>
+                                <option value="002/WCP/{{ $romawiBulan }}/{{ $tahun }}">
+                                    002/WCP/{{ $romawiBulan }}/{{ $tahun }}</option>
+                            </select>
+                        </div>
+
+                        <div class="col-6 mt-2">
+                            <label for="startDatePdf" class="form-label">Start Date</label>
+                            <input type="date" id="startDatePdf" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label for="endDateModal" class="form-label">Start Date</label>
+                            <input type="date" id="endDatePdf" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button class="btn btn-primary" id="confirmExportPdf">Download</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{-- Modal Edit Button --}}
     <div class="modal fade" id="editModal" tabindex="-1">
@@ -312,7 +368,6 @@
                 });
             }
 
-
             // modal export excel
             $("#exportExcel").click(function() {
                 $("#bulanModal").modal("show");
@@ -353,6 +408,47 @@
                 $("#bulanModal").modal("hide");
             });
 
+            // modal export pdf
+            $("#downloadPdf").click(function() {
+                $("#bulanModalPdf").modal("show");
+            });
+
+            // tombol confirm download pdf
+            $("#confirmExportPdf").click(function() {
+                let startDate = $("#startDatePdf").val();
+                let endDate = $("#endDatePdf").val();
+                let noDok = $("#noDok").val();
+
+                // validasi kalau kosong
+                if (!startDate || !endDate) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Pilih tanggal awal dan akhir terlebih dahulu.',
+                    });
+                    return;
+                }
+
+                // validasi kalau endDate < startDate
+                if (new Date(endDate) < new Date(startDate)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Tanggal akhir harus lebih besar atau sama dengan tanggal awal.',
+                    });
+                    return;
+                }
+
+                // arahkan ke route export dengan query string
+                let url =
+                    "{{ url('api/dashboard/tkbm/export-pdf') }}" +
+                    "?start_date=" + startDate +
+                    "&end_date=" + endDate +
+                    "&no_dok=" + encodeURIComponent(noDok);
+
+                window.open(url, "_blank"); // tab baru
+
+                // tutup modal
+                $("#bulanModalPdf").modal("hide");
+            });
 
             // Tombol filter
             $("#applyFilter").click(function() {
@@ -370,7 +466,6 @@
                 // Kirim ke fungsi getData
                 getData(startDate, endDate);
             });
-
 
             // tombol delete
             $(document).on('click', '.deleteBtn', function() {

@@ -86,8 +86,8 @@
                                     <div class="text-center mt-2">
                                         {{-- <img src="{{ asset('assets/images/logo/wings.png') }}" alt="PT.Bumi Alam Segar"
                                             style="width: 150px;"> --}}
-                                        <h5 class="text-primary">Welcome Back to BAS SmartOps!</h5>
-                                        <p class="text-muted">Sign in to access your dashboard</p>
+                                        <h5 class="text-primary">Digital Warehouse Management</h5>
+                                        <p class="text-muted">Sign in to BAS SmartOps and get started.</p>
                                     </div>
                                     <div class="p-2 mt-4">
                                         <form id="loginForm">
@@ -100,8 +100,7 @@
                                                 <label class="form-label" for="password">Password</label>
                                                 <div class="position-relative auth-pass-inputgroup mb-3">
                                                     <input type="password" class="form-control pe-5 password-input"
-                                                        placeholder="Enter password" id="password" name="password"
-                                                        required>
+                                                        placeholder="********" id="password" name="password" required>
                                                     <button
                                                         class="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted shadow-none password-addon"
                                                         type="button" id="password-addon"><i

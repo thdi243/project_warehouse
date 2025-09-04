@@ -29,7 +29,7 @@
                         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
                             <div>
                                 <h1 class="fw-bold mb-2">
-                                    Selamat Datang, {{ Auth::user()->username }} 👋
+                                    Selamat Datang Kembali, {{ Auth::user()->username }} 👋
                                 </h1>
                                 <p class="mb-0">
                                     Senang melihatmu kembali! Berikut ringkasan aktivitas dan laporan terbarumu.

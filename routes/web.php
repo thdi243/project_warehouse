@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/data/update/{id}', [TkbmController::class, 'update'])->name('tkbm.data.update');
         Route::delete('/data/delete/{id}', [TkbmController::class, 'destroy'])->name('tkbm.data.delete');
         Route::get('/data/export', [TkbmController::class, 'export'])->name('tkbm.data.export');
+        // Route::get('/data/export-pdf', [TkbmController::class, 'exportPdf'])->name('tkbm.data.export-pdf');
         Route::get('/master/fee', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.fee');
         Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
         Route::post('/fee/simpan', [TkbmController::class, 'simpanFeeTkbm'])->name('tkbm.fee.simpan');

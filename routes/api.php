@@ -15,6 +15,7 @@ Route::prefix('dashboard')->group(function () {
     Route::get('/tkbm/qty-pallet', [TkbmDashboardController::class, 'qtyPalletDay']);
     Route::get('/tkbm/total-qty', [TkbmDashboardController::class, 'tkbmTotalPerhari']);
     Route::get('/tkbm/grand-total', [TkbmDashboardController::class, 'tkbmDashboardGrandTotal']);
+    Route::get('/tkbm/export-pdf', [TkbmDashboardController::class, 'exportPdf']);
 
     // p2h
     Route::prefix('p2h')->group(function () {

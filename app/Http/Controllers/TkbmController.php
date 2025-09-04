@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Tkbm\TkbmModel;
 use Illuminate\Support\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Tkbm\TkbmFeeModel;
 use App\Models\Tkbm\TkbmHargaProdukModel;
-use App\Models\Tkbm\TkbmModel;
 
 class TkbmController extends Controller
 {
@@ -87,6 +88,7 @@ class TkbmController extends Controller
                 'message' => 'Data Fees & Taxes belum tersedia.'
             ]);
         }
+
         $fee = $lastFeeData ? $lastFeeData->fee : 0;
         // $ppn = $lastFeeData ? $lastFeeData->ppn : 0;
         // $pph = $lastFeeData ? $lastFeeData->pph : 0;
@@ -347,6 +349,10 @@ class TkbmController extends Controller
             $spreadsheet = clone $templateSpreadsheet;
             $sheet = $spreadsheet->getActiveSheet();
 
+            // Isi Rev
+            $sheet->setCellValue('V2', 0);
+            $sheet->setCellValue('V4', '1 of 1');
+
             // Atur judul periode di sheet
             $periodeText = Carbon::now()->format('j F Y');
             $sheet->setCellValue('V3', $periodeText);
@@ -386,7 +392,7 @@ class TkbmController extends Controller
             }
 
             // Isi total di baris terakhir
-            $startRowTotal = 40;
+            $startRowTotal = 28;
             // $sheet->setCellValue('A' . $startRowTotal, 'TOTAL');
             $sheet->setCellValue('G' . $startRowTotal, '=SUM(G' . $startRow . ':G' . ($startRowTotal - 1) . ')');
             $sheet->setCellValue('K' . $startRowTotal, '=SUM(K' . $startRow . ':K' . ($startRowTotal - 1) . ')');
@@ -427,33 +433,33 @@ class TkbmController extends Controller
 
             $sheet->setCellValue(
                 'X7',
-                "Keterangan (Fee " . ($lastFeeData->fee ?? 0) . "%)"
+                "Keterangan\n(Fee " . ($lastFeeData->fee ?? 0) . "%)"
             );
 
             $sheet->setCellValue(
-                'A42',
+                'A30',
                 "PPn " . ($lastFeeData->ppn ?? 0) . "%"
             );
 
             $sheet->setCellValue(
-                'A44',
+                'A32',
                 "PPh " . ($lastFeeData->pph ?? 0) . "%"
             );
 
 
-            $startRowPpn = 42;
+            $startRowPpn = 30;
             $sheet->setCellValue('S' . $startRowPpn, '=X' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->ppn : 0) . '/100)');
             $sheet->getStyle('X' . $startRowPpn)
                 ->getNumberFormat()
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
 
-            $startRowPph = 44;
+            $startRowPph = 32;
             $sheet->setCellValue('S' . $startRowPph, '=-X' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->pph : 0) . '/100)');
             $sheet->getStyle('X' . $startRowPph)
                 ->getNumberFormat()
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
 
-            $startRowGrandTotal = 46;
+            $startRowGrandTotal = 34;
             // Grand total = total_qty (S) + total fee (X) + ppn (S42) + pph (S44)
             $sheet->setCellValue('S' . $startRowGrandTotal, '=S' . $startRowTotal . '+X' . $startRowTotal . '+S' . $startRowPpn . '+S' . $startRowPph);
             $sheet->getStyle('S' . $startRowGrandTotal)

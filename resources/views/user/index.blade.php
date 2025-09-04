@@ -6,6 +6,10 @@
             height: 250px;
             object-fit: cover;
         }
+
+        .user-img {
+            cursor: pointer;
+        }
     </style>
 @endsection
 
@@ -286,6 +290,15 @@
             </div>
         </div>
     </div>
+
+    {{-- overlay img --}}
+    <div id="imgPreviewOverlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+            background:rgba(0,0,0,0.7); z-index:1050; 
+            justify-content:center; align-items:center;">
+        <img id="imgPreview" src=""
+            style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.5);" />
+    </div>
 @endsection
 
 @section('scripts')
@@ -385,7 +398,7 @@
                                 <div class="col-md-3">
                                     <div data-aos="fade-up" data-aos-delay="${delay}" data-aos-anchor-placement="top-bottom">
                                         <div class="card card-animate shadow-sm border-0 rounded-3 team-card">
-                                            <img src="${imgSrc}" class="card-img-top rounded-top img-fixed" alt="foto ${user.username}">
+                                           <img src="${imgSrc}" class="card-img-top rounded-top img-fixed user-img" alt="foto ${user.username}">
                                             <div class="card-body">
                                                 <h4 class="card-title text-capitalize username">${user.username}</h4>
                                                 <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7 jabatan">${user.jabatan}</span>
@@ -686,6 +699,18 @@
                     };
                     reader.readAsDataURL(file);
                 }
+            });
+
+            // Klik gambar card → tampilkan preview
+            $(document).on("click", ".user-img", function() {
+                const imgSrc = $(this).attr("src");
+                $("#imgPreview").attr("src", imgSrc);
+                $("#imgPreviewOverlay").css("display", "flex").hide().fadeIn(200);
+            });
+
+            // Klik overlay → tutup preview
+            $("#imgPreviewOverlay").on("click", function() {
+                $(this).fadeOut(200);
             });
         })
     </script>
