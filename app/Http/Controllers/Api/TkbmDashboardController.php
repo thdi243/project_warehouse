@@ -289,6 +289,7 @@ class TkbmDashboardController extends Controller
         ])->setPaper('a4', 'portrait');
 
         // // kalau mau langsung preview di browser:
-        return $pdf->stream('report-tkbm.pdf');
+        $filename = 'report-tkbm-' . time() . '.pdf';
+        return $pdf->stream($filename);
     }
 }
