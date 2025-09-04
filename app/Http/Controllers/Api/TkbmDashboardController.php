@@ -199,12 +199,12 @@ class TkbmDashboardController extends Controller
         $endDate   = $request->query('end_date');
         $noDok = $request->query('no_dok');
 
-        if (!$startDate) {
-            $startDate = now()->startOfMonth()->format('Y-m-d'); // tanggal 1 bulan ini
-        }
-        if (!$endDate) {
-            $endDate = now()->startOfMonth()->addDays(14)->format('Y-m-d'); // tanggal 15 bulan ini
-        }
+        // if (!$startDate) {
+        //     $startDate = now()->startOfMonth()->format('Y-m-d'); // tanggal 1 bulan ini
+        // }
+        // if (!$endDate) {
+        //     $endDate = now()->startOfMonth()->addDays(14)->format('Y-m-d'); // tanggal 15 bulan ini
+        // }
 
         // Validasi input
         if (!$startDate || !$endDate) {
