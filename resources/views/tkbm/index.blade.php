@@ -224,9 +224,9 @@
             $('#cancelBtn').click(function(e) {
                 e.preventDefault();
                 // Reset form
-                $('#date').val('');
-                $('#petugas').val('');
-                $('#shift').val('shift_1');
+                // $('#date').val('');
+                // $('#petugas').val('');
+                // $('#shift').val('shift_1');
                 $('#qtyTerpal').val('');
                 $('#qtySlipsheet').val('');
                 $('#qtyPallet').val('');
