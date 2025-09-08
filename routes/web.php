@@ -58,6 +58,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/registration/pallet-mover', [WarehouseController::class, 'showRegPalletMover'])->name('p2h.registration.pallet-mover');
     });
 
+    // Rak Management
+    Route::prefix('rak')->group(function () {
+        Route::get('/index', [WarehouseController::class, 'rakIndex'])->name('rak.index');
+        Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rak.inventory');
+    });
+
     // User
     Route::prefix('user')->group(function () {
         Route::get('/index', [UserController::class, 'index'])->name('user.index');

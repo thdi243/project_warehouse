@@ -97,7 +97,7 @@
                 </div>
             </div>
             <div class="row mb-4">
-                <div class="col-xl-12">
+                <div class="col-xl-6">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
                         <div class="card card-animate shadow-sm">
                             <div class="card-header d-flex justify-content-between">
@@ -135,9 +135,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="row mb-4">
-                <div class="col-xl-12">
+                <div class="col-xl-6">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
                         <div class="card card-animate shadow-sm">
                             <div class="card-header d-flex justify-content-between">
@@ -178,7 +176,7 @@
                 </div>
             </div>
             <div class="row mb-4">
-                <div class="col-xl-12">
+                <div class="col-xl-6">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
                         <div class="card card-animate shadow-sm">
                             <div class="card-header d-flex justify-content-between">

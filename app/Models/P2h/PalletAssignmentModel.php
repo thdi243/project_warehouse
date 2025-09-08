@@ -1,26 +1,28 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\P2h;
 
 use Carbon\Carbon;
 use App\Models\User;
-use App\Models\ForkliftModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class UserForkliftAssignmentModel extends Model
+class PalletAssignmentModel extends Model
 {
-    protected $table = 'user_forklift_assignments';
+    use HasFactory;
+
+    protected $table = 'user_pallet_assignments';
     protected $primaryKey = 'id';
 
     protected $fillable = [
+        'pallet_mover_id',
         'user_id',
-        'forklift_id',
-        'is_primary', // true = operator utama, false = backup
+        'assigned_by',
         'assigned_date',
-        'assigned_by', // user ID yang melakukan assignment
+        'is_primary',
+        'is_active',
         'notes',
-        'is_active' // untuk enable/disable sementara
     ];
 
     protected $casts = [
@@ -29,168 +31,142 @@ class UserForkliftAssignmentModel extends Model
         'assigned_date' => 'date'
     ];
 
-    // Relasi ke User
+    // 🔗 Relasi
+    public function palletMover(): BelongsTo
+    {
+        return $this->belongsTo(PalletMoverModel::class, 'pallet_mover_id');
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    // Relationship dengan ForkliftModel
-    public function forklift(): BelongsTo
-    {
-        return $this->belongsTo(ForkliftModel::class, 'forklift_id');
-    }
-
-    // Relationship dengan User yang melakukan assignment
     public function assignedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by');
     }
 
-    // Alias untuk assignedBy - sesuai dengan model existing
     public function assignedByUser(): BelongsTo
     {
         return $this->assignedBy();
     }
 
-    // Scope untuk assignment yang aktif
+    // 🔍 Scopes
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    // Scope untuk assignment yang tidak aktif
     public function scopeInactive($query)
     {
         return $query->where('is_active', false);
     }
 
-    // Scope untuk primary assignment
     public function scopePrimary($query)
     {
         return $query->where('is_primary', true);
     }
 
-    // Scope untuk backup/secondary assignment
     public function scopeBackup($query)
     {
         return $query->where('is_primary', false);
     }
 
-    // Scope untuk filter berdasarkan user
     public function scopeByUser($query, $userId)
     {
         return $query->where('user_id', $userId);
     }
 
-    // Scope untuk filter berdasarkan forklift
-    public function scopeByForklift($query, $forkliftId)
+    public function scopeByPallet($query, $palletId)
     {
-        return $query->where('forklift_id', $forkliftId);
+        return $query->where('pallet_mover_id', $palletId);
     }
 
-    // Scope untuk assignment hari ini
     public function scopeToday($query)
     {
         return $query->whereDate('assigned_date', Carbon::today());
     }
 
-    // Scope untuk assignment dalam rentang tanggal
     public function scopeBetweenDates($query, $startDate, $endDate)
     {
         return $query->whereBetween('assigned_date', [$startDate, $endDate]);
     }
 
-    // Method untuk mengecek apakah assignment ini aktif
+    // 🔧 Helpers
     public function isActive(): bool
     {
         return $this->is_active;
     }
 
-    // Method untuk mengecek apakah assignment ini primary
     public function isPrimary(): bool
     {
         return $this->is_primary;
     }
 
-    // Method untuk mengecek apakah assignment ini secondary
     public function isSecondary(): bool
     {
         return !$this->is_primary;
     }
 
-    // Method untuk deactivate assignment
     public function deactivate()
     {
         $this->update(['is_active' => false]);
     }
 
-    // Method untuk activate assignment
     public function activate()
     {
         $this->update(['is_active' => true]);
     }
 
-    // Method untuk set sebagai primary
     public function setPrimary()
     {
-        // Nonaktifkan semua primary assignment lain untuk forklift yang sama
-        self::where('forklift_id', $this->forklift_id)
+        self::where('pallet_mover_id', $this->pallet_mover_id)
             ->where('id', '!=', $this->id)
             ->where('is_primary', true)
             ->update(['is_primary' => false]);
 
-        // Set assignment ini sebagai primary
         $this->update(['is_primary' => true]);
     }
 
-    // Method untuk remove primary status
     public function removePrimary()
     {
         $this->update(['is_primary' => false]);
     }
 
-    // Method untuk mendapatkan durasi assignment (dalam hari)
     public function getDurationInDays(): int
     {
         return Carbon::parse($this->assigned_date)->diffInDays(Carbon::now());
     }
 
-    // Method untuk mendapatkan formatted assigned date
     public function getFormattedAssignedDate(): string
     {
         return $this->assigned_date->format('d M Y');
     }
 
-    // Boot method untuk handle events
+    // 🔁 Events
     protected static function boot()
     {
         parent::boot();
 
-        // Event ketika creating assignment baru
         static::creating(function ($assignment) {
-            // Set assigned_date ke hari ini jika tidak diset
             if (!$assignment->assigned_date) {
                 $assignment->assigned_date = Carbon::today();
             }
         });
 
-        // Event ketika assignment dibuat dan is_primary = true
         static::created(function ($assignment) {
             if ($assignment->is_primary) {
-                // Nonaktifkan primary assignment lain untuk forklift yang sama
-                self::where('forklift_id', $assignment->forklift_id)
+                self::where('pallet_mover_id', $assignment->pallet_mover_id)
                     ->where('id', '!=', $assignment->id)
                     ->where('is_primary', true)
                     ->update(['is_primary' => false]);
             }
         });
 
-        // Event ketika assignment diupdate dan is_primary berubah menjadi true
         static::updating(function ($assignment) {
             if ($assignment->isDirty('is_primary') && $assignment->is_primary) {
-                // Nonaktifkan primary assignment lain untuk forklift yang sama
-                self::where('forklift_id', $assignment->forklift_id)
+                self::where('pallet_mover_id', $assignment->pallet_mover_id)
                     ->where('id', '!=', $assignment->id)
                     ->where('is_primary', true)
                     ->update(['is_primary' => false]);

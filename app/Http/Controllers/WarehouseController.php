@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Models\ForkliftModel;
-use App\Models\PalletMoverModel;
+use App\Models\P2h\ForkliftModel;
 use App\Models\Tkbm\TkbmFeeModel;
+use App\Models\P2h\PalletMoverModel;
 
 class WarehouseController extends Controller
 {
@@ -104,5 +104,15 @@ class WarehouseController extends Controller
             ->get();
 
         return view('p2h.pallet_mover_registration', compact('data', 'operators'));
+    }
+
+    public function rakIndex()
+    {
+        return view('manajemen_rak.index');
+    }
+
+    public function rakInventory()
+    {
+        return view('manajemen_rak.inventory');
     }
 }

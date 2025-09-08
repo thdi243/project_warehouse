@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Models\ForkliftModel;
-use App\Models\P2HForklfitModel;
-use App\Models\PalletMoverModel;
-use App\Models\P2HPalletMoverModel;
-use App\Models\PalletAssignmentModel;
+use App\Models\P2h\ForkliftModel;
+use App\Models\P2h\P2HForklfitModel;
+use App\Models\P2h\PalletMoverModel;
+use App\Models\P2h\P2HPalletMoverModel;
 use Illuminate\Support\Facades\Session;
-use App\Models\UserForkliftAssignmentModel;
+use App\Models\P2h\PalletAssignmentModel;
+use App\Models\P2h\UserForkliftAssignmentModel;
 
 class P2hController extends Controller
 {

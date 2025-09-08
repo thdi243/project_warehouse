@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\P2h;
 
 use Illuminate\Database\Eloquent\Model;
 

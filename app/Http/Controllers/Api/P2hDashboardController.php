@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Models\P2HForklfitModel;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\P2h\P2HForklfitModel;
 
 class P2hDashboardController extends Controller
 {

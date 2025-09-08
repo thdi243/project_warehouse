@@ -1,20 +1,19 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\P2h;
 
-use App\Models\User;
-use Illuminate\Database\Eloquent\Model;
-use App\Models\UserForkliftAssignmentModel;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\User;
 
-class ForkliftModel extends Model
+class PalletMoverModel extends Model
 {
     use HasFactory;
 
-    protected $table = 'forklifts';
+    protected $table = 'pallet_mover';
 
     protected $fillable = [
         'nomor_unit',
@@ -28,8 +27,7 @@ class ForkliftModel extends Model
         'updated_at' => 'datetime',
     ];
 
-    // Relasi ke User Assignment
-    // Konstanta untuk enum values
+    // 🔁 Konstanta ENUM
     const DEPARTEMEN_WAREHOUSE = 'warehouse';
     const DEPARTEMEN_PRODUKSI = 'produksi';
 
@@ -37,7 +35,7 @@ class ForkliftModel extends Model
     const STATUS_MAINTENANCE = 'maintenance';
     const STATUS_INACTIVE = 'inactive';
 
-    // Accessor untuk mendapatkan array departemen
+    // 📦 Options untuk dropdown
     public static function getDepartemenOptions()
     {
         return [
@@ -46,7 +44,6 @@ class ForkliftModel extends Model
         ];
     }
 
-    // Accessor untuk mendapatkan array status
     public static function getStatusOptions()
     {
         return [
@@ -56,40 +53,35 @@ class ForkliftModel extends Model
         ];
     }
 
-    // Relationship dengan UserForkliftAssignmentModel
+    // 🔗 Relasi
     public function userAssignments(): HasMany
     {
-        return $this->hasMany(UserForkliftAssignmentModel::class, 'forklift_id');
+        return $this->hasMany(PalletAssignmentModel::class, 'pallet_mover_id');
     }
 
-    // Relationship untuk mendapatkan assignment yang aktif
     public function activeAssignments(): HasMany
     {
-        return $this->hasMany(UserForkliftAssignmentModel::class, 'forklift_id')
-            ->where('is_active', true);
+        return $this->userAssignments()->where('is_active', true);
     }
 
-    // Relationship untuk mendapatkan primary assignment yang aktif
     public function primaryAssignment(): HasOne
     {
-        return $this->hasOne(UserForkliftAssignmentModel::class, 'forklift_id')
+        return $this->hasOne(PalletAssignmentModel::class, 'pallet_mover_id')
             ->where('is_active', true)
             ->where('is_primary', true);
     }
 
-    // Get all assigned operators (termasuk backup) - sesuai dengan controller
     public function assignedOperators(): BelongsToMany
     {
         return $this->belongsToMany(
             User::class,
-            'user_forklift_assignments',
-            'forklift_id',
+            'user_pallet_assignments',
+            'pallet_mover_id',
             'user_id'
         )->withPivot('id', 'is_primary', 'assigned_date', 'is_active', 'notes')
             ->wherePivot('is_active', true);
     }
 
-    // Get primary operator - sesuai dengan controller
     public function primaryOperator()
     {
         return $this->assignedOperators()
@@ -97,55 +89,48 @@ class ForkliftModel extends Model
             ->first();
     }
 
-    // Scope untuk filter berdasarkan departemen
+    // 🔍 Scopes
     public function scopeByDepartemen($query, $departemen)
     {
         return $query->where('departemen', $departemen);
     }
 
-    // Scope untuk filter berdasarkan status
     public function scopeByStatus($query, $status)
     {
         return $query->where('status', $status);
     }
 
-    // Scope untuk forklift yang aktif
     public function scopeActive($query)
     {
         return $query->where('status', self::STATUS_ACTIVE);
     }
 
-    // Scope untuk forklift warehouse
     public function scopeWarehouse($query)
     {
         return $query->where('departemen', self::DEPARTEMEN_WAREHOUSE);
     }
 
-    // Scope untuk forklift produksi
     public function scopeProduksi($query)
     {
         return $query->where('departemen', self::DEPARTEMEN_PRODUKSI);
     }
 
-    // Method untuk mengecek apakah forklift sedang aktif
+    // 🔧 Helpers
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
     }
 
-    // Method untuk mengecek apakah forklift sedang maintenance
     public function isMaintenance(): bool
     {
         return $this->status === self::STATUS_MAINTENANCE;
     }
 
-    // Method untuk mengecek apakah forklift inactive
     public function isInactive(): bool
     {
         return $this->status === self::STATUS_INACTIVE;
     }
 
-    // Method untuk mengecek apakah user bisa mengoperasikan forklift ini
     public function canBeOperatedBy($userId): bool
     {
         return $this->userAssignments()
@@ -154,13 +139,11 @@ class ForkliftModel extends Model
             ->exists();
     }
 
-    // Method untuk mendapatkan user yang sedang assigned ke forklift ini
     public function getCurrentUsers()
     {
         return $this->assignedOperators;
     }
 
-    // Method untuk mendapatkan primary user
     public function getPrimaryUser()
     {
         return $this->primaryOperator();
