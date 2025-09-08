@@ -72,7 +72,7 @@
             </tr>
             <tr>
                 <td colspan="3" style="text-align: left;">Tanggal</td>
-                <td colspan="8" style="text-align: left;">{{ \Carbon\Carbon::now()->format('d/M/Y') }}</td>
+                <td colspan="8" style="text-align: left;">{{ \Carbon\Carbon::now()->format('d M Y') }}</td>
             </tr>
             <tr>
                 <td colspan="11" style="text-align: center; font-size: 12px;">
