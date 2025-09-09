@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\P2h\P2HForklfitModel;
+use App\Models\P2h\P2HPalletMoverModel;
 
 class P2hDashboardController extends Controller
 {
@@ -143,5 +144,35 @@ class P2hDashboardController extends Controller
             ->get();
 
         return response()->json($data);
+    }
+
+    // Pallet Mover
+    public function kelayakanSummaryPalletMover()
+    {
+        $data = P2HPalletMoverModel::all();
+        $total = $data->count();
+
+        $kategori = [
+            'layak' => 0,
+            'perlu_perhatian' => 0,
+            'tidak_layak' => 0,
+
+        ];
+
+        if ($total > 0) {
+            $totalPersen = 0;
+
+            foreach ($data as $item) {
+                $result = $item->calculateKelayakan();
+                $persen = $result['persentase'];
+                $totalPersen += $persen;
+
+                if ($persen >= 95) $kategori['layak']++;
+                elseif ($persen >= 85) $kategori['perlu_perhatian']++;
+                else $kategori['tidak_layak']++;
+            }
+        }
+
+        return response()->json($kategori);
     }
 }

@@ -95,7 +95,43 @@
                     </div>
                 </div>
             </div>
-
+            {{-- Dashboard Pallet Mover --}}
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Distribusi Kelayakan – Pallet Mover</h5>
+                            <div id="chartKelayakanPallMov"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Komponen Masalah Terbanyak – Pallet Mover</h5>
+                            <div id="chartMasalahPallMov"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Top Operator Pemeriksa – Pallet Mover</h5>
+                            <div id="chartOperatorPallMov"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Distribusi Shift – Pallet Mover</h5>
+                            <div id="chartShiftPallMov"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 @endsection
