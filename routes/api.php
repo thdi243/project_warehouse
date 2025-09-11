@@ -2,13 +2,17 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\P2hController;
+use App\Http\Controllers\WspRakController;
 use App\Http\Controllers\Api\P2hDashboardController;
+use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Api\TkbmDashboardController;
+
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
 
     // TKBM
+    Route::get('/tkbm/data/per-month', [TkbmDashboardController::class, 'tkbmDashboard']);
     Route::get('/tkbm/produk', [TkbmDashboardController::class, 'tkbmDashboardProduk']);
     Route::get('/tkbm/qty-terpal', [TkbmDashboardController::class, 'qtyTerpalDay']);
     Route::get('/tkbm/qty-slipsheet', [TkbmDashboardController::class, 'qtySlipsheetDay']);
@@ -24,7 +28,11 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/masalah-terbanyak', [P2hDashboardController::class, 'topMasalah']);
         Route::get('/operator', [P2hDashboardController::class, 'operatorStat']);
         Route::get('/shift', [P2hDashboardController::class, 'shiftDistribusi']);
+        Route::get('/kelayakan/pallet-mover', [P2hDashboardController::class, 'kelayakanSummaryPalletMover']);
     });
+
+    // WSP
+    Route::get('/wsp/rak', [RakDashboardController::class, 'getDataRack']);
 });
 
 Route::prefix('p2h')->group(function () {
@@ -53,4 +61,15 @@ Route::prefix('p2h')->group(function () {
     Route::get('/backups/pallet-mover/{id}', [P2hController::class, 'getBackupPallMov']);
     Route::get('/detail/pallet-mover/assignment/{id}', [P2hController::class, 'editPallMovAssignment']);
     Route::post('/update/pallet-mover/assignment/{id}', [P2hController::class, 'updatePallMovAssignment']);
+});
+
+Route::prefix('wsp')->group(function () {
+    Route::post('/store/rak', [WspRakController::class, 'storeRak']);
+    Route::post('/store/barang', [WspRakController::class, 'storeBarang']);
+    Route::get('/data', [WspRakController::class, 'getData']);
+    Route::get('/data/rak', [WspRakController::class, 'getDataRak']);
+    Route::delete('/delete/{id}', [WspRakController::class, 'destroy']);
+    Route::get('/show/{id}', [WspRakController::class, 'show']);
+    Route::put('/update/{id}', [WspRakController::class, 'update']);
+    Route::post('/store/rak', [WspRakController::class, 'storeRak']);
 });
