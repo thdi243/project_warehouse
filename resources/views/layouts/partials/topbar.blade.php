@@ -1,7 +1,7 @@
 <header id="page-topbar">
     <div class="layout-width">
         <div class="navbar-header">
-            <div class="d-flex">
+            <div class="d-flex align-items-center">
                 <button type="button"
                     class="btn btn-sm px-3 fs-16 header-item vertical-menu-btn topnav-hamburger shadow-none"
                     id="topnav-hamburger-icon">
@@ -11,6 +11,12 @@
                         <span></span>
                     </span>
                 </button>
+                <div class="title flex-grow-1">
+                    <h5 class="mb-0 fw-bold">Warehouse Management System</h5>
+                </div>
+
+                <!-- Spacer biar kanan & kiri balance -->
+                <div style="width:40px;"></div>
             </div>
 
             <div class="d-flex align-items-center">
