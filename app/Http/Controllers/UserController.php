@@ -193,28 +193,19 @@ class UserController extends Controller
     {
         $user = User::find($id);
 
-        if (! $user) {
-            return response()->json(['ok' => false, 'message' => 'Data tidak ditemukan'], 404);
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Data tidak ditemukan'
+            ], 404);
         }
 
         try {
             $deletedFile = false;
 
-            if ($user->image) {
-                // Normalisasi path: pastikan tidak mengandung leading '/storage' atau 'public/'
-                $path = $user->image;
-                $path = preg_replace('#^/+#', '', $path);
-                $path = preg_replace('#^storage/#', '', $path);
-                $path = preg_replace('#^public/#', '', $path);
-
-                // Jika value disimpan seperti 'images/users/...' maka ini ok
-                if (Storage::disk('public')->exists($path)) {
-                    Storage::disk('public')->delete($path);
-                    $deletedFile = true;
-                    // Log::info("Deleted user image from storage: {$path}", ['user_id' => $user->id]);
-                } else {
-                    Log::warning("User image not found on disk when deleting", ['user_id' => $user->id, 'tried_path' => $path]);
-                }
+            if ($user->image && Storage::disk('public')->exists($user->image)) {
+                Storage::disk('public')->delete($user->image);
+                $deletedFile = true;
             }
 
             $user->delete();
