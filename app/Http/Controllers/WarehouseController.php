@@ -110,9 +110,4 @@ class WarehouseController extends Controller
     {
         return view('manajemen_rak.index');
     }
-
-    public function rakInventory()
-    {
-        return view('manajemen_rak.inventory');
-    }
 }
