@@ -42,12 +42,84 @@
                             </div>
                         </div>
                         <div class="col-sm-auto ms-auto">
-                            {{-- <div class="list-grid-nav hstack gap-1"> --}}
+                            <button type="button" id="btnStatistikUser"
+                                class="btn btn-primary filter-button shadow-none"><i
+                                    class="ri-bar-chart-fill me-1 align-bottom"></i>
+                                Statistik Users
+                            </button>
+                            <button type="button" id="grid-view-button" title="Grid View"
+                                class="btn btn-soft-info nav-link btn-icon fs-14 active filter-button shadow-none">
+                                <i class="ri-grid-fill"></i>
+                            </button>
+                            <button type="button" id="list-view-button" title="List View"
+                                class="btn btn-soft-info nav-link btn-icon fs-14 filter-button shadow-none">
+                                <i class="ri-list-unordered"></i>
+                            </button>
                             <button type="button" class="btn btn-success addMembers-modal" data-bs-toggle="modal"
                                 data-bs-target="#addUserModal">
                                 <i class="ri-add-fill me-1 align-bottom"></i> Add Users
                             </button>
-                            {{-- </div> --}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- chart statistik --}}
+            <div id="statistikUser" style="display:none;">
+                <div class="row">
+                    <div class="col-xl-4 col-md-6">
+                        <div class="card card-height-100">
+                            <div class="d-flex">
+                                <div class="flex-grow-1 p-3">
+                                    <h5 class="mb-3">Total Users</h5>
+                                    <h2 id="totalUsers" class="fw-bold text-info">0</h2>
+                                    <p class="mb-0 text-muted">
+                                        Warehouse User Total
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4 col-md-6">
+                        <div class="card card-height-100">
+                            <div class="d-flex">
+                                <div class="flex-grow-1 p-3">
+                                    <h5 class="mb-3">Total Jabatan</h5>
+                                    <h2 id="totalJabatan" class="fw-bold text-primary">0</h2>
+                                    <p class="mb-0 text-muted">
+                                        Warehouse User Jabatan
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4 col-md-6">
+                        <div class="card card-height-100">
+                            <div class="d-flex">
+                                <div class="flex-grow-1 p-3">
+                                    <h5 class="mb-3">Total Bagian</h5>
+                                    <h2 id="totalBagian" class="fw-bold text-danger">0</h2>
+                                    <p class="mb-0 text-muted">
+                                        Warehouse User Bagian
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Row -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div id="chartJabatan"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div id="chartBagian"></div>
                         </div>
                     </div>
                 </div>
@@ -57,6 +129,9 @@
             <div class="row" id="userRow">
                 {{-- diisi ajax --}}
             </div>
+
+            {{-- List user --}}
+            <div id="team-member-list"></div>
         </div>
     </div>
 
@@ -325,29 +400,24 @@
             // search fitur
             $("#searchMemberList").on("keyup", function() {
                 let searchText = $(this).val().toLowerCase();
-                console.log("Search Text:", searchText); // Debug
 
                 $(".team-card").each(function() {
-                    let username = $(this).find(".username").text().toLowerCase().trim();
-                    let jabatan = $(this).find(".badge.jabatan").text().toLowerCase().trim()
-                        .replace(/_/g, ' ');
-                    let bagian = $(this).find(".card-text i.bagian").parent().text().toLowerCase()
-                    let nik = $(this).find(".card-text i.nik").parent().text().toLowerCase()
-                    let email = $(this).find(".card-text i.email").parent().text().toLowerCase()
-                        .trim();
+                    let username = $(this).find(".username").text().toLowerCase();
+                    let jabatan = $(this).find(".jabatan").text().toLowerCase();
+                    let nik = $(this).find(".nik").text().toLowerCase();
+                    let email = $(this).find(".email").text().toLowerCase();
+                    let bagian = $(this).find(".bagian").text().toLowerCase(); // grid view
 
-                    username = username.trim();
-                    jabatan = jabatan.trim();
-                    bagian = bagian.trim();
-                    nik = nik.trim();
-                    email = email.trim();
-
-                    if (username.includes(searchText) || jabatan.includes(searchText) || bagian
-                        .includes(searchText) || nik.includes(searchText) || email.includes(
-                            searchText)) {
-                        $(this).closest(".col-md-4").show(); // pastikan elemen kolom tampil
+                    if (
+                        username.includes(searchText) ||
+                        jabatan.includes(searchText) ||
+                        nik.includes(searchText) ||
+                        email.includes(searchText) ||
+                        bagian.includes(searchText)
+                    ) {
+                        $(this).closest("[class*='col-']").show();
                     } else {
-                        $(this).closest(".col-md-4").hide();
+                        $(this).closest("[class*='col-']").hide();
                     }
                 });
 
@@ -360,51 +430,49 @@
                 $.ajax({
                     url: "{{ route('user.getData') }}",
                     method: "GET",
-
                     success: function(res) {
-                        res.data.forEach((user, index) => {
-                            let badgeClass = '';
-                            switch (user.jabatan.toLowerCase()) {
-                                case 'dept_head':
-                                    badgeClass = 'bg-danger';
+                        let users = res.data || res;
+
+
+                        users.forEach((user, index) => {
+                            let badgeClass = "";
+                            switch ((user.jabatan || "").toLowerCase()) {
+                                case "dept_head":
+                                    badgeClass = "bg-danger";
                                     break;
-                                case 'supervisor':
-                                    badgeClass = 'bg-success';
+                                case "supervisor":
+                                    badgeClass = "bg-success";
                                     break;
-                                case 'foreman':
-                                    badgeClass = 'bg-warning';
+                                case "foreman":
+                                    badgeClass = "bg-warning";
                                     break;
-                                case 'operator':
-                                    badgeClass = 'bg-info';
+                                case "operator":
+                                    badgeClass = "bg-info";
                                     break;
                                 default:
-                                    badgeClass =
-                                        'bg-secondary';
+                                    badgeClass = "bg-secondary";
                             }
 
                             const bagianFormatted = user.bagian ?
-                                user.bagian
-                                .replace(/_/g, " ") // ganti semua "_" jadi spasi
-                                .replace(/\b\w/g, c => c
-                                    .toUpperCase()) // huruf awal jadi kapital
-                                :
+                                user.bagian.replace(/_/g, " ").replace(/\b\w/g, c => c
+                                    .toUpperCase()) :
                                 "-";
-                            // kapital tiap kata
 
-                            const imgSrc = user.image_url;
-                            const delay = (index * 200) % 1000; // delay muter tiap 1000ms
+                            const imgSrc = user.image_url || "/default.png";
+                            const delay = (index * 200) % 1000;
 
                             const card = `
-                                <div class="col-md-3">
+                                <div class="col-md-3 mb-3">
                                     <div data-aos="fade-up" data-aos-delay="${delay}" data-aos-anchor-placement="top-bottom">
                                         <div class="card card-animate shadow-sm border-0 rounded-3 team-card">
-                                           <img src="${imgSrc}" class="card-img-top rounded-top img-fixed user-img" alt="foto ${user.username}">
+                                            <img src="${imgSrc}" class="card-img-top rounded-top img-fixed user-img" 
+                                                alt="foto ${user.username}" style="height:200px; object-fit:cover;">
                                             <div class="card-body">
                                                 <h4 class="card-title text-capitalize username">${user.username}</h4>
                                                 <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7 jabatan">${user.jabatan}</span>
-                                                <p class="card-text text-muted mb-1"><i class="bi bi-envelope email"></i> ${user.email}</p>
-                                                <p class="card-text text-muted mb-1"><i class="bi bi-telephone nik"></i> ${user.nik}</p>
-                                                <p class="card-text text-muted mb-1"><i class="bi bi-envelope bagian"></i> ${bagianFormatted}</p>
+                                                <p class="card-text text-muted mb-1 email"><i class="bi bi-envelope"></i> ${user.email}</p>
+                                                <p class="card-text text-muted mb-1 nik"><i class="bi bi-telephone"></i> ${user.nik}</p>
+                                                <p class="card-text text-muted mb-1 bagian"><i class="bi bi-building"></i> ${bagianFormatted}</p>
                                             </div>
                                             <div class="card-footer border-0 d-flex justify-content-between">
                                                 <button class="btn btn-outline-primary btn-sm editBtn" data-id="${user.id}">Edit</button>
@@ -418,12 +486,108 @@
                         });
 
                         AOS.refresh();
+                        $('#team-member-list').empty();
                     },
                     error: function(err) {
                         console.error("Error load data:", err);
                     }
                 });
             }
+
+            // Grid view toggle
+            $("#grid-view-button").on("click", function() {
+                $(this).addClass("active");
+                $("#list-view-button").removeClass("active");
+                $("#btnStatistikUser").removeClass("active");
+                $("#statistikUser").hide();
+                getData(); // tampilkan grid
+            });
+
+            // List view toggle
+            $("#list-view-button").on("click", function() {
+                $(this).addClass("active");
+                $("#grid-view-button").removeClass("active");
+                $("#btnStatistikUser").removeClass("active");
+                $("#statistikUser").hide();
+
+                $.ajax({
+                    url: "{{ route('user.getData') }}",
+                    type: "GET",
+                    success: function(res) {
+                        let userList = '';
+
+                        res.data.forEach((user, index) => {
+                            const imgSrc = user.image_url || "/default.png";
+                            const delay = (index * 200) % 1000;
+
+                            userList += `
+                                <div class="col-lg-12 mb-3">
+                                    <div data-aos="fade-up" data-aos-delay="${delay}" data-aos-anchor-placement="top-bottom">
+                                        <div class="card team-box team-card">
+                                            <div class="card-body p-3">
+                                                <div class="row align-items-center">
+                                                    <!-- Profile Image -->
+                                                    <div class="col-auto">
+                                                        <div class="avatar-lg img-thumbnail rounded-circle flex-shrink-0">
+                                                            <img src="${imgSrc}" alt="" 
+                                                                class="member-img img-fluid d-block rounded-circle" 
+                                                                style="height:85px; width:85px; object-fit:cover;">
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Name & Position -->
+                                                    <div class="col">
+                                                        <a class="member-name" data-bs-toggle="offcanvas" href="#member-overview" aria-controls="member-overview">
+                                                            <h5 class="fs-16 mb-1 username">${user.username}</h5>
+                                                        </a>
+                                                        <p class="text-muted mb-0 jabatan">${user.jabatan}</p>
+                                                    </div>
+
+                                                    <!-- Email -->
+                                                    <div class="col text-center">
+                                                        <h5 class="mb-1 email">${user.email}</h5>
+                                                        <p class="text-muted mb-0">Email</p>
+                                                    </div>
+
+                                                    <!-- Departemen -->
+                                                    <div class="col text-center">
+                                                        <h5 class="mb-1 bagian">${user.bagian ?? "-"}</h5>
+                                                        <p class="text-muted mb-0">Bagian</p>
+                                                    </div>
+
+                                                    <!-- NIK -->
+                                                    <div class="col text-center">
+                                                        <h5 class="mb-1 nik">${user.nik ?? "-"}</h5>
+                                                        <p class="text-muted mb-0">NIK</p>
+                                                    </div>
+
+                                                    <!-- Actions -->
+                                                    <div class="col-auto">
+                                                        <button class="btn btn-sm btn-primary editBtn" data-id="${user.id}">
+                                                            <i class="ri-pencil-line"></i> Edit
+                                                        </button>
+                                                        <button class="btn btn-sm btn-danger deleteBtn" data-id="${user.id}">
+                                                            <i class="ri-delete-bin-5-line"></i> Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        AOS.refresh();
+                        // render ke container list
+                        $('#team-member-list').html(userList);
+                        $("#userRow").empty();
+                    },
+                    error: function(xhr) {
+                        console.log("Error fetching data:", xhr.responseText);
+                    }
+                });
+            });
 
             // add users
             $('#addUserForm').submit(function(e) {
@@ -648,7 +812,7 @@
                             title: "Success!",
                             text: response.message || 'User berhasil diupdated!',
                             icon: "success",
-                            timer: 3000,
+                            timer: 1000,
                             showConfirmButton: false
                         }).then(() => {
                             $('#editUserModal').modal('hide');
@@ -712,6 +876,104 @@
             $("#imgPreviewOverlay").on("click", function() {
                 $(this).fadeOut(200);
             });
+
+            // Statistik user
+            $("#btnStatistikUser").on("click", function() {
+                $(this).addClass("active");
+                $("#grid-view-button").removeClass("active");
+                $("#list-view-button").removeClass("active");
+
+                $.ajax({
+                    url: "{{ url('api/dashboard/user/statistik') }}",
+                    method: "GET",
+                    success: function(res) {
+                        $("#statistikUser").show();
+                        $("#userRow").empty();
+                        $('#team-member-list').empty();
+
+                        // update cards
+                        $("#totalUsers").text(res.total_users);
+                        $("#totalJabatan").text(res.total_jabatan);
+                        $("#totalBagian").text(res.total_bagian);
+
+                        // render charts
+                        renderChartJabatan(res.by_jabatan);
+                        renderChartBagian(res.by_bagian);
+
+                        AOS.refresh();
+                    },
+                    error: function(err) {
+                        console.error("Error load statistik:", err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to load statistik data',
+                        });
+                    }
+                });
+            });
+
+            function renderChartJabatan(data) {
+                let labels = data.map(item => item.jabatan ?? "Tidak Ada");
+                let values = data.map(item => item.total);
+
+                let options = {
+                    chart: {
+                        type: 'bar',
+                        height: 300
+                    },
+                    series: [{
+                        name: 'Jumlah User',
+                        data: values
+                    }],
+                    xaxis: {
+                        categories: labels
+                    },
+                    colors: ['#1E90FF'],
+                    plotOptions: {
+                        bar: {
+                            borderRadius: 6
+                        }
+                    }
+                };
+
+                // destroy chart lama kalau ada (biar nggak numpuk)
+                if ($("#chartJabatan").data("apexchart")) {
+                    $("#chartJabatan").data("apexchart").destroy();
+                }
+
+                let chart = new ApexCharts(document.querySelector("#chartJabatan"), options);
+                chart.render();
+                $("#chartJabatan").data("apexchart", chart);
+            }
+
+            function renderChartBagian(data) {
+                let labels = data.map(item => item.bagian ?? "Tidak Ada");
+                let values = data.map(item => item.total);
+
+                let options = {
+                    chart: {
+                        type: 'donut',
+                        height: 300
+                    },
+                    series: values,
+                    labels: labels,
+                    colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
+                    legend: {
+                        position: 'bottom'
+                    }
+                };
+
+                if ($("#chartBagian").data("apexchart")) {
+                    $("#chartBagian").data("apexchart").destroy();
+                }
+
+                let chart = new ApexCharts(document.querySelector("#chartBagian"), options);
+                chart.render();
+                $("#chartBagian").data("apexchart", chart);
+            }
+
+
         })
     </script>
 @endsection
