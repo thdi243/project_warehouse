@@ -335,7 +335,7 @@ class TkbmController extends Controller
         }
 
         // Load template Excel
-        $templatePath = public_path('assets/template/excel/template_excel_tkbm.xlsx');
+        $templatePath = public_path('assets/templates/excel/template_excel_tkbm.xlsx');
         if (!file_exists($templatePath)) {
             return redirect()->back()->with('error', 'Template Excel tidak ditemukan di: ' . $templatePath);
         }
@@ -350,12 +350,12 @@ class TkbmController extends Controller
             $sheet = $spreadsheet->getActiveSheet();
 
             // Isi Rev
-            $sheet->setCellValue('V2', 0);
-            $sheet->setCellValue('V4', '1 of 1');
+            $sheet->setCellValue('U2', 0);
+            $sheet->setCellValue('U4', '1 of 1');
 
             // Atur judul periode di sheet
             $periodeText = Carbon::now()->format('j F Y');
-            $sheet->setCellValue('V3', $periodeText);
+            $sheet->setCellValue('U3', $periodeText);
 
             // Mulai menulis data dari baris 9
             $startRow = 9;
@@ -367,24 +367,24 @@ class TkbmController extends Controller
             foreach ($data as $index => $item) {
                 // Mapping data ke kolom Excel
                 $sheet->setCellValue('A' . $currentRow, $item->date ? Carbon::parse($item->date)->format('d/m/Y') : '');
-                $sheet->setCellValue('G' . $currentRow, $item->qty_terpal ?? 0);
-                $sheet->setCellValue('K' . $currentRow, $item->qty_slipsheet ?? 0);
-                $sheet->setCellValue('O' . $currentRow, $item->qty_pallet ?? 0);
-                $sheet->setCellValue('S' . $currentRow, $item->total_qty ?? 0);
-                $sheet->setCellValue('X' . $currentRow, $item->total_fee ?? 0); // Perbaikan: kolom F bukan E lagi
+                $sheet->setCellValue('F' . $currentRow, $item->qty_terpal ?? 0);
+                $sheet->setCellValue('J' . $currentRow, $item->qty_slipsheet ?? 0);
+                $sheet->setCellValue('N' . $currentRow, $item->qty_pallet ?? 0);
+                $sheet->setCellValue('R' . $currentRow, $item->total_qty ?? 0);
+                $sheet->setCellValue('W' . $currentRow, $item->total_fee ?? 0); // Perbaikan: kolom F bukan E lagi
 
                 // Salin style dari template row jika ada
                 try {
                     $sheet->duplicateStyle(
                         $sheet->getStyle($templateRowRange),
-                        'A' . $currentRow . ':AC' . $currentRow
+                        'A' . $currentRow . ':AA' . $currentRow
                     );
                 } catch (\Exception $e) {
                     // Jika gagal copy style, lanjutkan tanpa style
                 }
 
                 // Jadikan teks di baris ini bold
-                $sheet->getStyle('S' . $currentRow . ':AC' . $currentRow)
+                $sheet->getStyle('R' . $currentRow . ':AA' . $currentRow)
                     ->getFont()
                     ->setBold(true);
 
@@ -394,37 +394,37 @@ class TkbmController extends Controller
             // Isi total di baris terakhir
             $startRowTotal = 28;
             // $sheet->setCellValue('A' . $startRowTotal, 'TOTAL');
-            $sheet->setCellValue('G' . $startRowTotal, '=SUM(G' . $startRow . ':G' . ($startRowTotal - 1) . ')');
-            $sheet->setCellValue('K' . $startRowTotal, '=SUM(K' . $startRow . ':K' . ($startRowTotal - 1) . ')');
-            $sheet->setCellValue('O' . $startRowTotal, '=SUM(O' . $startRow . ':O' . ($startRowTotal - 1) . ')');
-            $sheet->setCellValue('S' . $startRowTotal, '=SUM(S' . $startRow . ':S' . ($startRowTotal - 1) . ')');
-            $sheet->setCellValue('X' . $startRowTotal, '=SUM(X' . $startRow . ':X' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('F' . $startRowTotal, '=SUM(F' . $startRow . ':F' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('J' . $startRowTotal, '=SUM(J' . $startRow . ':J' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('N' . $startRowTotal, '=SUM(N' . $startRow . ':N' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('R' . $startRowTotal, '=SUM(R' . $startRow . ':R' . ($startRowTotal - 1) . ')');
+            $sheet->setCellValue('W' . $startRowTotal, '=SUM(W' . $startRow . ':W' . ($startRowTotal - 1) . ')');
 
             // style qty
-            $sheet->getStyle('G' . $startRow . ':G' . $startRowTotal)
+            $sheet->getStyle('F' . $startRow . ':F' . $startRowTotal)
                 ->getNumberFormat()
                 ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
-            $sheet->getStyle('K' . $startRow . ':K' . $startRowTotal)
+            $sheet->getStyle('J' . $startRow . ':J' . $startRowTotal)
                 ->getNumberFormat()
                 ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
-            $sheet->getStyle('O' . $startRow . ':O' . $startRowTotal)
+            $sheet->getStyle('N' . $startRow . ':N' . $startRowTotal)
                 ->getNumberFormat()
                 ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
 
             // Format kolom fee (X) dan total fee (X) sebagai Rupiah sesuai format custom
             $rupiahFormat = '_-"Rp"* #,##0_-;-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-';
-            $sheet->getStyle('X' . $startRow . ':X' . $startRowTotal)
+            $sheet->getStyle('W' . $startRow . ':W' . $startRowTotal)
                 ->getNumberFormat()
                 ->setFormatCode($rupiahFormat);
-            $sheet->getStyle('X' . $startRowTotal)
+            $sheet->getStyle('W' . $startRowTotal)
                 ->getNumberFormat()
                 ->setFormatCode($rupiahFormat);
 
             // Format kolom total_qty (S) dan total total_qty (S) sebagai Rupiah sesuai format custom
-            $sheet->getStyle('S' . $startRow . ':S' . $startRowTotal)
+            $sheet->getStyle('R' . $startRow . ':R' . $startRowTotal)
                 ->getNumberFormat()
                 ->setFormatCode($rupiahFormat);
-            $sheet->getStyle('S' . $startRowTotal)
+            $sheet->getStyle('R' . $startRowTotal)
                 ->getNumberFormat()
                 ->setFormatCode($rupiahFormat);
 
@@ -432,7 +432,7 @@ class TkbmController extends Controller
             $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
 
             $sheet->setCellValue(
-                'X7',
+                'W7',
                 "Keterangan\n(Fee " . ($lastFeeData->fee ?? 0) . "%)"
             );
 
@@ -448,21 +448,21 @@ class TkbmController extends Controller
 
 
             $startRowPpn = 30;
-            $sheet->setCellValue('S' . $startRowPpn, '=X' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->ppn : 0) . '/100)');
-            $sheet->getStyle('X' . $startRowPpn)
+            $sheet->setCellValue('R' . $startRowPpn, '=W' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->ppn : 0) . '/100)');
+            $sheet->getStyle('W' . $startRowPpn)
                 ->getNumberFormat()
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
 
             $startRowPph = 32;
-            $sheet->setCellValue('S' . $startRowPph, '=-X' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->pph : 0) . '/100)');
-            $sheet->getStyle('X' . $startRowPph)
+            $sheet->setCellValue('R' . $startRowPph, '=-W' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->pph : 0) . '/100)');
+            $sheet->getStyle('W' . $startRowPph)
                 ->getNumberFormat()
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
 
             $startRowGrandTotal = 34;
             // Grand total = total_qty (S) + total fee (X) + ppn (S42) + pph (S44)
-            $sheet->setCellValue('S' . $startRowGrandTotal, '=S' . $startRowTotal . '+X' . $startRowTotal . '+S' . $startRowPpn . '+S' . $startRowPph);
-            $sheet->getStyle('S' . $startRowGrandTotal)
+            $sheet->setCellValue('R' . $startRowGrandTotal, '=R' . $startRowTotal . '+W' . $startRowTotal . '+R' . $startRowPpn . '+R' . $startRowPph);
+            $sheet->getStyle('R' . $startRowGrandTotal)
                 ->getNumberFormat()
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
 
