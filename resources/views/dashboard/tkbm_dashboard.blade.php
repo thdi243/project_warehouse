@@ -299,7 +299,7 @@
 
             function tkbmChart() {
                 $.ajax({
-                    url: "{{ route('dashboard.tkbm.data') }}",
+                    url: "{{ url('api/dashboard/tkbm/data/per-month') }}",
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
