@@ -36,6 +36,7 @@
         <link href="{{ asset('material/assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
         <!-- App Css-->
         <link href="{{ asset('material/assets/css/app.min.css') }}" rel="stylesheet" type="text/css" />
+
         <!-- custom Css-->
         <link href="{{ asset('material/assets/css/custom.min.css') }}" rel="stylesheet" type="text/css" />
         <link href="{{ asset('material/assets/libs/aos/aos.css') }}" rel="stylesheet" type="text/css" />
@@ -44,6 +45,10 @@
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <link href="{{ asset('material/assets/css/datatables.min.css') }}" rel="stylesheet" type="text/css" />
         <script src="{{ asset('material/assets/js/datatables.min.js') }}"></script>
+
+        {{-- Jquery UI --}}
+        <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+        <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
 
         @yield('styles')
         <style>
@@ -66,51 +71,35 @@
                 margin: 0;
             }
 
-
             /* Hover menu link */
             .navbar-nav .nav-link {
                 transition: all 0.3s ease;
-                /* transisi semua properti lebih halus */
-                display: flex;
                 align-items: center;
-            }
-
-            /* Hover effect umum */
-            .navbar-nav .nav-link:hover {
-                background-color: #4bb2f3;
-                color: #fff !important;
-                border-radius: 8px;
-                padding-left: 1rem;
-                padding-right: 1rem;
-                margin: 2px 0;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                transition: all 0.2s ease-in-out;
             }
 
             /* Active effect untuk menu utama (level 1) */
             a.nav-link.menu-link.active {
-                background-color: #4bb2f3 !important;
-                color: #fff !important;
+                background-color: #3c484f !important;
                 border-radius: 8px;
-                padding-left: 1rem;
-                padding-right: 1rem;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            a.nav-link.menu-link,
+            .menu-title span,
+            .navbar-menu .navbar-nav .nav-sm .nav-link {
+                padding: 0.5rem !important;
             }
 
             /* Submenu level 2 (misal: P2H Online) → tidak ada background */
             .navbar-nav .menu-dropdown>.nav-item>.nav-link.active {
                 background: transparent !important;
-                color: #4bb2f3 !important;
+                color: #3c484f !important;
                 font-weight: 600;
-                box-shadow: none !important;
             }
 
             /* Sub-submenu level 3 → hanya item diklik yg aktif */
             .navbar-nav .menu-dropdown .nav-sm .nav-link.active {
-                background-color: #4bb2f3 !important;
-                color: #fff !important;
+                background-color: #3c484f !important;
                 border-radius: 6px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
         </style>
 
@@ -129,6 +118,11 @@
             <div class="main-content">
                 @yield('content')
 
+                {{-- Btn click to up --}}
+                <button onclick="topFunction()" class="btn btn-danger btn-icon" id="back-to-top">
+                    <i class="ri-arrow-up-line "></i>
+                </button>
+
                 @include('layouts.partials.footer')
             </div>
         </div>
@@ -136,7 +130,8 @@
 
 
         <!-- JAVASCRIPT -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+        {{-- <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script> --}}
+        <script src="{{ asset('material/assets/libs/moment/min/moment.min.js') }}"></script>
         <script src="{{ asset('material/assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
         <script src="{{ asset('material/assets/libs/simplebar/simplebar.min.js') }}"></script>
         <script src="{{ asset('material/assets/libs/node-waves/waves.min.js') }}"></script>
@@ -154,6 +149,7 @@
         {{-- Chart --}}
         <script src="{{ asset('material/assets/libs/apexcharts/apexcharts.min.js') }}"></script>
         <script src="{{ asset('material/assets/js/highcharts.js') }}"></script>
+
         <!-- App js -->
         <script src="{{ asset('material/assets/libs/aos/aos.js') }}"></script>
         <script src="{{ asset('material/assets/js/pages/animation-aos.init.js') }}"></script>
@@ -165,6 +161,13 @@
                 // Initialize AOS
                 AOS.init({
                     duration: 1200,
+                });
+
+                // Csrf Token setup
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
                 });
 
                 // Logout button functionality
@@ -260,6 +263,25 @@
                         // console.log('Icon updated, isDark:', isDark); // Debug
                     }
                 }
+
+                // Scroll to top button
+                let btn = $("#back-to-top");
+
+                // cek scroll untuk munculin tombol
+                $(window).scroll(function() {
+                    if ($(window).scrollTop() > 200) {
+                        btn.fadeIn(); // muncul
+                    } else {
+                        btn.fadeOut(); // sembunyi
+                    }
+                });
+
+                // klik tombol -> scroll ke atas
+                btn.on("click", function() {
+                    $("html, body").animate({
+                        scrollTop: 0
+                    }, "smooth");
+                });
             });
         </script>
 
