@@ -69,7 +69,7 @@
                         <div class="col-lg-12">
                             <div class="text-center mt-sm-5 mb-2 text-white-50">
                                 <div>
-                                    <a href="{{ route('signin') }}" class="d-inline-block auth-logo">
+                                    <a href="{{ route('login') }}" class="d-inline-block auth-logo">
                                         <img src="{{ asset('assets/images/logo/wings.png') }}" alt="PT.Bumi Alam Segar"
                                             height="70">
                                     </a>
