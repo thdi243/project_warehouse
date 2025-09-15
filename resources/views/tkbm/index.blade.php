@@ -193,11 +193,9 @@
                     error: function(xhr) {
                         if (xhr.status === 422) {
                             let msg = 'Data duplikat atau tidak valid.';
-                            // Jika controller kirim {message: "..."}
                             if (xhr.responseJSON && xhr.responseJSON.message) {
                                 msg = xhr.responseJSON.message;
                             } else if (xhr.responseJSON && xhr.responseJSON.errors) {
-                                // Kumpulkan pesan validasi Laravel (jika ada)
                                 const firstField = Object.keys(xhr.responseJSON.errors)[0];
                                 msg = xhr.responseJSON.errors[firstField][0];
                             }
