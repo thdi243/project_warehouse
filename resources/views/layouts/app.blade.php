@@ -79,8 +79,9 @@
 
             /* Active effect untuk menu utama (level 1) */
             a.nav-link.menu-link.active {
-                background-color: #3c484f !important;
-                border-radius: 8px;
+                background: linear-gradient(135deg, #4b38b3, #7968f6) !important;
+                color: #fff !important;
+                border-radius: 6px;
             }
 
             a.nav-link.menu-link,
@@ -92,13 +93,14 @@
             /* Submenu level 2 (misal: P2H Online) → tidak ada background */
             .navbar-nav .menu-dropdown>.nav-item>.nav-link.active {
                 background: transparent !important;
-                color: #3c484f !important;
+                color: #fff !important;
                 font-weight: 600;
             }
 
             /* Sub-submenu level 3 → hanya item diklik yg aktif */
             .navbar-nav .menu-dropdown .nav-sm .nav-link.active {
-                background-color: #3c484f !important;
+                background: linear-gradient(135deg, #4b38b3, #7d6cfa) !important;
+                color: #fff !important;
                 border-radius: 6px;
             }
         </style>
