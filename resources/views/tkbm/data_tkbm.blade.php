@@ -43,7 +43,7 @@
                 <!-- Button Filter -->
                 <div class="col-md-3">
                     <label class="form-label">&nbsp;</label>
-                    <button class="btn btn-info w-100" id="applyFilter">Filter</button>
+                    <button class="btn btn-info w-100" id="applyFilter"><i class="mdi mdi-filter me-2"></i>Filter</button>
                 </div>
             </div>
 
@@ -101,8 +101,10 @@
                                 </table>
                                 @if (Session::get('jabatan') !== 'operator')
                                     <div class="d-flex gap-2">
-                                        <button class="btn btn-success" id="exportExcel">Export Excel</button>
-                                        <button class="btn btn-danger" id="downloadPdf">Download PDF</button>
+                                        <button class="btn btn-success" id="exportExcel"><i
+                                                class="mdi mdi-microsoft-excel me-2"></i>Export Excel</button>
+                                        <button class="btn btn-primary" id="downloadPdf"><i
+                                                class="mdi mdi-printer me-2"></i>Print</button>
                                     </div>
                                 @endif
                             </div>
@@ -192,7 +194,7 @@
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                    <button class="btn btn-primary" id="confirmExportPdf">Download</button>
+                    <button class="btn btn-primary" id="confirmExportPdf">Print</button>
                 </div>
             </div>
         </div>

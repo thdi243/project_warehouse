@@ -3,7 +3,7 @@
 @section('styles')
     <style>
         .welcome-card {
-            background: linear-gradient(135deg, #3ea8eb, #1cc88a);
+            background: linear-gradient(135deg, #4b38b3, #7d6cfa);
             color: #fff;
         }
 
@@ -176,7 +176,7 @@
                 </div>
             </div>
             <div class="row mb-4">
-                <div class="col-xl-6">
+                <div class="col-xl-12">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
                         <div class="card card-animate shadow-sm">
                             <div class="card-header d-flex justify-content-between">
@@ -319,6 +319,21 @@
                             xaxis: {
                                 categories: categories
                             },
+                            fill: {
+                                type: 'gradient',
+                                gradient: {
+                                    shade: 'light',
+                                    type: "vertical", // "vertical" or "horizontal"
+                                    shadeIntensity: 0.5,
+                                    gradientToColors: [
+                                        '#8C6228'
+                                    ], // warna tujuan (lebih gelap dari #3FBFBF)
+                                    inverseColors: false,
+                                    opacityFrom: 1,
+                                    opacityTo: 1,
+                                    stops: [0, 100]
+                                }
+                            },
                             colors: ['#F2C36B'],
                             tooltip: {
                                 y: {
@@ -365,6 +380,9 @@
                         },
                         series: [totalTerpal, totalSlipsheet, totalPallet],
                         labels: ['Terpal', 'Slipsheet', 'Pallet'],
+                        fill: {
+                            type: 'gradient',
+                        },
                         colors: ['#F2C36B', '#4968A6', '#3FBFBF'],
                         legend: {
                             position: 'bottom'
@@ -415,6 +433,19 @@
                                 fontSize: '10px'
                             }
                         },
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shade: 'light',
+                                type: "vertical", // "vertical" or "horizontal"
+                                shadeIntensity: 0.5,
+                                gradientToColors: ['#8C6228'], // warna tujuan (lebih gelap dari #3FBFBF)
+                                inverseColors: false,
+                                opacityFrom: 1,
+                                opacityTo: 1,
+                                stops: [0, 100]
+                            }
+                        },
                         colors: ['#F2C36B'],
                         tooltip: {
                             y: {
@@ -459,6 +490,19 @@
                             enabled: true,
                             style: {
                                 fontSize: '10px'
+                            }
+                        },
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shade: 'light',
+                                type: "vertical", // "vertical" or "horizontal"
+                                shadeIntensity: 0.5,
+                                gradientToColors: ['#202C47'], // warna tujuan (lebih gelap dari #3FBFBF)
+                                inverseColors: false,
+                                opacityFrom: 1,
+                                opacityTo: 1,
+                                stops: [0, 100]
                             }
                         },
                         colors: ['#4968A6'],
@@ -508,6 +552,19 @@
                                 fontSize: '10px'
                             }
                         },
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shade: 'light',
+                                type: "vertical", // "vertical" or "horizontal"
+                                shadeIntensity: 0.5,
+                                gradientToColors: ['#2e2370'], // warna tujuan (lebih gelap dari #3FBFBF)
+                                inverseColors: false,
+                                opacityFrom: 1,
+                                opacityTo: 1,
+                                stops: [0, 100]
+                            }
+                        },
                         colors: ['#3FBFBF'],
                         tooltip: {
                             y: {
@@ -547,6 +604,21 @@
                                     title: {
                                         text: 'Month',
                                         offsetY: 90, // Tambahkan ini untuk menurunkan posisi title
+                                    }
+                                },
+                                fill: {
+                                    type: 'gradient',
+                                    gradient: {
+                                        shade: 'light',
+                                        type: "vertical", // "vertical" or "horizontal"
+                                        shadeIntensity: 0.5,
+                                        gradientToColors: [
+                                            '#2e2370'
+                                        ], // warna tujuan (lebih gelap dari #3FBFBF)
+                                        inverseColors: false,
+                                        opacityFrom: 1,
+                                        opacityTo: 1,
+                                        stops: [0, 100]
                                     }
                                 },
                                 colors: ['#3FBFBF'],

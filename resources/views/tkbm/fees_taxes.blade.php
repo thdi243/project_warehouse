@@ -20,7 +20,7 @@
         }
 
         .fees-card:hover {
-            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            background: linear-gradient(135deg, #4b38b3, #7d6cfa);
             color: white;
         }
 
