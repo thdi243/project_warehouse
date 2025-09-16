@@ -3,7 +3,7 @@
 @section('styles')
     <style>
         .welcome-card {
-            background: linear-gradient(135deg, #3ea8eb, #1cc88a);
+            background: linear-gradient(135deg, #4b38b3, #7d6cfa);
             color: #fff;
         }
 
@@ -180,6 +180,9 @@
                             'Tidak Layak (< 70%)'
                         ],
                         series: [res.layak, res.perlu_perhatian, res.tidak_layak],
+                        fill: {
+                            type: 'gradient',
+                        },
                         colors: ['#28a745', '#ffc107', '#dc3545'],
                         legend: {
                             position: 'bottom'
@@ -281,6 +284,21 @@
                         xaxis: {
                             categories: labels
                         },
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shade: 'light',
+                                type: "vertical", // "vertical" or "horizontal"
+                                shadeIntensity: 0.5,
+                                gradientToColors: [
+                                    '#2e2370'
+                                ], // warna tujuan (lebih gelap dari #3FBFBF)
+                                inverseColors: false,
+                                opacityFrom: 1,
+                                opacityTo: 1,
+                                stops: [0, 100]
+                            }
+                        },
                         colors: ['#007bff']
                     };
 
@@ -310,6 +328,9 @@
                         },
                         labels: labels,
                         series: data,
+                        fill: {
+                            type: 'gradient',
+                        },
                         colors: ['#007bff', '#28a745', '#ffc107',
                             '#dc3545'
                         ], // Tambah warna kalau perlu
