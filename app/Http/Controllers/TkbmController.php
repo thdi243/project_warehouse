@@ -71,7 +71,7 @@ class TkbmController extends Controller
             return response()->json([
                 'ok' => false,
                 'message' => 'Data harga belum tersedia.'
-            ]);
+            ], 422);
         }
 
         // hitung total qty berdasarkan harga terbaru
@@ -86,7 +86,7 @@ class TkbmController extends Controller
             return response()->json([
                 'ok' => false,
                 'message' => 'Data Fees & Taxes belum tersedia.'
-            ]);
+            ], 422);
         }
 
         $fee = $lastFeeData ? $lastFeeData->fee : 0;
@@ -304,6 +304,8 @@ class TkbmController extends Controller
     /**
      * Export data to Excel based on the selected month.
      */
+
+
     public function export(Request $request)
     {
         $startDate = $request->query('start_date');
@@ -331,7 +333,10 @@ class TkbmController extends Controller
             ->get();
 
         if ($data->isEmpty()) {
-            return redirect()->back()->with('error', 'Tidak ada data pada rentang tanggal tersebut.');
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak ada data pada rentang tanggal tersebut.'
+            ], 200);
         }
 
         // Load template Excel
@@ -348,6 +353,34 @@ class TkbmController extends Controller
             // Clone spreadsheet agar template asli tidak berubah
             $spreadsheet = clone $templateSpreadsheet;
             $sheet = $spreadsheet->getActiveSheet();
+
+            // Isi No Dok
+            function generateNoDokFromRange($startDate, $endDate)
+            {
+                $start = Carbon::parse($startDate);
+                $end = Carbon::parse($endDate);
+                $month = $start->month;
+                $year = $start->year; // mapping bulan ke romawi 
+                $romawi = [
+                    1 => 'I',
+                    2 => 'II',
+                    3 => 'III',
+                    4 => 'IV',
+                    5 => 'V',
+                    6 => 'VI',
+                    7 => 'VII',
+                    8 => 'VIII',
+                    9 => 'IX',
+                    10 => 'X',
+                    11 => 'XI',
+                    12 => 'XII'
+                ];
+                $nomor = $start->day <= 15 ? '001' : '002';
+                return sprintf("%s/WCP/%s/%s", $nomor, $romawi[$month], $year);
+            }
+
+            $noDok = generateNoDokFromRange($request->query('start_date'), $request->query('end_date'));
+            $sheet->setCellValue('U1', $noDok);
 
             // Isi Rev
             $sheet->setCellValue('U2', 0);
@@ -485,6 +518,8 @@ class TkbmController extends Controller
             return redirect()->back()->with('error', 'Gagal membuat file Excel: ' . $e->getMessage());
         }
     }
+
+
 
     /**
      * Handle Master Fees & Harga TKBM store
