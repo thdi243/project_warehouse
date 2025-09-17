@@ -768,12 +768,7 @@ File: Main Css File
 .navbar-menu .navbar-nav .nav-link.active {
   color: var(--vz-vertical-menu-item-active-color);
 }
-.navbar-menu .navbar-nav .nav-link:hover {
-  background: #d2c8ff !important;
-  color: #fff !important;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
+
 .navbar-menu .navbar-nav .nav-link:hover {
   color: var(--vz-vertical-menu-item-hover-color);
 }
