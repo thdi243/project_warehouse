@@ -1,12 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\P2hController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TkbmController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\Api\TkbmDashboardController;
-use App\Http\Controllers\P2hController;
+use App\Http\Controllers\WspRakController;
 use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\Api\TkbmDashboardController;
+use App\Http\Controllers\Wsp\StockOpnameController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -14,7 +16,7 @@ Route::get('/', function () {
 
 // Auth
 Route::middleware('web')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('signin');
+    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/signin', [AuthController::class, 'login'])->name('signin');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
@@ -23,12 +25,16 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('dashboard')->group(function () {
         // Main
-        Route::view('/main', 'dashboard.main_dashboard')->name('main.dashboard');
+        Route::view('/', 'dashboard')->name('dashboard');
+        Route::view('/main', 'dashboard.foreman_spv_home')->name('dashboard.main');
 
         // TKBM
         Route::view('/tkbm', 'dashboard.tkbm_dashboard')->name('dashboard.tkbm');
-        Route::get('/tkbm/get-data', [TkbmDashboardController::class, 'tkbmDashboard'])->name('dashboard.tkbm.data');
+        // Route::get('/tkbm/get-data', [TkbmDashboardController::class, 'tkbmDashboard'])->name('dashboard.tkbm.data');
         Route::view('/p2h', 'dashboard.p2h_dashboard')->name('dashboard.p2h');
+
+        // Rak Management
+        Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak');
     });
 
     // TKBM
@@ -61,7 +67,12 @@ Route::middleware('auth')->group(function () {
     // Rak Management
     Route::prefix('rak')->group(function () {
         Route::get('/index', [WarehouseController::class, 'rakIndex'])->name('rak.index');
+        Route::get('/data', [WspRakController::class, 'index'])->name('rak.data');
         Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rak.inventory');
+        Route::post('/store/barang', [WspRakController::class, 'storeBarang'])->name('rak.store.barang');
+        Route::post('/store/opname', [StockOpnameController::class, 'store'])->name('wsp.rak.store.opname');
+        Route::put('/update/{id}', [WspRakController::class, 'update'])->name('wsp.rak.update');
+        // Route::get('/dashboard', [WarehouseController::class, 'rakDashboard'])->name('rak.dashboard');
     });
 
     // User
@@ -72,5 +83,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('user.delete');
         Route::get('/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
         Route::put('/update/{id}', [UserController::class, 'update'])->name('user.update');
+        Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
     });
 });

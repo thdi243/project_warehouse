@@ -3,23 +3,26 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\P2hController;
 use App\Http\Controllers\WspRakController;
+use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Api\P2hDashboardController;
 use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Api\TkbmDashboardController;
-
+use App\Http\Controllers\Api\UserDashboardController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
 
     // TKBM
-    Route::get('/tkbm/data/per-month', [TkbmDashboardController::class, 'tkbmDashboard']);
-    Route::get('/tkbm/produk', [TkbmDashboardController::class, 'tkbmDashboardProduk']);
-    Route::get('/tkbm/qty-terpal', [TkbmDashboardController::class, 'qtyTerpalDay']);
-    Route::get('/tkbm/qty-slipsheet', [TkbmDashboardController::class, 'qtySlipsheetDay']);
-    Route::get('/tkbm/qty-pallet', [TkbmDashboardController::class, 'qtyPalletDay']);
-    Route::get('/tkbm/total-qty', [TkbmDashboardController::class, 'tkbmTotalPerhari']);
-    Route::get('/tkbm/grand-total', [TkbmDashboardController::class, 'tkbmDashboardGrandTotal']);
-    Route::get('/tkbm/export-pdf', [TkbmDashboardController::class, 'exportPdf']);
+    Route::prefix('tkbm')->group(function () {
+        Route::get('/data/per-month', [TkbmDashboardController::class, 'tkbmDashboard']);
+        Route::get('/produk', [TkbmDashboardController::class, 'tkbmDashboardProduk']);
+        Route::get('/qty-terpal', [TkbmDashboardController::class, 'qtyTerpalDay']);
+        Route::get('/qty-slipsheet', [TkbmDashboardController::class, 'qtySlipsheetDay']);
+        Route::get('/qty-pallet', [TkbmDashboardController::class, 'qtyPalletDay']);
+        Route::get('/total-qty', [TkbmDashboardController::class, 'tkbmTotalPerhari']);
+        Route::get('/grand-total', [TkbmDashboardController::class, 'tkbmDashboardGrandTotal']);
+        Route::get('/export-pdf', [TkbmDashboardController::class, 'exportPdf']);
+    });
 
     // p2h
     Route::prefix('p2h')->group(function () {
@@ -33,6 +36,12 @@ Route::prefix('dashboard')->group(function () {
 
     // WSP
     Route::get('/wsp/rak', [RakDashboardController::class, 'getDataRack']);
+
+    // User
+    Route::prefix('user')->group(function () {
+        Route::get('/data', [UserDashboardController::class, 'create']);
+        Route::get('/statistik', [UserDashboardController::class, 'statistik']);
+    });
 });
 
 Route::prefix('p2h')->group(function () {
@@ -65,11 +74,10 @@ Route::prefix('p2h')->group(function () {
 
 Route::prefix('wsp')->group(function () {
     Route::post('/store/rak', [WspRakController::class, 'storeRak']);
-    Route::post('/store/barang', [WspRakController::class, 'storeBarang']);
     Route::get('/data', [WspRakController::class, 'getData']);
     Route::get('/data/rak', [WspRakController::class, 'getDataRak']);
     Route::delete('/delete/{id}', [WspRakController::class, 'destroy']);
     Route::get('/show/{id}', [WspRakController::class, 'show']);
-    Route::put('/update/{id}', [WspRakController::class, 'update']);
     Route::post('/store/rak', [WspRakController::class, 'storeRak']);
+    Route::get('/items/search', [WspRakController::class, 'searchItems']);
 });
