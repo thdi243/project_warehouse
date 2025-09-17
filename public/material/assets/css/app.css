@@ -41,20 +41,20 @@ File: Main Css File
 }
 :root {
   --vz-vertical-menu-bg: #fff;
-  --vz-vertical-menu-item-color: #6d7080;
+  --vz-vertical-menu-item-color: #4b38b3;
   --vz-vertical-menu-item-hover-color: #4b38b3;
   --vz-vertical-menu-item-active-color: #4b38b3;
   --vz-vertical-menu-sub-item-color: #7c7f90;
   --vz-vertical-menu-sub-item-hover-color: #4b38b3;
   --vz-vertical-menu-sub-item-active-color: #4b38b3;
-  --vz-vertical-menu-title-color: #919da9;
-  --vz-vertical-menu-bg-dark: #151529;
-  --vz-vertical-menu-item-color-dark: #a3a6b7;
-  --vz-vertical-menu-item-hover-color-dark: #fff;
+  --vz-vertical-menu-title-color: #fff;
+  --vz-vertical-menu-bg-dark: #fff;
+  --vz-vertical-menu-item-color-dark: #051720;
+  --vz-vertical-menu-item-hover-color-dark: #000;
   --vz-vertical-menu-item-active-color-dark: #fff;
-  --vz-vertical-menu-sub-item-color-dark: #a3a6b7;
-  --vz-vertical-menu-sub-item-hover-color-dark: #fff;
-  --vz-vertical-menu-sub-item-active-color-dark: #fff;
+  --vz-vertical-menu-sub-item-color-dark: #051720;
+  --vz-vertical-menu-sub-item-hover-color-dark: #4b38b3;
+  --vz-vertical-menu-sub-item-active-color-dark: #4b38b3;
   --vz-vertical-menu-title-color-dark: #6d7080;
   --vz-header-bg: #fff;
   --vz-header-item-color: #e9ecef;
@@ -767,6 +767,12 @@ File: Main Css File
 }
 .navbar-menu .navbar-nav .nav-link.active {
   color: var(--vz-vertical-menu-item-active-color);
+}
+.navbar-menu .navbar-nav .nav-link:hover {
+  background: #d2c8ff !important;
+  color: #fff !important;
+  border-radius: 6px;
+  transition: all 0.3s ease;
 }
 .navbar-menu .navbar-nav .nav-link:hover {
   color: var(--vz-vertical-menu-item-hover-color);
