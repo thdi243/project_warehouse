@@ -52,6 +52,7 @@ a.nav-link.menu-link.active {
 a.nav-link.menu-link,
 .menu-title span,
 .navbar-menu .navbar-nav .nav-sm .nav-link {
+    margin-bottom: .2rem !important;
     padding: 0.5rem !important;
 }
 
@@ -74,4 +75,16 @@ a.nav-link.menu-link,
     color: #fff !important;
     border-radius: 6px;
     transition: all 0.3s ease;
+}
+
+.navbar-menu .navbar-nav .nav-item:hover>.menu-dropdown {
+    left: 50px;
+    position: absolute;
+    width: 200px;
+    background: var(--vz-vertical-menu-bg);
+    height: auto !important;
+    padding: .5rem 0;
+    border-radius: 0 0 3px 3px;
+    -webkit-box-shadow: 0 2px 4px rgba(15, 34, 58, .12);
+    box-shadow: 0 2px 4px rgba(15, 34, 58, .12)
 }
