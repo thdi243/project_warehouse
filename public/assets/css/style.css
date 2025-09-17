@@ -1,20 +1,37 @@
 :root {
     --vz-vertical-menu-bg: #fff;
-    --vz-vertical-menu-item-color: #4b38b3;
-    --vz-vertical-menu-item-hover-color: #4b38b3;
-    --vz-vertical-menu-item-active-color: #4b38b3;
-    --vz-vertical-menu-sub-item-color: #7c7f90;
-    --vz-vertical-menu-sub-item-hover-color: #4b38b3;
-    --vz-vertical-menu-sub-item-active-color: #4b38b3;
-    --vz-vertical-menu-title-color: #fff;
-    --vz-vertical-menu-bg-dark: #fff;
-    --vz-vertical-menu-item-color-dark: #051720;
-    --vz-vertical-menu-item-hover-color-dark: #000;
-    --vz-vertical-menu-item-active-color-dark: #fff;
-    --vz-vertical-menu-sub-item-color-dark: #051720;
-    --vz-vertical-menu-sub-item-hover-color-dark: #4b38b3;
-    --vz-vertical-menu-sub-item-active-color-dark: #4b38b3;
-    --vz-vertical-menu-title-color-dark: #6d7080;
+        --vz-vertical-menu-item-color: #4b38b3;
+        --vz-vertical-menu-item-hover-color: #4b38b3;
+        --vz-vertical-menu-item-active-color: #4b38b3;
+        --vz-vertical-menu-sub-item-color: #7c7f90;
+        --vz-vertical-menu-sub-item-hover-color: #4b38b3;
+        --vz-vertical-menu-sub-item-active-color: #4b38b3;
+        --vz-vertical-menu-title-color: #fff;
+        --vz-vertical-menu-bg-dark: #fff;
+        --vz-vertical-menu-item-color-dark: #051720;
+        --vz-vertical-menu-item-hover-color-dark: #000;
+        --vz-vertical-menu-item-active-color-dark: #4b38b3;
+        --vz-vertical-menu-sub-item-color-dark: #051720;
+        --vz-vertical-menu-sub-item-hover-color-dark: #4b38b3;
+        --vz-vertical-menu-sub-item-active-color-dark: #4b38b3;
+        --vz-vertical-menu-title-color-dark: rgb(68, 76, 79);
+        --vz-header-bg: #fff;
+        --vz-header-item-color: #e9ecef;
+        --vz-header-bg-dark: #1C1C36;
+        --vz-header-item-color-dark: var(--vz-vertical-menu-item-color-dark);
+        --vz-topbar-search-bg: #f3f3f9;
+        --vz-topbar-user-bg: #f3f3f9;
+        --vz-topbar-user-bg-dark: #2A2A50;
+        --vz-footer-bg: #fff;
+        --vz-footer-color: #98a6ad;
+        --vz-topnav-bg: #fff;
+        --vz-topnav-item-color: #6d7080;
+        --vz-topnav-item-color-active: #4b38b3;
+        --vz-twocolumn-menu-iconview-bg: #fff;
+        --vz-twocolumn-menu-bg: #fff;
+        --vz-twocolumn-menu-iconview-bg-dark: var(--vz-vertical-menu-bg-dark);
+        --vz-twocolumn-menu-bg-dark: #1C1C36;
+        --vz-twocolumn-menu-item-color-dark: var(--vz-vertical-menu-item-color-dark);
 }
 
 .profil-avt {
