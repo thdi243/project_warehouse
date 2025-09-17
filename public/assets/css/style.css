@@ -95,7 +95,7 @@ a.nav-link.menu-link,
 }
 
 [data-layout=vertical][data-sidebar-size=sm] .navbar-menu .navbar-nav .nav-item:hover>.menu-dropdown {
-    left: 50px;
+    left: 55px;
 }
 
 [data-layout=vertical][data-sidebar=dark] .navbar-nav .nav-link[data-bs-toggle=collapse][aria-expanded=true] {
