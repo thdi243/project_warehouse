@@ -1,0 +1,77 @@
+:root {
+    --vz-vertical-menu-bg: #fff;
+    --vz-vertical-menu-item-color: #4b38b3;
+    --vz-vertical-menu-item-hover-color: #4b38b3;
+    --vz-vertical-menu-item-active-color: #4b38b3;
+    --vz-vertical-menu-sub-item-color: #7c7f90;
+    --vz-vertical-menu-sub-item-hover-color: #4b38b3;
+    --vz-vertical-menu-sub-item-active-color: #4b38b3;
+    --vz-vertical-menu-title-color: #fff;
+    --vz-vertical-menu-bg-dark: #fff;
+    --vz-vertical-menu-item-color-dark: #051720;
+    --vz-vertical-menu-item-hover-color-dark: #000;
+    --vz-vertical-menu-item-active-color-dark: #fff;
+    --vz-vertical-menu-sub-item-color-dark: #051720;
+    --vz-vertical-menu-sub-item-hover-color-dark: #4b38b3;
+    --vz-vertical-menu-sub-item-active-color-dark: #4b38b3;
+    --vz-vertical-menu-title-color-dark: #6d7080;
+}
+
+.profil-avt {
+    object-fit: cover;
+}
+
+/* Hilangkan bullet / simbol di nav-item dan sub-menu */
+.navbar-nav .nav-item,
+.navbar-nav .nav-item::before,
+.navbar-nav .nav-link::before {
+    list-style: none !important;
+    content: none !important;
+    /* hilangkan pseudo-element */
+}
+
+/* Pastikan padding/indent sub-menu tetap rapi */
+.navbar-nav .nav-item ul {
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Hover menu link */
+.navbar-nav .nav-link {
+    transition: all 0.3s ease;
+    align-items: center;
+}
+
+/* Active effect untuk menu utama (level 1) */
+a.nav-link.menu-link.active {
+    background: linear-gradient(135deg, #4b38b3, #7968f6) !important;
+    color: #fff !important;
+    border-radius: 6px;
+}
+
+a.nav-link.menu-link,
+.menu-title span,
+.navbar-menu .navbar-nav .nav-sm .nav-link {
+    padding: 0.5rem !important;
+}
+
+/* Submenu level 2 (misal: P2H Online) → tidak ada background */
+.navbar-nav .menu-dropdown>.nav-item>.nav-link.active {
+    background: transparent !important;
+    color: #fff !important;
+    font-weight: 600;
+}
+
+/* Sub-submenu level 3 → hanya item diklik yg aktif */
+.navbar-nav .menu-dropdown .nav-sm .nav-link.active {
+    background: linear-gradient(135deg, #4b38b3, #7d6cfa) !important;
+    color: #fff !important;
+    border-radius: 6px;
+}
+
+.navbar-menu .navbar-nav .nav-link:hover {
+    background: #d2c8ff !important;
+    color: #fff !important;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
