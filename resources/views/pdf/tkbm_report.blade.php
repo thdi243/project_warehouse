@@ -8,6 +8,7 @@
             body {
                 font-family: 'Calibri', Arial, sans-serif;
                 font-size: 12px;
+                margin-top: 1rem;
             }
 
             table {
@@ -31,10 +32,6 @@
                 line-height: 1;
                 height: 20px;
             }
-
-            /* .grup-table td {
-                border: none;
-            } */
 
             .body-value {
                 text-align: right;
@@ -245,12 +242,6 @@
                     Factory Manager</td>
             </tr>
 
-        </table>
-
-        <table style="margin-top: 15px;">
-        </table>
-
-        <table class="no-border" style="margin-top: 50px; text-align: center;">
         </table>
     </body>
 

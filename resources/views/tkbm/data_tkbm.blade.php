@@ -398,13 +398,39 @@
                     return;
                 }
 
-                // arahkan ke route export dengan query string
-                window.location.href =
-                    "{{ route('tkbm.data.export') }}" +
-                    "?start_date=" +
-                    startDate +
-                    "&end_date=" +
-                    endDate;
+                $.ajax({
+                    url: "{{ route('tkbm.data.export') }}",
+                    method: "GET",
+                    data: {
+                        start_date: startDate,
+                        end_date: endDate
+                    },
+                    xhrFields: {
+                        responseType: 'blob'
+                    }, // untuk download file
+                    success: function(res, status, xhr) {
+                        if (res.status === false) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: res.message
+                            });
+                        } else {
+                            // Kalau sukses → baru trigger download
+                            window.location.href = "{{ route('tkbm.data.export') }}" +
+                                "?start_date=" + startDate +
+                                "&end_date=" + endDate;
+
+                            $("#bulanModal").modal("hide");
+                        }
+                    },
+                    error: function(xhr) {
+                        let err = xhr.responseJSON?.message || "Terjadi kesalahan.";
+                        Swal.fire({
+                            icon: 'error',
+                            title: err
+                        });
+                    }
+                });
 
                 // tutup modal
                 $("#bulanModal").modal("hide");

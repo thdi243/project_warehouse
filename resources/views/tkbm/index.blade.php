@@ -142,8 +142,6 @@
                 let jmlTkbm = $('#jmlTkbm').val();
                 let keterangan = $('#keterangan').val();
 
-                console.log(date);
-
                 // Validasi input
                 if (!date || !petugas || !shift) {
                     Swal.fire({
