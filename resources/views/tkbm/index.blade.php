@@ -124,10 +124,10 @@
     <script>
         $(document).ready(function() {
 
-            let today = new Date().toISOString().split('T')[0];
+            // let today = new Date().toISOString().split('T')[0];
 
             // Set value dan jadikan readonly
-            $('#date').val(today).prop('readonly', true);
+            // $('#date').val(today).prop('readonly', true);
 
             // simpan data form
             $('#simpanBtn').click(function(e) {
