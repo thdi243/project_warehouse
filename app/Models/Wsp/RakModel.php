@@ -28,7 +28,7 @@ class RakModel extends Model
 
     public function stock()
     {
-        return $this->hasMany(StockBarangRakModel::class);
+        return $this->hasMany(StockOnHandModel::class);
     }
 
     public function user()
