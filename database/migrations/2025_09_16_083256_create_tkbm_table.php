@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('keterangan')->nullable();
             $table->bigInteger('total_qty')->nullable();
             $table->bigInteger('total_fee')->nullable();
-            $table->foreignId('fee_id')->nullable()->constrained('tkbm_fee')->onDelete('cascade');
+            $table->foreignId('fee_id')->constrained('tkbm_fee')->onDelete('cascade');
             $table->foreignId('harga_id')->constrained('harga_produk_tkbm')->onDelete('cascade');
             $table->timestamps();
         });
