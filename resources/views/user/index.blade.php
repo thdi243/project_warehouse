@@ -219,7 +219,7 @@
                                 <div class="mb-3">
                                     <label for="bagian" class="form-label">Bagian</label>
                                     <select class="form-select" id="bagian" name="bagian" required>
-                                        <option value="" disabled selected>Pilih Departemen</option>
+                                        <option value="" disabled selected>Pilih Bagian</option>
                                         <option value="warehouse">Warehouse</option>
                                         <option value="warehouse_co_product">Warehouse Co Product</option>
                                         <option value="warehouse_finish_good">Warehouse Finish Good</option>
