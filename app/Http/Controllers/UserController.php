@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
@@ -16,6 +17,35 @@ class UserController extends Controller
     public function index()
     {
         return view('user.index');
+    }
+
+    public function profileIndex()
+    {
+        try {
+            $user = User::select('id', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image')
+                ->findOrFail(Auth::id());
+
+            // Proses image_url sama seperti logic Anda
+            $imageName = trim($user->image ?? '', '/');
+
+            if ($imageName && !str_starts_with($imageName, 'images/users/')) {
+                $imagePath = 'images/users/' . $imageName;
+            } else {
+                $imagePath = $imageName;
+            }
+
+            if ($imagePath && Storage::disk('public')->exists($imagePath)) {
+                $user->image_url = url(Storage::url($imagePath));
+            } else {
+                $user->image_url = url("material/assets/images/users/user-dummy-img.jpg");
+            }
+
+            return view('user.profile', compact('user'));
+        } catch (\Exception $e) {
+            Log::error('Profile index error: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat mengambil data profile');
+        }
     }
 
     /**
