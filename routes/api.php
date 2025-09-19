@@ -2,14 +2,15 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\P2hController;
+use App\Http\Controllers\TkbmController;
 use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Api\P2hDashboardController;
 use App\Http\Controllers\Api\RakDashboardController;
+use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
-use App\Http\Controllers\Wsp\TransaksiWspController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -45,6 +46,10 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/data', [UserDashboardController::class, 'create']);
         Route::get('/statistik', [UserDashboardController::class, 'statistik']);
     });
+});
+
+Route::prefix('tkbm')->group(function () {
+    Route::get('/data/show', [TkbmController::class, 'show']);
 });
 
 Route::prefix('p2h')->group(function () {

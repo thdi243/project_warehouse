@@ -89,10 +89,11 @@ class TkbmController extends Controller
             ], 422);
         }
 
-        $fee = $lastFeeData ? $lastFeeData->fee : 0;
+        $fee = $lastFeeData ? $lastFeeData->id : 0;
+        $feeCount = $lastFeeData ? $lastFeeData->fee : 0;
         // $ppn = $lastFeeData ? $lastFeeData->ppn : 0;
         // $pph = $lastFeeData ? $lastFeeData->pph : 0;
-        $feeAct = ($fee / 100) * $totalQty;
+        $feeAct = ($feeCount / 100) * $totalQty;
 
         // Simpan data ke database (fee simpan nilai fee, bukan id)
         $save = TkbmModel::create([
@@ -156,7 +157,16 @@ class TkbmController extends Controller
                 ->whereMonth('date', $month);
         }
 
+        $latestFee = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+
         $data = $query->orderBy('date', 'desc')->get();
+
+        $data->transform(function ($item) use ($latestFee) {
+            $item->fee_value = $latestFee?->fee ?? 0;
+            return $item;
+        });
+
+        // $data = $query->orderBy('date', 'desc')->get();
 
         if ($data->isNotEmpty()) {
             return response()->json([

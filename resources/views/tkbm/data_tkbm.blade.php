@@ -282,8 +282,8 @@
             const fmtID = n => Number(n || 0).toLocaleString('id-ID');
 
             // data table
-            const PPN = {{ $ppn ?? 11 }};
-            const PPH = {{ $pph ?? 2 }};
+            const PPN = {{ $ppn ?? 0 }};
+            const PPH = {{ $pph ?? 0 }};
 
             function getData(startDate = null, endDate = null) {
                 const tbody = $("#tkbmTable tbody");
@@ -323,7 +323,7 @@
                                             <td>Rp ${fmtID(item.total_qty)}</td>
                                             <td>Rp ${fmtID(item.total_fee)}</td>
                                             <td class="text-white">
-                                                <span class="badge bg-success px-2 py-2 rounded-pill">${item.fee_id}%</span>
+                                                <span class="badge bg-success px-2 py-2 rounded-pill">${item.fee_value}%</span>
                                             </td>
                                             <td class="text-center gap-2 d-flex justify-content-center">
                                                 <button class="btn btn-sm btn-info editBtn" data-id="${item.id}">Edit</button>
