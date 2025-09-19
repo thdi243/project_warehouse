@@ -16,4 +16,9 @@ class TkbmHargaProdukModel extends Model
         'harga_slipsheet',
         'harga_pallet',
     ];
+
+    public function tkbm()
+    {
+        return $this->hasMany(TkbmModel::class, 'fee_id');
+    }
 }

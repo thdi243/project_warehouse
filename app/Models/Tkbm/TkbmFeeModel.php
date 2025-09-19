@@ -17,7 +17,7 @@ class TkbmFeeModel extends Model
         'pph',
     ];
 
-    public function tkbmRecords()
+    public function tkbm()
     {
         return $this->hasMany(TkbmModel::class, 'fee_id');
     }

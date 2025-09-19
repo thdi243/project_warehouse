@@ -23,12 +23,16 @@ class TkbmModel extends Model
         'total_qty',
         'total_fee',
         'fee_id',
-        // 'ppn',
-        // 'pph',
+        'harga_id'
     ];
 
     public function fee()
     {
         return $this->belongsTo(TkbmFeeModel::class, 'fee_id');
+    }
+
+    public function harga()
+    {
+        return $this->belongsTo(TkbmFeeModel::class, 'harga_id');
     }
 }
