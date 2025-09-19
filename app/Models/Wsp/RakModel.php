@@ -2,8 +2,9 @@
 
 namespace App\Models\Wsp;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class RakModel extends Model
 {
@@ -12,6 +13,7 @@ class RakModel extends Model
     protected $table = 'rak';
 
     protected $fillable = [
+        'user_id',
         'kode_rak',
         'nama_rak',
         'kolom_rak',
@@ -27,5 +29,15 @@ class RakModel extends Model
     public function stock()
     {
         return $this->hasMany(StockBarangRakModel::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function barang()
+    {
+        return $this->hasMany(BarangModel::class, 'rak_id');
     }
 }

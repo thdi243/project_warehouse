@@ -155,7 +155,7 @@ class TkbmDashboardController extends Controller
 
                 $totalPpn = $totalFee * ($ppnPersen / 100);
                 $totalPph = $totalFee * ($pphPersen / 100);
-                $grandTotal = $totalFee + $totalPpn + $totalPph + $totalQty;
+                $grandTotal = $totalFee + $totalPpn - $totalPph + $totalQty;
 
                 return [
                     'bulan'        => $item->bulan,
@@ -188,6 +188,62 @@ class TkbmDashboardController extends Controller
             'data' => $data
         ]);
     }
+
+    public function dataWidget()
+    {
+        $date = now(); // otomatis pakai timezone Laravel
+
+        // Ambil data bulan ini
+        $data = TkbmModel::whereMonth('date', $date->month)
+            ->whereYear('date', $date->year)
+            ->get();
+
+        if ($data->isEmpty()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Tidak ada data bulan ini.',
+                'terpal' => 0,
+                'slipsheet' => 0,
+                'pallet' => 0,
+                'grand_total' => 0,
+            ]);
+        }
+
+        $sum_terpal = 0;
+        $sum_slipsheet = 0;
+        $sum_pallet = 0;
+        $sum_total_qty = 0;
+        $sum_total_fee = 0;
+
+        foreach ($data as $d) {
+            $sum_terpal     += $d->qty_terpal;
+            $sum_slipsheet  += $d->qty_slipsheet;
+            $sum_pallet     += $d->qty_pallet;
+            $sum_total_qty  += $d->total_qty;
+            $sum_total_fee  += $d->total_fee;
+        }
+
+        // Ambil fee terbaru
+        $latestFee = TkbmFeeModel::latest()->first();
+
+        $ppn = $latestFee ? ($latestFee->ppn / 100) * $sum_total_fee : 0;
+        $pph = $latestFee ? ($latestFee->pph / 100) * $sum_total_fee : 0;
+
+        // Hitung Grand Total
+        $grand_total = $sum_total_qty + $sum_total_fee + $ppn - $pph;
+
+        return response()->json([
+            'status'     => true,
+            'month'      => $date->month,
+            'year'       => $date->year,
+            'terpal'     => $sum_terpal,
+            'slipsheet'  => $sum_slipsheet,
+            'pallet'     => $sum_pallet,
+            'grand_total'      => $grand_total,
+        ]);
+    }
+
+
 
 
 
@@ -251,7 +307,7 @@ class TkbmDashboardController extends Controller
         // Hitung PPn & PPh berdasarkan fee terbaru
         $ppn = ($latestFee->ppn / 100) * $sum_total_fee;
         $pph = ($latestFee->pph / 100) * $sum_total_fee;
-        $grand_total = $sum_total_qty + $sum_total_fee + $ppn + $pph;
+        $grand_total = $sum_total_qty + $sum_total_fee + $ppn - $pph;
 
         // return response()->json([
         //     'status' => true,

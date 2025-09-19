@@ -14,12 +14,10 @@ return new class extends Migration
         Schema::create('transaksi_wsp', function (Blueprint $table) {
             $table->id();
             $table->foreignId('barang_id')->constrained('barang')->onDelete('cascade');
-            $table->foreignId('rak_id')->constrained('rak')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->integer('qty');
-            $table->foreignId('stock_id')->constrained('stock_barang_rak')->onDelete('cascade');
-            $table->enum('jenis_transaksi', ['Register', 'Out', 'Update'])->default('Register');
-            $table->date('tgl_transaksi');
+            $table->integer('qty')->nullable();
+            $table->datetime('tgl_transaksi');
+            $table->enum('jenis_transaksi', ['in', 'out', 'adjustment'])->default('in');
             $table->text('keterangan')->nullable();
             $table->timestamps();
         });

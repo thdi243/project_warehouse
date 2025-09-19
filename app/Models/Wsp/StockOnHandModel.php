@@ -4,24 +4,19 @@ namespace App\Models\Wsp;
 
 use Illuminate\Database\Eloquent\Model;
 
-class StockBarangRakModel extends Model
+class StockOnHandModel extends Model
 {
-    protected $table = 'stock_barang_rak';
+    protected $table = 'stock_on_hand';
 
     protected $fillable = [
         'barang_id',
-        'rak_id',
-        'stock',
+        'qty',
+        'last_updated',
     ];
 
     public function barang()
     {
         return $this->belongsTo(BarangModel::class, 'barang_id');
-    }
-
-    public function rak()
-    {
-        return $this->belongsTo(RakModel::class, 'rak_id');
     }
 
     public function transaksi()

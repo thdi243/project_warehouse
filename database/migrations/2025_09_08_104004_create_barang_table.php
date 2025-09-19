@@ -13,10 +13,11 @@ return new class extends Migration
     {
         Schema::create('barang', function (Blueprint $table) {
             $table->id();
-            $table->string('mid_barang');
+            $table->foreignId('rak_id')->nullable()->constrained('rak')->onDelete('set null');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('mid_barang')->unique();
             $table->string('nama_barang');
             $table->string('image')->nullable();
-            $table->text('deskripsi')->nullable();
             $table->timestamps();
         });
     }

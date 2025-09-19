@@ -156,7 +156,7 @@
                             {{-- Controls --}}
                             <div class="row g-3 mb-3">
                                 <div class="col-md-2">
-                                    <label class="form-label">Filter by Rack</label>
+                                    <label class="form-label">Filter by Rack Name</label>
                                     <select class="form-select" id="rackFilter">
                                         <option value="all">All Racks</option>
                                     </select>
@@ -258,7 +258,7 @@
                                                 <th>No</th>
                                                 <th>Mid Barang</th>
                                                 <th>Nama Barang</th>
-                                                <th>Stock Sistem</th>
+                                                {{-- <th>Stock Sistem</th> --}}
                                                 <th>Stock Fisik</th>
                                                 <th>Selisih</th>
                                                 <th>Keterangan</th>
@@ -268,7 +268,7 @@
                                     </table>
                                 </div>
                                 <div class="text-end mt-3">
-                                    <button type="submit" class="btn btn-success">Simpan Opname</button>
+                                    <button type="submit" class="btn btn-success">Simpan Perubaha</button>
                                     <button type="button" class="btn btn-secondary"
                                         data-bs-dismiss="modal">Tutup</button>
                                 </div>
@@ -384,9 +384,9 @@
 
                             // Tentukan batas kolom berdasarkan kodeRak
                             let maxKolom;
-                            if (kodeRak === "FLR01") {
+                            if (kodeRak === "FL1") {
                                 maxKolom = 2;
-                            } else if (kodeRak === "FLR02" || kodeRak === "FLR03") {
+                            } else if (kodeRak === "FL2" || kodeRak === "FL3") {
                                 maxKolom = 4;
                             } else {
                                 // Untuk floor lain, ambil kolom yang ada di data
@@ -531,8 +531,6 @@
                                     <th>Nama Barang</th>
                                     <th>MID</th>
                                     <th>Box</th>
-                                    <th>Stock</th>
-                                    <th>Tanggal</th>
                                     <th>Username</th>
                                     <th>Image</th>
                                 </tr>
@@ -574,12 +572,6 @@
                                         `<span class="badge bg-info text-white px-3 py-1">${d}</span>`
                                 },
                                 {
-                                    data: "qty"
-                                },
-                                {
-                                    data: "tgl_transaksi"
-                                },
-                                {
                                     data: "username"
                                 },
                                 {
@@ -619,10 +611,6 @@
                             {
                                 data: "nama_barang"
                             },
-                            {
-                                data: "qty",
-                                className: "text-center"
-                            }, // stock sistem
                             {
                                 data: "qty",
                                 className: "text-center",
@@ -694,8 +682,6 @@
                                     <th>Kolom Rak</th>
                                     <th>Level Rak</th>
                                     <th>Box</th>
-                                    <th>Stock</th>
-                                    <th>Tanggal</th>
                                     <th>Username</th>
                                     <th>Image</th>
                                 </tr>
@@ -747,12 +733,6 @@
                                         `<span class="badge bg-info text-white px-3 py-1">${d}</span>`
                                 },
                                 {
-                                    data: "qty"
-                                },
-                                {
-                                    data: "tgl_transaksi"
-                                },
-                                {
                                     data: "username"
                                 },
                                 {
@@ -790,10 +770,6 @@
                             {
                                 data: "nama_barang"
                             },
-                            {
-                                data: "qty",
-                                className: "text-center"
-                            }, // stock sistem
                             {
                                 data: "qty",
                                 className: "text-center",

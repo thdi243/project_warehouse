@@ -23,7 +23,8 @@
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
-            <div class="row mb-4">
+
+            {{-- <div class="row mb-4">
                 <div class="col-12">
                     <div class="card shadow-sm border-0 rounded-4 welcome-card p-4" data-aos="fade-up">
                         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
@@ -42,13 +43,118 @@
                         </div>
                     </div>
                 </div>
+            </div> --}}
+            {{-- Widget --}}
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6">
+                    <div data-aos="fade-up">
+                        <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
+                            <div class="card-body bg-gradient-to-r from-green-100 via-white to-green-50">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="text-uppercase fw-bold text-muted mb-0">Total Qty Terpal</p>
+                                    <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
+                                        style="width: 50px; height: 50px; background: #e6f4ea;">
+                                        <i class="bx bx-package text-success fs-1"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2 text-dark">
+                                        <span class="counter-value text-success" id="totalQtyTerpal">0</span>
+                                        <span class="text-success fs-5 ms-2">Pcs</span>
+                                    </h4>
+                                    <p class="text-muted small mb-0">
+                                        <i class="bx bx-calendar me-1"></i> Qty Terpal by Month
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div data-aos="fade-up">
+                        <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
+                            <div class="card-body bg-gradient-to-r from-green-100 via-white to-green-50">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="text-uppercase fw-bold text-muted mb-0">Total Qty Slipsheet</p>
+                                    <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
+                                        style="width: 50px; height: 50px; background: #e6ebf4;">
+                                        <i class="bx bx-layer text-info fs-1"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2 text-dark">
+                                        <span class="counter-value text-info" id="totalQtySlipsheet"></span>
+                                        <span class="text-info fs-5 ms-2">Pcs</span>
+                                    </h4>
+                                    <p class="text-muted small mb-0">
+                                        <i class="bx bx-calendar me-1"></i> Qty Slipsheet by Month
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div data-aos="fade-up">
+                        <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
+                            <div class="card-body bg-gradient-to-r from-green-100 via-white to-green-50">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="text-uppercase fw-bold text-muted mb-0">Total Qty Pallet</p>
+                                    <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
+                                        style="width: 50px; height: 50px; background: #f4f2e6;">
+                                        <i class="bx bx-table text-warning fs-1"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2 text-dark">
+                                        <span class="counter-value text-warning" id="totalQtyPallet">0</span>
+                                        <span class="text-warning fs-5 ms-2">Pcs</span>
+                                    </h4>
+                                    <p class="text-muted small mb-0">
+                                        <i class="bx bx-calendar me-1"></i> Qty Pallet by Month
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div data-aos="fade-up">
+                        <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
+                            <div class="card-body bg-gradient-to-r from-green-100 via-white to-green-50">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="text-uppercase fw-bold text-muted mb-0">Grand Total BPS</p>
+                                    <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
+                                        style="width: 50px; height: 50px; background: #e6e7f4;">
+                                        <i class="bx bx-bar-chart text-primary fs-1"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2 text-dark">
+                                        <span class="fs-5 text-primary">Rp.</span>
+                                        <span class="counter-value text-primary ms-1" id="grandTotal">0</span>
+                                    </h4>
+                                    <p class="text-muted small mb-0">
+                                        <i class="bx bx-calendar me-1"></i> Grand Total by Month
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            {{-- Chart 1 --}}
             <div class="row mb-4">
                 <div class="col-xl-6">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
                         <div class="card card-animate shadow-sm">
                             <div class="card-header">
-                                <h4 class="card-title mb-0">Total Data Per Bulan</h4>
+                                <h4 class="card-title mb-0">Total Data Per Month</h4>
                             </div>
 
                             <div class="card-body">
@@ -96,6 +202,25 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Chart 2 --}}
+            <div class="row mb-4">
+                <div class="col-xl-12">
+                    <div class="" data-aos="fade-up" data-aos-delay="300">
+                        <div class="card card-animate shadow-sm">
+                            <div class="card-header">
+                                <h4 class="card-title mb-0">Grand Total Per Month</h4>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="tkbmGrandTotal" class="apex-charts" dir="ltr"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Chart 3 --}}
             <div class="row mb-4">
                 <div class="col-xl-6">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
@@ -175,6 +300,8 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Chart 4 --}}
             <div class="row mb-4">
                 <div class="col-xl-12">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
@@ -215,21 +342,6 @@
                     </div>
                 </div>
             </div>
-            <div class="row mb-4">
-                <div class="col-xl-12">
-                    <div class="" data-aos="fade-up" data-aos-delay="300">
-                        <div class="card card-animate shadow-sm">
-                            <div class="card-header">
-                                <h4 class="card-title mb-0">Grand Total By Month</h4>
-                            </div>
-
-                            <div class="card-body">
-                                <div id="tkbmGrandTotal" class="apex-charts" dir="ltr"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 @endsection
@@ -237,12 +349,13 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            loadWidgetData();
             tkbmChart();
             pieProdukTkbm();
+            tkbmGrandTotalChart();
             tkbmQtyTerpal();
             tkbmQtySlipsheet();
             tkbmQtyPallet();
-            tkbmGrandTotalChart();
 
             let today = new Date();
             let bulanNama = today.toLocaleString('id-ID', {
@@ -395,7 +508,6 @@
                     };
                 });
             }
-
 
             function tkbmQtyTerpal(bulan = null) {
                 renderChart("tkbmQtyTerpal", "{{ url('api/dashboard/tkbm/qty-terpal') }}", bulan, function(
@@ -675,6 +787,38 @@
                         console.error("Gagal ambil data:", err);
                         $("#tkbmGrandTotal").html(
                             "<p class='text-center text-danger'>Error load data</p>");
+                    }
+                });
+            }
+
+            // Widget
+            function animateCounter($el, target) {
+                let current = 0;
+                let step = Math.ceil(target / 50); // jumlah step animasi
+                let interval = setInterval(function() {
+                    current += step;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(interval);
+                    }
+                    $el.text(current.toLocaleString());
+                }, 30); // speed animasi (ms)
+            }
+
+            function loadWidgetData() {
+                $.ajax({
+                    url: "{{ url('api/dashboard/tkbm/widget') }}",
+                    type: "GET",
+                    dataType: "json",
+                    success: function(res) {
+                        // update card sesuai ID yg kamu taruh di Blade
+                        animateCounter($("#totalQtyTerpal"), res.terpal);
+                        animateCounter($("#totalQtySlipsheet"), res.slipsheet);
+                        animateCounter($("#totalQtyPallet"), res.pallet);
+                        animateCounter($("#grandTotal"), res.grand_total);
+                    },
+                    error: function(xhr) {
+                        console.error("Gagal ambil data widget:", xhr);
                     }
                 });
             }

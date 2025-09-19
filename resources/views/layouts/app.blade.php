@@ -52,63 +52,12 @@
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
 
         @yield('styles')
-        {{-- <style>
-            .profil-avt {
-                object-fit: cover;
-            }
-
-            /* Hilangkan bullet / simbol di nav-item dan sub-menu */
-            .navbar-nav .nav-item,
-            .navbar-nav .nav-item::before,
-            .navbar-nav .nav-link::before {
-                list-style: none !important;
-                content: none !important;
-                /* hilangkan pseudo-element */
-            }
-
-            /* Pastikan padding/indent sub-menu tetap rapi */
-            .navbar-nav .nav-item ul {
-                padding-left: 0;
-                margin: 0;
-            }
-
-            /* Hover menu link */
-            .navbar-nav .nav-link {
-                transition: all 0.3s ease;
-                align-items: center;
-            }
-
-            /* Active effect untuk menu utama (level 1) */
-            a.nav-link.menu-link.active {
-                background: linear-gradient(135deg, #4b38b3, #7968f6) !important;
-                color: #fff !important;
-                border-radius: 6px;
-            }
-
-            a.nav-link.menu-link,
-            .menu-title span,
-            .navbar-menu .navbar-nav .nav-sm .nav-link {
-                padding: 0.5rem !important;
-            }
-
-            /* Submenu level 2 (misal: P2H Online) → tidak ada background */
-            .navbar-nav .menu-dropdown>.nav-item>.nav-link.active {
-                background: transparent !important;
-                color: #fff !important;
-                font-weight: 600;
-            }
-
-            /* Sub-submenu level 3 → hanya item diklik yg aktif */
-            .navbar-nav .menu-dropdown .nav-sm .nav-link.active {
-                background: linear-gradient(135deg, #4b38b3, #7d6cfa) !important;
-                color: #fff !important;
-                border-radius: 6px;
-            }
-        </style> --}}
 
     </head>
 
     <body class="dark">
+
+
         {{-- Begin page --}}
         <div class="layout-wrapper">
             @include('layouts.partials.topbar')

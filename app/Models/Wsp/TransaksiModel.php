@@ -14,12 +14,10 @@ class TransaksiModel extends Model
 
     protected $fillable = [
         'barang_id',
-        'rak_id',
         'user_id',
-        'stock_id',
         'qty',
-        'jenis_transaksi',
         'tgl_transaksi',
+        'jenis_transaksi',
         'keterangan'
     ];
 
@@ -40,6 +38,6 @@ class TransaksiModel extends Model
 
     public function stock()
     {
-        return $this->belongsTo(StockBarangRakModel::class, 'stock_id');
+        return $this->belongsTo(StockOnHandModel::class, 'stock_id');
     }
 }

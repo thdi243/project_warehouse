@@ -106,8 +106,22 @@ class WarehouseController extends Controller
         return view('p2h.pallet_mover_registration', compact('data', 'operators'));
     }
 
+    public function barangIndex()
+    {
+        return view('manajemen_rak.master_barang');
+    }
+
     public function rakIndex()
     {
-        return view('manajemen_rak.index');
+        return view('manajemen_rak.master_rak');
+    }
+
+    public function onHandIndex()
+    {
+        return view('manajemen_rak.stock_on_hand');
+    }
+    public function opnameIndex()
+    {
+        return view('manajemen_rak.stock_opname');
     }
 }

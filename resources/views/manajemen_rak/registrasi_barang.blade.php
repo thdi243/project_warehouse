@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
 @section('styles')
-    <style>
+    {{-- <style>
         @media (max-width: 992px) {
             #cancelBtn {
                 margin-left: 3rem !important;
             }
         }
-    </style>
+    </style> --}}
 @endsection
 
 @section('content')
@@ -103,12 +103,6 @@
                                         </div>
                                     </div>
                                     <div class="col-xxl-3 col-md-6">
-                                        <div>
-                                            <label for="qtyBarang" class="form-label">Qty Barang</label>
-                                            <input type="number" class="form-control" id="qtyBarang" name="qtyBarang">
-                                        </div>
-                                    </div>
-                                    <div class="col-xxl-3 col-md-6">
                                         <div class="mb-3">
                                             <label for="image" class="form-label">Foto Barang</label>
                                             <input type="file" class="form-control" id="image" name="image"
@@ -132,10 +126,8 @@
                                     </div>
                                 </div>
                                 <div class="row mt-4">
-                                    <div class="col-1">
+                                    <div class="col-lg-12">
                                         <button class="btn btn-primary" type="submit" id="simpanBtn">Simpan</button>
-                                    </div>
-                                    <div class="col-1 ms-4">
                                         <button class="btn btn-light" type="submit" id="cancelBtn">Cancel</button>
                                     </div>
                                 </div>
@@ -206,11 +198,10 @@
                 let kolomRak = $('#kolomRak').val();
                 let levelRak = $('#levelRak').val();
                 let boxRak = $('#boxRak').val();
-                let qtyBarang = $('#qtyBarang').val();
+                // let qtyBarang = $('#qtyBarang').val();
 
                 // Simple validation
-                if (!midBarang || !namaBarang || !kodeRak || !namaRak || !kolomRak || !levelRak || !
-                    qtyBarang) {
+                if (!midBarang || !namaBarang || !kodeRak || !namaRak || !kolomRak || !levelRak) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
@@ -229,7 +220,7 @@
                 formData.append('kolom_rak', kolomRak);
                 formData.append('level_rak', levelRak);
                 formData.append('box_rak', boxRak);
-                formData.append('qty', qtyBarang);
+                // formData.append('qty', qtyBarang);
                 formData.append('_token', '{{ csrf_token() }}');
 
                 let imageFile = $('#image')[0].files[0];
@@ -258,7 +249,7 @@
                         $('#kolomRak').val('');
                         $('#levelRak').val('');
                         $('#boxRak').val('');
-                        $('#qtyBarang').val('');
+                        // $('#qtyBarang').val('');
                         $('#image').val('');
 
                         // Hide image preview
@@ -296,7 +287,7 @@
                 $('#kolomRak').val('');
                 $('#levelRak').val('');
                 $('#boxRak').val('');
-                $('#qty').val('');
+                // $('#qty').val('');
                 $('#image').val('');
                 $('#imagePreview').hide().attr('src', '');
             });
