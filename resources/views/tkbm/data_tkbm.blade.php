@@ -64,10 +64,10 @@
                                             <th>Qty Terpal</th>
                                             <th>Qty Slipsheet</th>
                                             <th>Qty Pallet</th>
-                                            <th>Total</th>
-                                            <th>Keterangan Fee</th>
-                                            <th></th>
                                             @if (Session::get('jabatan') !== 'operator')
+                                                <th>Total</th>
+                                                <th>Keterangan Fee</th>
+                                                <th></th>
                                                 <th data-orderable="false">Action</th>
                                             @endif
                                         </tr>
@@ -75,29 +75,30 @@
                                     <tbody>
                                         {{-- di isi oleh js --}}
                                     </tbody>
-                                    <tfoot class="table-bordered table-light mt-4">
-                                        <tr>
-                                            <th colspan="3" class="text-center">Total</th>
-                                            <th><span id="tQtyTerpal">0</span></th>
-                                            <th><span id="tQtySlipsheet">0</span></th>
-                                            <th><span id="tQtyPallet">0</span></th>
-                                            <th>Rp <span id="tTotalQty">0</span></th>
-                                            <th colspan="3">Rp <span id="tFee">0</span></th>
-                                        </tr>
-                                        <tr>
-                                            <th colspan="7" class="text-center">PPn {{ $ppn }}%</th>
-                                            <th colspan="3">Rp <span id="tPpnAct">0</span></th>
-                                        </tr>
-                                        <tr>
-                                            <th colspan="7" class="text-center">PPh {{ $pph }}%</th>
-                                            <th colspan="3">Rp <span id="tPphAct">0</span></th>
-                                        </tr>
-                                        <tr>
-                                            <th colspan="7" class="text-center">Grand Total BPS</th>
-                                            <th colspan="3">Rp <span id="tGrandTotal">0</span></th>
-                                        </tr>
-                                    </tfoot>
-
+                                    @if (Session::get('jabatan') !== 'operator')
+                                        <tfoot class="table-bordered table-light mt-4">
+                                            <tr>
+                                                <th colspan="3" class="text-center">Total</th>
+                                                <th><span id="tQtyTerpal">0</span></th>
+                                                <th><span id="tQtySlipsheet">0</span></th>
+                                                <th><span id="tQtyPallet">0</span></th>
+                                                <th>Rp <span id="tTotalQty">0</span></th>
+                                                <th colspan="3">Rp <span id="tFee">0</span></th>
+                                            </tr>
+                                            <tr>
+                                                <th colspan="7" class="text-center">PPn {{ $ppn }}%</th>
+                                                <th colspan="3">Rp <span id="tPpnAct">0</span></th>
+                                            </tr>
+                                            <tr>
+                                                <th colspan="7" class="text-center">PPh {{ $pph }}%</th>
+                                                <th colspan="3">Rp -<span id="tPphAct">0</span></th>
+                                            </tr>
+                                            <tr>
+                                                <th colspan="7" class="text-center">Grand Total BPS</th>
+                                                <th colspan="3">Rp <span id="tGrandTotal">0</span></th>
+                                            </tr>
+                                        </tfoot>
+                                    @endif
                                 </table>
                                 @if (Session::get('jabatan') !== 'operator')
                                     <div class="d-flex gap-2">
@@ -318,17 +319,17 @@
                                         <td>${item.qty_terpal ?? 0}</td>
                                         <td>${item.qty_slipsheet ?? 0}</td>
                                         <td>${item.qty_pallet ?? 0}</td>
-                                        <td>Rp ${fmtID(item.total_qty)}</td>
-                                        <td>Rp ${fmtID(item.total_fee)}</td>
-                                        <td class="text-white"><span class="badge bg-success px-2 py-2 rounded-pill">${item.fee_id}%</span></td>
-                                    @if (Session::get('jabatan') === 'dept_head' ||
-                                            Session::get('jabatan') === 'supervisor' ||
-                                            Session::get('jabatan') === 'foreman')
+                                        @if (in_array(Session::get('jabatan'), ['dept_head', 'supervisor', 'foreman']))
+                                            <td>Rp ${fmtID(item.total_qty)}</td>
+                                            <td>Rp ${fmtID(item.total_fee)}</td>
+                                            <td class="text-white">
+                                                <span class="badge bg-success px-2 py-2 rounded-pill">${item.fee_id}%</span>
+                                            </td>
                                             <td class="text-center gap-2 d-flex justify-content-center">
                                                 <button class="btn btn-sm btn-info editBtn" data-id="${item.id}">Edit</button>
                                                 <button class="btn btn-sm btn-danger deleteBtn" data-id="${item.id}">Delete</button>
                                             </td>
-                                    @endif     
+                                        @endif 
                                     </tr>
                                 `;
                                 tbody.append(row);
@@ -346,7 +347,7 @@
                         const ppnAct = sumFee * (PPN / 100);
                         const pphAct = sumFee * (PPH / 100);
 
-                        const grandTotal = sumTotalQty + sumFee + ppnAct + pphAct;
+                        const grandTotal = sumTotalQty + sumFee + ppnAct - pphAct;
 
                         // Isi footer
                         $('#tQtyTerpal').text(fmtID(sumQtyTerpal));

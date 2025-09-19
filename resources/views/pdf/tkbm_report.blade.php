@@ -182,7 +182,8 @@
                     <table width="100%" style="border:none; border-collapse: collapse;">
                         <tr>
                             <td style="text-align:left; width:10%; border:none;">Rp</td>
-                            <td style="text-align:right; border:none;">{{ number_format($summary->pph, 0, ',', '.') }}
+                            <td style="text-align:right; border:none;">-
+                                {{ number_format($summary->pph, 0, ',', '.') }}
                             </td>
                         </tr>
                     </table>

@@ -156,7 +156,7 @@ class TkbmController extends Controller
                 ->whereMonth('date', $month);
         }
 
-        $data = $query->orderBy('date', 'asc')->get();
+        $data = $query->orderBy('date', 'desc')->get();
 
         if ($data->isNotEmpty()) {
             return response()->json([
@@ -487,14 +487,14 @@ class TkbmController extends Controller
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
 
             $startRowPph = 32;
-            $sheet->setCellValue('R' . $startRowPph, '=-W' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->pph : 0) . '/100)');
+            $sheet->setCellValue('R' . $startRowPph, '=W' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->pph : 0) . '/100)');
             $sheet->getStyle('W' . $startRowPph)
                 ->getNumberFormat()
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
 
             $startRowGrandTotal = 34;
             // Grand total = total_qty (S) + total fee (X) + ppn (S42) + pph (S44)
-            $sheet->setCellValue('R' . $startRowGrandTotal, '=R' . $startRowTotal . '+W' . $startRowTotal . '+R' . $startRowPpn . '+R' . $startRowPph);
+            $sheet->setCellValue('R' . $startRowGrandTotal, '=R' . $startRowTotal . '+W' . $startRowTotal . '+R' . $startRowPpn . '-R' . $startRowPph);
             $sheet->getStyle('R' . $startRowGrandTotal)
                 ->getNumberFormat()
                 ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');

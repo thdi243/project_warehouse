@@ -41,8 +41,10 @@
                                         <div>
                                             <label for="date" class="form-label">Tanggal</label>
                                             <input type="date" class="form-control" id="date" name="date">
+                                            {{-- @if (Session::get('jabatan') == 'operator') value="{{ date('Y-m-d') }}" readonly @endif> --}}
                                         </div>
                                     </div>
+
                                     <div class="col-xxl-3 col-md-6">
                                         <div>
                                             <label for="petugas" class="form-label">Petugas</label>
