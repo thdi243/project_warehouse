@@ -81,6 +81,7 @@ class TkbmController extends Controller
 
         // ambil data fee terakhir
         $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+        $lastHarga = TkbmHargaProdukModel::orderBy('created_at', 'desc')->first();
 
         if (!$lastFeeData) {
             return response()->json([
@@ -89,6 +90,7 @@ class TkbmController extends Controller
             ], 422);
         }
 
+        $harga = $lastHarga ? $lastHarga->id : 0;
         $fee = $lastFeeData ? $lastFeeData->id : 0;
         $feeCount = $lastFeeData ? $lastFeeData->fee : 0;
         // $ppn = $lastFeeData ? $lastFeeData->ppn : 0;
@@ -108,6 +110,7 @@ class TkbmController extends Controller
             'total_qty' => $totalQty,
             'total_fee' => $feeAct,
             'fee_id' => $fee,
+            'harga_id' => $harga,
         ]);
 
         return response()->json([
