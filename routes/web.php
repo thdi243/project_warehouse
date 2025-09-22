@@ -55,6 +55,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/fee/history', [TkbmController::class, 'historyFeeTkbm'])->name('tkbm.fee.history');
         Route::post('/harga-produk/simpan', [TkbmController::class, 'simpanHargaProduk'])->name('tkbm.harga-produk.simpan');
         Route::get('/harga-produk/history', [TkbmController::class, 'historyProductPrice'])->name('tkbm.harga-produk.history');
+        Route::get('/sync-totals', [TkbmController::class, 'syncTotalsTkbm']);
     });
 
     // P2H

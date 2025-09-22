@@ -181,8 +181,7 @@
                         });
 
                         // Reset form
-                        // $('#date').val('');
-                        $('#petugas').val('');
+                        $('#date').val('');
                         $('#shift').val('');
                         $('#qtyTerpal').val('');
                         $('#qtySlipsheet').val('');

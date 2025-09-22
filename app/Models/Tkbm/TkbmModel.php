@@ -33,6 +33,11 @@ class TkbmModel extends Model
 
     public function harga()
     {
-        return $this->belongsTo(TkbmFeeModel::class, 'harga_id');
+        return $this->belongsTo(TkbmHargaProdukModel::class, 'harga_id');
+    }
+
+    public function total()
+    {
+        return $this->hasOne(TotalsTkbmModel::class, 'tkbm_id');
     }
 }

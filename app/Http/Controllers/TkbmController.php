@@ -7,7 +7,9 @@ use App\Models\Tkbm\TkbmModel;
 use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Tkbm\TkbmFeeModel;
+use Illuminate\Support\Facades\Log;
 use App\Models\Tkbm\TkbmHargaProdukModel;
+use App\Models\Tkbm\TotalsTkbmModel;
 
 class TkbmController extends Controller
 {
@@ -48,7 +50,7 @@ class TkbmController extends Controller
             'qtyTerpal' => 'integer|min:0',
             'qtySlipsheet' => 'integer|min:0',
             'qtyPallet' => 'integer|min:0',
-            'jml_tkbm' => 'integer|min:0',
+            'jml_tkbm' => 'required|integer|min:0',
             'keterangan' => 'nullable|string|max:255',
         ]);
 
@@ -65,23 +67,15 @@ class TkbmController extends Controller
         }
 
         // Harga Produk
-        $hargaTerbaru = TkbmHargaProdukModel::orderBy('created_at', 'desc')->first();
+        $lastFeeData = TkbmFeeModel::latest()->first();
+        $lastHarga   = TkbmHargaProdukModel::latest()->first();
 
-        if (!$hargaTerbaru) {
+        if (!$lastHarga) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Data harga belum tersedia.'
             ], 422);
         }
-
-        // hitung total qty berdasarkan harga terbaru
-        $totalQty = (($request->qtyTerpal ?? 0) * $hargaTerbaru['harga_terpal']) +
-            (($request->qtySlipsheet ?? 0) * $hargaTerbaru['harga_slipsheet']) +
-            (($request->qtyPallet ?? 0) * $hargaTerbaru['harga_pallet']);
-
-        // ambil data fee terakhir
-        $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
-        $lastHarga = TkbmHargaProdukModel::orderBy('created_at', 'desc')->first();
 
         if (!$lastFeeData) {
             return response()->json([
@@ -90,15 +84,26 @@ class TkbmController extends Controller
             ], 422);
         }
 
-        $harga = $lastHarga ? $lastHarga->id : 0;
-        $fee = $lastFeeData ? $lastFeeData->id : 0;
-        $feeCount = $lastFeeData ? $lastFeeData->fee : 0;
-        // $ppn = $lastFeeData ? $lastFeeData->ppn : 0;
-        // $pph = $lastFeeData ? $lastFeeData->pph : 0;
-        $feeAct = ($feeCount / 100) * $totalQty;
+        // hitung total qty berdasarkan harga terbaru
+        $totalProduk =
+            (($request->qtyTerpal ?? 0) * $lastHarga['harga_terpal']) +
+            (($request->qtySlipsheet ?? 0) * $lastHarga['harga_slipsheet']) +
+            (($request->qtyPallet ?? 0) * $lastHarga['harga_pallet']);
 
-        // Simpan data ke database (fee simpan nilai fee, bukan id)
-        $save = TkbmModel::create([
+        $hargaId = $lastHarga->id;
+        $feeId   = $lastFeeData->id;
+
+        // Hitung total fee
+        $feePersen = $lastFeeData->fee; // misal 6.5%
+        $totalFee  = ($feePersen / 100) * $totalProduk;
+
+        // Pajak
+        $totalPpn = ($lastFeeData->ppn / 100) * $totalFee;
+        $totalPph = ($lastFeeData->pph / 100) * $totalFee;
+        $grandTotal = $totalProduk + $totalFee + $totalPpn - $totalPph;
+
+        // 5. Simpan ke tabel tkbm
+        $tkbm = TkbmModel::create([
             'date' => $request->date,
             'petugas' => $request->petugas,
             'shift' => $request->shift,
@@ -107,18 +112,97 @@ class TkbmController extends Controller
             'qty_pallet' => $request->qtyPallet ?? 0,
             'jml_tkbm' => $request->jml_tkbm ?? 0,
             'keterangan' => $request->keterangan ?? null,
-            'total_qty' => $totalQty,
-            'total_fee' => $feeAct,
-            'fee_id' => $fee,
-            'harga_id' => $harga,
+            'total_qty' => $totalProduk,
+            'total_fee' => $totalFee,
+            'fee_id' => $feeId,
+            'harga_id' => $hargaId,
         ]);
+
+        // ambil bulan & tahun dari request date
+        $month = date('m', strtotime($request->date));
+        $year  = date('Y', strtotime($request->date));
+
+        // dd($request->date);
+        // cek apakah sudah ada total untuk bulan & tahun tsb
+        $totals = TotalsTkbmModel::where('month', $month)
+            ->where('year', $year)
+            ->first();
+
+        if ($totals) {
+            // update totals (increment)
+            $totals->update([
+                'total_terpal'    => $totals->total_terpal + ($request->qtyTerpal ?? 0),
+                'total_slipsheet' => $totals->total_slipsheet + ($request->qtySlipsheet ?? 0),
+                'total_pallet'    => $totals->total_pallet + ($request->qtyPallet ?? 0),
+                'total_produk'    => $totals->total_produk + $totalProduk,
+                'total_fee'       => $totals->total_fee + $totalFee,
+                'total_ppn'       => $totals->total_ppn + $totalPpn,
+                'total_pph'       => $totals->total_pph + $totalPph,
+                'grand_total'     => $totals->grand_total + $grandTotal,
+            ]);
+        } else {
+            // buat record baru
+            $totals = TotalsTkbmModel::create([
+                'month'           => $month,
+                'year'            => $year,
+                'total_terpal'    => $request->qtyTerpal ?? 0,
+                'total_slipsheet' => $request->qtySlipsheet ?? 0,
+                'total_pallet'    => $request->qtyPallet ?? 0,
+                'total_produk'    => $totalProduk,
+                'total_fee'       => $totalFee,
+                'total_ppn'       => $totalPpn,
+                'total_pph'       => $totalPph, // total pph selalu negatif
+                'grand_total'     => $grandTotal,
+            ]);
+        }
 
         return response()->json([
             'ok' => true,
             'message' => 'Data TKBM berhasil disimpan!',
-            'data' => $save,
+            'data' => $tkbm,
+            'rekap' => $totals
         ], 200);
     }
+
+    public function syncTotalsTkbm()
+    {
+        $data = TkbmModel::selectRaw("
+            MONTH(`date`) as month,
+            YEAR(`date`) as year,
+            SUM(qty_terpal) as total_terpal,
+            SUM(qty_slipsheet) as total_slipsheet,
+            SUM(qty_pallet) as total_pallet,
+            SUM(total_qty) as total_produk,
+            SUM(total_fee) as total_fee
+        ")
+            ->groupByRaw('YEAR(`date`), MONTH(`date`)')
+            ->get();
+
+        foreach ($data as $row) {
+            $feeData = TkbmFeeModel::latest()->first();
+
+            $totalPpn = ($feeData->ppn / 100) * $row->total_fee;
+            $totalPph = ($feeData->pph / 100) * $row->total_fee;
+            $grandTotal = $row->total_produk + $row->total_fee + $totalPpn - $totalPph;
+
+            TotalsTkbmModel::updateOrCreate(
+                ['month' => $row->month, 'year' => $row->year],
+                [
+                    'total_terpal' => $row->total_terpal,
+                    'total_slipsheet' => $row->total_slipsheet,
+                    'total_pallet' => $row->total_pallet,
+                    'total_produk' => $row->total_produk,
+                    'total_fee' => $row->total_fee,
+                    'total_ppn' => $totalPpn,
+                    'total_pph' => $totalPph,
+                    'grand_total' => $grandTotal,
+                ]
+            );
+        }
+
+        return "Sync selesai 🚀";
+    }
+
 
     /**
      * Display the specified resource.
@@ -317,8 +401,6 @@ class TkbmController extends Controller
     /**
      * Export data to Excel based on the selected month.
      */
-
-
     public function export(Request $request)
     {
         $startDate = $request->query('start_date');
@@ -341,7 +423,8 @@ class TkbmController extends Controller
         }
 
         // Ambil data dari database berdasarkan rentang tanggal
-        $data = TkbmModel::whereBetween('date', [$start, $end])
+        $data = TkbmModel::with(['fee', 'harga'])
+            ->whereBetween('date', [$start, $end])
             ->orderBy('date', 'asc')
             ->get();
 
@@ -359,166 +442,74 @@ class TkbmController extends Controller
         }
 
         try {
+            // Log::info('Starting Excel export', ['start_date' => $startDate, 'end_date' => $endDate]);
+
             // Baca file template
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-            $templateSpreadsheet = $reader->load($templatePath);
+            $spreadsheet = $reader->load($templatePath);
+            $templateSheet = $spreadsheet->getActiveSheet();
+            $cleanTemplate = clone $templateSheet;
 
-            // Clone spreadsheet agar template asli tidak berubah
-            $spreadsheet = clone $templateSpreadsheet;
-            $sheet = $spreadsheet->getActiveSheet();
-
-            // Isi No Dok
-            function generateNoDokFromRange($startDate, $endDate)
-            {
-                $start = Carbon::parse($startDate);
-                $end = Carbon::parse($endDate);
-                $month = $start->month;
-                $year = $start->year; // mapping bulan ke romawi 
-                $romawi = [
-                    1 => 'I',
-                    2 => 'II',
-                    3 => 'III',
-                    4 => 'IV',
-                    5 => 'V',
-                    6 => 'VI',
-                    7 => 'VII',
-                    8 => 'VIII',
-                    9 => 'IX',
-                    10 => 'X',
-                    11 => 'XI',
-                    12 => 'XII'
-                ];
-                $nomor = $start->day <= 15 ? '001' : '002';
-                return sprintf("%s/WCP/%s/%s", $nomor, $romawi[$month], $year);
-            }
-
-            $noDok = generateNoDokFromRange($request->query('start_date'), $request->query('end_date'));
-            $sheet->setCellValue('U1', $noDok);
-
-            // Isi Rev
-            $sheet->setCellValue('U2', 0);
-            $sheet->setCellValue('U4', '1 of 1');
-
-            // Atur judul periode di sheet
+            // Generate data untuk header
+            $noDok = $this->generateNoDokFromRange($startDate, $endDate);
             $periodeText = Carbon::now()->format('j F Y');
-            $sheet->setCellValue('U3', $periodeText);
 
-            // Mulai menulis data dari baris 9
-            $startRow = 9;
-            $currentRow = $startRow;
+            $dataBySheet = collect();
 
-            // Salin style dari template row untuk consistency
-            $templateRowRange = 'A' . $startRow . ':AC' . $startRow;
+            foreach ($data as $item) {
+                $day = Carbon::parse($item->date)->day;
+                $month = Carbon::parse($item->date)->month;
+                $year = Carbon::parse($item->date)->year;
 
-            foreach ($data as $index => $item) {
-                // Mapping data ke kolom Excel
-                $sheet->setCellValue('A' . $currentRow, $item->date ? Carbon::parse($item->date)->format('d/m/Y') : '');
-                $sheet->setCellValue('F' . $currentRow, $item->qty_terpal ?? 0);
-                $sheet->setCellValue('J' . $currentRow, $item->qty_slipsheet ?? 0);
-                $sheet->setCellValue('N' . $currentRow, $item->qty_pallet ?? 0);
-                $sheet->setCellValue('R' . $currentRow, $item->total_qty ?? 0);
-                $sheet->setCellValue('W' . $currentRow, $item->total_fee ?? 0); // Perbaikan: kolom F bukan E lagi
+                // Tentukan range day
+                $range = $day <= 15 ? '1-15' : '16-31';
 
-                // Salin style dari template row jika ada
-                try {
-                    $sheet->duplicateStyle(
-                        $sheet->getStyle($templateRowRange),
-                        'A' . $currentRow . ':AA' . $currentRow
-                    );
-                } catch (\Exception $e) {
-                    // Jika gagal copy style, lanjutkan tanpa style
+                // Gunakan kombinasi tahun-bulan-range sebagai key sheet
+                $sheetKey = $year . '-' . $month . '-' . $range;
+
+                if (!isset($dataBySheet[$sheetKey])) {
+                    $dataBySheet[$sheetKey] = collect();
                 }
 
-                // Jadikan teks di baris ini bold
-                $sheet->getStyle('R' . $currentRow . ':AA' . $currentRow)
-                    ->getFont()
-                    ->setBold(true);
-
-                $currentRow++;
+                $dataBySheet[$sheetKey]->push($item);
             }
 
-            // Isi total di baris terakhir
-            $startRowTotal = 28;
-            // $sheet->setCellValue('A' . $startRowTotal, 'TOTAL');
-            $sheet->setCellValue('F' . $startRowTotal, '=SUM(F' . $startRow . ':F' . ($startRowTotal - 1) . ')');
-            $sheet->setCellValue('J' . $startRowTotal, '=SUM(J' . $startRow . ':J' . ($startRowTotal - 1) . ')');
-            $sheet->setCellValue('N' . $startRowTotal, '=SUM(N' . $startRow . ':N' . ($startRowTotal - 1) . ')');
-            $sheet->setCellValue('R' . $startRowTotal, '=SUM(R' . $startRow . ':R' . ($startRowTotal - 1) . ')');
-            $sheet->setCellValue('W' . $startRowTotal, '=SUM(W' . $startRow . ':W' . ($startRowTotal - 1) . ')');
+            // Proses setiap sheet
+            $sheetIndex = 0;
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+            $spreadsheet = $reader->load($templatePath);
+            $templateSheet = $spreadsheet->getActiveSheet();
+            $cleanTemplate = clone $templateSheet;
 
-            // style qty
-            $sheet->getStyle('F' . $startRow . ':F' . $startRowTotal)
-                ->getNumberFormat()
-                ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
-            $sheet->getStyle('J' . $startRow . ':J' . $startRowTotal)
-                ->getNumberFormat()
-                ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
-            $sheet->getStyle('N' . $startRow . ':N' . $startRowTotal)
-                ->getNumberFormat()
-                ->setFormatCode('_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-');
+            foreach ($dataBySheet as $sheetKey => $items) {
+                $currentSheet = $sheetIndex == 0 ? $templateSheet : clone $cleanTemplate;
+                if ($sheetIndex > 0) {
+                    $spreadsheet->addSheet($currentSheet);
+                }
 
-            // Format kolom fee (X) dan total fee (X) sebagai Rupiah sesuai format custom
-            $rupiahFormat = '_-"Rp"* #,##0_-;-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-';
-            $sheet->getStyle('W' . $startRow . ':W' . $startRowTotal)
-                ->getNumberFormat()
-                ->setFormatCode($rupiahFormat);
-            $sheet->getStyle('W' . $startRowTotal)
-                ->getNumberFormat()
-                ->setFormatCode($rupiahFormat);
+                // Set judul sheet berdasarkan range tanggal
+                $firstDate = Carbon::parse($items->first()->date);
+                $day = $firstDate->day;
+                $periode = $day <= 15 ? 'Periode I' : 'Periode II';
+                $sheetName = $firstDate->format('M Y') . ' ' . $periode;
+                $currentSheet->setTitle(substr($sheetName, 0, 31));
 
-            // Format kolom total_qty (S) dan total total_qty (S) sebagai Rupiah sesuai format custom
-            $sheet->getStyle('R' . $startRow . ':R' . $startRowTotal)
-                ->getNumberFormat()
-                ->setFormatCode($rupiahFormat);
-            $sheet->getStyle('R' . $startRowTotal)
-                ->getNumberFormat()
-                ->setFormatCode($rupiahFormat);
+                // Gunakan tanggal pertama di item sebagai periode
+                $periodeText = Carbon::parse($items->first()->date)->format('j F Y');
+                $noDok = $this->generateNoDokFromRange($items->first()->date, $items->last()->date);
 
-            // Ambil data fee, ppn, pph terakhir untuk perhitungan di bawah
-            $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
+                $this->processSheet($currentSheet, $items, $noDok, $periodeText, $sheetIndex + 1);
+                $sheetIndex++;
+            }
 
-            $sheet->setCellValue(
-                'W7',
-                "Keterangan\n(Fee " . ($lastFeeData->fee ?? 0) . "%)"
-            );
-
-            $sheet->setCellValue(
-                'A30',
-                "PPn " . ($lastFeeData->ppn ?? 0) . "%"
-            );
-
-            $sheet->setCellValue(
-                'A32',
-                "PPh " . ($lastFeeData->pph ?? 0) . "%"
-            );
-
-
-            $startRowPpn = 30;
-            $sheet->setCellValue('R' . $startRowPpn, '=W' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->ppn : 0) . '/100)');
-            $sheet->getStyle('W' . $startRowPpn)
-                ->getNumberFormat()
-                ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
-
-            $startRowPph = 32;
-            $sheet->setCellValue('R' . $startRowPph, '=W' . $startRowTotal . '*(' . ($lastFeeData ? $lastFeeData->pph : 0) . '/100)');
-            $sheet->getStyle('W' . $startRowPph)
-                ->getNumberFormat()
-                ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
-
-            $startRowGrandTotal = 34;
-            // Grand total = total_qty (S) + total fee (X) + ppn (S42) + pph (S44)
-            $sheet->setCellValue('R' . $startRowGrandTotal, '=R' . $startRowTotal . '+W' . $startRowTotal . '+R' . $startRowPpn . '-R' . $startRowPph);
-            $sheet->getStyle('R' . $startRowGrandTotal)
-                ->getNumberFormat()
-                ->setFormatCode('_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)');
-
-            // Generate filename
-            $fileName = 'Data_TKBM_' . $startDate . '-' . str_pad($endDate, 2, '0', STR_PAD_LEFT) . '.xlsx';
+            $fileName = 'Data_TKBM_' . $startDate . '_to_' . $endDate . '.xlsx';
 
             // Save ke temporary file
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $tempPath = tempnam(sys_get_temp_dir(), 'tkbm_export_');
             $writer->save($tempPath);
+
+            // Log::info('File saved successfully', ['temp_path' => $tempPath, 'filename' => $fileName]);
 
             // Cleanup memory
             $spreadsheet->disconnectWorksheets();
@@ -528,10 +519,152 @@ class TkbmController extends Controller
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             ])->deleteFileAfterSend(true);
         } catch (\Exception $e) {
+            // Log::error('Excel export failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return redirect()->back()->with('error', 'Gagal membuat file Excel: ' . $e->getMessage());
         }
     }
 
+    private function processSheet($sheet, $dataChunk, $noDok, $periodeText, $sheetNumber)
+    {
+        // Log::info('Processing sheet', ['sheet_number' => $sheetNumber, 'data_count' => count($dataChunk)]);
+
+        // Isi header
+        $this->fillSheetHeader($sheet, $noDok, $periodeText, $dataChunk);
+
+        // Isi data
+        $startRow = 9;
+        $currentRow = $startRow;
+
+        foreach ($dataChunk as $item) {
+            $sheet->setCellValue('A' . $currentRow, $item->date ? Carbon::parse($item->date)->format('d/m/Y') : '');
+            $sheet->setCellValue('F' . $currentRow, $item->qty_terpal ?? 0);
+            $sheet->setCellValue('J' . $currentRow, $item->qty_slipsheet ?? 0);
+            $sheet->setCellValue('N' . $currentRow, $item->qty_pallet ?? 0);
+            $sheet->setCellValue('R' . $currentRow, $item->total_qty ?? 0);
+            // $sheet->setCellValue('W' . $currentRow, $item->total_fee ?? 0);
+            $fee = $item->fee;        // relasi dari Tkbm -> FeeModel
+            $harga = $item->harga;    // relasi dari Tkbm -> HargaModel
+
+            $sheet->setCellValue('W' . $currentRow, $item->total_fee ?? 0);
+            $currentRow++;
+        }
+
+        // Isi total
+        $endRow = $currentRow - 1;
+        $this->fillSheetTotals($sheet, $startRow, $endRow, $dataChunk);
+
+        // Log::info('Sheet processing completed', ['sheet_number' => $sheetNumber, 'end_row' => $endRow]);
+    }
+
+    private function generateNoDokFromRange($startDate, $endDate)
+    {
+        $start = Carbon::parse($startDate);
+        $month = $start->month;
+        $year = $start->year;
+
+        // mapping bulan ke romawi 
+        $romawi = [
+            1 => 'I',
+            2 => 'II',
+            3 => 'III',
+            4 => 'IV',
+            5 => 'V',
+            6 => 'VI',
+            7 => 'VII',
+            8 => 'VIII',
+            9 => 'IX',
+            10 => 'X',
+            11 => 'XI',
+            12 => 'XII'
+        ];
+
+        $nomor = $start->day <= 15 ? '001' : '002';
+        return sprintf("%s/WCP/%s/%s", $nomor, $romawi[$month], $year);
+    }
+
+    private function fillSheetHeader($sheet, $noDok, $periodeText, $dataChunk)
+    {
+        $sheet->setCellValue('U1', $noDok);
+        $sheet->setCellValue('U2', 0);
+        $sheet->setCellValue('U4', '1 of 1');
+        $sheet->setCellValue('U3', $periodeText);
+
+        // Isi keterangan fee
+        $firstItem = $dataChunk->first();
+        $feeRate = $firstItem && $firstItem->fee ? $firstItem->fee->fee : 0;
+        $ppnRate = $firstItem && $firstItem->fee ? $firstItem->fee->ppn : 0;
+        $pphRate = $firstItem && $firstItem->fee ? $firstItem->fee->pph : 0;
+
+        $sheet->setCellValue(
+            'W7',
+            "Keterangan\n(Fee " . $feeRate . "%)"
+        );
+        // $sheet->setCellValue(
+        //     'W7',
+        //     "Keterangan\n(Fee " . ($lastFeeData->fee ?? 0) . "%)"
+        // );
+
+        // Isi label PPn dan PPh
+        $sheet->setCellValue('A30', "PPn " . ($lastFeeData->ppn ?? 0) . "%");
+        $sheet->setCellValue('A32', "PPh " . ($lastFeeData->pph ?? 0) . "%");
+    }
+
+    private function fillSheetTotals($sheet, $startRow, $endRow, $dataChunk)
+    {
+        $startRowTotal = 28;
+
+        // Isi formula total hanya jika ada data
+        if ($endRow >= $startRow) {
+            $sheet->setCellValue('F' . $startRowTotal, '=SUM(F' . $startRow . ':F' . $endRow . ')');
+            $sheet->setCellValue('J' . $startRowTotal, '=SUM(J' . $startRow . ':J' . $endRow . ')');
+            $sheet->setCellValue('N' . $startRowTotal, '=SUM(N' . $startRow . ':N' . $endRow . ')');
+            $sheet->setCellValue('R' . $startRowTotal, '=SUM(R' . $startRow . ':R' . $endRow . ')');
+            $sheet->setCellValue('W' . $startRowTotal, '=SUM(W' . $startRow . ':W' . $endRow . ')');
+        } else {
+            // Jika tidak ada data, isi dengan 0
+            $sheet->setCellValue('F' . $startRowTotal, 0);
+            $sheet->setCellValue('J' . $startRowTotal, 0);
+            $sheet->setCellValue('N' . $startRowTotal, 0);
+            $sheet->setCellValue('R' . $startRowTotal, 0);
+            $sheet->setCellValue('W' . $startRowTotal, 0);
+        }
+
+        // Format qty columns
+        $qtyFormat = '_-* #,##0_-;-* #,##0_-;_-* "-"??_-;_-@_-';
+        $sheet->getStyle('F' . $startRow . ':F' . $startRowTotal)->getNumberFormat()->setFormatCode($qtyFormat);
+        $sheet->getStyle('J' . $startRow . ':J' . $startRowTotal)->getNumberFormat()->setFormatCode($qtyFormat);
+        $sheet->getStyle('N' . $startRow . ':N' . $startRowTotal)->getNumberFormat()->setFormatCode($qtyFormat);
+
+        // Format Rupiah
+        $rupiahFormat = '_-"Rp"* #,##0_-;-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-';
+        $sheet->getStyle('W' . $startRow . ':W' . $startRowTotal)->getNumberFormat()->setFormatCode($rupiahFormat);
+        $sheet->getStyle('R' . $startRow . ':R' . $startRowTotal)->getNumberFormat()->setFormatCode($rupiahFormat);
+
+        // Perhitungan PPn, PPh, dan Grand Total
+        $startRowPpn = 30;
+        $startRowPph = 32;
+        $startRowGrandTotal = 34;
+
+        $ppnTotal = 0;
+        $pphTotal = 0;
+
+        foreach ($dataChunk as $item) {
+            if ($item->fee) {
+                $ppnTotal += ($item->total_fee ?? 0) * ($item->fee->ppn / 100);
+                $pphTotal += ($item->total_fee ?? 0) * ($item->fee->pph / 100);
+            }
+        }
+
+        $sheet->setCellValue('R' . $startRowPpn, $ppnTotal);
+        $sheet->setCellValue('R' . $startRowPph, $pphTotal);
+        $sheet->setCellValue('R' . $startRowGrandTotal, '=R' . $startRowTotal . '+W' . $startRowTotal . '+R' . $startRowPpn . '-R' . $startRowPph);
+
+        // Format currency untuk perhitungan
+        $currencyFormat = '_("Rp"* #,##0_);_("Rp"* (#,##0);_("Rp"* "-"_);_(@_)';
+        $sheet->getStyle('R' . $startRowPpn)->getNumberFormat()->setFormatCode($currencyFormat);
+        $sheet->getStyle('R' . $startRowPph)->getNumberFormat()->setFormatCode($currencyFormat);
+        $sheet->getStyle('R' . $startRowGrandTotal)->getNumberFormat()->setFormatCode($currencyFormat);
+    }
 
 
     /**
