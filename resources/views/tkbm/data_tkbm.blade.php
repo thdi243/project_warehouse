@@ -253,7 +253,14 @@
                         <div class="row mb-3">
                             <div class="col-md-6 mb-3">
                                 <label for="jmlTkbm" class="form-label">Jumlah TKBM</label>
-                                <input type="number" id="jmlTkbm" class="form-control">
+                                {{-- <input type="number" id="jmlTkbm" class="form-control"> --}}
+                                <select name="jmlTkbm" id="jmlTkbm" class="form-select">
+                                    <option value="" selected disabled>Pilih Jumlah TKBM</option>
+                                    <option value="1">1 Orang</option>
+                                    <option value="2">2 Orang</option>
+                                    <option value="3">3 Orang</option>
+                                    <option value="4">4 Orang</option>
+                                </select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="editKeterangan" class="form-label">Keterangan</label>
