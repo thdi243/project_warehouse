@@ -424,12 +424,12 @@
 
             const rakData = {
                 FL1: {
-                    nama_rak: ["A", "B", "C", "D"],
-                    kolom_rak: [1, 2]
+                    nama_rak: ["A", "B", "C", "D", "E", "F", "G"],
+                    kolom_rak: [1, 2, 3, 4]
                 },
                 FL2: {
-                    nama_rak: ["E", "F", "G", "H", "I", "J", "K"],
-                    kolom_rak: [1, 2, 3, 4]
+                    nama_rak: ["H", "I", "J", "K"],
+                    kolom_rak: [1, 2]
                 },
                 FL3: {
                     nama_rak: ["L", "M", "N", "O"],
