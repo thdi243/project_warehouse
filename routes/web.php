@@ -23,7 +23,7 @@ Route::middleware('web')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-
+    // Dashboard
     Route::prefix('dashboard')->group(function () {
         // Main
         Route::view('/', 'dashboard')->name('dashboard');
@@ -38,55 +38,61 @@ Route::middleware('auth')->group(function () {
         Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak');
     });
 
-    // TKBM
-    Route::prefix('tkbm')->group(function () {
-        Route::get('/input', [WarehouseController::class, 'stock'])->name('tkbm.stock');
-        Route::post('/simpan', [TkbmController::class, 'store'])->name('tkbm.store');
-        Route::get('/data', [TkbmController::class, 'index'])->name('tkbm.data');
-        Route::get('/data/show', [TkbmController::class, 'show'])->name('tkbm.data.show');
-        Route::get('/data/edit/{id}', [TkbmController::class, 'edit'])->name('tkbm.data.edit');
-        Route::put('/data/update/{id}', [TkbmController::class, 'update'])->name('tkbm.data.update');
-        Route::delete('/data/delete/{id}', [TkbmController::class, 'destroy'])->name('tkbm.data.delete');
-        Route::get('/data/export', [TkbmController::class, 'export'])->name('tkbm.data.export');
-        // Route::get('/data/export-pdf', [TkbmController::class, 'exportPdf'])->name('tkbm.data.export-pdf');
-        Route::get('/master/fee', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.fee');
-        Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
-        Route::post('/fee/simpan', [TkbmController::class, 'simpanFeeTkbm'])->name('tkbm.fee.simpan');
-        Route::get('/fee/history', [TkbmController::class, 'historyFeeTkbm'])->name('tkbm.fee.history');
-        Route::post('/harga-produk/simpan', [TkbmController::class, 'simpanHargaProduk'])->name('tkbm.harga-produk.simpan');
-        Route::get('/harga-produk/history', [TkbmController::class, 'historyProductPrice'])->name('tkbm.harga-produk.history');
-        Route::get('/sync-totals', [TkbmController::class, 'syncTotalsTkbm']);
+    // Warehouse Sparepart
+    Route::middleware(['auth', 'access:warehouse_sparepart'])->group(function () {
+        // TKBM
+        Route::prefix('tkbm')->group(function () {
+            Route::get('/input', [WarehouseController::class, 'stock'])->name('tkbm.stock');
+            Route::post('/simpan', [TkbmController::class, 'store'])->name('tkbm.store');
+            Route::get('/data', [TkbmController::class, 'index'])->name('tkbm.data');
+            Route::get('/data/show', [TkbmController::class, 'show'])->name('tkbm.data.show');
+            Route::get('/data/edit/{id}', [TkbmController::class, 'edit'])->name('tkbm.data.edit');
+            Route::put('/data/update/{id}', [TkbmController::class, 'update'])->name('tkbm.data.update');
+            Route::delete('/data/delete/{id}', [TkbmController::class, 'destroy'])->name('tkbm.data.delete');
+            Route::get('/data/export', [TkbmController::class, 'export'])->name('tkbm.data.export');
+            // Route::get('/data/export-pdf', [TkbmController::class, 'exportPdf'])->name('tkbm.data.export-pdf');
+            Route::get('/master/fee', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.fee');
+            Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
+            Route::post('/fee/simpan', [TkbmController::class, 'simpanFeeTkbm'])->name('tkbm.fee.simpan');
+            Route::get('/fee/history', [TkbmController::class, 'historyFeeTkbm'])->name('tkbm.fee.history');
+            Route::post('/harga-produk/simpan', [TkbmController::class, 'simpanHargaProduk'])->name('tkbm.harga-produk.simpan');
+            Route::get('/harga-produk/history', [TkbmController::class, 'historyProductPrice'])->name('tkbm.harga-produk.history');
+            Route::get('/sync-totals', [TkbmController::class, 'syncTotalsTkbm']);
+        });
+
+        // Rak Management
+        Route::prefix('wsp')->group(function () {
+            Route::get('/master/rak', [WarehouseController::class, 'rakIndex'])->name('wsp.master.rak');
+            Route::get('/master/barang', [WarehouseController::class, 'barangIndex'])->name('wsp.master.barang');
+            Route::get('/stock/on-hand', [WarehouseController::class, 'onHandIndex'])->name('wsp.stock.on-hand');
+            Route::get('/stock/opname', [WarehouseController::class, 'opnameIndex'])->name('wsp.stock.opname');
+            // Route::get('/rak/list', [WarehouseController::class, 'rakList'])->name('wsp.rak.list');
+            Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rak.inventory');
+
+            // Barang
+            Route::post('/store/barang', [WspBarangController::class, 'store'])->name('wsp.store.barang');
+            Route::put('/update/barang/{id}', [WspBarangController::class, 'update'])->name('wsp.update.barang');
+            Route::post('/barang/import', [WspBarangController::class, 'import'])->name('wsp.barang.import');
+            Route::get('/barang/download-template', [WspBarangController::class, 'downloadTemplate'])->name('wsp.barang.download.template');
+
+            // Rak
+            Route::put('/update/rak/{id}', [WspRakController::class, 'update'])->name('wsp.rak.update');
+            Route::post('/store/rak', [WspRakController::class, 'store'])->name('wsp.store.rak');
+            Route::delete('/delete/rak/{id}', [WspRakController::class, 'destroy'])->name('wsp.delete.rak');
+            Route::post('/store/opname', [StockOpnameController::class, 'store'])->name('wsp.rak.store.opname');
+            // Route::get('/dashboard', [WarehouseController::class, 'rakDashboard'])->name('rak.dashboard');
+        });
     });
 
-    // P2H
-    Route::prefix('p2h')->group(function () {
-        Route::get('/online/index', [P2hController::class, 'index'])->name('p2h.online.index');
-        Route::get('/online/data', [WarehouseController::class, 'p2hData'])->name('p2h.online.data');
-        Route::get('/registration/forklift', [WarehouseController::class, 'showRegForklift'])->name('p2h.registration.forklift');
-        Route::get('/registration/pallet-mover', [WarehouseController::class, 'showRegPalletMover'])->name('p2h.registration.pallet-mover');
-    });
-
-    // Rak Management
-    Route::prefix('wsp')->group(function () {
-        Route::get('/master/rak', [WarehouseController::class, 'rakIndex'])->name('wsp.master.rak');
-        Route::get('/master/barang', [WarehouseController::class, 'barangIndex'])->name('wsp.master.barang');
-        Route::get('/stock/on-hand', [WarehouseController::class, 'onHandIndex'])->name('wsp.stock.on-hand');
-        Route::get('/stock/opname', [WarehouseController::class, 'opnameIndex'])->name('wsp.stock.opname');
-        // Route::get('/rak/list', [WarehouseController::class, 'rakList'])->name('wsp.rak.list');
-        Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rak.inventory');
-
-        // Barang
-        Route::post('/store/barang', [WspBarangController::class, 'store'])->name('wsp.store.barang');
-        Route::put('/update/barang/{id}', [WspBarangController::class, 'update'])->name('wsp.update.barang');
-        Route::post('/barang/import', [WspBarangController::class, 'import'])->name('wsp.barang.import');
-        Route::get('/barang/download-template', [WspBarangController::class, 'downloadTemplate'])->name('wsp.barang.download.template');
-
-        // Rak
-        Route::put('/update/rak/{id}', [WspRakController::class, 'update'])->name('wsp.rak.update');
-        Route::post('/store/rak', [WspRakController::class, 'store'])->name('wsp.store.rak');
-        Route::delete('/delete/rak/{id}', [WspRakController::class, 'destroy'])->name('wsp.delete.rak');
-        Route::post('/store/opname', [StockOpnameController::class, 'store'])->name('wsp.rak.store.opname');
-        // Route::get('/dashboard', [WarehouseController::class, 'rakDashboard'])->name('rak.dashboard');
+    // Warehouse Sparepart
+    Route::middleware(['auth', 'access:warehouse_raw_material'])->group(function () {
+        // P2H
+        Route::prefix('p2h')->group(function () {
+            Route::get('/online/index', [P2hController::class, 'index'])->name('p2h.online.index');
+            Route::get('/online/data', [WarehouseController::class, 'p2hData'])->name('p2h.online.data');
+            Route::get('/registration/forklift', [WarehouseController::class, 'showRegForklift'])->name('p2h.registration.forklift');
+            Route::get('/registration/pallet-mover', [WarehouseController::class, 'showRegPalletMover'])->name('p2h.registration.pallet-mover');
+        });
     });
 
     // User
