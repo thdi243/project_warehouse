@@ -20,7 +20,7 @@ class UserSeeder extends Seeder
                 'jabatan' => 'operator',
                 'password' => bcrypt('12345678'),
                 'departemen' => 'Warehouse',
-                'bagian' => 'Warehouse Spareparts',
+                'bagian' => 'warehouse_sparepart',
                 'nik' => 1234567890,
             ],
             [
@@ -29,7 +29,7 @@ class UserSeeder extends Seeder
                 'jabatan' => 'foreman',
                 'password' => bcrypt('12345678'),
                 'departemen' => 'Warehouse',
-                'bagian' => 'Warehouse Spareparts',
+                'bagian' => 'warehouse',
                 'nik' => 9876543210,
             ],
             [
@@ -38,7 +38,7 @@ class UserSeeder extends Seeder
                 'jabatan' => 'supervisor',
                 'password' => bcrypt('12345678'),
                 'departemen' => 'Warehouse',
-                'bagian' => 'Warehouse Spareparts',
+                'bagian' => 'warehouse',
                 'nik' => 1122334455,
             ],
             [
@@ -47,7 +47,7 @@ class UserSeeder extends Seeder
                 'jabatan' => 'dept_head',
                 'password' => bcrypt('12345678'),
                 'departemen' => 'Warehouse',
-                'bagian' => 'Warehouse Spareparts',
+                'bagian' => 'warehouse',
                 'nik' => 5566778899,
             ],
         ]);
