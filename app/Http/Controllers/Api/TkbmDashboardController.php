@@ -10,6 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Tkbm\TkbmFeeModel;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Tkbm\TotalsTkbmModel;
 
 class TkbmDashboardController extends Controller
 {
@@ -89,12 +90,58 @@ class TkbmDashboardController extends Controller
         return response()->json($data);
     }
 
+    public function tkbmAllProduk()
+    {
+        // Ambil data dari tabel dan group per tahun-bulan
+        $produk = TkbmModel::selectRaw('
+            YEAR(date) as year,
+            MONTH(date) as month,
+            SUM(qty_terpal) as total_terpal,
+            SUM(qty_slipsheet) as total_slipsheet,
+            SUM(qty_pallet) as total_pallet
+        ')
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
+            ->get()
+            ->groupBy('year');
+
+        $result = [];
+
+        foreach ($produk as $year => $rows) {
+            // loop 1-12 bulan
+            for ($m = 1; $m <= 12; $m++) {
+                $data = $rows->firstWhere('month', $m);
+
+                $result[] = [
+                    'bulan'          => \Carbon\Carbon::createFromDate($year, $m, 1)->format('F Y'),
+                    'year'           => $year,
+                    'total_terpal'   => $data->total_terpal ?? '',
+                    'total_slipsheet' => $data->total_slipsheet ?? '',
+                    'total_pallet'   => $data->total_pallet ?? '',
+                ];
+            }
+        }
+
+        return response()->json($result);
+    }
+
     public function qtyTerpalDay(Request $request)
     {
         $bulanInput = $request->input('bulan', now()->format('Y-m'));
         [$tahun, $bulan] = explode('-', $bulanInput);
 
-        $data = TkbmModel::selectRaw('DATE(date) as tanggal, SUM(qty_terpal) as total_terpal')
+        $data = TkbmModel::selectRaw('
+                DATE(date) as tanggal, 
+                SUM(qty_terpal) as total_terpal,
+                SUM(jml_tkbm) as total_tkbm,
+                MAX(fee_id) as fee_id,
+                MAX(harga_id) as harga_id
+            ')
+            ->with([
+                'fee:id,fee',
+                'harga:id,harga_terpal'
+            ])
             ->whereMonth('date', $bulan)
             ->whereYear('date', $tahun)
             ->groupBy('tanggal')
@@ -104,12 +151,23 @@ class TkbmDashboardController extends Controller
         return response()->json($data);
     }
 
+
     public function qtySlipsheetDay(Request $request)
     {
         $bulanInput = $request->input('bulan', now()->format('Y-m'));
         [$tahun, $bulan] = explode('-', $bulanInput);
 
-        $data = TkbmModel::selectRaw('DATE(date) as tanggal, SUM(qty_slipsheet) as total_slipsheet')
+        $data = TkbmModel::selectRaw('
+                DATE(date) as tanggal, 
+                SUM(qty_slipsheet) as total_slipsheet,
+                SUM(jml_tkbm) as total_tkbm,
+                MAX(fee_id) as fee_id,
+                MAX(harga_id) as harga_id
+            ')
+            ->with([
+                'fee:id,fee',
+                'harga:id,harga_slipsheet'
+            ])
             ->whereMonth('date', $bulan)
             ->whereYear('date', $tahun)
             ->groupBy('tanggal')
@@ -124,7 +182,17 @@ class TkbmDashboardController extends Controller
         $bulanInput = $request->input('bulan', now()->format('Y-m'));
         [$tahun, $bulan] = explode('-', $bulanInput);
 
-        $data = TkbmModel::selectRaw('DATE(date) as tanggal, SUM(qty_pallet) as total_pallet')
+        $data = TkbmModel::selectRaw('
+                DATE(date) as tanggal, 
+                SUM(qty_pallet) as total_pallet,
+                SUM(jml_tkbm) as total_tkbm,
+                MAX(fee_id) as fee_id,
+                MAX(harga_id) as harga_id
+            ')
+            ->with([
+                'fee:id,fee',
+                'harga:id,harga_pallet'
+            ])
             ->whereMonth('date', $bulan)
             ->whereYear('date', $tahun)
             ->groupBy('tanggal')
@@ -136,58 +204,44 @@ class TkbmDashboardController extends Controller
 
     public function tkbmDashboardGrandTotal()
     {
-        // Ambil persentase PPN & PPh dari tabel fee
-        $feeConfig = TkbmFeeModel::latest()->first();
-        $ppnPersen = $feeConfig->ppn ?? 0;
-        $pphPersen = $feeConfig->pph ?? 0;
-
-        $data = TkbmModel::selectRaw('
-            MONTH(date) as bulan,
-            SUM(total_fee) as total_fee,
-            SUM(total_qty) as total_qty
-        ')
-            ->groupBy('bulan')
-            ->orderBy('bulan', 'asc')
+        // Ambil data dari tabel
+        $grandTotals = TotalsTkbmModel::selectRaw('
+                year,
+                month,
+                total_produk,
+                total_fee,
+                total_ppn,
+                total_pph,
+                grand_total
+            ')
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
             ->get()
-            ->map(function ($item) use ($ppnPersen, $pphPersen) {
-                $totalFee = (float) $item->total_fee;
-                $totalQty = (int) $item->total_qty;
+            ->groupBy('year');
 
-                $totalPpn = $totalFee * ($ppnPersen / 100);
-                $totalPph = $totalFee * ($pphPersen / 100);
-                $grandTotal = $totalFee + $totalPpn - $totalPph + $totalQty;
+        $result = [];
 
-                return [
-                    'bulan'        => $item->bulan,
-                    'bulan_nama'   => $this->allMonths[$item->bulan - 1] ?? '',
-                    'total_fee'    => $totalFee,
-                    'total_qty'    => $totalQty,
-                    'total_ppn'    => $totalPpn,
-                    'total_pph'    => $totalPph,
-                    'grand_total'  => $grandTotal
+        foreach ($grandTotals as $year => $rows) {
+            // loop bulan 1 - 12
+            for ($m = 1; $m <= 12; $m++) {
+                $data = $rows->firstWhere('month', $m);
+
+                $result[] = [
+                    'bulan'        => \Carbon\Carbon::createFromDate($year, $m, 1)->format('F Y'),
+                    'year'         => $year,
+                    'total_produk' => $data->total_produk ?? 0,
+                    'total_fee'    => $data->total_fee ?? 0,
+                    'total_ppn'    => $data->total_ppn ?? 0,
+                    'total_pph'    => $data->total_pph ?? 0,
+                    'grand_total'  => $data->grand_total ?? 0,
                 ];
-            })
-            ->keyBy('bulan_nama');
+            }
+        }
 
-        // Susun data sesuai urutan $allMonths
-        $data = collect($this->allMonths)->map(function ($bulan) use ($data) {
-            return $data[$bulan] ?? [
-                'bulan'        => array_search($bulan, $this->allMonths) + 1,
-                'bulan_nama'   => $bulan,
-                'total_fee'    => 0,
-                'total_qty'    => 0,
-                'total_ppn'    => 0,
-                'total_pph'    => 0,
-                'grand_total'  => 0
-            ];
-        })->values();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Data berhasil ditemukan',
-            'data' => $data
-        ]);
+        return response()->json($result);
     }
+
+
 
     public function dataWidget()
     {

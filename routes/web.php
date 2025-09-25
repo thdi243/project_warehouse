@@ -74,6 +74,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/stock/opname', [WarehouseController::class, 'opnameIndex'])->name('wsp.stock.opname');
         // Route::get('/rak/list', [WarehouseController::class, 'rakList'])->name('wsp.rak.list');
         Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rak.inventory');
+
         // Barang
         Route::post('/store/barang', [WspBarangController::class, 'store'])->name('wsp.store.barang');
         Route::put('/update/barang/{id}', [WspBarangController::class, 'update'])->name('wsp.update.barang');

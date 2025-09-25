@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
+use App\Http\Controllers\Api\WspManRakController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -26,6 +27,7 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/grand-total', [TkbmDashboardController::class, 'tkbmDashboardGrandTotal']);
         Route::get('/export-pdf', [TkbmDashboardController::class, 'exportPdf']);
         Route::get('/widget', [TkbmDashboardController::class, 'dataWidget']);
+        Route::get('/all_qty_produk', [TkbmDashboardController::class, 'tkbmAllProduk']);
     });
 
     // p2h
@@ -90,5 +92,7 @@ Route::prefix('wsp')->group(function () {
     Route::get('/data/all/rak', [WspRakController::class, 'getDataRak']);
     Route::get('/show/rak/{id}', [WspRakController::class, 'show']);
     Route::post('/store/rak', [WspRakController::class, 'storeRak']);
+    Route::get('/data/stock/barang', [WspManRakController::class, 'getDataBarang']);
+    Route::get('/show/stock/barang/{id}', [WspManRakController::class, 'show']);
     Route::post('/store/transaksi', [TransaksiWspController::class, 'store']);
 });

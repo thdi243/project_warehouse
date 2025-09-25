@@ -17,6 +17,20 @@
             height: 110px;
             object-fit: cover
         }
+
+        .my-tooltip {
+            min-width: 200px;
+            padding: 12px 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .my-tooltip b {
+            color: #333;
+        }
     </style>
 @endsection
 
@@ -45,7 +59,7 @@
                 </div>
             </div> --}}
             {{-- Widget --}}
-            <div class="row mb-4">
+            <div class="row">
                 <div class="col-xl-3 col-md-6">
                     <div data-aos="fade-up">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
@@ -150,64 +164,23 @@
 
             {{-- Chart 1 --}}
             <div class="row mb-4">
-                <div class="col-xl-6">
-                    <div class="" data-aos="fade-up" data-aos-delay="300">
-                        <div class="card card-animate shadow-sm">
+                <div class="col-xl-12">
+                    <div data-aos="fade-up" data-aos-delay="300">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header">
-                                <h4 class="card-title mb-0">Total Data Per Month</h4>
+                                <h4 class="card-title mb-0">Total Qty Produk Per Month</h4>
                             </div>
 
                             <div class="card-body">
-                                <div id="tkbmChart" class="apex-charts" dir="ltr"></div>
+                                <div id="allProdukChart" class="apex-charts" dir="ltr"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-6">
-                    <div class="" data-aos="fade-up" data-aos-delay="300">
-                        <div class="card card-animate shadow-sm">
-                            <div class="card-header d-flex justify-content-between">
-                                <h4 class="card-title mb-0">Distribusi Qty Produk <span id="bulanQtyProduk"></span></h4>
-                                <div class="dropdown">
-                                    <a href="#"
-                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
-                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
-                                        style="background-color: #4968A6">
-                                        <i class="bx bx-filter-alt fs-5"></i>
-                                        <span>Filter</span>
-                                    </a>
 
-
-                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
-                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
-
-                                        <h6 class="fw-bold mb-3">Filter Data</h6>
-
-                                        <div class="mb-3">
-                                            <label for="bulanFilter" class="form-label">Pilih Bulan</label>
-                                            <input type="month" id="bulanFilter" class="form-control shadow-sm">
-                                        </div>
-
-                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="applyFilter">
-                                            <i class="bx bx-check-circle me-1"></i> Terapkan
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="card-body">
-                                <div id="produkDistribusi" class="apex-charts" dir="ltr"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Chart 2 --}}
-            <div class="row mb-4">
                 <div class="col-xl-12">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
-                        <div class="card card-animate shadow-sm">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header">
                                 <h4 class="card-title mb-0">Grand Total Per Month</h4>
                             </div>
@@ -218,13 +191,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {{-- Chart 3 --}}
-            <div class="row mb-4">
                 <div class="col-xl-6">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
-                        <div class="card card-animate shadow-sm">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header d-flex justify-content-between">
                                 <h4 class="card-title mb-0">Total Qty Terpal <span id="bulanQtyTerpal"></span></h4>
                                 <div class="dropdown">
@@ -260,9 +230,10 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="col-xl-6">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
-                        <div class="card card-animate shadow-sm">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header d-flex justify-content-between">
                                 <h4 class="card-title mb-0">Total Qty Slipsheet <span id="bulanQtySlipsheet"></span></h4>
                                 <div class="dropdown">
@@ -299,13 +270,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {{-- Chart 4 --}}
-            <div class="row mb-4">
                 <div class="col-xl-12">
                     <div class="" data-aos="fade-up" data-aos-delay="300">
-                        <div class="card card-animate shadow-sm">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header d-flex justify-content-between">
                                 <h4 class="card-title mb-0">Total Qty Pallet <span id="bulanQtyPallet"></span></h4>
                                 <div class="dropdown">
@@ -350,8 +318,7 @@
     <script>
         $(document).ready(function() {
             loadWidgetData();
-            tkbmChart();
-            pieProdukTkbm();
+            barProdukTkbm();
             tkbmGrandTotalChart();
             tkbmQtyTerpal();
             tkbmQtySlipsheet();
@@ -410,105 +377,6 @@
                 });
             }
 
-            function tkbmChart() {
-                $.ajax({
-                    url: "{{ url('api/dashboard/tkbm/data/per-month') }}",
-                    type: 'GET',
-                    dataType: 'json',
-                    success: function(response) {
-                        // Ambil bulan & total
-                        const categories = response.map(item => item.bulan);
-                        const data = response.map(item => item.banyak_data);
-
-                        const options = {
-                            chart: {
-                                type: 'bar',
-                                height: 300
-                            },
-                            series: [{
-                                name: 'Data TKBM',
-                                data: data
-                            }],
-                            xaxis: {
-                                categories: categories
-                            },
-                            fill: {
-                                type: 'gradient',
-                                gradient: {
-                                    shade: 'light',
-                                    type: "vertical", // "vertical" or "horizontal"
-                                    shadeIntensity: 0.5,
-                                    gradientToColors: [
-                                        '#8C6228'
-                                    ], // warna tujuan (lebih gelap dari #3FBFBF)
-                                    inverseColors: false,
-                                    opacityFrom: 1,
-                                    opacityTo: 1,
-                                    stops: [0, 100]
-                                }
-                            },
-                            colors: ['#F2C36B'],
-                            tooltip: {
-                                y: {
-                                    formatter: function(val) {
-                                        return Math.round(val);
-                                    }
-                                }
-                            }
-                        };
-
-                        const chart = new ApexCharts(document.querySelector("#tkbmChart"), options);
-                        chart.render();
-                    },
-                    error: function(err) {
-                        console.error("Gagal ambil data:", err);
-                    }
-                });
-            }
-
-            function pieProdukTkbm(bulan = null) {
-                renderChart("produkDistribusi", "{{ url('api/dashboard/tkbm/produk') }}", bulan, function(
-                    response) {
-
-                    if (!response || response.length === 0) {
-                        return {
-                            chart: {
-                                type: 'donut',
-                                height: 300
-                            },
-                            series: [],
-                            labels: [],
-                        };
-                    }
-
-                    const item = response[0]; // ambil baris pertama
-                    const totalTerpal = parseInt(item.total_terpal) || 0;
-                    const totalSlipsheet = parseInt(item.total_slipsheet) || 0;
-                    const totalPallet = parseInt(item.total_pallet) || 0;
-
-                    return {
-                        chart: {
-                            type: 'donut',
-                            height: 300
-                        },
-                        series: [totalTerpal, totalSlipsheet, totalPallet],
-                        labels: ['Terpal', 'Slipsheet', 'Pallet'],
-                        fill: {
-                            type: 'gradient',
-                        },
-                        colors: ['#F2C36B', '#4968A6', '#3FBFBF'],
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            y: {
-                                formatter: val => `${val} pcs`
-                            }
-                        }
-                    };
-                });
-            }
-
             function tkbmQtyTerpal(bulan = null) {
                 renderChart("tkbmQtyTerpal", "{{ url('api/dashboard/tkbm/qty-terpal') }}", bulan, function(
                     response) {
@@ -560,8 +428,28 @@
                         },
                         colors: ['#F2C36B'],
                         tooltip: {
-                            y: {
-                                formatter: val => val.toLocaleString("id-ID") + ' pcs'
+                            custom: function({
+                                series,
+                                seriesIndex,
+                                dataPointIndex,
+                                w
+                            }) {
+                                const item = response[dataPointIndex]; // data API per tanggal
+
+                                let val = series[seriesIndex][dataPointIndex] || 0;
+                                let fee = item.fee?.fee ?? 0;
+                                let harga = item.harga?.harga_terpal ?? 0;
+                                let tkbm = item.total_tkbm ?? 0;
+
+                                return `
+                                    <div class="my-tooltip" style="padding:8px; font-size:13px; line-height:1.5;">
+                                        <strong>${item.tanggal}</strong><br/>
+                                        <span>Qty Terpal: <b>${val.toLocaleString("id-ID")} pcs</b></span><br/>
+                                        <span>TKBM: ${tkbm} orang</span><br/>
+                                        <span>Fee: ${fee} %</span><br/>
+                                        <span>Harga: Rp ${harga.toLocaleString("id-ID")}</span>
+                                    </div>
+                                `;
                             }
                         }
                     };
@@ -619,8 +507,28 @@
                         },
                         colors: ['#4968A6'],
                         tooltip: {
-                            y: {
-                                formatter: val => val.toLocaleString("id-ID") + ' pcs'
+                            custom: function({
+                                series,
+                                seriesIndex,
+                                dataPointIndex,
+                                w
+                            }) {
+                                const item = response[dataPointIndex]; // data API per tanggal
+
+                                let val = series[seriesIndex][dataPointIndex] || 0;
+                                let fee = item.fee?.fee ?? 0;
+                                let harga = item.harga?.harga_slipsheet ?? 0;
+                                let tkbm = item.total_tkbm ?? 0;
+
+                                return `
+                                    <div class="my-tooltip" style="padding:8px; font-size:13px; line-height:1.5;">
+                                        <strong>${item.tanggal}</strong><br/>
+                                        <span>Qty Slipsheet: <b>${val.toLocaleString("id-ID")} pcs</b></span><br/>
+                                        <span>TKBM: ${tkbm} orang</span><br/>
+                                        <span>Fee: ${fee} %</span><br/>
+                                        <span>Harga: Rp ${harga.toLocaleString("id-ID")}</span>
+                                    </div>
+                                `;
                             }
                         }
                     };
@@ -679,8 +587,28 @@
                         },
                         colors: ['#3FBFBF'],
                         tooltip: {
-                            y: {
-                                formatter: val => val.toLocaleString("id-ID") + ' pcs'
+                            custom: function({
+                                series,
+                                seriesIndex,
+                                dataPointIndex,
+                                w
+                            }) {
+                                const item = response[dataPointIndex]; // data API per tanggal
+
+                                let val = series[seriesIndex][dataPointIndex] || 0;
+                                let fee = item.fee?.fee ?? 0;
+                                let harga = item.harga?.harga_pallet ?? 0;
+                                let tkbm = item.total_tkbm ?? 0;
+
+                                return `
+                                    <div class="my-tooltip" style="padding:8px; font-size:13px; line-height:1.5;">
+                                        <strong>${item.tanggal}</strong><br/>
+                                        <span>Qty Pallet: <b>${val.toLocaleString("id-ID")} pcs</b></span><br/>
+                                        <span>TKBM: ${tkbm} orang</span><br/>
+                                        <span>Fee: ${fee} %</span><br/>
+                                        <span>Harga: Rp ${harga.toLocaleString("id-ID")}</span>
+                                    </div>
+                                `;
                             }
                         }
                     };
@@ -693,12 +621,13 @@
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
-                        if (response.status && response.data.length > 0) {
+                        if (response.length > 0) { // langsung response.length
                             let categories = [];
                             let grandTotalSeries = [];
 
-                            response.data.forEach(item => {
-                                categories.push(item.bulan_nama);
+                            response.forEach(item => {
+                                // Ambil nama bulan saja (sebelum spasi)
+                                categories.push(item.bulan.split(" ")[0]);
                                 grandTotalSeries.push(parseFloat(item.grand_total));
                             });
 
@@ -768,10 +697,23 @@
                                     textAnchor: 'middle'
                                 },
                                 tooltip: {
-                                    y: {
-                                        formatter: function(val) {
-                                            return 'Rp ' + val.toLocaleString("id-ID");
-                                        }
+                                    custom: function({
+                                        series,
+                                        seriesIndex,
+                                        dataPointIndex
+                                    }) {
+                                        let item = response[
+                                            dataPointIndex]; // ambil data sesuai bar
+                                        return `
+                                            <div class="my-tooltip" style="padding:8px;">
+                                                <b>${item.bulan}</b><br/>
+                                                Produk: Rp ${parseFloat(item.total_produk).toLocaleString("id-ID")}<br/>
+                                                Fee: Rp ${parseFloat(item.total_fee).toLocaleString("id-ID")}<br/>
+                                                PPN: Rp ${parseFloat(item.total_ppn).toLocaleString("id-ID")}<br/>
+                                                PPh: Rp ${parseFloat(item.total_pph).toLocaleString("id-ID")}<br/>
+                                                <b>Grand Total: Rp ${parseFloat(item.grand_total).toLocaleString("id-ID")}</b>
+                                            </div>
+                                        `;
                                     }
                                 }
                             };
@@ -790,6 +732,85 @@
                     }
                 });
             }
+
+            function barProdukTkbm(bulan = null) {
+                renderChart("allProdukChart", "{{ url('api/dashboard/tkbm/all_qty_produk') }}", bulan, function(
+                    response) {
+                    if (!response || response.length === 0) {
+                        return {
+                            chart: {
+                                type: 'bar',
+                                height: 300
+                            },
+                            series: [],
+                            xaxis: {
+                                categories: []
+                            }
+                        };
+                    }
+
+                    // Ambil semua bulan
+                    const categories = response.map(item => item.bulan.split(" ")[0]);
+                    const dataTerpal = response.map(item => parseInt(item.total_terpal) || 0);
+                    const dataSlipsheet = response.map(item => parseInt(item.total_slipsheet) || 0);
+                    const dataPallet = response.map(item => parseInt(item.total_pallet) || 0);
+
+                    return {
+                        chart: {
+                            type: 'bar',
+                            height: 350,
+                        },
+                        series: [{
+                                name: 'Qty Terpal',
+                                data: dataTerpal
+                            },
+                            {
+                                name: 'Qty Slipsheet',
+                                data: dataSlipsheet
+                            },
+                            {
+                                name: 'Qty Pallet',
+                                data: dataPallet
+                            }
+                        ],
+                        xaxis: {
+                            categories: categories
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Pcs'
+                            }
+                        },
+                        colors: ['#F2C36B', '#4968A6', '#3FBFBF'],
+                        dataLabels: {
+                            enabled: true,
+                            formatter: val => `${val} pcs`,
+                        },
+                        plotOptions: {
+                            bar: {
+                                horizontal: false,
+                                columnWidth: '40%',
+                                borderRadius: 5,
+                                borderRadiusApplication: 'end',
+                            },
+                        },
+                        stroke: {
+                            show: true,
+                            width: 2,
+                            colors: ['transparent']
+                        },
+                        tooltip: {
+                            y: {
+                                formatter: val => `${val} pcs`
+                            }
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    };
+                });
+            }
+
 
             // Widget
             function animateCounter($el, target) {
