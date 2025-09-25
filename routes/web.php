@@ -24,18 +24,20 @@ Route::middleware('web')->group(function () {
 
 Route::middleware('auth')->group(function () {
     // Dashboard
-    Route::prefix('dashboard')->group(function () {
-        // Main
-        Route::view('/', 'dashboard')->name('dashboard');
-        Route::view('/main', 'dashboard.foreman_spv_home')->name('dashboard.main');
+    Route::middleware(['auth', 'access'])->group(function () {
+        Route::prefix('dashboard')->group(function () {
+            // Main
+            Route::view('/', 'dashboard')->name('dashboard');
+            Route::view('/main', 'dashboard.foreman_spv_home')->name('dashboard.main');
 
-        // TKBM
-        Route::view('/tkbm', 'dashboard.tkbm_dashboard')->name('dashboard.tkbm');
-        // Route::get('/tkbm/get-data', [TkbmDashboardController::class, 'tkbmDashboard'])->name('dashboard.tkbm.data');
-        Route::view('/p2h', 'dashboard.p2h_dashboard')->name('dashboard.p2h');
+            // TKBM
+            Route::view('/tkbm', 'dashboard.tkbm_dashboard')->name('dashboard.tkbm');
+            // Route::get('/tkbm/get-data', [TkbmDashboardController::class, 'tkbmDashboard'])->name('dashboard.tkbm.data');
+            Route::view('/p2h', 'dashboard.p2h_dashboard')->name('dashboard.p2h');
 
-        // Rak Management
-        Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak');
+            // Rak Management
+            Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak');
+        });
     });
 
     // Warehouse Sparepart
@@ -96,14 +98,16 @@ Route::middleware('auth')->group(function () {
     });
 
     // User
-    Route::prefix('user')->group(function () {
-        Route::get('/index', [UserController::class, 'index'])->name('user.index');
-        Route::get('/get-data', [UserController::class, 'create'])->name('user.getData');
-        Route::post('/store', [UserController::class, 'store'])->name('user.store');
-        Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('user.delete');
-        Route::get('/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
-        Route::put('/update/{id}', [UserController::class, 'update'])->name('user.update');
-        Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
-        Route::get('/profile', [UserController::class, 'profileIndex'])->name('user.profile');
+    Route::middleware(['auth', 'access'])->group(function () {
+        Route::prefix('user')->group(function () {
+            Route::get('/index', [UserController::class, 'index'])->name('user.index');
+            Route::get('/get-data', [UserController::class, 'create'])->name('user.getData');
+            Route::post('/store', [UserController::class, 'store'])->name('user.store');
+            Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('user.delete');
+            Route::get('/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
+            Route::put('/update/{id}', [UserController::class, 'update'])->name('user.update');
+            Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
+            Route::get('/profile', [UserController::class, 'profileIndex'])->name('user.profile');
+        });
     });
 });
