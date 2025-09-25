@@ -1,8 +1,8 @@
 <div class="app-menu navbar-menu">
     <!-- LOGO -->
     @php
-        $jabatan = Session::get('jabatan');
-        $bagian = Session::get('bagian');
+        $jabatan = Auth::user()->jabatan;
+        $bagian = Auth::user()->bagian;
     @endphp
     <div class="navbar-brand-box">
         <div class="navbar-brand-box ">

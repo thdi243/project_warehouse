@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Wsp\TransaksiModel;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -55,5 +56,13 @@ class User extends Authenticatable
     public function transaksi()
     {
         return $this->hasMany(TransaksiModel::class, 'id_user');
+    }
+
+    // app/Models/User.php
+    public function getImageUrlAttribute()
+    {
+        return $this->image && Storage::disk('public')->exists($this->image)
+            ? Storage::url($this->image)
+            : asset('material/assets/images/users/user-dummy-img.jpg');
     }
 }
