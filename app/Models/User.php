@@ -61,8 +61,8 @@ class User extends Authenticatable
     // app/Models/User.php
     public function getImageUrlAttribute()
     {
-        return $this->image && Storage::disk('public')->exists($this->image)
-            ? Storage::url($this->image)
+        return $this->image && url(Storage::disk('public')->exists($this->image))
+            ? url(Storage::url($this->image))
             : asset('material/assets/images/users/user-dummy-img.jpg');
     }
 }

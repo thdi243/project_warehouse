@@ -65,7 +65,7 @@ class UserController extends Controller
                     $imagePath = $imageName;
                 }
 
-                if ($imagePath && Storage::disk('public')->exists($imagePath)) {
+                if ($imagePath && url(Storage::disk('public')->exists($imagePath))) {
                     $user->image_url = url(Storage::url($imagePath));
                 } else {
                     $user->image_url = url("material/assets/images/users/user-dummy-img.jpg");
