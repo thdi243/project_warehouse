@@ -326,7 +326,7 @@
                                         <td>${item.qty_terpal ?? 0}</td>
                                         <td>${item.qty_slipsheet ?? 0}</td>
                                         <td>${item.qty_pallet ?? 0}</td>
-                                        @if (in_array(Session::get('jabatan'), ['dept_head', 'supervisor', 'foreman']))
+                                        @if (Session::get('jabatan') !== 'operator'))
                                             <td>Rp ${fmtID(item.total_qty)}</td>
                                             <td>Rp ${fmtID(item.total_fee)}</td>
                                             <td class="text-white">
