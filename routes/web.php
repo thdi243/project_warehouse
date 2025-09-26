@@ -3,13 +3,13 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\P2hController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\TkbmController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
-use App\Http\Controllers\Api\TkbmDashboardController;
+// use App\Http\Controllers\Api\TkbmDashboardController;
 
 Route::get('/', function () {
     return view('auth.login');

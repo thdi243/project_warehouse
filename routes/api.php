@@ -2,8 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\P2hController;
-use App\Http\Controllers\TkbmController;
+use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspRakController;
+use App\Http\Controllers\Api\WspManRakController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Api\P2hDashboardController;
@@ -11,7 +12,6 @@ use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
-use App\Http\Controllers\Api\WspManRakController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -84,7 +84,8 @@ Route::prefix('p2h')->group(function () {
 
 Route::prefix('wsp')->group(function () {
     Route::get('/data/barang', [WspBarangController::class, 'getDataBarang']);
-    Route::get('/data/rak', [WspBarangController::class, 'getKodeRak']);
+    Route::get('/data/rak', [WspBarangController::class, 'getDataRak']);
+    Route::get('/rak/filters', [WspRakController::class, 'getFilters']);
     Route::delete('/delete/barang/{id}', [WspBarangController::class, 'destroy']);
     Route::get('/items/search', [WspBarangController::class, 'searchItems']);
     Route::get('/show/barang/{id}', [WspBarangController::class, 'show']);
