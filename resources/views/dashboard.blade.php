@@ -40,7 +40,8 @@
                         <h1 class="fw-bold text-primary mb-3" data-aos="fade-up">Welcome to Warehouse Management System!</h1>
                         <p class="lead text-muted mb-4" data-aos="fade-up" data-aos-delay="100">Hai, <span
                                 class="text-primary fw-semibold" data-aos="fade-up"
-                                data-aos-delay="100">{{ Auth::user()->username ?? 'User' }}</span> 👋</p>
+                                data-aos-delay="100">{{ ucwords(str_replace('_', ' ', Auth::user()->username ?? 'Warehouse User')) }}</span>
+                            👋</p>
 
                         {{-- Simple Info Card --}}
                         <div class="card shadow-sm border-0 mb-4" data-aos="fade-up" data-aos-delay="200">
@@ -65,11 +66,13 @@
                                     </div>
                                     <div class="col-4" data-aos="fade-up">
                                         <small class="text-muted">Departemen</small>
-                                        <p class="mb-0 fw-medium text-success">{{ Auth::user()->departemen ?? '-' }}</p>
+                                        <p class="mb-0 fw-medium text-success">
+                                            {{ ucwords(str_replace('_', ' ', Auth::user()->departemen ?? '-')) }}</p>
                                     </div>
                                     <div class="col-4" data-aos="fade-up">
                                         <small class="text-muted">Bagian</small>
-                                        <p class="mb-0 fw-medium text-danger">{{ Auth::user()->bagian ?? '-' }}</p>
+                                        <p class="mb-0 fw-medium text-danger">
+                                            {{ ucwords(str_replace('_', ' ', Auth::user()->bagian ?? '-')) }}</p>
                                     </div>
                                 </div>
                             </div>

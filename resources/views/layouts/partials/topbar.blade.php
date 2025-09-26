@@ -79,7 +79,7 @@
                         </h6>
                         <a class="dropdown-item" href="{{ route('user.profile') }}"><i
                                 class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i> <span
-                                class="align-middle">Profile</span></a>
+                                class="align-middle me-2">Profile</span><span class="badge bg-success">New</span></a>
                         <a id="logoutButton" class="dropdown-item cursor-pointer"><i
                                 class="mdi mdi-logout text-muted fs-16 align-middle me-1"></i>
                             <span class="align-middle" data-key="t-logout">Logout</span></a>

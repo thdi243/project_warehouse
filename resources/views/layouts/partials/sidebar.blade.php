@@ -144,32 +144,50 @@
                                 <div class="collapse menu-dropdown {{ request()->routeIs('p2h.*') ? 'show' : '' }}"
                                     id="sideBarP2h">
                                     <ul class="nav nav-sm flex-column">
-                                        <li class="nav-item">
-                                            <a href="#" data-bs-target="#sidebarP2hOnline"
-                                                data-bs-toggle="collapse" role="button"
-                                                aria-expanded="{{ request()->routeIs('p2h.online.*') ? 'true' : 'false' }}"
-                                                aria-controls="sidebarP2hOnline" class="nav-link"
-                                                {{-- class="nav-link {{ request()->routeIs('p2h.online.*') ? 'active' : '' }}" --}} data-key="t-m-tkbm">
-                                                P2H Online
-                                            </a>
-                                            <div class="collapse menu-dropdown {{ request()->routeIs('p2h.online.*') ? 'show' : '' }}"
-                                                id="sidebarP2hOnline">
-                                                <ul class="nav nav-sm flex-column">
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('p2h.online.index') }}"
-                                                            class="nav-link {{ request()->routeIs('p2h.online.index') ? 'active' : '' }}"
-                                                            data-key="t-input-p2h">
-                                                            Form P2H </a>
-                                                    </li>
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('p2h.online.data') }}"
-                                                            class="nav-link {{ request()->routeIs('p2h.online.data') ? 'active' : '' }}"
-                                                            data-key="t-chat">
-                                                            Data P2H </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </li>
+                                        @if ($jabatan === 'operator')
+                                            {{-- langsung form & data tanpa P2H Online --}}
+                                            <li class="nav-item">
+                                                <a href="{{ route('p2h.online.index') }}"
+                                                    class="nav-link {{ request()->routeIs('p2h.online.index') ? 'active' : '' }}"
+                                                    data-key="t-input-p2h">
+                                                    Form P2H
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a href="{{ route('p2h.online.data') }}"
+                                                    class="nav-link {{ request()->routeIs('p2h.online.data') ? 'active' : '' }}"
+                                                    data-key="t-chat">
+                                                    Data P2H
+                                                </a>
+                                            </li>
+                                        @else
+                                            <li class="nav-item">
+                                                <a href="#" data-bs-target="#sidebarP2hOnline"
+                                                    data-bs-toggle="collapse" role="button"
+                                                    aria-expanded="{{ request()->routeIs('p2h.online.*') ? 'true' : 'false' }}"
+                                                    aria-controls="sidebarP2hOnline" class="nav-link"
+                                                    {{-- class="nav-link {{ request()->routeIs('p2h.online.*') ? 'active' : '' }}" --}} data-key="t-m-tkbm">
+                                                    P2H Online
+                                                </a>
+                                                <div class="collapse menu-dropdown {{ request()->routeIs('p2h.online.*') ? 'show' : '' }}"
+                                                    id="sidebarP2hOnline">
+                                                    <ul class="nav nav-sm flex-column">
+                                                        <li class="nav-item">
+                                                            <a href="{{ route('p2h.online.index') }}"
+                                                                class="nav-link {{ request()->routeIs('p2h.online.index') ? 'active' : '' }}"
+                                                                data-key="t-input-p2h">
+                                                                Form P2H </a>
+                                                        </li>
+                                                        <li class="nav-item">
+                                                            <a href="{{ route('p2h.online.data') }}"
+                                                                class="nav-link {{ request()->routeIs('p2h.online.data') ? 'active' : '' }}"
+                                                                data-key="t-chat">
+                                                                Data P2H </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </li>
+                                        @endif
                                         @if ($jabatan !== 'operator')
                                             <li class="nav-item">
                                                 <a href="#" data-bs-target="#sidebarRegUnitP2h"
