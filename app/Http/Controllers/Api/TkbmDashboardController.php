@@ -391,7 +391,6 @@ class TkbmDashboardController extends Controller
             "no_dok" => $noDok
         ];
 
-
         $pdf = Pdf::loadView('pdf.tkbm_report', [
             "data" => $data,
             "summary" => $summary,

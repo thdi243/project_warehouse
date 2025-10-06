@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\Wsp;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Tkbm\TkbmModel;
 use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Tkbm\TkbmFeeModel;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Tkbm\TkbmHargaProdukModel;
+use App\Http\Controllers\Controller;
 use App\Models\Tkbm\TotalsTkbmModel;
+use App\Models\Tkbm\TkbmHargaProdukModel;
 
 class TkbmController extends Controller
 {
@@ -182,9 +183,11 @@ class TkbmController extends Controller
         foreach ($data as $row) {
             $feeData = TkbmFeeModel::latest()->first();
 
-            $totalPpn = ($feeData->ppn / 100) * $row->total_fee;
-            $totalPph = ($feeData->pph / 100) * $row->total_fee;
-            $grandTotal = $row->total_produk + $row->total_fee + $totalPpn - $totalPph;
+            $totalFee = $row->total_qty * ($feeData->fee / 100);
+
+            $totalPpn = ($feeData->ppn / 100) * $totalFee;
+            $totalPph = ($feeData->pph / 100) * $totalFee;
+            $grandTotal = $row->total_produk + $totalFee + $totalPpn - $totalPph;
 
             TotalsTkbmModel::updateOrCreate(
                 ['month' => $row->month, 'year' => $row->year],
@@ -193,7 +196,7 @@ class TkbmController extends Controller
                     'total_slipsheet' => $row->total_slipsheet,
                     'total_pallet' => $row->total_pallet,
                     'total_produk' => $row->total_produk,
-                    'total_fee' => $row->total_fee,
+                    'total_fee' => $totalFee,
                     'total_ppn' => $totalPpn,
                     'total_pph' => $totalPph,
                     'grand_total' => $grandTotal,
@@ -310,16 +313,16 @@ class TkbmController extends Controller
             'keterangan' => 'nullable|string|max:255',
         ]);
 
-        $data = TkbmModel::find($id);
+        $dataTkbm = TkbmModel::find($id);
 
-        if (!$data) {
+        if (!$dataTkbm) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Data tidak ditemukan',
             ], 404);
         }
 
-        // cek data duplikat berdasarkan tanggal dan shift, kecuali data yang sedang diupdate
+        // Cek data duplikat (Sudah benar)
         $exist = TkbmModel::where('date', $request->date)
             ->where('shift', $request->shift)
             ->where('id', '!=', $id)
@@ -332,19 +335,75 @@ class TkbmController extends Controller
             ], 422);
         }
 
-        // hitung total qty
-        $totalQty = (($request->qty_terpal ?? 0) * 770) +
-            (($request->qty_slipsheet ?? 0) * 440) +
-            (($request->qty_pallet ?? 0) * 1100);
+        // --- 1. AMBIL NILAI LAMA (UNTUK ROLLBACK) ---
+        // Simpan nilai lama sebelum di-update, termasuk bulan/tahun lama
+        $oldMonth = date('m', strtotime($dataTkbm->date));
+        $oldYear = date('Y', strtotime($dataTkbm->date));
 
-        // ambil data fee terakhir
-        $lastFeeData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
-        $fee = $lastFeeData ? $lastFeeData->fee : 0;
-        $feeAct = ($fee / 100) * $totalQty;
+        $oldTotalQty = $dataTkbm->total_qty;
+        $oldTotalFee = $dataTkbm->total_fee;
+
+        // Untuk perhitungan PPN/PPH lama, kita harus hitung ulang dari fee_id lama
+        $oldFeeData = TkbmFeeModel::find($dataTkbm->fee_id);
+        $oldTotalPpn = ($oldFeeData && $oldFeeData->ppn) ? ($oldFeeData->ppn / 100) * $oldTotalFee : 0;
+        $oldTotalPph = ($oldFeeData && $oldFeeData->pph) ? ($oldFeeData->pph / 100) * $oldTotalFee : 0;
+        $oldGrandTotal = $oldTotalQty + $oldTotalFee + $oldTotalPpn - $oldTotalPph;
+
+
+        // --- 2. HITUNG NILAI BARU (SAMA SEPERTI DI STORE) ---
+
+        $lastFeeData = TkbmFeeModel::latest()->first();
+        $lastHarga = TkbmHargaProdukModel::latest()->first();
+
+        if (!$lastHarga || !$lastFeeData) {
+            return response()->json(['ok' => false, 'message' => 'Data Harga atau Fees & Taxes belum tersedia.'], 422);
+        }
+
+        // Hitung total produk (total_qty) berdasarkan harga terbaru
+        $totalProdukBaru = (($request->qty_terpal ?? 0) * $lastHarga['harga_terpal']) +
+            (($request->qty_slipsheet ?? 0) * $lastHarga['harga_slipsheet']) +
+            (($request->qty_pallet ?? 0) * $lastHarga['harga_pallet']);
+
+        $hargaIdBaru = $lastHarga->id;
+        $feeIdBaru = $lastFeeData->id;
+
+        // Hitung total fee baru
+        $feePersenBaru = $lastFeeData->fee;
+        $totalFeeBaru = ($feePersenBaru / 100) * $totalProdukBaru;
+
+        // Hitung Pajak baru
+        $totalPpnBaru = ($lastFeeData->ppn / 100) * $totalFeeBaru;
+        $totalPphBaru = ($lastFeeData->pph / 100) * $totalFeeBaru;
+        $grandTotalBaru = $totalProdukBaru + $totalFeeBaru + $totalPpnBaru - $totalPphBaru;
+
+        // Ambil bulan & tahun baru (mungkin berubah)
+        $newMonth = date('m', strtotime($request->date));
+        $newYear = date('Y', strtotime($request->date));
+
 
         try {
-            // Update data di database (fee simpan nilai fee, bukan id)
-            $data->update([
+            DB::beginTransaction();
+
+            // --- 3. ROLLBACK DARI TOTALS LAMA ---
+            $totalsLama = TotalsTkbmModel::where('month', $oldMonth)
+                ->where('year', $oldYear)
+                ->first();
+
+            if ($totalsLama) {
+                // Kurangi totals dengan nilai lama
+                $totalsLama->total_terpal    -= $dataTkbm->qty_terpal;
+                $totalsLama->total_slipsheet -= $dataTkbm->qty_slipsheet;
+                $totalsLama->total_pallet    -= $dataTkbm->qty_pallet;
+                $totalsLama->total_produk    -= $oldTotalQty;
+                $totalsLama->total_fee       -= $oldTotalFee;
+                $totalsLama->total_ppn       -= $oldTotalPpn;
+                $totalsLama->total_pph       -= $oldTotalPph;
+                $totalsLama->grand_total     -= $oldGrandTotal;
+                $totalsLama->save();
+            }
+
+            // --- 4. UPDATE DATA TKBM ---
+            $dataTkbm->update([
                 'date' => $request->date,
                 'petugas' => $request->petugas,
                 'shift' => $request->shift,
@@ -353,16 +412,56 @@ class TkbmController extends Controller
                 'qty_pallet' => $request->qty_pallet ?? 0,
                 'jml_tkbm' => $request->jml_tkbm ?? 0,
                 'keterangan' => $request->keterangan ?? null,
-                'total_qty' => $totalQty,
-                'total_fee' => $feeAct,
-                'fee_id' => $fee,
+                'total_qty' => $totalProdukBaru,
+                'total_fee' => $totalFeeBaru,
+                'fee_id' => $feeIdBaru,       // Simpan ID, BUKAN persentase fee
+                'harga_id' => $hargaIdBaru,   // Simpan ID harga
             ]);
+
+            // --- 5. APLIKASIKAN KE TOTALS BARU ---
+
+            // Cek apakah bulan/tahun totals yang dituju sudah ada
+            $totalsBaru = TotalsTkbmModel::firstOrNew([
+                'month' => $newMonth,
+                'year' => $newYear,
+            ]);
+
+            // Jika data baru atau data lama tapi di bulan yang sama
+            if ($totalsBaru->exists) {
+                // Update totals (increment)
+                $totalsBaru->update([
+                    'total_terpal'    => $totalsBaru->total_terpal + ($request->qty_terpal ?? 0),
+                    'total_slipsheet' => $totalsBaru->total_slipsheet + ($request->qty_slipsheet ?? 0),
+                    'total_pallet'    => $totalsBaru->total_pallet + ($request->qty_pallet ?? 0),
+                    'total_produk'    => $totalsBaru->total_produk + $totalProdukBaru,
+                    'total_fee'       => $totalsBaru->total_fee + $totalFeeBaru,
+                    'total_ppn'       => $totalsBaru->total_ppn + $totalPpnBaru,
+                    'total_pph'       => $totalsBaru->total_pph + $totalPphBaru,
+                    'grand_total'     => $totalsBaru->grand_total + $grandTotalBaru,
+                ]);
+            } else {
+                // Buat record baru (jika bulan/tahun berubah dan totals belum ada)
+                $totalsBaru->fill([
+                    'total_terpal'    => $request->qty_terpal ?? 0,
+                    'total_slipsheet' => $request->qty_slipsheet ?? 0,
+                    'total_pallet'    => $request->qty_pallet ?? 0,
+                    'total_produk'    => $totalProdukBaru,
+                    'total_fee'       => $totalFeeBaru,
+                    'total_ppn'       => $totalPpnBaru,
+                    'total_pph'       => $totalPphBaru,
+                    'grand_total'     => $grandTotalBaru,
+                ])->save();
+            }
+
+            DB::commit();
+
             return response()->json([
                 'ok' => true,
-                'message' => 'Data berhasil diupdate',
-                'data' => $data,
+                'message' => 'Data berhasil diupdate dan total bulanan telah diperbarui',
+                'data' => $dataTkbm,
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'ok' => false,
                 'message' => 'Gagal mengupdate data: ' . $e->getMessage(),
@@ -375,9 +474,9 @@ class TkbmController extends Controller
      */
     public function destroy(string $id)
     {
-        $data = TkbmModel::find($id);
+        $dataTkbm = TkbmModel::find($id);
 
-        if (!$data) {
+        if (!$dataTkbm) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Data tidak ditemukan',
@@ -385,16 +484,60 @@ class TkbmController extends Controller
         }
 
         try {
-            $data->delete();
+            DB::beginTransaction();
+            $date = \Carbon\Carbon::parse($dataTkbm->date);
+            $month = $date->month;
+            $year = $date->year;
+
+            // 2. Cari record totals_tkbm yang sesuai
+            $dataTotals = TotalsTkbmModel::where('month', $month)
+                ->where('year', $year)
+                ->first();
+
+            // Cek jika record totals_tkbm ditemukan
+            if ($dataTotals) {
+                $dataTotals->total_terpal    -= $dataTkbm->qty_terpal;
+                $dataTotals->total_slipsheet -= $dataTkbm->qty_slipsheet;
+                $dataTotals->total_pallet    -= $dataTkbm->qty_pallet;
+                $dataTotals->total_produk    -= $dataTkbm->total_qty;
+                $dataTotals->total_fee       -= $dataTkbm->total_fee;
+
+                $relevantFeeData = TkbmFeeModel::find($dataTkbm->fee_id);
+
+                if ($relevantFeeData) {
+                    $ppnPersen = $relevantFeeData->ppn;
+                    $pphPersen = $relevantFeeData->pph;
+
+                    $newTotalPpn = ($ppnPersen / 100) * $dataTotals->total_fee;
+                    $newTotalPph = ($pphPersen / 100) * $dataTotals->total_fee;
+
+                    // Hitung ulang Grand Total Bulanan
+                    $newGrandTotal = $dataTotals->total_produk + $dataTotals->total_fee + $newTotalPpn - $newTotalPph;
+
+                    // Update kolom di totals_tkbm
+                    $dataTotals->total_ppn   = $newTotalPpn;
+                    $dataTotals->total_pph   = $newTotalPph;
+                    $dataTotals->grand_total = $newGrandTotal;
+
+                    // 4. Simpan perubahan pada totals_tkbm
+                    $dataTotals->save();
+                }
+            }
+
+            $dataTkbm->delete();
+
+            DB::commit();
 
             return response()->json([
                 'ok' => true,
-                'message' => 'Data berhasil dihapus',
+                'message' => 'Data berhasil dihapus dan total bulanan telah diperbarui',
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
+            // Penanganan error
             return response()->json([
                 'ok' => false,
-                'message' => 'Gagal menghapus data: ' . $e->getMessage(),
+                'message' => 'Gagal menghapus data dan memperbarui total: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -673,37 +816,76 @@ class TkbmController extends Controller
      */
     public function simpanFeeTkbm(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'fee' => 'numeric',
             'ppn' => 'numeric',
             'pph' => 'numeric',
         ]);
 
-        // Ambil data terakhir dari database
+        // Ambil data terakhir untuk fallback
         $lastData = TkbmFeeModel::orderBy('created_at', 'desc')->first();
 
-        // Jika fee, ppn, atau pph bernilai 0 atau null, gunakan nilai dari data terakhir (jika ada)
-        $fee = ($request->fee !== null && $request->fee != 0) ? $request->fee : ($lastData->fee ?? 0);
-        $ppn = ($request->ppn !== null && $request->ppn != 0) ? $request->ppn : ($lastData->ppn ?? 0);
-        $pph = ($request->pph !== null && $request->pph != 0) ? $request->pph : ($lastData->pph ?? 0);
+        // Tentukan nilai yang akan disimpan, menggunakan nilai terakhir sebagai fallback jika input 0/null
+        $newFee = ($request->fee !== null && $request->fee != 0) ? $request->fee : ($lastData->fee ?? 0);
+        $newPpn = ($request->ppn !== null && $request->ppn != 0) ? $request->ppn : ($lastData->ppn ?? 0);
+        $newPph = ($request->pph !== null && $request->pph != 0) ? $request->pph : ($lastData->pph ?? 0);
 
-        // Simpan data ke database
-        $save = TkbmFeeModel::create([
-            'fee' => $fee,
-            'ppn' => $ppn,
-            'pph' => $pph,
-        ]);
+        try {
+            DB::beginTransaction();
 
-        return response()->json([
-            'ok' => true,
-            'message' => 'Data Fee TKBM berhasil disimpan!',
-            'data' => $save,
-        ], 200);
+            $save = TkbmFeeModel::create([
+                'fee' => $newFee,
+                'ppn' => $newPpn,
+                'pph' => $newPph,
+            ]);
+
+            // Cek apakah PPN atau PPH benar-benar berubah dari nilai sebelumnya
+            $isPpnChanged = ($lastData ? $lastData->ppn : 0) != $newPpn;
+            $isPphChanged = ($lastData ? $lastData->pph : 0) != $newPph;
+
+            if ($isPpnChanged || $isPphChanged) {
+
+                // Ambil semua record totals_tkbm yang ada
+                $allTotals = TotalsTkbmModel::all();
+
+                foreach ($allTotals as $totals) {
+                    // Total Fee bulanan tidak berubah
+                    $totalFeeBulanan = $totals->total_fee;
+
+                    // Hitung ulang PPN & PPH bulanan menggunakan rate BARU
+                    $newTotalPpn = ($newPpn / 100) * $totalFeeBulanan;
+                    $newTotalPph = ($newPph / 100) * $totalFeeBulanan;
+
+                    $newGrandTotal = $totals->total_produk + $totals->total_fee + $newTotalPpn - $newTotalPph;
+
+                    // Update totals_tkbm
+                    $totals->update([
+                        'total_ppn' => $newTotalPpn,
+                        'total_pph' => $newTotalPph,
+                        'grand_total' => $newGrandTotal,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Data Fee TKBM berhasil disimpan dan Total PPN/PPH bulanan telah diperbarui!',
+                'data' => $save,
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'ok' => false,
+                'message' => 'Gagal menyimpan data Master Fee dan memperbarui total: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function simpanHargaProduk(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'terpal' => 'numeric',
             'slipsheet' => 'numeric',
             'pallet' => 'numeric',
