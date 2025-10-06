@@ -222,7 +222,7 @@
                                         <option value="" disabled selected>Pilih Bagian</option>
                                         <option value="warehouse">Warehouse</option>
                                         <option value="warehouse_co_product">Warehouse Co Product</option>
-                                        <option value="warehouse_finish_good">Warehouse Finish Good</option>
+                                        <option value="warehouse_finish_goods">Warehouse Finish Good</option>
                                         <option value="warehouse_raw_material">Warehouse Raw Material</option>
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
                                     </select>
@@ -323,7 +323,7 @@
                                         <option value="" disabled>Pilih Bagian</option>
                                         <option value="warehouse">Warehouse</option>
                                         <option value="warehouse_co_product">Warehouse Co Product</option>
-                                        <option value="warehouse_finish_good">Warehouse Finish Good</option>
+                                        <option value="warehouse_finish_goods">Warehouse Finish Good</option>
                                         <option value="warehouse_raw_material">Warehouse Raw Material</option>
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
                                     </select>

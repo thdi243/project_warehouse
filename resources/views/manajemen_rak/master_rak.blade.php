@@ -28,12 +28,24 @@
                             </button>
                         </div>
                         <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <select id="filterArea" class="form-select">
+                                        <option value="">-- All Area --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select id="filterNama" class="form-select">
+                                        <option value="">-- All Nama --</option>
+                                    </select>
+                                </div>
+                            </div>
                             <table class="nowrap table table-striped dt-responsive" id="wspRakTable" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>No</th>
                                         <th>Petugas</th>
-                                        <th>Kode Rak</th>
+                                        <th>Area Rak</th>
                                         <th>Nama Rak</th>
                                         <th>Kolom Rak</th>
                                         <th>Level Rak</th>
@@ -67,7 +79,7 @@
                     <div class="modal-body">
                         <div class="row gy-4">
                             <div class="col-xxl-3 col-md-6">
-                                <label for="kodeRak" class="form-label">Kode Rak</label>
+                                <label for="kodeRak" class="form-label">Area Rak</label>
                                 <input type="text" class="form-control" id="kodeRak" name="kodeRak"
                                     placeholder="Cth: FL1" required>
                             </div>
@@ -120,7 +132,7 @@
                         <input type="hidden" id="editId" name="id">
                         <div class="row gy-4">
                             <div class="col-xxl-3 col-md-6">
-                                <label for="kodeRakEdit" class="form-label">Kode Rak</label>
+                                <label for="kodeRakEdit" class="form-label">Area Rak</label>
                                 <input type="text" class="form-control" id="kodeRakEdit" name="kodeRakEdit" required>
                             </div>
                             <div class="col-xxl-3 col-md-6">
@@ -152,83 +164,15 @@
             </div>
         </div>
     </div>
-
-    {{-- Modal detail --}}
-    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detail Data Rak</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row gy-2">
-                        <div class="col-md-4">
-                            <strong>MID Rak:</strong>
-                            <p id="detailMid"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Nama Rak:</strong>
-                            <p id="detailNama"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Kode Rak:</strong>
-                            <p id="detailKodeRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Nama Rak:</strong>
-                            <p id="detailNamaRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Kolom Rak:</strong>
-                            <p id="detailKolomRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Level Rak:</strong>
-                            <p id="detailLevelRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Box Rak:</strong>
-                            <p id="detailBoxRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Qty Rak:</strong>
-                            <p id="detailQty"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Petugas:</strong>
-                            <p id="detailUser"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Tanggal Transaksi:</strong>
-                            <p id="detailTanggal"></p>
-                        </div>
-                        {{-- <div class="col-md-4">
-                            <strong>Jenis Transaksi:</strong>
-                            <p id="jenisTransaksi"></p>
-                        </div> --}}
-                        <div class="col-md-12">
-                            <strong>Foto Rak:</strong>
-                            <div>
-                                <img id="detailImage" src="" alt="Foto Rak"
-                                    style="max-width: 200px; max-height: 150px;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @section('scripts')
     <script>
         $(document).ready(function() {
+            getFilters();
+
             // Load table
-            $('#wspRakTable').DataTable({
+            let table = $('#wspRakTable').DataTable({
                 processing: true,
                 serverSide: false,
                 responsive: true,
@@ -240,9 +184,8 @@
                 },
                 columns: [{
                         data: null,
-                        render: function(data, type, row, meta) {
-                            return meta.row + 1; // otomatis nomor urut
-                        }
+                        orderable: false,
+                        searchable: false
                     },
                     {
                         data: 'name',
@@ -291,10 +234,10 @@
                             render: function(data, type, row) {
                                 return `
                                     <button class="btn btn-sm btn-primary edit-btn" data-id="${row.id}" title="Edit Data">
-                                        <i class="mdi mdi-pencil"></i>
+                                        <i class="mdi mdi-pencil me-2"></i>Edit
                                     </button>
                                     <button class="btn btn-sm btn-danger delete-btn" data-id="${row.id}" title="Delete Data">
-                                        <i class="mdi mdi-delete"></i>
+                                        <i class="mdi mdi-delete me-2"></i>Delete
                                     </button>
                                 `;
                             }
@@ -307,6 +250,20 @@
                 language: {
                     lengthMenu: "Show _MENU_ entries",
                 }
+            });
+
+            // auto number tabel
+            table.on('draw.dt', function() {
+                let info = table.page.info();
+                table.column(0, {
+                        search: 'applied',
+                        order: 'applied',
+                        page: 'current'
+                    })
+                    .nodes()
+                    .each(function(cell, i) {
+                        cell.innerHTML = i + 1 + info.start;
+                    });
             });
 
             // Submit registrasi rack data
@@ -452,6 +409,31 @@
                         });
                     }
                 });
+            });
+
+            // filtering
+            function getFilters() {
+                $('#filterArea').empty().append('<option value="">All Area</option>');
+                $('#filterNama').empty().append('<option value="">All Nama</option>');
+
+                $.get("{{ url('api/wsp/rak/filters') }}", function(res) {
+                    res.area.forEach(function(item) {
+                        $('#filterArea').append(`<option value="${item}">${item}</option>`);
+                    });
+
+                    res.nama.forEach(function(item) {
+                        $('#filterNama').append(`<option value="${item}">${item}</option>`);
+                    });
+                });
+            }
+
+            // Apply filter
+            $('#filterArea').on('change', function() {
+                table.column(2).search(this.value).draw();
+            });
+
+            $('#filterNama').on('change', function() {
+                table.column(3).search(this.value).draw();
             });
         })
     </script>

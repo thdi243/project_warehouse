@@ -63,34 +63,36 @@
                 <div class="col-xl-3 col-md-6">
                     <div data-aos="fade-up">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
-                            <div class="card-body bg-gradient-to-r from-green-100 via-white to-green-50">
+                            <div class="card-body" style="background: linear-gradient(135deg, #a8e6cf, #dcedc1, #e6f4ea);">
+
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <p class="text-uppercase fw-bold text-muted mb-0">Total Qty Terpal</p>
+                                    <p class="text-uppercase fw-bold text-dark mb-0">Total Qty Terpal</p>
                                     <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
-                                        style="width: 50px; height: 50px; background: #e6f4ea;">
-                                        <i class="bx bx-package text-success fs-1"></i>
+                                        style="width: 50px; height: 50px; background: rgba(255,255,255,0.6);">
+                                        <i class="bx bx-package text-dark fs-1"></i>
                                     </div>
                                 </div>
 
                                 <div>
                                     <h4 class="fs-3 fw-semibold ff-secondary mb-2 text-dark">
-                                        <span class="counter-value text-success" id="totalQtyTerpal">0</span>
-                                        <span class="text-success fs-5 ms-2">Pcs</span>
+                                        <span class="counter-value text-dark" id="totalQtyTerpal">0</span>
+                                        <span class="fs-5 ms-2 text-dark">Pcs</span>
                                     </h4>
-                                    <p class="text-muted small mb-0">
+                                    <p class="small mb-0 text-dark opacity-75">
                                         <i class="bx bx-calendar me-1"></i> Qty Terpal by Month
                                     </p>
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
                     <div data-aos="fade-up">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
-                            <div class="card-body bg-gradient-to-r from-green-100 via-white to-green-50">
+                            <div class="card-body" style="background: linear-gradient(135deg, #dbe8ff, #ffffff, #e6ebf4);">
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <p class="text-uppercase fw-bold text-muted mb-0">Total Qty Slipsheet</p>
+                                    <p class="text-uppercase fw-bold text-dark mb-0">Total Qty Slipsheet</p>
                                     <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
                                         style="width: 50px; height: 50px; background: #e6ebf4;">
                                         <i class="bx bx-layer text-info fs-1"></i>
@@ -99,7 +101,7 @@
 
                                 <div>
                                     <h4 class="fs-3 fw-semibold ff-secondary mb-2 text-dark">
-                                        <span class="counter-value text-info" id="totalQtySlipsheet"></span>
+                                        <span class="counter-value text-info" id="totalQtySlipsheet">0</span>
                                         <span class="text-info fs-5 ms-2">Pcs</span>
                                     </h4>
                                     <p class="text-muted small mb-0">
@@ -113,9 +115,9 @@
                 <div class="col-xl-3 col-md-6">
                     <div data-aos="fade-up">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
-                            <div class="card-body bg-gradient-to-r from-green-100 via-white to-green-50">
+                            <div class="card-body" style="background: linear-gradient(135deg, #fff4db, #ffffff, #f4f2e6);">
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <p class="text-uppercase fw-bold text-muted mb-0">Total Qty Pallet</p>
+                                    <p class="text-uppercase fw-bold text-dark mb-0">Total Qty Pallet</p>
                                     <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
                                         style="width: 50px; height: 50px; background: #f4f2e6;">
                                         <i class="bx bx-table text-warning fs-1"></i>
@@ -138,9 +140,9 @@
                 <div class="col-xl-3 col-md-6">
                     <div data-aos="fade-up">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
-                            <div class="card-body bg-gradient-to-r from-green-100 via-white to-green-50">
+                            <div class="card-body" style="background: linear-gradient(135deg, #e7e3ff, #ffffff, #e6e7f4);">
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <p class="text-uppercase fw-bold text-muted mb-0">Grand Total BPS</p>
+                                    <p class="text-uppercase fw-bold text-dark mb-0">Grand Total BPS</p>
                                     <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
                                         style="width: 50px; height: 50px; background: #e6e7f4;">
                                         <i class="bx bx-bar-chart text-primary fs-1"></i>

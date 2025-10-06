@@ -105,6 +105,21 @@ class WspRakController extends Controller
         return response()->json($dataRak);
     }
 
+    public function getFilters()
+    {
+        $area = RakModel::select('kode_rak')
+            ->distinct()
+            ->pluck('kode_rak');
+
+        $nama = RakModel::select('nama_rak')
+            ->distinct()
+            ->pluck('nama_rak');
+
+        return response()->json([
+            'area' => $area,
+            'nama' => $nama
+        ]);
+    }
 
 
     /**

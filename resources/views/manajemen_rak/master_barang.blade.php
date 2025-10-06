@@ -56,7 +56,11 @@
                                         <th>Petugas</th>
                                         <th>Mid Barang</th>
                                         <th>Nama Barang</th>
-                                        <th>Lokasi</th>
+                                        <th>Area Rak</th>
+                                        <th>Nama Rak</th>
+                                        <th>Kolom Rak</th>
+                                        <th>Level Rak</th>
+                                        <th>Box Rak</th>
                                         {{-- <th>Jenis Transaksi</th> --}}
                                         @if (Session::get('jabatan') !== 'operator')
                                             <th data-orderable="false">Action</th>
@@ -326,7 +330,31 @@
                         }
                     },
                     {
-                        data: 'lokasi',
+                        data: 'rak.area_rak',
+                        render: function(data, type, row) {
+                            return data || '-';
+                        }
+                    },
+                    {
+                        data: 'rak.nama_rak',
+                        render: function(data, type, row) {
+                            return data || '-';
+                        }
+                    },
+                    {
+                        data: 'rak.kolom_rak',
+                        render: function(data, type, row) {
+                            return data || '-';
+                        }
+                    },
+                    {
+                        data: 'rak.level_rak',
+                        render: function(data, type, row) {
+                            return data || '-';
+                        }
+                    },
+                    {
+                        data: 'rak.box_rak',
                         render: function(data, type, row) {
                             return data || '-';
                         }
@@ -338,13 +366,10 @@
                             render: function(data, type, row) {
                                 return `
                                     <button class="btn btn-sm btn-primary edit-btn" data-id="${row.id}" title="Edit Data">
-                                        <i class="mdi mdi-pencil"></i>
+                                        <i class="mdi mdi-pencil me-2"></i>Edit
                                     </button>
                                     <button class="btn btn-sm btn-danger delete-btn" data-id="${row.id}" title="Delete Data">
-                                        <i class="mdi mdi-delete"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-info detail-btn" data-id="${row.id}" title="Detail Data">
-                                        <i class="mdi mdi-eye"></i>
+                                        <i class="mdi mdi-delete me-2"></i>Delete
                                     </button>
                                 `;
                             }
@@ -392,6 +417,8 @@
             });
 
             // registrasi btn modal
+            let rakData = {};
+
             $('#modalRegistrasi').on('shown.bs.modal', function() {
                 let kodeRakSelect = $("#kode_rak");
                 kodeRakSelect.empty().append('<option value="">Pilih Kode Rak</option>');
@@ -406,7 +433,9 @@
                                 text: res.message,
                             });
                         } else {
-                            res.data.forEach(kode => {
+                            rakData = res.data; // simpan semua data rak
+
+                            Object.keys(rakData).forEach(kode => {
                                 kodeRakSelect.append(
                                     `<option value="${kode}">${kode}</option>`);
                             });
@@ -422,22 +451,6 @@
                     });
             });
 
-            const rakData = {
-                FL1: {
-                    nama_rak: ["A", "B", "C", "D", "E", "F", "G"],
-                    kolom_rak: [1, 2, 3, 4]
-                },
-                FL2: {
-                    nama_rak: ["H", "I", "J", "K"],
-                    kolom_rak: [1, 2]
-                },
-                FL3: {
-                    nama_rak: ["L", "M", "N", "O"],
-                    kolom_rak: [1, 2, 3, 4]
-                }
-            };
-            const levelRak = [1, 2, 3, 4, 5, 6, 7];
-
             // ketika kode rak berubah
             $("#kode_rak").on("change", function() {
                 let kode = $(this).val();
@@ -448,18 +461,15 @@
                 $("#level_rak").empty();
 
                 if (kode && rakData[kode]) {
-                    // isi nama rak
-                    rakData[kode].nama_rak.forEach(function(nama) {
+                    rakData[kode].nama_rak.forEach(nama => {
                         $("#nama_rak").append(`<option value="${nama}">${nama}</option>`);
                     });
 
-                    // isi kolom rak
-                    rakData[kode].kolom_rak.forEach(function(kolom) {
+                    rakData[kode].kolom_rak.forEach(kolom => {
                         $("#kolom_rak").append(`<option value="${kolom}">${kolom}</option>`);
                     });
 
-                    // isi level rak (selalu 1-7)
-                    levelRak.forEach(function(lvl) {
+                    rakData[kode].level_rak.forEach(lvl => {
                         $("#level_rak").append(`<option value="${lvl}">${lvl}</option>`);
                     });
                 }
@@ -605,7 +615,6 @@
                 }
             });
 
-
             // handle form edit submit
             $('#editForm').submit(function(e) {
                 e.preventDefault();
@@ -743,12 +752,32 @@
                     processData: false,
                     contentType: false,
                     success: function(response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: response.message || 'File berhasil diimport.'
-                        });
+                        if (response.status === true) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: response.message || 'File berhasil diimport.'
+                            });
+                        } else if (response.status === false) {
+                            // kalau sebagian gagal
+                            let errorList = response.data.errors.map(e => `<li>${e}</li>`).join(
+                                '');
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Warning!',
+                                html: `<p>${response.message}</p>${errorList}`,
+                                width: 600
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal!',
+                                text: response.message ||
+                                    'Terjadi kesalahan saat import.'
+                            });
+                        }
 
+                        $('#fileImport').val('');
                         $('#wspTable').DataTable().ajax.reload();
                     },
                     error: function(xhr) {

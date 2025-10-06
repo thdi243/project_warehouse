@@ -59,20 +59,21 @@ class WspBarangController extends Controller
             ], 400);
         }
 
-        $rak = RakModel::firstOrCreate(
-            [
-                'user_id'   => Auth::id() ?? 1,
-                'kode_rak'  => trim($request->kode_rak),
-                'nama_rak'  => trim($request->nama_rak),
-                'kolom_rak' => (int) $request->kolom_rak,
-                'level_rak' => (int) $request->level_rak,
-                'box_rak'   => $request->box_rak !== null ? trim($request->box_rak) : '000',
-            ]
-        );
+        // Cari rak berdasarkan data request
+        $rak = RakModel::where('kode_rak', trim($request->kode_rak))
+            ->where('nama_rak', trim($request->nama_rak))
+            ->where('kolom_rak', (int) $request->kolom_rak)
+            ->where('level_rak', (int) $request->level_rak)
+            ->where('box_rak', $request->box_rak !== null ? trim($request->box_rak) : '000')
+            ->first();
 
-        $rakMessage = $rak->wasRecentlyCreated
-            ? 'Rak baru berhasil dibuat dan barang ditempatkan di rak tersebut.'
-            : 'Rak sudah ada, barang ditempatkan pada rak tersebut.';
+        // Kalau rak belum ada, return error
+        if (!$rak) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Rak belum dibuat. Silakan buat rak terlebih dahulu.',
+            ], 400);
+        }
 
         // Simpan barang
         $barang = BarangModel::create([
@@ -87,14 +88,13 @@ class WspBarangController extends Controller
 
         return response()->json([
             'status'  => true,
-            'message' => 'Barang baru berhasil diregistrasi.<br>' . $rakMessage,
+            'message' => 'Barang baru berhasil diregistrasi dan ditempatkan pada rak yang sudah ada.',
             'data'    => [
                 'barang' => $barang,
                 'rak'    => $rak,
             ]
         ]);
     }
-
 
     /**
      * Display the specified resource.
@@ -148,9 +148,13 @@ class WspBarangController extends Controller
                     'id'          => $barang->id,
                     'mid_barang'  => $barang->mid_barang,
                     'nama_barang' => $barang->nama_barang,
-                    'lokasi'      => $barang->rak
-                        ? $barang->rak->kode_rak . '.' . $barang->rak->nama_rak . '.' . $barang->rak->kolom_rak . '.' . $barang->rak->level_rak . '.' . ($barang->rak->box_rak ?? '000')
-                        : null,
+                    'rak' => [
+                        'area_rak' => $barang->rak->kode_rak,
+                        'nama_rak' => $barang->rak->nama_rak,
+                        'kolom_rak' => $barang->rak->kolom_rak,
+                        'level_rak' => $barang->rak->level_rak,
+                        'box_rak' => $barang->rak->box_rak,
+                    ],
                     'username'    => $barang->user->username ?? null,
                     'image'       => $barang->image ? asset('storage/' . $barang->image) : null,
                 ];
@@ -165,13 +169,14 @@ class WspBarangController extends Controller
         ]);
     }
 
-    public function getKodeRak()
+    public function getDataRak()
     {
-        $kodeRak = RakModel::select('kode_rak')
-            ->distinct()
-            ->pluck('kode_rak');
+        // Ambil data rak langsung dari model
+        $rak = RakModel::select('kode_rak', 'nama_rak', 'kolom_rak', 'level_rak')
+            ->orderBy('kode_rak')
+            ->get();
 
-        if ($kodeRak->isEmpty()) {
+        if ($rak->isEmpty()) {
             return response()->json([
                 'status' => 'empty',
                 'message' => 'Data rak kosong',
@@ -179,9 +184,18 @@ class WspBarangController extends Controller
             ]);
         }
 
+        // Kelompokkan data berdasarkan kode_rak
+        $grouped = $rak->groupBy('kode_rak')->map(function ($items) {
+            return [
+                'nama_rak'   => $items->pluck('nama_rak')->unique()->values(),
+                'kolom_rak'  => $items->pluck('kolom_rak')->unique()->values(),
+                'level_rak'  => $items->pluck('level_rak')->unique()->values(),
+            ];
+        });
+
         return response()->json([
             'status' => 'success',
-            'data' => $kodeRak
+            'data'   => $grouped
         ]);
     }
 
@@ -313,22 +327,19 @@ class WspBarangController extends Controller
             $errorCount = 0;
             $errors = [];
 
-            // Skip header row
             foreach ($rows as $index => $row) {
-                if ($index === 0) continue;
+                if ($index === 0) continue; // skip header
+                if (empty(array_filter($row))) continue; // skip empty row
 
-                // Skip empty rows
-                if (empty(array_filter($row))) continue;
-
-                $midBarang = isset($row[0]) ? (int) $row[0] : null;
+                $midBarang  = isset($row[0]) ? (int) $row[0] : null;
                 $namaBarang = isset($row[1]) ? trim($row[1]) : '';
-                $kodeRak = isset($row[2]) ? trim($row[2]) : '';
-                $namaRak = isset($row[3]) ? trim($row[3]) : '';
-                $kolomRak = isset($row[4]) ? (int) $row[4] : null;
-                $levelRak = isset($row[5]) ? (int) $row[5] : null;
-                $boxRak = isset($row[6]) ? str_pad(trim($row[6]), 3, '0', STR_PAD_LEFT) : '000';
+                $kodeRak    = isset($row[2]) ? trim($row[2]) : '';
+                $namaRak    = isset($row[3]) ? trim($row[3]) : '';
+                $kolomRak   = isset($row[4]) ? (int) $row[4] : null;
+                $levelRak   = isset($row[5]) ? (int) $row[5] : null;
+                $boxRak     = isset($row[6]) ? str_pad(trim($row[6]), 3, '0', STR_PAD_LEFT) : '000';
 
-                // Validasi
+                // --- Validasi dasar ---
                 if (!$midBarang || !$namaBarang || !$kodeRak || !$namaRak || !$kolomRak || !$levelRak) {
                     $errors[] = "Baris " . ($index + 1) . ": Data tidak lengkap";
                     $errorCount++;
@@ -348,21 +359,27 @@ class WspBarangController extends Controller
                 }
 
                 try {
-                    $rak = RakModel::firstOrCreate([
-                        'user_id' => Auth::id() ?? 1,
-                        'kode_rak' => $kodeRak,
-                        'nama_rak' => $namaRak,
-                        'kolom_rak' => $kolomRak,
-                        'level_rak' => $levelRak,
-                        'box_rak' => $boxRak,
-                    ]);
+                    // --- Cek rak apakah ada ---
+                    $rak = RakModel::where('kode_rak', $kodeRak)
+                        ->where('nama_rak', $namaRak)
+                        ->where('kolom_rak', $kolomRak)
+                        ->where('level_rak', $levelRak)
+                        ->where('box_rak', $boxRak)
+                        ->first();
 
+                    if (!$rak) {
+                        $errors[] = "Baris " . ($index + 1) . ": Rak ($kodeRak-$namaRak-$kolomRak-$levelRak-$boxRak) belum dibuat";
+                        $errorCount++;
+                        continue;
+                    }
+
+                    // --- Simpan barang ---
                     BarangModel::create([
-                        'rak_id' => $rak->id,
-                        'user_id' => Auth::id() ?? 1,
-                        'mid_barang' => $midBarang,
+                        'rak_id'      => $rak->id,
+                        'user_id'     => Auth::id() ?? 1,
+                        'mid_barang'  => $midBarang,
                         'nama_barang' => $namaBarang,
-                        'image' => null,
+                        'image'       => null,
                     ]);
 
                     $successCount++;
@@ -375,12 +392,12 @@ class WspBarangController extends Controller
             DB::commit();
 
             return response()->json([
-                'status' => true,
-                'message' => "Import berhasil! Sukses: $successCount, Gagal: $errorCount",
+                'status' => $errors ? false : true,
+                'message' => "Import selesai! Sukses: $successCount, Gagal: $errorCount",
                 'data' => [
                     'success_count' => $successCount,
-                    'error_count' => $errorCount,
-                    'errors' => $errors
+                    'error_count'   => $errorCount,
+                    'errors'        => $errors
                 ]
             ]);
         } catch (\Exception $e) {
@@ -391,6 +408,7 @@ class WspBarangController extends Controller
             ], 500);
         }
     }
+
 
     public function downloadTemplate()
     {

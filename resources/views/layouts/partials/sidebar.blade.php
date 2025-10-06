@@ -95,8 +95,9 @@
                     @if ($jabatan !== 'dept_head')
                         <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
 
-                        {{-- TKBM Menu --}}
+                        {{-- WSP Menu --}}
                         @if ($jabatan != 'dept_head' && in_array($bagian, ['warehouse', 'warehouse_sparepart']))
+                            {{-- TKBM Menu --}}
                             <li class="nav-item">
                                 <a class="nav-link menu-link  {{ request()->routeIs('tkbm.*') ? '' : 'collapsed' }}"
                                     href="#sideBarTkbm" data-bs-toggle="collapse" role="button"
@@ -130,10 +131,78 @@
                                     </ul>
                                 </div>
                             </li>
+
+                            {{-- RackMan Menu --}}
+                            <li class="nav-item">
+                                <a class="nav-link menu-link {{ request()->routeIs('wsp.*') ? '' : 'collapsed' }}"
+                                    href="#sideBarRak" data-bs-toggle="collapse" role="button"
+                                    aria-expanded="{{ request()->routeIs('wsp.*') ? 'true' : 'false' }}"
+                                    aria-controls="sideBarRak">
+                                    <i class="mdi mdi-package-variant"></i><span data-key="t-wsp">RackMan</span>
+                                </a>
+                                <div class="collapse menu-dropdown {{ request()->routeIs('wsp.*') ? 'show' : '' }}"
+                                    id="sideBarRak">
+                                    <ul class="nav nav-sm flex-column">
+                                        <li class="nav-item">
+                                            <a href="#" data-bs-target="#sideBarMaster"
+                                                data-bs-toggle="collapse" role="button"
+                                                aria-expanded="{{ request()->routeIs('wsp.master.*') ? 'true' : 'false' }}"
+                                                aria-controls="sideBarMaster" class="nav-link" {{-- class="nav-link {{ request()->routeIs('p2h.online.*') ? 'active' : '' }}" --}}
+                                                data-key="t-m-tkbm">
+                                                {{ $jabatan === 'operator' ? 'Registrasi' : 'Master' }}
+                                            </a>
+                                            <div class="collapse menu-dropdown {{ request()->routeIs('wsp.master.*') ? 'show' : '' }}"
+                                                id="sideBarMaster">
+                                                <ul class="nav nav-sm flex-column">
+                                                    <li class="nav-item">
+                                                        <a href="{{ route('wsp.master.barang') }}"
+                                                            class="nav-link {{ request()->routeIs('wsp.master.barang') ? 'active' : '' }}"
+                                                            data-key="t-input-wsp">
+                                                            Barang</a>
+                                                    </li>
+                                                    <li class="nav-item">
+                                                        <a href="{{ route('wsp.master.rak') }}"
+                                                            class="nav-link {{ request()->routeIs('wsp.master.rak') ? 'active' : '' }}"
+                                                            data-key="t-input-wsp">
+                                                            Rack</a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a href="#" data-bs-target="#sideBarStock"
+                                                data-bs-toggle="collapse" role="button"
+                                                aria-expanded="{{ request()->routeIs('wsp.stock.*') ? 'true' : 'false' }}"
+                                                aria-controls="sideBarStock" class="nav-link" {{-- class="nav-link {{ request()->routeIs('p2h.online.*') ? 'active' : '' }}" --}}
+                                                data-key="t-m-tkbm">
+                                                Stock
+                                            </a>
+                                            <div class="collapse menu-dropdown {{ request()->routeIs('wsp.stock.*') ? 'show' : '' }}"
+                                                id="sideBarStock">
+                                                <ul class="nav nav-sm flex-column">
+                                                    <li class="nav-item">
+                                                        <a href="{{ route('wsp.stock.on-hand') }}"
+                                                            class="nav-link {{ request()->routeIs('wsp.stock.on-hand') ? 'active' : '' }}"
+                                                            data-key="t-input-wsp">
+                                                            Stock On Hand</a>
+                                                    </li>
+                                                    <li class="nav-item">
+                                                        <a href="{{ route('wsp.stock.opname') }}"
+                                                            class="nav-link {{ request()->routeIs('wsp.stock.opname') ? 'active' : '' }}"
+                                                            data-key="t-input-wsp">
+                                                            Stock Opname</a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
                         @endif
 
-                        {{-- P2H Menu --}}
+                        {{-- WRM Menu --}}
                         @if ($jabatan != 'dept_head' && in_array($bagian, ['warehouse', 'warehouse_raw_material']))
+                            {{-- P2H Menu --}}
                             <li class="nav-item">
                                 <a class="nav-link menu-link  {{ request()->routeIs('p2h.*') ? '' : 'collapsed' }}"
                                     href="#sideBarP2h" data-bs-toggle="collapse" role="button"
@@ -219,70 +288,40 @@
                             </li>
                         @endif
 
-                        {{-- RackMan Menu --}}
-                        @if ($jabatan != 'dept_head' && in_array($bagian, ['warehouse', 'warehouse_sparepart']))
+                        {{-- WFG Menu --}}
+                        @if ($jabatan != 'dept_head' && in_array($bagian, ['warehouse', 'warehouse_finish_goods']))
+                            {{-- Stock Opname --}}
                             <li class="nav-item">
-                                <a class="nav-link menu-link {{ request()->routeIs('wsp.*') ? '' : 'collapsed' }}"
-                                    href="#sideBarRak" data-bs-toggle="collapse" role="button"
-                                    aria-expanded="{{ request()->routeIs('wsp.*') ? 'true' : 'false' }}"
-                                    aria-controls="sideBarRak">
-                                    <i class="mdi mdi-package-variant"></i><span data-key="t-wsp">RackMan</span>
+                                <a class="nav-link menu-link  {{ request()->routeIs('stock_op_wfg.*') ? '' : 'collapsed' }}"
+                                    href="#sidebarSOp" data-bs-toggle="collapse" role="button"
+                                    aria-expanded="{{ request()->routeIs('stock_op_wfg.*') ? 'true' : 'false' }}"
+                                    aria-controls="sidebarSOp">
+                                    <i class="mdi mdi-human-dolly"></i> <span data-key="t-stock_op_wfg">SOp
+                                        WFG</span>
                                 </a>
-                                <div class="collapse menu-dropdown {{ request()->routeIs('wsp.*') ? 'show' : '' }}"
-                                    id="sideBarRak">
+                                <div class="collapse menu-dropdown {{ request()->routeIs('stock_op_wfg.*') ? 'show' : '' }}"
+                                    id="sidebarSOp">
                                     <ul class="nav nav-sm flex-column">
                                         <li class="nav-item">
-                                            <a href="#" data-bs-target="#sideBarMaster"
-                                                data-bs-toggle="collapse" role="button"
-                                                aria-expanded="{{ request()->routeIs('wsp.master.*') ? 'true' : 'false' }}"
-                                                aria-controls="sideBarMaster" class="nav-link" {{-- class="nav-link {{ request()->routeIs('p2h.online.*') ? 'active' : '' }}" --}}
-                                                data-key="t-m-tkbm">
-                                                {{ $jabatan === 'operator' ? 'Registrasi' : 'Master' }}
-                                            </a>
-                                            <div class="collapse menu-dropdown {{ request()->routeIs('wsp.master.*') ? 'show' : '' }}"
-                                                id="sideBarMaster">
-                                                <ul class="nav nav-sm flex-column">
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('wsp.master.barang') }}"
-                                                            class="nav-link {{ request()->routeIs('wsp.master.barang') ? 'active' : '' }}"
-                                                            data-key="t-input-wsp">
-                                                            Barang</a>
-                                                    </li>
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('wsp.master.rak') }}"
-                                                            class="nav-link {{ request()->routeIs('wsp.master.rak') ? 'active' : '' }}"
-                                                            data-key="t-input-wsp">
-                                                            Rack</a>
-                                                    </li>
-                                                </ul>
-                                            </div>
+                                            <a href="{{ route('stock_op_wfg.stock') }}"
+                                                class="nav-link {{ request()->routeIs('stock_op_wfg.stock') ? 'active' : '' }}"
+                                                data-key="t-input-stock_op_wfg">
+                                                Form SOP </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a href="#" data-bs-target="#sideBarStock"
-                                                data-bs-toggle="collapse" role="button"
-                                                aria-expanded="{{ request()->routeIs('wsp.stock.*') ? 'true' : 'false' }}"
-                                                aria-controls="sideBarStock" class="nav-link" {{-- class="nav-link {{ request()->routeIs('p2h.online.*') ? 'active' : '' }}" --}}
-                                                data-key="t-m-tkbm">
-                                                Stock
-                                            </a>
-                                            <div class="collapse menu-dropdown {{ request()->routeIs('wsp.stock.*') ? 'show' : '' }}"
-                                                id="sideBarStock">
-                                                <ul class="nav nav-sm flex-column">
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('wsp.stock.on-hand') }}"
-                                                            class="nav-link {{ request()->routeIs('wsp.stock.on-hand') ? 'active' : '' }}"
-                                                            data-key="t-input-wsp">
-                                                            Stock On Hand</a>
-                                                    </li>
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('wsp.stock.opname') }}"
-                                                            class="nav-link {{ request()->routeIs('wsp.stock.opname') ? 'active' : '' }}"
-                                                            data-key="t-input-wsp">
-                                                            Stock Opname</a>
-                                                    </li>
-                                                </ul>
-                                            </div>
+                                            <a href="{{ route('stock_op_wfg.data') }}"
+                                                class="nav-link {{ request()->routeIs('stock_op_wfg.data') ? 'active' : '' }}"
+                                                data-key="t-stock_op_wfg">
+                                                Report TKBM </a>
                                         </li>
+                                        @if ($jabatan !== 'operator')
+                                            <li class="nav-item">
+                                                <a href="{{ route('stock_op_wfg.master.fee') }}"
+                                                    class="nav-link {{ request()->routeIs('stock_op_wfg.master.fee') ? 'active' : '' }}"
+                                                    data-key="t-input-stock_op_wfg">
+                                                    Manage Fees & Harga </a>
+                                            </li>
+                                        @endif
                                     </ul>
                                 </div>
                             </li>
