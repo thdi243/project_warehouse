@@ -64,31 +64,29 @@
                     <div data-aos="fade-up">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
                             <div class="card-body" style="background: linear-gradient(135deg, #a8e6cf, #dcedc1, #e6f4ea);">
-
                                 <div class="d-flex align-items-center justify-content-between">
                                     <p class="text-uppercase fw-bold text-dark mb-0">Total Qty Terpal</p>
                                     <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
-                                        style="width: 50px; height: 50px; background: rgba(255,255,255,0.6);">
-                                        <i class="bx bx-package text-dark fs-1"></i>
+                                        style="width: 50px; height: 50px; background: rgba(238, 254, 181, 0.6);">
+                                        <i class="bx bx-package text-success fs-1"></i>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2 text-dark">
-                                        <span class="counter-value text-dark" id="totalQtyTerpal">0</span>
-                                        <span class="fs-5 ms-2 text-dark">Pcs</span>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2">
+                                        <span class="counter-value text-success" id="totalQtyTerpal">0</span>
+                                        <span class="fs-5 ms-2 text-success">Pcs</span>
                                     </h4>
-                                    <p class="small mb-0 text-dark opacity-75">
+                                    <p class="small mb-0 opacity-75">
                                         <i class="bx bx-calendar me-1"></i> Qty Terpal by Month
                                     </p>
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
-                    <div data-aos="fade-up">
+                    <div data-aos="fade-up" data-aos-delay="200">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
                             <div class="card-body" style="background: linear-gradient(135deg, #dbe8ff, #ffffff, #e6ebf4);">
                                 <div class="d-flex align-items-center justify-content-between">
@@ -113,7 +111,7 @@
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
-                    <div data-aos="fade-up">
+                    <div data-aos="fade-up" data-aos-delay="400">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
                             <div class="card-body" style="background: linear-gradient(135deg, #fff4db, #ffffff, #f4f2e6);">
                                 <div class="d-flex align-items-center justify-content-between">
@@ -138,7 +136,7 @@
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
-                    <div data-aos="fade-up">
+                    <div data-aos="fade-up" data-aos-delay="600">
                         <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
                             <div class="card-body" style="background: linear-gradient(135deg, #e7e3ff, #ffffff, #e6e7f4);">
                                 <div class="d-flex align-items-center justify-content-between">
@@ -167,7 +165,7 @@
             {{-- Chart 1 --}}
             <div class="row mb-4">
                 <div class="col-xl-12">
-                    <div data-aos="fade-up" data-aos-delay="300">
+                    <div data-aos="fade-up" data-aos-delay="800">
                         <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header">
                                 <h4 class="card-title mb-0">Total Qty Produk Per Month</h4>
@@ -181,7 +179,7 @@
                 </div>
 
                 <div class="col-xl-12">
-                    <div class="" data-aos="fade-up" data-aos-delay="300">
+                    <div class="" data-aos="fade-up" data-aos-delay="1000">
                         <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header">
                                 <h4 class="card-title mb-0">Grand Total Per Month</h4>
@@ -195,7 +193,7 @@
                 </div>
 
                 <div class="col-xl-6">
-                    <div class="" data-aos="fade-up" data-aos-delay="300">
+                    <div class="" data-aos="fade-up" data-aos-delay="1200">
                         <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header d-flex justify-content-between">
                                 <h4 class="card-title mb-0">Total Qty Terpal <span id="bulanQtyTerpal"></span></h4>
@@ -234,7 +232,7 @@
                 </div>
 
                 <div class="col-xl-6">
-                    <div class="" data-aos="fade-up" data-aos-delay="300">
+                    <div class="" data-aos="fade-up" data-aos-delay="1400">
                         <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header d-flex justify-content-between">
                                 <h4 class="card-title mb-0">Total Qty Slipsheet <span id="bulanQtySlipsheet"></span></h4>
@@ -274,7 +272,7 @@
                 </div>
 
                 <div class="col-xl-12">
-                    <div class="" data-aos="fade-up" data-aos-delay="300">
+                    <div class="" data-aos="fade-up" data-aos-delay="1600">
                         <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
                             <div class="card-header d-flex justify-content-between">
                                 <h4 class="card-title mb-0">Total Qty Pallet <span id="bulanQtyPallet"></span></h4>
@@ -786,7 +784,9 @@
                         colors: ['#F2C36B', '#4968A6', '#3FBFBF'],
                         dataLabels: {
                             enabled: true,
-                            formatter: val => `${val} pcs`,
+                            formatter: function(val) {
+                                return val === 0 ? "" : `${val} pcs`;
+                            }
                         },
                         plotOptions: {
                             bar: {
