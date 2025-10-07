@@ -9,6 +9,8 @@ use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
+use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
+use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 // use App\Http\Controllers\Api\TkbmDashboardController;
 
 Route::get('/', function () {
@@ -24,7 +26,7 @@ Route::middleware('web')->group(function () {
 
 Route::middleware('auth')->group(function () {
 
-    // Free middleware
+    // Free access
     Route::view('dashboard', 'dashboard')->name('dashboard');
     Route::get('user/profile', [UserController::class, 'profileIndex'])->name('user.profile');
 
@@ -42,7 +44,7 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    // Warehouse Sparepart
+    // Warehouse Sparepart (TKBM, Rak Management)
     Route::middleware(['auth', 'access:warehouse_sparepart'])->group(function () {
         // TKBM
         Route::prefix('tkbm')->group(function () {
@@ -88,7 +90,7 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    // Warehouse Sparepart
+    // Warehouse Raw Material
     Route::middleware(['auth', 'access:warehouse_raw_material'])->group(function () {
         // P2H
         Route::prefix('p2h')->group(function () {
@@ -96,6 +98,33 @@ Route::middleware('auth')->group(function () {
             Route::get('/online/data', [WarehouseController::class, 'p2hData'])->name('p2h.online.data');
             Route::get('/registration/forklift', [WarehouseController::class, 'showRegForklift'])->name('p2h.registration.forklift');
             Route::get('/registration/pallet-mover', [WarehouseController::class, 'showRegPalletMover'])->name('p2h.registration.pallet-mover');
+        });
+    });
+
+    // Warehouse Finish Goods
+    Route::middleware(['auth', 'access:warehouse_finish_goods'])->group(function () {
+        Route::prefix('wfg')->group(function () {
+
+            // Maste Barang SO WFG
+            Route::prefix('master')->group(function () {
+                Route::get('/barang/index', [BarangWfgController::class, 'index'])->name('wfg.master.barang.index');
+                Route::post('/barang/store', [BarangWfgController::class, 'store'])->name('wfg.master.barang.store');
+                Route::get('/barang/data', [BarangWfgController::class, 'data'])->name('wfg.master.barang.data');
+                Route::put('/barang/update/{id}', [BarangWfgController::class, 'update'])->name('wfg.master.barang.update');
+                Route::delete('/barang/delete/{id}', [BarangWfgController::class, 'destroy'])->name('wfg.master.barang.delete');
+            });
+
+            // Stock Opname WFG
+            Route::prefix('stock_opname')->group(function () {
+                // Form SO WFG
+                Route::get('/form', [WarehouseController::class, 'formSOWFG'])->name('wfg.stock_opname.form');
+
+                // Stock on Hand SO WFG
+                Route::get('/soh/index', [WarehouseController::class, 'uploadSOHWFG'])->name('wfg.stock_opname.soh');
+                Route::get('/soh/store', [StockOnHandWfgController::class, 'store'])->name('wfg.stock_opname.soh.store');
+                Route::delete('/soh/delete', [StockOnHandWfgController::class, 'destroy'])->name('wfg.stock_opname.soh.delete');
+                Route::put('/soh/update', [StockOnHandWfgController::class, 'update'])->name('wfg.stock_opname.soh.update');
+            });
         });
     });
 

@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
+use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
+use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -96,4 +98,9 @@ Route::prefix('wsp')->group(function () {
     Route::get('/data/stock/barang', [WspManRakController::class, 'getDataBarang']);
     Route::get('/show/stock/barang/{id}', [WspManRakController::class, 'show']);
     Route::post('/store/transaksi', [TransaksiWspController::class, 'store']);
+});
+
+Route::prefix('wfg')->group(function () {
+    Route::post('/store/barang', [BarangWfgController::class, 'store']);
+    Route::post('/store/soh', [StockOnHandWfgController::class, 'store']);
 });
