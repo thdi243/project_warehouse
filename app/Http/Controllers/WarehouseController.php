@@ -120,8 +120,19 @@ class WarehouseController extends Controller
     {
         return view('manajemen_rak.stock_on_hand');
     }
+
     public function opnameIndex()
     {
         return view('manajemen_rak.stock_opname');
+    }
+
+    public function formSOWFG()
+    {
+        return view('stock_opname_wfg.form');
+    }
+
+    public function uploadSOHWFG()
+    {
+        return view('stock_opname_wfg.upload_soh');
     }
 }

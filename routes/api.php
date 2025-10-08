@@ -103,4 +103,7 @@ Route::prefix('wsp')->group(function () {
 Route::prefix('wfg')->group(function () {
     Route::post('/store/barang', [BarangWfgController::class, 'store']);
     Route::post('/store/soh', [StockOnHandWfgController::class, 'store']);
+    Route::get('/soh/listData', [StockOnHandWfgController::class, 'getList']);
+    Route::get('/soh/show/{id}', [StockOnHandWfgController::class, 'show']);
+    Route::get('/soh/getBarang', [StockOnHandWfgController::class, 'getBarang']);
 });

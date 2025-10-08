@@ -121,9 +121,13 @@ Route::middleware('auth')->group(function () {
 
                 // Stock on Hand SO WFG
                 Route::get('/soh/index', [WarehouseController::class, 'uploadSOHWFG'])->name('wfg.stock_opname.soh');
-                Route::get('/soh/store', [StockOnHandWfgController::class, 'store'])->name('wfg.stock_opname.soh.store');
-                Route::delete('/soh/delete', [StockOnHandWfgController::class, 'destroy'])->name('wfg.stock_opname.soh.delete');
-                Route::put('/soh/update', [StockOnHandWfgController::class, 'update'])->name('wfg.stock_opname.soh.update');
+                Route::post('/soh/store', [StockOnHandWfgController::class, 'store'])->name('wfg.stock_opname.soh.store');
+                Route::delete('/soh/delete/{id}', [StockOnHandWfgController::class, 'destroy'])->name('wfg.stock_opname.soh.delete');
+                Route::post('/soh/update/{id}', [StockOnHandWfgController::class, 'update'])->name('wfg.stock_opname.soh.update');
+                Route::post('/soh/import', [StockOnHandWfgController::class, 'importExcel'])->name('wfg.stock_opname.soh.import');
+                Route::get('/soh/template', [StockOnHandWfgController::class, 'downloadTemplate'])->name('wfg.stock_opname.soh.template');
+                Route::get('/soh/list', [StockOnHandWfgController::class, 'getList'])->name('wfg.stock_opname.soh.list');
+                Route::get('/soh/show', [StockOnHandWfgController::class, 'show'])->name('wfg.stock_opname.soh.show');
             });
         });
     });
