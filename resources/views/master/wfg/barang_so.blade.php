@@ -632,11 +632,12 @@
 
                 if (item) {
                     // Helper function untuk menampilkan badge status
-                    const statusBadge = `<span class="status-badge-large ${item.status === 'aktif' ? 'badge-soft-success' : 'badge-soft-danger'}">
-                                            <i class="mdi mdi-circle-small"></i>
-                                            ${item.status}
-                                        </span>
-                                    `;
+                    const statusBadge = `
+                        <span class="status-badge-large ${item.status === 'aktif' ? 'badge-soft-success' : 'badge-soft-danger'}">
+                            <i class="mdi mdi-circle-small"></i>
+                            ${item.status}
+                        </span>
+                    `;
 
                     // HTML Baru dengan penambahan qty_box dan tipe_kemasan
                     let detailHTML = `

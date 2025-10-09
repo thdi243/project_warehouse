@@ -21,4 +21,9 @@ class BarangWfgModel extends Model
         'satuan',
         'gambar'
     ];
+
+    public function stockOnHand()
+    {
+        return $this->hasOne(StockOnHandModel::class, 'barang_id');
+    }
 }
