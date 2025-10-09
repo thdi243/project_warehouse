@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
+use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -106,4 +107,8 @@ Route::prefix('wfg')->group(function () {
     Route::get('/soh/listData', [StockOnHandWfgController::class, 'getList']);
     Route::get('/soh/show/{id}', [StockOnHandWfgController::class, 'show']);
     Route::get('/soh/getBarang', [StockOnHandWfgController::class, 'getBarang']);
+    Route::post('/sop/store', [StockOpnameWfgController::class, 'store']);
+    Route::get('/sop/getBarang', [StockOpnameWfgController::class, 'getBarang']);
+    Route::get('/sop/report/getData', [StockOpnameWfgController::class, 'getDataReport']);
+    Route::get('/sop/report/export', [StockOpnameWfgController::class, 'getDataReport']);
 });

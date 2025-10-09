@@ -11,6 +11,8 @@ use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
+use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+
 // use App\Http\Controllers\Api\TkbmDashboardController;
 
 Route::get('/', function () {
@@ -116,8 +118,12 @@ Route::middleware('auth')->group(function () {
 
             // Stock Opname WFG
             Route::prefix('stock_opname')->group(function () {
-                // Form SO WFG
-                Route::get('/form', [WarehouseController::class, 'formSOWFG'])->name('wfg.stock_opname.form');
+                // Form SOP WFG
+                Route::get('/sop/form', [WarehouseController::class, 'formSOWFG'])->name('wfg.stock_opname.form');
+                Route::post('/sop/store', [StockOpnameWfgController::class, 'store'])->name('wfg.stock_opname.store');
+                Route::put('/sop/update/{id}', [StockOpnameWfgController::class, 'update'])->name('wfg.stock_opname.update');
+                Route::get('/sop/report', [WarehouseController::class, 'reportSOPWFG'])->name('wfg.stock_opname.report');
+                Route::get('/sop/export', [StockOpnameWfgController::class, 'exportPdfSOPWFG'])->name('wfg.stock_opname.export');
 
                 // Stock on Hand SO WFG
                 Route::get('/soh/index', [WarehouseController::class, 'uploadSOHWFG'])->name('wfg.stock_opname.soh');
