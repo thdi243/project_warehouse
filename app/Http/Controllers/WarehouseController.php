@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\P2h\ForkliftModel;
 use App\Models\Tkbm\TkbmFeeModel;
 use App\Models\P2h\PalletMoverModel;
+use Illuminate\Support\Facades\Redirect;
+use App\Models\Wfg\stock_opname\StockOnHandModel;
 
 class WarehouseController extends Controller
 {
@@ -128,11 +131,24 @@ class WarehouseController extends Controller
 
     public function formSOWFG()
     {
+        $today = Carbon::today()->toDateString();
+
+        $dataExists = StockOnHandModel::whereDate('last_updated', $today)->exists();
+
+        if (!$dataExists) {
+            return Redirect::route('wfg.stock_opname.soh')
+                ->with('error', 'Data Stock On Hand (SOH) untuk tanggal ' . $today . ' belum diunggah. Silakan unggah data SOH terlebih dahulu sebelum mengakses Form Stock Opname.');
+        }
         return view('stock_opname_wfg.form');
     }
 
     public function uploadSOHWFG()
     {
         return view('stock_opname_wfg.upload_soh');
+    }
+
+    public function reportSOPWFG()
+    {
+        return view('stock_opname_wfg.report_sop');
     }
 }

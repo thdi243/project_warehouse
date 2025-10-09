@@ -99,7 +99,7 @@
                         @if ($jabatan != 'dept_head' && in_array($bagian, ['warehouse', 'warehouse_sparepart']))
                             {{-- TKBM Menu --}}
                             <li class="nav-item">
-                                <a class="nav-link menu-link  {{ request()->routeIs('tkbm.*') ? '' : 'collapsed' }}"
+                                <a class="nav-link menu-link {{ request()->routeIs('tkbm.*') ? '' : 'collapsed' }}"
                                     href="#sideBarTkbm" data-bs-toggle="collapse" role="button"
                                     aria-expanded="{{ request()->routeIs('tkbm.*') ? 'true' : 'false' }}"
                                     aria-controls="sideBarTkbm">
@@ -292,47 +292,70 @@
                         @if ($jabatan != 'dept_head' && in_array($bagian, ['warehouse', 'warehouse_finish_goods']))
                             {{-- Stock Opname --}}
                             <li class="nav-item">
-                                <a class="nav-link menu-link  {{ request()->routeIs('stock_op_wfg.*') ? '' : 'collapsed' }}"
+                                <a class="nav-link menu-link {{ request()->routeIs('wfg.stock_opname.*') ? '' : 'collapsed' }}"
                                     href="#sidebarSOp" data-bs-toggle="collapse" role="button"
-                                    aria-expanded="{{ request()->routeIs('stock_op_wfg.*') ? 'true' : 'false' }}"
+                                    aria-expanded="{{ request()->routeIs('wfg.stock_opname.*') ? 'true' : 'false' }}"
                                     aria-controls="sidebarSOp">
-                                    <i class="mdi mdi-human-dolly"></i> <span data-key="t-stock_op_wfg">SOp
+                                    <i class="mdi mdi-clipboard-check-outline"></i> <span
+                                        data-key="t-stock_op_wfg">SOP
                                         WFG</span>
                                 </a>
-                                <div class="collapse menu-dropdown {{ request()->routeIs('stock_op_wfg.*') ? 'show' : '' }}"
+                                <div class="collapse menu-dropdown {{ request()->routeIs('wfg.stock_opname.*') ? 'show' : '' }}"
                                     id="sidebarSOp">
                                     <ul class="nav nav-sm flex-column">
                                         <li class="nav-item">
-                                            <a href="{{ route('stock_op_wfg.stock') }}"
-                                                class="nav-link {{ request()->routeIs('stock_op_wfg.stock') ? 'active' : '' }}"
-                                                data-key="t-input-stock_op_wfg">
-                                                Form SOP </a>
+                                            <a href="{{ route('wfg.stock_opname.soh') }}"
+                                                class="nav-link {{ request()->routeIs('wfg.stock_opname.soh') ? 'active' : '' }}"
+                                                data-key="t-stock_op_wfg">
+                                                SOH Upload</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a href="{{ route('stock_op_wfg.data') }}"
-                                                class="nav-link {{ request()->routeIs('stock_op_wfg.data') ? 'active' : '' }}"
-                                                data-key="t-stock_op_wfg">
-                                                Report TKBM </a>
+                                            <a href="{{ route('wfg.stock_opname.form') }}"
+                                                class="nav-link {{ request()->routeIs('wfg.stock_opname.form') ? 'active' : '' }}"
+                                                data-key="t-input-stock_op_wfg">
+                                                SOP Form</a>
                                         </li>
-                                        @if ($jabatan !== 'operator')
-                                            <li class="nav-item">
-                                                <a href="{{ route('stock_op_wfg.master.fee') }}"
-                                                    class="nav-link {{ request()->routeIs('stock_op_wfg.master.fee') ? 'active' : '' }}"
-                                                    data-key="t-input-stock_op_wfg">
-                                                    Manage Fees & Harga </a>
-                                            </li>
-                                        @endif
+                                        <li class="nav-item">
+                                            <a href="{{ route('wfg.stock_opname.report') }}"
+                                                class="nav-link {{ request()->routeIs('wfg.stock_opname.report') ? 'active' : '' }}"
+                                                data-key="t-stock_op_wfg">
+                                                SOP Report</a>
+                                        </li>
                                     </ul>
                                 </div>
                             </li>
                         @endif
                     @endif
                     @if ($jabatan !== 'operator')
-                        <li class="menu-title"><span data-key="t-menu">Data Master User</span></li>
+                        <li class="menu-title"><span data-key="t-menu">Data Master</span></li>
+                        {{-- WFG Master --}}
+                        <li class="nav-item">
+                            <a class="nav-link menu-link {{ request()->routeIs('wfg.master.*') ? 'collapsed' : '' }}"
+                                href="#sidebarMasterWfg" data-bs-toggle="collapse" role="button"
+                                aria-expanded="{{ request()->routeIs('wfg.master.*') ? 'true' : 'false' }}"
+                                aria-controls="sidebarMasterWfg">
+                                <i class="mdi mdi-warehouse"></i> <span data-key="t-stock_op_wfg">WFG</span>
+                            </a>
+                            <div class="collapse menu-dropdown {{ request()->routeIs('wfg.master.*') ? 'show' : '' }}"
+                                id="sidebarMasterWfg">
+                                <ul class="nav nav-sm flex-column">
+                                    {{-- SO Barang --}}
+                                    <li class="nav-item">
+                                        <a href="{{ route('wfg.master.barang.index') }}"
+                                            class="nav-link {{ request()->routeIs('wfg.master.barang.index') ? 'active' : '' }}"
+                                            data-key="t-input-mst_brg_wfg">
+                                            <i class="mdi mdi-package"></i>
+                                            Master Barang SOP </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+
+                        {{-- User Management --}}
                         <li class="nav-item">
                             <a href="{{ route('user.index') }}"
                                 class="nav-link menu-link {{ request()->routeIs('user.*') ? 'active' : '' }}">
-                                <i class="mdi mdi-folder-account"></i> <span data-key="t-tkbm">Manage User</span>
+                                <i class="mdi mdi-folder-account"></i> <span data-key="t-tkbm">User</span>
                             </a>
                         </li>
                     @endif
