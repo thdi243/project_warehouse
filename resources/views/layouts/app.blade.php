@@ -47,6 +47,11 @@
         <link href="{{ asset('material/assets/css/datatables.min.css') }}" rel="stylesheet" type="text/css" />
         <script src="{{ asset('material/assets/js/datatables.min.js') }}"></script>
 
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+        <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+            rel="stylesheet" />
+
+
         {{-- Jquery UI --}}
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
@@ -94,6 +99,7 @@
 
         <!-- Sweet Alerts js -->
         <script src="{{ asset('material/assets/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
         <!-- Sweet alert init js-->
         <script src="{{ asset('material/assets/js/pages/sweetalerts.init.js') }}"></script>
