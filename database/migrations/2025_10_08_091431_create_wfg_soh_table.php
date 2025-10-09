@@ -24,6 +24,7 @@ return new class extends Migration
             $table->integer('qty_out')->default(0);
             $table->integer('qty_penjualan')->default(0);
             $table->integer('qty_scan_2')->default(0);
+            $table->datetime('last_updated')->nullable();
             $table->timestamps();
         });
     }

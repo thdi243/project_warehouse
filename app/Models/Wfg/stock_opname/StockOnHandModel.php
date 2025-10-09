@@ -24,6 +24,7 @@ class StockOnHandModel extends Model
         'qty_out',
         'qty_penjualan',
         'qty_scan_2',
+        'last_updated'
     ];
 
     public function barang()

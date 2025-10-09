@@ -112,8 +112,17 @@ class StockOnHandWfgController extends Controller
     public function getList(Request $request)
     {
         $searchTerm = $request->input('search');
+        $today = now()->toDateString();
 
-        $query = StockOnHandModel::with('barang:id,mid_barang,nama_barang,qty_box', 'user:id,username');
+        $query = StockOnHandModel::query();
+        $query->with([
+            'barang' => function ($q) {
+                $q->select('id', 'mid_barang', 'nama_barang', 'qty_box');
+            },
+            'user:id,username'
+        ]);
+        $query->whereHas('barang');
+        $query->whereDate('last_updated', $today);
 
         $query->when($searchTerm, function ($q) use ($searchTerm) {
             $q->whereHas('barang', function ($barangQuery) use ($searchTerm) {
@@ -256,12 +265,9 @@ class StockOnHandWfgController extends Controller
                 }
 
                 // Kalau belum ada hari ini, buat baru
-                StockOnHandModel::updateOrCreate(
+                StockOnHandModel::create(
                     [
                         'barang_id' => $barang->id,
-                        'created_at' => $today, // key unik per hari
-                    ],
-                    [
                         'user_id' => Auth::id() ?? 1,
                         'qty_soh' => $data['qty_soh'] ?? 0,
                         'qty_pal' => $data['qty_pal'] ?? 0,
@@ -272,6 +278,7 @@ class StockOnHandWfgController extends Controller
                         'qty_out' => $data['out'] ?? 0,
                         'qty_penjualan' => $data['penjualan'] ?? 0,
                         'qty_scan_2' => $data['scan_2'] ?? 0,
+                        'last_updated' => now()
                     ]
                 );
 

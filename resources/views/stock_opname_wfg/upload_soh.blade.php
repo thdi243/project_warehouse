@@ -165,6 +165,11 @@
                 <!-- Data SOH akan dimuat di sini lewat AJAX -->
             </div>
 
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Peringatan!</strong> {{ session('error') }}
+                </div>
+            @endif
         </div>
     </div>
 
@@ -187,7 +192,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="soh_file" class="form-label fw-bold">Pilih File Stock On Hand</label>
+                            <label for="file" class="form-label fw-bold">Pilih File Stock On Hand</label>
                             <input class="form-control" type="file" id="file" name="file" required
                                 accept=".xlsx, .xls, .csv">
                         </div>
@@ -458,7 +463,7 @@
                         });
 
                         $('#uploadModal').modal('hide');
-                        $('#soh_file').val('');
+                        $('#file').val('');
 
                         // Refresh DataTable kalau ada
                         loadSOHList();
@@ -488,6 +493,8 @@
                             title: 'Gagal Mengunggah!',
                             html: `${msg}${listNotFound}`
                         });
+
+                        loadSOHList();
                     }
                 });
             });
