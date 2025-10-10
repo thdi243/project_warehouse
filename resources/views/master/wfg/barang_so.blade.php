@@ -299,7 +299,7 @@
             <!-- Search & Add Button -->
             <div class="search-bar mb-4" data-aos="fade-up" data-aos-delay="100">
                 <div class="row align-items-center g-3">
-                    <div class="col-md-8">
+                    <div class="col-md-7">
                         <div class="position-relative">
                             <i class="mdi mdi-magnify position-absolute"
                                 style="left: 1rem; top: 50%; transform: translateY(-50%); color: var(--gray-600);"></i>
@@ -307,12 +307,19 @@
                                 class="form-control ps-5">
                         </div>
                     </div>
-                    <div class="col-md-4 text-md-end">
-                        <button onclick="openModal()" data-bs-toggle="modal" data-bs-target="#itemModal"
-                            class="btn btn-add w-100 w-md-auto">
-                            <i class="mdi mdi-plus-circle me-2"></i>
-                            Tambah Barang
-                        </button>
+                    <div class="col-md-5 text-md-end">
+                        <div class="d-flex gap-2 justify-content-end"> <select id="statusFilter" class="form-select w-auto">
+                                <option value="active">Barang Aktif</option>
+                                <option value="trashed">Barang Dihapus (Arsip)</option>
+                                <option value="all">Semua Barang</option>
+                            </select>
+
+                            <button onclick="openModal()" data-bs-toggle="modal" data-bs-target="#itemModal"
+                                class="btn btn-add w-100 w-md-auto">
+                                <i class="mdi mdi-plus-circle me-2"></i>
+                                Tambah
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -459,63 +466,94 @@
             // Search functionality
             $("#searchInput").on("keyup", function() {
                 let value = $(this).val().toLowerCase();
-                $(".col-xl-4").filter(function() {
+                $(".card-data").filter(function() {
                     $(this).toggle(
                         $(this).find('.item-title').text().toLowerCase().indexOf(value) > -1 ||
-                        $(this).find('.meta-item').text().toLowerCase().indexOf(value) > -1
+                        $(this).find('.item-meta').text().toLowerCase().indexOf(value) > -1
                     );
                 });
+
+                loadBarang();
+            });
+
+            $('#statusFilter').on('change', function() {
+                loadBarang();
             });
 
             function loadBarang() {
-                $.get("{{ route('wfg.master.barang.data') }}", function(res) {
-                    let container = $("#itemCardContainer");
-                    container.empty();
+                // 1. Ambil nilai filter dan search term dari elemen HTML
+                const status = $('#statusFilter').val();
+                const searchTerm = $('#searchInput').val();
 
-                    if (res.data.length === 0) {
-                        $("#emptyState").show();
-                        return;
-                    }
-                    $("#emptyState").hide();
+                let container = $("#itemCardContainer");
+                container.empty();
+                $("#emptyState").hide();
+                // Tambahkan logika loading state jika ada
 
-                    $.each(res.data, function(i, item) {
-                        let card = `
-                            <div class="col-md-4" data-aos="fade-up" data-aos-delay="${i * 50}">
-                                <div class="item-card">
-                                    <h3 class="item-title">${item.nama_barang}</h3>
-                                    <div class="item-meta">
-                                        <div class="meta-item">
-                                            <i class="mdi mdi-barcode"></i>
-                                            <span>MID: ${item.mid_barang ?? '-'}</span>
-                                        </div>
-                                        <div class="meta-item">
-                                            <i class="mdi mdi-scale-balance"></i>
-                                            <span>Satuan: ${item.satuan ?? '-'}</span>
-                                        </div>
-                                        <div class="meta-item">
-                                            <i class="mdi mdi-check-circle"></i>
-                                            <span class="badge ${item.status === 'aktif' ? 'badge-soft-success' : 'badge-soft-danger'}">
-                                                ${item.status}
-                                            </span>
-                                        </div>
+                $.ajax({
+                    url: `{{ route('wfg.master.barang.data') }}`,
+                    method: 'GET', // Tetap GET
+                    dataType: 'json',
+                    // 2. Kirim data filter ke backend
+                    data: {
+                        status: status,
+                        search: searchTerm
+                    },
+                    success: function(res) {
+                        // Hapus logika pencarian DOM front-end jika Anda menggunakan filter sisi server
+
+                        if (res.status === true && res.data.length > 0) {
+                            $("#emptyState").hide();
+
+                            // 3. Loop dan render card (Logika rendering Anda dipertahankan)
+                            $.each(res.data, function(i, item) {
+                                let card = `
+                        <div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-4 card-data" data-aos="fade-up" data-aos-delay="${i * 50}">
+                            <div class="item-card">
+                                <h3 class="item-title">${item.nama_barang}</h3>
+                                <div class="item-meta">
+                                    <div class="meta-item">
+                                        <i class="mdi mdi-barcode"></i>
+                                        <span>MID: ${item.mid_barang ?? '-'}</span>
                                     </div>
-                                    
-                                    <div class="d-flex gap-2 mt-auto pt-3 border-top text-nowrap justify-content-between">
-                                        <button class="btn btn-outline-info w-100" onclick="showDetail(${item.id})" title="Lihat Detail">
-                                            <i class="mdi mdi-eye me-2"></i>Detail
-                                        </button>
-                                        <button class="btn btn-outline-warning w-100" onclick="editBarang(${item.id})" title="Edit Data">
-                                            <i class="mdi mdi-pencil me-2"></i>Edit
-                                        </button>
-                                        <button class="btn btn-outline-danger btn-delete w-100" title="Hapus Data" data-id="${item.id}">
-                                            <i class="mdi mdi-delete me-2"></i>Delete
-                                        </button>
+                                    <div class="meta-item">
+                                        <i class="mdi mdi-scale-balance"></i>
+                                        <span>Satuan: ${item.satuan ?? '-'}</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <i class="mdi mdi-check-circle"></i>
+                                        <span class="badge ${item.status === 'aktif' ? 'badge-soft-success' : 'badge-soft-danger'}">
+                                            ${item.status}
+                                        </span>
                                     </div>
                                 </div>
+                                
+                                <div class="d-flex gap-2 mt-auto pt-3 border-top text-nowrap justify-content-between">
+                                    <button class="btn btn-outline-info w-100" onclick="showDetail(${item.id})" title="Lihat Detail">
+                                        <i class="mdi mdi-eye me-2"></i>Detail
+                                    </button>
+                                    <button class="btn btn-outline-warning w-100" onclick="editBarang(${item.id})" title="Edit Data">
+                                        <i class="mdi mdi-pencil me-2"></i>Edit
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-delete w-100" title="Hapus Data" data-id="${item.id}">
+                                        <i class="mdi mdi-delete me-2"></i>Delete
+                                    </button>
+                                </div>
                             </div>
-                        `;
-                        container.append(card);
-                    });
+                        </div>
+                    `;
+                                container.append(card);
+                            });
+
+                        } else {
+                            $("#emptyState").show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Gagal memuat data barang:", xhr.responseJSON ? xhr.responseJSON
+                            .message : error);
+                        $("#emptyState").show().text('Gagal memuat data. Silakan coba lagi.');
+                    }
                 });
             }
 

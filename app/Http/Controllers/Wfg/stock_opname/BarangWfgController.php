@@ -20,19 +20,40 @@ class BarangWfgController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function data()
+    public function data(Request $request)
     {
         try {
-            $barang = BarangWfgModel::all()->map(function ($item) {
+            $status = $request->input('status', 'active'); // Ambil filter status, default 'active'
+            $searchTerm = $request->input('search'); // Ambil search term
+
+            $query = BarangWfgModel::query(); // Mulai query dengan query builder
+
+            // 1. Logika Soft Deletes (Filter Status)
+            if ($status === 'trashed') {
+                $query->onlyTrashed(); // Hanya barang yang di-soft delete
+            } elseif ($status === 'all') {
+                $query->withTrashed();
+            }
+
+            if ($searchTerm) {
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('nama_barang', 'like', '%' . $searchTerm . '%')
+                        ->orWhere('mid_barang', 'like', '%' . $searchTerm . '%');
+                });
+            }
+
+            $barangData = $query->get()->map(function ($item) {
+                $currentStatus = $item->deleted_at ? 'nonaktif' : ($item->status ?? 'aktif');
+
                 return [
-                    'id'          => $item->id,
-                    'mid_barang'  => $item->mid_barang,
-                    'nama_barang' => $item->nama_barang,
-                    'qty_box' => $item->qty_box,
+                    'id'           => $item->id,
+                    'mid_barang'   => $item->mid_barang,
+                    'nama_barang'  => $item->nama_barang,
+                    'qty_box'      => $item->qty_box,
                     'tipe_kemasan' => $item->tipe_kemasan,
-                    'satuan'      => $item->satuan,
-                    'status'      => $item->status,
-                    'gambar'      => $item->gambar
+                    'satuan'       => $item->satuan,
+                    'status'       => $currentStatus,
+                    'gambar'       => $item->gambar
                         ? url('storage/' . $item->gambar)
                         : url('assets/images/logo/kecap.png'),
                 ];
@@ -40,7 +61,7 @@ class BarangWfgController extends Controller
 
             return response()->json([
                 'status' => true,
-                'data'   => $barang
+                'data'   => $barangData
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -184,6 +205,10 @@ class BarangWfgController extends Controller
     public function destroy(string $id)
     {
         $barang = BarangWfgModel::findOrFail($id);
+
+        $barang->status = 'nonaktif';
+        $barang->save();
+
         $barang->delete();
 
         return response()->json([
