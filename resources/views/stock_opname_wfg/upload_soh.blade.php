@@ -165,11 +165,11 @@
                 <!-- Data SOH akan dimuat di sini lewat AJAX -->
             </div>
 
-            @if (session('error'))
+            {{-- @if (session('error'))
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <strong>Peringatan!</strong> {{ session('error') }}
                 </div>
-            @endif
+            @endif --}}
         </div>
     </div>
 
@@ -851,5 +851,34 @@
                 }
             });
         }
+
+        // Toastr Notifications error
+        @if (session('error'))
+            // Konfigurasi Toastr (opsional, untuk tampilan)
+
+            toastr.options = {
+                "closeButton": true,
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "0",
+                "extendedTimeOut": "0",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut",
+
+                // PENTING: Force the user to interact
+                "tapToDismiss": false
+            }
+
+
+            toastr.error("{{ session('error') }}", "Peringatan!");
+        @endif
+
+        @if (session('success'))
+            toastr.success("{{ session('success') }}", "Berhasil!");
+        @endif
     </script>
 @endsection
