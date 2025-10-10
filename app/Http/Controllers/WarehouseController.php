@@ -148,7 +148,7 @@ class WarehouseController extends Controller
         $barangCount = BarangWfgModel::count();
 
         if ($barangCount === 0) {
-            return Redirect::route('master.wfg.barang_so')
+            return Redirect::route('wfg.master.barang.index')
                 ->with('error', 'Master Data Barang WFG masih kosong. Anda harus menambahkan data barang terlebih dahulu sebelum dapat mengunggah Stock On Hand (SOH).');
         }
 
