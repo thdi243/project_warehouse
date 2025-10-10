@@ -810,5 +810,30 @@
                 }
             });
         }
+
+        // Toastr Notifications error
+        @if (session('error'))
+            toastr.options = {
+                "closeButton": true,
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "0",
+                "extendedTimeOut": "0",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut",
+                "tapToDismiss": false
+            }
+
+
+            toastr.error("{{ session('error') }}", "Peringatan!");
+        @endif
+
+        @if (session('success'))
+            toastr.success("{{ session('success') }}", "Berhasil!");
+        @endif
     </script>
 @endsection

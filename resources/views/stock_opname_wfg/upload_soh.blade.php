@@ -164,12 +164,6 @@
             <div class="row g-4 mb-4" id="soh-list">
                 <!-- Data SOH akan dimuat di sini lewat AJAX -->
             </div>
-
-            {{-- @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <strong>Peringatan!</strong> {{ session('error') }}
-                </div>
-            @endif --}}
         </div>
     </div>
 

@@ -9,6 +9,7 @@ use App\Models\P2h\ForkliftModel;
 use App\Models\Tkbm\TkbmFeeModel;
 use App\Models\P2h\PalletMoverModel;
 use Illuminate\Support\Facades\Redirect;
+use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
 
 class WarehouseController extends Controller
@@ -144,6 +145,13 @@ class WarehouseController extends Controller
 
     public function uploadSOHWFG()
     {
+        $barangCount = BarangWfgModel::count();
+
+        if ($barangCount === 0) {
+            return Redirect::route('master.wfg.barang_so')
+                ->with('error', 'Master Data Barang WFG masih kosong. Anda harus menambahkan data barang terlebih dahulu sebelum dapat mengunggah Stock On Hand (SOH).');
+        }
+
         return view('stock_opname_wfg.upload_soh');
     }
 
