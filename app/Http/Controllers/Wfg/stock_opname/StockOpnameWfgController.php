@@ -442,12 +442,14 @@ class StockOpnameWfgController extends Controller
         }
 
         if ($user->jabatan === 'operator') {
-            $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)->first();
+            $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)
+                ->where('principal', $principalFilter)
+                ->first();
 
             if ($existingSop) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Anda sudah melakukan opname hari ini. Tidak dapat melakukan opname lebih dari sekali per hari. Hubungi Foreman!',
+                    'message' => 'Anda sudah melakukan opname hari ini untuk principal ' . $principalFilter . '. Tidak dapat melakukan opname lebih dari sekali per hari. Hubungi Foreman!',
                 ]);
             }
         }
@@ -618,6 +620,176 @@ class StockOpnameWfgController extends Controller
         }
     }
 
+    /**
+     * Edit Opname
+     */
+    public function editOpname($sop_id)
+    {
+        $user = Auth::user();
+
+        // Cek role
+        if ($user->jabatan === 'operator') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Operator tidak diizinkan melakukan edit opname.'
+            ], 403);
+        }
+
+        // Ambil SOP beserta relasi
+        $sop = WfgSopModel::with(['details', 'summaries'])->findOrFail($sop_id);
+
+        // Bersihkan data temp lama
+        WfgSopTempModel::where('principal', $sop->principal)
+            ->where('tgl_opname', $sop->tgl_opname)
+            ->delete();
+
+        // Salin dari detail ke temp
+        foreach ($sop->details as $detail) {
+            $summary = $sop->summaries->firstWhere('barang_id', $detail->barang_id);
+            WfgSopTempModel::create([
+                'barang_id'   => $detail->barang_id,
+                'qty_full'    => $detail->qty_full,
+                'qty_receh'   => $detail->qty_receh,
+                'summary'     => $detail->qty_full + $detail->qty_receh,
+                'tgl_opname'  => $sop->tgl_opname,
+                'principal'   => $sop->principal,
+                'created_by'  => $user->id,
+                'source_sop_id' => $sop->id,
+                'soh_id'      => null, // bisa diisi kalau kamu simpan relasi SOH
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Data opname berhasil dimuat ke mode edit.',
+            'redirect' => route('opname.form', [
+                'principal' => $sop->principal,
+                'tgl' => $sop->tgl_opname,
+                'edit' => 1,
+                'sop_id' => $sop->id
+            ])
+        ]);
+    }
+
+    public function updateOpname(Request $request)
+    {
+        $request->validate([
+            'sop_id' => 'required|exists:wfg_sop,id',
+            'tgl_opname' => 'required|date',
+        ]);
+
+        $user = Auth::user();
+
+        if ($user->jabatan === 'operator') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Operator tidak diizinkan melakukan edit opname.'
+            ], 403);
+        }
+
+        $sop = WfgSopModel::findOrFail($request->sop_id);
+        $tglOpname = $sop->tgl_opname;
+        $principalFilter = $sop->principal;
+        $keteranganInput = $request->input('keterangan', []);
+
+        $tempData = WfgSopTempModel::where('tgl_opname', $tglOpname)
+            ->where('principal', $principalFilter)
+            ->get();
+
+        if ($tempData->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data sementara masih kosong, isi terlebih dahulu.'
+            ]);
+        }
+
+        // Grouping untuk summary (mirip finalize)
+        $grouped = [];
+        foreach ($tempData as $temp) {
+            $barangId = $temp->barang_id;
+
+            if (!isset($grouped[$barangId])) {
+                $soh = null;
+                if (!empty($temp->soh_id)) {
+                    $soh = StockOnHandModel::find($temp->soh_id);
+                }
+
+                $grouped[$barangId] = [
+                    'barang_id' => $barangId,
+                    'mid_barang' => optional($temp->barang)->mid_barang,
+                    'nama_barang' => optional($temp->barang)->nama_barang,
+                    'qty_sap' => $soh ? $soh->qty_soh : 0,
+                    'qty_fisik' => 0,
+                ];
+            }
+
+            $grouped[$barangId]['qty_fisik'] += (int)$temp->summary;
+        }
+
+        // Tambahkan keterangan
+        foreach ($grouped as $barangId => $g) {
+            $grouped[$barangId]['keterangan'] = $keteranganInput[$barangId] ?? null;
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Update header SOP (opsional: ubah status, user revisi, dsb)
+            $sop->update([
+                'updated_by' => $user->id,
+                'status' => 'revised',
+            ]);
+
+            // Hapus detail & summary lama
+            WfgSopDetailModel::where('sop_id', $sop->id)->delete();
+            WfgSopSummariesModel::where('sop_id', $sop->id)->delete();
+
+            // Insert ulang detail
+            foreach ($tempData as $temp) {
+                WfgSopDetailModel::create([
+                    'sop_id' => $sop->id,
+                    'barang_id' => $temp->barang_id,
+                    'qty_full' => $temp->qty_full,
+                    'qty_receh' => $temp->qty_receh,
+                ]);
+            }
+
+            // Insert ulang summaries
+            foreach ($grouped as $barangId => $g) {
+                $selisih = $g['qty_fisik'] - $g['qty_sap'];
+                $statusSelisih = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
+
+                WfgSopSummariesModel::create([
+                    'sop_id' => $sop->id,
+                    'barang_id' => $barangId,
+                    'qty_fisik' => $g['qty_fisik'],
+                    'qty_sistem' => $g['qty_sap'],
+                    'selisih' => $selisih,
+                    'status' => $statusSelisih,
+                    'keterangan' => $g['keterangan'] ?? null,
+                ]);
+            }
+
+            // Bersihkan temp setelah selesai
+            WfgSopTempModel::where('tgl_opname', $tglOpname)
+                ->where('principal', $principalFilter)
+                ->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data opname berhasil diperbarui.',
+                'sop_id' => $sop->id,
+            ]);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menyimpan perubahan: ' . $th->getMessage(),
+            ], 500);
+        }
+    }
 
     /**
      * Display the specified resource.
