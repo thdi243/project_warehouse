@@ -171,20 +171,22 @@ class WarehouseController extends Controller
     {
         $user = Auth::user();
 
-        $allowedPrincipals = ['BAS', 'SMU'];
+        if ($user->jabatan === 'operator') {
+            $allowedPrincipals = ['BAS', 'SMU'];
 
-        $userPrincipal = optional($user->principal)->principal
-            ? strtoupper(trim($user->principal->principal))
-            : null;
+            $userPrincipal = optional($user->principal)->principal
+                ? strtoupper(trim($user->principal->principal))
+                : null;
 
-        // Jika user punya principal tapi bukan termasuk yang diizinkan
-        if ($userPrincipal && !in_array($userPrincipal, $allowedPrincipals)) {
-            return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
-        }
+            // Jika operator tidak punya principal
+            if (!$userPrincipal) {
+                return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
+            }
 
-        // Jika user tidak memiliki principal dan dia operator
-        if ($user->jabatan === 'operator' && !$userPrincipal) {
-            return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
+            // Jika principal operator tidak termasuk yang diizinkan
+            if (!in_array($userPrincipal, $allowedPrincipals)) {
+                return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
+            }
         }
 
         $barangCount = BarangWfgModel::count();
@@ -221,20 +223,22 @@ class WarehouseController extends Controller
     {
         $user = Auth::user();
 
-        $allowedPrincipals = ['BAS', 'SMU'];
+        if ($user->jabatan === 'operator') {
+            $allowedPrincipals = ['BAS', 'SMU'];
 
-        $userPrincipal = optional($user->principal)->principal
-            ? strtoupper(trim($user->principal->principal))
-            : null;
+            $userPrincipal = optional($user->principal)->principal
+                ? strtoupper(trim($user->principal->principal))
+                : null;
 
-        // Jika user punya principal tapi bukan termasuk yang diizinkan
-        if ($userPrincipal && !in_array($userPrincipal, $allowedPrincipals)) {
-            return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
-        }
+            // Jika operator tidak punya principal
+            if (!$userPrincipal) {
+                return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
+            }
 
-        // Jika user tidak memiliki principal dan dia operator
-        if ($user->jabatan === 'operator' && !$userPrincipal) {
-            return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
+            // Jika principal operator tidak termasuk yang diizinkan
+            if (!in_array($userPrincipal, $allowedPrincipals)) {
+                return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
+            }
         }
 
         $principals = BarangWfgModel::distinct()->pluck('principal');
