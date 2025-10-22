@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\P2hController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspRakController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Api\WspManRakController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
@@ -103,12 +105,23 @@ Route::prefix('wsp')->group(function () {
 
 Route::prefix('wfg')->group(function () {
     Route::post('/store/barang', [BarangWfgController::class, 'store']);
+    Route::get('/show/barang/{id}', [BarangWfgController::class, 'show'])->name('wfg.master.barang.show');
     Route::post('/store/soh', [StockOnHandWfgController::class, 'store']);
     Route::get('/soh/listData', [StockOnHandWfgController::class, 'getList']);
     Route::get('/soh/show/{id}', [StockOnHandWfgController::class, 'show']);
     Route::get('/soh/getBarang', [StockOnHandWfgController::class, 'getBarang']);
     Route::post('/sop/store', [StockOpnameWfgController::class, 'store']);
-    Route::get('/sop/getBarang', [StockOpnameWfgController::class, 'getBarang']);
+    Route::get('/sop/getData', [StockOpnameWfgController::class, 'getData']);
+    Route::get('/sop/getDataTempBatch', [StockOpnameWfgController::class, 'getDataTempBatch']);
+    Route::get('/sop/getDataTempEdit/{id}', [StockOpnameWfgController::class, 'getDataTempEdit']);
+    Route::get('/sop/getDataNewTempEdit/{id}', [StockOpnameWfgController::class, 'getDataNewTempEdit']);
     Route::get('/sop/report/getData', [StockOpnameWfgController::class, 'getDataReport']);
     Route::get('/sop/report/export', [StockOpnameWfgController::class, 'getDataReport']);
+    Route::get('/sop/users/approval', [StockOpnameWfgController::class, 'getDataApproval']);
 });
+
+Route::prefix('notifications')->group(function () {
+    Route::post('/read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+});
+
+Route::get('user/edit/{id}', [UserController::class, 'edit']);

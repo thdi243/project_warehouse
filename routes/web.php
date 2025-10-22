@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wsp\WspRakController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
@@ -120,10 +121,26 @@ Route::middleware('auth')->group(function () {
             Route::prefix('stock_opname')->group(function () {
                 // Form SOP WFG
                 Route::get('/sop/form', [WarehouseController::class, 'formSOWFG'])->name('wfg.stock_opname.form');
+                Route::get('/sop/getData', [StockOpnameWfgController::class, 'getData'])->name('wfg.stock_opname.getData');
                 Route::post('/sop/store', [StockOpnameWfgController::class, 'store'])->name('wfg.stock_opname.store');
+                Route::post('/sop/save-temp', [StockOpnameWfgController::class, 'saveTemp'])->name('wfg.stock_opname.save-temp');
+                Route::post('/sop/save-new-temp', [StockOpnameWfgController::class, 'saveTempNew'])->name('wfg.stock_opname.save-temp-new');
+                Route::post('/sop/save-final', [StockOpnameWfgController::class, 'finalizeOpname'])->name('wfg.stock_opname.save-final');
+                Route::post('/sop/update-temp', [StockOpnameWfgController::class, 'updateTempBatch'])->name('wfg.stock_opname.update-temp');
+                Route::post('/sop/update-temp-new', [StockOpnameWfgController::class, 'updateNewTemp'])->name('wfg.stock_opname.update-temp-new');
+                Route::delete('/sop/delete-temp/{id}', [StockOpnameWfgController::class, 'destroyTemp'])->name('wfg.stock_opname.delete-temp');
+                Route::delete('/sop/delete-temp-new/{id}', [StockOpnameWfgController::class, 'destroyNewTemp'])->name('wfg.stock_opname.delete-temp-new');
                 Route::put('/sop/update/{id}', [StockOpnameWfgController::class, 'update'])->name('wfg.stock_opname.update');
                 Route::get('/sop/report', [WarehouseController::class, 'reportSOPWFG'])->name('wfg.stock_opname.report');
                 Route::get('/sop/export', [StockOpnameWfgController::class, 'exportPdfSOPWFG'])->name('wfg.stock_opname.export');
+                Route::post('/sop/update-keterangan/{id}', [StockOpnameWfgController::class, 'updateKeterangan'])->name('wfg.stock_opname.update-keterangan');
+                Route::post('/sop/send-approval', [StockOpnameWfgController::class, 'sendApproval'])->name('wfg.stock_opname.send-approval');
+                Route::post('/sop/update/status-approval', [StockOpnameWfgController::class, 'updateStatus'])->name('wfg.stock_opname.update.status-approval');
+                Route::get('/sop/approval/show/{id}', [StockOpnameWfgController::class, 'show'])->name('wfg.stock_opname.approval.show');
+                Route::get('/sop/report/getData', [StockOpnameWfgController::class, 'getDataReport'])->name('wfg.stock_opname.report.getData');
+                Route::get('/sop/getDataTempBatch', [StockOpnameWfgController::class, 'getDataTempBatch'])->name('wfg.stock_opname.getTempBatch');
+                Route::delete('/sop/reset-temp', [StockOpnameWfgController::class, 'resetTemp'])->name('wfg.stock_opname.reset-temp');
+                Route::delete('/sop/reset-temp-row', [StockOpnameWfgController::class, 'resetTempRow'])->name('wfg.stock_opname.reset-temp-row');
 
                 // Stock on Hand SO WFG
                 Route::get('/soh/index', [WarehouseController::class, 'uploadSOHWFG'])->name('wfg.stock_opname.soh');
@@ -134,12 +151,31 @@ Route::middleware('auth')->group(function () {
                 Route::get('/soh/template', [StockOnHandWfgController::class, 'downloadTemplate'])->name('wfg.stock_opname.soh.template');
                 Route::get('/soh/list', [StockOnHandWfgController::class, 'getList'])->name('wfg.stock_opname.soh.list');
                 Route::get('/soh/show', [StockOnHandWfgController::class, 'show'])->name('wfg.stock_opname.soh.show');
+                Route::get('/soh/getBarang', [StockOnHandWfgController::class, 'getBarang'])->name('wfg.stock_opname.soh.getBarang');
             });
         });
     });
 
     // User
     Route::middleware(['auth', 'access'])->group(function () {
+
+        // Master WFG
+        Route::prefix('wfg')->group(function () {
+            Route::prefix('master')->group(function () {
+                Route::get('/barang/index', [BarangWfgController::class, 'index'])->name('wfg.master.barang.index');
+                Route::get('/barang/new', [BarangWfgController::class, 'getNewItems'])->name('wfg.master.barang.new');
+                Route::post('/barang/new/approve/{id}', [BarangWfgController::class, 'approve'])->name('wfg.master.barang.new.approve');
+                Route::post('/barang/new/reject/{id}', [BarangWfgController::class, 'reject'])->name('wfg.master.barang.new.reject');
+                Route::post('/barang/store', [BarangWfgController::class, 'store'])->name('wfg.master.barang.store');
+                Route::get('/barang/data', [BarangWfgController::class, 'data'])->name('wfg.master.barang.data');
+                Route::put('/barang/update/{id}', [BarangWfgController::class, 'update'])->name('wfg.master.barang.update');
+                Route::delete('/barang/delete/{id}', [BarangWfgController::class, 'destroy'])->name('wfg.master.barang.delete');
+                Route::post('/barang/import', [BarangWfgController::class, 'import'])->name('wfg.master.barang.import');
+                Route::get('/barang/template', [BarangWfgController::class, 'downloadTemplate'])->name('wfg.master.barang.template');
+            });
+        });
+
+        // Master User
         Route::prefix('user')->group(function () {
             Route::get('/index', [UserController::class, 'index'])->name('user.index');
             Route::get('/get-data', [UserController::class, 'create'])->name('user.getData');
@@ -150,4 +186,6 @@ Route::middleware('auth')->group(function () {
             Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
         });
     });
+
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
 });
