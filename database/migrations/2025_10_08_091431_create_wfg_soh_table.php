@@ -16,15 +16,11 @@ return new class extends Migration
             $table->foreignId('barang_id')->constrained('wfg_barang')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->integer('qty_soh')->default(0);
-            $table->integer('qty_pal')->default(0);
             $table->integer('qty_unrest')->default(0);
             $table->integer('qty_qi')->default(0);
             $table->integer('qty_block')->default(0);
-            $table->integer('qty_in')->default(0);
-            $table->integer('qty_out')->default(0);
-            $table->integer('qty_penjualan')->default(0);
-            $table->integer('qty_scan_2')->default(0);
             $table->datetime('last_updated')->nullable();
+            $table->string('principal')->nullable();
             $table->timestamps();
         });
     }

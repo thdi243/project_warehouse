@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\Wfg\stock_opname;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use App\Models\Wfg\stock_opname\WfgSopModel;
 use Illuminate\Validation\ValidationException;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
+use App\Models\Wfg\stock_opname\WfgSopDetailModel;
+use App\Models\Wfg\stock_opname\WfgSopSummariesModel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\Wsp\StockOnHandModel as WspStockOnHandModel;
 
@@ -31,18 +35,29 @@ class StockOnHandWfgController extends Controller
     {
         $request->validate([
             'barang_id' => 'required|exists:wfg_barang,id',
-            'qty_soh' => 'nullable|integer',
-            'qty_pal' => 'nullable|integer',
             'unrest' => 'nullable|integer',
             'qi' => 'nullable|integer',
             'block' => 'nullable|integer',
-            'in' => 'nullable|integer',
-            'out' => 'nullable|integer',
-            'penjualan' => 'nullable|integer',
-            'scan_2' => 'nullable|integer',
         ]);
 
         try {
+            $user = Auth::user();
+
+            // Tentukan principal berdasarkan role user
+            if ($user->jabatan === 'operator') {
+                $principal = $user->principal?->principal ?? null;
+
+                if (empty($principal)) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Akun operator belum memiliki principal. Hubungi admin untuk melengkapi data user.',
+                    ], 422);
+                }
+            } else {
+                // Non-operator boleh input manual atau kosong
+                $principal = $request->input('principal', $user->principal ?? null);
+            }
+
             $exists = StockOnHandModel::where('barang_id', $request->barang_id)
                 ->whereDate('created_at', now()->toDateString())
                 ->exists();
@@ -54,19 +69,22 @@ class StockOnHandWfgController extends Controller
                 ], 409);
             }
 
+            $unrest = $request->unrest ?? 0;
+            $qi = $request->qi ?? 0;
+            $block = $request->block ?? 0;
+            $qty_soh = $unrest + $qi + $block;
+
             $soh = StockOnHandModel::create([
                 'barang_id' => $request->barang_id,
                 'user_id' => Auth::id() ?? 1,
-                'qty_soh' => $request->qty_soh ?? 0,
-                'qty_pal' => $request->qty_pal ?? 0,
-                'qty_unrest' => $request->unrest ?? 0,
-                'qty_qi' => $request->qi ?? 0,
-                'qty_block' => $request->block ?? 0,
-                'qty_in' => $request->in ?? 0,
-                'qty_out' => $request->out ?? 0,
-                'qty_penjualan' => $request->penjualan ?? 0,
-                'qty_scan_2' => $request->scan_2 ?? 0,
+                'qty_soh' => $qty_soh ?? 0,
+                'qty_unrest' => $unrest,
+                'qty_qi' => $qi,
+                'qty_block' => $block,
+                'last_updated' => now(),
+                'principal' => $principal
             ]);
+
 
             return response()->json([
                 'status' => true,
@@ -80,6 +98,7 @@ class StockOnHandWfgController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Terjadi kesalahan saat menambahkan Stock On Hand',
@@ -112,42 +131,86 @@ class StockOnHandWfgController extends Controller
     public function getList(Request $request)
     {
         $searchTerm = $request->input('search');
+        $principalFilter = $request->input('principal');
+        $perPage = 20;
         $today = now()->toDateString();
+        $user = Auth::user();
 
-        $query = StockOnHandModel::query();
+        Log::info('SOH Filter Check', [
+            'user' => $user->username,
+            'jabatan' => $user->jabatan,
+            'relasi_principal' => $user->principal,
+            'user_principal_value' => $user->principal?->principal,
+        ]);
+
+        $query = StockOnHandModel::query()
+            ->select('wfg_soh.*')
+            ->leftJoin('wfg_barang', 'wfg_soh.barang_id', '=', 'wfg_barang.id')
+            ->leftJoin('users', 'wfg_soh.user_id', '=', 'users.id');
+
+        // Filter tanggal
+        $query->whereDate('wfg_soh.last_updated', $today);
+
+        // Filter principal jika operator
+        if ($user->jabatan === 'operator') {
+            $userPrincipal = $user->principal?->principal;
+            if ($userPrincipal) {
+                $query->where('wfg_barang.principal', $userPrincipal);
+            } else {
+                $query->whereRaw('1 = 0'); // tidak ada data
+            }
+        } else {
+            if ($principalFilter) {
+                $query->where('wfg_barang.principal', $principalFilter);
+            }
+        }
+
+        // Filter search
+        if ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('wfg_barang.nama_barang', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('wfg_barang.mid_barang', 'like', '%' . $searchTerm . '%');
+            });
+        }
+
+        // Ambil data relasi
         $query->with([
-            'barang' => function ($q) {
-                $q->select('id', 'mid_barang', 'nama_barang', 'qty_box');
-            },
+            'barang:id,mid_barang,nama_barang,qty_box,principal',
             'user:id,username'
         ]);
-        $query->whereHas('barang');
-        $query->whereDate('last_updated', $today);
 
-        $query->when($searchTerm, function ($q) use ($searchTerm) {
-            $q->whereHas('barang', function ($barangQuery) use ($searchTerm) {
-                $barangQuery->where('nama_barang', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('mid_barang', 'like', '%' . $searchTerm . '%');
-            });
-        });
-
-        // Urutkan dan batasi hasilnya
-        $data = $query->orderBy('id', 'desc')
-            ->take(50)
-            ->get();
+        $data = $query->orderBy('wfg_soh.id', 'desc')
+            ->paginate($perPage);
 
         return response()->json($data);
     }
 
+
     public function getBarang()
     {
-        $barang = BarangWfgModel::select('id', 'mid_barang', 'nama_barang')->get();
+        $user = Auth::user();
+
+        $query = BarangWfgModel::select('id', 'mid_barang', 'nama_barang', 'principal');
+
+        // Jika user operator, filter berdasarkan principal mereka
+        if ($user->jabatan === 'operator') {
+            $userPrincipal = $user->principal?->principal;
+            if ($userPrincipal) {
+                $query->where('principal', $userPrincipal);
+            } else {
+                // Jika operator tapi tidak punya principal, tidak tampilkan data
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        $barang = $query->get();
 
         return response()->json([
             'status' => 'success',
             'data' => $barang
         ]);
     }
+
 
     /**
      * Update the specified resource in storage.
@@ -156,30 +219,40 @@ class StockOnHandWfgController extends Controller
     {
         try {
             $soh = StockOnHandModel::findOrFail($id);
+            $user = Auth::user();
 
             $request->validate([
-                'qty_soh' => 'nullable|integer',
-                'qty_pal' => 'nullable|integer',
                 'unrest' => 'nullable|integer',
                 'qi' => 'nullable|integer',
                 'block' => 'nullable|integer',
-                'in' => 'nullable|integer',
-                'out' => 'nullable|integer',
-                'penjualan' => 'nullable|integer',
-                'scan_2' => 'nullable|integer',
             ]);
 
+            if ($user->jabatan === 'operator') {
+                $principal = $user->principal?->principal ?? null;
+
+                if (empty($principal)) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Akun operator belum memiliki principal. Hubungi admin untuk melengkapi data user.',
+                    ], 422);
+                }
+            } else {
+                // Non-operator bisa kirim principal lewat request, atau pakai existing
+                $principal = $request->input('principal', $soh->principal ?? $user->principal ?? null);
+            }
+
+            $unrest = $request->unrest ?? 0;
+            $qi = $request->qi ?? 0;
+            $block = $request->block ?? 0;
+            $qty_soh = $unrest + $qi + $block;
+
             $soh->update([
-                'qty_soh' => $request->qty_soh ?? $soh->qty_soh,
-                'qty_pal' => $request->qty_pal ?? $soh->qty_pal,
-                'qty_unrest' => $request->unrest ?? $soh->qty_unrest,
-                'qty_qi' => $request->qi ?? $soh->qty_qi,
-                'qty_block' => $request->block ?? $soh->qty_block,
-                'qty_in' => $request->in ?? $soh->qty_in,
-                'qty_out' => $request->out ?? $soh->qty_out,
-                'qty_penjualan' => $request->penjualan ?? $soh->qty_penjualan,
-                'qty_scan_2' => $request->scan_2 ?? $soh->qty_scan_2,
+                'qty_soh' => $qty_soh ?? $soh->qty_soh,
+                'qty_unrest' => $unrest ?? $soh->qty_unrest,
+                'qty_qi' => $qi ?? $soh->qty_qi,
+                'qty_block' => $block ?? $soh->qty_block,
                 'user_id' => Auth::id() ?? $soh->user_id,
+                'last_updated' => now()
             ]);
 
             return response()->json([
@@ -223,6 +296,22 @@ class StockOnHandWfgController extends Controller
         ]);
 
         try {
+            $user = Auth::user();
+
+            // 🔹 Tentukan principal berdasarkan jabatan
+            if ($user->jabatan === 'operator') {
+                $principal = $user->principal?->principal ?? null;
+
+                if (empty($principal)) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Akun operator belum memiliki principal. Hubungi admin untuk melengkapi data user.',
+                    ], 422);
+                }
+            } else {
+                $principal = $request->input('principal', $user->principal ?? null);
+            }
+
             $file = $request->file('file');
             $path = $file->getRealPath();
 
@@ -237,13 +326,23 @@ class StockOnHandWfgController extends Controller
 
             foreach ($rows as $index => $row) {
                 if ($index == 1) {
-                    $header = array_map('strtolower', $row);
+                    $header = array_map(fn($h) => strtolower(trim($h)), $row);
+                    $requiredHeaders = ['mid_barang', 'nama_barang', 'unrest', 'qual_insp', 'blocked'];
+                    $missing = array_diff($requiredHeaders, $header);
+
+                    if (!empty($missing)) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Format file Excel tidak sesuai. Kolom berikut hilang: ' . implode(', ', $missing)
+                        ], 422);
+                    }
+
                     continue;
                 }
 
                 if (empty($row['A'])) continue;
 
-                $data = array_combine($header, $row);
+                $data = array_combine($header, array_map('trim', $row));
 
                 if (empty($data['mid_barang'])) continue;
 
@@ -260,37 +359,39 @@ class StockOnHandWfgController extends Controller
                     ->first();
 
                 if ($soh) {
-                    // Kalau sudah ada, skip (atau update jika mau)
+                    // Kalau sudah ada, skip (atau update jika diinginkan)
                     continue;
                 }
 
-                // Kalau belum ada hari ini, buat baru
-                StockOnHandModel::create(
-                    [
-                        'barang_id' => $barang->id,
-                        'user_id' => Auth::id() ?? 1,
-                        'qty_soh' => $data['qty_soh'] ?? 0,
-                        'qty_pal' => $data['qty_pal'] ?? 0,
-                        'qty_unrest' => $data['unrest'] ?? 0,
-                        'qty_qi' => $data['qi'] ?? 0,
-                        'qty_block' => $data['block'] ?? 0,
-                        'qty_in' => $data['in'] ?? 0,
-                        'qty_out' => $data['out'] ?? 0,
-                        'qty_penjualan' => $data['penjualan'] ?? 0,
-                        'qty_scan_2' => $data['scan_2'] ?? 0,
-                        'last_updated' => now()
-                    ]
-                );
+                // 🔹 Ambil nilai numeric (jaga-jaga kalau kosong atau null)
+                $unrest  = (float)($data['unrest'] ?? 0);
+                $qual_insp = (float)($data['qual_insp'] ?? 0);
+                $blocked = (float)($data['blocked'] ?? 0);
+
+                // 🔹 Hitung total qty_soh
+                $qty_soh = $unrest + $qual_insp + $blocked;
+
+                // 🔹 Simpan data baru ke database
+                StockOnHandModel::create([
+                    'barang_id'   => $barang->id,
+                    'user_id'     => Auth::id() ?? 1,
+                    'qty_soh'     => $qty_soh,
+                    'qty_unrest'  => $unrest,
+                    'qty_qi'      => $qual_insp,
+                    'qty_block'   => $blocked,
+                    'last_updated' => now(),
+                    'principal'   => $principal,
+                ]);
 
                 $countSuccess++;
             }
 
             if (!empty($notFound)) {
                 return response()->json([
-                    'status' => false,
+                    'status' => true,
                     'message' => "Terdapat " . count($notFound) . " MID Barang yang tidak ditemukan di master barang.",
                     'not_found' => $notFound
-                ], 400);
+                ]);
             }
 
             return response()->json([
@@ -305,7 +406,6 @@ class StockOnHandWfgController extends Controller
         }
     }
 
-
     // download temlate
     public function downloadTemplate()
     {
@@ -315,16 +415,11 @@ class StockOnHandWfgController extends Controller
 
         // Set judul kolom (header template)
         $headers = [
-            'mid_barang', // hanya ini diisi user
-            'qty_soh',
-            'qty_pal',
+            'mid_barang',
+            'nama_barang',
             'unrest',
-            'qi',
-            'block',
-            'in',
-            'out',
-            'penjualan',
-            'scan_2',
+            'qual_insp',
+            'blocked',
         ];
 
         // Isi header ke baris pertama
@@ -337,19 +432,14 @@ class StockOnHandWfgController extends Controller
         }
 
         // Tambahkan contoh data (opsional)
-        $sheet->setCellValue('A2', 'MID001');
-        $sheet->setCellValue('B2', 100);
-        $sheet->setCellValue('C2', 10);
-        $sheet->setCellValue('D2', 5);
-        $sheet->setCellValue('E2', 3);
-        $sheet->setCellValue('F2', 2);
-        $sheet->setCellValue('G2', 50);
-        $sheet->setCellValue('H2', 30);
-        $sheet->setCellValue('I2', 20);
-        $sheet->setCellValue('J2', 0);
+        $sheet->setCellValue('A2', '1160825');
+        $sheet->setCellValue('B2', 'FOOD KECAP MANIS SEDAAP JERIGEN 25KG');
+        $sheet->setCellValue('C2', 886);
+        $sheet->setCellValue('D2', 0);
+        $sheet->setCellValue('E2', 0);
 
         // Nama file
-        $fileName = 'Template_Stock_On_Hand.xlsx';
+        $fileName = 'Template_Stock_On_Hand_' . date('Y-m-d') . '.xlsx';
 
         // Buat response untuk download langsung tanpa simpan file ke server
         return new StreamedResponse(function () use ($spreadsheet) {
@@ -357,7 +447,7 @@ class StockOnHandWfgController extends Controller
             $writer->save('php://output');
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => "attachment;filename=\"Template_Stock_On_Hand.xlsx\"",
+            'Content-Disposition' => "attachment;filename=\"{$fileName}\"",
         ]);
     }
 }

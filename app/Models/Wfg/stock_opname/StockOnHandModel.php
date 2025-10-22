@@ -16,15 +16,11 @@ class StockOnHandModel extends Model
         'barang_id',
         'user_id',
         'qty_soh',
-        'qty_pal',
         'qty_unrest',
         'qty_qi',
         'qty_block',
-        'qty_in',
-        'qty_out',
-        'qty_penjualan',
-        'qty_scan_2',
-        'last_updated'
+        'last_updated',
+        'principal'
     ];
 
     public function barang()

@@ -123,7 +123,7 @@
                 <div class="container-fluid">
                     <h1 class="h2 fw-bold mb-2 text-white">
                         <i class="mdi mdi-upload me-2"></i>
-                        Upload Stock On Hand (SOH)
+                        Upload Stock On Hand - SAP
                     </h1>
                     <p class="mb-0 opacity-90">Kelola dan update stock on hand setiap hari agar up to date</p>
                 </div>
@@ -133,7 +133,8 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="row my-3 align-items-center">
-                            <div class="col-lg-6 col-md-12 mb-3 mb-lg-0">
+                            <div
+                                class="@if (Auth::user()->jabatan != 'operator') col-lg-3 @else col-lg-6 @endif col-md-12 mb-3 mb-lg-0">
                                 <form id="searchSOHForm" class="d-flex" role="search">
                                     <div class="input-group">
                                         <input type="search" class="form-control" id="searchSOHInput"
@@ -145,24 +146,42 @@
                                 </form>
                             </div>
 
+                            {{-- Filter principal hanya untuk non-operator --}}
+                            @if (Auth::user()->jabatan != 'operator')
+                                <div class="col-lg-3 col-md-12 mb-3 mb-lg-0">
+                                    <select id="filterPrincipal" class="form-select">
+                                        <option value="">All Principal</option>
+                                        @foreach ($principals as $p)
+                                            <option value="{{ $p }}">{{ $p }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
 
-                            <div class="col-lg-6 col-md-12 d-flex justify-content-between">
-                                <button class="btn btn-success w-100 me-2" data-bs-toggle="modal"
-                                    data-bs-target="#uploadModal">
-                                    <i class="mdi mdi-upload me-1"></i> Upload
-                                </button>
+                            {{-- Tombol Upload & Tambah --}}
+                            @if ($barangCount > 0)
+                                <div
+                                    class="@if (Auth::user()->jabatan != 'operator') col-lg-6 @else col-lg-6 @endif col-md-12 d-flex justify-content-between">
+                                    <button class="btn btn-success w-100 me-2" data-bs-toggle="modal"
+                                        data-bs-target="#uploadModal">
+                                        <i class="mdi mdi-upload me-1"></i> Upload
+                                    </button>
 
-                                <button class="btn btn-info w-100" onclick="openAddSOH()">
-                                    <i class="mdi mdi-plus-circle-outline me-1"></i> Tambah
-                                </button>
-                            </div>
+                                    <button class="btn btn-info w-100" onclick="openAddSOH()">
+                                        <i class="mdi mdi-plus-circle-outline me-1"></i> Tambah
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row g-4 mb-4" id="soh-list">
-                <!-- Data SOH akan dimuat di sini lewat AJAX -->
+            <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="200">
+                <div class="card-body">
+                    <div id="soh-table-container" class="table-responsive">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -182,13 +201,13 @@
                     @csrf
                     <div class="modal-body">
                         <div class="alert alert-info" role="alert">
-                            Hanya izinkan file <b>.xlsx, .xls, atau .csv.</b> Ukuran maksimal <b>5MB</b>.
+                            Hanya izinkan file <b>.xlsx, .xls</b> Ukuran maksimal <b>5MB</b>.
                         </div>
 
                         <div class="mb-3">
                             <label for="file" class="form-label fw-bold">Pilih File Stock On Hand</label>
                             <input class="form-control" type="file" id="file" name="file" required
-                                accept=".xlsx, .xls, .csv">
+                                accept=".xlsx, .xls">
                         </div>
                     </div>
 
@@ -230,36 +249,21 @@
                             </select>
                         </div>
 
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label">Qty SOH</label>
-                                <input type="number" class="form-control" id="qty_soh" name="qty_soh">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Qty PAL</label>
-                                <input type="number" class="form-control" id="qty_pal" name="qty_pal">
-                            </div>
-                        </div>
-
                         <div class="row g-2 mt-2">
                             <div class="col-md-6">
                                 <label class="form-label">Qty UNREST</label>
                                 <input type="number" class="form-control" id="unrest" name="unrest">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Qty QI</label>
+                                <label class="form-label">Qty Qual Insp</label>
                                 <input type="number" class="form-control" id="qi" name="qi">
                             </div>
                         </div>
 
                         <div class="row g-2 mt-2">
                             <div class="col-md-6">
-                                <label class="form-label">Qty BLOCK</label>
+                                <label class="form-label">Qty BLOCKED</label>
                                 <input type="number" class="form-control" id="block" name="block">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Qty Scan 2</label>
-                                <input type="number" class="form-control" id="scan_2" name="scan_2">
                             </div>
                         </div>
                     </div>
@@ -302,123 +306,148 @@
         $(document).ready(function() {
             loadSOHList();
 
-            function loadSOHList(search = '') {
-                const ajaxData = {};
+            function loadSOHList(page = 1, search = '', principal = '') {
+                const ajaxData = {
+                    page: page,
+                    per_page: 25
+                };
+
                 if (search) {
                     ajaxData.search = search;
                 }
 
+                if (principal) {
+                    ajaxData.principal = principal;
+                }
+
+                const container = $('#soh-table-container');
+
                 $.ajax({
-                    url: `{{ url('api/wfg/soh/listData') }}`,
+                    // url: `{{ url('api/wfg/soh/listData') }}`,
+                    url: "{{ route('wfg.stock_opname.soh.list') }}",
                     type: "GET",
                     data: ajaxData,
                     beforeSend: function() {
-                        $('#soh-list').html(`
-                            <div class="col-12">
-                                <div class="d-flex flex-column align-items-center py-5">
-                                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <p class="mt-3 text-primary fw-semibold">Memuat data Stock On Hand...</p>
+                        // Tampilkan loading state di dalam container
+                        container.html(`
+                            <div class="d-flex flex-column align-items-center py-5">
+                                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                    <span class="visually-hidden">Loading...</span>
                                 </div>
+                                <p class="mt-3 text-primary fw-semibold">Memuat data Stock On Hand...</p>
                             </div>
                         `);
                     },
-                    success: function(data) {
-                        const finalData = data;
+                    success: function(response) {
+                        const paginatedData = response;
+                        const finalData = response.data; // Array data item
+                        let html = '';
 
                         if (finalData.length === 0) {
-
+                            // Empty State
                             let noDataMessage = search ?
                                 `Tidak ditemukan data SOH untuk pencarian: "<strong>${search}</strong>"` :
                                 `Belum ada data Stock On Hand yang tercatat untuk hari ini.`;
 
-                            $('#soh-list').html(`
-                                <div class="col-12">
-                                    <div class="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
-                                        <i class="mdi mdi-package-variant-closed-remove" style="font-size: 72px;"></i>
-                                        <h4 class="fw-light mt-3">${search ? 'Pencarian Tidak Ditemukan' : 'Stok Kosong Hari Ini'}</h4>
-                                        <p class="text-center">${noDataMessage}</p>
-                                    </div>
+                            container.html(`
+                                <div class="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
+                                    <i class="mdi mdi-package-variant-closed-remove" style="font-size: 72px;"></i>
+                                    <h4 class="fw-light mt-3">${search ? 'Pencarian Tidak Ditemukan' : 'Stok Kosong Hari Ini'}</h4>
+                                    <p class="text-center">${noDataMessage}</p>
                                 </div>
                             `);
+
+                            $("#paginationContainer").empty();
+
+                            if (typeof AOS !== 'undefined') {
+                                AOS.refresh();
+                            }
+
                             return;
                         }
 
-                        let html = '';
-                        finalData.forEach(item => {
+                        // Mulai membangun struktur tabel
+                        html += `
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped table-nowrap mb-0">
+                                    <thead class="bg-soft-info">
+                                        <tr>
+                                            <th>No</th>
+                                            <th>Nama Barang</th>
+                                            <th>MID</th>
+                                            <th class="text-end">Qty SAP</th>
+                                            <th class="text-end">Qty Box/Pallet</th>
+                                            <th class="text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+
+                        // Hitung nomor urut yang benar untuk setiap halaman
+                        const perPage = paginatedData.per_page;
+                        const currentPage = paginatedData.current_page;
+                        const startNumber = (currentPage - 1) * perPage;
+
+                        // Loop dan render baris tabel
+                        finalData.forEach((item, index) => {
+                            const noUrut = startNumber + index +
+                                1; // Nomor urut berbasis halaman
                             html += `
-                               <div class="col-12 col-sm-6 col-md-4 col-lg-4 col-xxl-3" data-aos="fade-up" data-aos-delay="100">
-                                    <div class="card h-100 border-0 shadow-sm card-hover card-variant-1 position-relative overflow-hidden d-flex flex-column">
-                                        <div class="card-body p-3 flex-grow-1 d-flex flex-column justify-content-between">
-                                            <!-- Header -->
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <h6 class="fw-bold text-dark mb-0 line-clamp-2 flex-grow-1 pe-2">
-                                                    ${item.barang?.nama_barang ?? 'Nama Barang Tidak Diketahui'}
-                                                </h6>
-                                                <span class="badge badge-soft-primary px-3 py-2">
-                                                    MID: ${item.barang?.mid_barang ?? 'N/A'}
-                                                </span>
-                                            </div>
-
-
-                                            <!-- SOH Box -->
-                                            <div class="soh-box text-center mb-2 position-relative">
-                                                <small class="d-block mb-1 opacity-75">Stock On Hand</small>
-                                                <h4 class="fw-bold mb-0 text-white">${item.qty_soh}</h4>
-                                            </div>
-
-                                            <!-- Info Grid -->
-                                            <div class="row g-2">
-                                                <div class="col-6">
-                                                    <div class="info-badge text-center">
-                                                        <i class="mdi mdi-cube-outline text-primary d-block mb-1"></i>
-                                                        <small class="text-muted d-block">Qty/Box</small>
-                                                        <strong class="text-dark">${item.barang.qty_box ?? 0}</strong>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="info-badge text-center">
-                                                        <i class="mdi mdi-warehouse text-info d-block mb-1"></i>
-                                                        <small class="text-muted d-block">PAL</small>
-                                                        <strong class="text-dark">${item.qty_pal ?? 0}</strong>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                <tr> 
+                                    <td>${noUrut}</td>
+                                    <td>
+                                        <strong class="text-dark">${item.barang?.nama_barang ?? 'N/A'}</strong>
+                                    </td>
+                                    <td>${item.barang?.mid_barang ?? 'N/A'}</td>
+                                    <td class="text-end text-primary fw-bold">${item.qty_soh.toLocaleString('id-ID')}</td>
+                                    <td class="text-end">${item.barang?.qty_box ?? 0}</td>
+                                    <td class="text-center">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                onclick='detailSOH(${JSON.stringify(item)})' title="Detail">
+                                                <i class="mdi mdi-eye-outline me-2"></i>Detail
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-warning"
+                                                onclick="editSOH(${item.id})" title="Edit">
+                                                <i class="mdi mdi-pencil-outline me-2"></i>Edit
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                onclick="deleteSOH(${item.id})" title="Hapus">
+                                                <i class="mdi mdi-trash-can-outline me-2"></i>Delete
+                                            </button>
                                         </div>
-
-                                        <!-- Footer Actions -->
-                                        <div class="card-footer mt-auto border-top p-3">
-                                            <div class="d-flex justify-content-between gap-2 flex-nowrap">
-                                                <button class="btn btn-outline-primary flex-fill"
-                                                    onclick='detailSOH(${JSON.stringify(item)})'>
-                                                    <i class="mdi mdi-eye-outline me-1"></i>Detail
-                                                </button>
-                                                <button class="btn btn-outline-warning flex-fill"
-                                                    onclick="editSOH(${item.id})">
-                                                    <i class="mdi mdi-pencil-outline me-1"></i>Edit
-                                                </button>
-                                                <button class="btn btn-outline-danger flex-fill"
-                                                    onclick="deleteSOH(${item.id})">
-                                                    <i class="mdi mdi-trash-can-outline me-1"></i>Delete
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    </td>
+                                </tr>
                             `;
                         });
 
-                        $('#soh-list').html(html);
+                        // Tutup tabel
+                        html += `
+                                    </tbody>
+                                </table>
+                                
+                            </div>
+                            <div class="d-flex justify-content-center mt-4" id="paginationContainer">
+                            </div>
+                        `;
+
+                        container.html(html);
+
+                        renderPagination(paginatedData);
+
+                        // Jika Anda menggunakan AOS, panggil refresh di sini
+                        if (typeof AOS !== 'undefined') {
+                            AOS.refresh();
+                        }
+
                     },
                     error: function(xhr, status, error) {
-                        $('#soh-list').html(`
-                            <div class="col-12">
-                                <div class="d-flex flex-column align-items-center justify-content-center py-5 text-danger">
-                                    <i class="mdi mdi-alert-octagon-outline" style="font-size: 72px;"></i>
-                                    <h4 class="fw-bold mt-3">Gagal Memuat Data</h4>
-                                    <p class="text-center">Terjadi kesalahan saat mengambil data SOH.<br><small class="text-muted">Error: ${status}</small></p>
-                                </div>
+                        // Error State
+                        container.html(`
+                            <div class="d-flex flex-column align-items-center justify-content-center py-5 text-danger">
+                                <i class="mdi mdi-alert-octagon-outline" style="font-size: 72px;"></i>
+                                <h4 class="fw-bold mt-3">Gagal Memuat Data</h4>
+                                <p class="text-center">Terjadi kesalahan saat mengambil data SOH.<br><small class="text-muted">Error: ${status}</small></p>
                             </div>
                         `);
                     }
@@ -429,6 +458,13 @@
                 e.preventDefault();
 
                 let formData = new FormData(this);
+                const principal = $('#filterPrincipal').val() ?? '';
+                formData.append('principal', principal);
+
+                const csrfToken = $('meta[name="csrf-token"]').attr('content');
+                if (csrfToken) {
+                    formData.append('_token', csrfToken);
+                }
 
                 $.ajax({
                     url: "{{ route('wfg.stock_opname.soh.import') }}",
@@ -452,8 +488,8 @@
                             title: 'Berhasil!',
                             text: response.message ??
                                 'File Stock On Hand berhasil diunggah.',
-                            timer: 2000,
-                            showConfirmButton: false
+                            // timer: 3000,
+                            // showConfirmButton: false
                         });
 
                         $('#uploadModal').modal('hide');
@@ -498,10 +534,12 @@
                 e.preventDefault();
 
                 const id = $('#soh_id').val();
-                const formData = $(this).serialize();
+                const principal = $('#filterPrincipal').val() ?? '';
                 const url = mode === 'add' ?
                     `{{ route('wfg.stock_opname.soh.store') }}` :
                     `{{ route('wfg.stock_opname.soh.update', '') }}/${id}`;
+
+                const formData = $(this).serialize() + `&principal=${principal}`;
 
                 $.ajax({
                     url: url,
@@ -527,6 +565,7 @@
                                 title: 'Gagal!',
                                 text: res.message || 'Terjadi kesalahan.',
                             });
+                            loadSOHList();
                         }
                     },
                     error: function(xhr) {
@@ -545,13 +584,21 @@
             $('#searchSOHForm').on('submit', function(e) {
                 e.preventDefault(); // cegah reload page
                 const query = $('#searchSOHInput').val().trim();
-                loadSOHList(query); // panggil fungsi loadSOHList dengan keyword
+                const principal = $('#filterPrincipal').val() ?? '';
+                loadSOHList(1, query, principal); // panggil fungsi loadSOHList dengan keyword
             });
 
             // Optional: search realtime saat mengetik
             $('#searchSOHInput').on('keyup', function() {
                 const query = $(this).val().trim();
-                loadSOHList(query);
+                const principal = $('#filterPrincipal').val() ?? '';
+                loadSOHList(1, query, principal);
+            });
+
+            $('#filterPrincipal').on('change', function() {
+                const principal = $(this).val();
+                const searchQuery = $('#searchSOHInput').val().trim();
+                loadSOHList(1, searchQuery, principal);
             });
 
             window.loadSOHList = loadSOHList;
@@ -566,6 +613,7 @@
             $('#soh_id').val('');
             $('#sohModalLabel').html('<i class="mdi mdi-plus-circle me-1"></i>Tambah Data SOH Baru');
             $('#btnSaveSOH').html('<i class="mdi mdi-content-save me-1"></i>Simpan');
+            $('#barang_id').prop('disabled', false);
 
             loadBarangOptions(() => {
                 $('#barang_id').val('');
@@ -590,11 +638,9 @@
                             // $('#barang_id').val(data.barang_id);
                             $('#barang_id').val(data.barang_id).prop('disabled', true);
                             $('#qty_soh').val(data.qty_soh);
-                            $('#qty_pal').val(data.qty_pal);
                             $('#unrest').val(data.qty_unrest);
                             $('#qi').val(data.qty_qi);
                             $('#block').val(data.qty_block);
-                            $('#scan_2').val(data.qty_scan_2);
                             $('#sohModal').modal('show');
                         } else {
                             alert('Gagal mengambil data SOH!');
@@ -636,23 +682,13 @@
                             <i class="mdi mdi-information-outline me-1"></i>Detail Kuantitas
                         </h6>
                         <div class="row g-3">
-                            
-                            <div class="col-6">
-                                <div class="d-flex align-items-center bg-light rounded-3 p-3 border">
-                                    <i class="mdi mdi-package-variant text-info fs-4 me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <div class="small text-muted mb-1 text-uppercase">PAL</div>
-                                        <strong class="text-info fs-5">${item.qty_pal}</strong>
-                                    </div>
-                                </div>
-                            </div>
 
                             <div class="col-6">
                                 <div class="d-flex align-items-center bg-light rounded-3 p-3 border">
                                     <i class="mdi mdi-alert-circle-outline text-warning fs-4 me-3"></i>
                                     <div class="flex-grow-1">
                                         <div class="small text-muted mb-1 text-uppercase">UNREST</div>
-                                        <strong class="text-warning fs-5">${item.qty_unrest}</strong>
+                                        <strong class="text-warning fs-5">${item.qty_unrest.toLocaleString('id-ID')}</strong>
                                     </div>
                                 </div>
                             </div>
@@ -662,7 +698,7 @@
                                     <i class="mdi mdi-check-decagram-outline text-success fs-4 me-3"></i>
                                     <div class="flex-grow-1">
                                         <div class="small text-muted mb-1 text-uppercase">QI</div>
-                                        <strong class="text-success fs-5">${item.qty_qi}</strong>
+                                        <strong class="text-success fs-5">${item.qty_qi.toLocaleString('id-ID')}</strong>
                                     </div>
                                 </div>
                             </div>
@@ -677,55 +713,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">
-                            <i class="mdi mdi-swap-horizontal me-1"></i>Transaksi
-                        </h6>
-                        <div class="row g-3">
-                            
-                            <div class="col-6">
-                                <div class="d-flex align-items-center bg-light rounded-3 p-3 border">
-                                    <i class="mdi mdi-arrow-down-bold text-success fs-4 me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <div class="small text-muted mb-1">In</div>
-                                        <strong class="text-success fs-5">${item.qty_in}</strong>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-6">
-                                <div class="d-flex align-items-center bg-light rounded-3 p-3 border">
-                                    <i class="mdi mdi-arrow-up-bold text-danger fs-4 me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <div class="small text-muted mb-1">Out</div>
-                                        <strong class="text-danger fs-5">${item.qty_out}</strong>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-6">
-                                <div class="d-flex align-items-center bg-light rounded-3 p-3 border">
-                                    <i class="mdi mdi-cart text-primary fs-4 me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <div class="small text-muted mb-1">Penjualan</div>
-                                        <strong class="text-primary fs-5">${item.qty_penjualan}</strong>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-6">
-                                <div class="d-flex align-items-center bg-light rounded-3 p-3 border">
-                                    <i class="mdi mdi-barcode-scan text-secondary fs-4 me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <div class="small text-muted mb-1">Scan 2</div>
-                                        <strong class="text-secondary fs-5">${item.qty_scan_2}</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    </div>                  
                 </div>
 
                 <div class="border-top p-3 bg-white sticky-bottom">
@@ -760,7 +748,7 @@
             $('#barang_id').html('<option value="">Memuat data...</option>');
 
             $.ajax({
-                url: `{{ url('api/wfg/soh/getBarang') }}`,
+                url: "{{ route('wfg.stock_opname.soh.getBarang') }}",
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
@@ -846,10 +834,65 @@
             });
         }
 
-        // Toastr Notifications error
-        @if (session('error'))
-            // Konfigurasi Toastr (opsional, untuk tampilan)
+        function renderPagination(data) {
+            const container = $("#paginationContainer");
+            container.empty();
 
+            if (container.length === 0) {
+                console.warn("Pagination container #paginationContainer tidak ditemukan di DOM.");
+                return;
+            }
+
+            if (data.last_page <= 1) {
+                return;
+            }
+
+            let paginationHtml = '<nav aria-label="Page navigation"><ul class="pagination">';
+
+            const prevDisabled = data.current_page === 1 ? 'disabled' : '';
+            const prevPage = data.current_page - 1;
+            paginationHtml += `
+                <li class="page-item ${prevDisabled}">
+                    <a class="page-link" href="#" data-page="${prevPage}">Previous</a>
+                </li>
+            `;
+
+            for (let i = 1; i <= data.last_page; i++) {
+                const activeClass = data.current_page === i ? 'active' : '';
+                paginationHtml += `
+                    <li class="page-item ${activeClass}">
+                        <a class="page-link" href="#" data-page="${i}">${i}</a>
+                    </li>
+                `;
+            }
+
+            // 5. Tombol Next
+            const nextDisabled = data.current_page === data.last_page ? 'disabled' : '';
+            const nextPage = data.current_page + 1;
+            paginationHtml += `
+                <li class="page-item ${nextDisabled}">
+                    <a class="page-link" href="#" data-page="${nextPage}">Next</a>
+                </li>
+            `;
+
+            paginationHtml += '</ul></nav>';
+
+            container.append(paginationHtml);
+
+
+            container.off('click', '.page-link').on('click', '.page-link', function(e) {
+                e.preventDefault();
+                const page = $(this).data('page');
+
+                if ($(this).closest('.page-item').hasClass('disabled')) {
+                    return;
+                }
+
+                loadSOHList(page);
+            });
+        }
+
+        @if (session('error'))
             toastr.options = {
                 "closeButton": true,
                 "progressBar": false,
@@ -858,17 +901,21 @@
                 "hideDuration": "1000",
                 "timeOut": "0",
                 "extendedTimeOut": "0",
-                "showEasing": "swing",
-                "hideEasing": "linear",
-                "showMethod": "fadeIn",
-                "hideMethod": "fadeOut",
-
-                // PENTING: Force the user to interact
                 "tapToDismiss": false
             }
-
-
             toastr.error("{{ session('error') }}", "Peringatan!");
+        @elseif (!empty($error))
+            toastr.options = {
+                "closeButton": true,
+                "progressBar": false,
+                "positionClass": "toast-top-right",
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "0",
+                "extendedTimeOut": "0",
+                "tapToDismiss": false
+            }
+            toastr.error("{{ $error }}", "Peringatan!");
         @endif
 
         @if (session('success'))
