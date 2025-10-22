@@ -3,6 +3,9 @@
     @php
         $jabatan = Auth::user()->jabatan;
         $bagian = Auth::user()->bagian;
+
+        // dd(Auth::user()->username);
+
     @endphp
     <div class="navbar-brand-box">
         <div class="navbar-brand-box ">

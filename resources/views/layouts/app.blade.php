@@ -103,7 +103,8 @@
 
         {{-- Custom Tambahan --}}
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script><!-- Signature Pad -->
+        <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.6/dist/signature_pad.umd.min.js"></script>
 
         <!-- Sweet alert init js-->
         <script src="{{ asset('material/assets/js/pages/sweetalerts.init.js') }}"></script>
@@ -244,6 +245,124 @@
                         scrollTop: 0
                     }, "smooth");
                 });
+
+                // Notifikasi
+                function fetchNotifications() {
+                    $.ajax({
+                        url: "{{ route('notifications') }}",
+                        method: "GET",
+                        dataType: "json",
+                        success: function(response) {
+                            const notifList = $('#notifList');
+                            const notifBadge = $('#notifBadge');
+
+                            notifList.empty();
+
+                            if (response.length === 0) {
+                                notifList.html(
+                                    '<p class="text-center text-muted py-3 mb-0">Tidak ada notifikasi</p>'
+                                );
+                                notifBadge.hide();
+                                return;
+                            }
+
+                            const unread = response.filter(n => !n.is_read);
+                            if (unread.length > 0) notifBadge.text(unread.length).show();
+                            else notifBadge.hide();
+
+                            response.forEach(n => {
+                                const item = $(`
+                                    <a href="${n.url}" 
+                                    class="list-group-item list-group-item-action notif-item d-flex align-items-start ${n.is_read ? 'bg-light text-muted' : 'bg-white'}"
+                                    data-id="${n.id}">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1 ${n.is_read ? '' : 'fw-semibold'}">
+                                                ${n.title}
+                                            </h6>
+                                            <p class="mb-1 small">${n.message}</p>
+                                            <small class="text-muted">${n.created_at}</small>
+                                        </div>
+                                        <div class="ms-2">
+                                            ${n.is_read 
+                                                ? '<i class="bx bx-check-circle text-success fs-5"></i>' 
+                                                : '<i class="bx bx-bell text-warning fs-5"></i>'}
+                                        </div>
+                                    </a>
+                                `);
+
+                                notifList.append(item);
+
+                                if (!n.is_read) {
+                                    toastr.info(n.message, n.title);
+                                }
+                            });
+
+                        },
+                        error: function() {
+                            console.error("Gagal memuat notifikasi");
+                        }
+                    });
+                }
+
+                $('#notifList').on('click', '.notif-item', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    const url = $(this).attr('href');
+                    const item = $(this);
+
+                    // 🔹 Kalau tidak ada ID numerik (contohnya 'barang_baru_warning'), langsung buka URL
+                    if (!id || !/^\d+$/.test(id)) {
+                        window.location.href = url;
+                        return;
+                    }
+
+                    // 🔹 Kalau sudah dibaca, langsung buka halaman
+                    if (item.hasClass('bg-light')) {
+                        window.location.href = url;
+                        return;
+                    }
+
+                    // 🔹 Kalau belum dibaca dan punya ID valid, tandai read
+                    $.ajax({
+                        url: `{{ url('api/notifications/read') }}/${id}`,
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function() {
+                            // Animasi lembut biar halus
+                            item.fadeTo(200, 0.5, function() {
+                                item
+                                    .removeClass('bg-white fw-semibold text-dark')
+                                    .addClass('bg-light text-muted')
+                                    .css('opacity', 1);
+
+                                item.find('.bx-bell')
+                                    .removeClass('bx-bell text-warning')
+                                    .addClass('bx-check-circle text-success');
+                            });
+
+                            // Update badge counter
+                            const currentCount = parseInt($('#notifBadge').text()) || 0;
+                            const newCount = Math.max(currentCount - 1, 0);
+                            if (newCount === 0) $('#notifBadge').hide();
+                            else $('#notifBadge').text(newCount);
+
+                            setTimeout(() => {
+                                window.location.href = url;
+                            }, 300);
+                        },
+                        error: function() {
+                            toastr.error('Gagal menandai notifikasi sebagai dibaca.');
+                        }
+                    });
+                });
+
+                // Ambil notifikasi pertama kali
+                fetchNotifications();
+
+                // Cek setiap 60 detik
+                setInterval(fetchNotifications, 60000);
             });
         </script>
 

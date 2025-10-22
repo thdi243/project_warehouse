@@ -43,6 +43,36 @@
                     </div>
                 </div>
 
+                <!-- Notifikasi -->
+                <div class="dropdown ms-1 header-item topbar-notification">
+                    <button type="button"
+                        class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle shadow-none"
+                        id="page-header-notification-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
+                        aria-expanded="false">
+                        <i class="bx bx-bell fs-22"></i>
+                        <span id="notifBadge"
+                            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                            style="display:none;">0</span>
+                    </button>
+
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
+                        aria-labelledby="page-header-notification-dropdown">
+                        <div class="dropdown-head bg-primary bg-pattern rounded-top">
+                            <div class="p-3">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <h6 class="m-0 fw-semibold text-white">Notifikasi</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-content position-relative" id="notificationItemsTabContent">
+                            <div id="notifList" class="list-group list-group-flush"
+                                style="max-height: 300px; overflow-y:auto;">
+                                <p class="text-center text-muted py-3 mb-0">Tidak ada notifikasi baru</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="ms-1 header-item d-none d-sm-flex">
                     <button type="button"
                         class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle shadow-none"
