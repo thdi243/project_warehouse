@@ -588,17 +588,21 @@
                     }
                 });
 
+                $("#emptyState").remove();
+
+                // Kalau tidak ada hasil yang cocok
                 if (visibleCount === 0) {
-                    if ($("#emptySearchState").length === 0) {
-                        $("#userRow").append(`
-                            <div id="emptySearchState" class="col-12 text-center my-5">
-                                <img src="/images/search-empty.svg" alt="Empty search" style="width:120px;opacity:0.6;">
-                                <p class="text-muted mt-3">Tidak ditemukan hasil untuk "<b>${searchText}</b>".</p>
+                    $("#userRow").append(`
+                        <div id="emptyState" class="col-12 text-center my-2">
+                            <div class="card border-0 shadow-sm py-3">
+                                <div class="card-body">
+                                    <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
+                                    <h5 class="text-muted">Tidak ada hasil yang cocok</h5>
+                                    <p class="text-secondary">Coba kata kunci lain atau periksa kembali ejaan pencarianmu.</p>
+                                </div>
                             </div>
-                        `);
-                    }
-                } else {
-                    $("#emptySearchState").remove();
+                        </div>
+                    `);
                 }
 
                 AOS.refresh();
@@ -615,9 +619,14 @@
 
                         if (!users || users.length === 0) {
                             $("#userRow").html(`
-                                <div class="col-12 text-center my-5">
-                                    <img src="/images/empty-state.svg" alt="Empty" style="width:120px;opacity:0.6;">
-                                    <p class="text-muted mt-3">Belum ada data pengguna.</p>
+                                <div class="col-12 d-flex justify-content-center">
+                                   <div class="card border-0 shadow-sm py-3">
+                                        <div class="card-body">
+                                            <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
+                                            <h5 class="text-muted">Tidak ada hasil yang cocok</h5>
+                                            <p class="text-secondary">Coba kata kunci lain atau periksa kembali ejaan pencarianmu.</p>
+                                        </div>
+                                    </div>
                                 </div>
                             `);
                             return;
