@@ -80,6 +80,12 @@
             background: linear-gradient(135deg, #f96060 0%, #e37220 100%);
             color: white;
         }
+
+        .approval-section {
+            background-color: #f9fafb;
+            border-radius: 0.75rem;
+            padding: 1rem 1.25rem;
+        }
     </style>
 @endsection
 
@@ -98,29 +104,60 @@
             </div>
 
             <!-- Filter Card -->
-            <div class="card shadow-sm mb-4" data-aos="fade-up" data-aos-delay="100">
+            <div class="card shadow-sm mb-4 p-2" data-aos="fade-up" data-aos-delay="100">
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label small text-muted">Filter Tanggal</label>
+                    <div class="row g-3 align-items-end">
+
+                        {{-- Filter Tanggal --}}
+                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-3 @endif col-12">
+                            {{-- <label for="filter_tanggal" class="form-label fw-semibold">Filter Tanggal</label> --}}
                             <div class="input-group">
-                                <input type="date" id="filter_tanggal" class="form-control">
-                                <button type="button" id="btn_filter" class="btn btn-primary">
-                                    <i class="mdi mdi-filter me-2"></i>Filter
-                                </button>
+                                <input type="date" id="filter_tanggal" class="form-control"
+                                    value="{{ now()->toDateString() }}">
                             </div>
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
+
+                        {{-- Filter Principal untuk non-operator --}}
+                        @if (Auth::user()->jabatan != 'operator')
+                            <div class="col-md-3 col-12">
+                                {{-- <label for="principal_filter" class="form-label fw-semibold">Filter Principal</label> --}}
+                                <select id="principal_filter" class="form-select">
+                                    @foreach ($principals as $p)
+                                        <option value="{{ $p }}">{{ $p }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+
+                        {{-- Tombol Reset --}}
+                        <div class="col-md-3 col-12">
+                            {{-- <label class="form-label d-block opacity-0">.</label> --}}
                             <button type="button" id="btn_reset" class="btn btn-soft-secondary w-100">
                                 <i class="mdi mdi-undo me-2"></i> Reset
                             </button>
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <button type="button" id="btn_export" class="btn btn-soft-success w-100">
+
+                        {{-- Tombol Export --}}
+                        <div class="col-md-3 col-12">
+                            {{-- <label class="form-label d-block opacity-0">.</label> --}}
+                            <button type="button" id="btn_export" class="btn btn-soft-warning w-100">
                                 <i class="mdi mdi-export me-2"></i> Export PDF
                             </button>
                         </div>
+
+                        {{-- Tombol Send Approval (hanya untuk operator) --}}
+                        @if (Auth::user()->jabatan == 'operator')
+                            <div class="col-md-3 col-12">
+                                {{-- <label class="form-label d-block opacity-0">.</label> --}}
+                                <button type="button" id="btn_approval" class="btn btn-soft-success w-100"
+                                    style="display:none;">
+                                    <i class="mdi mdi-send me-2"></i> Send Approval
+                                </button>
+                            </div>
+                        @endif
                     </div>
+
+                    <div id="approvalWrapper"></div>
                 </div>
             </div>
 
@@ -128,14 +165,14 @@
             <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="200">
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle shadow-sm rounded-3" id="tableOpname">
-                            <thead class="bg-light text-dark border-bottom">
+                        <table class="table table-hover align-middle shadow-sm rounded-3 text-nowrap" id="tableOpname">
+                            <thead class="bg-soft-info text-dark border-bottom">
                                 <tr>
                                     <th class="text-center" style="width: 70px;">ID</th>
                                     <th>Tanggal Opname</th>
                                     <th>MID Barang</th>
                                     <th>Nama Barang</th>
-                                    <th>Qty Sistem</th>
+                                    <th>Qty SAP</th>
                                     <th>Qty Fisik</th>
                                     <th>Selisih</th>
                                     <th>Keterangan</th>
@@ -202,10 +239,45 @@
                         <label for="export_tanggal" class="form-label">Tanggal Opname</label>
                         <input type="date" id="export_tanggal" class="form-control" required>
                     </div>
+                    @if (Auth::user()->jabatan != 'operator')
+                        <div class="mb-3">
+                            <label for="principal_export" class="form-label fw-semibold">Filter Principal</label>
+                            <select id="principal_export" class="form-select">
+                                <option value="">-- Semua Principal --</option>
+                                @foreach ($principals as $p)
+                                    <option value="{{ $p }}">{{ $p }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                 </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="button" class="btn btn-primary" id="btn_confirm_export">Export PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Send Approval -->
+    <div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Pilih Approver</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formApproval">
+                        <div id="approverList">
+                            <p class="text-muted text-center">Memuat daftar approver...</p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" id="btnSendApproval" class="btn btn-success">Kirim Approval</button>
                 </div>
             </div>
         </div>
@@ -215,36 +287,59 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            // trigger filter
+            const params = new URLSearchParams(window.location.search);
+            const tanggal = params.get('tanggal');
+            const principal = params.get('principal');
+
+            if (tanggal) {
+                $('#filter_tanggal').val(tanggal).trigger('change');
+            }
+
+            if (principal) {
+                $('#principal_filter').val(principal).trigger('change');
+            }
+            // end trigger filter
+
             loadReportData();
 
-            $('#btn_filter').on('click', function() {
+            $(document).on('keyup change', '#filter_tanggal', function() {
                 loadReportData();
             });
 
-            $('#btn_reset').on('click', function() {
-                $('#filter_tanggal').val('');
+            $(document).on('click', '#btn_reset', function() {
+                const today = new Date().toISOString().split('T')[0];
+                $('#filter_tanggal').val(today);
+                $('#principal_filter').val('');
                 loadReportData();
             });
 
-            function loadReportData() {
+            function loadReportData(principal) {
                 $('#loading_state').show();
                 $('#empty_state').hide();
                 $('#tableBody').html('');
+                const tanggal = $('#filter_tanggal').val() || new Date().toISOString().slice(0,
+                    10);
+                console.log('Tanggal filter:', tanggal);
 
                 $.ajax({
-                    url: `{{ url('api/wfg/sop/report/getData') }}`,
+                    // url: `{{ url('api/wfg/sop/report/getData') }}`,
+                    url: "{{ route('wfg.stock_opname.report.getData') }}",
                     method: 'GET',
                     dataType: 'json',
                     data: {
-                        tanggal: $('#filter_tanggal').val()
+                        tanggal: $('#filter_tanggal').val(),
+                        principal: principal
                     },
                     success: function(response) {
                         $('#loading_state').hide();
 
-                        if (response.status === 'success' && response.data.length > 0) {
-                            renderTable(response.data);
-                        } else {
+                        checkApprovalStatus(response, tanggal);
+
+                        if (!response.summaries || response.summaries.length === 0) {
                             $('#empty_state').show();
+                        } else {
+                            renderTable(response);
                         }
                     },
                     error: function(xhr, status, error) {
@@ -261,87 +356,282 @@
                 });
             }
 
-            function renderTable(data) {
-                let html = '';
+            function checkApprovalStatus(data = null, tanggal) {
+                const wrapper = $('#approvalWrapper');
 
-                data.forEach(function(item, index) {
-                    // Ambil summary pertama (jika ada)
-                    const summary = item.summaries?.[0];
-                    const mid_barang = summary?.barang?.mid_barang ?? '-';
-                    const nama_barang = summary?.barang?.nama_barang ?? '-';
-                    const qty_sistem = summary?.qty_sistem != null ? parseInt(summary.qty_sistem) : '-';
-                    const qty_fisik = summary?.qty_fisik != null ? parseInt(summary.qty_fisik) : '-';
-                    const selisihVal = summary?.selisih != null ? parseInt(summary.selisih) : 0;
-                    const keterangan = summary?.keterangan ?? '';
+                // Jika data SOP tidak ada
+                if (!data?.sop) {
+                    wrapper.html(`
+                        <div class="alert alert-info rounded-3 mt-3">
+                            <i class="mdi mdi-information-outline me-2"></i>
+                            <strong>Belum ada SOP untuk tanggal ${tanggal}</strong>
+                        </div>
+                    `);
+                    $('#btn_approval').hide();
+                    return;
+                }
 
-                    let statusClass;
-                    let statusIcon;
-                    let statusText;
+                // SOP ada
+                $('#filter_tanggal').data('sop-id', data.sop.id);
+                const sopId = $('#filter_tanggal').data('sop-id');
+                const tanggalFilter = tanggal;
+                const principalFilter = $('#principal_filter').val();
 
-                    if (selisihVal < 0) {
-                        statusClass = 'danger';
-                        statusIcon = 'arrow-down-bold-circle';
-                        statusText = 'Selisih Kurang';
-                    } else if (selisihVal > 0) {
-                        statusClass = 'warning';
-                        statusIcon = 'arrow-up-bold-circle';
-                        statusText = 'Selisih Lebih';
-                    } else {
-                        statusClass = 'success';
-                        statusIcon = 'check';
-                        statusText = 'Sesuai';
+                $.get("{{ route('wfg.stock_opname.approval.show', '') }}/" + sopId, {
+                    tanggal: tanggalFilter,
+                    principal: principalFilter
+                }, function(res) {
+                    const status = res.approval_status;
+                    const note = res.approval_note || '';
+                    const isApprover = res.is_approver || false;
+                    const isOperator = @json(Auth::user()->jabatan === 'operator');
+
+                    if (!status) {
+                        wrapper.html('');
+                        if (isOperator) $('#btn_approval').hide();
+                        return;
                     }
 
-                    // Buat badge status menggunakan variabel yang telah ditentukan
+                    // ===================== OPERATOR =====================
+                    if (isOperator) {
+                        const btn = $('#btn_approval');
+                        btn.show();
+
+                        if (status === 'draft') {
+                            btn.removeClass('btn-secondary btn-soft-success')
+                                .addClass('btn-soft-success')
+                                .prop('disabled', false)
+                                .html('<i class="mdi mdi-send-outline me-2"></i> Send Approval');
+
+                            wrapper.html('');
+                        } else if (status === 'pending' || status === 'read') {
+                            btn.removeClass('btn-soft-success').addClass('btn-secondary')
+                                .prop('disabled', true)
+                                .html('<i class="mdi mdi-timer-sand me-2"></i> Menunggu Approve');
+
+                            let trackingHtml = '';
+
+                            if (res.approver_tracking && res.approver_tracking.length > 0) {
+                                trackingHtml = `
+                                    <div class="mt-3">
+                                        <h6 class="fw-semibold mb-2">
+                                            <i class="mdi mdi-account-check-outline text-primary me-2"></i>
+                                            Status Approval
+                                        </h6>
+                                        <ul class="list-unstyled mb-0">
+                                `;
+
+                                res.approver_tracking.forEach(a => {
+                                    const status = a.status?.toLowerCase() || '';
+
+                                    let icon =
+                                        '<i class="mdi mdi-timer-sand text-warning me-1"></i>';
+                                    let badgeClass = 'warning';
+                                    let statusLabel = status;
+
+                                    if (status === 'approved') {
+                                        icon =
+                                            '<i class="mdi mdi-check-circle text-success me-1"></i>';
+                                        badgeClass = 'success';
+                                    } else if (status === 'rejected') {
+                                        icon =
+                                            '<i class="mdi mdi-close-circle text-danger me-1"></i>';
+                                        badgeClass = 'danger';
+                                    } else if (status === 'read') {
+                                        icon = '<i class="mdi mdi-eye text-info me-1"></i>';
+                                        badgeClass = 'info';
+                                        statusLabel = 'Read';
+                                    }
+
+                                    trackingHtml += `
+                                        <li class="mb-2">
+                                            ${icon}
+                                            <strong>${a.nama}</strong> <span class="text-muted">(${a.jabatan})</span>
+                                            <span class="badge bg-${badgeClass} ms-2 text-uppercase">${statusLabel}</span>
+                                            ${a.catatan ? `<br><small class="text-muted ms-4">Catatan: ${a.catatan}</small>` : ''}
+                                        </li>
+                                    `;
+                                });
+
+                                trackingHtml += '</ul></div>';
+                            }
+
+
+
+                            wrapper.html(`
+                                <div class="alert alert-warning rounded-3 mt-3">
+                                    <i class="mdi mdi-timer-sand me-2"></i>
+                                    <strong>Menunggu Persetujuan</strong>
+                                    <br><small class="text-muted">Data sedang dalam proses approval oleh Foreman/Supervisor.</small>
+                                </div>
+                                ${trackingHtml}
+                            `);
+                        } else if (status === 'approved') {
+                            btn.removeClass('btn-soft-success').addClass('btn-secondary')
+                                .prop('disabled', true)
+                                .html('<i class="mdi mdi-check me-2"></i> Approval Selesai');
+
+                            wrapper.html(`
+                                <div class="alert alert-success rounded-3 mt-3">
+                                    <i class="mdi mdi-check-decagram-outline me-2"></i>
+                                    <strong>Sudah Disetujui</strong>
+                                    ${note ? `<br><small class="text-muted">Catatan: ${note}</small>` : ''}
+                                </div>
+                            `);
+                        } else if (status === 'rejected') {
+                            btn.removeClass('btn-secondary').addClass('btn-soft-success')
+                                .prop('disabled', false)
+                                .html('<i class="mdi mdi-send-outline me-2"></i> Send Approval');
+
+                            wrapper.html(`
+                                <div class="alert alert-danger rounded-3 mt-3">
+                                    <i class="mdi mdi-close-octagon-outline me-2"></i>
+                                    <strong>Ditolak</strong>
+                                    ${note ? `<br><small class="text-muted">Catatan: ${note}</small>` : ''}
+                                </div>
+                            `);
+                        }
+                    }
+
+                    // ===================== NON-OPERATOR =====================
+                    else {
+                        // Jika user adalah approver
+                        if (isApprover && (status === 'pending' || status === 'read')) {
+                            wrapper.html(`
+                            <hr class="my-4">
+                            <div class="approval-section">
+                                <h6 class="fw-semibold mb-3">
+                                    <i class="mdi mdi-check-decagram-outline text-success me-2"></i>
+                                    Persetujuan SOP
+                                </h6>
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-8">
+                                        <label for="approval_note" class="form-label small text-muted mb-1">
+                                            Keterangan / Komentar
+                                        </label>
+                                        <textarea id="approval_note" class="form-control" rows="2" placeholder="Tulis catatan Anda (opsional)..."></textarea>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <button type="button" id="btn_approve" class="btn btn-success w-50">
+                                                <i class="mdi mdi-check me-1"></i> Approve
+                                            </button>
+                                            <button type="button" id="btn_reject" class="btn btn-danger w-50">
+                                                <i class="mdi mdi-close me-1"></i> Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                        }
+
+                        // Jika user bukan approver tapi ingin lihat status saja
+                        else if (status === 'approved' || status === 'rejected') {
+                            const labelHtml = `
+                                <div class="alert ${status === 'approved' ? 'alert-success' : 'alert-danger'} rounded-3 mt-3">
+                                    <i class="mdi ${status === 'approved' ? 'mdi-check-decagram-outline' : 'mdi-close-octagon-outline'} me-2"></i>
+                                    <strong>${status === 'approved' ? 'Sudah Disetujui' : 'Ditolak'}</strong>
+                                    ${note ? `<br><small class="text-muted">Catatan: ${note}</small>` : ''}
+                                </div>
+                            `;
+                            wrapper.html(labelHtml);
+                        }
+
+                        // Jika user bukan approver & status masih pending → hanya lihat alert
+                        else if (status === 'pending' || status === 'read') {
+                            wrapper.html(`
+                                <div class="alert alert-warning rounded-3 mt-3">
+                                    <i class="mdi mdi-timer-sand me-2"></i>
+                                    <strong>Menunggu Persetujuan</strong>
+                                    <br><small class="text-muted">Data sedang dalam proses approval oleh Foreman/Supervisor.</small>
+                                </div>
+                            `);
+                        } else {
+                            wrapper.html('');
+                        }
+                    }
+                });
+            }
+
+            // principal filter
+            $('#principal_filter').on('change', function() {
+                const principal = $(this).val();
+                loadReportData(principal);
+                const tanggal = $('#filter_tanggal').val();
+                checkApprovalStatus(null, tanggal);
+            });
+
+            function renderTable(response) {
+                const {
+                    sop,
+                    summaries,
+                    details
+                } = response;
+
+                if (!summaries.length) {
+                    $('#empty_state').show();
+                    return;
+                }
+
+                $('#filter_tanggal').data('sop-id', sop.id);
+
+                // checkApprovalStatus();
+
+                let html = '';
+
+                summaries.forEach((summary, index) => {
+                    const barang = summary.barang || {};
+                    const mid_barang = barang.mid_barang || '-';
+                    const nama_barang = barang.nama_barang || '-';
+                    const qty_sistem = summary.qty_sistem ?? 0;
+                    const qty_fisik = summary.qty_fisik ?? 0;
+                    const selisih = summary.selisih ?? 0;
+                    const keterangan = summary.keterangan || '-';
+                    const isOperator = @json(Auth::user()->jabatan === 'operator');
+
+                    // Tentukan status
+                    let statusClass, statusIcon, statusText;
+                    switch (summary.status.toLowerCase()) {
+                        case 'lebih':
+                            statusClass = 'warning';
+                            statusText = 'Lebih';
+                            break;
+                        case 'kurang':
+                            statusClass = 'danger';
+                            statusText = 'Kurang';
+                            break;
+                        default:
+                            statusClass = 'success';
+                            statusText = 'Sesuai';
+                            break;
+                    }
+
                     const statusBadge = `
-                        <span class="badge badge-soft-${statusClass} fs-6" title="${statusText}">
-                            <i class="mdi mdi-${statusIcon} me-2"></i> ${formatNumber(selisihVal)}
-                        </span>
+                        <span class="badge badge-soft-${statusClass} fs-6" title="${statusText}">${formatNumber(selisih)}</span>
                     `;
 
                     html += `
                         <tr class="table-row-hover">
-                            <td class="text-center text-primary fw-bold">${index + 1}</td>
-                            <td>
-                                <div class="d-flex align-items-center text-nowrap">
-                                    <i class="mdi mdi-calendar-blank text-muted me-2"></i>
-                                    <span>${formatDate(item.tgl_opname)}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <i class="mdi mdi-barcode text-muted me-2"></i>
-                                    <span class="fw-semibold">${mid_barang}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center text-nowrap">
-                                    <span class="fw-semibold">${nama_barang}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center text-nowrap">
-                                    <span class="fw-semibold">${qty_sistem}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center text-nowrap">
-                                    <span class="fw-semibold">${qty_fisik}</span>
-                                </div>
-                            </td>
+                            <td class="text-center">${index + 1}</td>
+                            <td>${formatDate(sop.tgl_opname)}</td>
+                            <td>${mid_barang}</td>
+                            <td>${nama_barang}</td>
+                            <td class="text-end">${formatNumber(qty_sistem)}</td>
+                            <td class="text-end">${formatNumber(qty_fisik)}</td>
+                            <td class="text-center">${statusBadge}</td>
+                            <td class="text-start">${keterangan}</td>
                             <td class="text-center">
-                                    ${statusBadge}
-                            </td>
-                            
-                            <td>
-                                <div class="d-flex align-items-center text-nowrap">
-                                    <span class="fw-semibold">${keterangan}</span>
+                                <div class="d-flex justify-content-center align-items-center gap-2 flex-nowrap">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="showDetail(${summary.id})">
+                                        <i class="mdi mdi-eye-outline"></i> Detail
+                                    </button>
+                                    @if (Auth::user()->jabatan !== 'operator')
+                                        <button class="btn btn-outline-info btn-sm" onclick="showEdit(${summary.id})">
+                                            <i class="mdi mdi-pencil-outline"></i> Edit
+                                        </button>
+                                    @endif
                                 </div>
-                            </td>
-                            <td class="text-center">
-                                <button class="btn btn-outline-primary text-nowrap" onclick="showDetail(${item.id})">
-                                    <i class="mdi mdi-eye-outline"></i> Detail
-                                </button>
                             </td>
                         </tr>
                     `;
@@ -350,26 +640,64 @@
                 $('#tableBody').html(html);
             }
 
-            window.showDetail = function(id) {
+            window.showDetail = function(summaryId) {
+                $('#modalContent').html(
+                    '<p class="text-center py-4"><i class="mdi mdi-loading mdi-spin"></i> Memuat data...</p>'
+                );
+                const modalEl = document.getElementById('detailModal');
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+
                 $.ajax({
-                    url: `{{ url('api/wfg/sop/report/getData') }}`,
+                    // url: `{{ url('api/wfg/sop/report/getData') }}`,
+                    url: "{{ route('wfg.stock_opname.report.getData') }}",
                     method: 'GET',
                     dataType: 'json',
+                    data: {
+                        tanggal: $('#filter_tanggal').val()
+                    },
                     success: function(response) {
                         if (response.status === 'success') {
-                            const item = response.data.find(d => d.id === id);
-                            if (item) {
-                                renderDetailModal(item);
-                                const modal = new bootstrap.Modal(document.getElementById(
-                                    'detailModal'));
-                                modal.show();
+                            const summaries = response.summaries || [];
+                            const details = response.details || [];
+                            const sop = response.sop || {
+                                id: '-',
+                                tgl_opname: '-'
+                            };
+
+                            const matchedSummary = summaries.find(s => s.id == summaryId);
+
+                            if (matchedSummary) {
+                                const foundItem = {
+                                    id: sop.id,
+                                    tgl_opname: sop.tgl_opname,
+                                    user: sop.username,
+                                    summaries: [matchedSummary],
+                                    details: details.filter(d => d.barang_id == matchedSummary
+                                        .barang_id)
+                                };
+                                renderDetailModal(foundItem);
+                            } else {
+                                $('#modalContent').html(
+                                    '<p class="text-center text-danger py-4">Data tidak ditemukan.</p>'
+                                );
                             }
+                        } else {
+                            $('#modalContent').html(
+                                `<p class="text-center text-danger py-4">${response.message}</p>`
+                            );
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#modalContent').html(
+                            `<p class="text-center text-danger py-4">Gagal memuat data: ${error}</p>`
+                        );
                     }
                 });
-            }
+            };
 
             function renderDetailModal(data) {
+                console.log(data);
                 let html = `
                     <!-- Header Info -->
                     <div class="row mb-4">
@@ -377,8 +705,8 @@
                         <div class="col-md-6">
                             <table class="table table-sm">
                                 <tr>
-                                    <td width="120">ID Opname</td>
-                                    <td><strong>#${data.id}</strong></td>
+                                    <td width="120">ID Data</td>
+                                    <td><strong>${data.summaries[0].id}</strong></td>
                                 </tr>
                                 <tr>
                                     <td width="120">Tanggal</td>
@@ -390,11 +718,11 @@
                             <table class="table table-sm">
                                 <tr>
                                     <td width="120">User</td> 
-                                    <td><strong>${data.user.username}</strong></td>
+                                    <td><strong>${data.user}</strong></td>
                                 </tr>
                                 <tr>
                                     <td width="120">UOM</td> 
-                                    <td><strong>${data.summaries[0].barang.satuan}</strong></td>
+                                    <td><strong>${data.summaries[0].barang.uom}</strong></td>
                                 </tr>
                             </table>
                         </div>
@@ -406,11 +734,11 @@
                         <table class="table table-bordered table-sm">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Kode</th>
+                                    <th>MID</th>
                                     <th>Nama Barang</th>
-                                    <th class="text-center">Qty/Box</th>
+                                    <th class="text-center">Qty Box/Pallet</th>
                                     <th class="text-end">Qty Fisik</th>
-                                    <th class="text-end">Qty Sistem</th>
+                                    <th class="text-end">Qty SAP</th>
                                     <th class="text-end">Selisih</th>
                                     <th class="text-center">Status</th>
                                 </tr>
@@ -427,7 +755,7 @@
                         <table class="table table-bordered table-sm">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Kode</th>
+                                    <th>MID</th>
                                     <th>Nama Barang</th>
                                     <th class="text-end">Full Box</th>
                                     <th class="text-end">Receh (pcs)</th>
@@ -442,11 +770,6 @@
                 `;
 
                 $('#modalContent').html(html);
-            }
-
-            function getStatClass(summaries) {
-                const hasDiscrepancy = summaries.some(s => parseFloat(s.selisih) !== 0);
-                return hasDiscrepancy ? 'danger' : 'success';
             }
 
             function renderSummaryRows(summaries) {
@@ -479,7 +802,7 @@
                             <td class="text-end">${formatNumber(item.qty_sistem)}</td>
                             <td class="text-center"> 
                                 <span class="badge badge-soft-${statusClass}">
-                                    <strong>${selisih > 0 ? '+' : ''}${formatNumber(Math.abs(item.selisih))}</strong>
+                                    <strong>${selisih > 0 ? '+' : ''}${formatNumber(item.selisih)}</strong>
                                 </span>
                             </td>
                             <td class="text-center">
@@ -526,12 +849,10 @@
 
             function formatNumber(value) {
                 const num = parseFloat(value);
-                if (isNaN(num)) {
-                    return '0';
-                }
-
-                return num.toLocaleString('id-ID', {
-                    // PERUBAHAN UTAMA: Atur kedua properti ke 0 untuk menghilangkan desimal
+                if (isNaN(num)) return '0';
+                // Bulatkan ke integer terdekat
+                const rounded = Math.round(num);
+                return rounded.toLocaleString('id-ID', {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 0
                 });
@@ -544,6 +865,8 @@
 
             $('#btn_confirm_export').on('click', async function() {
                 const tanggal = $('#export_tanggal').val();
+                const principal = $('#principal_export').val();
+
                 if (!tanggal) {
                     Swal.fire({
                         icon: 'warning',
@@ -553,7 +876,6 @@
                     return;
                 }
 
-                // Tampilkan loading
                 Swal.fire({
                     title: 'Memproses...',
                     text: 'Mohon tunggu, sedang mengekspor data',
@@ -564,32 +886,34 @@
                 });
 
                 try {
-                    const response = await fetch("{{ route('wfg.stock_opname.export') }}?tanggal=" +
-                        tanggal, {
-                            method: 'GET',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
+                    let url = `{{ route('wfg.stock_opname.export') }}?tanggal=${tanggal}`;
+                    if (principal) {
+                        url += `&principal=${encodeURIComponent(principal)}`;
+                    }
 
-                    Swal.close();
+                    // 🔹 Cek dulu response-nya
+                    const response = await fetch(url, {
+                        method: 'GET'
+                    });
 
-                    const contentType = response.headers.get('Content-Type');
+                    if (!response.ok) {
+                        const data = await response.json().catch(() => ({}));
+                        Swal.close();
 
-                    if (response.ok && contentType.includes('application/pdf')) {
-
-                        const blob = await response.blob();
-                        const fileURL = URL.createObjectURL(blob);
-                        window.open(fileURL, '_blank');
-                        $('#exportDateModal').modal('hide');
-                    } else {
-                        const jsonResponse = await response.json();
                         Swal.fire({
                             icon: 'error',
-                            title: 'Data Tidak Ditemukan',
-                            text: jsonResponse.message || 'Terjadi kesalahan pada server.',
+                            title: 'Gagal Mengekspor',
+                            text: data.message ||
+                                `Terjadi kesalahan (Status ${response.status}).`,
                         });
+                        return;
                     }
+
+                    // 🔹 Jika response ok, buka tab PDF
+                    Swal.close();
+                    window.open(url, '_blank');
+                    $('#exportDateModal').modal('hide');
+
                 } catch (error) {
                     Swal.close();
                     Swal.fire({
@@ -599,6 +923,168 @@
                     });
                 }
             });
+
+            // Approval
+            $('#btn_approval').on('click', function() {
+                const selectedDate = $('#filter_tanggal').val();
+                if (!selectedDate) {
+                    Swal.fire('Peringatan', 'Silakan pilih tanggal terlebih dahulu.', 'warning');
+                    return;
+                }
+
+                const modalEl = document.getElementById('approvalModal');
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+
+                $.ajax({
+                    url: `{{ url('api/wfg/sop/users/approval') }}`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        let html = '';
+
+                        // Foreman select
+                        html += `
+                        <div class="mb-3">
+                            <label class="form-label">Foreman</label>
+                            <select id="selectForeman" class="form-select">
+                                <option value="">-- Pilih Foreman --</option>`;
+                        data.foremen.forEach(f => {
+                            html += `
+                                <option value="${f.id}">${f.username}</option>`;
+                        });
+                        html += `
+                            </select>
+                        </div>`;
+
+                        // Supervisor select
+                        html += `
+                        <div class="mb-3">
+                            <label class="form-label">Supervisor</label>
+                            <select id="selectSupervisor" class="form-select">
+                                <option value="">-- Pilih Supervisor --</option>`;
+                        data.supervisors.forEach(s => {
+                            html += `
+                                <option value="${s.id}">${s.username}</option>`;
+                        });
+                        html += `
+                            </select>
+                        </div>`;
+
+                        $('#approverList').html(html);
+                    },
+                    error: function() {
+                        $('#approverList').html(
+                            '<p class="text-center text-danger">Gagal memuat approver.</p>');
+                    }
+                });
+            });
+
+            // Kirim data approval
+            $('#btnSendApproval').on('click', function() {
+                const sopId = $('#filter_tanggal').data('sop-id');
+                const foremanId = $('#selectForeman').val();
+                const supervisorId = $('#selectSupervisor').val();
+
+                if (!foremanId || !supervisorId) {
+                    Swal.fire('Peringatan', 'Silakan pilih Foreman dan Supervisor.', 'warning');
+                    return;
+                }
+
+                $.ajax({
+                    url: "{{ route('wfg.stock_opname.send-approval') }}",
+                    method: 'POST',
+                    data: {
+                        sop_id: sopId,
+                        foreman_id: foremanId,
+                        supervisor_id: supervisorId,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire('Sukses', res.message, 'success');
+                            $('#approvalModal').modal('hide');
+
+                            loadReportData();
+                        }
+
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Terjadi kesalahan',
+                            'error');
+                    }
+                });
+            });
+
+            function handleApproval(status) {
+                const note = $('#approval_note').val().trim();
+                const sopId = $('#filter_tanggal').data('sop-id');
+
+                if (status === 'rejected' && note === '') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Catatan wajib diisi!',
+                        text: 'Mohon tuliskan alasan penolakan sebelum menolak data.',
+                    });
+                    return;
+                }
+
+                Swal.fire({
+                    title: status === 'approved' ? 'Setujui data ini?' : 'Tolak data ini?',
+                    text: status === 'approved' ?
+                        'Data akan disetujui' : 'Data akan ditolak dan dikembalikan ke operator.',
+                    icon: status === 'approved' ? 'question' : 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: status === 'approved' ? 'Ya, Approve' : 'Ya, Reject',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('wfg.stock_opname.update.status-approval') }}",
+                            method: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                sop_id: sopId,
+                                status: status,
+                                catatan: note
+                            },
+                            success: function(res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: res.message || (status === 'approved' ?
+                                        'Data disetujui!' :
+                                        'Data ditolak!'),
+                                    showConfirmButton: false,
+                                    timer: 1500
+                                });
+                                $('#approval_note').val('');
+
+                                // Ganti UI approval jadi label status
+                                loadReportData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal!',
+                                    text: xhr.responseJSON?.message ||
+                                        'Terjadi kesalahan pada server.',
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            $(document).on('click', '#btn_approve', function() {
+                handleApproval('approved');
+            });
+
+            $(document).on('click', '#btn_reject', function() {
+                handleApproval('rejected');
+            });
+            // end approval
+
         });
     </script>
 @endsection
