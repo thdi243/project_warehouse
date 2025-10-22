@@ -192,7 +192,7 @@
                             $localPath0 = public_path($path0);
                         @endphp
                         <img src="{{ file_exists($localPath0) ? $localPath0 : public_path('storage/images/ttd/dummy.jpg') }}"
-                            width="100">
+                            width="100" alt="Tanda Tangan Stock Control">
                     @endif
                 </td>
 
@@ -204,7 +204,7 @@
                             $localPath1 = public_path($path1);
                         @endphp
                         <img src="{{ file_exists($localPath1) ? $localPath1 : public_path('storage/images/ttd/dummy.jpg') }}"
-                            width="100">
+                            width="100" alt="Tanda Tangan Foreman">
                     @endif
                 </td>
 
@@ -216,7 +216,7 @@
                             $localPath2 = public_path($path2);
                         @endphp
                         <img src="{{ file_exists($localPath2) ? $localPath2 : public_path('storage/images/ttd/dummy.jpg') }}"
-                            width="100">
+                            width="100" alt="Tanda Tangan Supervisor">
                     @endif
                 </td>
             </tr>

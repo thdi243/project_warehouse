@@ -1354,8 +1354,8 @@ class StockOpnameWfgController extends Controller
             // Helper function untuk ambil path tanda tangan user
             $getSignaturePath = function ($user) {
                 // Fallback default
-                $dummy = asset('storage/images/ttd/dummy.jpg');
-                if (!$user) return $dummy;
+                // $dummy = asset('storage/images/ttd/dummy.jpg');
+                if (!$user) return '';
 
                 // Cek apakah user punya relasi signature di DB
                 if (isset($user->signature) && !empty($user->signature->signature)) {
@@ -1372,7 +1372,7 @@ class StockOpnameWfgController extends Controller
                     return asset($usernameFile);
                 }
 
-                return $dummy;
+                return '';
             };
 
 
