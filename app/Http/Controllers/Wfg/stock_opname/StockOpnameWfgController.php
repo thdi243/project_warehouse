@@ -1140,9 +1140,24 @@ class StockOpnameWfgController extends Controller
             $principalFilter = $request->input('principal');
             $user = Auth::user();
 
-            // 1. Cari SOP final sesuai tanggal
+            // Tentukan principal aktif
+            if ($user->jabatan === 'operator') {
+                $activePrincipal = optional($user->principal)->principal;
+            } else {
+                $activePrincipal = $principalFilter;
+            }
+
+            if (empty($activePrincipal)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Principal tidak ditemukan. Pastikan principal sudah diatur atau dipilih, Hubungi Foreman.',
+                ], 422);
+            }
+
+            // 🔹 Filter berdasarkan tanggal + principal aktif
             $sop = WfgSopModel::with('user:id,username')
                 ->whereDate('tgl_opname', $tanggalFilter)
+                ->where('principal', $activePrincipal)
                 ->first();
 
             if (!$sop) {
@@ -1163,17 +1178,32 @@ class StockOpnameWfgController extends Controller
 
             // 🔹 Terapkan filter principal seperti di getData()
             if ($user->jabatan === 'operator') {
-                $userPrincipal = $user->principal?->principal;
+                $userPrincipal = optional($user->principal)->principal;
+
                 if ($userPrincipal) {
-                    $summariesQuery->whereHas('barang', fn($q) => $q->where('principal', $userPrincipal));
-                    $detailsQuery->whereHas('barang', fn($q) => $q->where('principal', $userPrincipal));
+                    $summariesQuery->whereHas('barang', function ($q) use ($userPrincipal) {
+                        $q->where('principal', $userPrincipal);
+                    });
+                    $detailsQuery->whereHas('barang', function ($q) use ($userPrincipal) {
+                        $q->where('principal', $userPrincipal);
+                    });
                 } else {
                     $summariesQuery->whereRaw('1 = 0');
                     $detailsQuery->whereRaw('1 = 0');
                 }
-            } elseif (!empty($principalFilter)) {
-                $summariesQuery->whereHas('barang', fn($q) => $q->where('principal', $principalFilter));
-                $detailsQuery->whereHas('barang', fn($q) => $q->where('principal', $principalFilter));
+            } else {
+                // Non-operator: filter berdasarkan principal dari request (jika ada)
+                if (!empty($principalFilter)) {
+                    $summariesQuery->whereHas('barang', function ($q) use ($principalFilter) {
+                        $q->where('principal', $principalFilter);
+                    });
+                    $detailsQuery->whereHas('barang', function ($q) use ($principalFilter) {
+                        $q->where('principal', $principalFilter);
+                    });
+                } else {
+                    $summariesQuery->whereRaw('1 = 0');
+                    $detailsQuery->whereRaw('1 = 0');
+                }
             }
 
             $summaries = $summariesQuery->get();
