@@ -16,10 +16,10 @@ return new class extends Migration
             $table->integer('mid_barang');
             $table->string('nama_barang');
             $table->integer('qty_box');
-            $table->string('tipe_kemasan')->nullable();
-            $table->string('satuan')->nullable();
+            $table->string('principal')->nullable();
+            $table->string('uom')->nullable();
             $table->enum('status', ['aktif', 'nonaktif'])->default('aktif');
-            $table->string('gambar')->nullable();
+            $table->boolean('is_new')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });

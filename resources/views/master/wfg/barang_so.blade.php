@@ -32,9 +32,6 @@
         }
 
         .search-bar input {
-            border: 2px solid var(--gray-200);
-            border-radius: 0.5rem;
-            padding: 0.75rem 1rem;
             transition: all 0.3s ease;
         }
 
@@ -143,19 +140,6 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            background: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            color: var(--gray-300);
-            margin-bottom: 1rem;
-        }
 
         /* Offcanvas Custom Styles */
         .offcanvas-detail {
@@ -256,6 +240,26 @@
             transform: none !important;
         }
 
+        .collapse-button {
+            color: #495057;
+            /* Warna default ikon */
+        }
+
+        .collapse-button:hover {
+            color: #007bff;
+            /* Warna hover ikon */
+        }
+
+        /* Opsional: pastikan baris detail memiliki background berbeda */
+        .collapse-row td {
+            border-top: none !important;
+        }
+
+        .collapse-row .bg-light {
+            background-color: #f8f9fa !important;
+            /* Warna yang membedakan detail */
+        }
+
         @media (max-width: 1200px) {
             .offcanvas-detail {
                 width: 400px !important;
@@ -296,10 +300,9 @@
                 </div>
             </div>
 
-            <!-- Search & Add Button -->
             <div class="search-bar mb-4" data-aos="fade-up" data-aos-delay="100">
-                <div class="row align-items-center g-3">
-                    <div class="col-md-7">
+                <div class="row g-2 align-items-center">
+                    <div class="col-12 col-md-6 col-lg-4">
                         <div class="position-relative">
                             <i class="mdi mdi-magnify position-absolute"
                                 style="left: 1rem; top: 50%; transform: translateY(-50%); color: var(--gray-600);"></i>
@@ -307,37 +310,102 @@
                                 class="form-control ps-5">
                         </div>
                     </div>
-                    <div class="col-md-5 text-md-end">
-                        <div class="d-flex gap-2 justify-content-end"> <select id="statusFilter" class="form-select w-auto">
-                                <option value="active">Barang Aktif</option>
-                                <option value="trashed">Barang Dihapus (Arsip)</option>
-                                <option value="all">Semua Barang</option>
-                            </select>
 
-                            <button onclick="openModal()" data-bs-toggle="modal" data-bs-target="#itemModal"
-                                class="btn btn-add w-100 w-md-auto">
-                                <i class="mdi mdi-plus-circle me-2"></i>
-                                Tambah
-                            </button>
+                    <div class="col-12 col-md-6 col-lg-2">
+                        <select id="statusFilter" class="form-select w-100">
+                            <option value="active">Barang Aktif</option>
+                            <option value="trashed">Barang Nonaktif</option>
+                            <option value="all">Semua Barang</option>
+                        </select>
+                    </div>
+
+                    <!-- 🔽 Tambahkan dropdown principal di sini -->
+                    <div class="col-12 col-md-6 col-lg-2">
+                        <select id="principalFilter" class="form-select w-100">
+                            <option value="">Semua Principal</option>
+                            <option value="SMU">SMU</option>
+                            <option value="BAS">BAS</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-2">
+                        <button data-bs-toggle="modal" data-bs-target="#uploadModal"
+                            class="btn btn-success w-100 text-nowrap">
+                            <i class="mdi mdi-cloud-upload-outline me-2"></i>
+                            Upload
+                        </button>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-2">
+                        <button onclick="openModal()" data-bs-toggle="modal" data-bs-target="#itemModal"
+                            class="btn btn-primary w-100 text-nowrap">
+                            <i class="mdi mdi-plus-circle me-2"></i>
+                            Tambah
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🔔 Card Barang Baru -->
+            <div class="card border-warning mb-4 shadow-sm" id="newItemsCard" style="display: none;">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="mdi mdi-alert-circle-outline me-2"></i> Barang Baru Ditemukan
+                    </h5>
+                    <small class="text-muted">Perlu konfirmasi sebelum digunakan</small>
+                </div>
+                <div class="card-body p-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nama Barang</th>
+                                    <th>MID</th>
+                                    <th>Principal</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="newItemsBody">
+                                <!-- Data barang baru akan diisi via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="200" id="itemTableCard">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0 text-nowrap" id="itemTable">
+                            <thead class="table-info">
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nama Barang</th>
+                                    <th>MID</th>
+                                    <th>Principal</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemTableBody">
+                            </tbody>
+                        </table>
+                        <div class="d-flex justify-content-center mt-4" id="paginationContainer">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Items Grid Container -->
-            <div class="row g-4 mb-4" id="itemCardContainer">
-                <!-- Cards akan dimuat via AJAX -->
-            </div>
-
             <!-- Empty State -->
-            <div id="emptyState" class="empty-state mb-4" style="display: none;" data-aos="fade-up" data-aos-delay="200">
-                <i class="mdi mdi-package-variant"></i>
-                <h5 class="fw-bold mb-2">Belum Ada Data Barang</h5>
-                <p class="text-muted mb-3">Mulai tambahkan barang baru untuk mengelola inventory Anda</p>
-                <button onclick="openModal()" data-bs-toggle="modal" data-bs-target="#itemModal" class="btn btn-add">
-                    <i class="mdi mdi-plus-circle me-2"></i>
-                    Tambah Barang Pertama
-                </button>
+            <div id="emptyState" class="card border-0 shadow-sm rounded-3 text-center p-4 mb-4" style="display: none;"
+                data-aos="fade-left" data-aos-delay="100">
+                <div class="card-body">
+                    <i class="mdi mdi-package-variant fs-1 text-primary mb-3"></i>
+                    <h5 class="fw-bold mb-2">Belum Ada Data Barang</h5>
+                    <p class="text-muted mb-3">
+                        Mulai tambahkan barang baru untuk mengelola inventory Anda
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -374,49 +442,23 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="qtyBox" class="form-label">
-                                Qty/Box <span class="text-danger">*</span>
+                                Qty Box/Pallet <span class="text-danger">*</span>
                             </label>
                             <input type="number" name="qty_box" id="qtyBox" class="form-control"
                                 placeholder="Contoh: 12" required min="1">
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="tipeKemasan" class="form-label">Tipe Kemasan</label>
-                            <input type="text" name="tipe_kemasan" id="tipeKemasan" class="form-control"
-                                placeholder="Contoh: Pouch, Sachet, Jeriken">
+                            <label for="tipeKemasan" class="form-label">Principal</label>
+                            <input type="text" name="principal" id="tipeKemasan" class="form-control"
+                                placeholder="Contoh: BAS, SMU">
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="satuan" class="form-label">Satuan</label>
-                        <input type="text" name="satuan" id="satuan" class="form-control"
+                        <label for="satuan" class="form-label">Uom</label>
+                        <input type="text" name="uom" id="satuan" class="form-control"
                             placeholder="contoh: pcs, box, kg">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label d-block">Status <span class="text-danger">*</span></label>
-                        <div class="d-flex gap-4">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input fs-4" type="radio" name="status" id="statusAktif"
-                                    value="aktif" checked required>
-                                <label class="form-check-label fw-semibold" for="statusAktif">
-                                    Aktif
-                                </label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input fs-4" type="radio" name="status" id="statusNonaktif"
-                                    value="nonaktif" required>
-                                <label class="form-check-label fw-semibold" for="statusNonaktif">
-                                    Nonaktif
-                                </label>
-                            </div>
-                        </div>
-                        <small class="text-muted d-block mt-1">Pilih status ketersediaan barang.</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="gambar" class="form-label">Gambar</label>
-                        <input type="file" name="gambar" id="gambar" class="form-control" accept="image/*">
-                        <small class="text-muted">Format: JPG, PNG, maksimal 2MB</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -448,112 +490,283 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal upload barang --}}
+    <div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadModalLabel">
+                        <i class="mdi mdi-cloud-upload me-1"></i> Upload File SOH
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form id="formUploadBarang" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-info" role="alert">
+                            Hanya izinkan file <b>.xlsx, .xls.</b> Ukuran maksimal <b>5MB</b>.
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="file" class="form-label fw-bold">Pilih File Stock On Hand</label>
+                            <input class="form-control" type="file" id="file" name="file" required
+                                accept=".xlsx, .xls, .csv">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer p-2 d-flex justify-content-between">
+                        <a href="{{ route('wfg.master.barang.template') }}" target="_blank"
+                            class="btn btn-soft-warning flex-fill ms-0 me-1">
+                            <i class="mdi mdi-download me-1"></i> Unduh Template
+                        </a>
+
+                        <button type="submit" class="btn btn-soft-success flex-fill me-0 ms-1">
+                            <i class="mdi mdi-check-bold me-1"></i> Unggah Sekarang
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
     <script>
         $(document).ready(function() {
-            // Initialize AOS
-            AOS.init({
-                duration: 600,
-                easing: 'ease-in-out',
-                once: true,
-                offset: 50
-            });
 
             loadBarang();
+            loadNewItems();
 
-            // Search functionality
-            $("#searchInput").on("keyup", function() {
-                let value = $(this).val().toLowerCase();
-                $(".card-data").filter(function() {
-                    $(this).toggle(
-                        $(this).find('.item-title').text().toLowerCase().indexOf(value) > -1 ||
-                        $(this).find('.item-meta').text().toLowerCase().indexOf(value) > -1
-                    );
-                });
+            // debounce for search/delay
+            function debounce(func, delay) {
+                let timeout;
+                return function() {
+                    const context = this;
+                    const args = arguments;
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(context, args), delay);
+                };
+            }
 
-                loadBarang();
-            });
-
-            $('#statusFilter').on('change', function() {
-                loadBarang();
-            });
-
-            function loadBarang() {
-                // 1. Ambil nilai filter dan search term dari elemen HTML
+            // Tambahkan parameter 'page' dengan default 1
+            function loadBarang(page = 1) {
                 const status = $('#statusFilter').val();
                 const searchTerm = $('#searchInput').val();
+                const principal = $('#principalFilter').val();
 
-                let container = $("#itemCardContainer");
+                let container = $("#itemTableBody");
                 container.empty();
                 $("#emptyState").hide();
-                // Tambahkan logika loading state jika ada
+                $("#paginationContainer").empty();
 
                 $.ajax({
                     url: `{{ route('wfg.master.barang.data') }}`,
-                    method: 'GET', // Tetap GET
+                    method: 'GET',
                     dataType: 'json',
-                    // 2. Kirim data filter ke backend
+
                     data: {
                         status: status,
-                        search: searchTerm
+                        search: searchTerm,
+                        page: page,
+                        principal: principal
                     },
                     success: function(res) {
-                        // Hapus logika pencarian DOM front-end jika Anda menggunakan filter sisi server
 
-                        if (res.status === true && res.data.length > 0) {
+                        // TANGKAP SELURUH OBJEK PAGINATOR DARI BACKEND
+                        const paginatedData = res.data;
+                        const items = paginatedData.data;
+                        currentBarangData = {};
+
+                        if (res.status === true && items.length > 0) {
                             $("#emptyState").hide();
+                            $("#itemTable").show();
+                            $("#itemTableCard").show();
 
-                            // 3. Loop dan render card (Logika rendering Anda dipertahankan)
-                            $.each(res.data, function(i, item) {
-                                let card = `
-                        <div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-4 card-data" data-aos="fade-up" data-aos-delay="${i * 50}">
-                            <div class="item-card">
-                                <h3 class="item-title">${item.nama_barang}</h3>
-                                <div class="item-meta">
-                                    <div class="meta-item">
-                                        <i class="mdi mdi-barcode"></i>
-                                        <span>MID: ${item.mid_barang ?? '-'}</span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <i class="mdi mdi-scale-balance"></i>
-                                        <span>Satuan: ${item.satuan ?? '-'}</span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <i class="mdi mdi-check-circle"></i>
-                                        <span class="badge ${item.status === 'aktif' ? 'badge-soft-success' : 'badge-soft-danger'}">
-                                            ${item.status}
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div class="d-flex gap-2 mt-auto pt-3 border-top text-nowrap justify-content-between">
-                                    <button class="btn btn-outline-info w-100" onclick="showDetail(${item.id})" title="Lihat Detail">
-                                        <i class="mdi mdi-eye me-2"></i>Detail
-                                    </button>
-                                    <button class="btn btn-outline-warning w-100" onclick="editBarang(${item.id})" title="Edit Data">
-                                        <i class="mdi mdi-pencil me-2"></i>Edit
-                                    </button>
-                                    <button class="btn btn-outline-danger btn-delete w-100" title="Hapus Data" data-id="${item.id}">
-                                        <i class="mdi mdi-delete me-2"></i>Delete
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                                container.append(card);
+                            // 3. Loop dan render baris tabel (TR)
+                            $.each(items, function(i, item) {
+                                currentBarangData[item.id] = item;
+
+                                const perPage = paginatedData
+                                    .per_page;
+                                const currentPage = paginatedData
+                                    .current_page;
+
+                                const noUrut = ((currentPage - 1) * perPage) + (i + 1);
+
+                                const statusClass = item.status === 'aktif' ?
+                                    'badge-soft-success' : 'badge-soft-danger';
+
+                                let row = `
+                                     <tr id="row-${item.id}">
+                                        <td>${noUrut}</td>
+                                        <td><strong>${item.nama_barang}</strong></td>
+                                        <td>${item.mid_barang ?? '-'}</td>
+                                        <td>${item.principal ?? '-'}</td>
+                                        <td>
+                                            <span class="badge ${statusClass}">${item.status}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex gap-2 justify-content-center">
+                                                
+                                                <button class="btn btn-sm btn-outline-info collapse-trigger"
+                                                        type="button" 
+                                                        data-bs-toggle="collapse" 
+                                                        data-bs-target="#detail-${item.id}" 
+                                                        aria-expanded="false" 
+                                                        aria-controls="detail-${item.id}"
+                                                        title="Lihat Detail">
+                                                    <i id="collapse-icon-${item.id}" class="mdi mdi-chevron-down me-2"></i>Detail
+                                                </button>
+
+                                                <button class="btn btn-sm btn-outline-warning" onclick="editBarang(${item.id})" title="Edit Data">
+                                                    <i class="mdi mdi-pencil me-2"></i>Edit
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger btn-delete" title="Hapus Data" data-id="${item.id}">
+                                                    <i class="mdi mdi-delete me-2"></i>Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="collapse-row">
+                                        <td colspan="6" class="p-0 border-0"> 
+                                            <div class="collapse p-0" id="detail-${item.id}"> 
+                                                <div class="p-3 bg-light border-bottom" id="detailContent-${item.id}">
+                                                    </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                                container.append(row);
+
                             });
 
+                            // 4. Render tombol paginasi
+                            renderPagination(paginatedData);
+
+                            $('#itemTableBody').find('.collapse').off('show.bs.collapse').on(
+                                'show.bs.collapse',
+                                function() {
+                                    const itemId = this.id.replace('detail-', '');
+                                    // Putar ikon panah ke atas dan panggil muat detail
+                                    $(`#collapse-icon-${itemId}`).addClass('rotated');
+                                    showDetailCollapse(parseInt(itemId));
+                                }).off('hide.bs.collapse').on('hide.bs.collapse', function() {
+                                const itemId = this.id.replace('detail-', '');
+                                // Kembalikan ikon panah ke bawah
+                                $(`#collapse-icon-${itemId}`).removeClass('rotated');
+                            });
+
+                            if (typeof AOS !== 'undefined') {
+                                AOS.refresh();
+                            }
                         } else {
+                            $("#itemTable").hide();
+                            $("#itemTableCard").hide();
                             $("#emptyState").show();
+                        }
+
+                        if (typeof AOS !== 'undefined') {
+                            AOS.refresh();
                         }
                     },
                     error: function(xhr, status, error) {
+                        $("#itemTable").hide();
+                        $("#itemTableCard").hide();
+                        $("#paginationContainer").empty();
                         console.error("Gagal memuat data barang:", xhr.responseJSON ? xhr.responseJSON
                             .message : error);
                         $("#emptyState").show().text('Gagal memuat data. Silakan coba lagi.');
                     }
+                });
+            }
+
+            $('#statusFilter').on('change', function() {
+                loadBarang(1);
+            });
+
+            // Search functionality
+            $("#searchInput").on("keyup", debounce(function() {
+                loadBarang(1);
+            }, 300));
+
+            $('#principalFilter').on('change', function() {
+                loadBarang(1);
+            });
+
+            function renderPagination(data) {
+                const container = $("#paginationContainer");
+                container.empty();
+
+                if (!data || data.last_page <= 1) return;
+
+                let paginationHtml = '<nav aria-label="Page navigation"><ul class="pagination">';
+
+                // Tombol Previous
+                const prevDisabled = data.current_page === 1 ? 'disabled' : '';
+                const prevPage = data.current_page - 1;
+                paginationHtml += `
+                    <li class="page-item ${prevDisabled}">
+                        <a class="page-link" href="#" data-page="${prevPage}">Previous</a>
+                    </li>
+                `;
+
+                // --- Batas jumlah tombol yang ditampilkan ---
+                const maxVisible = 1; // tampilkan 1 di kiri dan 1 di kanan dari halaman aktif
+                let startPage = Math.max(1, data.current_page - maxVisible);
+                let endPage = Math.min(data.last_page, data.current_page + maxVisible);
+
+                // Tampilkan tombol pertama jika perlu
+                if (startPage > 1) {
+                    paginationHtml += `
+                        <li class="page-item">
+                            <a class="page-link" href="#" data-page="1">1</a>
+                        </li>
+                    `;
+                    if (startPage > 2) paginationHtml +=
+                        `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+
+                // Tampilkan range dinamis
+                for (let i = startPage; i <= endPage; i++) {
+                    const activeClass = data.current_page === i ? 'active' : '';
+                    paginationHtml += `
+                        <li class="page-item ${activeClass}">
+                            <a class="page-link" href="#" data-page="${i}">${i}</a>
+                        </li>
+                    `;
+                }
+
+                // Tampilkan tombol terakhir jika perlu
+                if (endPage < data.last_page) {
+                    if (endPage < data.last_page - 1) paginationHtml +=
+                        `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    paginationHtml += `
+                        <li class="page-item">
+                            <a class="page-link" href="#" data-page="${data.last_page}">${data.last_page}</a>
+                        </li>
+                    `;
+                }
+
+                // Tombol Next
+                const nextDisabled = data.current_page === data.last_page ? 'disabled' : '';
+                const nextPage = data.current_page + 1;
+                paginationHtml += `
+                    <li class="page-item ${nextDisabled}">
+                        <a class="page-link" href="#" data-page="${nextPage}">Next</a>
+                    </li>
+                `;
+
+                paginationHtml += '</ul></nav>';
+                container.append(paginationHtml);
+
+                // Event listener
+                $('#paginationContainer').off('click', '.page-link').on('click', '.page-link', function(e) {
+                    e.preventDefault();
+                    const page = $(this).data('page');
+                    if (!page || $(this).closest('.page-item').hasClass('disabled')) return;
+                    loadBarang(page); // panggil ulang data barang sesuai halaman
                 });
             }
 
@@ -602,6 +815,78 @@
                             title: 'Oops!',
                             text: msg
                         });
+                    }
+                });
+            });
+
+            // upload handle
+            $('#formUploadBarang').on('submit', function(e) {
+                e.preventDefault();
+
+                let formData = new FormData(this);
+
+                $.ajax({
+                    url: "{{ route('wfg.master.barang.import') }}",
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    beforeSend: function() {
+                        Swal.fire({
+                            title: 'Mengunggah...',
+                            text: 'Mohon tunggu sebentar',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: response.message ??
+                                'File Stock On Hand berhasil diunggah.',
+                            // timer: 3000,
+                            // showConfirmButton: false
+                        });
+
+                        $('#uploadModal').modal('hide');
+                        $('#file').val('');
+
+                        // Refresh DataTable kalau ada
+                        loadBarang();
+                    },
+                    error: function(xhr) {
+                        let msg = 'Terjadi kesalahan saat mengunggah file.';
+                        let listError = '';
+
+                        if (xhr.responseJSON) {
+                            const res = xhr.responseJSON;
+
+                            // Pesan utama
+                            if (res.message) msg = res.message;
+
+                            // Detail error dari backend (baris & pesan)
+                            if (res.errors && res.errors.length > 0) {
+                                listError +=
+                                    '<div style="max-height: 200px; overflow-y: auto; text-align:left; margin-top:10px;">';
+                                listError += '<ul class="mb-0">';
+                                res.errors.forEach(function(e) {
+                                    listError += '<li><strong>Baris ' + e.baris +
+                                        ':</strong> ' + e.error + '</li>';
+                                });
+                                listError += '</ul></div>';
+                            }
+                        }
+                        // Tampilkan semua error (baik umum atau detail)
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Mengunggah!',
+                            html: msg + listError
+                        });
+
+                        loadSOHList();
                     }
                 });
             });
@@ -655,6 +940,89 @@
                 });
             });
 
+            // Ambil barang baru (is_new = 1)
+            function loadNewItems() {
+                $.ajax({
+                    url: "{{ route('wfg.master.barang.new') }}", // endpoint baru
+                    type: "GET",
+                    dataType: "json",
+                    success: function(response) {
+                        const card = $("#newItemsCard");
+                        const tbody = $("#newItemsBody");
+                        tbody.empty();
+
+                        if (response.length === 0) {
+                            card.hide();
+                            return;
+                        }
+
+                        response.forEach(item => {
+                            const row = `
+                                <tr>
+                                    <td>${item.nama_barang}</td>
+                                    <td>${item.mid_barang}</td>
+                                    <td>${item.principal}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-success btn-sm me-2 approve-item" data-id="${item.id}">
+                                            <i class="mdi mdi-check"></i> Approve
+                                        </button>
+                                        <button class="btn btn-danger btn-sm reject-item" data-id="${item.id}">
+                                            <i class="mdi mdi-close"></i> Reject
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.append(row);
+                        });
+
+                        card.show();
+                    },
+                    error: function() {
+                        console.error("Gagal memuat barang baru.");
+                    }
+                });
+            }
+
+            // Handle tombol approve
+            $(document).on("click", ".approve-item", function() {
+                const id = $(this).data("id");
+
+                $.ajax({
+                    url: `{{ url('wfg/master/barang/new/approve') }}/${id}`,
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function() {
+                        toastr.success("Barang telah disetujui!");
+                        loadNewItems(); // refresh daftar barang baru
+                    },
+                    error: function() {
+                        toastr.error("Gagal menyetujui barang.");
+                    }
+                });
+            });
+
+            // Handle tombol reject
+            $(document).on("click", ".reject-item", function() {
+                const id = $(this).data("id");
+
+                $.ajax({
+                    url: `{{ url('wfg/master/barang/new/reject') }}/${id}`,
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function() {
+                        toastr.info("Barang telah ditolak.");
+                        loadNewItems(); // refresh daftar barang baru
+                    },
+                    error: function() {
+                        toastr.error("Gagal menolak barang.");
+                    }
+                });
+            });
+
         });
 
         function openModal() {
@@ -663,141 +1031,60 @@
             $("#itemModalLabel").html('<i class="mdi mdi-package-variant-closed me-2"></i>Tambah Barang Baru');
         }
 
-        function showDetail(id) {
-            // Catatan: Asumsikan route ini mengembalikan JSON dengan array 'data'
-            $.get("{{ route('wfg.master.barang.data') }}", function(res) {
-                let item = res.data.find(x => x.id === id);
+        let currentBarangData = {};
 
-                if (item) {
-                    // Helper function untuk menampilkan badge status
-                    const statusBadge = `
-                        <span class="status-badge-large ${item.status === 'aktif' ? 'badge-soft-success' : 'badge-soft-danger'}">
-                            <i class="mdi mdi-circle-small"></i>
-                            ${item.status}
-                        </span>
-                    `;
+        function showDetailCollapse(id) {
+            const item = currentBarangData[id];
+            const targetElement = $(`#detailContent-${id}`);
 
-                    // HTML Baru dengan penambahan qty_box dan tipe_kemasan
-                    let detailHTML = `
-                        ${item.gambar ? `<img src="${item.gambar}" alt="${item.nama_barang}" class="detail-image-large mb-3">` : ''}
-                        <div class="detail-info-section">
-                            <div class="row g-2">
-                                <div class="col-md-12 col-12">
-                                    <div class="info-row">
-                                        <div class="info-icon">
-                                            <i class="mdi mdi-barcode fs-5"></i>
-                                        </div>
-                                        <div class="info-content">
-                                            <div class="info-label">MID Barang</div>
-                                            <div class="info-value">${item.mid_barang ?? '-'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+            if (!item) {
+                targetElement.html(
+                    '<div class="alert alert-danger mb-0">Detail data tidak ditemukan di memori lokal.</div>');
+                return;
+            }
 
-                                <div class="col-md-12 col-12">
-                                    <div class="info-row">
-                                        <div class="info-icon">
-                                            <i class="mdi mdi-tag fs-5"></i>
-                                        </div>
-                                        <div class="info-content">
-                                            <div class="info-label">Nama Barang</div>
-                                            <div class="info-value">${item.nama_barang}</div>
-                                        </div>
-                                    </div>
-                                </div>
+            // Helper function untuk menampilkan badge status
+            const statusBadge =
+                `<span class="badge ${item.status === 'aktif' ? 'badge-soft-success' : 'badge-soft-danger'}">${item.status}</span>`;
 
-                                <div class="col-md-12 col-12">
-                                    <div class="info-row">
-                                        <div class="info-icon">
-                                            <i class="mdi mdi-package-variant-closed fs-5"></i>
-                                        </div>
-                                        <div class="info-content">
-                                            <div class="info-label">Qty per Box</div>
-                                            <div class="info-value">${item.qty_box ?? '-'}</div>
-                                        </div>
-                                    </div>
-                                </div>
+            // Konten Detail yang Ringkas dan Terbaca
+            let detailHTML = `
+                <div class="row g-3 text-wrap">
+                    <div class="col-md-4">
+                        <strong>MID:</strong> ${item.mid_barang ?? '-'}
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Nama Barang:</strong> ${item.nama_barang ?? '-'}
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Principal:</strong> ${item.principal ?? '-'}
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Qty per Box:</strong> ${item.qty_box ?? '-'}
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Uom:</strong> ${item.uom ?? '-'}
+                    </div>
+                    <div class="col-md-12 mt-3">
+                        <strong>Status Saat Ini:</strong> ${statusBadge}
+                        ${item.deleted_at ? '<span class="text-danger ms-2">(Telah di-Soft Delete)</span>' : ''}
+                    </div>
+                </div>
+            `;
 
-                                <div class="col-md-12 col-12">
-                                    <div class="info-row">
-                                        <div class="info-icon">
-                                            <i class="mdi mdi-cube-send fs-5"></i>
-                                        </div>
-                                        <div class="info-content">
-                                            <div class="info-label">Tipe Kemasan</div>
-                                            <div class="info-value">${item.tipe_kemasan ?? '-'}</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-12 col-12">
-                                    <div class="info-row">
-                                        <div class="info-icon">
-                                            <i class="mdi mdi-scale-balance fs-5"></i>
-                                        </div>
-                                        <div class="info-content">
-                                            <div class="info-label">Satuan</div>
-                                            <div class="info-value">${item.satuan ?? '-'}</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-12 col-12">
-                                    <div class="info-row">
-                                        <div class="info-icon">
-                                            <i class="mdi mdi-check-circle fs-5"></i>
-                                        </div>
-                                        <div class="info-content">
-                                            <div class="info-label">Status</div>
-                                            <div class="info-value">
-                                                ${statusBadge}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex gap-2 mt-4 pt-3 border-top">
-                            <button class="btn btn-warning flex-fill" onclick="editBarang(${item.id}); $('#detailOffcanvas').offcanvas('hide');">
-                                <i class="mdi mdi-pencil me-1"></i>
-                                Edit
-                            </button>
-                            <button class="btn btn-danger flex-fill" onclick="deleteBarang(${item.id}); $('#detailOffcanvas').offcanvas('hide');">
-                                <i class="mdi mdi-delete me-1"></i>
-                                Hapus
-                            </button>
-                        </div>
-                    `;
-                    $("#detailContent").html(detailHTML);
-                    $("#detailOffcanvas").offcanvas('show');
-                } else {
-                    // Tambahkan notifikasi jika item tidak ditemukan
-                    Swal.fire({
-                        icon: 'error',
-                        text: 'Detail barang tidak ditemukan.',
-                        title: 'Error',
-                    });
-                }
-            }).fail(function() {
-                Swal.fire({
-                    icon: 'error',
-                    text: 'Gagal mengambil data dari server.',
-                    title: 'Error',
-                });
-            });
+            targetElement.html(detailHTML);
         }
 
         function editBarang(id) {
-            $.get("{{ route('wfg.master.barang.data') }}", function(res) {
-                let item = res.data.find(x => x.id === id);
+            $.get(`{{ url('api/wfg/show/barang') }}/` + id, function(res) {
+                let item = res.data;
                 if (item) {
                     $("#itemId").val(item.id);
                     $("#midBarang").val(item.mid_barang);
                     $("#namaBarang").val(item.nama_barang);
                     $("#qtyBox").val(item.qty_box);
-                    $("#tipeKemasan").val(item.tipe_kemasan);
-                    $("#satuan").val(item.satuan);
+                    $("#tipeKemasan").val(item.principal);
+                    $("#satuan").val(item.uom);
 
                     if (item.status === 'aktif') {
                         $("#status").prop('checked', true);

@@ -16,10 +16,10 @@ class BarangWfgModel extends Model
         'mid_barang',
         'nama_barang',
         'qty_box',
-        'tipe_kemasan',
+        'principal',
         'status',
-        'satuan',
-        'gambar'
+        'uom',
+        'is_new'
     ];
 
     public function stockOnHand()
