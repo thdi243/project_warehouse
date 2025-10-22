@@ -988,6 +988,7 @@
                 const sopId = $('#filter_tanggal').data('sop-id');
                 const foremanId = $('#selectForeman').val();
                 const supervisorId = $('#selectSupervisor').val();
+                const principal = $('#principal_export').val();
 
                 if (!foremanId || !supervisorId) {
                     Swal.fire('Peringatan', 'Silakan pilih Foreman dan Supervisor.', 'warning');
@@ -1001,6 +1002,7 @@
                         sop_id: sopId,
                         foreman_id: foremanId,
                         supervisor_id: supervisorId,
+                        principal: principal,
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(res) {
@@ -1064,7 +1066,7 @@
                                 $('#approval_note').val('');
 
                                 // Ganti UI approval jadi label status
-                                loadReportData();
+                                loadReportData(principal);
                             },
                             error: function(xhr) {
                                 Swal.fire({

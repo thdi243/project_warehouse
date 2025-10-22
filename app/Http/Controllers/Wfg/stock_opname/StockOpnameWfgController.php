@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Redirect;
 use App\Models\Wfg\stock_opname\WfgSopModel;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\WfgSopTempModel;
@@ -801,15 +802,31 @@ class StockOpnameWfgController extends Controller
         $tanggalFilter = $request->input('tanggal');
         $principalFilter = $request->input('principal');
 
+        if ($user->jabatan === 'operator') {
+            $activePrincipal = optional($user->principal)->principal;
+            if (empty($activePrincipal)) {
+                // Operator tanpa principal: tidak boleh lanjut
+                return response()->json([
+                    'approval_status' => 'draft',
+                    'approval_note' => null,
+                    'approver_tracking' => [],
+                    'message' => 'Principal tidak ditemukan pada akun operator. Hubungi foreman.',
+                ], 422);
+            }
+        } else {
+            // non-operator: boleh melihat semua principal jika tidak menyertakan filter
+            $activePrincipal = $principalFilter ?: null;
+        }
+
+        // Jika ada filter tanggal, coba resolve SOP berdasarkan tanggal + principal (jika ada)
         if ($tanggalFilter) {
             $sopQuery = WfgSopModel::whereDate('tgl_opname', $tanggalFilter);
 
-            // Filter berdasarkan principal kalau ada
-            if (!empty($principalFilter)) {
-                $sopQuery->where('principal', $principalFilter);
+            if ($activePrincipal) {
+                $sopQuery->where('principal', $activePrincipal);
             }
-
-            $sop = $sopQuery->first();
+            // ambil yang paling baru jika ada beberapa
+            $sop = $sopQuery->latest('id')->first();
 
             if (!$sop) {
                 return response()->json([
@@ -819,77 +836,61 @@ class StockOpnameWfgController extends Controller
                 ]);
             }
 
-            $id = $sop->id;
+            $id = $sop->id; // override id arg dengan sop yang ditemukan
+        } else {
+            // jika tidak ada tanggal filter, pastikan SOP id dari param valid
+            $sop = WfgSopModel::find($id);
+            if (!$sop) {
+                return response()->json([
+                    'approval_status' => 'draft',
+                    'approval_note' => null,
+                    'approver_tracking' => [],
+                ]);
+            }
+
+            // Jika user operator pastikan sop princial match user principal (safety)
+            if ($user->jabatan === 'operator' && $sop->principal !== $activePrincipal) {
+                return response()->json([
+                    'approval_status' => 'draft',
+                    'approval_note' => null,
+                    'approver_tracking' => [],
+                ], 403);
+            }
         }
 
-        // 🔹 ambil tracking approval untuk semua response
-        $approverTracking = WfgSopApprovalModel::where('sop_id', $id)
+        // Ambil semua approval untuk SOP ini (kita pakai sop_id sebagai sumber kebenaran)
+        $approvals = WfgSopApprovalModel::where('sop_id', $id)
+            // optional: kalau kamu menyimpan principal di tabel approvals, uncomment berikut:
+            // ->where('principal', $sop->principal)
             ->with('approver:id,username,jabatan')
-            ->get()
-            ->map(fn($a) => [
+            ->get();
+
+        // Map untuk tracking (selalu tampilkan semua approver yang terdaftar)
+        $approverTracking = $approvals->map(function ($a) {
+            return [
                 'nama' => $a->approver->username ?? '-',
                 'jabatan' => $a->approver->jabatan ?? '-',
                 'status' => ucfirst($a->status),
                 'catatan' => $a->catatan,
-            ]);
+            ];
+        })->values();
 
-        // 🔹 cek apakah user ini approver
-        $approval = WfgSopApprovalModel::where('sop_id', $id)
-            ->where('approver_id', $userId)
-            ->first();
+        // Cek apakah user saat ini adalah approver untuk SOP ini (per sop_id)
+        $approvalForUser = $approvals->firstWhere('approver_id', $userId);
 
-        if ($approval) {
+        if ($approvalForUser) {
             return response()->json([
-                'approval_status' => $approval->status,
-                'approval_note' => $approval->catatan,
+                'approval_status' => $approvalForUser->status,
+                'approval_note' => $approvalForUser->catatan,
                 'is_approver' => true,
-                'approver_tracking' => $approverTracking, // ✅ ditambah sini
-            ]);
-        }
-
-        // 🔹 operator logic
-        if ($user->jabatan === 'operator') {
-            $approvals = WfgSopApprovalModel::where('sop_id', $id)->get();
-
-            if ($approvals->isEmpty()) {
-                return response()->json([
-                    'approval_status' => 'draft',
-                    'approval_note' => null,
-                    'is_approver' => false,
-                    'approver_tracking' => $approverTracking,
-                ]);
-            }
-
-            if ($approvals->contains('status', 'rejected')) {
-                $rejected = $approvals->firstWhere('status', 'rejected');
-                return response()->json([
-                    'approval_status' => 'rejected',
-                    'approval_note' => $rejected->catatan,
-                    'is_approver' => false,
-                    'approver_tracking' => $approverTracking,
-                ]);
-            }
-
-            if ($approvals->contains(fn($a) => in_array($a->status, ['pending', 'read']))) {
-                return response()->json([
-                    'approval_status' => 'pending',
-                    'approval_note' => null,
-                    'is_approver' => false,
-                    'approver_tracking' => $approverTracking,
-                ]);
-            }
-
-            return response()->json([
-                'approval_status' => 'approved',
-                'approval_note' => null,
-                'is_approver' => false,
                 'approver_tracking' => $approverTracking,
             ]);
         }
 
-        // 🔹 untuk user lain
-        $approvals = WfgSopApprovalModel::where('sop_id', $id)->get();
-
+        // Jika bukan approver, kita hitung status global:
+        // aturan: jika ada rejected -> rejected
+        // else if ada pending/read -> pending
+        // else approved
         if ($approvals->isEmpty()) {
             return response()->json([
                 'approval_status' => 'draft',
@@ -899,7 +900,10 @@ class StockOpnameWfgController extends Controller
             ]);
         }
 
-        if ($approvals->contains('status', 'rejected')) {
+        // normalisasi status ke lowercase agar pengecekan konsisten
+        $statuses = $approvals->pluck('status')->map(fn($s) => strtolower($s))->all();
+
+        if (in_array('rejected', $statuses, true)) {
             $rejected = $approvals->firstWhere('status', 'rejected');
             return response()->json([
                 'approval_status' => 'rejected',
@@ -909,7 +913,7 @@ class StockOpnameWfgController extends Controller
             ]);
         }
 
-        if ($approvals->contains(fn($a) => in_array($a->status, ['pending', 'read']))) {
+        if (collect($statuses)->contains(fn($st) => in_array($st, ['pending', 'read'], true))) {
             return response()->json([
                 'approval_status' => 'pending',
                 'approval_note' => null,
@@ -1483,9 +1487,24 @@ class StockOpnameWfgController extends Controller
         $user = Auth::user();
 
         try {
-            $sop = WfgSopModel::with(['user:id,username'])
-                ->whereDate('tgl_opname', $tanggal)
-                ->first();
+            $sopQuery = WfgSopModel::with(['user:id,username'])
+                ->whereDate('tgl_opname', $tanggal);
+
+            $userPrincipal = optional($user->principal)->principal;
+
+            if ($user->jabatan === 'operator' && $userPrincipal) {
+                $sopQuery->where('principal', $userPrincipal);
+            } elseif (!empty($principalFilter)) {
+                $sopQuery->where('principal', $principalFilter);
+            }
+
+            $sop = $sopQuery->first();
+
+            if (!$sop) {
+                return Redirect::route('dashboard')->with('error', "SOP tidak ditemukan untuk principal Anda pada tanggal {$tanggal}.");
+            }
+
+            Log::info("Export SOP ID: {$sop->id}, Principal: {$sop->principal}");
 
             if (!$sop) {
                 return response()->json([
@@ -1555,28 +1574,24 @@ class StockOpnameWfgController extends Controller
 
             // Helper function untuk ambil path tanda tangan user
             $getSignaturePath = function ($user) {
-                // Fallback default
-                // $dummy = asset('storage/images/ttd/dummy.jpg');
-                if (!$user) return '';
+                $dummy = public_path('storage/images/ttd/dummy.jpg');
+                if (!$user) return $dummy;
 
-                // Cek apakah user punya relasi signature di DB
                 if (isset($user->signature) && !empty($user->signature->signature)) {
                     $signaturePath = public_path($user->signature->signature);
                     if (File::exists($signaturePath)) {
-                        return asset($user->signature->signature);
+                        return $signaturePath;
                     }
                 }
 
-                // Jika tidak ada relasi, cek file berdasarkan username (hasil dari update user)
                 $usernameFile = 'uploads/signatures/signature_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $user->username) . '.png';
                 $filePath = public_path($usernameFile);
                 if (File::exists($filePath)) {
-                    return asset($usernameFile);
+                    return $filePath;
                 }
 
-                return '';
+                return $dummy;
             };
-
 
             // === Operator (pembuat SOP) ===
             $operatorApproval = $sop->user;
@@ -1718,21 +1733,53 @@ class StockOpnameWfgController extends Controller
             'supervisor_id' => 'required|exists:users,id',
         ]);
 
+        $user = Auth::user();
+
+        // 🔹 Ambil principal dari user login
+        $userPrincipal = optional($user->principal)->principal;
+
+        if (!$userPrincipal) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Principal tidak ditemukan pada akun user. Hubungi admin atau foreman.',
+            ], 422);
+        }
+
         $sopId = $request->sop_id;
+
+        // 🔹 Pastikan SOP sesuai dengan principal login
+        $sop = WfgSopModel::where('id', $sopId)
+            ->where('principal', $userPrincipal)
+            ->first();
+
+        if (!$sop) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data SOP tidak ditemukan untuk principal Anda.',
+            ], 404);
+        }
+
+        // 🔹 Update/Create approval per approver
         $approvers = [$request->foreman_id, $request->supervisor_id];
 
         foreach ($approvers as $userId) {
             WfgSopApprovalModel::updateOrCreate(
-                ['sop_id' => $sopId, 'approver_id' => $userId],
-                ['status' => 'pending']
+                [
+                    'sop_id' => $sop->id,
+                    'approver_id' => $userId,
+                ],
+                [
+                    'status' => 'pending',
+                ]
             );
         }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Approval berhasil dikirim ke semua approver.'
+            'message' => "Approval berhasil dikirim ke semua approver untuk principal {$userPrincipal}."
         ]);
     }
+
 
     public function getDataApproval()
     {

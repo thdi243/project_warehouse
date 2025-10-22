@@ -530,7 +530,6 @@
                 }
             });
 
-
             // kosongkan isi setelah collapse tertutup sepenuhnya
             $(document).on('hidden.bs.collapse', '.collapse', function() {
                 $(this).find('td').html('');

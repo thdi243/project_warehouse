@@ -362,7 +362,7 @@
                 fetchNotifications();
 
                 // Cek setiap 60 detik
-                setInterval(fetchNotifications, 60000);
+                setInterval(fetchNotifications, 180000);
             });
         </script>
 
