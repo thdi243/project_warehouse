@@ -158,8 +158,7 @@
                                 </div>
                             @endif
 
-                            {{-- Tombol Upload & Tambah --}}
-                            @if ($barangCount > 0)
+                            @if ($barangCount > 0 && empty($error_message))
                                 <div
                                     class="@if (Auth::user()->jabatan != 'operator') col-lg-6 @else col-lg-6 @endif col-md-12 d-flex justify-content-between">
                                     <button class="btn btn-success w-100 me-2" data-bs-toggle="modal"

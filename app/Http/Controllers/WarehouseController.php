@@ -133,6 +133,24 @@ class WarehouseController extends Controller
 
     public function formSOWFG()
     {
+        $user = Auth::user();
+
+        $allowedPrincipals = ['BAS', 'SMU'];
+
+        $userPrincipal = optional($user->principal)->principal
+            ? strtoupper(trim($user->principal->principal))
+            : null;
+
+        // Jika user punya principal tapi bukan termasuk yang diizinkan
+        if ($userPrincipal && !in_array($userPrincipal, $allowedPrincipals)) {
+            return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
+        }
+
+        // Jika user tidak memiliki principal dan dia operator
+        if ($user->jabatan === 'operator' && !$userPrincipal) {
+            return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
+        }
+
         $today = Carbon::today()->toDateString();
 
         $dataExists = StockOnHandModel::whereDate('last_updated', $today)->exists();
@@ -149,33 +167,78 @@ class WarehouseController extends Controller
 
     public function uploadSOHWFG()
     {
-        $barangCount = BarangWfgModel::count();
+        $user = Auth::user();
 
+        $allowedPrincipals = ['BAS', 'SMU'];
+
+        $userPrincipal = optional($user->principal)->principal
+            ? strtoupper(trim($user->principal->principal))
+            : null;
+
+        // Jika user punya principal tapi bukan termasuk yang diizinkan
+        if ($userPrincipal && !in_array($userPrincipal, $allowedPrincipals)) {
+            return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
+        }
+
+        // Jika user tidak memiliki principal dan dia operator
+        if ($user->jabatan === 'operator' && !$userPrincipal) {
+            return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
+        }
+
+        $barangCount = BarangWfgModel::count();
+        $principals = BarangWfgModel::distinct()->pluck('principal')->filter()->values();
+
+        $error_message = null;
+
+        // 🔹 Validasi utama
         if ($barangCount === 0) {
-            $user = Auth::user();
-            if ($user && $user->jabatan === 'operator') {
-                $principals = collect();
-                $error_message = 'Master Data Barang WFG belum tersedia. Coba hubungi Foreman Anda untuk mengunggah master barang.';
-                return view('stock_opname_wfg.upload_soh', compact('principals', 'barangCount', 'error_message'))
-                    ->with('error', $error_message); // Keeping the session flash just in case, but passing directly is safer for direct view return.
-            } else {
-                return Redirect::route('wfg.master.barang.index')
-                    ->with('error', 'Master Data Barang WFG masih kosong. Anda harus menambahkan data barang terlebih dahulu sebelum dapat mengunggah Stock On Hand (SOH).');
+            $error_message = 'Master Data Barang WFG belum tersedia. Hubungi Foreman Anda untuk mengunggah master barang.';
+        } elseif ($user->jabatan === 'operator' && $userPrincipal) {
+            $barangByPrincipal = BarangWfgModel::whereRaw('UPPER(TRIM(principal)) = ?', [$userPrincipal])->count();
+
+            if ($barangByPrincipal === 0) {
+                $error_message = "Principal '{$userPrincipal}' belum memiliki data barang di Master WFG. Hubungi Foreman untuk menambahkan principal tersebut.";
             }
         }
 
-        $principals = BarangWfgModel::distinct()->pluck('principal');
+        // 🔹 Jika ada error
+        if ($error_message) {
+            if ($user->jabatan === 'operator') {
+                return view('stock_opname_wfg.upload_soh', compact('principals', 'barangCount', 'error_message'))
+                    ->with('error', $error_message);
+            } else {
+                return Redirect::route('wfg.master.barang.index')->with('error', $error_message);
+            }
+        }
 
+        // 🔹 Jika tidak ada error, tampilkan view
         return view('stock_opname_wfg.upload_soh', compact('principals', 'barangCount'));
     }
 
     public function reportSOPWFG()
     {
+        $user = Auth::user();
+
+        $allowedPrincipals = ['BAS', 'SMU'];
+
+        $userPrincipal = optional($user->principal)->principal
+            ? strtoupper(trim($user->principal->principal))
+            : null;
+
+        // Jika user punya principal tapi bukan termasuk yang diizinkan
+        if ($userPrincipal && !in_array($userPrincipal, $allowedPrincipals)) {
+            return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
+        }
+
+        // Jika user tidak memiliki principal dan dia operator
+        if ($user->jabatan === 'operator' && !$userPrincipal) {
+            return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
+        }
+
         $principals = BarangWfgModel::distinct()->pluck('principal');
         $hasNewBarang = BarangWfgModel::where('is_new', 1)->exists();
 
         // Cek apakah user saat ini adalah Foreman Robi
-        $user = Auth::user();
         $isRobiForeman = $user && $user->username === 'RobiForeman';
 
         if ($isRobiForeman && $hasNewBarang) {
