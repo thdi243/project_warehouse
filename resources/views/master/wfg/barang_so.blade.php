@@ -536,7 +536,6 @@
     <script>
         $(document).ready(function() {
 
-            loadBarang();
             loadNewItems();
 
             // debounce for search/delay
@@ -551,7 +550,7 @@
             }
 
             // Tambahkan parameter 'page' dengan default 1
-            function loadBarang(page = 1) {
+            window.loadBarang = function(page = 1) {
                 const status = $('#statusFilter').val();
                 const searchTerm = $('#searchInput').val();
                 const principal = $('#principalFilter').val();
@@ -587,16 +586,37 @@
                             // 3. Loop dan render baris tabel (TR)
                             $.each(items, function(i, item) {
                                 currentBarangData[item.id] = item;
-
                                 const perPage = paginatedData
                                     .per_page;
                                 const currentPage = paginatedData
                                     .current_page;
-
                                 const noUrut = ((currentPage - 1) * perPage) + (i + 1);
-
                                 const statusClass = item.status === 'aktif' ?
                                     'badge-soft-success' : 'badge-soft-danger';
+
+                                const isTrashedView = (status === 'trashed' || status ===
+                                    'trashed');
+
+                                let actionButton = `
+                                    <button class="btn btn-sm btn-outline-warning" onclick="editBarang(${item.id})" title="Edit Data">
+                                        <i class="mdi mdi-pencil me-2"></i>Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger btn-delete" title="Hapus Data" data-id="${item.id}">
+                                        <i class="mdi mdi-delete me-2"></i>Delete
+                                    </button>
+                                `;
+
+                                // Jika sedang lihat barang trashed → ubah tombol jadi Restore + Force Delete
+                                if (isTrashedView) {
+                                    actionButton = `
+                                        <button class="btn btn-sm btn-outline-success" onclick="restoreBarang(${item.id})" title="Pulihkan Data">
+                                            <i class="mdi mdi-backup-restore me-2"></i>Restore
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="forceDeleteBarang(${item.id})" title="Hapus Permanen">
+                                            <i class="mdi mdi-delete-forever me-2"></i>Hapus Permanen
+                                        </button>
+                                    `;
+                                }
 
                                 let row = `
                                      <tr id="row-${item.id}">
@@ -620,12 +640,7 @@
                                                     <i id="collapse-icon-${item.id}" class="mdi mdi-chevron-down me-2"></i>Detail
                                                 </button>
 
-                                                <button class="btn btn-sm btn-outline-warning" onclick="editBarang(${item.id})" title="Edit Data">
-                                                    <i class="mdi mdi-pencil me-2"></i>Edit
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger btn-delete" title="Hapus Data" data-id="${item.id}">
-                                                    <i class="mdi mdi-delete me-2"></i>Delete
-                                                </button>
+                                                ${actionButton}
                                             </div>
                                         </td>
                                     </tr>
@@ -675,12 +690,15 @@
                         $("#itemTable").hide();
                         $("#itemTableCard").hide();
                         $("#paginationContainer").empty();
-                        console.error("Gagal memuat data barang:", xhr.responseJSON ? xhr.responseJSON
+                        console.error("Gagal memuat data barang:", xhr.responseJSON ? xhr
+                            .responseJSON
                             .message : error);
                         $("#emptyState").show().text('Gagal memuat data. Silakan coba lagi.');
                     }
                 });
             }
+
+            loadBarang();
 
             $('#statusFilter').on('change', function() {
                 loadBarang(1);
@@ -806,13 +824,31 @@
                         loadBarang();
                     },
                     error: function(xhr) {
-                        let msg = "Terjadi kesalahan";
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
+                        let title = 'Oops!';
+                        let msg = 'Terjadi kesalahan tidak diketahui.';
+                        let icon = 'error';
+
+                        if (xhr.status === 422) {
+                            // Validasi gagal
+                            if (xhr.responseJSON?.errors) {
+                                const errorMessages = Object.values(xhr.responseJSON.errors)
+                                    .flat()
+                                    .join('\n');
+                                msg = errorMessages;
+                            } else {
+                                msg = xhr.responseJSON?.message || 'Validasi gagal.';
+                            }
+                        } else if (xhr.status === 400) {
+                            msg = xhr.responseJSON?.message || 'Permintaan tidak valid.';
+                        } else if (xhr.status === 500) {
+                            msg = xhr.responseJSON?.message || 'Terjadi kesalahan pada server.';
+                        } else {
+                            msg = xhr.responseJSON?.message || msg;
                         }
+
                         Swal.fire({
-                            icon: 'error',
-                            title: 'Oops!',
+                            icon: icon,
+                            title: title,
                             text: msg
                         });
                     }
@@ -996,6 +1032,7 @@
                     success: function() {
                         toastr.success("Barang telah disetujui!");
                         loadNewItems(); // refresh daftar barang baru
+                        loadBarang();
                     },
                     error: function() {
                         toastr.error("Gagal menyetujui barang.");
@@ -1016,12 +1053,14 @@
                     success: function() {
                         toastr.info("Barang telah ditolak.");
                         loadNewItems(); // refresh daftar barang baru
+                        loadBarang();
                     },
                     error: function() {
                         toastr.error("Gagal menolak barang.");
                     }
                 });
             });
+
 
         });
 
@@ -1094,6 +1133,93 @@
 
                     $("#itemModalLabel").html('<i class="mdi mdi-pencil me-2"></i>Edit Barang');
                     $("#itemModal").modal('show');
+                }
+            });
+        }
+
+        function restoreBarang(id) {
+            Swal.fire({
+                title: "Pulihkan Data?",
+                text: "Barang ini akan diaktifkan kembali.",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Ya, Pulihkan",
+                cancelButtonText: "Batal"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: "{{ route('wfg.master.barang.restore', ':id') }}".replace(':id',
+                            id),
+                        method: 'POST',
+                        data: {
+                            _token: "{{ csrf_token() }}"
+                        },
+                        success: function(res) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: res.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+
+                            loadBarang(1);
+                        },
+                        error: function(xhr) {
+                            let msg = "Terjadi kesalahan.";
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: msg
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function forceDeleteBarang(id) {
+            Swal.fire({
+                title: "Hapus Permanen?",
+                text: "Data ini akan dihapus secara permanen dan tidak dapat dikembalikan!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Ya, Hapus",
+                cancelButtonText: "Batal"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: "{{ route('wfg.master.barang.forceDelete', ':id') }}".replace(
+                            ':id', id),
+                        method: 'DELETE',
+                        data: {
+                            _token: "{{ csrf_token() }}"
+                        },
+                        success: function(res) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: res.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            loadBarang(1);
+                        },
+                        error: function(xhr) {
+                            let msg = "Terjadi kesalahan.";
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: msg
+                            });
+                        }
+                    });
                 }
             });
         }

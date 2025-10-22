@@ -170,6 +170,9 @@ Route::middleware('auth')->group(function () {
                 Route::get('/barang/data', [BarangWfgController::class, 'data'])->name('wfg.master.barang.data');
                 Route::put('/barang/update/{id}', [BarangWfgController::class, 'update'])->name('wfg.master.barang.update');
                 Route::delete('/barang/delete/{id}', [BarangWfgController::class, 'destroy'])->name('wfg.master.barang.delete');
+                Route::post('/master/barang/restore/{id}', [BarangWfgController::class, 'restore'])->name('wfg.master.barang.restore');
+                Route::delete('/master/barang/force-delete/{id}', [BarangWfgController::class, 'forceDelete'])
+                    ->name('wfg.master.barang.forceDelete');
                 Route::post('/barang/import', [BarangWfgController::class, 'import'])->name('wfg.master.barang.import');
                 Route::get('/barang/template', [BarangWfgController::class, 'downloadTemplate'])->name('wfg.master.barang.template');
             });

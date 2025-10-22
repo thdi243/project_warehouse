@@ -122,7 +122,7 @@ class BarangWfgController extends Controller
     {
         try {
             $request->validate([
-                'mid_barang'   => 'integer|digits_between:1,8|unique:wfg_barang,mid_barang',
+                'mid_barang'   => 'integer|digits_between:1,8',
                 'nama_barang'  => 'required|string|max:255',
                 'qty_box'      => 'required|integer|min:1', // Ditambahkan: qty_box harus diisi dan berupa integer
                 'principal' => 'nullable|string|max:100',
@@ -130,10 +130,15 @@ class BarangWfgController extends Controller
             ]);
 
             // Cek duplikat MID barang
-            if ($request->mid_barang && BarangWfgModel::where('mid_barang', $request->mid_barang)->exists()) {
+            $midSoftDeleted = BarangWfgModel::withTrashed()
+                ->where('mid_barang', $request->mid_barang)
+                ->whereNotNull('deleted_at')
+                ->first();
+
+            if ($midSoftDeleted) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'MID Barang sudah terdaftar. Gunakan MID lain.',
+                    'message' => 'MID Barang sudah ada pada data nonaktif. Aktifkan kembali barang tersebut jika ingin digunakan.',
                 ], 400);
             }
 
@@ -295,6 +300,8 @@ class BarangWfgController extends Controller
     {
         $barang = BarangWfgModel::withTrashed()->findOrFail($id);
         $barang->restore();
+        $barang->status = 'aktif';
+        $barang->save();
 
         return response()->json([
             'status'  => true,
