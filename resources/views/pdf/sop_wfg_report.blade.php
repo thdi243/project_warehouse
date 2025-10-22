@@ -103,7 +103,7 @@
                     STOCK OPNAME
                 </td>
                 <td class="no-border text-left">Tanggal</td>
-                <td class="no-border text-left">: 06/10/2025</td>
+                <td class="no-border text-left">: {{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }}</td>
             </tr>
 
             <tr>
@@ -130,40 +130,25 @@
                 <th style="width: 30%;">Keterangan</th>
             </tr>
 
-            @foreach ($data as $dt)
+            @foreach ($summaries as $dt)
                 <tr class="no-border-row">
                     <td>{{ $loop->iteration }}</td>
-                    <td>{{ $dt->summaries[0]->barang->mid_barang }}</td>
+                    <td>{{ $dt->barang->mid_barang }}</td>
                     <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
-                        {{ $dt->summaries[0]->barang->nama_barang }}
+                        {{ $dt->barang->nama_barang }}
                     </td>
-                    {{-- <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
-                        SEDAAP KECAP MANIS YB P 550G H
-                    </td> --}}
-                    <td>{{ $dt->summaries[0]->barang->satuan }}</td>
+                    <td>{{ $dt->barang->uom }}</td>
                     <td style="padding-right: 5px;">
-                        {{ number_format(optional($dt->summaries[0]->barang->stockOnHand)->qty_soh ?? 0, 0) }}
+                        {{ $dt->barang->stockOnHand->qty_soh ?? 0 }}
                     </td>
                     <td style="padding-right: 5px;">
-                        {{ number_format(optional($dt->summaries[0])->qty_fisik ?? 0, 0) }}
+                        {{ rtrim(rtrim($dt->qty_fisik ?? 0, '0'), '.') }}
                     </td>
                     <td style="padding-right: 5px;">
-                        @php
-                            $status = optional($dt->summaries[0])->status;
-                            $selisih = optional($dt->summaries[0])->selisih ?? 0;
-
-                            if ($status === 'lebih') {
-                                $sign = '+';
-                            } elseif ($status === 'kurang') {
-                                $sign = '-';
-                            } else {
-                                $sign = '';
-                            }
-                        @endphp
-                        {{ $sign }}{{ number_format($selisih, 0) }}
+                        {{ rtrim(rtrim($dt->selisih ?? 0, '0'), '.') }}
                     </td>
                     <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
-                        <b>{{ $dt->summaries[0]->keterangan }}</b>
+                        <b>{{ $dt->keterangan }}</b>
                     </td>
                 </tr>
             @endforeach
@@ -181,26 +166,6 @@
                     <td style="text-align: left; padding-left: 5px;">&nbsp;</td>
                 </tr>
             @endfor
-
-        </table>
-
-        {{-- table note --}}
-        <table cellspacing="0" cellpadding="4"
-            style="white-space: nowrap; border: 1px solid #000; border-top: 0; width: 100%; border-collapse: collapse;">
-            <!-- Spacer -->
-            <tr>
-                <td colspan="2" style="height: 10px; border: none; border-bottom: 1px solid #000;"></td>
-            </tr>
-
-            <!-- Note Section -->
-            <tr>
-                <td style="width: 15%; border: none; font-weight: bold; vertical-align: top;">
-                    Note:
-                </td>
-                <td
-                    style="width: 85%; height: 120px; border-left: none; border-top: none; border-right: none; border-bottom: none;">
-                </td>
-            </tr>
         </table>
 
         {{-- Table ttd --}}
@@ -211,36 +176,91 @@
                 <td colspan="3" style="height: 10px; border: none; border-bottom: 1px solid #000;"></td>
             </tr>
 
+            <!-- Judul Tanda Tangan -->
             <tr>
                 <td style="width: 33%; border-right: 1px solid #000;">Dibuat oleh,</td>
                 <td style="width: 33%; border-right: 1px solid #000;">Diperiksa oleh,</td>
                 <td style="width: 34%;">Diketahui oleh,</td>
             </tr>
 
-            <!-- Ruang untuk tanda tangan -->
             <tr>
-                <td style="height: 100px; border-right: 1px solid #000;"></td>
-                <td style="height: 100px; border-right: 1px solid #000;"></td>
-                <td style="height: 100px;"></td>
+                <td class="no-border-row"
+                    style="height: 100px; border-top: none !important; border-bottom: none !important;">
+                    @if (isset($approvers[0]['ttd']))
+                        @php
+                            $path0 = str_replace(asset(''), '', $approvers[0]['ttd']);
+                            $localPath0 = public_path($path0);
+                        @endphp
+                        <img src="{{ file_exists($localPath0) ? $localPath0 : public_path('storage/images/ttd/dummy.jpg') }}"
+                            width="100">
+                    @endif
+                </td>
+
+                <td class="no-border-row"
+                    style="height: 100px; border-top: none !important; border-bottom: none !important;">
+                    @if (isset($approvers[1]['ttd']))
+                        @php
+                            $path1 = str_replace(asset(''), '', $approvers[1]['ttd']);
+                            $localPath1 = public_path($path1);
+                        @endphp
+                        <img src="{{ file_exists($localPath1) ? $localPath1 : public_path('storage/images/ttd/dummy.jpg') }}"
+                            width="100">
+                    @endif
+                </td>
+
+                <td class="no-border-row"
+                    style="height: 100px; border-top: none !important; border-bottom: none !important;">
+                    @if (isset($approvers[2]['ttd']))
+                        @php
+                            $path2 = str_replace(asset(''), '', $approvers[2]['ttd']);
+                            $localPath2 = public_path($path2);
+                        @endphp
+                        <img src="{{ file_exists($localPath2) ? $localPath2 : public_path('storage/images/ttd/dummy.jpg') }}"
+                            width="100">
+                    @endif
+                </td>
             </tr>
 
-            <!-- Nama dan jabatan -->
+            <!-- Nama Approver (tanpa border) -->
             <tr>
-                <td style="border-right: 1px solid #000;">
-                    <span style="font-size: 11px;">Stock Control</span>
+                <td style="text-align: center; border-top: none !important; border-bottom: none !important;">
+                    @if (isset($approvers[0]))
+                        <span style="font-size: 11px;">{{ $approvers[0]['nama'] }}</span>
+                    @else
+                        &nbsp;
+                    @endif
                 </td>
-                <td style="border-right: 1px solid #000;">
-                    <span style="font-size: 11px;">Foreman</span>
+                <td style="text-align: center; border-top: none !important; border-bottom: none !important;">
+                    @if (isset($approvers[1]))
+                        <span style="font-size: 11px;">{{ $approvers[1]['nama'] }}</span>
+                    @else
+                        &nbsp;
+                    @endif
                 </td>
-                <td>
-                    <span style="font-size: 11px;">Spv/Dept. Head</span>
+                <td style="text-align: center; border-top: none !important; border-bottom: none !important;">
+                    @if (isset($approvers[2]))
+                        <span style="font-size: 11px;">{{ $approvers[2]['nama'] }}</span>
+                    @else
+                        &nbsp;
+                    @endif
                 </td>
             </tr>
 
+            <!-- Jabatan -->
+            <tr>
+                <td style="text-align: center;"><span style="font-size: 11px;">Stock
+                        Control</span></td>
+                <td style="text-align: center;"><span style="font-size: 11px;">Foreman</span></td>
+                <td style="text-align: center;"><span style="font-size: 11px;">Spv/Dept.
+                        Head</span></td>
+            </tr>
+
+            <!-- Spacer Bottom -->
             <tr>
                 <td colspan="3" style="height: 20px; border: none; border-bottom: 1px solid #000;"></td>
             </tr>
         </table>
+
 
         {{-- Table footer --}}
         <table class="text-right" cellspacing="0" cellpadding="4" style="width: 100%; border: none; padding-top: 5px;">
