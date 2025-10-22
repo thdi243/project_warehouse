@@ -15,6 +15,8 @@ class WfgSopModel extends Model
     protected $fillable = [
         'tgl_opname',
         'user_id',
+        'status',
+        'principal'
     ];
 
     public function details()
@@ -30,5 +32,10 @@ class WfgSopModel extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function approvals()
+    {
+        return $this->hasMany(WfgSopApprovalModel::class, 'sop_id');
     }
 }

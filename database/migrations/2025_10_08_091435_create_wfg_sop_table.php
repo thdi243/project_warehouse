@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->date('tgl_opname');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('status')->default('pending');
+            $table->string('principal')->nullable();
             $table->timestamps();
         });
     }
