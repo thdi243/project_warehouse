@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\P2h\ForkliftModel;
 use App\Models\Tkbm\TkbmFeeModel;
 use App\Models\P2h\PalletMoverModel;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
@@ -140,7 +141,10 @@ class WarehouseController extends Controller
             return Redirect::route('wfg.stock_opname.soh')
                 ->with('error', 'Data Stock On Hand (SOH) untuk tanggal ' . $today . ' belum diunggah. Silakan unggah data SOH terlebih dahulu sebelum mengakses Form Stock Opname.');
         }
-        return view('stock_opname_wfg.form');
+
+        $principals = BarangWfgModel::distinct()->pluck('principal');
+
+        return view('stock_opname_wfg.form', compact('principals'));
     }
 
     public function uploadSOHWFG()
@@ -148,15 +152,37 @@ class WarehouseController extends Controller
         $barangCount = BarangWfgModel::count();
 
         if ($barangCount === 0) {
-            return Redirect::route('wfg.master.barang.index')
-                ->with('error', 'Master Data Barang WFG masih kosong. Anda harus menambahkan data barang terlebih dahulu sebelum dapat mengunggah Stock On Hand (SOH).');
+            $user = Auth::user();
+            if ($user && $user->jabatan === 'operator') {
+                $principals = collect();
+                $error_message = 'Master Data Barang WFG belum tersedia. Coba hubungi Foreman Anda untuk mengunggah master barang.';
+                return view('stock_opname_wfg.upload_soh', compact('principals', 'barangCount', 'error_message'))
+                    ->with('error', $error_message); // Keeping the session flash just in case, but passing directly is safer for direct view return.
+            } else {
+                return Redirect::route('wfg.master.barang.index')
+                    ->with('error', 'Master Data Barang WFG masih kosong. Anda harus menambahkan data barang terlebih dahulu sebelum dapat mengunggah Stock On Hand (SOH).');
+            }
         }
 
-        return view('stock_opname_wfg.upload_soh');
+        $principals = BarangWfgModel::distinct()->pluck('principal');
+
+        return view('stock_opname_wfg.upload_soh', compact('principals', 'barangCount'));
     }
 
     public function reportSOPWFG()
     {
-        return view('stock_opname_wfg.report_sop');
+        $principals = BarangWfgModel::distinct()->pluck('principal');
+        $hasNewBarang = BarangWfgModel::where('is_new', 1)->exists();
+
+        // Cek apakah user saat ini adalah Foreman Robi
+        $user = Auth::user();
+        $isRobiForeman = $user && $user->username === 'RobiForeman';
+
+        if ($isRobiForeman && $hasNewBarang) {
+            $warning_message = 'Terdapat barang baru yang perlu Anda konfirmasi terlebih dahulu sebelum laporan dapat dilanjutkan.';
+            $url = route('wfg.master.barang.index');
+            return view('stock_opname_wfg.report_sop', compact('principals', 'warning_message', 'url'));
+        }
+        return view('stock_opname_wfg.report_sop', compact('principals'));
     }
 }
