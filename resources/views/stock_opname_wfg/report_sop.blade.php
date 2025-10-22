@@ -196,7 +196,7 @@
 
                     <!-- Empty State -->
                     <div id="empty_state" class="text-center py-5" style="display: none;">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
                         <p class="text-muted">Tidak ada data yang ditemukan</p>
                     </div>
                 </div>

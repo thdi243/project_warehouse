@@ -400,7 +400,7 @@
             <div id="emptyState" class="card border-0 shadow-sm rounded-3 text-center p-4 mb-4" style="display: none;"
                 data-aos="fade-left" data-aos-delay="100">
                 <div class="card-body">
-                    <i class="mdi mdi-package-variant fs-1 text-primary mb-3"></i>
+                    <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
                     <h5 class="fw-bold mb-2">Belum Ada Data Barang</h5>
                     <p class="text-muted mb-3">
                         Mulai tambahkan barang baru untuk mengelola inventory Anda

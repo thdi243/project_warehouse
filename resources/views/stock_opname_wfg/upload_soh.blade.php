@@ -349,8 +349,8 @@
                                 `Belum ada data Stock On Hand yang tercatat untuk hari ini.`;
 
                             container.html(`
-                                <div class="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
-                                    <i class="mdi mdi-package-variant-closed-remove" style="font-size: 72px;"></i>
+                                <div class="d-flex flex-column align-items-center justify-content-center py-3 text-muted">
+                                    <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
                                     <h4 class="fw-light mt-3">${search ? 'Pencarian Tidak Ditemukan' : 'Stok Kosong Hari Ini'}</h4>
                                     <p class="text-center">${noDataMessage}</p>
                                 </div>
