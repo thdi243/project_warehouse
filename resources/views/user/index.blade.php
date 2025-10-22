@@ -381,31 +381,33 @@
                                         <button type="button" id="edit-clear-signature"
                                             class="btn btn-sm btn-outline-secondary">Hapus</button>
                                     </div>
-                                    <div class="text-center mt-2" id="edit-signature-preview" style="display:none;">
-                                        <img id="edit-signature-image" src="" alt="Preview Signature"
-                                            style="max-width: 200px; border: 1px solid #ccc;" class="img-thumbnail">
-                                    </div>
                                     <input type="hidden" name="signature" id="edit-signature-input">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Image Preview -->
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="mb-3">
-                                    <label class="form-label">Current/Preview Image</label>
-                                    <div>
-                                        <img id="imagePreview" src="" alt="Image Preview"
-                                            style="max-width: 200px; max-height: 200px; display: none;"
-                                            class="img-thumbnail">
-                                        <img id="currentImage" src="" alt="Current Image"
-                                            style="max-width: 200px; max-height: 200px; display: none;"
-                                            class="img-thumbnail">
-                                    </div>
+                        <div class="row mt-3">
+                            <!-- Preview Gambar -->
+                            <div class="col-md-6 text-center">
+                                <label class="form-label fw-semibold">Preview Gambar</label>
+                                <div>
+                                    <img id="imagePreview" src="" alt="Image Preview"
+                                        style="max-width: 200px; max-height: 200px; display: none;" class="img-thumbnail">
+                                    <img id="currentImage" src="" alt="Current Image"
+                                        style="max-width: 200px; max-height: 200px; display: none;" class="img-thumbnail">
+                                </div>
+                            </div>
+
+                            <!-- Preview Signature -->
+                            <div class="col-md-6 text-center">
+                                <label class="form-label fw-semibold">Preview Tanda Tangan</label>
+                                <div id="edit-signature-preview" style="display: none;">
+                                    <img id="edit-signature-image" src="" alt="Preview Signature"
+                                        style="max-width: 200px; border: 1px solid #ccc;" class="img-thumbnail">
                                 </div>
                             </div>
                         </div>
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1025,8 +1027,6 @@
                     const dataURL = editSignaturePad.toDataURL();
                     const trimmedDataURL = await trimSignature(dataURL);
                     formData.append('signature', trimmedDataURL || '');
-                } else {
-                    formData.append('signature', '');
                 }
 
 
