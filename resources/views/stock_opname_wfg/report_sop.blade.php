@@ -241,8 +241,8 @@
                     </div>
                     @if (Auth::user()->jabatan != 'operator')
                         <div class="mb-3">
-                            <label for="principal_export" class="form-label fw-semibold">Filter Principal</label>
-                            <select id="principal_export" class="form-select">
+                            <label for="principal_filter" class="form-label fw-semibold">Filter Principal</label>
+                            <select id="principal_filter" class="form-select">
                                 <option value="">-- Semua Principal --</option>
                                 @foreach ($principals as $p)
                                     <option value="{{ $p }}">{{ $p }}</option>
@@ -290,7 +290,7 @@
             // trigger filter
             const params = new URLSearchParams(window.location.search);
             const tanggal = params.get('tanggal');
-            const principal = params.get('principal');
+            let principal = params.get('principal'); // ✅ pakai let, bukan const
 
             if (tanggal) {
                 $('#filter_tanggal').val(tanggal).trigger('change');
@@ -298,10 +298,13 @@
 
             if (principal) {
                 $('#principal_filter').val(principal).trigger('change');
+            } else {
+                // kalau URL gak ada principal, ambil dari dropdown (biasanya kosong / semua)
+                principal = $('#principal_filter').val() || '';
             }
             // end trigger filter
 
-            loadReportData();
+            loadReportData(principal);
 
             $(document).on('keyup change', '#filter_tanggal', function() {
                 loadReportData();
@@ -320,7 +323,7 @@
                 $('#tableBody').html('');
                 const tanggal = $('#filter_tanggal').val() || new Date().toISOString().slice(0,
                     10);
-                console.log('Tanggal filter:', tanggal);
+                console.log('prncipal:', principal);
 
                 $.ajax({
                     // url: `{{ url('api/wfg/sop/report/getData') }}`,
