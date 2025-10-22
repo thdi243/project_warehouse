@@ -565,6 +565,7 @@
             // search fitur
             $("#searchMemberList").on("keyup", function() {
                 let searchText = $(this).val().toLowerCase();
+                let visibleCount = 0;
 
                 $(".team-card").each(function() {
                     let username = $(this).find(".username").text().toLowerCase();
@@ -581,10 +582,24 @@
                         bagian.includes(searchText)
                     ) {
                         $(this).closest("[class*='col-']").show();
+                        visibleCount++;
                     } else {
                         $(this).closest("[class*='col-']").hide();
                     }
                 });
+
+                if (visibleCount === 0) {
+                    if ($("#emptySearchState").length === 0) {
+                        $("#userRow").append(`
+                            <div id="emptySearchState" class="col-12 text-center my-5">
+                                <img src="/images/search-empty.svg" alt="Empty search" style="width:120px;opacity:0.6;">
+                                <p class="text-muted mt-3">Tidak ditemukan hasil untuk "<b>${searchText}</b>".</p>
+                            </div>
+                        `);
+                    }
+                } else {
+                    $("#emptySearchState").remove();
+                }
 
                 AOS.refresh();
             });
@@ -598,6 +613,15 @@
                     success: function(res) {
                         let users = res.data || res;
 
+                        if (!users || users.length === 0) {
+                            $("#userRow").html(`
+                                <div class="col-12 text-center my-5">
+                                    <img src="/images/empty-state.svg" alt="Empty" style="width:120px;opacity:0.6;">
+                                    <p class="text-muted mt-3">Belum ada data pengguna.</p>
+                                </div>
+                            `);
+                            return;
+                        }
 
                         users.forEach((user, index) => {
                             let badgeClass = "";
