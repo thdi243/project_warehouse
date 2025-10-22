@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
@@ -101,15 +102,19 @@ class UserController extends Controller
             'jabatan' => 'required',
             'nik' => 'required',
             'bagian' => 'required',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'principal' => 'nullable|string|max:255',
+            'signature' => 'nullable|string',
         ]);
 
+        // === Upload Foto (jika ada) ===
         $imagePath = null;
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('/images/users', 'public');
         }
 
-        User::create([
+        // === Simpan User ===
+        $user = User::create([
             'username' => $request->username,
             'password' => bcrypt($request->password),
             'email' => $request->email,
@@ -119,6 +124,38 @@ class UserController extends Controller
             'bagian' => $request->bagian,
             'image' => $imagePath,
         ]);
+
+        // === Simpan Principal (jika tidak kosong) ===
+        if (!empty($request->principal)) {
+            $user->principal()->create([
+                'principal' => strtoupper($request->principal),
+            ]);
+        }
+
+        // === Simpan Signature (tanda tangan digital, jika tidak kosong) ===
+        if (!empty($request->signature)) {
+            $signatureData = $request->input('signature');
+
+            // Decode base64 image
+            $signature = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
+            $signature = str_replace(' ', '+', $signature);
+
+            // Gunakan username (aman untuk nama file)
+            $identifier = preg_replace('/[^A-Za-z0-9_\-]/', '_', $user->username);
+            $signatureName = 'signature_' . $identifier . '.png';
+            $signaturePath = public_path('uploads/signatures');
+
+            if (!File::exists($signaturePath)) {
+                File::makeDirectory($signaturePath, 0755, true);
+            }
+
+            File::put($signaturePath . '/' . $signatureName, base64_decode($signature));
+
+            // Simpan ke relasi hanya jika model Signature ada
+            $user->signature()->create([
+                'signature' => 'uploads/signatures/' . $signatureName
+            ]);
+        }
 
         return response()->json(['success' => 'User created successfully.']);
     }
@@ -137,7 +174,7 @@ class UserController extends Controller
     public function edit(string $id)
     {
         try {
-            $user = User::findOrFail($id);
+            $user = User::with('principal', 'signature')->findOrFail($id);
 
             return response()->json([
                 'ok' => true,
@@ -157,20 +194,22 @@ class UserController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'username' => 'required|unique:users,username,' . $id,
-            'email' => 'required|email|unique:users,email,' . $id,
-            'password' => ['nullable', 'min:6'],
-            'jabatan'  => ['required'],
-            'nik'      => ['required'],
-            'bagian'   => ['required'],
-            'departemen' => ['nullable'],
-            'image'    => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
+            'username'   => 'required|unique:users,username,' . $id,
+            'email'      => 'required|email|unique:users,email,' . $id,
+            'password'   => 'nullable|min:6',
+            'jabatan'    => 'required',
+            'nik'        => 'required',
+            'bagian'     => 'required',
+            'departemen' => 'nullable|string',
+            'principal'  => 'nullable|string|max:255',
+            'image'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'signature'  => 'nullable|string',
         ]);
 
         $user = User::findOrFail($id);
 
         try {
-            // Siapkan data update
+            // === Siapkan data dasar untuk update ===
             $data = [
                 'username'   => $request->username,
                 'email'      => $request->email,
@@ -180,14 +219,13 @@ class UserController extends Controller
                 'bagian'     => $request->bagian,
             ];
 
-            // Update password jika diisi
+            // === Update password jika diisi ===
             if ($request->filled('password')) {
                 $data['password'] = bcrypt($request->password);
             }
 
-            // Handle file upload
+            // === Update foto profil jika ada file baru ===
             if ($request->hasFile('image')) {
-                // Hapus file lama jika ada
                 if ($user->image && Storage::disk('public')->exists($user->image)) {
                     Storage::disk('public')->delete($user->image);
                 }
@@ -196,17 +234,70 @@ class UserController extends Controller
                 $data['image'] = $path;
             }
 
+            // === Simpan data user utama ===
             $user->update($data);
+
+            // === Update atau buat data principal (jika ada input) ===
+            if ($request->filled('principal') && trim($request->principal) !== '') {
+                if ($user->principal) {
+                    $user->principal->update([
+                        'principal' => strtoupper($request->principal)
+                    ]);
+                } else {
+                    $user->principal()->create([
+                        'principal' => strtoupper($request->principal)
+                    ]);
+                }
+            }
+
+            // === Update atau buat tanda tangan (jika ada input) ===
+            if ($request->filled('signature') && trim($request->signature) !== '') {
+                $signatureData = $request->input('signature');
+
+                // Decode base64 image
+                $signature = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
+                $signature = str_replace(' ', '+', $signature);
+
+                // Gunakan username atau id sebagai nama file
+                $identifier = $user->username ?? $user->id;
+                $identifier = preg_replace('/[^A-Za-z0-9_\-]/', '_', $identifier);
+
+                $signatureName = 'signature_' . $identifier . '.png';
+                $signaturePath = public_path('uploads/signatures');
+
+                if (!File::exists($signaturePath)) {
+                    File::makeDirectory($signaturePath, 0755, true);
+                }
+
+                File::put($signaturePath . '/' . $signatureName, base64_decode($signature));
+
+                // Simpan path file signature ke database
+                if ($user->signature) {
+                    $user->signature->update([
+                        'signature' => 'uploads/signatures/' . $signatureName
+                    ]);
+                } else {
+                    $user->signature()->create([
+                        'signature' => 'uploads/signatures/' . $signatureName
+                    ]);
+                }
+            } elseif ($request->has('signature') && trim($request->signature) === '') {
+                // Hapus signature lama
+                if ($user->signature && File::exists(public_path($user->signature->signature))) {
+                    File::delete(public_path($user->signature->signature));
+                    $user->signature()->delete();
+                }
+            }
 
             return response()->json([
                 'ok'      => true,
                 'message' => 'User berhasil diupdate',
-                'data'    => $user->fresh(), // Get updated data
+                'data'    => $user->fresh()
             ], 200);
         } catch (\Exception $e) {
             Log::error('User update error: ' . $e->getMessage(), [
                 'id' => $id,
-                'request_data' => $request->except(['password', 'image'])
+                'request_data' => $request->except(['password', 'image', 'signature'])
             ]);
 
             return response()->json([
@@ -236,6 +327,10 @@ class UserController extends Controller
             if ($user->image && Storage::disk('public')->exists($user->image)) {
                 Storage::disk('public')->delete($user->image);
                 $deletedFile = true;
+            }
+
+            if ($user->principal) {
+                $user->principal()->delete();
             }
 
             $user->delete();

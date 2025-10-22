@@ -212,7 +212,7 @@
                                 <div class="mb-3">
                                     <label for="departemen" class="form-label">Departemen</label>
                                     <input type="text" class="form-control" id="departemen" name="departemen"
-                                        value="warehouse" disabled>
+                                        value="warehouse">
                                     {{-- <div class="invalid-feedback">Please select a Departemen.</div> --}}
                                 </div>
 
@@ -226,6 +226,25 @@
                                         <option value="warehouse_raw_material">Warehouse Raw Material</option>
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
                                     </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="principal" class="form-label">Principal</label>
+                                    <input type="text" class="form-control" id="principal" name="principal"
+                                        placeholder="Enter prncipal (opsional)" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Tanda Tangan</label>
+                                    <div class="border rounded bg-light text-center p-2">
+                                        <canvas id="signature-pad"
+                                            style="width: 100%; height: 200px; border: 1px solid #ccc;"></canvas>
+                                    </div>
+                                    <div class="mt-2 d-flex justify-content-between">
+                                        <button type="button" id="clear-signature"
+                                            class="btn btn-sm btn-outline-secondary">Hapus</button>
+                                    </div>
+                                    <input type="hidden" name="signature" id="signature-input">
                                 </div>
 
 
@@ -340,6 +359,37 @@
                             </div>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editPrincipal" class="form-label">Principal <small
+                                            class="text-muted">(opsional)</small></label>
+                                    <input type="text" class="form-control" id="editPrincipal" name="editPrincipal">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label class="form-label">Tanda Tangan</label>
+                                    <div class="border rounded bg-light text-center p-2">
+                                        <canvas id="edit-signature-pad"
+                                            style="width: 100%; height: 200px; border: 1px solid #ccc;"></canvas>
+                                    </div>
+                                    <div class="mt-2 d-flex justify-content-between">
+                                        <button type="button" id="edit-clear-signature"
+                                            class="btn btn-sm btn-outline-secondary">Hapus</button>
+                                    </div>
+                                    <div class="text-center mt-2" id="edit-signature-preview" style="display:none;">
+                                        <img id="edit-signature-image" src="" alt="Preview Signature"
+                                            style="max-width: 200px; border: 1px solid #ccc;" class="img-thumbnail">
+                                    </div>
+                                    <input type="hidden" name="signature" id="edit-signature-input">
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Image Preview -->
                         <div class="row">
                             <div class="col-12">
@@ -379,6 +429,121 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            let addSignaturePad, editSignaturePad;
+
+            function initSignaturePad(canvasSelector) {
+                const $canvas = $(canvasSelector);
+                const canvas = $canvas[0];
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                const ctx = canvas.getContext('2d');
+                ctx.scale(ratio, ratio);
+
+                return new SignaturePad(canvas, {
+                    backgroundColor: 'rgba(0, 0, 0, 0)', // HARUS transparan
+                    penColor: 'rgb(0, 0, 0)'
+                });
+            }
+
+            async function trimSignature(dataURL) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.src = dataURL;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const pixels = imageData.data;
+
+                        let top = null,
+                            bottom = null,
+                            left = null,
+                            right = null;
+
+                        for (let y = 0; y < canvas.height; y++) {
+                            for (let x = 0; x < canvas.width; x++) {
+                                const idx = (y * canvas.width + x) * 4;
+                                if (pixels[idx + 3] > 0) {
+                                    if (top === null) top = y;
+                                    bottom = y;
+                                    if (left === null || x < left) left = x;
+                                    if (right === null || x > right) right = x;
+                                }
+                            }
+                        }
+
+                        if (top === null) {
+                            resolve(''); // kosong (gak ada tanda tangan)
+                            return;
+                        }
+
+                        const trimmedWidth = right - left + 1;
+                        const trimmedHeight = bottom - top + 1;
+                        const trimmedCanvas = document.createElement('canvas');
+                        trimmedCanvas.width = trimmedWidth;
+                        trimmedCanvas.height = trimmedHeight;
+
+                        const trimmedCtx = trimmedCanvas.getContext('2d');
+                        trimmedCtx.drawImage(
+                            canvas,
+                            left, top, trimmedWidth, trimmedHeight,
+                            0, 0, trimmedWidth, trimmedHeight
+                        );
+
+                        resolve(trimmedCanvas.toDataURL());
+                    };
+                });
+            }
+
+            // ========== ADD USER ==========
+            $('#addUserModal').on('shown.bs.modal', function() {
+                addSignaturePad = initSignaturePad('#signature-pad');
+            });
+
+            $('#addUserModal').on('hidden.bs.modal', function() {
+                if (addSignaturePad) addSignaturePad.clear();
+                $('#signature-input').val('');
+            });
+
+            $('#clear-signature').on('click', function() {
+                if (addSignaturePad) addSignaturePad.clear();
+                $('#signature-input').val('');
+            });
+
+            // ========== EDIT USER ==========
+            $('#editUserModal').on('shown.bs.modal', function() {
+                editSignaturePad = initSignaturePad('#edit-signature-pad');
+
+                // tampilkan tanda tangan lama kalau ada
+                const existingSignature = $('#edit-signature-input').val();
+                if (existingSignature) {
+                    const img = new Image();
+                    img.src = existingSignature;
+                    img.onload = function() {
+                        const ctx = $('#edit-signature-pad')[0].getContext('2d');
+                        ctx.drawImage(img, 0, 0, ctx.canvas.width / (window.devicePixelRatio || 1),
+                            ctx.canvas.height / (window.devicePixelRatio || 1));
+                    };
+                }
+            });
+
+            $('#editUserModal').on('hidden.bs.modal', function() {
+                if (editSignaturePad) editSignaturePad.clear();
+                $('#edit-signature-input').val('');
+                $('#edit-signature-preview').hide();
+            });
+
+            $('#edit-clear-signature').on('click', function() {
+                if (editSignaturePad) editSignaturePad.clear();
+                $('#edit-signature-input').val('');
+            });
+
             // kode preview gambar add
             $("#member-image-input").on("change", function(event) {
                 let reader = new FileReader();
@@ -590,7 +755,7 @@
             });
 
             // add users
-            $('#addUserForm').submit(function(e) {
+            $('#addUserForm').submit(async function(e) {
                 e.preventDefault();
 
                 // Cek validasi form
@@ -608,7 +773,24 @@
                     return;
                 }
 
-                var formData = new FormData(form);
+                // Pastikan tanda tangan tidak kosong
+                if (addSignaturePad.isEmpty()) {
+                    Swal.fire('Tanda Tangan Diperlukan', 'Silakan isi tanda tangan terlebih dahulu.',
+                        'warning');
+                    return;
+                }
+
+                const dataURL = addSignaturePad.toDataURL();
+                const trimmedDataURL = await trimSignature(dataURL);
+
+                if (!trimmedDataURL) {
+                    Swal.fire('Tanda Tangan Kosong', 'Tanda tangan tidak terdeteksi.', 'warning');
+                    return;
+                }
+
+                // ✅ Siapkan form data
+                const formData = new FormData(form);
+                formData.append('signature', trimmedDataURL);
                 formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
 
                 $.ajax({
@@ -635,8 +817,9 @@
                         let errorMsg = "Failed to add user.";
                         if (xhr.responseJSON) {
                             if (xhr.responseJSON.errors) {
-                                errorMsg = Object.values(xhr.responseJSON.errors).flat().join(
-                                    "\n");
+                                errorMsg = Object.values(xhr.responseJSON.errors).flat()
+                                    .join(
+                                        "\n");
                             } else if (xhr.responseJSON.message) {
                                 errorMsg = xhr.responseJSON.message;
                             }
@@ -655,7 +838,7 @@
             $(document).on('click', '.deleteBtn', function() {
                 let id = $(this).data('id');
 
-                console.log(id);
+                // console.log(id);
 
                 Swal.fire({
                     title: 'Are you sure?',
@@ -717,6 +900,7 @@
                         $("#editJabatan").val(user.jabatan);
                         $("#editDepartemen").val(user.departemen);
                         $("#editBagian").val(user.bagian);
+                        $("#editPrincipal").val(user.principal?.principal || '-');
 
                         // Reset password field
                         $("#editPassword").val('');
@@ -733,6 +917,18 @@
 
                         // Reset file input
                         $("#imgEdit").val('');
+
+                        // Show existing signature if available
+                        if (user.signature && user.signature.signature) {
+                            let sigPath = "{{ asset('') }}" + user.signature.signature;
+                            $('#edit-signature-image').attr('src', sigPath);
+                            $('#edit-signature-preview').show();
+                            $('#edit-signature-input').val(
+                                ''); // biar ga ngirim base64 kalau gak diubah
+                        } else {
+                            $('#edit-signature-preview').hide();
+                            $('#edit-signature-input').val('');
+                        }
 
                         // Show modal
                         $("#editUserModal").modal('show');
@@ -762,7 +958,7 @@
             });
 
             // edit submit
-            $("#editUserForm").submit(function(e) {
+            $("#editUserForm").submit(async function(e) {
                 e.preventDefault();
 
                 let id = $("#editId").val();
@@ -777,6 +973,7 @@
                 formData.append('nik', $("#editNik").val());
                 formData.append('departemen', $("#editDepartemen").val());
                 formData.append('bagian', $("#editBagian").val());
+                formData.append('principal', $("#editPrincipal").val());
 
                 // Tambahkan password jika diisi
                 let password = $("#editPassword").val();
@@ -789,6 +986,16 @@
                 if (imageFile) {
                     formData.append('image', imageFile);
                 }
+
+                // Tambahkan signature ke formData
+                if (editSignaturePad && !editSignaturePad.isEmpty()) {
+                    const dataURL = editSignaturePad.toDataURL();
+                    const trimmedDataURL = await trimSignature(dataURL);
+                    formData.append('signature', trimmedDataURL || '');
+                } else {
+                    formData.append('signature', '');
+                }
+
 
                 // Laravel membutuhkan method spoofing untuk PUT
                 formData.append('_method', 'PUT');

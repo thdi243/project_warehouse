@@ -65,4 +65,14 @@ class User extends Authenticatable
             ? url(Storage::url($this->image))
             : asset('material/assets/images/users/user-dummy-img.jpg');
     }
+
+    public function principal()
+    {
+        return $this->hasOne(UserPrincipalModel::class);
+    }
+
+    public function signature()
+    {
+        return $this->hasOne(UserSignatureModel::class);
+    }
 }
