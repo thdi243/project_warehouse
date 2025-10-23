@@ -6,11 +6,14 @@ use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Mail\SendWfgSopReportMail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 use App\Models\Wfg\stock_opname\WfgSopModel;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
@@ -1474,7 +1477,7 @@ class StockOpnameWfgController extends Controller
     }
 
     // Export SOP Report dengan pengecekan approval
-    public function exportPdfSOPWFG(Request $request)
+    public function exportPdfSOPWFG(Request $request, $asContent = false)
     {
         $request->validate([
             'tanggal' => 'required|date',
@@ -1504,7 +1507,7 @@ class StockOpnameWfgController extends Controller
                 return Redirect::route('dashboard')->with('error', "SOP tidak ditemukan untuk principal Anda pada tanggal {$tanggal}.");
             }
 
-            Log::info("Export SOP ID: {$sop->id}, Principal: {$sop->principal}");
+            // Log::info("Export SOP ID: {$sop->id}, Principal: {$sop->principal}");
 
             if (!$sop) {
                 return response()->json([
@@ -1607,7 +1610,10 @@ class StockOpnameWfgController extends Controller
 
 
             // === Foreman ===
-            $foremanApproval = $approvals->firstWhere(fn($a) => $a->approver->jabatan === 'foreman');
+            $foremanApproval = $approvals->first(function ($a) {
+                return $a->approver && $a->approver->jabatan === 'foreman';
+            });
+
             $approvers[] = $foremanApproval ? [
                 'nama'   => $foremanApproval->approver->username ?? 'Unknown',
                 'ttd'    => $getSignaturePath($foremanApproval->approver),
@@ -1619,7 +1625,10 @@ class StockOpnameWfgController extends Controller
             ];
 
             // === Supervisor / Dept Head ===
-            $supervisorApproval = $approvals->firstWhere(fn($a) => in_array($a->approver->jabatan, ['supervisor', 'dept_head']));
+            $supervisorApproval = $approvals->first(function ($a) {
+                return $a->approver && in_array($a->approver->jabatan, ['supervisor', 'dept_head']);
+            });
+
             $approvers[] = $supervisorApproval ? [
                 'nama'   => $supervisorApproval->approver->username ?? 'Unknown',
                 'ttd'    => $getSignaturePath($supervisorApproval->approver),
@@ -1630,13 +1639,39 @@ class StockOpnameWfgController extends Controller
                 'status' => null,
             ];
 
+            $activePrincipal = $principalFilter ?? ($user->principal->principal ?? null);
+
+            switch (strtoupper($activePrincipal)) {
+                case 'SMU':
+                    $logoPath = public_path('assets/images/logo/wings.png');
+                    $logoWidth = 90;
+                    break;
+
+                case 'BAS':
+                    $logoPath = public_path('assets/images/logo/logo.png');
+                    $logoWidth = 170;
+                    break;
+
+                default:
+                    $logoPath = public_path('assets/images/logo/logo.png');
+                    $logoWidth = 170;
+                    break;
+            }
+
+            if (!File::exists($logoPath)) {
+                $logoPath = public_path('assets/images/logo/logo.png');
+                $logoWidth = 170;
+            }
+
             $pdf = Pdf::loadView('pdf.sop_wfg_report', [
                 'data'       => $sop,
                 'tanggal'    => $tanggal,
                 'summaries'  => $filteredSummaries,
                 'details'    => $filteredDetails,
                 'approvers'  => $approvers,
-                'principal'  => $principalFilter ?? ($user->principal->principal ?? null),
+                'principal'  => $activePrincipal,
+                'logoPath'   => $logoPath,
+                'logoWidth'   => $logoWidth,
             ]);
 
             if (empty($principalFilter) && $user->jabatan === 'operator') {
@@ -1645,8 +1680,15 @@ class StockOpnameWfgController extends Controller
 
             $fileName = "SOP_WFG_REPORT_{$tanggal}" . ($principalFilter ? "_{$principalFilter}" : "") . ".pdf";
 
+            if ($asContent) {
+                return $pdf->output(); // kembalikan byte content PDF
+            }
             return $pdf->stream($fileName);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            if ($asContent) {
+                throw $e;
+            }
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Gagal mengekspor data: ' . $e->getMessage(),
@@ -1785,10 +1827,12 @@ class StockOpnameWfgController extends Controller
     {
         $foremen = User::where('jabatan', 'foreman')->get(['id', 'username', 'jabatan']);
         $supervisors = User::where('jabatan', 'supervisor')->get(['id', 'username', 'jabatan']);
+        $managers = User::where('jabatan', 'dept_head')->get(['id', 'username', 'jabatan']);
 
         return response()->json([
             'foremen' => $foremen,
-            'supervisors' => $supervisors
+            'supervisors' => $supervisors,
+            'managers' => $managers
         ]);
     }
 
@@ -1840,5 +1884,69 @@ class StockOpnameWfgController extends Controller
             'message' => $request->status === 'approved' ? 'SOP berhasil disetujui.' : 'SOP telah ditolak.',
             'data' => $approval
         ]);
+    }
+
+
+    // Send report
+    public function sendReport(Request $request)
+    {
+        $request->validate([
+            'tanggal_send' => 'required|date',
+            'principal_send' => 'required|string',
+            'manager_id' => 'required|exists:users,id',
+        ]);
+
+        try {
+            $tanggal   = $request->tanggal_send;
+            $principal = strtoupper($request->principal_send);
+            $manager   = User::findOrFail($request->manager_id);
+
+            // Tambahkan ke request agar bisa dipakai oleh exportPdfSOPWFG()
+            $request->merge([
+                'tanggal'   => $tanggal,
+                'principal' => $principal,
+            ]);
+
+            // --- Generate PDF binary ---
+            $pdfBinary = $this->exportPdfSOPWFG($request, true);
+
+            // Pastikan hasilnya string (PDF content)
+            if ($pdfBinary instanceof \Illuminate\Http\Response) {
+                $pdfBinary = $pdfBinary->getContent();
+            }
+
+            if (!is_string($pdfBinary) || empty($pdfBinary)) {
+                throw new \Exception('PDF gagal dibuat atau kosong.');
+            }
+
+            // --- Buat folder jika belum ada ---
+            $dir = 'public/reports';
+            Storage::makeDirectory($dir);
+
+            $fileName = "SOP_WFG_REPORT_{$tanggal}_{$principal}.pdf";
+            $relativePath = "{$dir}/{$fileName}";
+            $absolutePath = Storage::path($relativePath);
+
+            // Simpan PDF ke storage
+            Storage::put($relativePath, $pdfBinary);
+
+            // --- Kirim email dengan attachment ---
+            Mail::to($manager->email)->send(
+                new SendWfgSopReportMail($manager, $absolutePath, $tanggal, $principal)
+            );
+            // --- Hapus file setelah terkirim ---
+            Storage::delete($relativePath);
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Report berhasil dikirim ke ' . $manager->username,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('SEND REPORT FAILED', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal mengirim report: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

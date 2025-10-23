@@ -81,7 +81,7 @@
         <table class="header" cellspacing="0" cellpadding="4" style="white-space: nowrap; border: 1px solid #000;">
             <tr>
                 <td rowspan="4" class="text-center" style="width: 30%;">
-                    <img src="{{ public_path('assets/images/logo/logo.png') }}" width="170">
+                    <img src="{{ $logoPath }}" width="{{ $logoWidth }}">
                 </td>
                 <td class="text-center" style="font-size: 14px; font-weight: bold; width: 30%;">
                     PT. BUMI ALAM SEGAR
@@ -154,7 +154,12 @@
             @endforeach
 
             {{-- Tambahan 5 baris kosong --}}
-            @for ($i = 1; $i <= 5; $i++)
+            @php
+                $jumlahData = count($summaries);
+                $tambahan = $jumlahData < 20 ? 10 : 5;
+            @endphp
+
+            @for ($i = 1; $i <= $tambahan; $i++)
                 <tr class="no-border-row">
                     <td>&nbsp;</td>
                     <td>&nbsp;</td>
@@ -266,7 +271,6 @@
                 <td colspan="3" style="height: 20px; border: none; border-bottom: 1px solid #000;"></td>
             </tr>
         </table>
-
 
         {{-- Table footer --}}
         <table class="text-right" cellspacing="0" cellpadding="4" style="width: 100%; border: none; padding-top: 5px;">

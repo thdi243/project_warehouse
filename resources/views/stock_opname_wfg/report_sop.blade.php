@@ -109,7 +109,7 @@
                     <div class="row g-3 align-items-end">
 
                         {{-- Filter Tanggal --}}
-                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-3 @endif col-12">
+                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-4 @endif col-12">
                             {{-- <label for="filter_tanggal" class="form-label fw-semibold">Filter Tanggal</label> --}}
                             <div class="input-group">
                                 <input type="date" id="filter_tanggal" class="form-control"
@@ -120,7 +120,6 @@
                         {{-- Filter Principal untuk non-operator --}}
                         @if (Auth::user()->jabatan != 'operator')
                             <div class="col-md-3 col-12">
-                                {{-- <label for="principal_filter" class="form-label fw-semibold">Filter Principal</label> --}}
                                 <select id="principal_filter" class="form-select">
                                     @foreach ($principals as $p)
                                         <option value="{{ $p }}">{{ $p }}</option>
@@ -129,17 +128,17 @@
                             </div>
                         @endif
 
-                        {{-- Tombol Reset --}}
-                        <div class="col-md-3 col-12">
-                            {{-- <label class="form-label d-block opacity-0">.</label> --}}
-                            <button type="button" id="btn_reset" class="btn btn-soft-secondary w-100">
-                                <i class="mdi mdi-undo me-2"></i> Reset
-                            </button>
-                        </div>
+                        {{-- Tombol Send Report --}}
+                        @if (Auth::user()->jabatan != 'operator')
+                            <div class="col-md-3 col-12">
+                                <button type="button" id="btn_send_report" class="btn btn-soft-secondary w-100">
+                                    <i class="mdi mdi-send me-2"></i> Send Report
+                                </button>
+                            </div>
+                        @endif
 
                         {{-- Tombol Export --}}
-                        <div class="col-md-3 col-12">
-                            {{-- <label class="form-label d-block opacity-0">.</label> --}}
+                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-4 @endif col-12">
                             <button type="button" id="btn_export" class="btn btn-soft-warning w-100">
                                 <i class="mdi mdi-export me-2"></i> Export PDF
                             </button>
@@ -147,7 +146,7 @@
 
                         {{-- Tombol Send Approval (hanya untuk operator) --}}
                         @if (Auth::user()->jabatan == 'operator')
-                            <div class="col-md-3 col-12">
+                            <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-4 @endif col-12">
                                 {{-- <label class="form-label d-block opacity-0">.</label> --}}
                                 <button type="button" id="btn_approval" class="btn btn-soft-success w-100"
                                     style="display:none;">
@@ -282,6 +281,47 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Send Report --}}
+    <div class="modal fade" id="sendReportModal" tabindex="-1" aria-labelledby="sendReportModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title" id="sendReportModalLabel">Kirim Report ke Manager</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="form_send_report">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="tanggal_send" class="form-label fw-semibold">Tanggal</label>
+                            <input type="date" id="tanggal_send" name="tanggal_send" class="form-control" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="principal_send" class="form-label fw-semibold">Principal</label>
+                            <select id="principal_send" name="principal_send" class="form-select" required>
+                                <option value="">-- Pilih Principal --</option>
+                                @foreach ($principals as $p)
+                                    <option value="{{ $p }}">{{ $p }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="managerContainer">
+                            <p class="text-muted">Memuat data manager...</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="mdi mdi-send"></i> Kirim
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -307,14 +347,7 @@
             loadReportData(principal);
 
             $(document).on('keyup change', '#filter_tanggal', function() {
-                loadReportData();
-            });
-
-            $(document).on('click', '#btn_reset', function() {
-                const today = new Date().toISOString().split('T')[0];
-                $('#filter_tanggal').val(today);
-                $('#principal_filter').val('');
-                loadReportData();
+                loadReportData(principal);
             });
 
             function loadReportData(principal) {
@@ -323,7 +356,7 @@
                 $('#tableBody').html('');
                 const tanggal = $('#filter_tanggal').val() || new Date().toISOString().slice(0,
                     10);
-                console.log('prncipal:', principal);
+                // console.log('prncipal:', principal);
 
                 $.ajax({
                     // url: `{{ url('api/wfg/sop/report/getData') }}`,
@@ -700,7 +733,7 @@
             };
 
             function renderDetailModal(data) {
-                console.log(data);
+                // console.log(data);
                 let html = `
                     <!-- Header Info -->
                     <div class="row mb-4">
@@ -1090,6 +1123,95 @@
             });
             // end approval
 
+
+            // Send report // buka modal
+            $('#btn_send_report').on('click', function() {
+                const modalEl = document.getElementById('sendReportModal');
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+
+                // Tampilkan status loading dulu
+                $('#managerContainer').html('<p class="text-muted">Memuat data manager...</p>');
+
+                // Ambil data manager dari API
+                $.ajax({
+                    url: `{{ url('api/wfg/sop/users/approval') }}`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        // Bangun select box
+                        let html = `
+                            <div class="mb-3">
+                                <label for="manager_send" class="form-label fw-semibold">Kirim ke Manager</label>
+                                <select id="manager_send" name="manager_id" class="form-select" required>
+                                    <option value="">-- Pilih Manager --</option>`;
+
+                        data.managers.forEach(m => {
+                            html += `<option value="${m.id}">${m.username}</option>`;
+                        });
+
+                        html += `</select></div>`;
+
+                        // Ganti isi container dengan select box
+                        $('#managerContainer').html(html);
+                    },
+                    error: function() {
+                        $('#managerContainer').html(
+                            '<p class="text-danger text-center">Gagal memuat data manager.</p>'
+                        );
+                    }
+                });
+            });
+
+            // submit form
+            $('#form_send_report').on('submit', function(e) {
+                e.preventDefault();
+
+                const formData = $(this).serialize();
+
+                Swal.fire({
+                    title: 'Kirim Report?',
+                    text: 'Report akan dikirim ke manager terpilih.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Kirim',
+                    cancelButtonText: 'Batal'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('wfg.stock_opname.sendReport') }}",
+                            method: 'POST',
+                            data: formData,
+                            headers: {
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                            },
+                            beforeSend: function() {
+                                Swal.fire({
+                                    title: 'Mengirim...',
+                                    allowOutsideClick: false,
+                                    didOpen: () => Swal.showLoading()
+                                });
+                            },
+                            success: function(res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil!',
+                                    text: res.message
+                                });
+                                $('#sendReportModal').modal('hide');
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal',
+                                    text: xhr.responseJSON?.message ||
+                                        'Terjadi kesalahan!'
+                                });
+                            }
+                        });
+                    }
+                });
+            });
         });
     </script>
 @endsection
