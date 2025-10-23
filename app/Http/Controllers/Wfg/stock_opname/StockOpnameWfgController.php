@@ -954,9 +954,10 @@ class StockOpnameWfgController extends Controller
             'wfg_soh.barang_id',
             'wfg_soh.qty_soh',
             DB::raw("NULL AS temp_id"),
-            DB::raw("wfg_soh.last_updated AS last_updated"),
+            'wfg_soh.last_updated',
         ])
-            ->leftJoin('wfg_barang', 'wfg_soh.barang_id', '=', 'wfg_barang.id');
+            ->leftJoin('wfg_barang', 'wfg_soh.barang_id', '=', 'wfg_barang.id')
+            ->whereDate('wfg_soh.last_updated', $today);
 
         // Ambil data barang baru (belum punya SOH)
         $sopTempQuery = WfgSopTempModel::select([
@@ -1236,6 +1237,34 @@ class StockOpnameWfgController extends Controller
         }
     }
 
+    public function getDataDetailEdit($barangId, Request $request)
+    {
+        $tanggal = $request->input('tanggal'); // ambil dari query param
+
+        $query = WfgSopDetailModel::with('barang:id,mid_barang,nama_barang,qty_box')
+            ->where('barang_id', $barangId)
+            ->whereHas('sop', function ($q) use ($tanggal) {
+                if ($tanggal) {
+                    $q->whereDate('tgl_opname', $tanggal);
+                }
+            });
+
+        $details = $query->get();
+
+        if ($details->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data tidak ditemukan untuk barang ini pada tanggal tersebut.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $details
+        ]);
+    }
+
+
     /**
      * Update the specified resource in storage.
      */
@@ -1423,6 +1452,99 @@ class StockOpnameWfgController extends Controller
         return response()->json(['message' => 'Keterangan berhasil diperbarui.', 'data' => $summary]);
     }
 
+    public function updateEditData(Request $request)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|integer', // id dari wfg_sop_detail
+            'items.*.qty_full' => 'required|numeric',
+            'items.*.qty_receh' => 'required|numeric',
+            'items.*.tanggal' => 'required|date',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            foreach ($validated['items'] as $item) {
+                $detail = WfgSopDetailModel::with(['barang', 'sop'])
+                    ->where('id', $item['id'])
+                    ->whereHas('sop', function ($q) use ($item) {
+                        $q->whereDate('tgl_opname', $item['tanggal']);
+                    })
+                    ->first();
+
+                if (!$detail) {
+                    continue; // skip kalau gak ketemu
+                }
+
+                $detail->qty_full = $item['qty_full'];
+                $detail->qty_receh = $item['qty_receh'];
+                $detail->save();
+            }
+
+            // Ambil tanggal opname dari item pertama
+            $tanggal = $validated['items'][0]['tanggal'];
+
+            // Ambil semua barang_id unik dari detail yang diupdate
+            $barangIds = collect($validated['items'])->pluck('id')->unique();
+
+            foreach ($barangIds as $detailId) {
+                $detailSample = WfgSopDetailModel::find($detailId);
+                if (!$detailSample) continue;
+
+                $barangId = $detailSample->barang_id;
+
+                // Ambil semua detail dengan barang_id & tanggal opname sama
+                $details = WfgSopDetailModel::with(['barang', 'sop'])
+                    ->where('barang_id', $barangId)
+                    ->whereHas('sop', function ($q) use ($tanggal) {
+                        $q->whereDate('tgl_opname', $tanggal);
+                    })
+                    ->get();
+
+                // Hitung total qty fisik dari semua detail
+                $totalFisik = 0;
+                foreach ($details as $det) {
+                    $qtyBox = $det->barang->qty_box ?? 0;
+                    $totalFisik += ($det->qty_full * $qtyBox) + $det->qty_receh;
+                }
+
+                // Update summary
+                $summary = WfgSopSummariesModel::where('sop_id', $detailSample->sop_id)
+                    ->where('barang_id', $barangId)
+                    ->first();
+
+                if ($summary) {
+                    $summary->qty_fisik = $totalFisik;
+                    $summary->selisih = $summary->qty_fisik - $summary->qty_sistem;
+                    if ($summary->selisih == 0) {
+                        $summary->status = 'match';
+                    } elseif ($summary->selisih > 0) {
+                        $summary->status = 'lebih';
+                    } else {
+                        $summary->status = 'kurang';
+                    }
+                    $summary->save();
+                }
+            }
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Semua data berhasil diperbarui.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+
+
     /**
      * Remove the specified resource from storage.
      */
@@ -1475,6 +1597,58 @@ class StockOpnameWfgController extends Controller
             ]);
         }
     }
+
+    public function destroyEditData($id)
+    {
+        try {
+            $detail = WfgSopDetailModel::find($id);
+
+            if (!$detail) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Data tidak ditemukan'
+                ], 404);
+            }
+
+            $barangId = $detail->barang_id;
+            $sopId = $detail->sop_id;
+            $detail->delete();
+
+            // Update summary setelah hapus
+            $totalFull = WfgSopDetailModel::where('barang_id', $barangId)
+                ->where('sop_id', $sopId)
+                ->sum('qty_full');
+
+            $totalReceh = WfgSopDetailModel::where('barang_id', $barangId)
+                ->where('sop_id', $sopId)
+                ->sum('qty_receh');
+
+            $barang = BarangWfgModel::find($barangId);
+            $qtyBox = $barang ? $barang->qty_box : 1;
+
+            $qtyFisik = ($totalFull * $qtyBox) + $totalReceh;
+
+            $summary = WfgSopSummariesModel::where('barang_id', $barangId)
+                ->where('sop_id', $sopId)
+                ->first();
+
+            if ($summary) {
+                $summary->qty_fisik = $qtyFisik;
+                $summary->save();
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menghapus data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     // Export SOP Report dengan pengecekan approval
     public function exportPdfSOPWFG(Request $request, $asContent = false)

@@ -322,6 +322,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Edit -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Edit Data Temp</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Data edit akan dimasukkan di sini -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="saveEditBtn" class="btn btn-primary">Simpan Semua</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -659,11 +678,11 @@
                             <td class="text-start">${keterangan}</td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center align-items-center gap-2 flex-nowrap">
-                                    <button class="btn btn-outline-primary btn-sm" onclick="showDetail(${summary.id})">
+                                    <button class="btn btn-outline-primary btn-sm"  onclick="showDetail(${summary.id})">
                                         <i class="mdi mdi-eye-outline"></i> Detail
                                     </button>
                                     @if (Auth::user()->jabatan !== 'operator')
-                                        <button class="btn btn-outline-info btn-sm" onclick="showEdit(${summary.id})">
+                                        <button class="btn btn-outline-info btn-sm" onclick="showEdit(${summary.barang?.id ?? summary.barang_id})">
                                             <i class="mdi mdi-pencil-outline"></i> Edit
                                         </button>
                                     @endif
@@ -683,14 +702,15 @@
                 const modalEl = document.getElementById('detailModal');
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
-
+                const tanggal = $('#filter_tanggal').val();
                 $.ajax({
                     // url: `{{ url('api/wfg/sop/report/getData') }}`,
                     url: "{{ route('wfg.stock_opname.report.getData') }}",
                     method: 'GET',
                     dataType: 'json',
                     data: {
-                        tanggal: $('#filter_tanggal').val()
+                        tanggal: tanggal,
+                        principal: principal
                     },
                     success: function(response) {
                         if (response.status === 'success') {
@@ -1043,7 +1063,7 @@
                             Swal.fire('Sukses', res.message, 'success');
                             $('#approvalModal').modal('hide');
 
-                            loadReportData();
+                            loadReportData(principal);
                         }
 
                     },
@@ -1122,7 +1142,6 @@
                 handleApproval('rejected');
             });
             // end approval
-
 
             // Send report // buka modal
             $('#btn_send_report').on('click', function() {
@@ -1212,6 +1231,161 @@
                     }
                 });
             });
+
+            // Save edit
+            $('#saveEditBtn').on('click', function() {
+                const items = [];
+                const tanggal = $('#filter_tanggal').val(); // ambil tanggal dari filter utama
+
+                $('#editModal .temp-item').each(function() {
+                    const id = $(this).find('.temp_id').val();
+                    const qtyFull = $(this).find('.qty_full').val();
+                    const qtyReceh = $(this).find('.qty_receh').val();
+
+                    items.push({
+                        id: id,
+                        qty_full: qtyFull,
+                        qty_receh: qtyReceh,
+                        tanggal: tanggal // tambahkan tanggal ke tiap item
+                    });
+                });
+
+                if (items.length === 0) {
+                    Swal.fire('Info', 'Tidak ada data untuk disimpan.', 'info');
+                    return;
+                }
+
+                $.ajax({
+                    url: "{{ route('wfg.stock_opname.edit.update') }}",
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        items: items,
+                        tanggal: tanggal // bisa dikirim global juga untuk jaga-jaga
+                    },
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire('Berhasil', res.message, 'success');
+                            $('#editModal').modal('hide');
+                            // bisa panggil ulang renderTable() kalau mau refresh data
+                        } else {
+                            Swal.fire('Error', res.message || 'Gagal menyimpan data', 'error');
+                        }
+                        loadReportData(principal);
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Terjadi kesalahan.',
+                            'error');
+                    }
+                });
+            });
+
+            // Hapus edit
+            $(document).on('click', '.btn-delete-edit', function() {
+                const tempItem = $(this).closest('.temp-item');
+                const tempId = tempItem.data('tempid');
+
+                Swal.fire({
+                    title: 'Yakin hapus data ini?',
+                    text: "Data tidak bisa dikembalikan setelah dihapus.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('wfg.stock_opname.edit.delete', ['id' => 'TEMP_ID']) }}"
+                                .replace('TEMP_ID', tempId),
+                            type: 'DELETE',
+                            success: function(res) {
+                                if (res.status === 'success') {
+                                    tempItem.remove();
+                                    Swal.fire('Berhasil', res.message, 'success');
+                                } else {
+                                    Swal.fire('Gagal', res.message ||
+                                        'Gagal menghapus data', 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                Swal.fire(
+                                    'Error',
+                                    xhr.responseJSON?.message ||
+                                    'Terjadi kesalahan server',
+                                    'error'
+                                );
+                            }
+                        });
+                    }
+                });
+            });
         });
+
+        // edit data
+        function showEdit(barangId) {
+            const tanggal = $('#filter_tanggal').val();
+            $.ajax({
+                url: `{{ url('api/wfg/sop/detail/edit') }}/` + barangId,
+                type: 'GET',
+                data: {
+                    tanggal: tanggal
+                },
+                success: function(res) {
+                    if (res.status === 'success') {
+                        const items = res.data; // array
+                        let html = '';
+
+                        items.forEach(item => {
+                            // Safety check untuk tanggal
+                            const updatedAt = item.updated_at ? item.updated_at.replace(' ', 'T') :
+                                new Date();
+                            const dateObj = new Date(updatedAt);
+                            const options = {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            };
+                            const formattedDate = dateObj.toLocaleString('id-ID', options);
+
+                            // Format angka tanpa .00
+                            const formatQty = (val) => {
+                                if (val == null) return 0;
+                                return parseFloat(val) % 1 === 0 ? parseInt(val) : parseFloat(val);
+                            };
+
+                            html += `
+                                <div class="mb-3 border p-2 rounded temp-item" data-tempid="${item.id}">
+                                    <input type="hidden" class="temp_id" value="${item.id}">
+                                    <p><strong>MID: ${item.barang.mid_barang} - ${formattedDate}</strong></p>
+                                    <label>Qty Full</label>
+                                    <input type="number" class="form-control qty_full mb-2" value="${formatQty(item.qty_full)}">
+                                    <label>Qty Receh</label>
+                                    <input type="number" class="form-control qty_receh mb-2" value="${formatQty(item.qty_receh)}">
+                                    <button type="button" class="btn btn-danger btn-sm btn-delete-edit mt-1">
+                                        <i class="mdi mdi-delete"></i> Hapus
+                                    </button>
+                                </div>
+                            `;
+                        });
+
+                        $('#editModal .modal-body').html(html);
+                        $('#editModal').modal('show');
+                    } else {
+                        Swal.fire('Error', res.message || 'Gagal mengambil data', 'error');
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire(
+                        'Error',
+                        xhr.responseJSON?.message || 'Terjadi kesalahan.',
+                        'error'
+                    );
+                }
+            });
+        }
     </script>
 @endsection

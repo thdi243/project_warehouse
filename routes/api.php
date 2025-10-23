@@ -118,6 +118,7 @@ Route::prefix('wfg')->group(function () {
     Route::get('/sop/report/getData', [StockOpnameWfgController::class, 'getDataReport']);
     Route::get('/sop/report/export', [StockOpnameWfgController::class, 'getDataReport']);
     Route::get('/sop/users/approval', [StockOpnameWfgController::class, 'getDataApproval']);
+    Route::get('/sop/detail/edit/{id}', [StockOpnameWfgController::class, 'getDataDetailEdit']);
 });
 
 Route::prefix('notifications')->group(function () {
