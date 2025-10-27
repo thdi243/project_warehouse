@@ -428,7 +428,7 @@ class BarangWfgController extends Controller
                 'status'  => false,
                 'message' => 'Terdapat ' . count($errors) . ' baris data yang bermasalah. Perbaiki data dan coba lagi.',
                 'errors'  => $errors,
-            ], 422);
+            ]);
         }
 
         if (empty($dataToInsert)) {
