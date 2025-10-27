@@ -71,25 +71,10 @@ Route::middleware('auth')->group(function () {
 
         // Rak Management
         Route::prefix('wsp')->group(function () {
-            Route::get('/master/rak', [WarehouseController::class, 'rakIndex'])->name('wsp.master.rak');
-            Route::get('/master/barang', [WarehouseController::class, 'barangIndex'])->name('wsp.master.barang');
-            Route::get('/stock/on-hand', [WarehouseController::class, 'onHandIndex'])->name('wsp.stock.on-hand');
+            Route::get('/stock/dashboard', [WarehouseController::class, 'dashboardStockWsp'])->name('wsp.stock.dashboard');
             Route::get('/stock/opname', [WarehouseController::class, 'opnameIndex'])->name('wsp.stock.opname');
             // Route::get('/rak/list', [WarehouseController::class, 'rakList'])->name('wsp.rak.list');
             Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rak.inventory');
-
-            // Barang
-            Route::post('/store/barang', [WspBarangController::class, 'store'])->name('wsp.store.barang');
-            Route::put('/update/barang/{id}', [WspBarangController::class, 'update'])->name('wsp.update.barang');
-            Route::post('/barang/import', [WspBarangController::class, 'import'])->name('wsp.barang.import');
-            Route::get('/barang/download-template', [WspBarangController::class, 'downloadTemplate'])->name('wsp.barang.download.template');
-
-            // Rak
-            Route::put('/update/rak/{id}', [WspRakController::class, 'update'])->name('wsp.rak.update');
-            Route::post('/store/rak', [WspRakController::class, 'store'])->name('wsp.store.rak');
-            Route::delete('/delete/rak/{id}', [WspRakController::class, 'destroy'])->name('wsp.delete.rak');
-            Route::post('/store/opname', [StockOpnameController::class, 'store'])->name('wsp.rak.store.opname');
-            // Route::get('/dashboard', [WarehouseController::class, 'rakDashboard'])->name('rak.dashboard');
         });
     });
 
@@ -161,6 +146,24 @@ Route::middleware('auth')->group(function () {
 
     // User
     Route::middleware(['auth', 'access'])->group(function () {
+        // Master WSP
+        Route::prefix('wsp')->group(function () {
+            Route::prefix('master')->group(function () {
+                // Barang
+                Route::get('/master/barang', [WarehouseController::class, 'barangIndex'])->name('wsp.master.barang');
+                Route::post('/store/barang', [WspBarangController::class, 'store'])->name('wsp.store.barang');
+                Route::put('/update/barang/{id}', [WspBarangController::class, 'update'])->name('wsp.update.barang');
+                Route::post('/barang/import', [WspBarangController::class, 'import'])->name('wsp.barang.import');
+                Route::get('/barang/download-template', [WspBarangController::class, 'downloadTemplate'])->name('wsp.barang.download.template');
+
+                // Rak
+                Route::get('/master/rak', [WarehouseController::class, 'rakIndex'])->name('wsp.master.rak');
+                Route::put('/update/rak/{id}', [WspRakController::class, 'update'])->name('wsp.rak.update');
+                Route::post('/store/rak', [WspRakController::class, 'store'])->name('wsp.store.rak');
+                Route::delete('/delete/rak/{id}', [WspRakController::class, 'destroy'])->name('wsp.delete.rak');
+                Route::post('/store/opname', [StockOpnameController::class, 'store'])->name('wsp.rak.store.opname');
+            });
+        });
 
         // Master WFG
         Route::prefix('wfg')->group(function () {

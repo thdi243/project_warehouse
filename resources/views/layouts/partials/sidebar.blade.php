@@ -95,6 +95,8 @@
                             </div>
                         </li>
                     @endif
+
+                    {{-- Menu --}}
                     @if ($jabatan !== 'dept_head')
                         <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
 
@@ -147,56 +149,11 @@
                                     id="sideBarRak">
                                     <ul class="nav nav-sm flex-column">
                                         <li class="nav-item">
-                                            <a href="#" data-bs-target="#sideBarMaster"
-                                                data-bs-toggle="collapse" role="button"
-                                                aria-expanded="{{ request()->routeIs('wsp.master.*') ? 'true' : 'false' }}"
-                                                aria-controls="sideBarMaster" class="nav-link" {{-- class="nav-link {{ request()->routeIs('p2h.online.*') ? 'active' : '' }}" --}}
-                                                data-key="t-m-tkbm">
-                                                {{ $jabatan === 'operator' ? 'Registrasi' : 'Master' }}
-                                            </a>
-                                            <div class="collapse menu-dropdown {{ request()->routeIs('wsp.master.*') ? 'show' : '' }}"
-                                                id="sideBarMaster">
-                                                <ul class="nav nav-sm flex-column">
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('wsp.master.barang') }}"
-                                                            class="nav-link {{ request()->routeIs('wsp.master.barang') ? 'active' : '' }}"
-                                                            data-key="t-input-wsp">
-                                                            Barang</a>
-                                                    </li>
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('wsp.master.rak') }}"
-                                                            class="nav-link {{ request()->routeIs('wsp.master.rak') ? 'active' : '' }}"
-                                                            data-key="t-input-wsp">
-                                                            Rack</a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a href="#" data-bs-target="#sideBarStock"
-                                                data-bs-toggle="collapse" role="button"
-                                                aria-expanded="{{ request()->routeIs('wsp.stock.*') ? 'true' : 'false' }}"
-                                                aria-controls="sideBarStock" class="nav-link" {{-- class="nav-link {{ request()->routeIs('p2h.online.*') ? 'active' : '' }}" --}}
-                                                data-key="t-m-tkbm">
-                                                Stock
-                                            </a>
-                                            <div class="collapse menu-dropdown {{ request()->routeIs('wsp.stock.*') ? 'show' : '' }}"
-                                                id="sideBarStock">
-                                                <ul class="nav nav-sm flex-column">
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('wsp.stock.on-hand') }}"
-                                                            class="nav-link {{ request()->routeIs('wsp.stock.on-hand') ? 'active' : '' }}"
-                                                            data-key="t-input-wsp">
-                                                            Stock On Hand</a>
-                                                    </li>
-                                                    <li class="nav-item">
-                                                        <a href="{{ route('wsp.stock.opname') }}"
-                                                            class="nav-link {{ request()->routeIs('wsp.stock.opname') ? 'active' : '' }}"
-                                                            data-key="t-input-wsp">
-                                                            Stock Opname</a>
-                                                    </li>
-                                                </ul>
-                                            </div>
+                                            <a href="{{ route('wsp.stock.dashboard') }}"
+                                                class="nav-link {{ request()->routeIs('wsp.stock.dashboard') ? 'active' : '' }}"
+                                                data-key="t-input-mst_brg_wfg">
+                                                <i class="mdi mdi-clipboard-list-outline"></i>
+                                                WSP Stock </a>
                                         </li>
                                     </ul>
                                 </div>
@@ -329,6 +286,8 @@
                             </li>
                         @endif
                     @endif
+
+                    {{-- Data Master --}}
                     @if ($jabatan !== 'operator')
                         <li class="menu-title"><span data-key="t-menu">Data Master</span></li>
                         {{-- WFG Master --}}
@@ -349,6 +308,42 @@
                                             data-key="t-input-mst_brg_wfg">
                                             <i class="mdi mdi-package"></i>
                                             Master Barang SOP </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+
+                        {{-- WSP Master --}}
+                        <li class="nav-item">
+                            <a class="nav-link menu-link {{ request()->routeIs('wsp.master.*') ? 'collapsed' : '' }}"
+                                href="#sidebarMasterWsp" data-bs-toggle="collapse" role="button"
+                                aria-expanded="{{ request()->routeIs('wsp.master.*') ? 'true' : 'false' }}"
+                                aria-controls="sidebarMasterWsp">
+                                <i class="mdi mdi-tools"></i>
+                                <span data-key="t-stock_op_wfg">WSP</span>
+                            </a>
+
+                            <div class="collapse menu-dropdown {{ request()->routeIs('wsp.master.*') ? 'show' : '' }}"
+                                id="sidebarMasterWsp">
+                                <ul class="nav nav-sm flex-column">
+                                    {{-- Master Barang --}}
+                                    <li class="nav-item">
+                                        <a href="{{ route('wsp.master.barang') }}"
+                                            class="nav-link {{ request()->routeIs('wsp.master.barang') ? 'active' : '' }}"
+                                            data-key="t-input-mst_brg_wfg">
+                                            <i class="mdi mdi-package-variant-closed"></i>
+                                            Barang
+                                        </a>
+                                    </li>
+
+                                    {{-- Master Rak --}}
+                                    <li class="nav-item">
+                                        <a href="{{ route('wsp.master.rak') }}"
+                                            class="nav-link {{ request()->routeIs('wsp.master.rak') ? 'active' : '' }}"
+                                            data-key="t-input-mst_rak_wfg">
+                                            <i class="mdi mdi-view-grid-outline"></i>
+                                            Rak
+                                        </a>
                                     </li>
                                 </ul>
                             </div>

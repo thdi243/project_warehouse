@@ -121,14 +121,16 @@ class WarehouseController extends Controller
         return view('manajemen_rak.master_rak');
     }
 
-    public function onHandIndex()
+    public function dashboardStockWsp()
     {
-        return view('manajemen_rak.stock_on_hand');
+        // return view('manajemen_rak.stock_on_hand');
+        return view('maintenance');
     }
 
     public function opnameIndex()
     {
-        return view('manajemen_rak.stock_opname');
+        // return view('manajemen_rak.stock_opname');
+        return view('maintenance');
     }
 
     public function formSOWFG()
