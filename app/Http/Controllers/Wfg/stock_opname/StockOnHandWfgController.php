@@ -57,7 +57,6 @@ class StockOnHandWfgController extends Controller
                 // Non-operator boleh input manual atau kosong
                 $principal = $request->input('principal');
 
-                // Jika principal tidak diinput, ambil dari BarangModel
                 if (empty($principal)) {
                     $barang = BarangWfgModel::find($request->barang_id);
 
