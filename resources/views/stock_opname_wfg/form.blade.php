@@ -100,6 +100,7 @@
                                         <label for="principal_filter" class="form-label fw-semibold">Filter
                                             Principal</label>
                                         <select id="principal_filter" class="form-select">
+                                            <option value="" selected disabled>All principal</option>
                                             @foreach ($principals as $p)
                                                 <option value="{{ $p }}">{{ $p }}</option>
                                             @endforeach
