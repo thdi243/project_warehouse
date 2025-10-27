@@ -55,11 +55,25 @@ class StockOnHandWfgController extends Controller
                 }
             } else {
                 // Non-operator boleh input manual atau kosong
-                $principal = $request->input('principal', $user->principal ?? null);
+                $principal = $request->input('principal');
+
+                // Jika principal tidak diinput, ambil dari BarangModel
+                if (empty($principal)) {
+                    $barang = BarangWfgModel::find($request->barang_id);
+
+                    if (!$barang || empty($barang->principal)) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Principal tidak ditemukan untuk barang ini. Harap lengkapi data barang.',
+                        ], 422);
+                    }
+
+                    $principal = $barang->principal;
+                }
             }
 
             $exists = StockOnHandModel::where('barang_id', $request->barang_id)
-                ->whereDate('created_at', now()->toDateString())
+                ->whereDate('last_updated', now()->toDateString())
                 ->exists();
 
             if ($exists) {
