@@ -240,9 +240,8 @@
                     </div>
                     @if (Auth::user()->jabatan != 'operator')
                         <div class="mb-3">
-                            <label for="principal_filter" class="form-label fw-semibold">Filter Principal</label>
-                            <select id="principal_filter" class="form-select">
-                                <option value="">-- Semua Principal --</option>
+                            <label for="principal_export" class="form-label fw-semibold">Filter Principal</label>
+                            <select id="principal_export" class="form-select">
                                 @foreach ($principals as $p)
                                     <option value="{{ $p }}">{{ $p }}</option>
                                 @endforeach
@@ -335,7 +334,7 @@
                     <!-- Data edit akan dimasukkan di sini -->
                 </div>
                 <div class="modal-footer">
-                    <button type="button" id="saveEditBtn" class="btn btn-primary">Simpan Semua</button>
+                    <button type="button" id="saveEditBtn" class="btn btn-success">Simpan Semua</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                 </div>
             </div>
@@ -366,7 +365,16 @@
             loadReportData(principal);
 
             $(document).on('keyup change', '#filter_tanggal', function() {
+                // loadReportData(principal);
+                loadReportData($('#principal_filter').val() || '');
+            });
+
+            // principal filter
+            $('#principal_filter').on('change', function() {
+                const principal = $(this).val();
                 loadReportData(principal);
+                const tanggal = $('#filter_tanggal').val();
+                checkApprovalStatus(null, tanggal);
             });
 
             function loadReportData(principal) {
@@ -375,7 +383,10 @@
                 $('#tableBody').html('');
                 const tanggal = $('#filter_tanggal').val() || new Date().toISOString().slice(0,
                     10);
-                // console.log('prncipal:', principal);
+                console.log('kirim ajax:', {
+                    tanggal: $('#filter_tanggal').val(),
+                    principal
+                });
 
                 $.ajax({
                     // url: `{{ url('api/wfg/sop/report/getData') }}`,
@@ -608,14 +619,6 @@
                     }
                 });
             }
-
-            // principal filter
-            $('#principal_filter').on('change', function() {
-                const principal = $(this).val();
-                loadReportData(principal);
-                const tanggal = $('#filter_tanggal').val();
-                checkApprovalStatus(null, tanggal);
-            });
 
             function renderTable(response) {
                 const {
@@ -1041,7 +1044,7 @@
                 const sopId = $('#filter_tanggal').data('sop-id');
                 const foremanId = $('#selectForeman').val();
                 const supervisorId = $('#selectSupervisor').val();
-                const principal = $('#principal_export').val();
+                // const principal = $('#principal_export').val();
 
                 if (!foremanId || !supervisorId) {
                     Swal.fire('Peringatan', 'Silakan pilih Foreman dan Supervisor.', 'warning');
@@ -1055,7 +1058,6 @@
                         sop_id: sopId,
                         foreman_id: foremanId,
                         supervisor_id: supervisorId,
-                        principal: principal,
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(res) {
