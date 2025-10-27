@@ -899,7 +899,7 @@
                             title: response.errors && response.errors.length > 0 ?
                                 'Berhasil dengan Catatan!' : 'Berhasil!',
                             html: (response.message ?? 'File berhasil diunggah.') +
-                                listError
+                                listErrors
                         });
 
                         $('#uploadModal').modal('hide');
