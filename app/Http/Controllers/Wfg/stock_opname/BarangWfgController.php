@@ -423,13 +423,13 @@ class BarangWfgController extends Controller
         }
 
         // 3. Eksekusi Penyimpanan
-        if (!empty($errors)) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Terdapat ' . count($errors) . ' baris data yang bermasalah. Perbaiki data dan coba lagi.',
-                'errors'  => $errors,
-            ]);
-        }
+        // if (!empty($errors)) {
+        //     return response()->json([
+        //         'status'  => false,
+        //         'message' => 'Terdapat ' . count($errors) . ' baris data yang bermasalah. Perbaiki data dan coba lagi.',
+        //         'errors'  => $errors,
+        //     ]);
+        // }
 
         if (empty($dataToInsert)) {
             return response()->json([
@@ -446,7 +446,9 @@ class BarangWfgController extends Controller
 
             return response()->json([
                 'status'  => true,
-                'message' => count($dataToInsert) . ' barang berhasil diimpor.',
+                'message' => count($dataToInsert) . ' barang berhasil diimpor, '
+                    . count($errors) . ' baris gagal.',
+                'errors'  => $errors, // tetap kirim baris error ke frontend
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();

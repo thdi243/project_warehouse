@@ -878,19 +878,32 @@
                         });
                     },
                     success: function(response) {
+                        let listErrors = '';
+
+                        // kalau backend kasih error parsial
+                        if (response.errors && response.errors.length > 0) {
+                            listErrors +=
+                                '<div style="max-height:200px;overflow-y:auto;text-align:left;margin-top:10px;">';
+                            listErrors += '<ul class="mb-0">';
+                            response.errors.forEach(function(e) {
+                                listErrors += '<li><strong>Baris ' + e.baris +
+                                    ':</strong> ' + e.error + '</li>';
+                            });
+                            listErrors += '</ul></div>';
+                        }
+
+                        // lalu tampilkan alert-nya
                         Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: response.message ??
-                                'File Stock On Hand berhasil diunggah.',
-                            // timer: 3000,
-                            // showConfirmButton: false
+                            icon: response.errors && response.errors.length > 0 ?
+                                'warning' : 'success',
+                            title: response.errors && response.errors.length > 0 ?
+                                'Berhasil dengan Catatan!' : 'Berhasil!',
+                            html: (response.message ?? 'File berhasil diunggah.') +
+                                listError
                         });
 
                         $('#uploadModal').modal('hide');
                         $('#file').val('');
-
-                        // Refresh DataTable kalau ada
                         loadBarang();
                     },
                     error: function(xhr) {
