@@ -205,7 +205,7 @@ class UserController extends Controller
             'image'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'signature'  => 'nullable|string',
         ]);
-
+        // dd($request['signature']);
         $user = User::findOrFail($id);
 
         try {
@@ -251,17 +251,15 @@ class UserController extends Controller
             }
 
             // === Update atau buat tanda tangan (jika ada input) ===
-            // === Update atau buat tanda tangan (jika ada input) ===
             if ($request->filled('signature') && trim($request->signature) !== '') {
-                // === Ada signature baru (base64) ===
                 $signatureData = $request->input('signature');
 
                 // Decode base64 image
                 $signature = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
                 $signature = str_replace(' ', '+', $signature);
 
-                // Gunakan username atau id sebagai nama file
-                $identifier = $user->username ?? $user->id;
+                // Gunakan username sebagai nama file
+                $identifier = $user->username;
                 $identifier = preg_replace('/[^A-Za-z0-9_\-]/', '_', $identifier);
 
                 $signatureName = 'signature_' . $identifier . '.png';
@@ -289,8 +287,6 @@ class UserController extends Controller
                     File::delete(public_path($user->signature->signature));
                     $user->signature()->delete();
                 }
-            } else {
-                // === Signature tidak dikirim → tetap gunakan yang lama ===
             }
 
             return response()->json([

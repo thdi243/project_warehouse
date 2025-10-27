@@ -958,12 +958,12 @@
                             let sigPath = "{{ asset('') }}" + user.signature.signature;
                             $('#edit-signature-image').attr('src', sigPath);
                             $('#edit-signature-preview').show();
-                            $('#edit-signature-input').val(
-                                ''); // biar ga ngirim base64 kalau gak diubah
+                            $('#edit-signature-old').val(sigPath);
                         } else {
                             $('#edit-signature-preview').hide();
-                            $('#edit-signature-input').val('');
+                            $('#edit-signature-old').val('');
                         }
+
 
                         // Show modal
                         $("#editUserModal").modal('show');
@@ -1027,8 +1027,11 @@
                     const dataURL = editSignaturePad.toDataURL();
                     const trimmedDataURL = await trimSignature(dataURL);
                     formData.append('signature', trimmedDataURL || '');
+                } else {
+                    // kirim tanda tangan lama kalau gak digambar ulang
+                    const oldSignature = $('#edit-signature-image').attr('src') || '';
+                    formData.append('signature', oldSignature);
                 }
-
 
                 // Laravel membutuhkan method spoofing untuk PUT
                 formData.append('_method', 'PUT');
