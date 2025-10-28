@@ -34,7 +34,7 @@ class WarehouseController extends Controller
     {
         $data = TkbmFeeModel::orderBy('created_at', 'desc')->get();
 
-        return view('tkbm.fees_taxes', compact('data'));
+        return view('master.wsp.fees_taxes', compact('data'));
     }
 
     public function p2hData()
