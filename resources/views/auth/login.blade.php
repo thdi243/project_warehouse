@@ -52,7 +52,6 @@
             <!-- auth page bg -->
             <div class="auth-one-bg-position auth-one-bg" id="auth-particles">
                 <div class="bg-overlay"></div>
-
                 <div class="shape">
                     <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink"
                         viewBox="0 0 1440 120">
@@ -63,26 +62,18 @@
             </div>
 
             <!-- auth page content -->
-            <div class="auth-page-content">
+            <div class="auth-page-content d-flex align-items-center justify-content-center min-vh-100">
                 <div class="container">
-                    <div class="row">
-                        <div class="col-lg-12">
-                            <div class="text-center mt-sm-5 mb-2 text-white-50">
-                                <div>
-                                    <a href="{{ route('login') }}" class="d-inline-block auth-logo">
-                                        <img src="{{ asset('assets/images/logo/wings.png') }}" alt="PT.Bumi Alam Segar"
-                                            height="70">
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- end row -->
-
                     <div class="row justify-content-center">
                         <div class="col-md-8 col-lg-6 col-xl-5">
-                            <div class="card mt-4">
+                            <div class="card">
                                 <div class="card-body p-4">
+                                    <div class="text-center mb-4 mt-2">
+                                        <a href="{{ route('login') }}" class="d-inline-block auth-logo">
+                                            <img src="{{ asset('assets/images/logo/logo.png') }}"
+                                                alt="PT.Bumi Alam Segar" height="40">
+                                        </a>
+                                    </div>
                                     <div class="text-center mt-2">
                                         {{-- <img src="{{ asset('assets/images/logo/wings.png') }}" alt="PT.Bumi Alam Segar"
                                             style="width: 150px;"> --}}
