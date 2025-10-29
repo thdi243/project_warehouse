@@ -60,7 +60,6 @@ Route::middleware('auth')->group(function () {
             Route::delete('/data/delete/{id}', [TkbmController::class, 'destroy'])->name('tkbm.data.delete');
             Route::get('/data/export', [TkbmController::class, 'export'])->name('tkbm.data.export');
             // Route::get('/data/export-pdf', [TkbmController::class, 'exportPdf'])->name('tkbm.data.export-pdf');
-            Route::get('/master/fee', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.fee');
             Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
             Route::post('/fee/simpan', [TkbmController::class, 'simpanFeeTkbm'])->name('tkbm.fee.simpan');
             Route::get('/fee/history', [TkbmController::class, 'historyFeeTkbm'])->name('tkbm.fee.history');
@@ -70,11 +69,11 @@ Route::middleware('auth')->group(function () {
         });
 
         // Rak Management
-        Route::prefix('wsp')->group(function () {
-            Route::get('/stock/dashboard', [WarehouseController::class, 'dashboardStockWsp'])->name('wsp.stock.dashboard');
-            Route::get('/stock/opname', [WarehouseController::class, 'opnameIndex'])->name('wsp.stock.opname');
+        Route::prefix('rack')->group(function () {
+            Route::get('/stock/dashboard', [WarehouseController::class, 'dashboardStockWsp'])->name('rack.stock.dashboard');
+            Route::get('/stock/opname', [WarehouseController::class, 'opnameIndex'])->name('rack.stock.opname');
             // Route::get('/rak/list', [WarehouseController::class, 'rakList'])->name('wsp.rak.list');
-            Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rak.inventory');
+            Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rack.inventory');
         });
     });
 
@@ -149,6 +148,9 @@ Route::middleware('auth')->group(function () {
         // Master WSP
         Route::prefix('wsp')->group(function () {
             Route::prefix('master')->group(function () {
+                // TKBM
+                Route::get('/fee', [WarehouseController::class, 'feeTkbm'])->name('wsp.master.fee');
+
                 // Barang
                 Route::get('/master/barang', [WarehouseController::class, 'barangIndex'])->name('wsp.master.barang');
                 Route::post('/store/barang', [WspBarangController::class, 'store'])->name('wsp.store.barang');

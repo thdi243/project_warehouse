@@ -315,7 +315,6 @@
                         <select id="statusFilter" class="form-select w-100">
                             <option value="active">Barang Aktif</option>
                             <option value="trashed">Barang Nonaktif</option>
-                            <option value="all">Semua Barang</option>
                         </select>
                     </div>
 
@@ -497,7 +496,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="uploadModalLabel">
-                        <i class="mdi mdi-cloud-upload me-1"></i> Upload File SOH
+                        <i class="mdi mdi-cloud-upload me-1"></i> Upload File Master Barang
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -510,7 +509,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="file" class="form-label fw-bold">Pilih File Stock On Hand</label>
+                            <label for="file" class="form-label fw-bold">Pilih File Master Barang</label>
                             <input class="form-control" type="file" id="file" name="file" required
                                 accept=".xlsx, .xls, .csv">
                         </div>
@@ -810,13 +809,7 @@
                     processData: false,
                     contentType: false,
                     success: function(res) {
-                        Swal.fire({
-                            icon: 'success',
-                            text: res.message,
-                            title: 'Berhasil',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
+                        toastr.success(res.message, 'Berhasil');
 
                         $("#itemModal").modal("hide");
                         $("#formBarang")[0].reset();
@@ -846,11 +839,7 @@
                             msg = xhr.responseJSON?.message || msg;
                         }
 
-                        Swal.fire({
-                            icon: icon,
-                            title: title,
-                            text: msg
-                        });
+                        toastr.error(msg, title);
                     }
                 });
             });
@@ -1073,8 +1062,6 @@
                     }
                 });
             });
-
-
         });
 
         function openModal() {

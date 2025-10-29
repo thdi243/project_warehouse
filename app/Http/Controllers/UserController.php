@@ -333,6 +333,10 @@ class UserController extends Controller
                 $user->principal()->delete();
             }
 
+            if ($user->signature) {
+                $user->signature()->delete();
+            }
+
             $user->delete();
 
             return response()->json([

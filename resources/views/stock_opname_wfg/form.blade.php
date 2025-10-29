@@ -212,6 +212,8 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            let barangSelisih = JSON.parse(localStorage.getItem('barangSelisih') || '{}');
+
             loadBarangForOpname();
 
             function loadBarangForOpname(page = 1, principal) {
@@ -225,6 +227,11 @@
                         <p class="mt-3 text-primary fw-semibold">Mengambil data barang...</p>
                     </div>
                 `);
+
+                let storedSelisih = JSON.parse(localStorage.getItem('barangSelisih') || '{}');
+                if (Object.keys(storedSelisih).length > 0) {
+                    barangSelisih = storedSelisih;
+                }
 
                 $.ajax({
                     // url: `{{ url('api/wfg/sop/getData') }}`,
@@ -293,7 +300,7 @@
                                     <td class="text-end fw-bold summary-cell">${item.summary ?? '0'}</td>
                                     
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-save-temp">
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-save-temp">
                                             <i class="mdi mdi-content-save-outline me-1"></i>Simpan
                                         </button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary btn-history" data-bs-toggle="collapse" data-bs-target="#history-${id}">
@@ -302,7 +309,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-primary btn-edit-temp">
                                             <i class="mdi mdi-pencil me-1"></i>Edit
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-warning btn-reset-temp">
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-reset-temp">
                                             <i class="mdi mdi-refresh me-1"></i>Reset
                                         </button>
                                     </td>
@@ -357,6 +364,35 @@
                         `;
 
                         container.html(tableHtml);
+
+                        // Tambahkan kolom keterangan jika ada data selisih
+                        if (Object.keys(barangSelisih).length > 0) {
+                            console.log(barangSelisih);
+
+                            const table = $('#tableInputOpname');
+                            if (table.find('th.keterangan-header').length === 0) {
+                                table.find('thead tr').append(
+                                    '<th class="keterangan-header text-center">Keterangan</th>'
+                                );
+                            }
+
+                            // Tambahkan kolom keterangan untuk setiap barang yang punya selisih
+                            table.find('tbody tr').each(function() {
+                                const barangId = $(this).data('barangid');
+                                if (barangSelisih[barangId]) {
+                                    if ($(this).find('td.keterangan-cell').length === 0) {
+                                        $(this).append(`
+                                            <td class="keterangan-cell text-center">
+                                                <input type="text" class="form-control keterangan-input" 
+                                                    placeholder="Isi keterangan..." 
+                                                    value="${barangSelisih[barangId].keterangan ?? ''}">
+                                            </td>
+                                        `);
+                                    }
+                                }
+                            });
+                        }
+
 
                         loadAllTempData();
 
@@ -457,13 +493,7 @@
                     data,
                     success: function(res) {
                         if (res.status === 'success') {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Tersimpan!',
-                                text: res.message,
-                                timer: 1000,
-                                showConfirmButton: false
-                            });
+                            toastr.success(res.message, 'Tersimpan!');
 
                             row.find('.qty_full').val('');
                             row.find('.qty_receh').val('');
@@ -546,17 +576,82 @@
                 if (!tgl_opname) {
                     Swal.fire('Peringatan', 'Tanggal opname wajib diisi!', 'warning');
                     return;
-                } else if (!tgl_opname) {
-                    Swal.fire('Peringatan', 'principal wajib diisi!', 'warning');
-                    return;
                 }
 
-                let keteranganData = {};
+                // Ambil storedSelisih (bisa kosong object)
+                let storedSelisih = JSON.parse(localStorage.getItem('barangSelisih') || '{}');
+
+                // Update storedSelisih berdasarkan input di halaman aktif
                 $('#tableInputOpname tbody tr').each(function() {
-                    const barangId = $(this).data('barangid');
-                    const keterangan = $(this).find('.keterangan-input').val() || '';
-                    keteranganData[barangId] = keterangan;
+                    const row = $(this);
+                    const barangId = row.data('barangid');
+                    if (!barangId) return; // skip baris tanpa id
+
+                    const keterangan = row.find('.keterangan-input').val() || '';
+
+                    // Kalau item belum ada di storedSelisih, buat placeholder minimal
+                    if (!storedSelisih[barangId]) {
+                        storedSelisih[barangId] = {
+                            mid_barang: row.find('td:eq(1) strong').text() || '',
+                            nama_barang: row.find('td:eq(1) small').first().text() || '',
+                            qty_sap: row.data('qtysap') || 0,
+                            qty_fisik: row.data('qtyfisik') || 0,
+                            selisih: row.data('selisih') || 0,
+                            keterangan: ''
+                        };
+                    }
+
+                    // update keterangan terbaru
+                    storedSelisih[barangId].keterangan = keterangan;
                 });
+
+                // simpan kembali ke localStorage supaya persist antar page
+                localStorage.setItem('barangSelisih', JSON.stringify(storedSelisih));
+
+                // Ambil hanya item yang punya selisih numerik bukan nol
+                const filteredEntries = Object.entries(storedSelisih).filter(([id, it]) => {
+                    const s = Number(it?.selisih || 0);
+                    return id && !isNaN(s) && s !== 0;
+                });
+
+                // Jika tidak ada barang yang selisih (filteredEntries kosong) -> langsung kirim kosong ke backend
+                if (filteredEntries.length > 0) {
+                    // cek apakah semua item yang punya selisih sudah punya keterangan
+                    const belumIsi = filteredEntries
+                        .map(([_, it]) => it)
+                        .filter(it => !it.keterangan || it.keterangan.trim() === '');
+
+                    if (belumIsi.length > 0) {
+                        let listHtml = '<ul class="text-start">';
+                        belumIsi.forEach(item => {
+                            listHtml += `
+                            <li class="mb-2">
+                                <strong>${item.mid_barang ?? '-'}</strong> (${item.nama_barang ?? '-'})<br>
+                                SAP: ${item.qty_sap ?? '-'}, Fisik: ${item.qty_fisik ?? '-'}, 
+                                <span class="text-danger">Selisih: ${item.selisih ?? '-'}</span>
+                            </li>
+                        `;
+                        });
+                        listHtml += '</ul>';
+
+                        Swal.fire({
+                            title: 'Masih Ada Barang Belum Diberi Keterangan!',
+                            html: `<p>Harap isi keterangan untuk barang berikut:</p>${listHtml}`,
+                            icon: 'warning',
+                            width: 700,
+                            confirmButtonText: 'Isi Sekarang',
+                        });
+                        return; // stop submit
+                    }
+                }
+
+                // Siapkan payload keterangan yang hanya berisi barang dengan selisih (atau kosong)
+                let keteranganData = {};
+                filteredEntries.forEach(([id, it]) => {
+                    keteranganData[id] = it.keterangan || '';
+                });
+
+                // Optional: jika mau juga mengirim keterangan untuk semua (termasuk non-selisih) ganti keteranganData buildnya.
 
                 Swal.fire({
                     title: 'Konfirmasi Simpan Final',
@@ -579,43 +674,28 @@
                             },
                             success: function(res) {
                                 if (res.status === 'success') {
+                                    // bersihkan stored data
+                                    localStorage.removeItem('barangSelisih');
+                                    barangSelisih = {};
+                                    storedSelisih = {};
+                                    keteranganData = {};
                                     Swal.fire('Berhasil!', res.message, 'success').then(
                                         () => {
                                             loadBarangForOpname();
                                         });
                                 } else if (res.status === 'warning') {
-                                    const table = $('#tableInputOpname');
-                                    if (table.find('th.keterangan-header').length ===
-                                        0) {
-                                        table.find('thead tr').append(
-                                            '<th class="keterangan-header text-center">Keterangan</th>'
-                                        );
-                                    }
-
+                                    // backend masih menemukan selisih — perbarui localStorage sesuai payload dari backend
+                                    barangSelisih = {};
                                     res.data.forEach(item => {
-                                        const row = $(
-                                            `tr[data-barangid="${item.barang_id}"]`
-                                        );
-                                        // row.addClass('table-warning');
-
-                                        // Tambahkan <td> input keterangan jika belum ada
-                                        if (row.find('td.keterangan-cell')
-                                            .length === 0) {
-                                            row.append(`
-                                                <td class="keterangan-cell text-center">
-                                                    <input type="text" class="form-control keterangan-input" placeholder="Isi keterangan...">
-                                                </td>
-                                            `);
-
-                                        }
+                                        barangSelisih[item.barang_id] = item;
                                     });
+                                    localStorage.setItem('barangSelisih', JSON
+                                        .stringify(barangSelisih));
+                                    loadBarangForOpname();
 
-                                    // ⚠️ Tampilkan daftar barang yang punya selisih
+                                    // tampilkan list
                                     let listHtml = '<ul class="text-start">';
                                     res.data.forEach(item => {
-                                        // $(`tr[data-barangid="${item.barang_id}"]`)
-                                        //     .addClass('table-warning');
-
                                         listHtml += `
                                             <li class="mb-2">
                                                 <strong>${item.mid_barang}</strong> (${item.nama_barang})<br>
@@ -645,6 +725,28 @@
                         });
                     }
                 });
+            });
+
+
+            // Tangkap input keterangan dan simpan ke localStorage
+            $(document).on('input', '.keterangan-input', function() {
+                const row = $(this).closest('tr');
+                const barangId = row.data('barangid');
+                const value = $(this).val();
+
+                // Ambil data lama
+                let barangSelisih = JSON.parse(localStorage.getItem('barangSelisih') || '{}');
+
+                // Kalau belum ada, buat baru
+                if (!barangSelisih[barangId]) {
+                    barangSelisih[barangId] = {};
+                }
+
+                // Simpan keterangan baru
+                barangSelisih[barangId].keterangan = value;
+
+                // Simpan ke localStorage
+                localStorage.setItem('barangSelisih', JSON.stringify(barangSelisih));
             });
 
             // Tombol Edit
@@ -1004,10 +1106,10 @@
                 else if (k.startsWith('barang_')) barangIds.push(parseInt(k.replace('barang_', '')));
             });
 
-            console.log("Load temp data:", {
-                sohIds,
-                barangIds
-            });
+            // console.log("Load temp data:", {
+            //     sohIds,
+            //     barangIds
+            // });
 
             $.ajax({
                 url: "{{ route('wfg.stock_opname.getTempBatch') }}",

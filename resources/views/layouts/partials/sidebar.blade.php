@@ -125,32 +125,25 @@
                                                 data-key="t-tkbm">
                                                 Report TKBM </a>
                                         </li>
-                                        @if ($jabatan !== 'operator')
-                                            <li class="nav-item">
-                                                <a href="{{ route('tkbm.master.fee') }}"
-                                                    class="nav-link {{ request()->routeIs('tkbm.master.fee') ? 'active' : '' }}"
-                                                    data-key="t-input-tkbm">
-                                                    Manage Fees & Harga </a>
-                                            </li>
-                                        @endif
+
                                     </ul>
                                 </div>
                             </li>
 
                             {{-- RackMan Menu --}}
                             <li class="nav-item">
-                                <a class="nav-link menu-link {{ request()->routeIs('wsp.*') ? '' : 'collapsed' }}"
+                                <a class="nav-link menu-link {{ request()->routeIs('rack.*') ? '' : 'collapsed' }}"
                                     href="#sideBarRak" data-bs-toggle="collapse" role="button"
-                                    aria-expanded="{{ request()->routeIs('wsp.*') ? 'true' : 'false' }}"
+                                    aria-expanded="{{ request()->routeIs('rack.*') ? 'true' : 'false' }}"
                                     aria-controls="sideBarRak">
-                                    <i class="mdi mdi-package-variant"></i><span data-key="t-wsp">RackMan</span>
+                                    <i class="mdi mdi-package-variant"></i><span data-key="t-rack">RackMan</span>
                                 </a>
-                                <div class="collapse menu-dropdown {{ request()->routeIs('wsp.*') ? 'show' : '' }}"
+                                <div class="collapse menu-dropdown {{ request()->routeIs('rack.*') ? 'show' : '' }}"
                                     id="sideBarRak">
                                     <ul class="nav nav-sm flex-column">
                                         <li class="nav-item">
-                                            <a href="{{ route('wsp.stock.dashboard') }}"
-                                                class="nav-link {{ request()->routeIs('wsp.stock.dashboard') ? 'active' : '' }}"
+                                            <a href="{{ route('rack.stock.dashboard') }}"
+                                                class="nav-link {{ request()->routeIs('rack.stock.dashboard') ? 'active' : '' }}"
                                                 data-key="t-input-mst_brg_wfg">
                                                 <i class="mdi mdi-clipboard-list-outline"></i>
                                                 WSP Stock </a>
@@ -326,6 +319,15 @@
                             <div class="collapse menu-dropdown {{ request()->routeIs('wsp.master.*') ? 'show' : '' }}"
                                 id="sidebarMasterWsp">
                                 <ul class="nav nav-sm flex-column">
+                                    {{-- Master Fees & taxes TKBM --}}
+                                    <li class="nav-item">
+                                        <a href="{{ route('wsp.master.fee') }}"
+                                            class="nav-link {{ request()->routeIs('wsp.master.fee') ? 'active' : '' }}"
+                                            data-key="t-input-tkbm">
+                                            <i class="mdi mdi-credit-card-outline"></i>Manage Fees & Harga
+                                        </a>
+                                    </li>
+
                                     {{-- Master Barang --}}
                                     <li class="nav-item">
                                         <a href="{{ route('wsp.master.barang') }}"
@@ -345,6 +347,8 @@
                                             Rak
                                         </a>
                                     </li>
+
+
                                 </ul>
                             </div>
                         </li>

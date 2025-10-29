@@ -463,6 +463,50 @@
                         const btn = $('#btn_approval');
                         btn.show();
 
+                        // 🔹 Buat trackingHtml sekali di awal
+                        let trackingHtml = '';
+                        if (res.approver_tracking && res.approver_tracking.length > 0) {
+                            trackingHtml = `
+                                <div class="mt-3">
+                                    <h6 class="fw-semibold mb-2">
+                                        <i class="mdi mdi-account-check-outline text-primary me-2"></i>
+                                        Status Approval
+                                    </h6>
+                                    <ul class="list-unstyled mb-0">
+                            `;
+
+                            res.approver_tracking.forEach(a => {
+                                const s = a.status?.toLowerCase() || '';
+                                let icon = '<i class="mdi mdi-timer-sand text-warning me-1"></i>';
+                                let badgeClass = 'warning';
+                                let statusLabel = s;
+
+                                if (s === 'approved') {
+                                    icon = '<i class="mdi mdi-check-circle text-success me-1"></i>';
+                                    badgeClass = 'success';
+                                } else if (s === 'rejected') {
+                                    icon = '<i class="mdi mdi-close-circle text-danger me-1"></i>';
+                                    badgeClass = 'danger';
+                                } else if (s === 'read') {
+                                    icon = '<i class="mdi mdi-eye text-info me-1"></i>';
+                                    badgeClass = 'info';
+                                    statusLabel = 'Read';
+                                }
+
+                                trackingHtml += `
+                                    <li class="mb-2">
+                                        ${icon}
+                                        <strong>${a.nama}</strong> <span class="text-muted">(${a.jabatan})</span>
+                                        <span class="badge bg-${badgeClass} ms-2 text-uppercase">${statusLabel}</span>
+                                        ${a.catatan ? `<br><small class="text-muted ms-4">Catatan: ${a.catatan}</small>` : ''}
+                                    </li>
+                                `;
+                            });
+
+                            trackingHtml += '</ul></div>';
+                        }
+
+                        // 🔸 Status draft
                         if (status === 'draft') {
                             btn.removeClass('btn-secondary btn-soft-success')
                                 .addClass('btn-soft-success')
@@ -470,59 +514,13 @@
                                 .html('<i class="mdi mdi-send-outline me-2"></i> Send Approval');
 
                             wrapper.html('');
-                        } else if (status === 'pending' || status === 'read') {
+                        }
+
+                        // 🔸 Status pending / read
+                        else if (status === 'pending' || status === 'read') {
                             btn.removeClass('btn-soft-success').addClass('btn-secondary')
                                 .prop('disabled', true)
                                 .html('<i class="mdi mdi-timer-sand me-2"></i> Menunggu Approve');
-
-                            let trackingHtml = '';
-
-                            if (res.approver_tracking && res.approver_tracking.length > 0) {
-                                trackingHtml = `
-                                    <div class="mt-3">
-                                        <h6 class="fw-semibold mb-2">
-                                            <i class="mdi mdi-account-check-outline text-primary me-2"></i>
-                                            Status Approval
-                                        </h6>
-                                        <ul class="list-unstyled mb-0">
-                                `;
-
-                                res.approver_tracking.forEach(a => {
-                                    const status = a.status?.toLowerCase() || '';
-
-                                    let icon =
-                                        '<i class="mdi mdi-timer-sand text-warning me-1"></i>';
-                                    let badgeClass = 'warning';
-                                    let statusLabel = status;
-
-                                    if (status === 'approved') {
-                                        icon =
-                                            '<i class="mdi mdi-check-circle text-success me-1"></i>';
-                                        badgeClass = 'success';
-                                    } else if (status === 'rejected') {
-                                        icon =
-                                            '<i class="mdi mdi-close-circle text-danger me-1"></i>';
-                                        badgeClass = 'danger';
-                                    } else if (status === 'read') {
-                                        icon = '<i class="mdi mdi-eye text-info me-1"></i>';
-                                        badgeClass = 'info';
-                                        statusLabel = 'Read';
-                                    }
-
-                                    trackingHtml += `
-                                        <li class="mb-2">
-                                            ${icon}
-                                            <strong>${a.nama}</strong> <span class="text-muted">(${a.jabatan})</span>
-                                            <span class="badge bg-${badgeClass} ms-2 text-uppercase">${statusLabel}</span>
-                                            ${a.catatan ? `<br><small class="text-muted ms-4">Catatan: ${a.catatan}</small>` : ''}
-                                        </li>
-                                    `;
-                                });
-
-                                trackingHtml += '</ul></div>';
-                            }
-
-
 
                             wrapper.html(`
                                 <div class="alert alert-warning rounded-3 mt-3">
@@ -532,7 +530,10 @@
                                 </div>
                                 ${trackingHtml}
                             `);
-                        } else if (status === 'approved') {
+                        }
+
+                        // 🔸 Status approved
+                        else if (status === 'approved') {
                             btn.removeClass('btn-soft-success').addClass('btn-secondary')
                                 .prop('disabled', true)
                                 .html('<i class="mdi mdi-check me-2"></i> Approval Selesai');
@@ -543,8 +544,12 @@
                                     <strong>Sudah Disetujui</strong>
                                     ${note ? `<br><small class="text-muted">Catatan: ${note}</small>` : ''}
                                 </div>
+                                ${trackingHtml}
                             `);
-                        } else if (status === 'rejected') {
+                        }
+
+                        // 🔸 Status rejected
+                        else if (status === 'rejected') {
                             btn.removeClass('btn-secondary').addClass('btn-soft-success')
                                 .prop('disabled', false)
                                 .html('<i class="mdi mdi-send-outline me-2"></i> Send Approval');
@@ -555,6 +560,7 @@
                                     <strong>Ditolak</strong>
                                     ${note ? `<br><small class="text-muted">Catatan: ${note}</small>` : ''}
                                 </div>
+                                ${trackingHtml}
                             `);
                         }
                     }

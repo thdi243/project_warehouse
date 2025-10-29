@@ -375,7 +375,6 @@
                                             <th>Nama Barang</th>
                                             <th>MID</th>
                                             <th class="text-end">Qty SAP</th>
-                                            <th class="text-end">Qty Box/Pallet</th>
                                             <th class="text-center">Aksi</th>
                                         </tr>
                                     </thead>
@@ -399,7 +398,6 @@
                                     </td>
                                     <td>${item.barang?.mid_barang ?? 'N/A'}</td>
                                     <td class="text-end text-primary fw-bold">${item.qty_soh.toLocaleString('id-ID')}</td>
-                                    <td class="text-end">${item.barang?.qty_box ?? 0}</td>
                                     <td class="text-center">
                                         <div class="d-flex gap-2 justify-content-center">
                                             <button class="btn btn-sm btn-outline-primary"

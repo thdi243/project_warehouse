@@ -15,6 +15,7 @@
                 width: 100%;
                 border-collapse: collapse;
                 line-height: 1;
+                page-break-inside: auto;
             }
 
             th,
@@ -28,6 +29,27 @@
                 text-align: center;
                 font-weight: bold;
                 background: #f4f4f4;
+            }
+
+            thead {
+                display: table-header-group !important;
+            }
+
+            tbody {
+                display: table-row-group;
+            }
+
+            tfoot {
+                display: table-footer-group;
+            }
+
+            tr {
+                page-break-inside: avoid;
+            }
+
+            /* Hapus border atas dari baris pertama body agar nyatu sama header */
+            tbody tr:first-child td {
+                border-top: none !important;
             }
 
             .header {
@@ -119,58 +141,62 @@
         <!-- TABEL DATA -->
         <table cellspacing="0" cellpadding="4" class="no-top-border text-center"
             style="white-space: nowrap; border: 1px solid #000; border-top: none;">
-            <tr>
-                <th style="width: 5%;">No</th>
-                <th style="width: 10%;">MID</th>
-                <th style="width: 30%;">Nama Barang</th>
-                <th style="width: 6%;">Uom</th>
-                <th style="width: 6%;">SAP</th>
-                <th style="width: 6%;">Fisik</th>
-                <th style="width: 7%;">Selisih</th>
-                <th style="width: 30%;">Keterangan</th>
-            </tr>
-
-            @foreach ($summaries as $dt)
-                <tr class="no-border-row">
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $dt->barang->mid_barang }}</td>
-                    <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
-                        {{ $dt->barang->nama_barang }}
-                    </td>
-                    <td>{{ $dt->barang->uom }}</td>
-                    <td style="padding-right: 5px;">
-                        {{ $dt->barang->stockOnHand->qty_soh ?? 0 }}
-                    </td>
-                    <td style="padding-right: 5px;">
-                        {{ rtrim(rtrim($dt->qty_fisik ?? 0, '0'), '.') }}
-                    </td>
-                    <td style="padding-right: 5px;">
-                        {{ rtrim(rtrim($dt->selisih ?? 0, '0'), '.') }}
-                    </td>
-                    <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
-                        <b>{{ $dt->keterangan }}</b>
-                    </td>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">No</th>
+                    <th style="width: 10%;">MID</th>
+                    <th style="width: 30%;">Nama Barang</th>
+                    <th style="width: 6%;">Uom</th>
+                    <th style="width: 6%;">SAP</th>
+                    <th style="width: 6%;">Fisik</th>
+                    <th style="width: 7%;">Selisih</th>
+                    <th style="width: 30%;">Keterangan</th>
                 </tr>
-            @endforeach
+            </thead>
 
-            {{-- Tambahan 5 baris kosong --}}
-            @php
-                $jumlahData = count($summaries);
-                $tambahan = $jumlahData < 20 ? 10 : 5;
-            @endphp
+            <tbody>
+                @foreach ($summaries as $dt)
+                    <tr class="no-border-row">
+                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $dt->barang->mid_barang }}</td>
+                        <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
+                            {{ $dt->barang->nama_barang }}
+                        </td>
+                        <td>{{ $dt->barang->uom }}</td>
+                        <td style="padding-right: 5px;">
+                            {{ $dt->barang->stockOnHand->qty_soh ?? 0 }}
+                        </td>
+                        <td style="padding-right: 5px;">
+                            {{ rtrim(rtrim($dt->qty_fisik ?? 0, '0'), '.') }}
+                        </td>
+                        <td style="padding-right: 5px;">
+                            {{ rtrim(rtrim($dt->selisih ?? 0, '0'), '.') }}
+                        </td>
+                        <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
+                            <b>{{ $dt->keterangan }}</b>
+                        </td>
+                    </tr>
+                @endforeach
 
-            @for ($i = 1; $i <= $tambahan; $i++)
-                <tr class="no-border-row">
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td style="text-align: left; padding-left: 5px;">&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td style="text-align: left; padding-left: 5px;">&nbsp;</td>
-                </tr>
-            @endfor
+                {{-- Tambahan 5 baris kosong --}}
+                @php
+                    $jumlahData = count($summaries);
+                    $tambahan = $jumlahData < 20 ? 10 : 5;
+                @endphp
+
+                @for ($i = 1; $i <= $tambahan; $i++)
+                    <tr class="no-border-row">
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td style="text-align: left; padding-left: 5px;">&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td style="text-align: left; padding-left: 5px;">&nbsp;</td>
+                    </tr>
+                @endfor
+            </tbody>
         </table>
 
         {{-- Table ttd --}}

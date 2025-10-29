@@ -341,7 +341,7 @@ class StockOpnameWfgController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Data sementara tersimpan.',
+            'message' => 'Data tersimpan sementara.',
             'data' => $temp,
         ]);
     }
