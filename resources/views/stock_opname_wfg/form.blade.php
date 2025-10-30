@@ -431,6 +431,26 @@
                             const sohid = item.soh_id ?? '';
                             const qtyBox = item.qty_box ?? 1;
 
+                            // Tentukan warna badge berdasarkan diff_status
+                            let badgeColor = '';
+                            let badgeHtml = '';
+
+                            if (item.diff_status === 'lebih') {
+                                badgeColor = 'warning';
+                            } else if (item.diff_status === 'kurang') {
+                                badgeColor = 'danger';
+                            } else if (item.diff_status === 'match') {
+                                badgeColor = 'success';
+                            }
+
+                            // Kalau ada diff_status, baru tampilkan badge
+                            if (item.diff_status) {
+                                badgeHtml =
+                                    `<span class="badge rounded-circle bg-${badgeColor}" style="width: 12px; height: 12px; display: inline-block;"></span>`;
+                            } else {
+                                badgeHtml = ''; // tidak tampil apa pun
+                            }
+
                             tableHtml += `
                                 <tr class="soh-row"
                                     data-id="${id}"
@@ -440,7 +460,8 @@
                                     
                                     <td class="text-center fw-semibold">${index + 1 + ((currentPage - 1) * response.per_page)}</td>
                                     <td>
-                                        <strong class="text-dark">${item.mid_barang ?? 'N/A'}</strong><br>
+                                        <strong class="text-dark me-3">${item.mid_barang ?? 'N/A'}</strong>
+                                        ${badgeHtml}<br>
                                         <small class="text-muted">${item.qty_box ?? 'N/A'}</small>
                                     </td>
                                     <td><input type="number" class="form-control qty_full text-end" min="0" placeholder="0"></td>
@@ -756,100 +777,194 @@
                         mode: 'check'
                     },
                     success: function(res) {
-                        if (res.status === 'success') {
-                            Swal.fire({
-                                title: 'Data lengkap!',
-                                text: 'Semua sudah valid. Simpan final?',
-                                icon: 'question',
-                                showCancelButton: true,
-                                confirmButtonText: 'Ya, Simpan Final',
-                                cancelButtonText: 'Batal',
-                            }).then(result => {
-                                if (result.isConfirmed) {
-                                    // Step 2: Finalisasi
-                                    $.ajax({
-                                        url: "{{ route('wfg.stock_opname.process') }}",
-                                        method: "POST",
-                                        data: {
-                                            _token: $('input[name="_token"]')
-                                                .val(),
-                                            tgl_opname,
-                                            principal,
-                                            mode: 'final'
-                                        },
-                                        success: function(finalRes) {
-                                            if (finalRes.status ===
-                                                'success') {
-                                                Swal.fire('Berhasil!',
-                                                    finalRes.message,
-                                                    'success');
-                                                loadBarangForOpname();
-                                            } else if (finalRes.status ===
-                                                'belum_opname') {
-                                                let listHtml =
-                                                    '<ul class="list-unstyled mb-0">';
-                                                finalRes.data.forEach(
-                                                    item => {
-                                                        listHtml +=
-                                                            `<li><strong>${item.mid_barang}</strong></li>`;
-                                                    });
-                                                listHtml += '</ul>';
+                            if (res.status === 'success') {
+                                let listHtml = '';
 
-                                                Swal.fire({
-                                                    title: 'Belum di-Opname!',
-                                                    html: `
-                                                        <p class="mb-3">${finalRes.message}</p>
-                                                        <div style="max-height: 400px; overflow-y: auto;">${listHtml}</div>
-                                                    `,
-                                                    icon: 'info',
-                                                    width: 600,
-                                                    confirmButtonText: 'OK'
-                                                });
-                                            } else {
-                                                Swal.fire('Gagal', finalRes
-                                                    .message, 'error');
-                                            }
-                                        },
-                                        error: () => Swal.fire('Error',
-                                            'Gagal menyimpan final.',
-                                            'error')
+                                if (res.data && res.data.length > 0) {
+                                    listHtml = `
+                                        <div style="max-height: 400px; overflow-y: auto; text-align: left;">
+                                            <ul class="list-unstyled mb-0">
+                                    `;
+                                    res.data.forEach(item => {
+                                        listHtml += `
+                                            <li class="mb-3">
+                                                <strong>${item.mid_barang}</strong>
+                                                <span class="text-muted">(Qty SAP: ${item.qty_sap})</span>
+                                                Selisih: <span class="text-danger fw-bold">${item.selisih}</span>
+                                            </li>
+                                        `;
                                     });
+                                    listHtml += `
+                                            </ul>
+                                        </div>
+                                    `;
                                 }
-                            });
-                        } else if (res.status === 'warning') {
-                            let listHtml = `
-                                <div style="max-height: 400px; overflow-y: auto; text-align: left;">
-                                    <ul class="list-unstyled mb-0">
-                            `;
-                            res.data.forEach(item => {
-                                listHtml += `
-                                    <li class="mb-3">
-                                        <strong>${item.mid_barang}</strong>
-                                        <span class="text-muted">(Qty SAP: ${item.qty_sap})</span>
-                                        Selisih: <span class="text-danger fw-bold">${item.selisih}</span>
-                                    </li>
-                                `;
-                            });
 
-                            listHtml += `
-                                    </ul>
-                                </div>
-                            `;
+                                Swal.fire({
+                                    title: res.data?.length > 0 ? 'Terdapat Selisih!' :
+                                        'Data Lengkap!',
+                                    html: `
+                                        <p class="mb-3">${res.message}</p>
+                                        ${listHtml}
+                                    `,
+                                    icon: res.data?.length > 0 ? 'info' : 'success',
+                                    width: 600,
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Ya, Simpan Final',
+                                    cancelButtonText: 'Perbaiki Data'
+                                }).then(result => {
+                                    if (result.isConfirmed) {
+                                        // Step 2: Finalisasi
+                                        $.ajax({
+                                            url: "{{ route('wfg.stock_opname.process') }}",
+                                            method: "POST",
+                                            data: {
+                                                _token: $('input[name="_token"]')
+                                                    .val(),
+                                                tgl_opname,
+                                                principal,
+                                                mode: 'final'
+                                            },
+                                            success: function(finalRes) {
+                                                if (finalRes.status ===
+                                                    'success') {
+                                                    Swal.fire('Berhasil!',
+                                                        finalRes.message,
+                                                        'success');
+                                                    loadBarangForOpname();
+                                                } else if (finalRes.status ===
+                                                    'belum_opname') {
+                                                    let listHtml =
+                                                        '<ul class="list-unstyled mb-0">';
+                                                    finalRes.data.forEach(
+                                                        item => {
+                                                            listHtml +=
+                                                                `<li><strong>${item.mid_barang}</strong></li>`;
+                                                        });
+                                                    listHtml += '</ul>';
 
-                            Swal.fire({
-                                title: 'Terdapat Selisih!',
-                                html: `
-                                    <p class="mb-3">${res.message}</p>
-                                    ${listHtml}
-                                `,
-                                icon: 'warning',
-                                width: 600,
-                                confirmButtonText: 'OK',
-                            });
-                        } else {
-                            Swal.fire('Gagal', res.message, 'error');
+                                                    Swal.fire({
+                                                        title: 'Belum di-Opname!',
+                                                        html: `
+                                                            <p class="mb-3">${finalRes.message}</p>
+                                                            <div style="max-height: 400px; overflow-y: auto;">${listHtml}</div>
+                                                        `,
+                                                        icon: 'info',
+                                                        width: 600,
+                                                        confirmButtonText: 'OK'
+                                                    });
+                                                } else {
+                                                    Swal.fire('Gagal', finalRes
+                                                        .message, 'error');
+                                                }
+                                            },
+                                            error: () => Swal.fire('Error',
+                                                'Gagal menyimpan final.',
+                                                'error')
+                                        });
+                                    }
+                                });
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
                         }
-                    },
+
+                        // success: function(res) {
+                        //     if (res.status === 'success') {
+                        //         Swal.fire({
+                        //             title: 'Data lengkap!',
+                        //             text: 'Semua sudah valid. Simpan final?',
+                        //             icon: 'question',
+                        //             showCancelButton: true,
+                        //             confirmButtonText: 'Ya, Simpan Final',
+                        //             cancelButtonText: 'Batal',
+                        //         }).then(result => {
+                        //             if (result.isConfirmed) {
+                        //                 // Step 2: Finalisasi
+                        //                 $.ajax({
+                        //                     url: "{{ route('wfg.stock_opname.process') }}",
+                        //                     method: "POST",
+                        //                     data: {
+                        //                         _token: $('input[name="_token"]')
+                        //                             .val(),
+                        //                         tgl_opname,
+                        //                         principal,
+                        //                         mode: 'final'
+                        //                     },
+                        //                     success: function(finalRes) {
+                        //                         if (finalRes.status ===
+                        //                             'success') {
+                        //                             Swal.fire('Berhasil!',
+                        //                                 finalRes.message,
+                        //                                 'success');
+                        //                             loadBarangForOpname();
+                        //                         } else if (finalRes.status ===
+                        //                             'belum_opname') {
+                        //                             let listHtml =
+                        //                                 '<ul class="list-unstyled mb-0">';
+                        //                             finalRes.data.forEach(
+                        //                                 item => {
+                        //                                     listHtml +=
+                        //                                         `<li><strong>${item.mid_barang}</strong></li>`;
+                        //                                 });
+                        //                             listHtml += '</ul>';
+
+                        //                             Swal.fire({
+                        //                                 title: 'Belum di-Opname!',
+                        //                                 html: `
+                    //                                     <p class="mb-3">${finalRes.message}</p>
+                    //                                     <div style="max-height: 400px; overflow-y: auto;">${listHtml}</div>
+                    //                                 `,
+                        //                                 icon: 'info',
+                        //                                 width: 600,
+                        //                                 confirmButtonText: 'OK'
+                        //                             });
+                        //                         } else {
+                        //                             Swal.fire('Gagal', finalRes
+                        //                                 .message, 'error');
+                        //                         }
+                        //                     },
+                        //                     error: () => Swal.fire('Error',
+                        //                         'Gagal menyimpan final.',
+                        //                         'error')
+                        //                 });
+                        //             }
+                        //         });
+                        //     } else if (res.status === 'warning') {
+                        //         let listHtml = `
+                    //             <div style="max-height: 400px; overflow-y: auto; text-align: left;">
+                    //                 <ul class="list-unstyled mb-0">
+                    //         `;
+                        //         res.data.forEach(item => {
+                        //             listHtml += `
+                    //                 <li class="mb-3">
+                    //                     <strong>${item.mid_barang}</strong>
+                    //                     <span class="text-muted">(Qty SAP: ${item.qty_sap})</span>
+                    //                     Selisih: <span class="text-danger fw-bold">${item.selisih}</span>
+                    //                 </li>
+                    //             `;
+                        //         });
+
+                        //         listHtml += `
+                    //                 </ul>
+                    //             </div>
+                    //         `;
+
+                        //         Swal.fire({
+                        //             title: 'Terdapat Selisih!',
+                        //             html: `
+                    //                 <p class="mb-3">${res.message}</p>
+                    //                 ${listHtml}
+                    //             `,
+                        //             icon: 'warning',
+                        //             width: 600,
+                        //             confirmButtonText: 'OK',
+                        //         });
+                        //     } else {
+                        //         Swal.fire('Gagal', res.message, 'error');
+                        //     }
+                        // }
+                        ,
                     error: () => Swal.fire('Error', 'Gagal memeriksa progres.', 'error')
                 });
             });

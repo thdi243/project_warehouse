@@ -608,22 +608,46 @@ class StockOpnameWfgController extends Controller
             $grouped[$barangId]['keterangan'] = $keterangan;
         }
 
-        // 🔹 Kalau mode = check → stop di sini
+        // Kalau mode = check → stop di sini
         if ($mode === 'check') {
-            if (count($selisihList) > 0) {
-                return response()->json([
-                    'status' => 'warning',
-                    'message' => 'Ada selisih, harap cek data kembali atau isi keterangan!',
-                    'data' => $selisihList,
-                ]);
-            }
             return response()->json([
                 'status' => 'success',
-                'message' => 'Semua data opname sudah lengkap & valid.',
+                'message' => count($selisihList) > 0
+                    ? 'Ada selisih pada beberapa barang. Silakan periksa kembali sebelum finalisasi.'
+                    : 'Semua data opname sudah lengkap & valid.',
+                'data' => $selisihList,
             ]);
         }
 
-        // 🔹 Kalau mode = final → lanjut simpan SOP
+        if ($mode === 'final') {
+            $selisihTanpaKet = collect($grouped)->filter(function ($g) {
+                $selisih = $g['qty_fisik'] - $g['qty_sap'];
+                return $selisih != 0 && empty($g['keterangan']);
+            })->values()->all();
+
+            if (count($selisihTanpaKet) > 0) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Masih ada barang dengan selisih namun belum diberikan keterangan. Mohon isi keterangan terlebih dahulu sebelum finalisasi.',
+                    'data'    => $selisihTanpaKet,
+                ]);
+            }
+        }
+
+        if ($mode === 'final' && $user->jabatan === 'operator') {
+            $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)
+                ->where('principal', $principalFilter)
+                ->first();
+
+            if ($existingSop) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Anda sudah melakukan opname hari ini untuk principal ' . $principalFilter . '. Tidak dapat melakukan opname lebih dari sekali per hari. Hubungi Foreman!',
+                ]);
+            }
+        }
+
+        // Kalau mode = final → lanjut simpan SOP
         try {
             DB::beginTransaction();
 
@@ -1023,7 +1047,7 @@ class StockOpnameWfgController extends Controller
             ->whereDate('tgl_opname', $today)
             ->groupBy('soh_id');
 
-        // 🔹 Ambil data SOH + summary opname
+        // Ambil data SOH + summary opname
         $finalQuery = DB::table('wfg_soh')
             ->join('wfg_barang', 'wfg_soh.barang_id', '=', 'wfg_barang.id')
             ->leftJoinSub($tempSummarySubquery, 'temp_sum', 'wfg_soh.id', '=', 'temp_sum.soh_id')
@@ -1059,9 +1083,9 @@ class StockOpnameWfgController extends Controller
             });
         }
 
-        // 🔹 Urutkan: data yang punya selisih di atas
+        // Urutkan: data yang punya selisih di atas
         $finalQuery
-            ->orderByDesc('has_diff') // yang punya selisih tetap di atas
+            ->orderByDesc('has_diff')
             ->orderByDesc(DB::raw('ABS(COALESCE(temp_sum.total_summary, 0) - COALESCE(wfg_soh.qty_soh, 0))')) // urutkan berdasarkan besar selisih
             ->orderBy('wfg_barang.mid_barang', 'asc');
 
@@ -1071,12 +1095,29 @@ class StockOpnameWfgController extends Controller
         $items = $finalQuery->skip(($currentPage - 1) * $perPage)->take($perPage)->get();
 
         $mappedItems = $items->map(function ($item) {
+            $totalSummary = (int) $item->total_summary;
+            $qtySoh = (int) $item->qty_soh;
+            $selisih = (int) $item->selisih;
+
+            // Kalau belum ada data temp sama sekali (total_summary = 0 dan belum diinput), kosongin status diff
+            $status = null;
+            if ($item->total_summary !== null && $item->total_summary != 0) {
+                if ($selisih > 0) {
+                    $status = 'lebih';
+                } elseif ($selisih < 0) {
+                    $status = 'kurang';
+                } else {
+                    $status = 'match';
+                }
+            }
+
             return (object) [
                 'id' => $item->soh_id,
                 'soh_id' => $item->soh_id,
                 'barang_id' => $item->barang_id,
                 'qty_soh' => (int) $item->qty_soh,
                 'selisih' => (int) $item->selisih,
+                'diff_status' => $status,
                 'last_updated' => $item->last_updated,
                 'mid_barang' => $item->mid_barang,
                 'nama_barang' => $item->nama_barang,
@@ -1102,7 +1143,6 @@ class StockOpnameWfgController extends Controller
             'total' => $paginator->total(),
         ]);
     }
-
 
     public function getDataTempBatch(Request $request)
     {
@@ -1830,7 +1870,6 @@ class StockOpnameWfgController extends Controller
             ], 500);
         }
     }
-
 
     // Export SOP Report dengan pengecekan approval
     public function exportPdfSOPWFG(Request $request, $asContent = false)
