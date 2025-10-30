@@ -109,7 +109,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/sop/store', [StockOpnameWfgController::class, 'store'])->name('wfg.stock_opname.store');
                 Route::post('/sop/save-temp', [StockOpnameWfgController::class, 'saveTemp'])->name('wfg.stock_opname.save-temp');
                 Route::post('/sop/save-new-temp', [StockOpnameWfgController::class, 'saveTempNew'])->name('wfg.stock_opname.save-temp-new');
-                Route::post('/sop/save-final', [StockOpnameWfgController::class, 'finalizeOpname'])->name('wfg.stock_opname.save-final');
+                Route::post('/sop/save-final', [StockOpnameWfgController::class, 'processOpname'])->name('wfg.stock_opname.process');
                 Route::post('/sop/update-temp', [StockOpnameWfgController::class, 'updateTempBatch'])->name('wfg.stock_opname.update-temp');
                 Route::post('/sop/update-temp-new', [StockOpnameWfgController::class, 'updateNewTemp'])->name('wfg.stock_opname.update-temp-new');
                 Route::delete('/sop/delete-temp/{id}', [StockOpnameWfgController::class, 'destroyTemp'])->name('wfg.stock_opname.delete-temp');
@@ -139,6 +139,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/soh/list', [StockOnHandWfgController::class, 'getList'])->name('wfg.stock_opname.soh.list');
                 Route::get('/soh/show', [StockOnHandWfgController::class, 'show'])->name('wfg.stock_opname.soh.show');
                 Route::get('/soh/getBarang', [StockOnHandWfgController::class, 'getBarang'])->name('wfg.stock_opname.soh.getBarang');
+                Route::delete('/soh/reset-all', [StockOnHandWfgController::class, 'resetAll'])->name('wfg.stock_opname.soh.reset_all');
             });
         });
     });

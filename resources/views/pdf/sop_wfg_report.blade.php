@@ -217,44 +217,16 @@
             {{-- ttd --}}
             <tr>
                 <td class="no-border-row"
-                    style="height: 100px; border-top: none !important; border-bottom: none !important;">
-                    <img src="{{ $approvers[0]['ttd'] }}" width="80" alt="Tanda Tangan Operator">
-
-                    {{-- @if (isset($approvers[0]['ttd']))
-                        @php
-                            $path0 = str_replace(asset(''), '', $approvers[0]['ttd']);
-                            $localPath0 = public_path($path0);
-                        @endphp
-                        <img src="{{ file_exists($localPath0) ? $localPath0 : public_path('storage/images/ttd/dummy.jpg') }}"
-                            width="80" alt="Tanda Tangan Stock Control">
-                    @endif --}}
+                    style="height: 100px; border-top: none !important; border-bottom: none !important; text-align:center;">
+                    <img src="{{ $approvers[0]['ttd'] }}" width="80" alt="TTD {{ $approvers[0]['nama'] }}">
                 </td>
-
                 <td class="no-border-row"
-                    style="height: 100px; border-top: none !important; border-bottom: none !important;">
-                    <img src="{{ $approvers[1]['ttd'] }}" width="80" alt="Tanda Tangan Operator">
-
-                    {{-- @if (isset($approvers[1]['ttd']))
-                        @php
-                            $path1 = str_replace(asset(''), '', $approvers[1]['ttd']);
-                            $localPath1 = public_path($path1);
-                        @endphp
-                        <img src="{{ file_exists($localPath1) ? $localPath1 : public_path('storage/images/ttd/dummy.jpg') }}"
-                            width="80" alt="Tanda Tangan Foreman">
-                    @endif --}}
+                    style="height: 100px; border-top: none !important; border-bottom: none !important; text-align:center;">
+                    <img src="{{ $approvers[1]['ttd'] }}" width="80" alt="TTD {{ $approvers[1]['nama'] }}">
                 </td>
-
                 <td class="no-border-row"
-                    style="height: 100px; border-top: none !important; border-bottom: none !important;">
-                    <img src="{{ $approvers[2]['ttd'] }}" width="80" alt="Tanda Tangan Operator">
-                    {{-- @if (isset($approvers[2]['ttd']))
-                        @php
-                            $path2 = str_replace(asset(''), '', $approvers[2]['ttd']);
-                            $localPath2 = public_path($path2);
-                        @endphp
-                        <img src="{{ file_exists($localPath2) ? $localPath2 : public_path('storage/images/ttd/dummy.jpg') }}"
-                            width="80" alt="Tanda Tangan Supervisor">
-                    @endif --}}
+                    style="height: 100px; border-top: none !important; border-bottom: none !important; text-align:center;">
+                    <img src="{{ $approvers[2]['ttd'] }}" width="80" alt="TTD {{ $approvers[2]['nama'] }}">
                 </td>
             </tr>
 

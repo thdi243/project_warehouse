@@ -18,7 +18,7 @@ return new class extends Migration
             $table->integer('qty_full');
             $table->integer('qty_receh');
             $table->integer('summary');
-            $table->foreignId('created_by')->constrained('users')->onDelete('cascade'); // siapa yang input
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->date('tgl_opname')->nullable();
             $table->string('principal')->nullable();
             $table->timestamps();

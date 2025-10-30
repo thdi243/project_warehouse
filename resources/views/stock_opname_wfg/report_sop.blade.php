@@ -111,7 +111,8 @@
                         {{-- Filter Tanggal --}}
                         <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-4 @endif col-12">
                             {{-- <label for="filter_tanggal" class="form-label fw-semibold">Filter Tanggal</label> --}}
-                            <div class="input-group">
+                            <div>
+                                <label class="form-label" for="filter_tanggal">Tanggal</label>
                                 <input type="date" id="filter_tanggal" class="form-control"
                                     value="{{ now()->toDateString() }}">
                             </div>
@@ -219,40 +220,6 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Modal export pdf --}}
-    <div class="modal fade" id="exportDateModal" tabindex="-1" role="dialog" aria-labelledby="exportDateModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-md" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exportDateModalLabel">Pilih Tanggal Export</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="export_tanggal" class="form-label">Tanggal Opname</label>
-                        <input type="date" id="export_tanggal" class="form-control" required>
-                    </div>
-                    @if (Auth::user()->jabatan != 'operator')
-                        <div class="mb-3">
-                            <label for="principal_export" class="form-label fw-semibold">Filter Principal</label>
-                            <select id="principal_export" class="form-select">
-                                @foreach ($principals as $p)
-                                    <option value="{{ $p }}">{{ $p }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    @endif
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-primary" id="btn_confirm_export">Export PDF</button>
                 </div>
             </div>
         </div>
@@ -924,13 +891,15 @@
             }
 
             // Export PDF
-            $('#btn_export').on('click', function() {
-                $('#exportDateModal').modal('show');
-            });
+            // $('#btn_export').on('click', function() {
+            //     $('#exportDateModal').modal('show');
+            // });
 
-            $('#btn_confirm_export').on('click', async function() {
-                const tanggal = $('#export_tanggal').val();
-                const principal = $('#principal_export').val();
+            $('#btn_export').on('click', async function() {
+                const tanggal = $('#filter_tanggal').val();
+
+                // console.log(tanggal);
+                const principal = $('#principal_filter').val();
 
                 if (!tanggal) {
                     Swal.fire({
