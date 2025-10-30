@@ -460,8 +460,10 @@
                                     
                                     <td class="text-center fw-semibold">${index + 1 + ((currentPage - 1) * response.per_page)}</td>
                                     <td>
-                                        <strong class="text-dark me-3">${item.mid_barang ?? 'N/A'}</strong>
-                                        ${badgeHtml}<br>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <strong class="text-dark">${item.mid_barang ?? 'N/A'}</strong>
+                                            ${badgeHtml}
+                                        </div>
                                         <small class="text-muted">${item.qty_box ?? 'N/A'}</small>
                                     </td>
                                     <td><input type="number" class="form-control qty_full text-end" min="0" placeholder="0"></td>
