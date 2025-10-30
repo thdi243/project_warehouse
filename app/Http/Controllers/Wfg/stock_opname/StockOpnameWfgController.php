@@ -10,6 +10,7 @@ use App\Mail\SendWfgSopReportMail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
@@ -17,11 +18,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 use App\Models\Wfg\stock_opname\WfgSopModel;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
+use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Wfg\stock_opname\WfgSopTempModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
 use App\Models\Wfg\stock_opname\WfgSopDetailModel;
 use App\Models\Wfg\stock_opname\WfgSopNewTempModel;
 use App\Models\Wfg\stock_opname\WfgSopApprovalModel;
+use App\Models\Wfg\stock_opname\WfgSopTempNoteModel;
 use App\Models\Wfg\stock_opname\WfgSopSummariesModel;
 
 class StockOpnameWfgController extends Controller
@@ -285,11 +288,13 @@ class StockOpnameWfgController extends Controller
     public function saveTemp(Request $request)
     {
         $request->validate([
+            'mode' => 'required|in:qty,note,both',
             'soh_id' => 'required|exists:wfg_soh,id',
             'barang_id' => 'required|exists:wfg_barang,id',
-            'qty_full' => 'required|integer|min:0',
-            'qty_receh' => 'required|integer|min:0',
-            'summary' => 'required|integer|min:0',
+            'qty_full' => 'nullable|integer|min:0',
+            'qty_receh' => 'nullable|integer|min:0',
+            'summary' => 'nullable|integer|min:0',
+            'keterangan' => 'nullable|string|max:255'
         ]);
 
         $barang = BarangWfgModel::find($request->barang_id);
@@ -305,7 +310,6 @@ class StockOpnameWfgController extends Controller
         // 🔍 Tentukan principal sesuai role
         if ($user->jabatan === 'operator') {
             $principal = $user->principal?->principal ?? null;
-
             if (empty($principal)) {
                 return response()->json([
                     'status' => false,
@@ -315,35 +319,88 @@ class StockOpnameWfgController extends Controller
         } else {
             $principal = $request->input('principal', $user->principal ?? null);
         }
-        // if (!$principal) {
-        //     return response()->json([
-        //         'status' => 'error',
-        //         'message' => 'Principal tidak ditemukan untuk user ini.',
-        //     ]);
-        // }
 
-        $qtyFull = $request->qty_full;
-        $qtyReceh = $request->qty_receh;
-        $qtyBox = $barang->qty_box ?? 0;
+        $keterangan = trim($request->keterangan ?? '');
 
-        $summary = ($qtyFull * $qtyBox) + $qtyReceh;
+        // ========================
+        //  MODE QTY
+        // ========================
+        if ($request->mode === 'qty' || $request->mode === 'both') {
+            $qtyFull = $request->qty_full ?? 0;
+            $qtyReceh = $request->qty_receh ?? 0;
+            $qtyBox = $barang->qty_box ?? 0;
+            $summary = ($qtyFull * $qtyBox) + $qtyReceh;
 
-        $temp = WfgSopTempModel::create([
-            'soh_id' => $request->soh_id,
-            'barang_id' => $request->barang_id,
-            'qty_full' => $request->qty_full,
-            'qty_receh' => $request->qty_receh,
-            'summary' => $summary,
-            'created_by' => Auth::id() ?? 1,
-            'tgl_opname' => now(),
-            'principal' => $principal,
-        ]);
+            if ($qtyFull == 0 && $qtyReceh == 0) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Qty Full atau Qty Receh harus diisi.',
+                ], 422);
+            }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Data tersimpan sementara.',
-            'data' => $temp,
-        ]);
+            $temp = WfgSopTempModel::create([
+                'soh_id' => $request->soh_id,
+                'barang_id' => $request->barang_id,
+                'qty_full' => $qtyFull,
+                'qty_receh' => $qtyReceh,
+                'summary' => $summary,
+                'created_by' => Auth::id() ?? 1,
+                'tgl_opname' => now(),
+                'principal' => $principal,
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data qty tersimpan sementara (histori baru dibuat).',
+                'data' => $temp,
+            ]);
+        }
+
+        // ========================
+        //  MODE NOTE
+        // ========================
+        if ($request->mode === 'note' || $request->mode === 'both') {
+            if ($keterangan === '') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Keterangan tidak boleh kosong pada mode note.',
+                ], 422);
+            }
+
+            // Cek apakah sudah ada catatan di hari yang sama
+            $tempNote = WfgSopTempNoteModel::where('soh_id', $request->soh_id)
+                ->where('barang_id', $request->barang_id)
+                ->whereDate('tgl_opname', now()->toDateString())
+                ->first();
+
+            if ($tempNote) {
+                // Update catatan jika sudah ada
+                $tempNote->update([
+                    'catatan'    => $keterangan,
+                    'updated_at' => now(),
+                ]);
+
+                $message = 'Catatan diperbarui (update data hari ini).';
+            } else {
+                // Create baru kalau belum ada
+                $tempNote = WfgSopTempNoteModel::create([
+                    'soh_id'     => $request->soh_id,
+                    'barang_id'  => $request->barang_id,
+                    'catatan'    => $keterangan,
+                    'created_by' => Auth::id() ?? 1,
+                    'tgl_opname' => now(),
+                    'principal'  => $principal,
+                ]);
+
+                $message = 'Catatan tersimpan sementara (histori note baru dibuat).';
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => $message,
+                'data' => $tempNote,
+            ]);
+        }
     }
 
     public function saveTempNew(Request $request)
@@ -352,10 +409,12 @@ class StockOpnameWfgController extends Controller
             'mid_barang' => 'required|string|max:100',
             'nama_barang' => 'required|string|max:255',
             'uom' => 'required|string|max:255',
-            'qty_box' => 'nullable|integer|min:1',
+            'qty_box' => 'required|integer|min:1',
+            'unrest' => 'required|integer|min:0',
+            'qi' => 'nullable|integer|min:0',
+            'blocked' => 'nullable|integer|min:0',
             'qty_full' => 'required|integer|min:0',
             'qty_receh' => 'required|integer|min:0',
-            'summary' => 'required|integer|min:0',
         ]);
 
         $user = Auth::user();
@@ -386,12 +445,40 @@ class StockOpnameWfgController extends Controller
             ]
         );
 
-        // 🔹 Simpan ke temp opname
+        // 🔹 Hitung summary
         $summary = ($request->qty_full * $barang->qty_box) + $request->qty_receh;
 
+        // 🔹 Simpan juga ke StockOnHand (jika belum ada)
+        $soh = StockOnHandModel::firstOrCreate(
+            [
+                'barang_id' => $barang->id,
+                'principal' => $principal
+            ],
+            [
+                'user_id' => Auth::id(),
+                'qty_soh' => $summary,
+                'qty_unrest' => $request->unrest ?? 0,
+                'qty_qi' => $request->qi ?? 0,
+                'qty_block' => $request->blocked ?? 0,
+                'last_updated' => now(),
+            ]
+        );
+
+        // 🔹 Jika sudah ada, update data-nya
+        if (!$soh->wasRecentlyCreated) {
+            $soh->update([
+                'qty_soh' => $summary,
+                'qty_unrest' => $request->unrest ?? $soh->qty_unrest,
+                'qty_qi' => $request->qi ?? $soh->qty_qi,
+                'qty_block' => $request->blocked ?? $soh->qty_block,
+                'last_updated' => now(),
+            ]);
+        }
+
+        // 🔹 Simpan ke temp opname
         $temp = WfgSopTempModel::create([
             'barang_id' => $barang->id,
-            'soh_id' => null, // karena tidak ada di SOH
+            'soh_id' => $soh->id, // karena belum ada di SOH
             'qty_full' => $request->qty_full,
             'qty_receh' => $request->qty_receh,
             'summary' => $summary,
@@ -403,120 +490,96 @@ class StockOpnameWfgController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Barang baru berhasil ditambahkan dan disimpan sementara.',
+            'message' => 'Barang baru berhasil ditambahkan, disimpan sementara, dan dicatat di SOH.',
             'data' => [
                 'barang' => $barang,
                 'temp' => $temp,
+                'soh' => $soh,
             ],
         ]);
     }
 
-    public function finalizeOpname(Request $request)
+    public function processOpname(Request $request)
     {
         $request->validate([
             'tgl_opname' => 'required|date',
+            'mode' => 'required|in:check,final',
         ]);
 
+        $mode = $request->mode;
         $user = Auth::user();
-
-        $userId = $user->id;
         $tglOpname = $request->tgl_opname;
         $keteranganInput = $request->input('keterangan', []);
 
-        // Tentukan principal active:
+        // 🔹 Tentukan principal
         if ($user->jabatan === 'operator') {
-            // ambil nilai principal dari relasi user (sesuaikan nama field di UserPrincipalModel)
             $principalFilter = optional($user->principal)->principal ?? null;
-
             if (empty($principalFilter)) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Akun operator belum memiliki principal. Hubungi foreman untuk melengkapi data user.',
+                    'message' => 'Akun operator belum memiliki principal.',
                 ], 403);
             }
         } else {
-            // non-operator: wajib mengirim principal (sesuai permintaan)
             $principalFilter = $request->input('principal');
             if (empty($principalFilter)) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Principal harus dipilih sebelum menyimpan SOP final.',
+                    'message' => 'Principal harus dipilih.',
                 ], 422);
             }
         }
 
-        if ($user->jabatan === 'operator') {
-            $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)
-                ->where('principal', $principalFilter)
-                ->first();
-
-            if ($existingSop) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Anda sudah melakukan opname hari ini untuk principal ' . $principalFilter . '. Tidak dapat melakukan opname lebih dari sekali per hari. Hubungi Foreman!',
-                ]);
-            }
-        }
-
-        // Ambil barang sesuai principal dan tanggal (SOH hari ini yang punya principal tersebut)
-        $barangHariIni = StockOnHandModel::with('barang:id,mid_barang,nama_barang,principal')
-            ->whereHas('barang', function ($q) use ($principalFilter) {
-                $q->where('principal', $principalFilter);
-            })
-            ->whereDate('last_updated', Carbon::today())
-            ->get()
-            ->pluck('barang');
-
-        // Ambil data temp sesuai scope:
-        if ($user->jabatan === 'operator') {
-            $tempData = WfgSopTempModel::where('created_by', $userId)
-                ->where('tgl_opname', $tglOpname)
-                ->where('principal', $principalFilter)
-                ->get();
-        } else {
-            $tempData = WfgSopTempModel::where('tgl_opname', $tglOpname)
-                ->where('principal', $principalFilter)
-                ->get();
-        }
+        // 🔹 Ambil temp data
+        $tempData = WfgSopTempModel::query()
+            ->when(
+                $user->jabatan === 'operator',
+                fn($q) =>
+                $q->where('created_by', $user->id)
+            )
+            ->where('tgl_opname', $tglOpname)
+            ->where('principal', $principalFilter)
+            ->get();
 
         if ($tempData->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Data sementara masih kosong, isi terlebih dahulu.',
+                'message' => 'Data sementara masih kosong.',
             ]);
         }
 
-        // Cek apakah ada barang yang belum di opname — hanya dengan barang yang di SOH untuk principal ini
+        // 🔹 Ambil barang SOH hari ini
+        $barangHariIni = StockOnHandModel::with('barang:id,mid_barang,nama_barang,principal')
+            ->whereHas('barang', fn($q) => $q->where('principal', $principalFilter))
+            ->whereDate('last_updated', Carbon::today())
+            ->get();
+
+        // 🔹 Cek yang belum di-opname
         $barangBelumOpname = [];
-        foreach ($barangHariIni as $barang) {
-            $found = $tempData->firstWhere('barang_id', $barang->id);
-            if (!$found) {
+        foreach ($barangHariIni as $soh) {
+            if (!$tempData->firstWhere('barang_id', $soh->barang->id)) {
                 $barangBelumOpname[] = [
-                    'mid_barang' => $barang->mid_barang,
-                    'nama_barang' => $barang->nama_barang,
+                    'mid_barang'  => $soh->barang->mid_barang,
+                    'nama_barang' => $soh->barang->nama_barang,
                 ];
             }
         }
 
-        if (count($barangBelumOpname) > 0) {
+        if ($mode === 'final' && count($barangBelumOpname) > 0) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Masih ada barang yang belum di opname untuk principal ini.',
-                'data' => $barangBelumOpname,
+                'status'  => 'belum_opname',
+                'message' => 'Masih ada barang yang belum di-opname.',
+                'data'    => $barangBelumOpname,
             ]);
         }
 
-        // 🔍 Cek selisih terlebih dahulu (grouped by barang_id)
+        // 🔹 Cek selisih
         $grouped = [];
         foreach ($tempData as $temp) {
             $barangId = $temp->barang_id;
-            if (!isset($grouped[$barangId])) {
-                // cari SOH terkait (mungkin null jika manual add tanpa soh_id)
-                $soh = null;
-                if (!empty($temp->soh_id)) {
-                    $soh = StockOnHandModel::find($temp->soh_id);
-                }
+            $soh = $temp->soh_id ? StockOnHandModel::find($temp->soh_id) : null;
 
+            if (!isset($grouped[$barangId])) {
                 $grouped[$barangId] = [
                     'barang_id' => $barangId,
                     'mid_barang' => optional($temp->barang)->mid_barang,
@@ -528,54 +591,56 @@ class StockOpnameWfgController extends Controller
             $grouped[$barangId]['qty_fisik'] += (int) $temp->summary;
         }
 
-        // Hitung selisih dan cek keterangan
+        $tempNotes = WfgSopTempNoteModel::where('tgl_opname', $tglOpname)
+            ->pluck('catatan', 'barang_id'); // hasil: [barang_id => keterangan]
+
         $selisihList = [];
         foreach ($grouped as $barangId => $g) {
             $selisih = $g['qty_fisik'] - $g['qty_sap'];
-            $keterangan = $keteranganInput[$barangId] ?? null;
+            $keterangan = $keteranganInput[$barangId]
+                ?? ($tempNotes[$barangId] ?? null);
 
             if ($selisih != 0 && empty($keterangan)) {
                 $g['selisih'] = $selisih;
                 $selisihList[] = $g;
             }
 
-            // Simpan keterangan di grouped untuk nanti disimpan ke summaries
             $grouped[$barangId]['keterangan'] = $keterangan;
         }
-        // Operator hanya boleh submit 1x per hari
 
-
-
-        if (count($selisihList) > 0) {
+        // 🔹 Kalau mode = check → stop di sini
+        if ($mode === 'check') {
+            if (count($selisihList) > 0) {
+                return response()->json([
+                    'status' => 'warning',
+                    'message' => 'Ada selisih, harap cek data kembali atau isi keterangan!',
+                    'data' => $selisihList,
+                ]);
+            }
             return response()->json([
-                'status' => 'warning',
-                'message' => 'Terdapat selisih antara Qty Fisik dan SAP, harap isi keterangan!',
-                'data' => $selisihList,
+                'status' => 'success',
+                'message' => 'Semua data opname sudah lengkap & valid.',
             ]);
         }
 
-        // Simpan final SOP
+        // 🔹 Kalau mode = final → lanjut simpan SOP
         try {
             DB::beginTransaction();
 
             $sop = WfgSopModel::create([
                 'tgl_opname' => $tglOpname,
-                'user_id' => $userId,
+                'user_id' => $user->id,
                 'status' => 'draft',
                 'principal' => $principalFilter,
             ]);
 
-            // summaries
-            foreach ($grouped as $barangId => $g) {
+            foreach ($grouped as $g) {
                 $selisih = $g['qty_fisik'] - $g['qty_sap'];
-
-                if ($selisih > 0) $status = 'lebih';
-                elseif ($selisih < 0) $status = 'kurang';
-                else $status = 'match';
+                $status = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
 
                 WfgSopSummariesModel::create([
                     'sop_id' => $sop->id,
-                    'barang_id' => $barangId,
+                    'barang_id' => $g['barang_id'],
                     'qty_fisik' => $g['qty_fisik'],
                     'qty_sistem' => $g['qty_sap'],
                     'selisih' => $selisih,
@@ -584,7 +649,6 @@ class StockOpnameWfgController extends Controller
                 ]);
             }
 
-            // details
             foreach ($tempData as $temp) {
                 WfgSopDetailModel::create([
                     'sop_id' => $sop->id,
@@ -594,35 +658,39 @@ class StockOpnameWfgController extends Controller
                 ]);
             }
 
-            // Hapus temp: 
-            // - operator: hapus hanya yang dibuat oleh operator itu untuk tanggal/principal
-            // - non-operator: hapus semua temp untuk tanggal/principal (karena admin finalize group)
-            if ($user->jabatan === 'operator') {
-                WfgSopTempModel::where('created_by', $userId)
-                    ->where('tgl_opname', $tglOpname)
-                    ->where('principal', $principalFilter)
-                    ->delete();
-            } else {
-                WfgSopTempModel::where('tgl_opname', $tglOpname)
-                    ->where('principal', $principalFilter)
-                    ->delete();
-            }
+            WfgSopTempModel::where('tgl_opname', $tglOpname)
+                ->where('principal', $principalFilter)
+                ->when(
+                    $user->jabatan === 'operator',
+                    fn($q) =>
+                    $q->where('created_by', $user->id)
+                )
+                ->delete();
+
+            WfgSopTempNoteModel::where('tgl_opname', $tglOpname)
+                ->where('principal', $principalFilter)
+                ->when(
+                    $user->jabatan === 'operator',
+                    fn($q) =>
+                    $q->where('created_by', $user->id)
+                )
+                ->delete();
 
             DB::commit();
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Data opname berhasil disimpan sebagai final.',
-                'sop_id' => $sop->id,
+                'message' => 'Data opname berhasil disimpan final.',
             ]);
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal menyimpan data final: ' . $th->getMessage(),
+                'message' => 'Gagal simpan data: ' . $th->getMessage(),
             ], 500);
         }
     }
+
 
     /**
      * Edit Opname
@@ -938,60 +1006,45 @@ class StockOpnameWfgController extends Controller
         $user = Auth::user();
         $searchTerm = $request->input('search');
         $principalFilter = $request->input('principal');
-        $perPage = 25;
+        $perPage = 150;
         $today = now()->toDateString();
 
         // Tentukan principal filter
-        if ($user->jabatan === 'operator') {
-            $principalToFilter = $user->principal?->principal;
-        } else {
-            $principalToFilter = $principalFilter;
-        }
+        $principalToFilter = $user->jabatan === 'operator'
+            ? $user->principal?->principal
+            : $principalFilter;
 
-        // Ambil data SOH yang belum ada opname hari ini
-        $sohPendingQuery = StockOnHandModel::select([
-            'wfg_soh.id AS soh_id',
-            'wfg_soh.barang_id',
-            'wfg_soh.qty_soh',
-            DB::raw("NULL AS temp_id"),
-            'wfg_soh.last_updated',
-        ])
-            ->leftJoin('wfg_barang', 'wfg_soh.barang_id', '=', 'wfg_barang.id')
-            ->whereDate('wfg_soh.last_updated', $today);
-
-        // Ambil data barang baru (belum punya SOH)
-        $sopTempQuery = WfgSopTempModel::select([
-            DB::raw("NULL AS soh_id"),
-            'wfg_sop_temp.barang_id',
-            DB::raw("NULL AS qty_soh"),
-            'wfg_sop_temp.id AS temp_id',
-            DB::raw("wfg_sop_temp.updated_at AS last_updated"),
-        ])
-            ->whereNull('wfg_sop_temp.soh_id')
-            ->whereDate('wfg_sop_temp.tgl_opname', $today)
-            ->leftJoin('wfg_barang', 'wfg_sop_temp.barang_id', '=', 'wfg_barang.id');
-
-        // Gabungkan dua sumber data
-        $dataQuery = $sohPendingQuery->union($sopTempQuery);
-
-        $bindings = $dataQuery->getBindings();
-        $sql = $dataQuery->toSql();
-
-        // 🔹 Join ulang untuk ambil detail barang & filter
-        $finalQuery = DB::table(DB::raw("({$sql}) AS union_result"))
-            ->setBindings($bindings)
-            ->join('wfg_barang', 'union_result.barang_id', '=', 'wfg_barang.id')
+        // 🔹 Subquery: total summary per SOH (hari ini)
+        $tempSummarySubquery = DB::table('wfg_sop_temp')
             ->select(
-                'union_result.soh_id',
-                'union_result.temp_id',
-                'union_result.barang_id',
-                'union_result.qty_soh',
-                'union_result.last_updated',
+                'soh_id',
+                DB::raw('SUM(summary) AS total_summary')
+            )
+            ->whereDate('tgl_opname', $today)
+            ->groupBy('soh_id');
+
+        // 🔹 Ambil data SOH + summary opname
+        $finalQuery = DB::table('wfg_soh')
+            ->join('wfg_barang', 'wfg_soh.barang_id', '=', 'wfg_barang.id')
+            ->leftJoinSub($tempSummarySubquery, 'temp_sum', 'wfg_soh.id', '=', 'temp_sum.soh_id')
+            ->select(
+                'wfg_soh.id AS soh_id',
+                'wfg_soh.barang_id',
+                'wfg_soh.qty_soh',
+                'wfg_soh.last_updated',
                 'wfg_barang.mid_barang',
                 'wfg_barang.nama_barang',
                 'wfg_barang.qty_box',
-                'wfg_barang.principal'
-            );
+                'wfg_barang.principal',
+                DB::raw("COALESCE(temp_sum.total_summary, 0) AS total_summary"),
+                DB::raw("(COALESCE(temp_sum.total_summary, 0) - COALESCE(wfg_soh.qty_soh, 0)) AS selisih"),
+                DB::raw("CASE 
+                    WHEN temp_sum.total_summary IS NOT NULL 
+                         AND wfg_soh.qty_soh != temp_sum.total_summary 
+                    THEN 1 ELSE 0 
+                 END AS has_diff")
+            )
+            ->whereDate('wfg_soh.last_updated', $today);
 
         // Filter principal
         if ($principalToFilter) {
@@ -1006,22 +1059,24 @@ class StockOpnameWfgController extends Controller
             });
         }
 
-        // Urutkan biar data SOH muncul duluan
-        $finalQuery->orderByRaw('CASE WHEN union_result.temp_id IS NULL THEN 1 ELSE 0 END')
+        // 🔹 Urutkan: data yang punya selisih di atas
+        $finalQuery
+            ->orderByDesc('has_diff') // yang punya selisih tetap di atas
+            ->orderByDesc(DB::raw('ABS(COALESCE(temp_sum.total_summary, 0) - COALESCE(wfg_soh.qty_soh, 0))')) // urutkan berdasarkan besar selisih
             ->orderBy('wfg_barang.mid_barang', 'asc');
 
         // Pagination
         $total = $finalQuery->count();
-        $currentPage = \Illuminate\Pagination\Paginator::resolveCurrentPage();
+        $currentPage = Paginator::resolveCurrentPage();
         $items = $finalQuery->skip(($currentPage - 1) * $perPage)->take($perPage)->get();
 
-        // Map data biar konsisten
         $mappedItems = $items->map(function ($item) {
             return (object) [
-                'id' => $item->soh_id ?? $item->temp_id,
+                'id' => $item->soh_id,
                 'soh_id' => $item->soh_id,
                 'barang_id' => $item->barang_id,
-                'qty_soh' => $item->qty_soh,
+                'qty_soh' => (int) $item->qty_soh,
+                'selisih' => (int) $item->selisih,
                 'last_updated' => $item->last_updated,
                 'mid_barang' => $item->mid_barang,
                 'nama_barang' => $item->nama_barang,
@@ -1030,12 +1085,12 @@ class StockOpnameWfgController extends Controller
             ];
         });
 
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+        $paginator = new LengthAwarePaginator(
             $mappedItems,
             $total,
             $perPage,
             $currentPage,
-            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+            ['path' => Paginator::resolveCurrentPath()]
         );
 
         return response()->json([
@@ -1048,56 +1103,35 @@ class StockOpnameWfgController extends Controller
         ]);
     }
 
+
     public function getDataTempBatch(Request $request)
     {
         $user = Auth::user();
-        $sohIds = $request->input('soh_ids', []);
-        $barangIds = $request->input('barang_ids', []);
+        $today = now()->toDateString();
+        $sohIds = array_map('intval', $request->input('soh_ids', []));
+        $barangIds = array_map('intval', $request->input('barang_ids', []));
 
-        if (!is_array($sohIds) || !is_array($barangIds)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Parameter soh_ids dan barang_ids harus berupa array'
-            ], 400);
-        }
-
-        $sohIds = array_map('intval', array_filter($sohIds));
-        $barangIds = array_map('intval', array_filter($barangIds));
-
-        $recordsQuery = WfgSopTempModel::with([
+        // ======================
+        // 🔹 Ambil data QTY
+        // ======================
+        $qtyQuery = WfgSopTempModel::with([
             'soh.barang:id,principal,mid_barang,nama_barang',
             'barang:id,principal,mid_barang,nama_barang'
         ])
-            ->where(function ($q) use ($sohIds, $barangIds) {
-                if (!empty($sohIds)) {
-                    $q->whereIn('soh_id', $sohIds);
-                }
-                if (!empty($barangIds)) {
-                    $q->orWhereIn('barang_id', $barangIds)->whereNull('soh_id');
-                }
-            })
-            ->whereDate('tgl_opname', now()->toDateString())
-            ->orderByDesc('updated_at');
+            ->whereDate('tgl_opname', $today)
+            ->when(!empty($sohIds), fn($q) => $q->whereIn('soh_id', $sohIds))
+            ->when(!empty($barangIds), fn($q) => $q->orWhereIn('barang_id', $barangIds)->whereNull('soh_id'));
 
+        // Filter principal untuk operator
         if ($user->jabatan === 'operator') {
             $userPrincipal = $user->principal?->principal;
-            if (!$userPrincipal) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Akun operator belum memiliki principal. Hubungi admin.',
-                    'data' => []
-                ], 403);
-            }
-
-            $recordsQuery->where(function ($q) use ($userPrincipal) {
+            $qtyQuery->where(function ($q) use ($userPrincipal) {
                 $q->whereHas('barang', fn($sub) => $sub->where('principal', $userPrincipal))
                     ->orWhereHas('soh.barang', fn($sub) => $sub->where('principal', $userPrincipal));
             });
         }
 
-        $records = $recordsQuery->get();
-
-        $result = $records->map(function ($rec) {
+        $qtyRecords = $qtyQuery->get()->map(function ($rec) {
             $barang = $rec->barang ?? optional(optional($rec->soh)->barang);
             if (!$barang) return null;
 
@@ -1111,33 +1145,88 @@ class StockOpnameWfgController extends Controller
                 'qty_receh'   => $rec->qty_receh,
                 'summary'     => (int) $rec->summary,
                 'principal'   => $barang->principal,
+                'mode'        => 'qty',
                 'created_at'  => $rec->created_at,
                 'updated_at'  => $rec->updated_at,
             ];
-        })->filter()->values();
+        })->filter();
+
+
+        // ======================
+        // 🔹 Ambil data NOTE
+        // ======================
+        $noteQuery = WfgSopTempNoteModel::with([
+            'soh.barang:id,principal,mid_barang,nama_barang',
+            'barang:id,principal,mid_barang,nama_barang'
+        ])
+            ->whereDate('tgl_opname', $today)
+            ->when(!empty($sohIds), fn($q) => $q->whereIn('soh_id', $sohIds))
+            ->when(!empty($barangIds), fn($q) => $q->orWhereIn('barang_id', $barangIds)->whereNull('soh_id'));
+
+        if ($user->jabatan === 'operator') {
+            $userPrincipal = $user->principal?->principal;
+            $noteQuery->where(function ($q) use ($userPrincipal) {
+                $q->whereHas('barang', fn($sub) => $sub->where('principal', $userPrincipal))
+                    ->orWhereHas('soh.barang', fn($sub) => $sub->where('principal', $userPrincipal));
+            });
+        }
+
+        $noteRecords = $noteQuery->get()->map(function ($rec) {
+            $barang = $rec->barang ?? optional(optional($rec->soh)->barang);
+            if (!$barang) return null;
+
+            return [
+                'id'          => $rec->id,
+                'soh_id'      => $rec->soh_id,
+                'barang_id'   => $rec->barang_id,
+                'mid_barang'  => $barang->mid_barang,
+                'nama_barang' => $barang->nama_barang,
+                'qty_full'    => null,
+                'qty_receh'   => null,
+                'summary'     => null,
+                'keterangan'  => $rec->catatan,
+                'principal'   => $barang->principal,
+                'mode'        => 'note',
+                'created_at'  => $rec->created_at,
+                'updated_at'  => $rec->updated_at,
+            ];
+        })->filter();
+
+
+        // ======================
+        // 🔹 Gabungkan hasil keduanya
+        // ======================
+        $result = $qtyRecords->merge($noteRecords)->values();
 
         return response()->json([
             'status' => 'success',
-            'data'   => $result
+            'data' => $result,
         ]);
     }
 
     public function getDataTempEdit(String $id)
     {
-        $data = WfgSopTempModel::with('barang:id,mid_barang,nama_barang,qty_box')
+        $dataQty = WfgSopTempModel::with('barang:id,mid_barang,nama_barang,qty_box')
             ->where('barang_id', $id)
             ->get();
 
-        if ($data->isEmpty()) {
+        // Ambil catatan terbaru (kalau ada)
+        $dataNote = WfgSopTempNoteModel::where('barang_id', $id)
+            ->whereDate('tgl_opname', now()->toDateString()) // optional: hanya hari ini
+            ->latest('updated_at')
+            ->first();
+
+        if ($dataQty->isEmpty() && !$dataNote) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Data tidak ditemukan'
+                'message' => 'Data temp tidak ditemukan'
             ], 404);
         }
 
         return response()->json([
             'status' => 'success',
-            'data' => $data
+            'data_qty' => $dataQty,
+            'data_note' => $dataNote
         ]);
     }
 
@@ -1270,30 +1359,106 @@ class StockOpnameWfgController extends Controller
      */
     public function updateTempBatch(Request $request)
     {
-        $updates = $request->input('updates', []);
-
-        foreach ($updates as $u) {
-            $temp = WfgSopTempModel::with('barang')->find($u['id']);
-            if (!$temp || !$temp->barang) continue;
-
-            $qtyFull = $u['qty_full'] ?? 0;
-            $qtyReceh = $u['qty_receh'] ?? 0;
-            $qtyBox = $temp->barang->qty_box ?? 0;
-
-            $summary = ($qtyFull * $qtyBox) + $qtyReceh;
-
-            $temp->update([
-                'qty_full' => $qtyFull,
-                'qty_receh' => $qtyReceh,
-                'summary' => $summary,
-            ]);
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Semua data berhasil diperbarui'
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|integer',        // id dari wfg_sop_temp
+            'items.*.qty_full' => 'nullable|integer|min:0',
+            'items.*.qty_receh' => 'nullable|integer|min:0',
+            'catatan' => 'nullable|string|max:1000',   // catatan global dari modal
         ]);
+
+        $items = $validated['items'];
+        $catatan = $validated['catatan'] ?? null;
+
+        DB::beginTransaction();
+        try {
+            $processedPairs = []; // untuk menyimpan pasangan (soh_id, barang_id) yang perlu di-handle note
+
+            foreach ($items as $it) {
+                $temp = WfgSopTempModel::with('barang', 'soh')->find($it['id']);
+                if (!$temp || !$temp->barang) continue;
+
+                $qtyFull = isset($it['qty_full']) ? (int) $it['qty_full'] : 0;
+                $qtyReceh = isset($it['qty_receh']) ? (int) $it['qty_receh'] : 0;
+                $qtyBox = $temp->barang->qty_box ?? 0;
+
+                $summary = ($qtyFull * $qtyBox) + $qtyReceh;
+
+                $temp->qty_full = $qtyFull;
+                $temp->qty_receh = $qtyReceh;
+                $temp->summary = $summary;
+                $temp->save();
+
+                // simpan pasangan untuk catatan (gunakan soh_id & barang_id dari $temp, dan tanggal jika dikirim pada item)
+                $tglOpname = $it['tanggal'] ?? null;
+                // prefer tanggal yang dikirim, kalau tidak ada gunakan tgl_opname pada record temp (format date)
+                if (!$tglOpname && $temp->tgl_opname) {
+                    try {
+                        $tglOpname = \Carbon\Carbon::parse($temp->tgl_opname)->toDateString();
+                    } catch (\Throwable $e) {
+                        $tglOpname = now()->toDateString();
+                    }
+                } elseif (!$tglOpname) {
+                    $tglOpname = now()->toDateString();
+                }
+
+                $pairKey = ($temp->soh_id ?? 'null') . '|' . $temp->barang_id . '|' . $tglOpname;
+                $processedPairs[$pairKey] = [
+                    'soh_id' => $temp->soh_id,
+                    'barang_id' => $temp->barang_id,
+                    'tgl_opname' => $tglOpname,
+                    'principal' => $temp->principal ?? null,
+                ];
+            }
+
+            // Jika ada catatan yang dikirim (satu textarea untuk semua item di modal),
+            // lakukan updateOrCreate untuk masing-masing pasangan (soh_id, barang_id, tanggal)
+            if (!empty($catatan)) {
+                foreach ($processedPairs as $pair) {
+                    // jika soh_id null, kita tetap simpan berdasarkan barang_id & tanggal
+                    $query = WfgSopTempNoteModel::where('barang_id', $pair['barang_id'])
+                        ->whereDate('tgl_opname', $pair['tgl_opname']);
+
+                    if (!is_null($pair['soh_id'])) {
+                        $query->where('soh_id', $pair['soh_id']);
+                    } else {
+                        $query->whereNull('soh_id');
+                    }
+
+                    $existing = $query->first();
+
+                    if ($existing) {
+                        $existing->update([
+                            'catatan' => $catatan,
+                            'updated_at' => now(),
+                        ]);
+                    } else {
+                        WfgSopTempNoteModel::create([
+                            'soh_id' => $pair['soh_id'],
+                            'barang_id' => $pair['barang_id'],
+                            'catatan' => $catatan,
+                            'created_by' => Auth::id() ?? 1,
+                            'tgl_opname' => $pair['tgl_opname'],
+                            'principal' => $pair['principal'] ?? null,
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data berhasil diperbarui.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
+
 
     public function update(Request $request, $id)
     {
@@ -1542,9 +1707,6 @@ class StockOpnameWfgController extends Controller
     }
 
 
-
-
-
     /**
      * Remove the specified resource from storage.
      */
@@ -1572,31 +1734,51 @@ class StockOpnameWfgController extends Controller
         }
     }
 
-    public function destroyTemp($id)
+    public function destroyTemp($id, Request $request)
     {
         try {
-            $temp = WfgSopTempModel::find($id);
+            $type = $request->input('tipe', 'qty'); // default 'qty'
 
-            if (!$temp) {
+            if ($type === 'note') {
+                $deleted = WfgSopTempNoteModel::where('barang_id', $id)->delete();
+
+                if (!$deleted) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Catatan tidak ditemukan.'
+                    ]);
+                }
+
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'Data sementara tidak ditemukan.'
+                    'status' => 'success',
+                    'message' => 'Catatan berhasil dihapus.'
+                ]);
+            } else {
+                // Hapus data qty sementara
+                $temp = WfgSopTempModel::find($id);
+
+                if (!$temp) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Data sementara tidak ditemukan.'
+                    ]);
+                }
+
+                $temp->delete();
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Data sementara berhasil dihapus.'
                 ]);
             }
-
-            $temp->delete();
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Data sementara berhasil dihapus.'
-            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Terjadi kesalahan saat menghapus data.'
+                'message' => 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage()
             ]);
         }
     }
+
 
     public function destroyEditData($id)
     {
@@ -1738,20 +1920,17 @@ class StockOpnameWfgController extends Controller
                 ->where('sop_id', $sop->id)
                 ->get();
 
-            $pendingOrRead = $approvals->whereIn('status', ['pending', 'read']);
-
-            if ($approvals->isEmpty() || $pendingOrRead->isNotEmpty()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => "SOP tanggal $tanggal belum disetujui semua approver.",
-                ], 403);
-            }
-
             $approvers = [];
 
             // Helper function untuk ambil path tanda tangan user
-            $getSignaturePath = function ($user) {
-                $dummy = public_path('storage/images/ttd/dummy.jpg');
+            $getSignaturePath = function ($user, $status = null) {
+                // $dummy = public_path('storage/images/ttd/dummy.jpg');
+                $dummy = '';
+
+                if ($status !== 'approved') {
+                    return $dummy;
+                }
+
                 if (!$user) return $dummy;
 
                 if (isset($user->signature) && !empty($user->signature->signature)) {
@@ -1770,47 +1949,27 @@ class StockOpnameWfgController extends Controller
                 return $dummy;
             };
 
-            // === Operator (pembuat SOP) ===
-            $operatorApproval = $sop->user;
-            $approvers[] = $operatorApproval ? [
-                'nama'   => $operatorApproval->username ?? 'Unknown',
-                'ttd'    => $getSignaturePath($operatorApproval),
-                'status' => 'approved',
-            ] : [
-                'nama'   => '-',
-                'ttd'    => asset('storage/images/ttd/dummy.jpg'),
-                'status' => null,
+            $operatorApproval = $sop->user ?? null;
+            $approvers[] = [
+                'nama' => $operatorApproval?->username ?? '-',
+                'status' => 'approved', // Operator dianggap otomatis approve
+                'ttd' => $getSignaturePath($operatorApproval, 'approved'),
             ];
 
-
             // === Foreman ===
-            $foremanApproval = $approvals->first(function ($a) {
-                return $a->approver && $a->approver->jabatan === 'foreman';
-            });
-
-            $approvers[] = $foremanApproval ? [
-                'nama'   => $foremanApproval->approver->username ?? 'Unknown',
-                'ttd'    => $getSignaturePath($foremanApproval->approver),
-                'status' => $foremanApproval->status,
-            ] : [
-                'nama'   => '-',
-                'ttd'    => asset('storage/images/ttd/dummy.jpg'),
-                'status' => null,
+            $foremanApproval = $approvals->first(fn($a) => $a->approver && $a->approver->jabatan === 'foreman');
+            $approvers[] = [
+                'nama' => $foremanApproval?->approver?->username ?? '-',
+                'status' => $foremanApproval?->status ?? '-',
+                'ttd' => $getSignaturePath($foremanApproval?->approver, $foremanApproval?->status)
             ];
 
             // === Supervisor / Dept Head ===
-            $supervisorApproval = $approvals->first(function ($a) {
-                return $a->approver && in_array($a->approver->jabatan, ['supervisor', 'dept_head']);
-            });
-
-            $approvers[] = $supervisorApproval ? [
-                'nama'   => $supervisorApproval->approver->username ?? 'Unknown',
-                'ttd'    => $getSignaturePath($supervisorApproval->approver),
-                'status' => $supervisorApproval->status,
-            ] : [
-                'nama'   => '-',
-                'ttd'    => asset('storage/images/ttd/dummy.jpg'),
-                'status' => null,
+            $supervisorApproval = $approvals->first(fn($a) => $a->approver && in_array($a->approver->jabatan, ['supervisor', 'dept_head']));
+            $approvers[] = [
+                'nama' => $supervisorApproval?->approver?->username ?? '-',
+                'status' => $supervisorApproval?->status ?? '-',
+                'ttd' => $getSignaturePath($supervisorApproval?->approver, $supervisorApproval?->status)
             ];
 
             $activePrincipal = $principalFilter ?? ($user->principal->principal ?? null);
@@ -1870,7 +2029,7 @@ class StockOpnameWfgController extends Controller
         }
     }
 
-    // Reset Temp All
+    // reset temp all
     public function resetTemp(Request $request)
     {
         $request->validate([
@@ -1881,15 +2040,28 @@ class StockOpnameWfgController extends Controller
             $userId = Auth::id();
             $tglOpname = $request->tgl_opname;
 
-            // Hapus semua data sementara milik user untuk tanggal opname yang diminta
-            $deletedCount = WfgSopTempModel::where('created_by', $userId)
+            DB::beginTransaction();
+
+            // Hapus data sementara (qty)
+            $deletedTemp = WfgSopTempModel::where('created_by', $userId)
                 ->whereDate('tgl_opname', $tglOpname)
                 ->delete();
 
-            if ($deletedCount > 0) {
+            // Hapus data catatan (note)
+            $deletedNote = WfgSopTempNoteModel::where('created_by', $userId)
+                ->whereDate('tgl_opname', $tglOpname)
+                ->delete();
+
+            DB::commit();
+
+            if ($deletedTemp > 0 || $deletedNote > 0) {
+                $msg = [];
+                if ($deletedTemp > 0) $msg[] = "$deletedTemp data opname sementara";
+                if ($deletedNote > 0) $msg[] = "$deletedNote catatan sementara";
+
                 return response()->json([
                     'status' => 'success',
-                    'message' => "Berhasil menghapus $deletedCount data sementara untuk tanggal $tglOpname."
+                    'message' => 'Berhasil menghapus ' . implode(' dan ', $msg) . " untuk tanggal $tglOpname."
                 ]);
             }
 
@@ -1898,6 +2070,8 @@ class StockOpnameWfgController extends Controller
                 'message' => "Tidak ada data sementara ditemukan untuk tanggal $tglOpname."
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan saat menghapus data sementara.',
@@ -1906,7 +2080,7 @@ class StockOpnameWfgController extends Controller
         }
     }
 
-    // Reset temp row
+    // reset temp row
     public function resetTempRow(Request $request)
     {
         $sohId = $request->input('soh_id');
@@ -1920,24 +2094,50 @@ class StockOpnameWfgController extends Controller
             ], 400);
         }
 
-        $query = WfgSopTempModel::whereDate('tgl_opname', $today);
+        DB::beginTransaction();
+        try {
+            // Build query for WfgSopTempModel
+            $tempQuery = WfgSopTempModel::whereDate('tgl_opname', $today);
+            if ($sohId) {
+                $tempQuery->where('soh_id', $sohId);
+            } else {
+                $tempQuery->where('barang_id', $barangId)->whereNull('soh_id');
+            }
+            $deletedTemp = $tempQuery->delete();
 
-        if ($sohId) {
-            $query->where('soh_id', $sohId);
-        } else {
-            $query->where('barang_id', $barangId)->whereNull('soh_id');
+            // Build query for WfgSopTempNoteModel (catatan)
+            $noteQuery = WfgSopTempNoteModel::whereDate('tgl_opname', $today);
+            if ($sohId) {
+                $noteQuery->where('soh_id', $sohId);
+            } else {
+                $noteQuery->where('barang_id', $barangId)->whereNull('soh_id');
+            }
+            $deletedNote = $noteQuery->delete();
+
+            DB::commit();
+
+            $messageParts = [];
+            if ($deletedTemp > 0) $messageParts[] = "{$deletedTemp} data temp dihapus";
+            if ($deletedNote > 0) $messageParts[] = "{$deletedNote} catatan dihapus";
+
+            $message = $messageParts ? implode(' dan ', $messageParts) . '.' : 'Tidak ada data yang dihapus.';
+
+            return response()->json([
+                'status' => 'success',
+                'message' => $message,
+                'deleted' => [
+                    'temp' => $deletedTemp,
+                    'note' => $deletedNote,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat mereset data: ' . $e->getMessage()
+            ], 500);
         }
-
-        $deleted = $query->delete();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => $deleted > 0
-                ? 'Data opname barang berhasil direset.'
-                : 'Tidak ada data yang dihapus.'
-        ]);
     }
-
 
     // **
     // Approval

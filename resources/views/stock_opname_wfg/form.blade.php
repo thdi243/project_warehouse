@@ -62,6 +62,101 @@
         .collapsing {
             transition: height 0.05s ease-in-out !important;
         }
+
+        #tableInputOpname td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 102;
+            background: #fff;
+            color: var(--md-sys-color-on-surface, var(--bs-table-color, #212529));
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #tableInputOpname thead th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 202;
+            background: #f3f6f9;
+        }
+
+        #tableInputOpname td:nth-child(2) {
+            position: sticky;
+            left: 35px;
+            z-index: 101;
+            background: #fff;
+            color: var(--md-sys-color-on-surface, var(--bs-table-color, #212529));
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #tableInputOpname thead th:nth-child(2) {
+            position: sticky;
+            left: 35px;
+            z-index: 201;
+            background: #f3f6f9;
+        }
+
+        #soInputTableContainer {
+            overflow-x: auto;
+        }
+
+        /* --- Dark Mode Overrides (Memastikan background solid dan z-index sesuai) --- */
+
+        html[data-layout-mode="dark"] #tableInputOpname thead th {
+            background: #2f333a;
+            color: #e9ecef;
+            z-index: 200;
+        }
+
+        /* Dark Mode - Kolom Pertama (Header) */
+        html[data-layout-mode="dark"] #tableInputOpname th:first-child {
+            background: #2a2f34;
+            color: #e9ecef;
+            z-index: 202;
+        }
+
+        html[data-layout-mode="dark"] #tableInputOpname td:first-child {
+            background: #272b30;
+            color: #e9ecef;
+            z-index: 102;
+        }
+
+        html[data-layout-mode="dark"] #tableInputOpname th:nth-child(2) {
+            background: #2a2f34;
+            color: #e9ecef;
+            z-index: 201;
+        }
+
+        html[data-layout-mode="dark"] #tableInputOpname td:nth-child(2) {
+            background: #272b30;
+            color: #e9ecef;
+            z-index: 101;
+        }
+
+        @media (max-width: 767.98px) {
+            #soh-table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table {
+                font-size: 10px;
+                /* kecilkan font biar muat */
+                white-space: nowrap;
+                /* biar teks gak turun baris */
+            }
+
+            table th,
+            table td {
+                padding: 0.4rem 0.6rem;
+                /* rapatkan sedikit */
+            }
+
+            /* Jika pakai tombol di kolom aksi, biar nggak tumpuk */
+            table .btn {
+                padding: 0.2rem 0.3rem;
+                font-size: 10px;
+            }
+        }
     </style>
 @endsection
 
@@ -83,8 +178,8 @@
                     <form id="formSopFinal" method="POST">
                         @csrf
 
-                        <div class="sticky-header p-4 mt-2 mb-4 rounded-3 border shadow-sm">
-                            <div class="row g-3 align-items-end">
+                        <div class="p-4 mt-2 mb-4 rounded-3 border shadow-sm">
+                            <div class="row g-3 align-items-end mb-3">
 
                                 <!-- Kolom Tanggal Opname -->
                                 <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-3 @endif col-12">
@@ -100,7 +195,7 @@
                                         <label for="principal_filter" class="form-label fw-semibold">Filter
                                             Principal</label>
                                         <select id="principal_filter" class="form-select">
-                                            <option value="" selected disabled>All principal</option>
+                                            {{-- <option value="" selected disabled>All principal</option> --}}
                                             @foreach ($principals as $p)
                                                 <option value="{{ $p }}">{{ $p }}</option>
                                             @endforeach
@@ -112,20 +207,28 @@
                                 <div class="@if (Auth::user()->jabatan != 'operator') col-md-6 @else col-md-9 @endif col-12">
                                     <div class="d-flex flex-column flex-md-row gap-2 text-nowrap">
                                         <button type="submit" class="btn btn-success w-100" id="btnSaveFinal">
-                                            <i class="mdi mdi-content-save-outline me-1"></i> Simpan Semua Progress
+                                            <i class="mdi mdi-content-save-outline me-1"></i> Check & Submit
                                         </button>
                                         <button type="button" class="btn btn-info w-100" id="btnAddRow">
                                             <i class="mdi mdi-plus-circle-outline me-1"></i> Tambah Item
                                         </button>
-                                        <button type="button" class="btn btn-danger" id="btnReset">
-                                            <i class="mdi mdi-restart me-1"></i> Reset
+                                        <button type="button" class="btn btn-danger w-100" id="btnReset">
+                                            <i class="mdi mdi-restart me-1"></i> Reset All
                                         </button>
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="col-md-6 col-12">
+                                <label for="searchBarang" class="form-label fw-semibold">Cari Barang</label>
+                                <div class="input-group">
+                                    <input type="text" id="searchBarang" class="form-control" placeholder="Ketik MID...">
+                                    <button type="button" id="btnSearchBarang" class="btn btn-primary">
+                                        <i class="mdi mdi-magnify"></i> Cari
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-
-
 
                         <h5 class="mb-3 text-dark fw-bold">Daftar Barang untuk Opname</h5>
 
@@ -150,7 +253,7 @@
                     <!-- Data temp akan dimasukkan di sini -->
                 </div>
                 <div class="modal-footer">
-                    <button type="button" id="saveEditBtn" class="btn btn-primary">Simpan Semua</button>
+                    <button type="button" id="saveEditBtn" class="btn btn-success">Simpan Semua</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                 </div>
             </div>
@@ -165,38 +268,91 @@
                     <h5 class="modal-title"><i class="mdi mdi-plus-circle-outline me-2"></i>Tambah Item Baru</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
+
                 <div class="modal-body">
-                    <form id="formAddItem">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label">MID Barang</label>
-                                <input type="number" class="form-control" name="mid_barang" placeholder="Masukkan MID">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Nama Barang</label>
-                                <input type="text" class="form-control" name="nama_barang"
-                                    placeholder="Masukkan Nama Barang">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Uom</label>
-                                <input type="text" class="form-control" name="uom" placeholder="Masukkan Uom">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Qty Box</label>
-                                <input type="number" class="form-control" name="qty_box" value="1"
-                                    min="1">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Qty Full</label>
-                                <input type="number" class="form-control" name="qty_full" min="0">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Qty Receh</label>
-                                <input type="number" class="form-control" name="qty_receh" min="0">
+                    <form id="formAddItem" class="p-1">
+
+                        <!-- ========== SECTION: Master Barang ========== -->
+                        <div class="p-3 rounded-3 mb-3"
+                            style="background: var(--vz-secondary-bg, var(--bs-secondary-bg-subtle, #f1f3f5));">
+                            <h6 class="fw-bold mb-3 text-secondary">
+                                <i class="mdi mdi-database-outline me-1"></i> Data Barang
+                            </h6>
+
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">MID Barang</label>
+                                    <input type="number" class="form-control" name="mid_barang"
+                                        placeholder="Masukkan MID">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Nama Barang</label>
+                                    <input type="text" class="form-control" name="nama_barang"
+                                        placeholder="Masukkan Nama Barang">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Uom</label>
+                                    <input type="text" class="form-control" name="uom"
+                                        placeholder="Masukkan Uom">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Qty Box</label>
+                                    <input type="number" class="form-control" name="qty_box" placeholder="100"
+                                        min="1">
+                                </div>
                             </div>
                         </div>
+
+                        <!-- ========== SECTION: Data SOH ========== -->
+                        <div class="p-3 rounded-3 mb-3"
+                            style="background: var(--vz-danger-bg, var(--bs-danger-bg-subtle, #fff5f5));">
+                            <h6 class="fw-bold mb-3 text-danger">
+                                <i class="mdi mdi-database-lock-outline me-1"></i> Data SOH
+                            </h6>
+
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Unrest</label>
+                                    <input type="number" class="form-control" name="unrest" placeholder="100"
+                                        min="1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">QI</label>
+                                    <input type="number" class="form-control" name="qi" placeholder="100"
+                                        min="1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Blocked</label>
+                                    <input type="number" class="form-control" name="blocked" placeholder="100"
+                                        min="1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ========== SECTION: Data SOP ========== -->
+                        <div class="p-3 rounded-3 mb-2"
+                            style="background: var(--vz-warning-bg, var(--bs-warning-bg-subtle, #fff9e6));">
+                            <h6 class="fw-bold mb-3 text-warning">
+                                <i class="mdi mdi-package-variant-closed me-1"></i> Data SOP
+                            </h6>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Qty Full</label>
+                                    <input type="number" class="form-control" name="qty_full" min="0"
+                                        placeholder="100">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Qty Receh</label>
+                                    <input type="number" class="form-control" name="qty_receh" min="0"
+                                        placeholder="100">
+                                </div>
+                            </div>
+                        </div>
+
                     </form>
                 </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="button" class="btn btn-info" id="btnSaveNewItem">
@@ -206,17 +362,14 @@
             </div>
         </div>
     </div>
-
 @endsection
 
 @section('scripts')
     <script>
         $(document).ready(function() {
-            let barangSelisih = JSON.parse(localStorage.getItem('barangSelisih') || '{}');
-
             loadBarangForOpname();
 
-            function loadBarangForOpname(page = 1, principal) {
+            function loadBarangForOpname(page = 1, principal, search = '') {
                 const container = $('#soInputTableContainer');
 
                 container.html(`
@@ -228,11 +381,6 @@
                     </div>
                 `);
 
-                let storedSelisih = JSON.parse(localStorage.getItem('barangSelisih') || '{}');
-                if (Object.keys(storedSelisih).length > 0) {
-                    barangSelisih = storedSelisih;
-                }
-
                 $.ajax({
                     // url: `{{ url('api/wfg/sop/getData') }}`,
                     url: "{{ route('wfg.stock_opname.getData') }}",
@@ -240,7 +388,8 @@
                     data: {
                         page: page,
                         per_page: 25,
-                        principal: principal
+                        principal: principal,
+                        search: search
                     },
                     success: function(response) {
                         const items = response.data;
@@ -261,13 +410,14 @@
                         let tableHtml = `
                             <div class="table-responsive">
                                 <table class="table table-bordered align-middle mb-0 text-nowrap" id="tableInputOpname" style="width: 100%;">
-                                    <thead class="bg-soft-info text-center align-middle">
+                                    <thead class="bg-light text-center align-middle">
                                         <tr>
-                                            <th>No</th>
+                                            <th style="width: 50px;">No</th>
                                             <th>MID (Qty Box)</th>
                                             <th>Qty Full</th>
                                             <th>Qty Receh</th>
                                             <th>Summary</th>
+                                            <th>Catatan</th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
@@ -291,31 +441,29 @@
                                     <td class="text-center fw-semibold">${index + 1 + ((currentPage - 1) * response.per_page)}</td>
                                     <td>
                                         <strong class="text-dark">${item.mid_barang ?? 'N/A'}</strong><br>
-                                        <small class="text-muted">${item.nama_barang ?? 'N/A'}</small><br>
                                         <small class="text-muted">${item.qty_box ?? 'N/A'}</small>
                                     </td>
-                                    
                                     <td><input type="number" class="form-control qty_full text-end" min="0" placeholder="0"></td>
                                     <td><input type="number" class="form-control qty_receh text-end" min="0" placeholder="0"></td>
                                     <td class="text-end fw-bold summary-cell">${item.summary ?? '0'}</td>
-                                    
+                                    <td><input type="text" class="form-control keterangan" placeholder="Isi Catatan"></td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-success btn-save-temp">
-                                            <i class="mdi mdi-content-save-outline me-1"></i>Simpan
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-save-temp"  title="Simpan">
+                                            <i class="mdi mdi-content-save-outline"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-history" data-bs-toggle="collapse" data-bs-target="#history-${id}">
-                                            <i class="mdi mdi-history me-1"></i>History
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-history" data-bs-toggle="collapse" data-bs-target="#history-${id}" title="History">
+                                            <i class="mdi mdi-history"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary btn-edit-temp">
-                                            <i class="mdi mdi-pencil me-1"></i>Edit
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-edit-temp" title="Edit">
+                                            <i class="mdi mdi-pencil"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-reset-temp">
-                                            <i class="mdi mdi-refresh me-1"></i>Reset
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-reset-temp" title="Reset">
+                                            <i class="mdi mdi-delete-outline"></i>
                                         </button>
                                     </td>
                                 </tr>
                                 <tr class="collapse" id="history-${id}">
-                                    <td colspan="6" class="p-3 text-muted small text-start">
+                                    <td colspan="7" class="p-3 text-muted small text-start">
                                         <em>Belum ada riwayat input.</em>
                                     </td>
                                 </tr>
@@ -365,35 +513,6 @@
 
                         container.html(tableHtml);
 
-                        // Tambahkan kolom keterangan jika ada data selisih
-                        if (Object.keys(barangSelisih).length > 0) {
-                            console.log(barangSelisih);
-
-                            const table = $('#tableInputOpname');
-                            if (table.find('th.keterangan-header').length === 0) {
-                                table.find('thead tr').append(
-                                    '<th class="keterangan-header text-center">Keterangan</th>'
-                                );
-                            }
-
-                            // Tambahkan kolom keterangan untuk setiap barang yang punya selisih
-                            table.find('tbody tr').each(function() {
-                                const barangId = $(this).data('barangid');
-                                if (barangSelisih[barangId]) {
-                                    if ($(this).find('td.keterangan-cell').length === 0) {
-                                        $(this).append(`
-                                            <td class="keterangan-cell text-center">
-                                                <input type="text" class="form-control keterangan-input" 
-                                                    placeholder="Isi keterangan..." 
-                                                    value="${barangSelisih[barangId].keterangan ?? ''}">
-                                            </td>
-                                        `);
-                                    }
-                                }
-                            });
-                        }
-
-
                         loadAllTempData();
 
                         // --- Event pagination ---
@@ -418,9 +537,28 @@
                 });
             }
 
+            // Tombol search diklik
+            let currentPrincipal = '';
+            let currentSearch = '';
+
+            $('#btnSearchBarang').on('click', function() {
+                currentSearch = $('#searchBarang').val().trim();
+                loadBarangForOpname(1, currentPrincipal, currentSearch);
+            });
+
+            // Tekan Enter di input
+            $('#searchBarang').on('keypress', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    currentSearch = $(this).val().trim();
+                    loadBarangForOpname(1, currentPrincipal, currentSearch);
+                }
+            });
+
             $('#principal_filter').on('change', function() {
-                const principal = $(this).val();
-                loadBarangForOpname(1, principal); // nanti backend ambil param principal
+                currentPrincipal = $(this).val();
+                loadBarangForOpname(1, currentPrincipal,
+                    currentSearch);
             });
 
             // Save temp
@@ -430,6 +568,7 @@
                 const soh_id = row.data('sohid');
                 const barang_id = row.data('barangid'); // bisa angka atau "temp-xxx"
                 const qty_box = parseInt(row.data('qtybox')) || 1;
+
                 let barang = {};
                 try {
                     const raw = row.attr('data-barang');
@@ -437,29 +576,53 @@
                 } catch (e) {
                     console.error('Gagal parse data-barang:', e);
                 }
-                console.log(soh_id);
 
-                const qty_full = parseInt(row.find('.qty_full').val()) || 0;
-                const qty_receh = parseInt(row.find('.qty_receh').val()) || 0;
-                const summary = (qty_full * qty_box) + qty_receh;
+                const qty_full_raw = row.find('.qty_full').val();
+                const qty_receh_raw = row.find('.qty_receh').val();
+                const keterangan = row.find('.keterangan').val()?.trim() || '';
 
-                if (qty_full === 0 && qty_receh === 0) {
+                // tolak kalau semuanya kosong
+                if (qty_full_raw === '' && qty_receh_raw === '' && keterangan === '') {
                     Swal.fire({
                         icon: 'warning',
-                        title: 'Input tidak valid',
-                        text: 'Isi minimal salah satu Qty Full atau Qty Receh sebelum menyimpan.',
+                        title: 'Input belum diisi',
+                        text: 'Isi minimal salah satu: Qty atau Keterangan.',
                     });
                     return;
                 }
 
+                // tentukan mode otomatis
+                const qty_full = parseInt(qty_full_raw || 0, 10);
+                const qty_receh = parseInt(qty_receh_raw || 0, 10);
+                const summary = (qty_full * qty_box) + qty_receh;
                 const principal = $('#principal_filter').val();
-                const btn = $(this);
-                btn.prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin"></i> Menyimpan...');
 
+                // console.log(principal);
+
+                // Tentukan mode
+                let mode = '';
+                if ((qty_full > 0 || qty_receh > 0) && keterangan !== '') {
+                    mode = 'both'; // dua-duanya diisi
+                } else if (qty_full > 0 || qty_receh > 0) {
+                    mode = 'qty';
+                } else if (keterangan !== '') {
+                    mode = 'note';
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Input belum diisi',
+                        text: 'Isi minimal salah satu: Qty atau Keterangan.',
+                    });
+                    return;
+                }
+
+
+                const btn = $(this);
                 const isTempItem = String(id).startsWith('temp-');
 
                 let url, data;
                 if (isTempItem) {
+                    // barang baru (belum punya id dari soh)
                     const mid_barang = barang.mid_barang || '';
                     const nama_barang = barang.nama_barang || '';
 
@@ -471,10 +634,13 @@
                         qty_full,
                         qty_receh,
                         summary,
+                        keterangan,
                         principal,
+                        mode, // kirim mode
                         _token: '{{ csrf_token() }}'
                     };
                 } else {
+                    // barang dari soh
                     url = "{{ route('wfg.stock_opname.save-temp') }}";
                     data = {
                         soh_id,
@@ -482,7 +648,9 @@
                         qty_full,
                         qty_receh,
                         summary,
+                        keterangan,
                         principal,
+                        mode, // kirim mode juga
                         _token: '{{ csrf_token() }}'
                     };
                 }
@@ -495,29 +663,28 @@
                         if (res.status === 'success') {
                             toastr.success(res.message, 'Tersimpan!');
 
-                            row.find('.qty_full').val('');
-                            row.find('.qty_receh').val('');
+                            // kalau bukan catatan (mode qty), reset input qty
+                            if (mode === 'qty' || mode === 'both') {
+                                row.find('.qty_full').val('');
+                                row.find('.qty_receh').val('');
+                            }
 
+                            // kalau note, biarkan input keterangan tetap biar user bisa edit lanjut
+                            // loadBarangForOpname(1, '');
                             loadAllTempData();
                         } else {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Gagal',
-                                text: res.message || 'Data tidak berhasil disimpan.'
-                            });
+                            toastr.warning(res.message, 'Gagal!');
                         }
                     },
                     error: function(xhr) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Kesalahan',
-                            text: xhr.responseJSON?.message ||
-                                'Terjadi kesalahan pada server.'
-                        });
+                        toastr.error(
+                            xhr.responseJSON?.message || 'Terjadi kesalahan pada server.',
+                            'Kesalahan!'
+                        );
                     },
                     complete: function() {
                         btn.prop('disabled', false)
-                            .html('<i class="mdi mdi-content-save-outline me-1"></i> Simpan');
+                            .html('<i class="mdi mdi-content-save-outline"></i>');
                     }
                 });
             });
@@ -567,7 +734,7 @@
             });
 
             // save final
-            $('#formSopFinal').on('submit', function(e) {
+            $('#btnSaveFinal').on('click', function(e) {
                 e.preventDefault();
 
                 const tgl_opname = $('#tgl_opname').val();
@@ -578,203 +745,139 @@
                     return;
                 }
 
-                // Ambil storedSelisih (bisa kosong object)
-                let storedSelisih = JSON.parse(localStorage.getItem('barangSelisih') || '{}');
+                // Step 1: Check Progress
+                $.ajax({
+                    url: "{{ route('wfg.stock_opname.process') }}",
+                    method: "POST",
+                    data: {
+                        _token: $('input[name="_token"]').val(),
+                        tgl_opname,
+                        principal,
+                        mode: 'check'
+                    },
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                title: 'Data lengkap!',
+                                text: 'Semua sudah valid. Simpan final?',
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: 'Ya, Simpan Final',
+                                cancelButtonText: 'Batal',
+                            }).then(result => {
+                                if (result.isConfirmed) {
+                                    // Step 2: Finalisasi
+                                    $.ajax({
+                                        url: "{{ route('wfg.stock_opname.process') }}",
+                                        method: "POST",
+                                        data: {
+                                            _token: $('input[name="_token"]')
+                                                .val(),
+                                            tgl_opname,
+                                            principal,
+                                            mode: 'final'
+                                        },
+                                        success: function(finalRes) {
+                                            if (finalRes.status ===
+                                                'success') {
+                                                Swal.fire('Berhasil!',
+                                                    finalRes.message,
+                                                    'success');
+                                                loadBarangForOpname();
+                                            } else if (finalRes.status ===
+                                                'belum_opname') {
+                                                let listHtml =
+                                                    '<ul class="list-unstyled mb-0">';
+                                                finalRes.data.forEach(
+                                                    item => {
+                                                        listHtml +=
+                                                            `<li><strong>${item.mid_barang}</strong></li>`;
+                                                    });
+                                                listHtml += '</ul>';
 
-                // Update storedSelisih berdasarkan input di halaman aktif
-                $('#tableInputOpname tbody tr').each(function() {
-                    const row = $(this);
-                    const barangId = row.data('barangid');
-                    if (!barangId) return; // skip baris tanpa id
-
-                    const keterangan = row.find('.keterangan-input').val() || '';
-
-                    // Kalau item belum ada di storedSelisih, buat placeholder minimal
-                    if (!storedSelisih[barangId]) {
-                        storedSelisih[barangId] = {
-                            mid_barang: row.find('td:eq(1) strong').text() || '',
-                            nama_barang: row.find('td:eq(1) small').first().text() || '',
-                            qty_sap: row.data('qtysap') || 0,
-                            qty_fisik: row.data('qtyfisik') || 0,
-                            selisih: row.data('selisih') || 0,
-                            keterangan: ''
-                        };
-                    }
-
-                    // update keterangan terbaru
-                    storedSelisih[barangId].keterangan = keterangan;
-                });
-
-                // simpan kembali ke localStorage supaya persist antar page
-                localStorage.setItem('barangSelisih', JSON.stringify(storedSelisih));
-
-                // Ambil hanya item yang punya selisih numerik bukan nol
-                const filteredEntries = Object.entries(storedSelisih).filter(([id, it]) => {
-                    const s = Number(it?.selisih || 0);
-                    return id && !isNaN(s) && s !== 0;
-                });
-
-                // Jika tidak ada barang yang selisih (filteredEntries kosong) -> langsung kirim kosong ke backend
-                if (filteredEntries.length > 0) {
-                    // cek apakah semua item yang punya selisih sudah punya keterangan
-                    const belumIsi = filteredEntries
-                        .map(([_, it]) => it)
-                        .filter(it => !it.keterangan || it.keterangan.trim() === '');
-
-                    if (belumIsi.length > 0) {
-                        let listHtml = '<ul class="text-start">';
-                        belumIsi.forEach(item => {
-                            listHtml += `
-                            <li class="mb-2">
-                                <strong>${item.mid_barang ?? '-'}</strong> (${item.nama_barang ?? '-'})<br>
-                                SAP: ${item.qty_sap ?? '-'}, Fisik: ${item.qty_fisik ?? '-'}, 
-                                <span class="text-danger">Selisih: ${item.selisih ?? '-'}</span>
-                            </li>
-                        `;
-                        });
-                        listHtml += '</ul>';
-
-                        Swal.fire({
-                            title: 'Masih Ada Barang Belum Diberi Keterangan!',
-                            html: `<p>Harap isi keterangan untuk barang berikut:</p>${listHtml}`,
-                            icon: 'warning',
-                            width: 700,
-                            confirmButtonText: 'Isi Sekarang',
-                        });
-                        return; // stop submit
-                    }
-                }
-
-                // Siapkan payload keterangan yang hanya berisi barang dengan selisih (atau kosong)
-                let keteranganData = {};
-                filteredEntries.forEach(([id, it]) => {
-                    keteranganData[id] = it.keterangan || '';
-                });
-
-                // Optional: jika mau juga mengirim keterangan untuk semua (termasuk non-selisih) ganti keteranganData buildnya.
-
-                Swal.fire({
-                    title: 'Konfirmasi Simpan Final',
-                    text: 'Data akan diverifikasi dan disimpan. Lanjutkan?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Ya, Simpan',
-                    cancelButtonText: 'Batal',
-                    reverseButtons: true,
-                }).then(result => {
-                    if (result.isConfirmed) {
-                        $.ajax({
-                            url: "{{ route('wfg.stock_opname.save-final') }}",
-                            method: 'POST',
-                            data: {
-                                _token: $('input[name="_token"]').val(),
-                                tgl_opname: tgl_opname,
-                                keterangan: keteranganData,
-                                principal: principal
-                            },
-                            success: function(res) {
-                                if (res.status === 'success') {
-                                    // bersihkan stored data
-                                    localStorage.removeItem('barangSelisih');
-                                    barangSelisih = {};
-                                    storedSelisih = {};
-                                    keteranganData = {};
-                                    Swal.fire('Berhasil!', res.message, 'success').then(
-                                        () => {
-                                            loadBarangForOpname();
-                                        });
-                                } else if (res.status === 'warning') {
-                                    // backend masih menemukan selisih — perbarui localStorage sesuai payload dari backend
-                                    barangSelisih = {};
-                                    res.data.forEach(item => {
-                                        barangSelisih[item.barang_id] = item;
+                                                Swal.fire({
+                                                    title: 'Belum di-Opname!',
+                                                    html: `
+                                                        <p class="mb-3">${finalRes.message}</p>
+                                                        <div style="max-height: 400px; overflow-y: auto;">${listHtml}</div>
+                                                    `,
+                                                    icon: 'info',
+                                                    width: 600,
+                                                    confirmButtonText: 'OK'
+                                                });
+                                            } else {
+                                                Swal.fire('Gagal', finalRes
+                                                    .message, 'error');
+                                            }
+                                        },
+                                        error: () => Swal.fire('Error',
+                                            'Gagal menyimpan final.',
+                                            'error')
                                     });
-                                    localStorage.setItem('barangSelisih', JSON
-                                        .stringify(barangSelisih));
-                                    loadBarangForOpname();
-
-                                    // tampilkan list
-                                    let listHtml = '<ul class="text-start">';
-                                    res.data.forEach(item => {
-                                        listHtml += `
-                                            <li class="mb-2">
-                                                <strong>${item.mid_barang}</strong> (${item.nama_barang})<br>
-                                                SAP: ${item.qty_sap}, Fisik: ${item.qty_fisik}, 
-                                                <span class="text-danger">Selisih: ${item.selisih}</span>
-                                            </li>
-                                        `;
-                                    });
-                                    listHtml += '</ul>';
-
-                                    Swal.fire({
-                                        title: 'Terdapat Selisih!',
-                                        html: `<p>${res.message}</p>${listHtml}`,
-                                        icon: 'warning',
-                                        width: 700,
-                                        confirmButtonText: 'Perbaiki Data',
-                                    });
-                                } else {
-                                    Swal.fire('Gagal', res.message ||
-                                        'Terjadi kesalahan.', 'error');
                                 }
-                            },
-                            error: function(xhr) {
-                                Swal.fire('Error', xhr.responseJSON?.message ||
-                                    'Gagal menyimpan data.', 'error');
-                            }
-                        });
-                    }
+                            });
+                        } else if (res.status === 'warning') {
+                            let listHtml = `
+                                <div style="max-height: 400px; overflow-y: auto; text-align: left;">
+                                    <ul class="list-unstyled mb-0">
+                            `;
+                            res.data.forEach(item => {
+                                listHtml += `
+                                    <li class="mb-3">
+                                        <strong>${item.mid_barang}</strong>
+                                        <span class="text-muted">(Qty SAP: ${item.qty_sap})</span>
+                                        Selisih: <span class="text-danger fw-bold">${item.selisih}</span>
+                                    </li>
+                                `;
+                            });
+
+                            listHtml += `
+                                    </ul>
+                                </div>
+                            `;
+
+                            Swal.fire({
+                                title: 'Terdapat Selisih!',
+                                html: `
+                                    <p class="mb-3">${res.message}</p>
+                                    ${listHtml}
+                                `,
+                                icon: 'warning',
+                                width: 600,
+                                confirmButtonText: 'OK',
+                            });
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    },
+                    error: () => Swal.fire('Error', 'Gagal memeriksa progres.', 'error')
                 });
             });
 
-
-            // Tangkap input keterangan dan simpan ke localStorage
-            $(document).on('input', '.keterangan-input', function() {
-                const row = $(this).closest('tr');
-                const barangId = row.data('barangid');
-                const value = $(this).val();
-
-                // Ambil data lama
-                let barangSelisih = JSON.parse(localStorage.getItem('barangSelisih') || '{}');
-
-                // Kalau belum ada, buat baru
-                if (!barangSelisih[barangId]) {
-                    barangSelisih[barangId] = {};
-                }
-
-                // Simpan keterangan baru
-                barangSelisih[barangId].keterangan = value;
-
-                // Simpan ke localStorage
-                localStorage.setItem('barangSelisih', JSON.stringify(barangSelisih));
-            });
-
-            // Tombol Edit
             $('#soInputTableContainer').on('click', '.btn-edit-temp', function() {
                 const row = $(this).closest('tr.soh-row');
                 const barangId = row.data('barangid');
 
                 $.ajax({
-                    url: `{{ url('api/wfg/sop/getDataTempEdit') }}/` + barangId,
+                    url: `{{ url('api/wfg/sop/getDataTempEdit') }}/${barangId}`,
                     type: 'GET',
                     success: function(res) {
                         if (res.status === 'success') {
-                            const items = res.data; // array data temp
+                            const items = res.data_qty || [];
+                            const note = res.data_note?.catatan || '';
+
                             let html = '';
 
                             items.forEach(item => {
-                                // Format tanggal
                                 const dateObj = new Date(item.updated_at.replace(' ',
-                                    'T')); // safer
-                                const options = {
+                                    'T'));
+                                const formattedDate = dateObj.toLocaleString('id-ID', {
                                     day: '2-digit',
                                     month: 'short',
                                     year: 'numeric',
                                     hour: '2-digit',
                                     minute: '2-digit'
-                                };
-                                const formattedDate = dateObj.toLocaleString('id-ID',
-                                    options);
+                                });
 
                                 html += `
                                     <div class="mb-3 border p-2 rounded temp-item" data-tempid="${item.id}">
@@ -784,37 +887,47 @@
                                         <input type="number" class="form-control qty_full mb-2" value="${item.qty_full}">
                                         <label>Qty Receh</label>
                                         <input type="number" class="form-control qty_receh mb-2" value="${item.qty_receh}">
-                                        <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1">
+                                        <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1" data-type="qty">
                                             <i class="mdi mdi-delete"></i> Hapus
                                         </button>
                                     </div>
                                 `;
                             });
 
+                            // Tambahkan catatan di bawah
+                            html += `
+                                <hr>
+                                <div class="mb-3 border p-2 rounded temp-note" data-barangid="${barangId}">
+                                    <label>Catatan</label>
+                                    <textarea class="form-control temp_note" rows="3">${note}</textarea>
+                                    <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1" data-type="note">
+                                        <i class="mdi mdi-delete"></i> Hapus
+                                    </button>
+                                </div>
+                            `;
 
                             $('#editModal .modal-body').html(html);
                             $('#editModal').modal('show');
                         } else {
-                            Swal.fire('Error', res.message || 'Gagal mengambil data', 'error');
+                            toastr.error(res.message || 'Gagal mengambil data',
+                                'Error');
                         }
                     },
                     error: function(xhr) {
-                        Swal.fire(
-                            'Error',
-                            xhr.responseJSON?.message || 'Terjadi kesalahan.',
-                            'error'
-                        );
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Terjadi kesalahan.',
+                            'error');
                     }
                 });
             });
 
             $('#editModal').on('click', '.btn-delete-temp', function() {
-                const container = $(this).closest('.temp-item');
-                const tempId = container.data('tempid');
+                const tipe = $(this).data('type'); // 'qty' atau 'note'
+                const container = $(this).closest(tipe === 'qty' ? '.temp-item' : '.temp-note');
+                const tempId = tipe === 'qty' ? container.data('tempid') : container.data('barangid');
 
                 Swal.fire({
-                    title: 'Hapus data?',
-                    text: "Data akan dihapus permanen!",
+                    title: `Hapus ${tipe === 'note' ? 'catatan' : 'data qty'}?`,
+                    text: `Data ${tipe === 'note' ? 'catatan' : 'sementara'} akan dihapus permanen!`,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Ya, hapus',
@@ -826,19 +939,20 @@
                                 tempId,
                             type: 'DELETE',
                             data: {
-                                _token: $('input[name="_token"]').val()
+                                _token: $('input[name="_token"]').val(),
+                                tipe: tipe
                             },
                             success: function(res) {
                                 if (res.status === 'success') {
-                                    Swal.fire('Terhapus!', res.message, 'success');
-                                    container.remove(); // hapus dari DOM
+                                    toastr.success(res.message, 'Terhapus');
+                                    container.remove();
                                 } else {
-                                    Swal.fire('Error', res.message ||
-                                        'Gagal menghapus data', 'error');
+                                    toastr.error(res.message || 'Gagal menghapus data',
+                                        'Error');
                                 }
                             },
                             error: function() {
-                                Swal.fire('Error', 'Gagal menghapus data', 'error');
+                                toastr.error('Gagal menghapus data', 'Error');
                             }
                         });
                     }
@@ -852,34 +966,38 @@
                     const tempId = $(this).find('.temp_id').val();
                     const qtyFull = $(this).find('.qty_full').val();
                     const qtyReceh = $(this).find('.qty_receh').val();
-                    const keterangan = $(this).find('.keterangan-input').val();
 
                     updates.push({
                         id: tempId,
                         qty_full: qtyFull,
                         qty_receh: qtyReceh,
-                        keterangan: keterangan
                     });
                 });
+
+                const catatan = $('#editModal .temp_note').val();
 
                 $.ajax({
                     url: "{{ route('wfg.stock_opname.update-temp') }}",
                     method: 'POST',
                     data: {
                         _token: $('input[name="_token"]').val(),
-                        updates
+                        items: updates,
+                        catatan: catatan
                     },
                     success: function(res) {
                         if (res.status === 'success') {
-                            Swal.fire('Berhasil', res.message, 'success');
+                            toastr.success(res.message, 'Berhasil');
                             $('#editModal').modal('hide');
+
                             loadBarangForOpname(); // refresh tabel
                         } else {
-                            Swal.fire('Error', res.message || 'Gagal menyimpan data', 'error');
+                            toastr.error(res.message || 'Gagal menyimpan data',
+                                'Error');
                         }
                     },
                     error: function() {
-                        Swal.fire('Error', 'Gagal menyimpan data', 'error');
+                        toastr.error(res.message || 'Gagal menyimpan data',
+                            'Error');
                     }
                 });
             });
@@ -915,18 +1033,17 @@
                             },
                             success: function(res) {
                                 if (res.status === 'success') {
-                                    Swal.fire('Berhasil', res.message, 'success');
+                                    toastr.success(res.message, 'Berhasil');
                                 } else if (res.status === 'info') {
-                                    Swal.fire('Info', res.message, 'info');
+                                    toastr.info(res.message, 'Info');
                                 } else {
-                                    Swal.fire('Error', res.message, 'error');
+                                    toastr.error(res.message, 'Error');
                                 }
 
                                 loadBarangForOpname();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error', 'Gagal menghapus data sementara.',
-                                    'error');
+                                toastr.error('Gagal menghapus data sementara.');
                                 console.error(xhr.responseText);
                             }
                         });
@@ -934,7 +1051,7 @@
                 });
             });
 
-            // --- Event Reset per Row ---
+            // Reset temp per Row
             $(document).on('click', '.btn-reset-temp', function() {
                 const row = $(this).closest('.soh-row');
                 const sohId = row.data('sohid');
@@ -967,6 +1084,7 @@
                                 if (res.status === "success") {
                                     // Kosongkan tampilan summary dan history
                                     row.find('.summary-cell').text('0');
+                                    row.find('.keterangan').val('');
                                     const collapseRow = $(`#history-${row.data('id')}`);
                                     collapseRow.find('td').html(
                                         '<em class="text-muted">Belum ada riwayat input.</em>'
@@ -975,20 +1093,11 @@
                                     // Hapus cache di client
                                     delete window.tempBatchCache[key];
 
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Berhasil!',
-                                        text: 'Data opname barang berhasil direset.',
-                                        timer: 2000,
-                                        showConfirmButton: false
-                                    });
+                                    toastr.success(res.message, 'Berhasil');
                                 } else {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Gagal!',
-                                        text: res.message ||
-                                            'Gagal reset data opname.'
-                                    });
+                                    toastr.error(res.message ||
+                                        'Gagal reset data opname',
+                                        'Error');
                                 }
                             },
                             error: function(err) {
@@ -1016,12 +1125,22 @@
                 const btn = $(this);
 
                 const data = {
+                    // === data Barang ===
                     mid_barang: form.find('[name="mid_barang"]').val().trim(),
                     nama_barang: form.find('[name="nama_barang"]').val().trim(),
                     uom: form.find('[name="uom"]').val().trim(),
                     qty_box: parseInt(form.find('[name="qty_box"]').val()) || 1,
+
+                    // === Data SOH ===
+                    unrest: parseInt(form.find('[name="unrest"]').val()) || 0,
+                    qi: parseInt(form.find('[name="qi"]').val()) || 0,
+                    blocked: parseInt(form.find('[name="blocked"]').val()) || 0,
+
+                    // === Data SOP ===
                     qty_full: parseInt(form.find('[name="qty_full"]').val()) || 0,
                     qty_receh: parseInt(form.find('[name="qty_receh"]').val()) || 0,
+
+                    // === Meta Tambahan ===
                     principal: $('#principal_filter').val() || null,
                     _token: '{{ csrf_token() }}'
                 };
@@ -1029,6 +1148,12 @@
                 // Validasi form
                 if (!data.mid_barang) {
                     Swal.fire('Peringatan', 'MID Barang wajib diisi.', 'warning');
+                    return;
+                }
+
+                if (data.unreset === 0 && data.qi === 0 && data.blocked === 0) {
+                    Swal.fire('Peringatan', 'Isi minimal salah satu Qty Unrest, Qi atau Blocked.',
+                        'warning');
                     return;
                 }
 
@@ -1060,7 +1185,6 @@
                             });
 
                             $('#modalAddItem').modal('hide');
-                            form.trigger('reset'); // kosongin form
                             loadBarangForOpname(1, $('#principal_filter').val());
                         } else {
                             Swal.fire('Gagal', res.message ||
@@ -1079,7 +1203,6 @@
                     }
                 });
             });
-
         });
 
         function loadAllTempData() {
@@ -1089,8 +1212,6 @@
             rows.each(function() {
                 const sohId = $(this).data('sohid');
                 const barangId = $(this).data('barangid');
-
-                // gunakan soh_id jika ada, kalau tidak ada ambil barang_id
                 const key = sohId ? `soh_${sohId}` : `barang_${barangId}`;
                 keyIds.push(key);
             });
@@ -1098,18 +1219,12 @@
             const uniqueKeys = [...new Set(keyIds)];
             if (uniqueKeys.length === 0) return;
 
-            // Pisahkan jadi dua array: soh_ids dan barang_ids
             const sohIds = [];
             const barangIds = [];
             uniqueKeys.forEach(k => {
                 if (k.startsWith('soh_')) sohIds.push(parseInt(k.replace('soh_', '')));
                 else if (k.startsWith('barang_')) barangIds.push(parseInt(k.replace('barang_', '')));
             });
-
-            // console.log("Load temp data:", {
-            //     sohIds,
-            //     barangIds
-            // });
 
             $.ajax({
                 url: "{{ route('wfg.stock_opname.getTempBatch') }}",
@@ -1124,26 +1239,51 @@
                         const groupedData = {};
 
                         res.data.forEach(tempRecord => {
-                            // grouping berdasarkan soh_id kalau ada, kalau tidak pakai barang_id
-                            const groupingKey = tempRecord.soh_id ? `soh_${tempRecord.soh_id}` :
+                            const groupingKey = tempRecord.soh_id ?
+                                `soh_${tempRecord.soh_id}` :
                                 `barang_${tempRecord.barang_id}`;
-                            const summary = parseInt(tempRecord.summary) || 0;
 
                             if (!groupedData[groupingKey]) {
                                 groupedData[groupingKey] = {
                                     total_summary: 0,
-                                    history: []
+                                    history: [],
+                                    latestNote: null
                                 };
                             }
 
-                            groupedData[groupingKey].total_summary += summary;
-                            groupedData[groupingKey].history.push(tempRecord);
+                            const group = groupedData[groupingKey];
+
+                            // 🔍 Pisahkan mode berdasarkan sumber data
+                            if (tempRecord.mode === 'note') {
+
+                                // simpan catatan terbaru
+                                if (tempRecord.keterangan && tempRecord.keterangan.trim() !== '') {
+                                    if (
+                                        !group.latestNote ||
+                                        new Date(tempRecord.created_at) > new Date(group.latestNote
+                                            .created_at)
+                                    ) {
+                                        group.latestNote = {
+                                            text: tempRecord.keterangan.trim(),
+                                            created_at: tempRecord.created_at
+                                        };
+                                    }
+                                }
+                            } else {
+                                // mode qty
+                                group.history.push(tempRecord);
+
+                                // hanya qty yg dihitung summary
+                                const summary = parseInt(tempRecord.summary) || 0;
+                                group.total_summary += summary;
+                            }
                         });
 
-                        // update tampilan summary di tabel
+                        // 🧩 Update tampilan tabel
                         for (const key in groupedData) {
                             const tempItem = groupedData[key];
                             const totalSummary = tempItem.total_summary;
+                            const latestNote = tempItem.latestNote ? tempItem.latestNote.text : '';
 
                             let selector;
                             if (key.startsWith('soh_')) {
@@ -1156,13 +1296,21 @@
 
                             const row = $(selector);
                             if (row.length) {
+                                // tampilkan total summary
                                 row.find('.summary-cell').text(totalSummary.toLocaleString('id-ID'));
-                            }
 
-                            window.tempBatchCache[key] = {
-                                total_summary: totalSummary,
-                                history: tempItem.history
-                            };
+                                // isi input keterangan dengan note terbaru saja
+                                if (latestNote) {
+                                    row.find('.keterangan').val(latestNote);
+                                }
+
+                                // 🚀 simpan semua data ke cache
+                                window.tempBatchCache[key] = {
+                                    total_summary: totalSummary,
+                                    history: tempItem.history,
+                                    latestNote: tempItem.latestNote
+                                };
+                            }
                         }
                     }
                 },
