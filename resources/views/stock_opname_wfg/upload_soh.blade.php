@@ -113,6 +113,32 @@
             letter-spacing: 0.5px;
             margin-bottom: 1rem;
         }
+
+        @media (max-width: 767.98px) {
+            #soh-table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table {
+                font-size: 10px;
+                /* kecilkan font biar muat */
+                white-space: nowrap;
+                /* biar teks gak turun baris */
+            }
+
+            table th,
+            table td {
+                padding: 0.4rem 0.6rem;
+                /* rapatkan sedikit */
+            }
+
+            /* Jika pakai tombol di kolom aksi, biar nggak tumpuk */
+            table .btn {
+                padding: 0.2rem 0.3rem;
+                font-size: 10px;
+            }
+        }
     </style>
 @endsection
 
@@ -135,15 +161,13 @@
                         <div class="row my-3 align-items-center">
                             <div
                                 class="@if (Auth::user()->jabatan != 'operator') col-lg-3 @else col-lg-6 @endif col-md-12 mb-3 mb-lg-0">
-                                <form id="searchSOHForm" class="d-flex" role="search">
-                                    <div class="input-group">
-                                        <input type="search" class="form-control" id="searchSOHInput"
-                                            placeholder="Cari SOH berdasarkan nama barang atau kode..." aria-label="Search">
-                                        <button class="btn btn-primary" type="submit">
-                                            <i class="mdi mdi-magnify"></i> Cari
-                                        </button>
-                                    </div>
+                                <form id="searchSOHForm" class="position-relative w-100" role="search">
+                                    <input type="search" class="form-control ps-5" id="searchSOHInput"
+                                        placeholder="Cari MID..." aria-label="Search">
+                                    <i
+                                        class="mdi mdi-magnify position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                                 </form>
+
                             </div>
 
                             {{-- Filter principal hanya untuk non-operator --}}
@@ -165,9 +189,12 @@
                                         data-bs-target="#uploadModal">
                                         <i class="mdi mdi-upload me-1"></i> Upload
                                     </button>
-
-                                    <button class="btn btn-info w-100" onclick="openAddSOH()">
+                                    <button class="btn btn-info w-100 me-2" onclick="openAddSOH()">
                                         <i class="mdi mdi-plus-circle-outline me-1"></i> Tambah
+                                    </button>
+
+                                    <button class="btn btn-danger w-100 me-2" id="btnDeleteAll">
+                                        <i class="mdi mdi-refresh me-1"></i> Delete All
                                     </button>
                                 </div>
                             @endif
@@ -251,18 +278,21 @@
                         <div class="row g-2 mt-2">
                             <div class="col-md-6">
                                 <label class="form-label">Qty UNREST</label>
-                                <input type="number" class="form-control" id="unrest" name="unrest">
+                                <input type="number" class="form-control" id="unrest" name="unrest"
+                                    placeholder="500">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Qty Qual Insp</label>
-                                <input type="number" class="form-control" id="qi" name="qi">
+                                <input type="number" class="form-control" id="qi" name="qi"
+                                    placeholder="2">
                             </div>
                         </div>
 
                         <div class="row g-2 mt-2">
                             <div class="col-md-6">
                                 <label class="form-label">Qty BLOCKED</label>
-                                <input type="number" class="form-control" id="block" name="block">
+                                <input type="number" class="form-control" id="block" name="block"
+                                    placeholder="5">
                             </div>
                         </div>
                     </div>
@@ -368,11 +398,10 @@
                         // Mulai membangun struktur tabel
                         html += `
                             <div class="table-responsive">
-                                <table class="table table-hover table-striped table-nowrap mb-0">
+                                <table class="table table-hover table-striped table-nowrap mb-0 w-100">
                                     <thead class="bg-soft-info">
                                         <tr>
                                             <th>No</th>
-                                            <th>Nama Barang</th>
                                             <th>MID</th>
                                             <th class="text-end">Qty SAP</th>
                                             <th class="text-center">Aksi</th>
@@ -393,24 +422,21 @@
                             html += `
                                 <tr> 
                                     <td>${noUrut}</td>
-                                    <td>
-                                        <strong class="text-dark">${item.barang?.nama_barang ?? 'N/A'}</strong>
-                                    </td>
                                     <td>${item.barang?.mid_barang ?? 'N/A'}</td>
                                     <td class="text-end text-primary fw-bold">${item.qty_soh.toLocaleString('id-ID')}</td>
                                     <td class="text-center">
                                         <div class="d-flex gap-2 justify-content-center">
-                                            <button class="btn btn-sm btn-outline-primary"
+                                            <button class="btn btn-sm btn-outline-info"
                                                 onclick='detailSOH(${JSON.stringify(item)})' title="Detail">
-                                                <i class="mdi mdi-eye-outline me-2"></i>Detail
+                                                <i class="mdi mdi-eye-outline"></i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-warning"
                                                 onclick="editSOH(${item.id})" title="Edit">
-                                                <i class="mdi mdi-pencil-outline me-2"></i>Edit
+                                                <i class="mdi mdi-pencil-outline"></i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger"
                                                 onclick="deleteSOH(${item.id})" title="Hapus">
-                                                <i class="mdi mdi-trash-can-outline me-2"></i>Delete
+                                                <i class="mdi mdi-trash-can-outline"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -480,19 +506,26 @@
                         });
                     },
                     success: function(response) {
+                        let listNotFound = '';
+
+                        if (response.not_found && response.not_found.length > 0) {
+                            listNotFound = '<ul style="text-align:left; margin-top:10px;">';
+                            response.not_found.forEach(mid => {
+                                listNotFound += `<li>${mid}</li>`;
+                            });
+                            listNotFound += '</ul>';
+                        }
+
                         Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: response.message ??
-                                'File Stock On Hand berhasil diunggah.',
-                            // timer: 3000,
-                            // showConfirmButton: false
+                            icon: response.not_found && response.not_found.length > 0 ?
+                                'warning' : 'success',
+                            title: response.not_found && response.not_found.length > 0 ?
+                                'Beberapa MID Tidak Ditemukan' : 'Berhasil!',
+                            html: `${response.message ?? 'File Stock On Hand berhasil diunggah.'}${listNotFound}`
                         });
 
                         $('#uploadModal').modal('hide');
                         $('#file').val('');
-
-                        // Refresh DataTable kalau ada
                         loadSOHList();
                     },
                     error: function(xhr) {
@@ -598,6 +631,64 @@
                 loadSOHList(1, searchQuery, principal);
             });
 
+            $('#btnDeleteAll').on('click', function(e) {
+                e.preventDefault();
+
+                Swal.fire({
+                    title: 'Reset Data SOH Hari Ini?',
+                    text: 'Semua data Stock On Hand yang diinput hari ini akan dihapus. Tindakan ini tidak bisa dibatalkan!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus data hari ini',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('wfg.stock_opname.soh.reset_all') }}",
+                            type: "DELETE",
+                            data: {
+                                _token: $('meta[name="csrf-token"]').attr('content')
+                            },
+                            beforeSend: function() {
+                                Swal.fire({
+                                    title: 'Menghapus data...',
+                                    text: 'Mohon tunggu sebentar',
+                                    allowOutsideClick: false,
+                                    didOpen: () => Swal.showLoading()
+                                });
+                            },
+                            success: function(res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil!',
+                                    text: res.message ??
+                                        'Data SOH hari ini berhasil dihapus.',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+
+                                // Reset filter dan refresh tabel
+                                $('#searchSOHInput').val('');
+                                $('#filterPrincipal').val('').trigger('change');
+                                $('#barang_id').val('').trigger('change');
+
+                                loadSOHList();
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal!',
+                                    text: xhr.responseJSON?.message ??
+                                        'Terjadi kesalahan saat menghapus data.'
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
             window.loadSOHList = loadSOHList;
         });
 
@@ -614,6 +705,15 @@
 
             loadBarangOptions(() => {
                 $('#barang_id').val('');
+
+                $('#barang_id').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#sohModal'),
+                    placeholder: '-- Pilih Barang --',
+                    allowClear: true,
+                    width: '100%'
+                });
+
                 $('#sohModal').modal('show');
             });
         }

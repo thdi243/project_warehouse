@@ -181,14 +181,13 @@ class StockOnHandWfgController extends Controller
         // Filter search
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
-                $q->where('wfg_barang.nama_barang', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('wfg_barang.mid_barang', 'like', '%' . $searchTerm . '%');
+                $q->where('wfg_barang.mid_barang', 'like', '%' . $searchTerm . '%');
             });
         }
 
         // Ambil data relasi
         $query->with([
-            'barang:id,mid_barang,nama_barang,qty_box,principal',
+            'barang:id,mid_barang,qty_box,principal',
             'user:id,username'
         ]);
 
@@ -301,6 +300,52 @@ class StockOnHandWfgController extends Controller
         ]);
     }
 
+    public function resetAll()
+    {
+        try {
+            $user = Auth::user();
+            $today = now()->toDateString();
+
+            // Jika operator → hapus hanya data hari ini milik principal-nya
+            if ($user->jabatan === 'operator') {
+                $principal = $user->principal?->principal ?? null;
+
+                if (!$principal) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Akun operator tidak memiliki principal. Tidak dapat menghapus data.'
+                    ], 422);
+                }
+
+                $deleted = StockOnHandModel::where('principal', $principal)
+                    ->whereDate('last_updated', $today)
+                    ->delete();
+            } else {
+                // Admin atau non-operator bisa hapus semua principal untuk hari ini
+                $deleted = StockOnHandModel::whereDate('last_updated', $today)->delete();
+            }
+
+            if ($deleted === 0) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Tidak ada data SOH yang dihapus untuk hari ini.'
+                ]);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => "Berhasil menghapus $deleted data SOH untuk tanggal $today."
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal menghapus data SOH hari ini.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
     // Import dair Excel
     public function importExcel(Request $request)
     {
@@ -340,7 +385,7 @@ class StockOnHandWfgController extends Controller
             foreach ($rows as $index => $row) {
                 if ($index == 1) {
                     $header = array_map(fn($h) => strtolower(trim($h)), $row);
-                    $requiredHeaders = ['mid_barang', 'nama_barang', 'unrest', 'qual_insp', 'blocked'];
+                    $requiredHeaders = ['mid_barang', 'unrest', 'qual_insp', 'blocked'];
                     $missing = array_diff($requiredHeaders, $header);
 
                     if (!empty($missing)) {
@@ -429,7 +474,6 @@ class StockOnHandWfgController extends Controller
         // Set judul kolom (header template)
         $headers = [
             'mid_barang',
-            'nama_barang',
             'unrest',
             'qual_insp',
             'blocked',
@@ -446,10 +490,9 @@ class StockOnHandWfgController extends Controller
 
         // Tambahkan contoh data (opsional)
         $sheet->setCellValue('A2', '1160825');
-        $sheet->setCellValue('B2', 'FOOD KECAP MANIS SEDAAP JERIGEN 25KG');
-        $sheet->setCellValue('C2', 886);
+        $sheet->setCellValue('B2', 886);
+        $sheet->setCellValue('C2', 0);
         $sheet->setCellValue('D2', 0);
-        $sheet->setCellValue('E2', 0);
 
         // Nama file
         $fileName = 'Template_Stock_On_Hand_' . date('Y-m-d') . '.xlsx';
