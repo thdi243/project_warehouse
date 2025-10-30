@@ -32,7 +32,7 @@ class BarangWfgController extends Controller
             $status = $request->input('status', 'active');
             $searchTerm = $request->input('search');
             $principal = $request->input('principal'); // 👈 ambil dari request
-            $perPage = 10;
+            $perPage = 20;
 
             $query = BarangWfgModel::query();
 
@@ -320,7 +320,6 @@ class BarangWfgController extends Controller
             'message' => 'Barang berhasil dihapus permanen'
         ]);
     }
-
 
     // Upload Handle
     public function import(Request $request)
