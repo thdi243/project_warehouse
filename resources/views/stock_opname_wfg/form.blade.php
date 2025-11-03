@@ -219,21 +219,31 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-6 col-12">
-                                <label for="searchBarang" class="form-label fw-semibold">Cari Barang</label>
-                                <div class="input-group">
-                                    <input type="text" id="searchBarang" class="form-control" placeholder="Ketik MID...">
-                                    <button type="button" id="btnSearchBarang" class="btn btn-primary">
-                                        <i class="mdi mdi-magnify"></i> Cari
-                                    </button>
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-md-8 col-12">
+                                    <label for="searchBarang" class="form-label fw-semibold">Cari Barang</label>
+                                    <div class="input-group">
+                                        <input type="text" id="searchBarang" class="form-control"
+                                            placeholder="Ketik MID...">
+                                        <button type="button" id="btnSearchBarang" class="btn btn-primary">
+                                            <i class="mdi mdi-magnify"></i> Cari
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4 col-12 text-center">
+                                    <div>
+                                        <button type="button" id="btnStartOpname" class="btn btn-outline-success w-100">
+                                            <i class="mdi mdi-play-circle"></i> Start Opname
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+
                         </div>
 
-                        <h5 class="mb-3 text-dark fw-bold">Daftar Barang untuk Opname</h5>
-
+                        <div id="principalTabsContainer" class="mb-3"></div>
                         <div class="table-responsive" id="soInputTableContainer">
-                            <p class="text-center text-muted py-5">Memuat daftar barang...</p>
                         </div>
                     </form>
                 </div>
@@ -298,6 +308,11 @@
                                 <div class="col-md-4">
                                     <label class="form-label">Qty Box</label>
                                     <input type="number" class="form-control" name="qty_box" placeholder="100"
+                                        min="1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Principal</label>
+                                    <input type="text" class="form-control" name="principal" placeholder="100"
                                         min="1">
                                 </div>
                             </div>
@@ -367,7 +382,76 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            loadBarangForOpname();
+
+            $.get('/wfg/stock_opname/sop/status', function(res) {
+                const btn = $('#btnStartOpname');
+
+                if (res.status === 'started') {
+                    btn.prop('disabled', true)
+                        .removeClass('btn-outline-success')
+                        .addClass('btn-success')
+                        .html('<i class="mdi mdi-loading mdi-spin me-2"></i> Opname...');
+                    generatePrincipalTabs(true);
+                } else if (res.status === 'finished') {
+                    btn.prop('disabled', true)
+                        .removeClass('btn-outline-success btn-success')
+                        .addClass('btn-secondary')
+                        .html('<i class="mdi mdi-check-circle-outline me-2"></i> Opname Done');
+
+                    $('#formSopFinal button').prop('disabled', true).addClass('disabled');
+                    $('#searchBarang').prop('disabled', true).addClass('disabled');
+                    $('#btnSearchBarang').prop('disabled', true).addClass('disabled');
+
+                    $('#soInputTableContainer').html(`
+                        <div class="d-flex justify-content-center align-items-center py-2">
+                            <div class="card border-0 shadow-sm text-center p-4" style="max-width: 700px;">
+                                <div class="mb-3">
+                                    <i class="mdi mdi-check-circle-outline text-success" style="font-size: 4rem;"></i>
+                                </div>
+                                <h4 class="fw-semibold text-dark mb-2">Opname Selesai</h4>
+                                <p class="text-muted mb-4">
+                                    Silakan hubungi <strong>Foreman</strong> untuk tindakan lanjutan.
+                                </p>
+                            </div>
+                        </div>
+                    `);
+
+                    generatePrincipalTabs(false);
+                }
+            });
+
+            $('#btnStartOpname').on('click', function() {
+                const $btn = $(this);
+
+                // Disable tombol biar tidak diklik berkali-kali
+                $btn.prop('disabled', true)
+                    .removeClass('btn-outline-success')
+                    .addClass('btn-success')
+                    .html('<i class="mdi mdi-loading mdi-spin me-2"></i> Opname...');
+
+                $.ajax({
+                    url: '/wfg/stock_opname/sop/start',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(res) {
+                        if (res.status) {
+                            toastr.success(res.message);
+                            generatePrincipalTabs(true);
+                        } else {
+                            toastr.warning(res.message);
+                        }
+                    },
+                    error: function() {
+                        toastr.error('Gagal memulai opname');
+                        $btn.prop('disabled', false)
+                            .removeClass('btn-success')
+                            .addClass('btn-outline-success')
+                            .html('<i class="mdi mdi-play-circle"></i> Start Opname');
+                    }
+                });
+            });
 
             function loadBarangForOpname(page = 1, principal, search = '') {
                 const container = $('#soInputTableContainer');
@@ -397,6 +481,7 @@
                         const lastPage = response.last_page;
                         const total = response.total;
 
+
                         if (items.length === 0) {
                             container.html(`
                                 <div class="text-center py-5 text-muted">
@@ -408,16 +493,17 @@
                         }
 
                         let tableHtml = `
+                            <h5 class="mb-3 text-dark fw-bold mb-2">Daftar Barang untuk Opname</h5>
                             <div class="table-responsive">
                                 <table class="table table-bordered align-middle mb-0 text-nowrap" id="tableInputOpname" style="width: 100%;">
                                     <thead class="bg-light text-center align-middle">
                                         <tr>
                                             <th style="width: 50px;">No</th>
-                                            <th>MID (Qty Box)</th>
-                                            <th>Qty Full</th>
-                                            <th>Qty Receh</th>
+                                            <th >MID (Qty Box)</th>
+                                            <th style="min-width: 80px;">Qty Full</th>
+                                            <th style="min-width: 80px;">Qty Receh</th>
                                             <th>Summary</th>
-                                            <th>Catatan</th>
+                                            <th style="min-width: 80px;">Catatan</th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
@@ -433,20 +519,30 @@
 
                             // Tentukan warna badge berdasarkan diff_status
                             let badgeColor = '';
+                            let badge = '';
                             let badgeHtml = '';
+                            let textColor = '';
 
                             if (item.diff_status === 'lebih') {
-                                badgeColor = 'warning';
+                                textColor = 'text-white';
+                                badge = 'badge';
+                                badgeColor = 'bg-warning';
                             } else if (item.diff_status === 'kurang') {
-                                badgeColor = 'danger';
+                                textColor = 'text-white';
+                                badge = 'badge';
+                                badgeColor = 'bg-danger';
                             } else if (item.diff_status === 'match') {
-                                badgeColor = 'success';
+                                textColor = 'text-white';
+                                badge = 'badge';
+                                badgeColor = 'bg-success';
+                            } else {
+                                textColor = 'text-dark';
                             }
 
                             // Kalau ada diff_status, baru tampilkan badge
                             if (item.diff_status) {
                                 badgeHtml =
-                                    `<span class="badge rounded-circle bg-${badgeColor}" style="width: 12px; height: 12px; display: inline-block;"></span>`;
+                                    `<span class="badge rounded-circle ${badgeColor}" style="width: 12px; height: 12px; display: inline-block;"></span>`;
                             } else {
                                 badgeHtml = ''; // tidak tampil apa pun
                             }
@@ -460,10 +556,7 @@
                                     
                                     <td class="text-center fw-semibold">${index + 1 + ((currentPage - 1) * response.per_page)}</td>
                                     <td>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <strong class="text-dark">${item.mid_barang ?? 'N/A'}</strong>
-                                            ${badgeHtml}
-                                        </div>
+                                        <strong class="${textColor} ${badge} ${badgeColor}">${item.mid_barang ?? 'N/A'}</strong><br>
                                         <small class="text-muted">${item.qty_box ?? 'N/A'}</small>
                                     </td>
                                     <td><input type="number" class="form-control qty_full text-end" min="0" placeholder="0"></td>
@@ -543,7 +636,7 @@
                             e.preventDefault();
                             const targetPage = $(this).data('page');
                             if (targetPage >= 1 && targetPage <= lastPage) {
-                                loadBarangForOpname(targetPage, '');
+                                loadBarangForOpname(targetPage, activePrincipal);
                             }
                         });
 
@@ -556,6 +649,84 @@
                                 <p>Terjadi kesalahan saat mengambil daftar barang.</p>
                             </div>
                         `);
+                    }
+                });
+            }
+
+            let activePrincipal = ''; // default
+
+            function generatePrincipalTabs(shouldLoad = true) {
+                if (!shouldLoad) {
+                    $('#principalTabsContainer').empty();
+                    return;
+                }
+
+                $.ajax({
+                    url: "{{ route('wfg.stock_opname.principal-list') }}",
+                    type: "GET",
+                    success: function(response) {
+                        if (response.status !== 'success') return;
+
+                        const principalsRaw = response.principals || [];
+                        const isSMU = !!response.is_smu;
+
+                        // normalize: jadi array string ['SMU', 'ABC']
+                        const principals = principalsRaw.map(p => {
+                            if (typeof p === 'string') return p;
+                            if (p && typeof p === 'object' && p.principal) return p.principal;
+                            return null;
+                        }).filter(Boolean);
+
+                        // kalau bukan SMU -> langsung load, ambil principal pertama kalau ada
+                        if (!isSMU) {
+                            const principal = principals[0] || '';
+                            loadBarangForOpname(1, principal);
+                            return;
+                        }
+
+                        // kalau SMU tapi principals kosong -> load tanpa filter
+                        if (principals.length === 0) {
+                            loadBarangForOpname(1, '');
+                            return;
+                        }
+
+                        // build tabs dengan loop (lebih aman daripada nested template backticks)
+                        let tabsHtml =
+                            '<ul class="nav nav-pills nav-justified mb-3" id="principalTabs" role="tablist">';
+                        principals.forEach((p, i) => {
+                            const activeClass = i === 0 ? 'active' : '';
+                            // tambahin escape sederhana untuk safety (hindari backtick issues)
+                            const safeP = String(p).replace(/"/g, '&quot;');
+                            tabsHtml += `
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link ${activeClass}" 
+                                            data-principal="${safeP}" 
+                                            type="button" role="tab">
+                                        ${safeP}
+                                    </button>
+                                </li>
+                            `;
+                        });
+                        tabsHtml += '</ul>';
+
+                        $('#principalTabsContainer').html(tabsHtml);
+
+                        // gunakan event delegation agar handler tetap bekerja walau re-render
+                        $('#principalTabsContainer').off('click', '#principalTabs button');
+                        $('#principalTabsContainer').on('click', '#principalTabs button', function() {
+                            $('#principalTabs button').removeClass('active');
+                            $(this).addClass('active');
+                            activePrincipal = $(this).data('principal') || '';
+                            console.log(activePrincipal);
+                            loadBarangForOpname(1, activePrincipal);
+                        });
+
+                        // auto-load pertama
+                        activePrincipal = principals[0] || '';
+                        loadBarangForOpname(1, activePrincipal);
+                    },
+                    error: function() {
+                        loadBarangForOpname(1, '');
                     }
                 });
             }
@@ -620,13 +791,14 @@
                 const summary = (qty_full * qty_box) + qty_receh;
                 const principal = $('#principal_filter').val();
 
-                // console.log(principal);
-
                 // Tentukan mode
                 let mode = '';
-                if ((qty_full > 0 || qty_receh > 0) && keterangan !== '') {
-                    mode = 'both'; // dua-duanya diisi
-                } else if (qty_full > 0 || qty_receh > 0) {
+                const hasQty = !isNaN(qty_full_raw) && qty_full_raw !== '' || !isNaN(qty_receh_raw) &&
+                    qty_receh_raw !== '';
+
+                if (hasQty && keterangan !== '') {
+                    mode = 'both';
+                } else if (hasQty) {
                     mode = 'qty';
                 } else if (keterangan !== '') {
                     mode = 'note';
@@ -725,16 +897,17 @@
 
                 if (tempData?.history?.length > 0) {
                     let historyHtml = `<div class="border rounded-3 p-3 shadow-sm"><div class="row g-2">`;
-                    tempData.history.forEach(h => {
+                    tempData.history.forEach((h, index) => {
                         const created = new Date(h.updated_at).toLocaleString('id-ID', {
                             dateStyle: 'medium',
                             timeStyle: 'short'
                         });
                         historyHtml += `
                             <div class="col-md-3 col-6">
-                                <div class="p-2 border rounded h-100 fade show">
-                                    <div class="fw-semibold text-dark mb-1">
-                                        Full: ${h.qty_full}, Receh: ${h.qty_receh}
+                                <div class="p-2 border border-info rounded h-100 fade show bg-light">
+                                    <div class="fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center">
+                                        <span>Full: ${h.qty_full}, Receh: ${h.qty_receh}</span>
+                                        <span class="badge bg-info">${index + 1}</span>
                                     </div>
                                     <div class="text-muted small">
                                         <i class="mdi mdi-clock-outline me-1"></i>${created}
@@ -779,194 +952,96 @@
                         mode: 'check'
                     },
                     success: function(res) {
-                            if (res.status === 'success') {
-                                let listHtml = '';
+                        if (res.status === 'success') {
+                            let listHtml = '';
 
-                                if (res.data && res.data.length > 0) {
-                                    listHtml = `
+                            if (res.data && res.data.length > 0) {
+                                listHtml = `
                                         <div style="max-height: 400px; overflow-y: auto; text-align: left;">
                                             <ul class="list-unstyled mb-0">
                                     `;
-                                    res.data.forEach(item => {
-                                        listHtml += `
+                                res.data.forEach(item => {
+                                    listHtml += `
                                             <li class="mb-3">
                                                 <strong>${item.mid_barang}</strong>
-                                                <span class="text-muted">(Qty SAP: ${item.qty_sap})</span>
                                                 Selisih: <span class="text-danger fw-bold">${item.selisih}</span>
                                             </li>
                                         `;
-                                    });
-                                    listHtml += `
+                                });
+                                listHtml += `
                                             </ul>
                                         </div>
                                     `;
-                                }
+                            }
 
-                                Swal.fire({
-                                    title: res.data?.length > 0 ? 'Terdapat Selisih!' :
-                                        'Data Lengkap!',
-                                    html: `
+                            Swal.fire({
+                                title: res.data?.length > 0 ? 'Terdapat Selisih!' :
+                                    'Data Lengkap!',
+                                html: `
                                         <p class="mb-3">${res.message}</p>
                                         ${listHtml}
                                     `,
-                                    icon: res.data?.length > 0 ? 'info' : 'success',
-                                    width: 600,
-                                    showCancelButton: true,
-                                    confirmButtonText: 'Ya, Simpan Final',
-                                    cancelButtonText: 'Perbaiki Data'
-                                }).then(result => {
-                                    if (result.isConfirmed) {
-                                        // Step 2: Finalisasi
-                                        $.ajax({
-                                            url: "{{ route('wfg.stock_opname.process') }}",
-                                            method: "POST",
-                                            data: {
-                                                _token: $('input[name="_token"]')
-                                                    .val(),
-                                                tgl_opname,
-                                                principal,
-                                                mode: 'final'
-                                            },
-                                            success: function(finalRes) {
-                                                if (finalRes.status ===
-                                                    'success') {
-                                                    Swal.fire('Berhasil!',
-                                                        finalRes.message,
-                                                        'success');
-                                                    loadBarangForOpname();
-                                                } else if (finalRes.status ===
-                                                    'belum_opname') {
-                                                    let listHtml =
-                                                        '<ul class="list-unstyled mb-0">';
-                                                    finalRes.data.forEach(
-                                                        item => {
-                                                            listHtml +=
-                                                                `<li><strong>${item.mid_barang}</strong></li>`;
-                                                        });
-                                                    listHtml += '</ul>';
+                                icon: res.data?.length > 0 ? 'info' : 'success',
+                                width: 600,
+                                showCancelButton: true,
+                                confirmButtonText: 'Ya, Submit',
+                                cancelButtonText: 'Batal'
+                            }).then(result => {
+                                if (result.isConfirmed) {
+                                    // Step 2: Finalisasi
+                                    $.ajax({
+                                        url: "{{ route('wfg.stock_opname.process') }}",
+                                        method: "POST",
+                                        data: {
+                                            _token: $('input[name="_token"]')
+                                                .val(),
+                                            tgl_opname,
+                                            principal,
+                                            mode: 'final'
+                                        },
+                                        success: function(finalRes) {
+                                            if (finalRes.status ===
+                                                'success') {
+                                                Swal.fire('Berhasil!',
+                                                    finalRes.message,
+                                                    'success');
+                                                generatePrincipalTabs();
+                                            } else if (finalRes.status ===
+                                                'belum_opname') {
+                                                let listHtml =
+                                                    '<ul class="list-unstyled mb-0">';
+                                                finalRes.data.forEach(
+                                                    item => {
+                                                        listHtml +=
+                                                            `<li><strong>${item.mid_barang}</strong></li>`;
+                                                    });
+                                                listHtml += '</ul>';
 
-                                                    Swal.fire({
-                                                        title: 'Belum di-Opname!',
-                                                        html: `
+                                                Swal.fire({
+                                                    title: 'Belum di-Opname!',
+                                                    html: `
                                                             <p class="mb-3">${finalRes.message}</p>
                                                             <div style="max-height: 400px; overflow-y: auto;">${listHtml}</div>
                                                         `,
-                                                        icon: 'info',
-                                                        width: 600,
-                                                        confirmButtonText: 'OK'
-                                                    });
-                                                } else {
-                                                    Swal.fire('Gagal', finalRes
-                                                        .message, 'error');
-                                                }
-                                            },
-                                            error: () => Swal.fire('Error',
-                                                'Gagal menyimpan final.',
-                                                'error')
-                                        });
-                                    }
-                                });
-                            } else {
-                                Swal.fire('Gagal', res.message, 'error');
-                            }
+                                                    icon: 'info',
+                                                    width: 600,
+                                                    confirmButtonText: 'OK'
+                                                });
+                                            } else {
+                                                Swal.fire('Gagal', finalRes
+                                                    .message, 'error');
+                                            }
+                                        },
+                                        error: () => Swal.fire('Error',
+                                            'Gagal menyimpan final.',
+                                            'error')
+                                    });
+                                }
+                            });
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
                         }
-
-                        // success: function(res) {
-                        //     if (res.status === 'success') {
-                        //         Swal.fire({
-                        //             title: 'Data lengkap!',
-                        //             text: 'Semua sudah valid. Simpan final?',
-                        //             icon: 'question',
-                        //             showCancelButton: true,
-                        //             confirmButtonText: 'Ya, Simpan Final',
-                        //             cancelButtonText: 'Batal',
-                        //         }).then(result => {
-                        //             if (result.isConfirmed) {
-                        //                 // Step 2: Finalisasi
-                        //                 $.ajax({
-                        //                     url: "{{ route('wfg.stock_opname.process') }}",
-                        //                     method: "POST",
-                        //                     data: {
-                        //                         _token: $('input[name="_token"]')
-                        //                             .val(),
-                        //                         tgl_opname,
-                        //                         principal,
-                        //                         mode: 'final'
-                        //                     },
-                        //                     success: function(finalRes) {
-                        //                         if (finalRes.status ===
-                        //                             'success') {
-                        //                             Swal.fire('Berhasil!',
-                        //                                 finalRes.message,
-                        //                                 'success');
-                        //                             loadBarangForOpname();
-                        //                         } else if (finalRes.status ===
-                        //                             'belum_opname') {
-                        //                             let listHtml =
-                        //                                 '<ul class="list-unstyled mb-0">';
-                        //                             finalRes.data.forEach(
-                        //                                 item => {
-                        //                                     listHtml +=
-                        //                                         `<li><strong>${item.mid_barang}</strong></li>`;
-                        //                                 });
-                        //                             listHtml += '</ul>';
-
-                        //                             Swal.fire({
-                        //                                 title: 'Belum di-Opname!',
-                        //                                 html: `
-                    //                                     <p class="mb-3">${finalRes.message}</p>
-                    //                                     <div style="max-height: 400px; overflow-y: auto;">${listHtml}</div>
-                    //                                 `,
-                        //                                 icon: 'info',
-                        //                                 width: 600,
-                        //                                 confirmButtonText: 'OK'
-                        //                             });
-                        //                         } else {
-                        //                             Swal.fire('Gagal', finalRes
-                        //                                 .message, 'error');
-                        //                         }
-                        //                     },
-                        //                     error: () => Swal.fire('Error',
-                        //                         'Gagal menyimpan final.',
-                        //                         'error')
-                        //                 });
-                        //             }
-                        //         });
-                        //     } else if (res.status === 'warning') {
-                        //         let listHtml = `
-                    //             <div style="max-height: 400px; overflow-y: auto; text-align: left;">
-                    //                 <ul class="list-unstyled mb-0">
-                    //         `;
-                        //         res.data.forEach(item => {
-                        //             listHtml += `
-                    //                 <li class="mb-3">
-                    //                     <strong>${item.mid_barang}</strong>
-                    //                     <span class="text-muted">(Qty SAP: ${item.qty_sap})</span>
-                    //                     Selisih: <span class="text-danger fw-bold">${item.selisih}</span>
-                    //                 </li>
-                    //             `;
-                        //         });
-
-                        //         listHtml += `
-                    //                 </ul>
-                    //             </div>
-                    //         `;
-
-                        //         Swal.fire({
-                        //             title: 'Terdapat Selisih!',
-                        //             html: `
-                    //                 <p class="mb-3">${res.message}</p>
-                    //                 ${listHtml}
-                    //             `,
-                        //             icon: 'warning',
-                        //             width: 600,
-                        //             confirmButtonText: 'OK',
-                        //         });
-                        //     } else {
-                        //         Swal.fire('Gagal', res.message, 'error');
-                        //     }
-                        // }
-                        ,
+                    },
                     error: () => Swal.fire('Error', 'Gagal memeriksa progres.', 'error')
                 });
             });
@@ -985,7 +1060,7 @@
 
                             let html = '';
 
-                            items.forEach(item => {
+                            items.forEach((item, index) => {
                                 const dateObj = new Date(item.updated_at.replace(' ',
                                     'T'));
                                 const formattedDate = dateObj.toLocaleString('id-ID', {
@@ -997,26 +1072,32 @@
                                 });
 
                                 html += `
-                                    <div class="mb-3 border p-2 rounded temp-item" data-tempid="${item.id}">
+                                    <div class="mb-3 border border-info p-2 rounded temp-item" data-tempid="${item.id}">
                                         <input type="hidden" class="temp_id" value="${item.id}">
-                                        <p><strong>MID: ${item.barang.mid_barang} - ${formattedDate}</strong></p>
+                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <p class="mb-0 fw-semibold">
+                                                MID: ${item.barang.mid_barang} - ${formattedDate}
+                                            </p>
+                                            <span class="badge bg-info ms-2">${index + 1}</span>
+                                        </div>
                                         <label>Qty Full</label>
-                                        <input type="number" class="form-control qty_full mb-2" value="${item.qty_full}">
+                                        <input type="number" class="form-control qty_full mb-2 bg-light" value="${item.qty_full}">
                                         <label>Qty Receh</label>
-                                        <input type="number" class="form-control qty_receh mb-2" value="${item.qty_receh}">
+                                        <input type="number" class="form-control qty_receh mb-2 bg-light" value="${item.qty_receh}">
                                         <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1" data-type="qty">
                                             <i class="mdi mdi-delete"></i> Hapus
                                         </button>
                                     </div>
                                 `;
+
                             });
 
                             // Tambahkan catatan di bawah
                             html += `
                                 <hr>
-                                <div class="mb-3 border p-2 rounded temp-note" data-barangid="${barangId}">
+                                <div class="mb-3 border border-info p-2 rounded temp-note" data-barangid="${barangId}">
                                     <label>Catatan</label>
-                                    <textarea class="form-control temp_note" rows="3">${note}</textarea>
+                                    <textarea class="form-control temp_note bg-light" rows="3">${note}</textarea>
                                     <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1" data-type="note">
                                         <i class="mdi mdi-delete"></i> Hapus
                                     </button>
@@ -1157,7 +1238,7 @@
                                     toastr.error(res.message, 'Error');
                                 }
 
-                                loadBarangForOpname();
+                                generatePrincipalTabs();
                             },
                             error: function(xhr) {
                                 toastr.error('Gagal menghapus data sementara.');
@@ -1247,6 +1328,7 @@
                     nama_barang: form.find('[name="nama_barang"]').val().trim(),
                     uom: form.find('[name="uom"]').val().trim(),
                     qty_box: parseInt(form.find('[name="qty_box"]').val()) || 1,
+                    principal_barang: form.find('[name="principal"]').val().trim(),
 
                     // === Data SOH ===
                     unrest: parseInt(form.find('[name="unrest"]').val()) || 0,
@@ -1278,8 +1360,6 @@
                     Swal.fire('Peringatan', 'Isi minimal salah satu Qty Full atau Qty Receh.', 'warning');
                     return;
                 }
-
-                // Hitung summary
                 data.summary = (data.qty_full * data.qty_box) + data.qty_receh;
 
                 // Tombol disable selama proses
@@ -1321,6 +1401,19 @@
                 });
             });
         });
+
+        @if (session('error'))
+            toastr.options = {
+                "progressBar": true,
+                "positionClass": "toast-top-right",
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "4000",
+                "extendedTimeOut": "1000",
+                "tapToDismiss": true
+            }
+            toastr.error("{{ session('error') }}", "Peringatan!");
+        @endif
 
         function loadAllTempData() {
             const rows = $('.soh-row');
