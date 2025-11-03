@@ -299,7 +299,7 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                        <button type="submit" class="btn btn-info" id="btnSaveSOH">
+                        <button type="submit" class="btn btn-success" id="btnSaveSOH">
                             <i class="mdi mdi-content-save me-1"></i>Simpan
                         </button>
                     </div>
@@ -851,7 +851,7 @@
                 success: function(response) {
                     $('#barang_id').html('<option value="">-- Pilih Barang --</option>');
 
-                    // ✅ jika response langsung array
+                    // jika response langsung array
                     if (Array.isArray(response) && response.length > 0) {
                         $.each(response, function(index, item) {
                             $('#barang_id').append(
@@ -859,7 +859,7 @@
                             );
                         });
                     }
-                    // ✅ jika response punya struktur {status:'success', data:[...]}
+                    // jika response punya struktur {status:'success', data:[...]}
                     else if (response.status === 'success' && response.data.length > 0) {
                         $.each(response.data, function(index, item) {
                             $('#barang_id').append(
