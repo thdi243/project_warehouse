@@ -233,8 +233,8 @@
 
                                 <div class="col-md-4 col-12 text-center">
                                     <div>
-                                        <button type="button" id="btnStartOpname" class="btn btn-outline-success w-100">
-                                            <i class="mdi mdi-play-circle"></i> Start Opname
+                                        <button type="button" id="btnStartOpname" class="btn btn-outline-primary w-100">
+                                            <i class="mdi mdi-play-circle me-2"></i> Start Opname
                                         </button>
                                     </div>
                                 </div>
