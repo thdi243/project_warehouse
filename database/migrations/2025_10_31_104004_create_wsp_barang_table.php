@@ -11,13 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('barang', function (Blueprint $table) {
+        Schema::create('wsp_barang', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('rak_id')->nullable()->constrained('rak')->onDelete('set null');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('mid_barang')->unique();
             $table->string('nama_barang');
+            $table->string('uom');
             $table->string('image')->nullable();
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });
     }

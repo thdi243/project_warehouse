@@ -39,61 +39,49 @@ class WspBarangController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'mid_barang'  => 'required|digits:8|integer',
-            'nama_barang' => 'required|string|max:50',
+            'mid_barang'  => 'required|digits_between:1,8|integer',
+            'nama_barang' => 'required|string|max:255',
+            'uom'         => 'required|string|max:50',
             'image'       => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
-
-            // data rak
-            'kode_rak'    => 'required|string|max:50',
-            'nama_rak'    => 'required|string|max:50',
-            'kolom_rak'   => 'required|integer',
-            'level_rak'   => 'required|integer',
-            'box_rak'     => 'nullable|max:50',
         ]);
 
-        // Cek duplikat MID barang
-        if (BarangModel::where('mid_barang', $request->mid_barang)->exists()) {
+        try {
+            // Cek duplikat MID barang
+            if (BarangModel::where('mid_barang', $request->mid_barang)->exists()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'MID Barang sudah terdaftar. Gunakan MID lain.',
+                ], 409); // pakai 409 Conflict lebih semantik
+            }
+
+            // Upload gambar jika ada
+            $imagePath = null;
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('images/wsp', 'public');
+            }
+
+            // Simpan barang
+            $barang = BarangModel::create([
+                'created_by'     => Auth::id() ?? 1,
+                'mid_barang'  => $request->mid_barang,
+                'nama_barang' => $request->nama_barang,
+                'uom'         => $request->uom,
+                'image'       => $imagePath,
+            ]);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Barang baru berhasil diregistrasi dan disimpan.',
+                'data'    => [
+                    'barang' => $barang,
+                ]
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'status'  => false,
-                'message' => 'MID Barang sudah terdaftar. Gunakan MID lain.',
-            ], 400);
+                'message' => 'Terjadi kesalahan pada server: ' . $e->getMessage(),
+            ], 500);
         }
-
-        // Cari rak berdasarkan data request
-        $rak = RakModel::where('kode_rak', trim($request->kode_rak))
-            ->where('nama_rak', trim($request->nama_rak))
-            ->where('kolom_rak', (int) $request->kolom_rak)
-            ->where('level_rak', (int) $request->level_rak)
-            ->where('box_rak', $request->box_rak !== null ? trim($request->box_rak) : '000')
-            ->first();
-
-        // Kalau rak belum ada, return error
-        if (!$rak) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Rak belum dibuat. Silakan buat rak terlebih dahulu.',
-            ], 400);
-        }
-
-        // Simpan barang
-        $barang = BarangModel::create([
-            'rak_id' => $rak->id,
-            'user_id' => Auth::id() ?? 1,
-            'mid_barang' => $request->mid_barang,
-            'nama_barang' => $request->nama_barang,
-            'image' => $request->hasFile('image')
-                ? $request->file('image')->store('images/wsp', 'public')
-                : null,
-        ]);
-
-        return response()->json([
-            'status'  => true,
-            'message' => 'Barang baru berhasil diregistrasi dan ditempatkan pada rak yang sudah ada.',
-            'data'    => [
-                'barang' => $barang,
-                'rak'    => $rak,
-            ]
-        ]);
     }
 
     /**
@@ -102,7 +90,7 @@ class WspBarangController extends Controller
     public function show(string $id)
     {
         // Ambil barang dan rak berdasarkan ID barang atau rak
-        $barang = BarangModel::with('rak', 'user')->find($id); // asumsi $id = id barang
+        $barang = BarangModel::with('user')->find($id); // asumsi $id = id barang
 
         if (!$barang) {
             return response()->json([
@@ -118,13 +106,8 @@ class WspBarangController extends Controller
             'id' => $barang->id,
             'nama_barang' => $barang->nama_barang,
             'mid_barang' => $barang->mid_barang,
+            'uom' => $barang->uom,
             'image' => $barang->image,
-            'rak_id' => $rak->id ?? null,
-            'kode_rak' => $rak->kode_rak ?? null,
-            'nama_rak' => $rak->nama_rak ?? null,
-            'kolom_rak' => $rak->kolom_rak ?? null,
-            'level_rak' => $rak->level_rak ?? null,
-            'box_rak' => $rak->box_rak ?? null,
             'username' => $barang->user->username ?? null,
         ];
 
@@ -139,7 +122,6 @@ class WspBarangController extends Controller
     public function getDataBarang()
     {
         $data = BarangModel::with([
-            'rak:id,kode_rak,nama_rak,kolom_rak,level_rak,box_rak',
             'user:id,username'
         ])
             ->get()
@@ -148,13 +130,7 @@ class WspBarangController extends Controller
                     'id'          => $barang->id,
                     'mid_barang'  => $barang->mid_barang,
                     'nama_barang' => $barang->nama_barang,
-                    'rak' => [
-                        'area_rak' => $barang->rak->kode_rak,
-                        'nama_rak' => $barang->rak->nama_rak,
-                        'kolom_rak' => $barang->rak->kolom_rak,
-                        'level_rak' => $barang->rak->level_rak,
-                        'box_rak' => $barang->rak->box_rak,
-                    ],
+                    'uom'         => $barang->uom,
                     'username'    => $barang->user->username ?? null,
                     'image'       => $barang->image ? asset('storage/' . $barang->image) : null,
                 ];
@@ -225,16 +201,10 @@ class WspBarangController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'midBarangEdit'  => 'required|digits:8|integer',
-            'namaBarangEdit' => 'required|string|max:50',
-            'imageEdit'       => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
-
-            // data rak
-            'kodeRakEdit'    => 'required|string|max:50',
-            'namaRakEdit'    => 'required|string|max:50',
-            'kolomRakEdit'   => 'required|integer',
-            'levelRakEdit'   => 'required|integer',
-            'boxRakEdit'     => 'nullable|max:50',
+            'midBarangEdit'  => 'required|digits_between:1,8|integer',
+            'namaBarangEdit' => 'required|string|max:255',
+            'uomEdit'        => 'required|string|max:50',
+            'imageEdit'      => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
         $barang = BarangModel::find($id);
@@ -248,6 +218,7 @@ class WspBarangController extends Controller
         // Update data barang
         $barang->mid_barang = $request->midBarangEdit;
         $barang->nama_barang = $request->namaBarangEdit;
+        $barang->uom = $request->uomEdit;
 
         if ($request->hasFile('imageEdit')) {
             $barang->image = $request->file('image')->store('images/wsp', 'public');
@@ -255,18 +226,7 @@ class WspBarangController extends Controller
 
         $barang->save();
 
-        // Update atau buat rak baru
-        $rak = RakModel::firstOrCreate([
-            'user_id'   => Auth::id() ?? 1,
-            'kode_rak'  => trim($request->kodeRakEdit),
-            'nama_rak'  => trim($request->namaRakEdit),
-            'kolom_rak' => (int) $request->kolomRakEdit,
-            'level_rak' => (int) $request->levelRakEdit,
-            'box_rak'   => $request->boxRakEdit !== null ? trim($request->boxRakEdit) : '000',
-        ]);
-
         // Hubungkan barang dengan rak
-        $barang->rak_id = $rak->id;
         $barang->save();
 
         return response()->json([
@@ -274,7 +234,6 @@ class WspBarangController extends Controller
             'message' => 'Data barang berhasil diupdate.',
             'data'    => [
                 'barang' => $barang,
-                'rak'    => $rak,
             ]
         ]);
     }
@@ -307,8 +266,7 @@ class WspBarangController extends Controller
         ]);
     }
 
-
-    // import dan download template
+    // Import Barang
     public function import(Request $request)
     {
         $request->validate([
@@ -331,23 +289,19 @@ class WspBarangController extends Controller
                 if ($index === 0) continue; // skip header
                 if (empty(array_filter($row))) continue; // skip empty row
 
-                $midBarang  = isset($row[0]) ? (int) $row[0] : null;
-                $namaBarang = isset($row[1]) ? trim($row[1]) : '';
-                $kodeRak    = isset($row[2]) ? trim($row[2]) : '';
-                $namaRak    = isset($row[3]) ? trim($row[3]) : '';
-                $kolomRak   = isset($row[4]) ? (int) $row[4] : null;
-                $levelRak   = isset($row[5]) ? (int) $row[5] : null;
-                $boxRak     = isset($row[6]) ? str_pad(trim($row[6]), 3, '0', STR_PAD_LEFT) : '000';
+                $midBarang  = isset($row[0]) ? trim($row[0]) : null;
+                $namaBarang = isset($row[1]) ? trim($row[1]) : null;
+                $uom        = isset($row[2]) ? trim($row[2]) : null;
 
                 // --- Validasi dasar ---
-                if (!$midBarang || !$namaBarang || !$kodeRak || !$namaRak || !$kolomRak || !$levelRak) {
+                if (!$midBarang || !$namaBarang || !$uom) {
                     $errors[] = "Baris " . ($index + 1) . ": Data tidak lengkap";
                     $errorCount++;
                     continue;
                 }
 
-                if (strlen((string)$midBarang) !== 8) {
-                    $errors[] = "Baris " . ($index + 1) . ": MID Barang harus 8 digit";
+                if (!is_numeric($midBarang) || strlen($midBarang) != 8) {
+                    $errors[] = "Baris " . ($index + 1) . ": MID Barang harus 8 digit angka";
                     $errorCount++;
                     continue;
                 }
@@ -359,29 +313,13 @@ class WspBarangController extends Controller
                 }
 
                 try {
-                    // --- Cek rak apakah ada ---
-                    $rak = RakModel::where('kode_rak', $kodeRak)
-                        ->where('nama_rak', $namaRak)
-                        ->where('kolom_rak', $kolomRak)
-                        ->where('level_rak', $levelRak)
-                        ->where('box_rak', $boxRak)
-                        ->first();
-
-                    if (!$rak) {
-                        $errors[] = "Baris " . ($index + 1) . ": Rak ($kodeRak-$namaRak-$kolomRak-$levelRak-$boxRak) belum dibuat";
-                        $errorCount++;
-                        continue;
-                    }
-
-                    // --- Simpan barang ---
                     BarangModel::create([
-                        'rak_id'      => $rak->id,
-                        'user_id'     => Auth::id() ?? 1,
+                        'created_by'  => Auth::id() ?? 1,
                         'mid_barang'  => $midBarang,
                         'nama_barang' => $namaBarang,
+                        'uom'         => $uom,
                         'image'       => null,
                     ]);
-
                     $successCount++;
                 } catch (\Exception $e) {
                     $errors[] = "Baris " . ($index + 1) . ": " . $e->getMessage();
@@ -392,7 +330,7 @@ class WspBarangController extends Controller
             DB::commit();
 
             return response()->json([
-                'status' => $errors ? false : true,
+                'status' => $errorCount === 0,
                 'message' => "Import selesai! Sukses: $successCount, Gagal: $errorCount",
                 'data' => [
                     'success_count' => $successCount,
@@ -409,7 +347,6 @@ class WspBarangController extends Controller
         }
     }
 
-
     public function downloadTemplate()
     {
         $spreadsheet = new Spreadsheet();
@@ -418,42 +355,30 @@ class WspBarangController extends Controller
         // Set headers
         $sheet->setCellValue('A1', 'MID Barang');
         $sheet->setCellValue('B1', 'Nama Barang');
-        $sheet->setCellValue('C1', 'Kode Rak');
-        $sheet->setCellValue('D1', 'Nama Rak');
-        $sheet->setCellValue('E1', 'Kolom Rak');
-        $sheet->setCellValue('F1', 'Level Rak');
-        $sheet->setCellValue('G1', 'Box Rak');
+        $sheet->setCellValue('C1', 'Uom');
 
         // Add example data
         $sheet->setCellValue('A2', 12345678);
         $sheet->setCellValue('B2', 'Contoh Barang 1');
-        $sheet->setCellValue('C2', 'FL1');
-        $sheet->setCellValue('D2', 'A');
-        $sheet->setCellValue('E2', 1);
-        $sheet->setCellValue('F2', 1);
-        $sheet->setCellValue('G2', '001');
+        $sheet->setCellValue('C2', 'Pcs');
 
         $sheet->setCellValue('A3', 87654321);
         $sheet->setCellValue('B3', 'Contoh Barang 2');
-        $sheet->setCellValue('C3', 'FL2');
-        $sheet->setCellValue('D3', 'B');
-        $sheet->setCellValue('E3', 2);
-        $sheet->setCellValue('F3', 3);
-        $sheet->setCellValue('G3', '002');
+        $sheet->setCellValue('C3', 'Pcs');
 
         // Auto width columns
-        foreach (range('A', 'G') as $column) {
+        foreach (range('A', 'C') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
         // Style header
-        $sheet->getStyle('A1:G1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:G1')->getFill()
+        $sheet->getStyle('A1:C1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:C1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFCCCCCC');
 
         $writer = new Xlsx($spreadsheet);
-        $filename = 'template_import_barang_' . date('Y-m-d') . '.xlsx';
+        $filename = 'template_import_barang_wsp_' . date('Y-m-d') . '.xlsx';
 
         return response()->streamDownload(function () use ($writer) {
             $writer->save('php://output');

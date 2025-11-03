@@ -4,24 +4,25 @@ namespace App\Models\Wsp;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Wsp\stock\StockOnHandWspModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BarangModel extends Model
 {
     use HasFactory;
-    protected $table = 'barang';
+    protected $table = 'wsp_barang';
 
     protected $fillable = [
-        'rak_id',
-        'user_id',
+        'created_by',
         'mid_barang',
         'nama_barang',
+        'uom',
         'image',
     ];
 
     public function stock()
     {
-        return $this->hasMany(StockOnHandModel::class);
+        return $this->hasMany(StockOnHandWspModel::class);
     }
 
     public function transaksi()
@@ -36,6 +37,6 @@ class BarangModel extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'created_by');
     }
 }
