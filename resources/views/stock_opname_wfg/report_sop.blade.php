@@ -913,8 +913,6 @@
 
             $('#btn_export').on('click', async function() {
                 const tanggal = $('#filter_tanggal').val();
-
-                // console.log(tanggal);
                 const principal = $('#principal_filter').val();
 
                 if (!tanggal) {
@@ -928,40 +926,32 @@
 
                 Swal.fire({
                     title: 'Memproses...',
-                    text: 'Mohon tunggu, sedang mengekspor data',
+                    text: 'Mohon tunggu, sedang menyiapkan data export',
                     allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
+                    didOpen: () => Swal.showLoading(),
                 });
 
                 try {
-                    let url = `{{ route('wfg.stock_opname.export') }}?tanggal=${tanggal}`;
-                    if (principal) {
-                        url += `&principal=${encodeURIComponent(principal)}`;
-                    }
+                    let checkUrl = `{{ route('wfg.stock_opname.export') }}?tanggal=${tanggal}`;
+                    if (principal) checkUrl += `&principal=${encodeURIComponent(principal)}`;
 
-                    // 🔹 Cek dulu response-nya
-                    const response = await fetch(url, {
-                        method: 'GET'
-                    });
+                    // 🔹 Cek dulu apakah backend siap (pakai ?check=true)
+                    const checkResponse = await fetch(checkUrl + '&check=true');
 
-                    if (!response.ok) {
-                        const data = await response.json().catch(() => ({}));
-                        Swal.close();
+                    const data = await checkResponse.json().catch(() => ({}));
+                    Swal.close();
 
+                    if (!checkResponse.ok) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal Mengekspor',
-                            text: data.message ||
-                                `Terjadi kesalahan (Status ${response.status}).`,
+                            text: data.message || 'Terjadi kesalahan saat menyiapkan export.',
                         });
                         return;
                     }
 
-                    // 🔹 Jika response ok, buka tab PDF
-                    Swal.close();
-                    window.open(url, '_blank');
+                    // 🔹 Kalau semua oke, baru buka tab baru
+                    window.open(checkUrl, '_blank');
                     $('#exportDateModal').modal('hide');
 
                 } catch (error) {
@@ -973,6 +963,7 @@
                     });
                 }
             });
+
 
             // Approval
             $('#btn_approval').on('click', function() {
@@ -1304,5 +1295,18 @@
                 }
             });
         }
+
+        @if (session('error'))
+            toastr.options = {
+                "progressBar": true,
+                "positionClass": "toast-top-right",
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "4000",
+                "extendedTimeOut": "1000",
+                "tapToDismiss": true
+            }
+            toastr.error("{{ session('error') }}", "Peringatan!");
+        @endif
     </script>
 @endsection

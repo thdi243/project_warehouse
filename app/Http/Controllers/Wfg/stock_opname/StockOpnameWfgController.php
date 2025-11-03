@@ -2027,12 +2027,18 @@ class StockOpnameWfgController extends Controller
 
             $sop = $sopQuery->first();
 
+            if ($request->has('check')) {
+                if (!$sop) {
+                    return response()->json(['message' => "SOP tidak ditemukan untuk tanggal {$tanggal}."], 404);
+                }
+                return response()->json(['message' => 'Data siap diunduh.'], 200);
+            }
+
             if (!$sop) {
                 if ($asContent) {
                     throw new \Exception("SOP tidak ditemukan untuk principal {$principalFilter} pada tanggal {$tanggal}");
                 }
-                return Redirect::route('dashboard')
-                    ->with('error', "SOP tidak ditemukan untuk principal Anda pada tanggal {$tanggal}.");
+                return redirect()->back()->with('error', "SOP tidak ditemukan untuk principal Anda pada tanggal {$tanggal}.");
             }
 
             if (!$sop) {
@@ -2041,31 +2047,6 @@ class StockOpnameWfgController extends Controller
                     'message' => "Tidak ada SOP untuk tanggal $tanggal",
                 ], 404);
             }
-
-            // $summariesQuery = WfgSopSummariesModel::with([
-            //     'barang:id,mid_barang,nama_barang,qty_box,uom,principal,is_new'
-            // ])->where('sop_id', $sop->id);
-
-            // $detailsQuery = WfgSopDetailModel::with([
-            //     'barang:id,mid_barang,nama_barang,qty_box,principal,is_new'
-            // ])->where('sop_id', $sop->id);
-
-            // // Jika user operator → filter otomatis principal miliknya
-            // if ($user->jabatan === 'operator') {
-            //     $userPrincipal = $user->principal?->principal;
-            //     if (!$userPrincipal) {
-            //         return response()->json([
-            //             'status' => 'error',
-            //             'message' => 'Akun operator tidak memiliki principal yang terdaftar.',
-            //         ], 403);
-            //     }
-
-            //     $summariesQuery->whereHas('barang', fn($q) => $q->where('principal', $userPrincipal));
-            //     $detailsQuery->whereHas('barang', fn($q) => $q->where('principal', $userPrincipal));
-            // } elseif (!empty($principalFilter)) {
-            //     $summariesQuery->whereHas('barang', fn($q) => $q->where('principal', $principalFilter));
-            //     $detailsQuery->whereHas('barang', fn($q) => $q->where('principal', $principalFilter));
-            // }
 
             $filteredSummaries = WfgSopSummariesModel::with(['barang'])
                 ->where('sop_id', $sop->id)
@@ -2200,7 +2181,6 @@ class StockOpnameWfgController extends Controller
             $bulanRomawi = bulanRomawi($tanggalCarbon->month);
             $tahun = $tanggalCarbon->year;
 
-            // Format nomor dokumen: [day]/WFG/[bulan_romawi]/[tahun]
             $nomorDokumen = "{$day}/WFG/{$bulanRomawi}/{$tahun}";
 
             $pdf = Pdf::loadView('pdf.sop_wfg_report', [
