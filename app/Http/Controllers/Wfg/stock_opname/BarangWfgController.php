@@ -20,7 +20,9 @@ class BarangWfgController extends Controller
      */
     public function index()
     {
-        return view('master.wfg.barang_so');
+        $principals = BarangWfgModel::distinct()->pluck('principal');
+
+        return view('master.wfg.barang_so', compact('principals'));
     }
 
     /**

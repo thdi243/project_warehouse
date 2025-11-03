@@ -322,8 +322,9 @@
                     <div class="col-12 col-md-6 col-lg-2">
                         <select id="principalFilter" class="form-select w-100">
                             <option value="">Semua Principal</option>
-                            <option value="SMU">SMU</option>
-                            <option value="BAS">BAS</option>
+                            @foreach ($principals as $p)
+                                <option value="{{ $p }}">{{ $p }}</option>
+                            @endforeach
                         </select>
                     </div>
 
