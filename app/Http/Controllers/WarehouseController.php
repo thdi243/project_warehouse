@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Wsp\stock\StockOnHandWspModel;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
+use App\Models\Wfg\stock_opname\WfgSopModel;
 use App\Models\Wfg\stock_opname\WfgSopStatusModel;
 
 class WarehouseController extends Controller
@@ -279,7 +280,7 @@ class WarehouseController extends Controller
             }
         }
 
-        $principals = BarangWfgModel::distinct()->pluck('principal');
+        $principals = WfgSopModel::distinct()->pluck('principal');
         $hasNewBarang = BarangWfgModel::where('is_new', 1)->exists();
 
         // Cek apakah user saat ini adalah Foreman Robi

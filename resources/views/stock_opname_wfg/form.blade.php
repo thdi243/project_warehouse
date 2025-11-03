@@ -1002,10 +1002,16 @@
                                         success: function(finalRes) {
                                             if (finalRes.status ===
                                                 'success') {
-                                                Swal.fire('Berhasil!',
-                                                    finalRes.message,
-                                                    'success');
-                                                generatePrincipalTabs();
+                                                Swal.fire({
+                                                    title: 'Berhasil!',
+                                                    text: finalRes
+                                                        .message,
+                                                    icon: 'success',
+                                                    confirmButtonText: 'OK'
+                                                }).then(() => {
+                                                    location
+                                                        .reload();
+                                                });
                                             } else if (finalRes.status ===
                                                 'belum_opname') {
                                                 let listHtml =
