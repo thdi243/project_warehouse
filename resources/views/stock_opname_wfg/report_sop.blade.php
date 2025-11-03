@@ -109,7 +109,7 @@
                     <div class="row g-3 align-items-end">
 
                         {{-- Filter Tanggal --}}
-                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-4 @endif col-12">
+                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-4 @else col-md-4 @endif col-12">
                             {{-- <label for="filter_tanggal" class="form-label fw-semibold">Filter Tanggal</label> --}}
                             <div>
                                 <label class="form-label" for="filter_tanggal">Tanggal</label>
@@ -120,7 +120,7 @@
 
                         {{-- Filter Principal untuk non-operator --}}
                         @if (Auth::user()->jabatan != 'operator')
-                            <div class="col-md-3 col-12">
+                            <div class="col-md-4 col-12">
                                 <select id="principal_filter" class="form-select">
                                     @foreach ($principals as $p)
                                         <option value="{{ $p }}">{{ $p }}</option>
@@ -129,17 +129,8 @@
                             </div>
                         @endif
 
-                        {{-- Tombol Send Report --}}
-                        @if (Auth::user()->jabatan != 'operator')
-                            <div class="col-md-3 col-12">
-                                <button type="button" id="btn_send_report" class="btn btn-soft-secondary w-100">
-                                    <i class="mdi mdi-send me-2"></i> Send Report
-                                </button>
-                            </div>
-                        @endif
-
                         {{-- Tombol Export --}}
-                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-4 @endif col-12">
+                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-4 @else col-md-4 @endif col-12">
                             <button type="button" id="btn_export" class="btn btn-soft-warning w-100">
                                 <i class="mdi mdi-export me-2"></i> Export PDF
                             </button>
@@ -350,13 +341,8 @@
                 $('#tableBody').html('');
                 const tanggal = $('#filter_tanggal').val() || new Date().toISOString().slice(0,
                     10);
-                console.log('kirim ajax:', {
-                    tanggal: $('#filter_tanggal').val(),
-                    principal
-                });
 
                 $.ajax({
-                    // url: `{{ url('api/wfg/sop/report/getData') }}`,
                     url: "{{ route('wfg.stock_opname.report.getData') }}",
                     method: 'GET',
                     dataType: 'json',
@@ -619,7 +605,6 @@
                     const qty_fisik = summary.qty_fisik ?? 0;
                     const selisih = summary.selisih ?? 0;
                     const keterangan = summary.keterangan || '-';
-                    const isOperator = @json(Auth::user()->jabatan === 'operator');
 
                     // Tentukan status
                     let statusClass, statusIcon, statusText;
@@ -642,6 +627,18 @@
                         <span class="badge badge-soft-${statusClass} fs-6" title="${statusText}">${formatNumber(selisih)}</span>
                     `;
 
+                    const isOperator = @json(Auth::user()->jabatan === 'operator');
+                    const sopStatus = sop.status;
+                    const allowEdit = (!isOperator || sopStatus === 'rejected');
+
+                    // tombol edit dibuat tanpa nested backtick
+                    const editButton = allowEdit ?
+                        '<button class="btn btn-outline-info btn-sm" onclick="showEdit(' + (barang.id ??
+                            summary.barang_id) + ')">' +
+                        '<i class="mdi mdi-pencil-outline"></i> Edit' +
+                        '</button>' :
+                        '';
+
                     html += `
                         <tr class="table-row-hover">
                             <td class="text-center">${index + 1}</td>
@@ -657,11 +654,7 @@
                                     <button class="btn btn-outline-primary btn-sm"  onclick="showDetail(${summary.id})">
                                         <i class="mdi mdi-eye-outline"></i> Detail
                                     </button>
-                                    @if (Auth::user()->jabatan !== 'operator')
-                                        <button class="btn btn-outline-info btn-sm" onclick="showEdit(${summary.barang?.id ?? summary.barang_id})">
-                                            <i class="mdi mdi-pencil-outline"></i> Edit
-                                        </button>
-                                    @endif
+                                    ${editButton}
                                 </div>
                             </td>
                         </tr>
@@ -890,11 +883,6 @@
                 });
             }
 
-            // Export PDF
-            // $('#btn_export').on('click', function() {
-            //     $('#exportDateModal').modal('show');
-            // });
-
             $('#btn_export').on('click', async function() {
                 const tanggal = $('#filter_tanggal').val();
 
@@ -1075,6 +1063,16 @@
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Memproses...',
+                            html: 'Mohon tunggu, sistem sedang memproses data Anda.',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
                         $.ajax({
                             url: "{{ route('wfg.stock_opname.update.status-approval') }}",
                             method: 'POST',
@@ -1105,6 +1103,9 @@
                                     text: xhr.responseJSON?.message ||
                                         'Terjadi kesalahan pada server.',
                                 });
+                            },
+                            complete: function() {
+                                $btn.prop('disabled', false).html(originalHtml);
                             }
                         });
                     }
@@ -1119,95 +1120,6 @@
                 handleApproval('rejected');
             });
             // end approval
-
-            // Send report // buka modal
-            $('#btn_send_report').on('click', function() {
-                const modalEl = document.getElementById('sendReportModal');
-                const modal = new bootstrap.Modal(modalEl);
-                modal.show();
-
-                // Tampilkan status loading dulu
-                $('#managerContainer').html('<p class="text-muted">Memuat data manager...</p>');
-
-                // Ambil data manager dari API
-                $.ajax({
-                    url: `{{ url('api/wfg/sop/users/approval') }}`,
-                    method: 'GET',
-                    dataType: 'json',
-                    success: function(data) {
-                        // Bangun select box
-                        let html = `
-                            <div class="mb-3">
-                                <label for="manager_send" class="form-label fw-semibold">Kirim ke Manager</label>
-                                <select id="manager_send" name="manager_id" class="form-select" required>
-                                    <option value="">-- Pilih Manager --</option>`;
-
-                        data.managers.forEach(m => {
-                            html += `<option value="${m.id}">${m.username}</option>`;
-                        });
-
-                        html += `</select></div>`;
-
-                        // Ganti isi container dengan select box
-                        $('#managerContainer').html(html);
-                    },
-                    error: function() {
-                        $('#managerContainer').html(
-                            '<p class="text-danger text-center">Gagal memuat data manager.</p>'
-                        );
-                    }
-                });
-            });
-
-            // submit form
-            $('#form_send_report').on('submit', function(e) {
-                e.preventDefault();
-
-                const formData = $(this).serialize();
-
-                Swal.fire({
-                    title: 'Kirim Report?',
-                    text: 'Report akan dikirim ke manager terpilih.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Kirim',
-                    cancelButtonText: 'Batal'
-                }).then(result => {
-                    if (result.isConfirmed) {
-                        $.ajax({
-                            url: "{{ route('wfg.stock_opname.sendReport') }}",
-                            method: 'POST',
-                            data: formData,
-                            headers: {
-                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                            },
-                            beforeSend: function() {
-                                Swal.fire({
-                                    title: 'Mengirim...',
-                                    allowOutsideClick: false,
-                                    didOpen: () => Swal.showLoading()
-                                });
-                            },
-                            success: function(res) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Berhasil!',
-                                    text: res.message
-                                });
-                                $('#sendReportModal').modal('hide');
-                            },
-                            error: function(xhr) {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Gagal',
-                                    text: xhr.responseJSON?.message ||
-                                        'Terjadi kesalahan!'
-                                });
-                            }
-                        });
-                    }
-                });
-            });
 
             // Save edit
             $('#saveEditBtn').on('click', function() {

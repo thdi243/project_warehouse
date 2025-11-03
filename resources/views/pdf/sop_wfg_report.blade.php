@@ -5,10 +5,15 @@
         <meta charset="UTF-8">
         <title>Laporan SOP WFG</title>
         <style>
+            @page {
+                margin: 50px 30px 50px 30px;
+                /* top, right, bottom, left */
+            }
+
             body {
                 font-family: 'Calibri', Arial, sans-serif;
-                font-size: 12px;
-                margin-top: 1rem;
+                font-size: 11px;
+                margin: 0;
             }
 
             table {
@@ -79,20 +84,29 @@
                 border-bottom: 1px solid #000 !important;
             }
 
-            /* Hapus border atas pada tabel kedua agar tidak double */
-            .no-top-border th,
-            .no-top-border td {
-                border-top: none !important;
-                background: white !important;
-            }
-
-            .no-top-border th {
+            .border-top-th th {
                 height: 25px !important;
+                border-top: 1px solid black;
+                background: white !important;
             }
 
             .no-border-row td {
                 border-top: none !important;
                 border-bottom: none !important;
+            }
+
+            .approver-name-cell {
+                text-align: center;
+                border-top: none !important;
+                border-bottom: none !important;
+                text-transform: capitalize;
+            }
+
+            .approver-ttd-cell {
+                height: 100px;
+                border-top: none !important;
+                border-bottom: none !important;
+                text-align: center;
             }
         </style>
     </head>
@@ -100,7 +114,8 @@
     <body>
 
         <!-- HEADER -->
-        <table class="header" cellspacing="0" cellpadding="4" style="white-space: nowrap; border: 1px solid #000;">
+        <table class="header" cellspacing="0" cellpadding="4"
+            style="white-space: nowrap; border: 1px solid #000; border-bottom: none !important;">
             <tr>
                 <td rowspan="4" class="text-center" style="width: 30%;">
                     <img src="{{ $logoPath }}" width="{{ $logoWidth }}">
@@ -109,7 +124,7 @@
                     PT. BUMI ALAM SEGAR
                 </td>
                 <td class="no-border text-left" style="width: 10%;">No Dok</td>
-                <td class="no-border text-left" style="width: 30%;">: 005/WFG/X/2025</td>
+                <td class="no-border text-left" style="width: 30%;">: {{ $nomorDokumen }}</td>
             </tr>
 
             <tr>
@@ -130,7 +145,10 @@
 
             <tr>
                 <td class="no-border text-left border-bottom-only">Hal</td>
-                <td class="no-border text-left border-bottom-only">: 1 of 1</td>
+                <td class="no-border text-left border-bottom-only">
+                    <span class="page-number"></span>
+                </td>
+
             </tr>
 
             <tr>
@@ -139,8 +157,8 @@
         </table>
 
         <!-- TABEL DATA -->
-        <table cellspacing="0" cellpadding="4" class="no-top-border text-center"
-            style="white-space: nowrap; border: 1px solid #000; border-top: none;">
+        <table cellspacing="0" cellpadding="4" class="border-top-th text-center"
+            style="white-space: nowrap; border: 1px solid #000;">
             <thead>
                 <tr>
                     <th style="width: 5%;">No</th>
@@ -199,6 +217,34 @@
             </tbody>
         </table>
 
+        {{-- table Note --}}
+        <table class="text-left" cellspacing="0" cellpadding="4"
+            style="border: 1px solid #000; border-top: 0; width: 100%; border-collapse: collapse;">
+            <tr>
+                <td colspan="3" style="border: none; border-bottom: 1px solid #000; height: 10px;"></td>
+            </tr>
+            <tr>
+                <td colspan="3" style="padding: 6px;">
+                    <strong>Note:</strong>
+                    <div style="min-height: 80px; margin-top: 5px; padding: 5px;">
+                        @foreach ($approvers as $app)
+                            @if (!empty($app['catatan']))
+                                <p style="margin: 0 0 4px 0;">
+                                    <strong>- </strong>
+                                    {{ $app['catatan'] }}
+                                </p>
+                            @endif
+                        @endforeach
+
+                        {{-- Jika tidak ada catatan sama sekali --}}
+                        @if (collect($approvers)->whereNotNull('catatan')->where('catatan', '!=', '')->isEmpty())
+                            <p style="color: #666; font-style: italic; margin: 0;">Tidak ada catatan.</p>
+                        @endif
+                    </div>
+                </td>
+            </tr>
+        </table>
+
         {{-- Table ttd --}}
         <table class="text-center" cellspacing="0" cellpadding="4"
             style="white-space: nowrap; border: 1px solid #000; border-top: 0; width: 100%; border-collapse: collapse;">
@@ -216,37 +262,34 @@
 
             {{-- ttd --}}
             <tr>
-                <td class="no-border-row"
-                    style="height: 100px; border-top: none !important; border-bottom: none !important; text-align:center;">
+                <td class="approver-ttd-cell">
                     <img src="{{ $approvers[0]['ttd'] }}" width="80" alt="TTD {{ $approvers[0]['nama'] }}">
                 </td>
-                <td class="no-border-row"
-                    style="height: 100px; border-top: none !important; border-bottom: none !important; text-align:center;">
+                <td class="approver-ttd-cell">
                     <img src="{{ $approvers[1]['ttd'] }}" width="80" alt="TTD {{ $approvers[1]['nama'] }}">
                 </td>
-                <td class="no-border-row"
-                    style="height: 100px; border-top: none !important; border-bottom: none !important; text-align:center;">
+                <td class="approver-ttd-cell">
                     <img src="{{ $approvers[2]['ttd'] }}" width="80" alt="TTD {{ $approvers[2]['nama'] }}">
                 </td>
             </tr>
 
             <!-- Nama Approver (tanpa border) -->
             <tr>
-                <td style="text-align: center; border-top: none !important; border-bottom: none !important;">
+                <td class="approver-name-cell">
                     @if (isset($approvers[0]))
                         <span style="font-size: 11px;">{{ $approvers[0]['nama'] }}</span>
                     @else
                         &nbsp;
                     @endif
                 </td>
-                <td style="text-align: center; border-top: none !important; border-bottom: none !important;">
+                <td class="approver-name-cell">
                     @if (isset($approvers[1]))
                         <span style="font-size: 11px;">{{ $approvers[1]['nama'] }}</span>
                     @else
                         &nbsp;
                     @endif
                 </td>
-                <td style="text-align: center; border-top: none !important; border-bottom: none !important;">
+                <td class="approver-name-cell">
                     @if (isset($approvers[2]))
                         <span style="font-size: 11px;">{{ $approvers[2]['nama'] }}</span>
                     @else
@@ -256,10 +299,11 @@
             </tr>
 
             <!-- Jabatan -->
-            <tr>
+            <tr style="border-top: 1px solid #000;">
                 <td style="text-align: center;"><span style="font-size: 11px;">Stock
                         Control</span></td>
-                <td style="text-align: center;"><span style="font-size: 11px;">Foreman</span></td>
+                <td style="text-align: center;"><span style="font-size: 11px;">Foreman</span>
+                </td>
                 <td style="text-align: center;"><span style="font-size: 11px;">Spv/Dept.
                         Head</span></td>
             </tr>
@@ -271,14 +315,27 @@
         </table>
 
         {{-- Table footer --}}
-        <table class="text-right" cellspacing="0" cellpadding="4" style="width: 100%; border: none; padding-top: 5px;">
+        <table class="text-right" cellspacing="0" cellpadding="4"
+            style="width: 100%; border: none; padding-top: 5px;">
             <tr>
                 <td colspan="3" style="height: 10px; border: none; text-align: right; font-size: 11px;">
                     FRM/WFG/04/000/001-00</td>
             </tr>
         </table>
 
-
     </body>
+
+    <script type="text/php">
+        if (isset($pdf)) {
+            $pdf->page_script('
+                $font = $fontMetrics->get_font("Calibri", "normal");
+                $size = 10;
+
+                // posisi (x, y) diatur biar sejajar dengan kolom "Hal"
+                // sesuaikan nilai Y kalau teks belum sejajar sempurna
+                $pdf->text(505, 135, ": " . $PAGE_NUM . " of " . $PAGE_COUNT, $font, $size);
+            ');
+        }
+    </script>
 
 </html>

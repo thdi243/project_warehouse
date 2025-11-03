@@ -10,14 +10,22 @@ use App\Models\Tkbm\TkbmFeeModel;
 use App\Models\P2h\PalletMoverModel;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use App\Models\Wsp\stock\StockOnHandWspModel;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
+use App\Models\Wfg\stock_opname\WfgSopStatusModel;
 
 class WarehouseController extends Controller
 {
     public function index()
     {
         return view('dashboard');
+    }
+
+    public function maintenanceView()
+    {
+
+        return view('maintenance');
     }
 
     public function show($id)
@@ -113,24 +121,38 @@ class WarehouseController extends Controller
 
     public function barangIndex()
     {
-        return view('manajemen_rak.master_barang');
+        return view('master.wsp.master_barang');
     }
 
     public function rakIndex()
     {
-        return view('manajemen_rak.master_rak');
+        return view('master.wsp.master_rak');
     }
 
     public function dashboardStockWsp()
     {
-        // return view('manajemen_rak.stock_on_hand');
-        return view('maintenance');
+        return view('manajemen_rak.home_stock');
+        // return view('maintenance');
     }
 
-    public function opnameIndex()
+    public function stockOnHandView()
     {
-        // return view('manajemen_rak.stock_opname');
-        return view('maintenance');
+        $today = Carbon::today();
+
+        // Cek apakah ada data StockOnHand dengan tanggal hari ini
+        $dataHariIni = StockOnHandWspModel::whereDate('last_update', $today)->exists();
+
+        if ($dataHariIni) {
+            // Jika ada data hari ini → arahkan ke view lain
+            return view('manajemen_rak.stock.data_soh');
+        }
+
+        return view('manajemen_rak.stock.upload_soh');
+    }
+
+    public function stockLocView()
+    {
+        return view('manajemen_rak.stock.stock_location');
     }
 
     public function formSOWFG()
@@ -157,15 +179,18 @@ class WarehouseController extends Controller
 
         $today = Carbon::today()->toDateString();
 
-        $dataExists = StockOnHandModel::whereDate('last_updated', $today)->exists();
+        $dataExists = StockOnHandModel::whereDate('last_updated', $today)
+            ->whereHas('barang', function ($query) use ($userPrincipal) {
+                $query->whereRaw('UPPER(TRIM(principal)) = ?', [$userPrincipal]);
+            })
+            ->exists();
 
         if (!$dataExists) {
             return Redirect::route('wfg.stock_opname.soh')
-                ->with('error', 'Data Stock On Hand (SOH) untuk tanggal ' . $today . ' belum diunggah. Silakan unggah data SOH terlebih dahulu sebelum mengakses Form Stock Opname.');
+                ->with('error', "Data Stock On Hand (SOH) untuk principal {$userPrincipal} pada tanggal {$today} belum diunggah. Silakan unggah data terlebih dahulu.");
         }
 
         $principals = BarangWfgModel::distinct()->pluck('principal');
-
         return view('stock_opname_wfg.form', compact('principals'));
     }
 
@@ -188,6 +213,17 @@ class WarehouseController extends Controller
             // Jika principal operator tidak termasuk yang diizinkan
             if (!in_array($userPrincipal, $allowedPrincipals)) {
                 return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
+            }
+
+            // 🔹 Tambahan: Cek apakah sudah ada opname aktif untuk principal ini hari ini
+            $opnameAktif = WfgSopStatusModel::whereDate('tgl_opname', now()->toDateString())
+                ->where('principal', $userPrincipal)
+                ->where('status', 'started')
+                ->first();
+
+            if ($opnameAktif) {
+                return Redirect::route('wfg.stock_opname.form')
+                    ->with('error', "Opname untuk principal '{$userPrincipal}' sedang berlangsung dan belum diselesaikan. Selesaikan opname terlebih dahulu sebelum melanjutkan.");
             }
         }
 
