@@ -146,6 +146,16 @@
                                 </button>
                             </div>
                         @endif
+
+                        <div class="col-md-8 col-12">
+                            <label for="searchBarang" class="form-label fw-semibold">Cari Data</label>
+                            <div class="input-group">
+                                <input type="text" id="searchBarang" class="form-control" placeholder="Ketik MID...">
+                                <button type="button" id="btnSearchBarang" class="btn btn-primary">
+                                    <i class="mdi mdi-magnify"></i> Cari
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="approvalWrapper"></div>
@@ -306,36 +316,50 @@
             // trigger filter
             const params = new URLSearchParams(window.location.search);
             const tanggal = params.get('tanggal');
-            let principal = params.get('principal'); // ✅ pakai let, bukan const
+            let currentSearch = '';
+            let currentPrincipal = '';
 
             if (tanggal) {
                 $('#filter_tanggal').val(tanggal).trigger('change');
             }
 
-            if (principal) {
-                $('#principal_filter').val(principal).trigger('change');
+            if (currentPrincipal) {
+                $('#principal_filter').val(currentPrincipal).trigger('change');
             } else {
                 // kalau URL gak ada principal, ambil dari dropdown (biasanya kosong / semua)
-                principal = $('#principal_filter').val() || '';
+                currentPrincipal = $('#principal_filter').val() || '';
             }
             // end trigger filter
 
-            loadReportData(principal);
+            loadReportData(currentPrincipal, currentSearch);
 
             $(document).on('keyup change', '#filter_tanggal', function() {
-                // loadReportData(principal);
                 loadReportData($('#principal_filter').val() || '');
             });
 
             // principal filter
-            $('#principal_filter').on('change', function() {
-                const principal = $(this).val();
-                loadReportData(principal);
+            $('#principal_filter').on('keyup change', function() {
+                currentPrincipal = $(this).val();
+                loadReportData(currentPrincipal,
+                    currentSearch);
                 const tanggal = $('#filter_tanggal').val();
                 checkApprovalStatus(null, tanggal);
             });
 
-            function loadReportData(principal) {
+            $('#searchBarang').on('keypress', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    currentSearch = $(this).val().trim();
+                    loadReportData(currentPrincipal, currentSearch);
+                }
+            });
+
+            $('#btnSearchBarang').on('click', function() {
+                currentSearch = $('#searchBarang').val().trim();
+                loadReportData(currentPrincipal, currentSearch);
+            });
+
+            function loadReportData(principal = '', search = '') {
                 $('#loading_state').show();
                 $('#empty_state').hide();
                 $('#tableBody').html('');
@@ -348,7 +372,8 @@
                     dataType: 'json',
                     data: {
                         tanggal: $('#filter_tanggal').val(),
-                        principal: principal
+                        principal: principal,
+                        search: search
                     },
                     success: function(response) {
                         $('#loading_state').hide();
