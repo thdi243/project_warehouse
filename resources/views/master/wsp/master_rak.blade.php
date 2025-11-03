@@ -24,7 +24,7 @@
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h4 class="card-title mb-0">Data Rak</h4>
                             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalRegistrasi">
-                                <i class="mdi mdi-plus"></i> Registrasi Rack
+                                <i class="mdi mdi-plus"></i> Tambah Rack
                             </button>
                         </div>
                         <div class="card-body">
@@ -44,7 +44,6 @@
                                 <thead>
                                     <tr>
                                         <th>No</th>
-                                        <th>Petugas</th>
                                         <th>Area Rak</th>
                                         <th>Nama Rak</th>
                                         <th>Kolom Rak</th>
@@ -79,8 +78,8 @@
                     <div class="modal-body">
                         <div class="row gy-4">
                             <div class="col-xxl-3 col-md-6">
-                                <label for="kodeRak" class="form-label">Area Rak</label>
-                                <input type="text" class="form-control" id="kodeRak" name="kodeRak"
+                                <label for="areaRak" class="form-label">Area Rak</label>
+                                <input type="text" class="form-control" id="areaRak" name="areaRak"
                                     placeholder="Cth: FL1" required>
                             </div>
 
@@ -132,8 +131,8 @@
                         <input type="hidden" id="editId" name="id">
                         <div class="row gy-4">
                             <div class="col-xxl-3 col-md-6">
-                                <label for="kodeRakEdit" class="form-label">Area Rak</label>
-                                <input type="text" class="form-control" id="kodeRakEdit" name="kodeRakEdit" required>
+                                <label for="areaRakEdit" class="form-label">Area Rak</label>
+                                <input type="text" class="form-control" id="areaRakEdit" name="areaRakEdit" required>
                             </div>
                             <div class="col-xxl-3 col-md-6">
                                 <label for="namaRakEdit" class="form-label">Nama Rak</label>
@@ -188,17 +187,7 @@
                         searchable: false
                     },
                     {
-                        data: 'name',
-                        render: function(data, type, row) {
-                            if (!data) return '-';
-                            // Capitalize setiap kata
-                            return data.replace(/\b\w/g, function(l) {
-                                return l.toUpperCase();
-                            });
-                        }
-                    },
-                    {
-                        data: 'kode_rak',
+                        data: 'area_rak',
                         render: function(data, type, row) {
                             return data || '-';
                         }
@@ -321,7 +310,7 @@
 
                         $('#editId').val(data.id);
                         // Isi field barang
-                        $('#kodeRakEdit').val(data.kode_rak);
+                        $('#areaRakEdit').val(data.area_rak);
                         $('#namaRakEdit').val(data.nama_rak);
                         $('#kolomRakEdit').val(data.kolom_rak);
                         $('#levelRakEdit').val(data.level_rak);
@@ -429,11 +418,11 @@
 
             // Apply filter
             $('#filterArea').on('change', function() {
-                table.column(2).search(this.value).draw();
+                table.column(1).search(this.value).draw();
             });
 
             $('#filterNama').on('change', function() {
-                table.column(3).search(this.value).draw();
+                table.column(2).search(this.value).draw();
             });
         })
     </script>

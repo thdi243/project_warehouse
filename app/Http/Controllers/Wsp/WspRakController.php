@@ -35,7 +35,7 @@ class WspRakController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'kodeRak'  => 'required|string|max:50',
+            'areaRak'  => 'required|string|max:50',
             'namaRak'  => 'nullable|string|max:50',
             'kolomRak' => 'nullable|integer',
             'levelRak' => 'nullable|integer',
@@ -44,8 +44,8 @@ class WspRakController extends Controller
 
         try {
             $data = RakModel::create([
-                'user_id'   => Auth::id() ?? 1, // kalau tabel rak ada kolom user_id
-                'kode_rak'  => strtoupper(trim($request->kodeRak)),
+                'created_by'   => Auth::id() ?? 1, // kalau tabel rak ada kolom user_id
+                'area_rak'  => strtoupper(trim($request->areaRak)),
                 'nama_rak'  => strtoupper($request->namaRak ?? 'A'),
                 'kolom_rak' => $request->kolomRak ?? 1,
                 'level_rak' => $request->levelRak ?? 1,
@@ -96,20 +96,16 @@ class WspRakController extends Controller
 
     public function getDataRak()
     {
-        $dataRak = RakModel::select(
-            'rak.*',
-            'users.username as name'
-        )
-            ->join('users', 'users.id', '=', 'rak.user_id')
-            ->get();
+        $dataRak = RakModel::with('user:id,username')->get();
+
         return response()->json($dataRak);
     }
 
     public function getFilters()
     {
-        $area = RakModel::select('kode_rak')
+        $area = RakModel::select('area_rak')
             ->distinct()
-            ->pluck('kode_rak');
+            ->pluck('area_rak');
 
         $nama = RakModel::select('nama_rak')
             ->distinct()
@@ -120,7 +116,6 @@ class WspRakController extends Controller
             'nama' => $nama
         ]);
     }
-
 
     /**
      * Show the form for editing the specified resource.
@@ -136,7 +131,7 @@ class WspRakController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'kodeRakEdit'  => 'required|string|max:50',
+            'areaRakEdit'  => 'required|string|max:50',
             'namaRakEdit'  => 'nullable|string|max:50',
             'kolomRakEdit' => 'nullable|integer',
             'levelRakEdit' => 'nullable|integer',
@@ -149,8 +144,8 @@ class WspRakController extends Controller
 
             // Update datanya
             $rak->update([
-                'user_id'   => Auth::id() ?? 1,
-                'kode_rak'  => strtoupper(trim($request->kodeRakEdit)),
+                'created_by'   => Auth::id() ?? 1,
+                'area_rak'  => strtoupper(trim($request->areaRakEdit)),
                 'nama_rak'  => strtoupper($request->namaRakEdit ?? 'A'),
                 'kolom_rak' => $request->kolomRakEdit ?? 1,
                 'level_rak' => $request->levelRakEdit ?? 1,
