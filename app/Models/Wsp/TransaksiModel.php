@@ -36,8 +36,8 @@ class TransaksiModel extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function stock()
-    {
-        return $this->belongsTo(StockOnHandModel::class, 'stock_id');
-    }
+    // public function stock()
+    // {
+    //     return $this->belongsTo(StockOnHandModel::class, 'stock_id');
+    // }
 }
