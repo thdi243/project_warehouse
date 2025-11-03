@@ -13,6 +13,8 @@ use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+use App\Http\Controllers\Wsp\stock\StockLocationController;
+use App\Http\Controllers\Wsp\Stock\StockOnHandController;
 
 // use App\Http\Controllers\Api\TkbmDashboardController;
 
@@ -32,6 +34,7 @@ Route::middleware('auth')->group(function () {
     // Free access
     Route::view('dashboard', 'dashboard')->name('dashboard');
     Route::get('user/profile', [UserController::class, 'profileIndex'])->name('user.profile');
+    Route::get('maintenance', [WarehouseController::class, 'maintenanceView'])->name('maintenance');
 
     // Dashboard
     Route::middleware(['auth', 'access'])->group(function () {
@@ -71,6 +74,23 @@ Route::middleware('auth')->group(function () {
         // Rak Management
         Route::prefix('rack')->group(function () {
             Route::get('/stock/dashboard', [WarehouseController::class, 'dashboardStockWsp'])->name('rack.stock.dashboard');
+            Route::get('/stock/stock-on-hand', [WarehouseController::class, 'stockOnHandView'])->name('rack.stock.stock-on-hand');
+            Route::get('/stock/location', [WarehouseController::class, 'stockLocView'])->name('rack.stock.stock-location');
+            Route::post('/stock/loc/store', [StockLocationController::class, 'store'])->name('rack.stock.loc_store');
+            Route::get('/stock/loc/show/{id}', [StockLocationController::class, 'show'])->name('rack.stock.loc_show');
+            Route::put('/stock/loc/update/{id}', [StockLocationController::class, 'update'])->name('rack.stock.loc_update');
+            Route::delete('/stock/loc/delete/{id}', [StockLocationController::class, 'destroy'])->name('rack.stock.loc_delete');
+            Route::get('/stock/loc/data', [StockLocationController::class, 'getDataStockLocation'])->name('rack.stock.loc_data');
+            Route::get('/stock/loc/download', [StockLocationController::class, 'downloadTemplate'])->name('rack.stock.loc_download');
+            Route::post('/stock/loc/upload', [StockLocationController::class, 'upload'])->name('rack.stock.loc_upload');
+
+            Route::get('/stock/soh/data', [StockOnHandController::class, 'getDataSOH'])->name('rack.stock.soh_data');
+            Route::get('/stock/soh/show/{id}', [StockOnHandController::class, 'show'])->name('rack.stock.soh_show');
+            Route::post('/stock/soh/store', [StockOnHandController::class, 'store'])->name('rack.stock.soh_store');
+            Route::put('/stock/soh/update/{id}', [StockOnHandController::class, 'update'])->name('rack.stock.soh_update');
+            Route::delete('/stock/soh/delete/{id}', [StockOnHandController::class, 'destroy'])->name('rack.stock.soh_delete');
+            Route::get('/stock/soh/download', [StockOnHandController::class, 'downloadTemplate'])->name('rack.stock.soh_download');
+            Route::post('/stock/soh/upload', [StockOnHandController::class, 'upload'])->name('rack.stock.soh_upload');
             Route::get('/stock/opname', [WarehouseController::class, 'opnameIndex'])->name('rack.stock.opname');
             // Route::get('/rak/list', [WarehouseController::class, 'rakList'])->name('wsp.rak.list');
             Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('rack.inventory');
@@ -104,6 +124,8 @@ Route::middleware('auth')->group(function () {
             // Stock Opname WFG
             Route::prefix('stock_opname')->group(function () {
                 // Form SOP WFG
+                Route::post('/sop/start', [StockOpnameWfgController::class, 'startOpname']);
+                Route::get('/sop/status', [StockOpnameWfgController::class, 'getStatusOpname']);
                 Route::get('/sop/form', [WarehouseController::class, 'formSOWFG'])->name('wfg.stock_opname.form');
                 Route::get('/sop/getData', [StockOpnameWfgController::class, 'getData'])->name('wfg.stock_opname.getData');
                 Route::post('/sop/store', [StockOpnameWfgController::class, 'store'])->name('wfg.stock_opname.store');
@@ -128,6 +150,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/sop/send-report', [StockOpnameWfgController::class, 'sendReport'])->name('wfg.stock_opname.sendReport');
                 Route::post('/sop/edit/update/', [StockOpnameWfgController::class, 'updateEditData'])->name('wfg.stock_opname.edit.update');
                 Route::delete('wfg/sop/edit/delete/{id}', [StockOpnameWfgController::class, 'destroyEditData'])->name('wfg.stock_opname.edit.delete');
+                Route::get('/sop/principal/list', [StockOpnameWfgController::class, 'getPrincipalList'])->name('wfg.stock_opname.principal-list');
 
                 // Stock on Hand SO WFG
                 Route::get('/soh/index', [WarehouseController::class, 'uploadSOHWFG'])->name('wfg.stock_opname.soh');

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" data-layout="vertical" data-topbar="light" data-sidebar="dark" data-sidebar-size="lg"
-    data-sidebar-image="none" data-preloader="disable">
+    data-sidebar-image="none" data-preloader="disable" data-layout-mode="dark">
 
     <head>
         <meta charset="UTF-8">

@@ -143,7 +143,7 @@
                                     <ul class="nav nav-sm flex-column">
                                         <li class="nav-item">
                                             <a href="{{ route('rack.stock.dashboard') }}"
-                                                class="nav-link {{ request()->routeIs('rack.stock.dashboard') ? 'active' : '' }}"
+                                                class="nav-link {{ request()->routeIs('rack.stock.*') ? 'active' : '' }}"
                                                 data-key="t-input-mst_brg_wfg">
                                                 <i class="mdi mdi-clipboard-list-outline"></i>
                                                 WSP Stock </a>
