@@ -159,6 +159,7 @@ class WarehouseController extends Controller
     public function formSOWFG()
     {
         $user = Auth::user();
+        $userPrincipal = null;
 
         if ($user->jabatan === 'operator') {
             $allowedPrincipals = ['BAS', 'SMU'];
