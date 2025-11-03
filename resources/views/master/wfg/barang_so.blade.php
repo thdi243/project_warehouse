@@ -890,11 +890,12 @@
                                 'Berhasil dengan Catatan!' : 'Berhasil!',
                             html: (response.message ?? 'File berhasil diunggah.') +
                                 listErrors
+                        }).then(() => {
+                            location.reload();
                         });
 
                         $('#uploadModal').modal('hide');
                         $('#file').val('');
-                        loadBarang();
                     },
                     error: function(xhr) {
                         let msg = 'Terjadi kesalahan saat mengunggah file.';

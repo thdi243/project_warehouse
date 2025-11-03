@@ -34,7 +34,7 @@ class BarangWfgController extends Controller
             $status = $request->input('status', 'active');
             $searchTerm = $request->input('search');
             $principal = $request->input('principal'); // 👈 ambil dari request
-            $perPage = 20;
+            $perPage = 50;
 
             $query = BarangWfgModel::query();
 
@@ -325,9 +325,8 @@ class BarangWfgController extends Controller
     // Upload Handle
     public function import(Request $request)
     {
-        // 1. Validasi File
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls|max:5120', // Maks 5MB
+            'file' => 'required|file|mimes:xlsx,xls|max:5120',
         ]);
 
         $file = $request->file('file');
@@ -335,121 +334,104 @@ class BarangWfgController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $highestRow = $sheet->getHighestRow();
 
-        // Inisialisasi koleksi untuk menampung data valid dan error
-        $dataToInsert = [];
+        $dataToProcess = [];
         $errors = [];
-        $midBarangList = []; // Untuk cek duplikat dalam file
-
-        // Header yang diharapkan (mengambil dari method downloadTemplate)
-        $expectedHeaders = [
-            'MID_BARANG',
-            'NAMA_BARANG',
-            'QTY_BOX_PALLET',
-            'PRINCIPAL',
-            'UOM'
-        ];
-
-        // Ambil header aktual (Baris 1)
-        $actualHeaders = [];
-        foreach (range('A', $sheet->getHighestColumn()) as $column) {
-            $actualHeaders[] = strtoupper($sheet->getCell($column . '1')->getValue());
-        }
+        $midNormList = [];
 
         for ($row = 2; $row <= $highestRow; $row++) {
-            $rowData = [
-                'mid_barang'   => trim($sheet->getCell('A' . $row)->getValue()),
-                'nama_barang'  => trim($sheet->getCell('B' . $row)->getValue()),
-                'qty_box'      => trim($sheet->getCell('C' . $row)->getValue()), // Asumsi kolom C adalah qty_box
-                'principal'    => trim($sheet->getCell('D' . $row)->getValue()), // Asumsi kolom D adalah tipe_kemasan/principal
-                'uom'          => trim($sheet->getCell('E' . $row)->getValue()), // Asumsi kolom E adalah satuan/uom
-                'baris'        => $row,
-            ];
+            $rawMid     = trim((string) $sheet->getCell('A' . $row)->getValue());
+            $namaBarang = trim((string) $sheet->getCell('B' . $row)->getValue());
+            $qtyBoxRaw  = $sheet->getCell('C' . $row)->getValue();
+            $principal  = trim((string) $sheet->getCell('D' . $row)->getValue());
+            $uom        = trim((string) $sheet->getCell('E' . $row)->getValue());
 
-            $mid = $rowData['mid_barang'];
-            $qtyBox = (int) $rowData['qty_box'];
-            $namaBarang = $rowData['nama_barang'];
+            // Normalisasi MID: hilangkan karakter non-digit, lalu leading zero
+            $midDigits = preg_replace('/\D+/', '', $rawMid);
+            $midKey = ltrim($midDigits, '0');
+            if ($midKey === '') $midKey = '0';
 
-            // Cek Validasi Baris (mirip store logic)
+            $midForSave = (string)((int) $midKey); // pastikan format final konsisten
+            $qtyBox = is_numeric($qtyBoxRaw) ? (int) $qtyBoxRaw : 0;
+
             $rowErrors = [];
 
-            // 1. Validasi MID Barang (angka & panjang)
-            if (!is_numeric($mid) || strlen($mid) > 8 || strlen($mid) < 1) {
-                $rowErrors[] = 'MID Barang harus angka dan panjang 1-8 digit.';
+            if ($midDigits === '' || strlen($midDigits) < 1 || strlen($midDigits) > 8) {
+                $rowErrors[] = 'MID Barang harus berisi 1–8 digit angka.';
             }
-
-            // 2. Validasi QTY BOX
-            if (empty($qtyBox) || !is_numeric($qtyBox) || $qtyBox < 1) {
-                $rowErrors[] = 'Qty Box harus diisi dan berupa angka positif.';
-            }
-
-            // 3. Validasi Nama Barang
             if (empty($namaBarang)) {
                 $rowErrors[] = 'Nama Barang wajib diisi.';
             }
-
-            // 4. Cek Duplikat di Database
-            if (BarangWfgModel::where('mid_barang', $mid)->exists()) {
-                $rowErrors[] = 'MID Barang sudah ada di database.';
+            if (empty($qtyBox) || $qtyBox < 1) {
+                $rowErrors[] = 'Qty Box harus diisi dan berupa angka positif.';
             }
 
-            // 5. Cek Duplikat dalam File Import (MID harus unik di file)
-            if (in_array($mid, $midBarangList)) {
+            // Cek duplikat di file (pakai versi normalisasi)
+            if (in_array($midKey, $midNormList, true)) {
                 $rowErrors[] = 'MID Barang duplikat dalam file import ini.';
             } else {
-                $midBarangList[] = $mid;
+                $midNormList[] = $midKey;
             }
 
-
-            if (empty($rowErrors)) {
-                // Data valid, masukkan ke koleksi
-                $dataToInsert[] = [
-                    'mid_barang'   => $mid,
-                    'nama_barang'  => strtoupper($namaBarang),
-                    'qty_box'      => $qtyBox,
-                    'principal'    => strtoupper($rowData['principal']),
-                    'uom'          => strtoupper($rowData['uom']),
-                    'status'       => 'aktif',
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ];
-            } else {
-                // Data tidak valid, masukkan ke array errors
+            if (!empty($rowErrors)) {
                 $errors[] = [
                     'baris' => $row,
-                    'data'  => $rowData,
+                    'data'  => compact('rawMid', 'namaBarang', 'qtyBox', 'principal', 'uom'),
                     'error' => implode(', ', $rowErrors),
                 ];
+                continue;
             }
+
+            $dataToProcess[] = [
+                'mid_barang'   => $midForSave,
+                'nama_barang'  => strtoupper($namaBarang),
+                'qty_box'      => $qtyBox,
+                'principal'    => strtoupper($principal),
+                'uom'          => strtoupper($uom),
+                'status'       => 'aktif',
+                'updated_at'   => now(),
+                'created_at'   => now(),
+            ];
         }
 
-        // 3. Eksekusi Penyimpanan
-        // if (!empty($errors)) {
-        //     return response()->json([
-        //         'status'  => false,
-        //         'message' => 'Terdapat ' . count($errors) . ' baris data yang bermasalah. Perbaiki data dan coba lagi.',
-        //         'errors'  => $errors,
-        //     ]);
-        // }
-
-        if (empty($dataToInsert)) {
+        if (empty($dataToProcess)) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Tidak ada data valid yang ditemukan untuk diimpor.',
+                'message' => 'Tidak ada data valid untuk diimpor.',
+                'errors'  => $errors,
             ], 400);
         }
 
-        // Gunakan transaksi untuk memastikan semua data tersimpan atau tidak sama sekali
         DB::beginTransaction();
         try {
-            BarangWfgModel::insert($dataToInsert);
+            foreach ($dataToProcess as $item) {
+                $midInt = (int) $item['mid_barang'];
+
+                // Cari berdasarkan bentuk numeric (agar "00123" == "123")
+                $existing = BarangWfgModel::whereRaw('CAST(mid_barang AS SIGNED) = ?', [$midInt])->first();
+
+                if ($existing) {
+                    // Update data lama
+                    $existing->update([
+                        'nama_barang' => $item['nama_barang'],
+                        'qty_box'     => $item['qty_box'],
+                        'principal'   => $item['principal'],
+                        'uom'         => $item['uom'],
+                        'status'      => $item['status'],
+                        'updated_at'  => now(),
+                    ]);
+                } else {
+                    // Insert baru
+                    BarangWfgModel::create($item);
+                }
+            }
+
             DB::commit();
 
             return response()->json([
                 'status'  => true,
-                'message' => count($dataToInsert) . ' barang berhasil diimpor, '
-                    . count($errors) . ' baris gagal.',
-                'errors'  => $errors, // tetap kirim baris error ke frontend
-            ], 200);
+                'message' => count($dataToProcess) . ' data berhasil diimpor/update, ' . count($errors) . ' baris gagal.',
+                'errors'  => $errors,
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -459,6 +441,9 @@ class BarangWfgController extends Controller
             ], 500);
         }
     }
+
+
+
 
     public function downloadTemplate()
     {
