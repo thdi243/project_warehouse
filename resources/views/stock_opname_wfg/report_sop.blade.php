@@ -131,7 +131,7 @@
 
                         {{-- Tombol Export --}}
                         <div class="@if (Auth::user()->jabatan != 'operator') col-md-4 @else col-md-4 @endif col-12">
-                            <button type="button" id="btn_export" class="btn btn-soft-warning w-100">
+                            <button type="button" id="btn_export" class="btn btn-outline-warning w-100">
                                 <i class="mdi mdi-export me-2"></i> Export PDF
                             </button>
                         </div>
@@ -140,18 +140,18 @@
                         @if (Auth::user()->jabatan == 'operator')
                             <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-4 @endif col-12">
                                 {{-- <label class="form-label d-block opacity-0">.</label> --}}
-                                <button type="button" id="btn_approval" class="btn btn-soft-success w-100"
+                                <button type="button" id="btn_approval" class="btn btn-outline-success w-100"
                                     style="display:none;">
                                     <i class="mdi mdi-send me-2"></i> Send Approval
                                 </button>
                             </div>
                         @endif
 
-                        <div class="col-md-8 col-12">
+                        <div class="col-md-6 col-12">
                             <label for="searchBarang" class="form-label fw-semibold">Cari Data</label>
                             <div class="input-group">
                                 <input type="text" id="searchBarang" class="form-control" placeholder="Ketik MID...">
-                                <button type="button" id="btnSearchBarang" class="btn btn-primary">
+                                <button type="button" id="btnSearchBarang" class="btn btn-outline-primary">
                                     <i class="mdi mdi-magnify"></i> Cari
                                 </button>
                             </div>
@@ -316,6 +316,7 @@
             // trigger filter
             const params = new URLSearchParams(window.location.search);
             const tanggal = params.get('tanggal');
+            const principalFromUrl = params.get('principal'); // ⬅️ Tambahan ini
             let currentSearch = '';
             let currentPrincipal = '';
 
@@ -323,15 +324,17 @@
                 $('#filter_tanggal').val(tanggal).trigger('change');
             }
 
-            if (currentPrincipal) {
+            if (principalFromUrl) {
+                currentPrincipal = principalFromUrl;
                 $('#principal_filter').val(currentPrincipal).trigger('change');
             } else {
-                // kalau URL gak ada principal, ambil dari dropdown (biasanya kosong / semua)
+                // Kalau tidak ada di URL, ambil dari dropdown
                 currentPrincipal = $('#principal_filter').val() || '';
             }
             // end trigger filter
 
             loadReportData(currentPrincipal, currentSearch);
+            checkApprovalStatus(null, $('#filter_tanggal').val());
 
             $(document).on('keyup change', '#filter_tanggal', function() {
                 loadReportData($('#principal_filter').val() || '');
@@ -419,11 +422,11 @@
                 $('#filter_tanggal').data('sop-id', data.sop.id);
                 const sopId = $('#filter_tanggal').data('sop-id');
                 const tanggalFilter = tanggal;
-                const principalFilter = $('#principal_filter').val();
+                // const principalFilter = $('#principal_filter').val();
 
                 $.get("{{ route('wfg.stock_opname.approval.show', '') }}/" + sopId, {
                     tanggal: tanggalFilter,
-                    principal: principalFilter
+                    principal: currentPrincipal
                 }, function(res) {
                     const status = res.approval_status;
                     const note = res.approval_note || '';
@@ -704,7 +707,7 @@
                     dataType: 'json',
                     data: {
                         tanggal: tanggal,
-                        principal: principal
+                        principal: currentPrincipal
                     },
                     success: function(response) {
                         if (response.status === 'success') {
@@ -1053,7 +1056,7 @@
                             Swal.fire('Sukses', res.message, 'success');
                             $('#approvalModal').modal('hide');
 
-                            loadReportData(principal);
+                            loadReportData(currentPrincipal);
                         }
 
                     },
@@ -1089,7 +1092,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         Swal.fire({
-                            title: 'Memproses...',
+                            title: 'Tunggu sebentar ya..',
                             html: 'Mohon tunggu, sistem sedang memproses data Anda.',
                             allowOutsideClick: false,
                             allowEscapeKey: false,
@@ -1119,7 +1122,7 @@
                                 $('#approval_note').val('');
 
                                 // Ganti UI approval jadi label status
-                                loadReportData(principal);
+                                loadReportData(currentPrincipal);
                             },
                             error: function(xhr) {
                                 Swal.fire({

@@ -146,9 +146,7 @@
             <tr>
                 <td class="no-border text-left border-bottom-only">Hal</td>
                 <td class="no-border text-left border-bottom-only">
-                    <span class="page-number"></span>
-                </td>
-
+                    : <span class="page-number">1</span> of <span class="page-count"></span></td>
             </tr>
 
             <tr>
@@ -330,11 +328,29 @@
             $pdf->page_script('
                 $font = $fontMetrics->get_font("Calibri", "normal");
                 $size = 10;
-
-                // posisi (x, y) diatur biar sejajar dengan kolom "Hal"
-                // sesuaikan nilai Y kalau teks belum sejajar sempurna
-                $pdf->text(505, 135, ": " . $PAGE_NUM . " of " . $PAGE_COUNT, $font, $size);
+                
+                // Tulis nomor halaman di elemen <span> yang memiliki class .page-number
+                // Elemen ini harus sudah ada di HTML dan diletakkan di tempat yang benar.
+                $pdf->text($x + 2, $y, $PAGE_NUM, $font, $size); 
             ');
+            
+            // Tulis jumlah total halaman di elemen <span> yang memiliki class .page-count
+            $pdf->page_script('
+                $font = $fontMetrics->get_font("Calibri", "normal");
+                $size = 10;
+                
+                $pdf->text($x + 2, $y, $PAGE_COUNT, $font, $size); 
+            ', array('select' => 'span.page-count'));
+            
+            // --- HAPUS/KOMENTARI KODE LAMA BERIKUT JIKA MASIH ADA (GARIS MANUAL) ---
+            // $pdf->page_script('
+            //     $w = $pdf->get_width();
+            //     $h = $pdf->get_height();
+            //     $yTop = 110; 
+            //     $yBottom = $h - 80; 
+            //     $pdf->line(20, $yTop, $w - 20, $yTop);
+            //     $pdf->line(20, $yBottom, $w - 20, $yBottom);
+            // ');
         }
     </script>
 
