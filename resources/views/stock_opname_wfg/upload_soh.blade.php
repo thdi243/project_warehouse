@@ -184,7 +184,7 @@
 
                             @if ($barangCount > 0 && empty($error_message))
                                 <div
-                                    class="@if (Auth::user()->jabatan != 'operator') col-lg-6 @else col-lg-6 @endif col-md-12 d-flex justify-content-between">
+                                    class="@if (Auth::user()->jabatan != 'operator') col-lg-6 @else col-lg-6 @endif col-md-4 d-flex justify-content-between">
                                     <button class="btn btn-success w-100 me-2" data-bs-toggle="modal"
                                         data-bs-target="#uploadModal">
                                         <i class="mdi mdi-upload me-1"></i> Upload
@@ -1001,22 +1001,6 @@
                 "tapToDismiss": false
             }
             toastr.error("{{ session('error') }}", "Peringatan!");
-        @elseif (!empty($error))
-            toastr.options = {
-                "closeButton": true,
-                "progressBar": false,
-                "positionClass": "toast-top-right",
-                "showDuration": "300",
-                "hideDuration": "1000",
-                "timeOut": "0",
-                "extendedTimeOut": "0",
-                "tapToDismiss": false
-            }
-            toastr.error("{{ $error }}", "Peringatan!");
-        @endif
-
-        @if (session('success'))
-            toastr.success("{{ session('success') }}", "Berhasil!");
         @endif
     </script>
 @endsection

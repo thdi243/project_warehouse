@@ -159,21 +159,20 @@ class WarehouseController extends Controller
     public function formSOWFG()
     {
         $user = Auth::user();
-        $userPrincipal = null;
 
+        // Ambil principal user kalau ada
+        $userPrincipal = optional($user->principal)->principal
+            ? strtoupper(trim($user->principal->principal))
+            : null;
+
+        // --- LOGIKA UNTUK OPERATOR ---
         if ($user->jabatan === 'operator') {
             $allowedPrincipals = ['BAS', 'SMU'];
 
-            $userPrincipal = optional($user->principal)->principal
-                ? strtoupper(trim($user->principal->principal))
-                : null;
-
-            // Jika operator tidak punya principal
             if (!$userPrincipal) {
                 return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
             }
 
-            // Jika principal operator tidak termasuk yang diizinkan
             if (!in_array($userPrincipal, $allowedPrincipals)) {
                 return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
             }
@@ -181,15 +180,40 @@ class WarehouseController extends Controller
 
         $today = Carbon::today()->toDateString();
 
-        $dataExists = StockOnHandModel::whereDate('last_updated', $today)
-            ->whereHas('barang', function ($query) use ($userPrincipal) {
-                $query->whereRaw('UPPER(TRIM(principal)) = ?', [$userPrincipal]);
-            })
-            ->exists();
+        // --- CEK DATA SOH ---
+        if ($user->jabatan === 'operator') {
+            // Untuk operator → cek hanya principal miliknya
+            $dataExists = StockOnHandModel::whereDate('last_updated', $today)
+                ->whereHas('barang', function ($query) use ($userPrincipal) {
+                    $query->whereRaw('UPPER(TRIM(principal)) = ?', [$userPrincipal]);
+                })
+                ->exists();
 
-        if (!$dataExists) {
-            return Redirect::route('wfg.stock_opname.soh')
-                ->with('error', "Data Stock On Hand (SOH) untuk principal {$userPrincipal} pada tanggal {$today} belum diunggah. Silakan unggah data terlebih dahulu.");
+            if (!$dataExists) {
+                return Redirect::route('wfg.stock_opname.soh')
+                    ->with('error', "Data Stock On Hand (SOH) untuk principal {$userPrincipal} pada tanggal {$today} belum diunggah. Silakan unggah data terlebih dahulu.");
+            }
+        } else {
+            $principals = ['BAS', 'SMU'];
+            $missing = [];
+
+            foreach ($principals as $principal) {
+                $exists = StockOnHandModel::whereDate('last_updated', $today)
+                    ->whereHas('barang', function ($query) use ($principal) {
+                        $query->whereRaw('UPPER(TRIM(principal)) = ?', [$principal]);
+                    })
+                    ->exists();
+
+                if (!$exists) {
+                    $missing[] = $principal;
+                }
+            }
+
+            if (!empty($missing)) {
+                $missingList = implode(' dan ', $missing);
+                return Redirect::route('wfg.stock_opname.soh')
+                    ->with('error', "Data Stock On Hand (SOH) untuk principal {$missingList} pada tanggal {$today} belum diunggah. Silakan unggah data terlebih dahulu.");
+            }
         }
 
         $principals = BarangWfgModel::distinct()->pluck('principal');
@@ -217,7 +241,7 @@ class WarehouseController extends Controller
                 return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
             }
 
-            // 🔹 Tambahan: Cek apakah sudah ada opname aktif untuk principal ini hari ini
+            // Tambahan: Cek apakah sudah ada opname aktif untuk principal ini hari ini
             $opnameAktif = WfgSopStatusModel::whereDate('tgl_opname', now()->toDateString())
                 ->where('principal', $userPrincipal)
                 ->where('status', 'started')

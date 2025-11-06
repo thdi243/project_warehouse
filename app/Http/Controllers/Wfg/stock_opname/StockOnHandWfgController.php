@@ -137,7 +137,7 @@ class StockOnHandWfgController extends Controller
     {
         $searchTerm = $request->input('search');
         $principalFilter = $request->input('principal');
-        $perPage = 20;
+        $perPage = 100;
         $today = now()->toDateString();
         $user = Auth::user();
 
@@ -444,7 +444,7 @@ class StockOnHandWfgController extends Controller
                     'qty_qi'       => $qual_insp,
                     'qty_block'    => $blocked,
                     'last_updated' => now(),
-                    'principal'    => $barang->principal, // 🔹 ambil langsung dari master barang
+                    'principal'    => $barang->principal, // ambil langsung dari master barang
                 ]);
 
                 $countSuccess++;
