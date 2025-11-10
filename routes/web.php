@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Events\ShowPortalNotification;
 use App\Http\Controllers\P2hController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
@@ -10,11 +11,11 @@ use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
+use App\Http\Controllers\Wsp\Stock\StockOnHandController;
+use App\Http\Controllers\Wsp\stock\StockLocationController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
-use App\Http\Controllers\Wsp\stock\StockLocationController;
-use App\Http\Controllers\Wsp\Stock\StockOnHandController;
 
 // use App\Http\Controllers\Api\TkbmDashboardController;
 

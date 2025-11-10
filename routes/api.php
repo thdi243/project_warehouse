@@ -123,6 +123,7 @@ Route::prefix('wfg')->group(function () {
 
 Route::prefix('notifications')->group(function () {
     Route::post('/read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/show/kalibrasi', [NotificationController::class, 'showNotification'])->name('notifications.kalibrasi');
 });
 
 Route::get('user/edit/{id}', [UserController::class, 'edit']);

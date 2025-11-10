@@ -28,4 +28,17 @@ class WfgSopApprovalModel extends Model
     {
         return $this->belongsTo(User::class, 'approver_id');
     }
+
+    protected static function booted()
+    {
+        static::created(function ($approval) {
+            event(new \App\Events\ShowPortalNotification([
+                'id' => $approval->id,
+                'title' => 'Approval Diperlukan',
+                'message' => 'SOP tanggal ' . $approval->sop->tgl_opname . ' menunggu persetujuan Anda.',
+                'url' => route('wfg.stock_opname.report') . '?tanggal=' . $approval->sop->tgl_opname .
+                    '&principal=' . urlencode($approval->sop->principal ?? ''),
+            ]));
+        });
+    }
 }

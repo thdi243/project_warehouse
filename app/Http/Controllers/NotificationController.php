@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\NotificationsModel;
 use Illuminate\Support\Facades\Auth;
+use App\Events\ShowPortalNotification;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\WfgSopApprovalModel;
 
@@ -16,10 +18,12 @@ class NotificationController extends Controller
 
         $approvalotification = $this->getSopApprovalNotification($userId);
         $barangBaruNotifications = $this->getBarangBaruNotifications($user);
+        $externalNotifications = $this->getExternalNotifications();
 
         $notifications = collect()
             ->merge($approvalotification)
             ->merge($barangBaruNotifications)
+            ->merge($externalNotifications)
             ->sortByDesc('created_at')
             ->values();
 
@@ -29,11 +33,19 @@ class NotificationController extends Controller
     public function markAsRead($id)
     {
         $notif = WfgSopApprovalModel::find($id);
-        if (!$notif) {
+
+        if ($notif) {
+            $notif->update(['status' => 'read']);
             return response()->json(['status' => 'error', 'message' => 'Notifikasi tidak ditemukan'], 404);
         }
 
-        $notif->update(['status' => 'read']);
+        $externalNotif = NotificationsModel::find($id);
+
+        if ($externalNotif) {
+            $externalNotif->update(['is_read' => true]);
+            return response()->json(['success' => true, 'source' => 'external']);
+        }
+
 
         return response()->json(['success' => true]);
     }
@@ -86,5 +98,46 @@ class NotificationController extends Controller
             'created_at' => now()->diffForHumans(),
             'is_read' => false,
         ]]);
+    }
+
+    private function getExternalNotifications()
+    {
+        return NotificationsModel::orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($n) {
+                return collect([
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'url' => $n->url,
+                    'created_at' => $n->created_at->diffForHumans(),
+                    'is_read' => $n->is_read ?? false,
+                ]);
+            });
+    }
+
+    public function showNotification(Request $request)
+    {
+        // Validasi internal key
+        if ($request->header('X-Internal-Key') !== env('INTERNAL_PORTAL_KEY')) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Simpan ke database
+        $notif = NotificationsModel::create([
+            'title' => $request->input('title'),
+            'message' => $request->input('message'),
+            'url' => $request->input('url'),
+        ]);
+
+        // Broadcast ke Reverb biar realtime muncul
+        event(new ShowPortalNotification([
+            'id' => $notif->id,
+            'title' => $notif->title,
+            'message' => $notif->message,
+            'url' => $notif->url,
+        ]));
+
+        return response()->json(['status' => 'success']);
     }
 }

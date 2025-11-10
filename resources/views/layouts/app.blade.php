@@ -56,6 +56,7 @@
         {{-- Jquery UI --}}
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+        @vite(['resources/js/app.js'])
 
         @yield('styles')
 
@@ -304,6 +305,33 @@
                     });
                 }
 
+                window.Echo.channel('portal-notifications')
+                    .listen('.new-notification', (e) => {
+                        toastr.info(e.data.message, e.data.title);
+
+                        const notifList = $('#notifList');
+                        const notifBadge = $('#notifBadge');
+
+                        const item = $(`
+                            <a href="${e.data.url}" 
+                            class="list-group-item list-group-item-action notif-item d-flex align-items-start bg-white"
+                            data-id="temp-${Date.now()}">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 fw-semibold">${e.data.title}</h6>
+                                    <p class="mb-1 small">${e.data.message}</p>
+                                    <small class="text-muted">Baru saja</small>
+                                </div>
+                                <div class="ms-2">
+                                    <i class="bx bx-bell text-warning fs-5"></i>
+                                </div>
+                            </a>
+                        `);
+
+                        notifList.prepend(item);
+                        notifBadge.text(parseInt(notifBadge.text() || 0) + 1).show();
+                    });
+
+
                 $('#notifList').on('click', '.notif-item', function(e) {
                     e.preventDefault();
                     const id = $(this).data('id');
@@ -358,10 +386,8 @@
                     });
                 });
 
-                // Ambil notifikasi pertama kali
                 fetchNotifications();
 
-                // Cek setiap 60 detik
                 setInterval(fetchNotifications, 180000);
             });
         </script>
