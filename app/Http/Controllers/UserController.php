@@ -23,7 +23,7 @@ class UserController extends Controller
     public function profileIndex()
     {
         try {
-            $user = User::select('id', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image')
+            $user = User::select('id', 'nama_lengkap', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image')
                 ->findOrFail(Auth::id());
 
             // Proses image_url sama seperti logic Anda
@@ -55,7 +55,7 @@ class UserController extends Controller
     public function create()
     {
         try {
-            $data = User::select('id', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image')->get();
+            $data = User::select('id', 'nama_lengkap', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image')->get();
 
             $data = $data->map(function ($user) {
                 $imageName = trim($user->image ?? '', '/');
@@ -96,6 +96,7 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'nama_lengkap' => 'nullable|string|max:255',
             'username' => 'required|unique:users',
             'password' => 'required|min:6',
             'email' => 'required|email',
@@ -115,6 +116,7 @@ class UserController extends Controller
 
         // === Simpan User ===
         $user = User::create([
+            'nama_lengkap' => $request->nama_lengkap,
             'username' => $request->username,
             'password' => bcrypt($request->password),
             'email' => $request->email,
@@ -194,6 +196,7 @@ class UserController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
+            'nama_lengkap' => 'required|string|max:255',
             'username'   => 'required|unique:users,username,' . $id,
             'email'      => 'required|email|unique:users,email,' . $id,
             'password'   => 'nullable|min:6',
@@ -211,6 +214,7 @@ class UserController extends Controller
         try {
             // === Siapkan data dasar untuk update ===
             $data = [
+                'nama_lengkap'   => $request->nama_lengkap,
                 'username'   => $request->username,
                 'email'      => $request->email,
                 'nik'        => $request->nik,

@@ -174,7 +174,13 @@
                                     <p class="text-muted mt-2 mb-0">Klik ikon kamera untuk mengubah foto</p>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="username" class="form-label">Nama</label>
+                                    <label for="nama_lengkap" class="form-label">Nama Lengkap</label>
+                                    <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap"
+                                        placeholder="Enter full name" required />
+                                    <div class="invalid-feedback">Please enter a member name.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Username</label>
                                     <input type="text" class="form-control" id="username" name="username"
                                         placeholder="Enter name" required />
                                     <div class="invalid-feedback">Please enter a member name.</div>
@@ -275,6 +281,14 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
+                                    <label for="editNamaLengkap" class="form-label">Nama Lengkap <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="editNamaLengkap"
+                                        name="editNamaLengkap" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
                                     <label for="editUsername" class="form-label">Username <span
                                             class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="editUsername" name="editUsername"
@@ -288,9 +302,6 @@
                                     <input type="email" class="form-control" id="editEmail" name="editEmail" required>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editPassword" class="form-label">Password <small
@@ -306,9 +317,6 @@
                                     <input type="text" class="form-control" id="editNik" name="editNik" required>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editJabatan" class="form-label">Jabatan <span
@@ -331,9 +339,6 @@
                                     </select>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editBagian" class="form-label">Bagian <span
@@ -357,9 +362,6 @@
                                         2MB</small>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editPrincipal" class="form-label">Principal <small
@@ -666,9 +668,9 @@
                                     <div data-aos="fade-up" data-aos-delay="${delay}" data-aos-anchor-placement="top-bottom">
                                         <div class="card card-animate shadow-sm border-0 rounded-3 team-card">
                                             <img src="${imgSrc}" class="card-img-top rounded-top img-fixed user-img" 
-                                                alt="foto ${user.username}" style="height:200px; object-fit:cover;">
+                                                alt="foto ${user.nama_lengkap || user.username}" style="height:200px; object-fit:cover;">
                                             <div class="card-body">
-                                                <h4 class="card-title text-capitalize username">${user.username}</h4>
+                                                <h4 class="card-title text-capitalize username">${user.nama_lengkap || user.username}</h4>
                                                 <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7 jabatan">${user.jabatan}</span>
                                                 <p class="card-text text-muted mb-1 email"><i class="bi bi-envelope"></i> ${user.email}</p>
                                                 <p class="card-text text-muted mb-1 nik"><i class="bi bi-telephone"></i> ${user.nik}</p>
@@ -929,6 +931,7 @@
 
                         // Isi form dengan data user
                         $("#editId").val(user.id);
+                        $("#editNamaLengkap").val(user.nama_lengkap);
                         $("#editUsername").val(user.username);
                         $("#editEmail").val(user.email);
                         $("#editNik").val(user.nik);
@@ -1003,6 +1006,7 @@
                 let formData = new FormData();
 
                 // Tambahkan data text
+                formData.append('nama_lengkap', $("#editNamaLengkap").val());
                 formData.append('username', $("#editUsername").val());
                 formData.append('email', $("#editEmail").val());
                 formData.append('jabatan', $("#editJabatan").val());
