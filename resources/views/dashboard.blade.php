@@ -40,7 +40,7 @@
                         <h1 class="fw-bold text-primary mb-3" data-aos="fade-up">Welcome to Warehouse Management System!</h1>
                         <p class="lead text-muted mb-4" data-aos="fade-up" data-aos-delay="100">Hai, <span
                                 class="text-primary fw-semibold" data-aos="fade-up"
-                                data-aos-delay="100">{{ ucwords(str_replace('_', ' ', Auth::user()->username ?? 'Warehouse User')) }}</span>
+                                data-aos-delay="100">{{ ucwords(str_replace('_', ' ', Auth::user()->nama_legkap ?? (Auth::user()->username ?? 'Warehouse User'))) }}</span>
                             👋</p>
 
                         {{-- Simple Info Card --}}
