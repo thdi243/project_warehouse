@@ -2012,7 +2012,7 @@ class StockOpnameWfgController extends Controller
         $user = Auth::user();
 
         try {
-            $sopQuery = WfgSopModel::with(['user:id,username'])
+            $sopQuery = WfgSopModel::with(['user:id,nama_lengkap,username'])
                 ->whereDate('tgl_opname', $tanggal);
 
             // Kondisi 1: dipanggil lewat UI (user login)
@@ -2109,7 +2109,7 @@ class StockOpnameWfgController extends Controller
 
             $operatorApproval = $sop->user ?? null;
             $approvers[] = [
-                'nama' => $operatorApproval?->username ?? '-',
+                'nama' => $operatorApproval?->nama_lengkap ?? $operatorApproval?->username ?? '-',
                 'status' => 'approved', // Operator dianggap otomatis approve
                 'ttd' => $getSignaturePath($operatorApproval, 'approved'),
                 'catatan' => '',
@@ -2118,7 +2118,7 @@ class StockOpnameWfgController extends Controller
             // === Foreman ===
             $foremanApproval = $approvals->first(fn($a) => $a->approver && $a->approver->jabatan === 'foreman');
             $approvers[] = [
-                'nama' => $foremanApproval?->approver?->username ?? '-',
+                'nama' => $foremanApproval?->approver?->nama_lengkap ?? $foremanApproval?->approver?->username ?? '-',
                 'status' => $foremanApproval?->status ?? '-',
                 'ttd' => $getSignaturePath($foremanApproval?->approver, $foremanApproval?->status),
                 'catatan' => $foremanApproval?->catatan ?? '',
@@ -2127,7 +2127,7 @@ class StockOpnameWfgController extends Controller
             // === Supervisor / Dept Head ===
             $supervisorApproval = $approvals->first(fn($a) => $a->approver && in_array($a->approver->jabatan, ['supervisor', 'dept_head']));
             $approvers[] = [
-                'nama' => $supervisorApproval?->approver?->username ?? '-',
+                'nama' => $supervisorApproval?->approver?->nama_lengkap ?? $supervisorApproval?->approver?->username ?? '-',
                 'status' => $supervisorApproval?->status ?? '-',
                 'ttd' => $getSignaturePath($supervisorApproval?->approver, $supervisorApproval?->status),
                 'catatan' => $supervisorApproval?->catatan ?? '',
