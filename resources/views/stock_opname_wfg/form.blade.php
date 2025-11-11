@@ -382,9 +382,7 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            const sopStatusUrl = "{{ url('/wfg/stock_opname/sop/status') }}";
-
-            $.get(sopStatusUrl, function(res) {
+            $.get("{{ route('getStatusOpname') }}", function(res) {
                 const btn = $('#btnStartOpname');
 
                 if (res.status === 'started') {
@@ -431,7 +429,7 @@
                     .html('<i class="mdi mdi-loading mdi-spin me-2"></i> Opname...');
 
                 $.ajax({
-                    url: '/wfg/stock_opname/sop/start',
+                    url: "{{ route('startOpname') }}",
                     type: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
