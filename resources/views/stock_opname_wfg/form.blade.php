@@ -382,7 +382,9 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            $.get("{{ route('getStatusOpname') }}", function(res) {
+            const sopStatusUrl = "{{ route('getStatusOpname') }}";
+
+            $.get(sopStatusUrl, function(res) {
                 const btn = $('#btnStartOpname');
 
                 if (res.status === 'started') {

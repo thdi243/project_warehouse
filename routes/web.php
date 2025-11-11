@@ -125,8 +125,8 @@ Route::middleware('auth')->group(function () {
             // Stock Opname WFG
             Route::prefix('stock_opname')->group(function () {
                 // Form SOP WFG
-                Route::post('/sop/start', [StockOpnameWfgController::class, 'startOpname']);
-                Route::get('/sop/status', [StockOpnameWfgController::class, 'getStatusOpname']);
+                Route::post('/sop/start', [StockOpnameWfgController::class, 'startOpname'])->name('startOpname');
+                Route::get('/sop/status', [StockOpnameWfgController::class, 'getStatusOpname'])->name('getStatusOpname');
                 Route::get('/sop/form', [WarehouseController::class, 'formSOWFG'])->name('wfg.stock_opname.form');
                 Route::get('/sop/getData', [StockOpnameWfgController::class, 'getData'])->name('wfg.stock_opname.getData');
                 Route::post('/sop/store', [StockOpnameWfgController::class, 'store'])->name('wfg.stock_opname.store');
