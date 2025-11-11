@@ -383,7 +383,7 @@
     <script>
         $(document).ready(function() {
 
-            $.get(url('/wfg/stock_opname/sop/status'), function(res) {
+            $.get('/wfg/stock_opname/sop/status', function(res) {
                 const btn = $('#btnStartOpname');
 
                 if (res.status === 'started') {
