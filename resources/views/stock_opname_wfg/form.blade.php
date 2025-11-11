@@ -382,8 +382,9 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            const sopStatusUrl = "{{ url('/wfg/stock_opname/sop/status') }}";
 
-            $.get('/wfg/stock_opname/sop/status', function(res) {
+            $.get(sopStatusUrl, function(res) {
                 const btn = $('#btnStartOpname');
 
                 if (res.status === 'started') {
