@@ -11,7 +11,7 @@ use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
-use App\Http\Controllers\Wsp\Stock\StockOnHandController;
+use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wsp\stock\StockLocationController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
