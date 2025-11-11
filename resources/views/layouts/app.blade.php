@@ -56,7 +56,9 @@
         {{-- Jquery UI --}}
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
-        @vite(['resources/js/app.js'])
+        {{-- @vite(['resources/js/app.js']) --}}
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        <script src="{{ asset('js/app.js') }}"></script>
 
         @yield('styles')
 
