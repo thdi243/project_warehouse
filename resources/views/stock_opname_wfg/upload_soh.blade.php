@@ -328,11 +328,17 @@
             </div>
         </div>
     </div>
+
+    {{-- @php
+        dd(session()->all());
+    @endphp --}}
+
 @endsection
 
 @section('scripts')
     <script>
         $(document).ready(function() {
+
             loadSOHList();
 
             function loadSOHList(page = 1, search = '', principal = '') {
@@ -991,14 +997,13 @@
 
         @if (session('error'))
             toastr.options = {
-                "closeButton": true,
-                "progressBar": false,
+                "progressBar": true,
                 "positionClass": "toast-top-right",
                 "showDuration": "300",
                 "hideDuration": "1000",
-                "timeOut": "0",
-                "extendedTimeOut": "0",
-                "tapToDismiss": false
+                "timeOut": "4000",
+                "extendedTimeOut": "1000",
+                "tapToDismiss": true
             }
             toastr.error("{{ session('error') }}", "Peringatan!");
         @endif

@@ -43,6 +43,7 @@
         <link href="{{ asset('material/assets/libs/aos/aos.css') }}" rel="stylesheet" type="text/css" />
 
         <!-- jQuery should be included before DataTables -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <link href="{{ asset('material/assets/css/datatables.min.css') }}" rel="stylesheet" type="text/css" />
         <script src="{{ asset('material/assets/js/datatables.min.js') }}"></script>
@@ -50,15 +51,11 @@
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
         <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
             rel="stylesheet" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
         {{-- Jquery UI --}}
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
-        {{-- @vite(['resources/js/app.js']) --}}
-        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-        <script src="{{ asset('js/app.js') }}"></script>
 
         @yield('styles')
 
@@ -106,7 +103,6 @@
 
         {{-- Custom Tambahan --}}
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script><!-- Signature Pad -->
         <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.6/dist/signature_pad.umd.min.js"></script>
 
         <!-- Sweet alert init js-->
@@ -307,31 +303,31 @@
                     });
                 }
 
-                window.Echo.channel('portal-notifications')
-                    .listen('.new-notification', (e) => {
-                        toastr.info(e.data.message, e.data.title);
+                // window.Echo.channel('portal-notifications')
+                //     .listen('.new-notification', (e) => {
+                //         toastr.info(e.data.message, e.data.title);
 
-                        const notifList = $('#notifList');
-                        const notifBadge = $('#notifBadge');
+                //         const notifList = $('#notifList');
+                //         const notifBadge = $('#notifBadge');
 
-                        const item = $(`
-                            <a href="${e.data.url}" 
-                            class="list-group-item list-group-item-action notif-item d-flex align-items-start bg-white"
-                            data-id="temp-${Date.now()}">
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1 fw-semibold">${e.data.title}</h6>
-                                    <p class="mb-1 small">${e.data.message}</p>
-                                    <small class="text-muted">Baru saja</small>
-                                </div>
-                                <div class="ms-2">
-                                    <i class="bx bx-bell text-warning fs-5"></i>
-                                </div>
-                            </a>
-                        `);
+                //         const item = $(`
+        //             <a href="${e.data.url}" 
+        //             class="list-group-item list-group-item-action notif-item d-flex align-items-start bg-white"
+        //             data-id="temp-${Date.now()}">
+        //                 <div class="flex-grow-1">
+        //                     <h6 class="mb-1 fw-semibold">${e.data.title}</h6>
+        //                     <p class="mb-1 small">${e.data.message}</p>
+        //                     <small class="text-muted">Baru saja</small>
+        //                 </div>
+        //                 <div class="ms-2">
+        //                     <i class="bx bx-bell text-warning fs-5"></i>
+        //                 </div>
+        //             </a>
+        //         `);
 
-                        notifList.prepend(item);
-                        notifBadge.text(parseInt(notifBadge.text() || 0) + 1).show();
-                    });
+                //         notifList.prepend(item);
+                //         notifBadge.text(parseInt(notifBadge.text() || 0) + 1).show();
+                //     });
 
 
                 $('#notifList').on('click', '.notif-item', function(e) {

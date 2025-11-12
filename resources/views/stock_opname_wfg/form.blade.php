@@ -382,6 +382,7 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+
             const sopStatusUrl = "{{ route('getStatusOpname') }}";
 
             $.get(sopStatusUrl, function(res) {
