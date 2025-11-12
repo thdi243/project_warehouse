@@ -280,7 +280,12 @@ class WarehouseController extends Controller
         }
 
         // 🔹 Jika tidak ada error, tampilkan view
-        return view('stock_opname_wfg.upload_soh', compact('principals', 'barangCount'));
+        // return view('stock_opname_wfg.upload_soh', compact('principals', 'barangCount'));
+        return view('stock_opname_wfg.upload_soh', [
+            'principals' => $principals,
+            'barangCount' => $barangCount,
+            'error_message' => session('error'), // ambil error dari session kalau ada
+        ]);
     }
 
     public function reportSOPWFG()
