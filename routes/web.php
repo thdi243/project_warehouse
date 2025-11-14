@@ -224,4 +224,6 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
+    Route::delete('/notifications/delete/{id}', [NotificationController::class, 'destroy'])->name('notifications.delete');
+    Route::delete('/notifications/delete-all', [NotificationController::class, 'destroyAll'])->name('notifications.delete-all');
 });
