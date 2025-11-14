@@ -2,18 +2,19 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\P2hController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Api\WspManRakController;
 use App\Http\Controllers\Wsp\WspBarangController;
+use App\Http\Controllers\Auth\TokenAuthController;
 use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Api\P2hDashboardController;
 use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
@@ -127,3 +128,4 @@ Route::prefix('notifications')->group(function () {
 });
 
 Route::get('user/edit/{id}', [UserController::class, 'edit']);
+Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);
