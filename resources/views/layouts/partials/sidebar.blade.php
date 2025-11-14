@@ -39,6 +39,7 @@
             </div>
             @if (in_array($jabatan, ['dept_head', 'foreman', 'operator', 'supervisor']))
                 <ul class="navbar-nav" id="navbar-nav">
+
                     @if ($jabatan === 'dept_head')
                         {{-- Semua dashboard --}}
                         <li class="menu-title"><span data-key="t-menu">Dashboard</span></li>
@@ -284,74 +285,78 @@
                     @if ($jabatan !== 'operator')
                         <li class="menu-title"><span data-key="t-menu">Data Master</span></li>
                         {{-- WFG Master --}}
-                        <li class="nav-item">
-                            <a class="nav-link menu-link {{ request()->routeIs('wfg.master.*') ? 'collapsed' : '' }}"
-                                href="#sidebarMasterWfg" data-bs-toggle="collapse" role="button"
-                                aria-expanded="{{ request()->routeIs('wfg.master.*') ? 'true' : 'false' }}"
-                                aria-controls="sidebarMasterWfg">
-                                <i class="mdi mdi-warehouse"></i> <span data-key="t-stock_op_wfg">WFG</span>
-                            </a>
-                            <div class="collapse menu-dropdown {{ request()->routeIs('wfg.master.*') ? 'show' : '' }}"
-                                id="sidebarMasterWfg">
-                                <ul class="nav nav-sm flex-column">
-                                    {{-- SO Barang --}}
-                                    <li class="nav-item">
-                                        <a href="{{ route('wfg.master.barang.index') }}"
-                                            class="nav-link {{ request()->routeIs('wfg.master.barang.index') ? 'active' : '' }}"
-                                            data-key="t-input-mst_brg_wfg">
-                                            <i class="mdi mdi-package"></i>
-                                            Master Barang SOP </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
+                        @if (in_array($bagian, ['warehouse', 'warehouse_finish_goods']))
+                            <li class="nav-item">
+                                <a class="nav-link menu-link {{ request()->routeIs('wfg.master.*') ? 'collapsed' : '' }}"
+                                    href="#sidebarMasterWfg" data-bs-toggle="collapse" role="button"
+                                    aria-expanded="{{ request()->routeIs('wfg.master.*') ? 'true' : 'false' }}"
+                                    aria-controls="sidebarMasterWfg">
+                                    <i class="mdi mdi-warehouse"></i> <span data-key="t-stock_op_wfg">WFG</span>
+                                </a>
+                                <div class="collapse menu-dropdown {{ request()->routeIs('wfg.master.*') ? 'show' : '' }}"
+                                    id="sidebarMasterWfg">
+                                    <ul class="nav nav-sm flex-column">
+                                        {{-- SO Barang --}}
+                                        <li class="nav-item">
+                                            <a href="{{ route('wfg.master.barang.index') }}"
+                                                class="nav-link {{ request()->routeIs('wfg.master.barang.index') ? 'active' : '' }}"
+                                                data-key="t-input-mst_brg_wfg">
+                                                <i class="mdi mdi-package"></i>
+                                                Master Barang SOP </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                        @endif
 
                         {{-- WSP Master --}}
-                        <li class="nav-item">
-                            <a class="nav-link menu-link {{ request()->routeIs('wsp.master.*') ? 'collapsed' : '' }}"
-                                href="#sidebarMasterWsp" data-bs-toggle="collapse" role="button"
-                                aria-expanded="{{ request()->routeIs('wsp.master.*') ? 'true' : 'false' }}"
-                                aria-controls="sidebarMasterWsp">
-                                <i class="mdi mdi-tools"></i>
-                                <span data-key="t-stock_op_wfg">WSP</span>
-                            </a>
+                        @if (in_array($bagian, ['warehouse', 'warehouse_sparepart']))
+                            <li class="nav-item">
+                                <a class="nav-link menu-link {{ request()->routeIs('wsp.master.*') ? 'collapsed' : '' }}"
+                                    href="#sidebarMasterWsp" data-bs-toggle="collapse" role="button"
+                                    aria-expanded="{{ request()->routeIs('wsp.master.*') ? 'true' : 'false' }}"
+                                    aria-controls="sidebarMasterWsp">
+                                    <i class="mdi mdi-tools"></i>
+                                    <span data-key="t-stock_op_wfg">WSP</span>
+                                </a>
 
-                            <div class="collapse menu-dropdown {{ request()->routeIs('wsp.master.*') ? 'show' : '' }}"
-                                id="sidebarMasterWsp">
-                                <ul class="nav nav-sm flex-column">
-                                    {{-- Master Fees & taxes TKBM --}}
-                                    <li class="nav-item">
-                                        <a href="{{ route('wsp.master.fee') }}"
-                                            class="nav-link {{ request()->routeIs('wsp.master.fee') ? 'active' : '' }}"
-                                            data-key="t-input-tkbm">
-                                            <i class="mdi mdi-credit-card-outline"></i>Manage Fees & Harga
-                                        </a>
-                                    </li>
+                                <div class="collapse menu-dropdown {{ request()->routeIs('wsp.master.*') ? 'show' : '' }}"
+                                    id="sidebarMasterWsp">
+                                    <ul class="nav nav-sm flex-column">
+                                        {{-- Master Fees & taxes TKBM --}}
+                                        <li class="nav-item">
+                                            <a href="{{ route('wsp.master.fee') }}"
+                                                class="nav-link {{ request()->routeIs('wsp.master.fee') ? 'active' : '' }}"
+                                                data-key="t-input-tkbm">
+                                                <i class="mdi mdi-credit-card-outline"></i>Manage Fees & Harga
+                                            </a>
+                                        </li>
 
-                                    {{-- Master Barang --}}
-                                    <li class="nav-item">
-                                        <a href="{{ route('wsp.master.barang') }}"
-                                            class="nav-link {{ request()->routeIs('wsp.master.barang') ? 'active' : '' }}"
-                                            data-key="t-input-mst_brg_wfg">
-                                            <i class="mdi mdi-package-variant-closed"></i>
-                                            Barang
-                                        </a>
-                                    </li>
+                                        {{-- Master Barang --}}
+                                        <li class="nav-item">
+                                            <a href="{{ route('wsp.master.barang') }}"
+                                                class="nav-link {{ request()->routeIs('wsp.master.barang') ? 'active' : '' }}"
+                                                data-key="t-input-mst_brg_wfg">
+                                                <i class="mdi mdi-package-variant-closed"></i>
+                                                Barang
+                                            </a>
+                                        </li>
 
-                                    {{-- Master Rak --}}
-                                    <li class="nav-item">
-                                        <a href="{{ route('wsp.master.rak') }}"
-                                            class="nav-link {{ request()->routeIs('wsp.master.rak') ? 'active' : '' }}"
-                                            data-key="t-input-mst_rak_wfg">
-                                            <i class="mdi mdi-view-grid-outline"></i>
-                                            Rak
-                                        </a>
-                                    </li>
+                                        {{-- Master Rak --}}
+                                        <li class="nav-item">
+                                            <a href="{{ route('wsp.master.rak') }}"
+                                                class="nav-link {{ request()->routeIs('wsp.master.rak') ? 'active' : '' }}"
+                                                data-key="t-input-mst_rak_wfg">
+                                                <i class="mdi mdi-view-grid-outline"></i>
+                                                Rak
+                                            </a>
+                                        </li>
 
 
-                                </ul>
-                            </div>
-                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                        @endif
 
                         {{-- User Management --}}
                         <li class="nav-item">
