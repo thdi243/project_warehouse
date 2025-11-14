@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\NotificationsModel;
 use Illuminate\Support\Facades\Auth;
@@ -18,14 +19,29 @@ class NotificationController extends Controller
 
         $approvalotification = $this->getSopApprovalNotification($userId);
         $barangBaruNotifications = $this->getBarangBaruNotifications($user);
-        $externalNotifications = $this->getExternalNotifications();
+        $externalNotifications = $this->getExternalNotifications($userId);
 
-        $notifications = collect()
-            ->merge($approvalotification)
-            ->merge($barangBaruNotifications)
-            ->merge($externalNotifications)
-            ->sortByDesc('created_at')
-            ->values();
+        // $notifications = collect()
+        //     ->merge($approvalotification)
+        //     ->merge($barangBaruNotifications)
+        //     ->merge($externalNotifications)
+        //     ->sortByDesc('created_at')
+        //     ->values();
+
+        $notifications = NotificationsModel::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($n) {
+                return [
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'url' => $n->url,
+                    'type' => $n->type,
+                    'created_at' => $n->created_at->diffForHumans(),
+                    'is_read' => $n->is_read
+                ];
+            });
 
         return response()->json($notifications);
     }
@@ -36,7 +52,7 @@ class NotificationController extends Controller
 
         if ($notif) {
             $notif->update(['status' => 'read']);
-            return response()->json(['status' => 'error', 'message' => 'Notifikasi tidak ditemukan'], 404);
+            return response()->json(['success' => true, 'source' => 'approval']);
         }
 
         $externalNotif = NotificationsModel::find($id);
@@ -46,8 +62,10 @@ class NotificationController extends Controller
             return response()->json(['success' => true, 'source' => 'external']);
         }
 
-
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Notifikasi tidak ditemukan'
+        ], 404);
     }
 
     private function getSopApprovalNotification($userId)
@@ -58,51 +76,101 @@ class NotificationController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Format agar bisa dikonsumsi oleh frontend
-        $notifications = $approvals->map(function ($a) {
-            return collect([
-                'id' => $a->id,
-                'title' => 'Approval Diperlukan',
-                'message' => 'SOP tanggal ' . $a->sop->tgl_opname . ' menunggu persetujuan Anda.',
-                'sop_id' => $a->sop->id,
-                'url' => route('wfg.stock_opname.report') . '?tanggal=' . $a->sop->tgl_opname .
-                    '&principal=' . urlencode($a->sop->principal ?? ''),
-                'created_at' => $a->created_at->diffForHumans(),
-                'is_read' => $a->status === 'read',
-            ]);
-        });
+        foreach ($approvals as $a) {
+
+            $title = 'Approval Diperlukan';
+            $message = 'SOP tanggal ' . $a->sop->tgl_opname . ' menunggu persetujuan Anda.';
+            $url = route('wfg.stock_opname.report') . '?tanggal=' . $a->sop->tgl_opname .
+                '&principal=' . urlencode($a->sop->principal ?? '');
+
+            $existing = NotificationsModel::where('user_id', $userId)
+                ->where('url', $url)
+                ->first();
+
+            if (!$existing) {
+                NotificationsModel::create([
+                    'user_id' => $userId,
+                    'title' => $title,
+                    'message' => $message,
+                    'url' => $url,
+                    'is_read' => false,
+                ]);
+            }
+        }
+
+        // 4) Ambil semua notifikasi milik user ini
+        $notifications = NotificationsModel::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($n) {
+                return [
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'url' => $n->url,
+                    'created_at' => $n->created_at->diffForHumans(),
+                    'is_read' => $n->is_read,
+                ];
+            });
 
         return $notifications;
     }
 
     private function getBarangBaruNotifications($user)
     {
-        // Pastikan user valid dan adalah RobiForeman
+        // Validasi user & role yg boleh menerima notifikasi
         if (!$user || $user->username !== 'RobiForeman') {
             return collect();
         }
 
-        // Cek apakah ada barang baru
         $hasNewBarang = BarangWfgModel::where('is_new', 1)->exists();
-
         if (!$hasNewBarang) {
             return collect();
         }
 
-        return collect([[
-            'id' => 'barang_baru_warning',
-            'type' => 'barang_baru',
-            'title' => 'Konfirmasi Barang Baru Diperlukan',
-            'message' => 'Terdapat barang baru yang perlu Anda konfirmasi sebelum melanjutkan laporan SOP.',
-            'url' => route('wfg.master.barang.index'),
-            'created_at' => now()->diffForHumans(),
-            'is_read' => false,
-        ]]);
+        $title = 'Konfirmasi Barang Baru Diperlukan';
+        $message = 'Terdapat barang baru yang perlu Anda konfirmasi sebelum melanjutkan laporan SOP.';
+        $url = route('wfg.master.barang.index');
+
+        $existing = NotificationsModel::where('user_id', $user->id)
+            ->where('url', $url)
+            ->first();
+
+        // 2) Jika belum ada → buat notifikasi baru
+        if (!$existing) {
+            NotificationsModel::create([
+                'user_id' => $user->id,
+                'title' => $title,
+                'message' => $message,
+                'url' => $url,
+                'is_read' => false,
+            ]);
+        }
+
+        // 3) Ambil notifikasi ini dari database
+        $notif = NotificationsModel::where('user_id', $user->id)
+            ->where('url', $url)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($n) {
+                return [
+                    'id' => $n->id,
+                    'type' => 'barang_baru',
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'url' => $n->url,
+                    'created_at' => $n->created_at->diffForHumans(),
+                    'is_read' => $n->is_read,
+                ];
+            });
+
+        return $notif;
     }
 
-    private function getExternalNotifications()
+    private function getExternalNotifications($userId)
     {
-        return NotificationsModel::orderBy('created_at', 'desc')
+        return NotificationsModel::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($n) {
                 return collect([
@@ -111,10 +179,11 @@ class NotificationController extends Controller
                     'message' => $n->message,
                     'url' => $n->url,
                     'created_at' => $n->created_at->diffForHumans(),
-                    'is_read' => $n->is_read ?? false,
+                    'is_read' => $n->is_read,
                 ]);
             });
     }
+
 
     public function showNotification(Request $request)
     {
@@ -123,21 +192,52 @@ class NotificationController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        // Simpan ke database
-        $notif = NotificationsModel::create([
-            'title' => $request->input('title'),
-            'message' => $request->input('message'),
-            'url' => $request->input('url'),
-        ]);
+        $supervisors = User::where('jabatan', 'supervisor')->get();
 
-        // Broadcast ke Reverb biar realtime muncul
-        event(new ShowPortalNotification([
-            'id' => $notif->id,
-            'title' => $notif->title,
-            'message' => $notif->message,
-            'url' => $notif->url,
-        ]));
+        if ($supervisors->isEmpty()) {
+            return response()->json(['error' => 'No supervisor found'], 404);
+        }
+
+        foreach ($supervisors as $user) {
+            $notif = NotificationsModel::create([
+                'user_id' => $user->id,
+                'title'   => $request->input('title'),
+                'message' => $request->input('message'),
+                'url'     => $request->input('url'),
+                'is_read' => false,
+            ]);
+
+            // Kirim realtime via Reverb (channel per user)
+            event(new ShowPortalNotification([
+                'id'      => $notif->id,
+                'user_id' => $user->id,
+                'title'   => $notif->title,
+                'message' => $notif->message,
+                'url'     => $notif->url,
+            ]));
+        }
 
         return response()->json(['status' => 'success']);
+    }
+
+
+    public function destroy($id)
+    {
+        $notif = NotificationsModel::find($id);
+
+        if (!$notif) {
+            return response()->json(['status' => 'error', 'message' => 'Notifikasi tidak ditemukan'], 404);
+        }
+
+        $notif->delete();
+
+        return response()->json(['status' => 'success', 'message' => 'Notifikasi berhasil dihapus']);
+    }
+
+    public function destroyAll()
+    {
+        NotificationsModel::truncate();
+
+        return response()->json(['status' => 'success', 'message' => 'Semua notifikasi berhasil dihapus']);
     }
 }

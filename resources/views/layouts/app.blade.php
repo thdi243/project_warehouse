@@ -245,18 +245,21 @@
                     }, "smooth");
                 });
 
-                // Notifikasi
-                function fetchNotifications() {
+                let lastNotificationId = null;
+
+                function fetchNotifications(showToast = false) {
                     $.ajax({
                         url: "{{ route('notifications') }}",
                         method: "GET",
                         dataType: "json",
                         success: function(response) {
                             const notifList = $('#notifList');
+                            const template = $('#notifTemplate .notif-item');
                             const notifBadge = $('#notifBadge');
 
                             notifList.empty();
 
+                            // ✔ Jika tidak ada notif
                             if (response.length === 0) {
                                 notifList.html(
                                     '<p class="text-center text-muted py-3 mb-0">Tidak ada notifikasi</p>'
@@ -265,98 +268,77 @@
                                 return;
                             }
 
-                            const unread = response.filter(n => !n.is_read);
-                            if (unread.length > 0) notifBadge.text(unread.length).show();
-                            else notifBadge.hide();
+                            // ✔ Hitung unread
+                            const unread = response.filter(n => !n.is_read).length;
+                            unread > 0 ? notifBadge.text(unread).show() : notifBadge.hide();
 
-                            response.forEach(n => {
-                                const item = $(`
-                                    <a href="${n.url}" 
-                                    class="list-group-item list-group-item-action notif-item d-flex align-items-start ${n.is_read ? 'bg-light text-muted' : 'bg-white'}"
-                                    data-id="${n.id}">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-1 ${n.is_read ? '' : 'fw-semibold'}">
-                                                ${n.title}
-                                            </h6>
-                                            <p class="mb-1 small">${n.message}</p>
-                                            <small class="text-muted">${n.created_at}</small>
-                                        </div>
-                                        <div class="ms-2">
-                                            ${n.is_read 
-                                                ? '<i class="bx bx-check-circle text-success fs-5"></i>' 
-                                                : '<i class="bx bx-bell text-warning fs-5"></i>'}
-                                        </div>
-                                    </a>
-                                `);
+                            if (showToast && unread) {
+                                const newestId = response[0].id;
 
-                                notifList.append(item);
-
-                                if (!n.is_read) {
-                                    toastr.info(n.message, n.title);
+                                if (lastNotificationId !== newestId) {
+                                    toastr.info(response[0].message, response[0].title);
                                 }
-                            });
 
+                                lastNotificationId = newestId;
+                            }
+
+
+                            // ✔ Render tiap item
+                            response.forEach(n => {
+                                const clone = template.clone();
+
+                                clone.attr('data-id', n.id);
+                                clone.attr('data-url', n
+                                    .url); // penting! biar click handler konsisten
+
+                                // isi data
+                                clone.find('.notif-title').text(n.title);
+                                clone.find('.notif-message').text(n.message);
+                                clone.find('.notif-time').text(n.created_at);
+
+                                // icon
+                                const icon = clone.find('.notif-icon');
+                                if (n.is_read) {
+                                    icon.addClass('bx bx-check-circle text-success');
+                                } else {
+                                    icon.addClass('bx bx-bell text-warning');
+                                }
+
+                                clone.toggleClass('bg-light text-muted', n.is_read);
+                                clone.toggleClass('bg-white fw-semibold', !n.is_read);
+
+                                notifList.append(clone);
+                            });
                         },
-                        error: function() {
-                            console.error("Gagal memuat notifikasi");
+                        error: function(xhr) {
+                            toastr.error("Gagal memuat notifikasi");
                         }
                     });
                 }
 
-                // window.Echo.channel('portal-notifications')
-                //     .listen('.new-notification', (e) => {
-                //         toastr.info(e.data.message, e.data.title);
-
-                //         const notifList = $('#notifList');
-                //         const notifBadge = $('#notifBadge');
-
-                //         const item = $(`
-        //             <a href="${e.data.url}" 
-        //             class="list-group-item list-group-item-action notif-item d-flex align-items-start bg-white"
-        //             data-id="temp-${Date.now()}">
-        //                 <div class="flex-grow-1">
-        //                     <h6 class="mb-1 fw-semibold">${e.data.title}</h6>
-        //                     <p class="mb-1 small">${e.data.message}</p>
-        //                     <small class="text-muted">Baru saja</small>
-        //                 </div>
-        //                 <div class="ms-2">
-        //                     <i class="bx bx-bell text-warning fs-5"></i>
-        //                 </div>
-        //             </a>
-        //         `);
-
-                //         notifList.prepend(item);
-                //         notifBadge.text(parseInt(notifBadge.text() || 0) + 1).show();
-                //     });
-
-
                 $('#notifList').on('click', '.notif-item', function(e) {
-                    e.preventDefault();
-                    const id = $(this).data('id');
-                    const url = $(this).attr('href');
+                    if ($(e.target).closest('.btn-delete-notif').length) return;
+
                     const item = $(this);
+                    const id = item.data('id');
+                    const url = item.data('url');
 
-                    // 🔹 Kalau tidak ada ID numerik (contohnya 'barang_baru_warning'), langsung buka URL
-                    if (!id || !/^\d+$/.test(id)) {
-                        window.location.href = url;
-                        return;
-                    }
+                    if (!url) return;
 
-                    // 🔹 Kalau sudah dibaca, langsung buka halaman
                     if (item.hasClass('bg-light')) {
-                        window.location.href = url;
+                        openNotificationUrl(url);
                         return;
                     }
 
-                    // 🔹 Kalau belum dibaca dan punya ID valid, tandai read
                     $.ajax({
                         url: `{{ url('api/notifications/read') }}/${id}`,
                         type: 'POST',
                         data: {
                             _token: '{{ csrf_token() }}'
                         },
+
                         success: function() {
-                            // Animasi lembut biar halus
+
                             item.fadeTo(200, 0.5, function() {
                                 item
                                     .removeClass('bg-white fw-semibold text-dark')
@@ -368,15 +350,15 @@
                                     .addClass('bx-check-circle text-success');
                             });
 
-                            // Update badge counter
+                            // update badge
                             const currentCount = parseInt($('#notifBadge').text()) || 0;
                             const newCount = Math.max(currentCount - 1, 0);
+
                             if (newCount === 0) $('#notifBadge').hide();
                             else $('#notifBadge').text(newCount);
 
-                            setTimeout(() => {
-                                window.location.href = url;
-                            }, 300);
+                            // buka URL setelah efek animasi
+                            setTimeout(() => openNotificationUrl(url), 300);
                         },
                         error: function() {
                             toastr.error('Gagal menandai notifikasi sebagai dibaca.');
@@ -384,9 +366,78 @@
                     });
                 });
 
-                fetchNotifications();
+                function openNotificationUrl(url) {
+                    if (url.startsWith('http://') || url.startsWith('https://')) {
+                        window.open(url, "_blank");
+                    } else {
+                        window.location.href = url;
+                    }
+                }
 
-                setInterval(fetchNotifications, 180000);
+                $(document).on('click', '.btn-delete-notif', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const item = $(this).closest('.notif-item');
+                    const id = item.data('id');
+
+                    $.ajax({
+                        url: "{{ url('notifications/delete') }}/" + id,
+                        type: "DELETE",
+                        headers: {
+                            "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr('content')
+                        },
+                        success: function() {
+                            item.remove();
+
+                            const count = $('.notif-item').length;
+                            if (count > 0) $('#notifBadge').text(count);
+                            else $('#notifBadge').hide();
+                        }
+                    });
+                });
+
+                $('#clearNotifBtn').on('click', function() {
+                    Swal.fire({
+                        title: "Hapus semua notifikasi?",
+                        text: "Tindakan ini tidak dapat dibatalkan!",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText: "Ya, hapus",
+                        cancelButtonText: "Batal"
+                    }).then((result) => {
+                        if (!result.isConfirmed) return;
+
+                        $.ajax({
+                            url: "{{ url('notifications/delete-all') }}",
+                            type: "DELETE",
+                            headers: {
+                                "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr('content')
+                            },
+                            success: function() {
+
+                                // Hapus semua item dari DOM
+                                $('#notifList').html(
+                                    '<p class="text-center text-muted py-3 mb-0">Tidak ada notifikasi baru</p>'
+                                );
+
+                                // Sembunyikan badge
+                                $('#notifBadge').hide();
+
+                                toastr.success('Semua notifikasi berhasil dihapus.');
+                            },
+                            error: function() {
+                                toastr.error('Gagal menghapus semua notifikasi.');
+                            }
+                        });
+                    });
+                });
+
+                fetchNotifications(true);
+
+                setInterval(() => {
+                    fetchNotifications(true);
+                }, 180000);
             });
         </script>
 
