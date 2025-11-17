@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\P2h\ForkliftModel;
 use App\Models\P2h\P2HForklfitModel;
 use App\Models\P2h\PalletMoverModel;
+use Illuminate\Support\Facades\Auth;
 use App\Models\P2h\P2HPalletMoverModel;
 use Illuminate\Support\Facades\Session;
 use App\Models\P2h\PalletAssignmentModel;
@@ -20,7 +21,7 @@ class P2hController extends Controller
     public function index()
     {
         // if (Session::get('jabatan') === 'operator') {
-        $userId = Session::get('user_id');
+        $userId = Auth::user()->id;
 
         $assignments = UserForkliftAssignmentModel::with('forklift')
             ->where('user_id', $userId)
@@ -47,6 +48,8 @@ class P2hController extends Controller
                 'tipe' => 'Pallet Mover'
             ];
         });
+
+        // dd($palletAssignments);
 
 
         // Ambil departemen & nomor unit pertama untuk default tampilan
@@ -333,7 +336,7 @@ class P2hController extends Controller
                 'forklift_id' => $request->forklift_id,
                 'is_primary' => $request->is_primary,
                 'assigned_date' => now(),
-                'assigned_by' => Session::get('user_id'),
+                'assigned_by' => Auth::user()->id,
                 'notes' => $request->notes,
                 'is_active' => true
             ]);

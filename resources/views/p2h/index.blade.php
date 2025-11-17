@@ -232,7 +232,7 @@
                                     <div class="col-md-3 mb-3">
                                         <label>Nomor Unit</label>
 
-                                        @if (Session::get('jabatan') === 'operator')
+                                        @if (Auth::user()->jabatan === 'operator')
                                             {{-- Untuk operator --}}
                                             @if ($forklifts->count() > 1)
                                                 <select name="nomor_unit" id="forkliftSelect" class="form-select">
@@ -263,7 +263,7 @@
 
                                     <div class="col-md-3 mb-3">
                                         <label>Departemen</label>
-                                        @if (Session::get('jabatan') === 'operator')
+                                        @if (Auth::user()->jabatan === 'operator')
                                             <input type="text" class="form-control" id="departemenInput" name="dept"
                                                 value="{{ ucfirst($departemen) }}" readonly>
                                         @else
@@ -289,13 +289,13 @@
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label>Nama Operator</label>
-                                        <input type="text" class="form-control" value="{{ Session::get('username') }}"
+                                        <input type="text" class="form-control" value="{{ Auth::user()->username }}"
                                             name="operator_name" readonly>
                                     </div>
                                     <!-- <div class="col-md-12 mb-3">
-                                                                                                                                                                            <label>Catatan</label>
-                                                                                                                                                                            <textarea class="form-control" name="catatan"></textarea>
-                                                                                                                                                                        </div> -->
+                                                                                                                                                                                                    <label>Catatan</label>
+                                                                                                                                                                                                    <textarea class="form-control" name="catatan"></textarea>
+                                                                                                                                                                                                </div> -->
                                 </div>
 
                                 <hr>
@@ -443,7 +443,7 @@
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Nomor Unit</label>
-                                        @if (Session::get('jabatan') === 'operator')
+                                        @if (Auth::user()->jabatan === 'operator')
                                             @if ($pallets->count() > 1)
                                                 <select name="nomor_unit" id="palletselect" class="form-select">
                                                     @foreach ($pallets as $unit)
@@ -472,7 +472,7 @@
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label>Departemen</label>
-                                        @if (Session::get('jabatan') === 'operator')
+                                        @if (Auth::user()->jabatan === 'operator')
                                             <input type="text" class="form-control" id="departemenInputpallet"
                                                 name="dept" value="{{ ucfirst($departemenpallet) }}" readonly>
                                         @else
@@ -495,7 +495,7 @@
                                     <div class="col-md-6 mb-3">
                                         <label>Nama Operator</label>
                                         <input type="text" class="form-control" name="operator_name"
-                                            value="{{ Session::get('username') }}" readonly>
+                                            value="{{ Auth::user()->username }}" readonly>
                                     </div>
 
                                 </div>
