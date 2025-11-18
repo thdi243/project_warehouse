@@ -350,19 +350,20 @@
                     </div>
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
                         <div class="action-buttons justify-content-md-end">
-                            <a href="{{ route('rack.stock.loc_download') }}" target="_blank"
-                                class="btn btn-action btn-template" id="btnDownloadTemplate">
-                                <i class="mdi mdi-download"></i>
-                                <span>Download Template</span>
-                            </a>
-                            <button type="button" class="btn btn-action btn-upload" id="btnUpload">
+
+                            <!-- 🔥 Satu tombol untuk Upload + Download -->
+                            <button type="button" class="btn btn-action btn-upload" id="btnUpload" data-bs-toggle="modal"
+                                data-bs-target="#modalUpload">
                                 <i class="mdi mdi-file-upload"></i>
-                                <span>Upload Excel</span>
+                                <span>Upload / Template</span>
                             </button>
+
+                            <!-- Button Tambah Data tetap -->
                             <button type="button" class="btn btn-action btn-add" id="btnAdd">
                                 <i class="mdi mdi-plus-circle"></i>
                                 <span>Tambah Data</span>
                             </button>
+
                         </div>
                     </div>
                 </div>
@@ -373,7 +374,7 @@
                 <div class="table-header">
                     <div class="row align-items-center">
                         <div class="col-md-6">
-                            <h5><i class="mdi mdi-table me-2"></i>Data Stoc On Handk</h5>
+                            <h5><i class="mdi mdi-table me-2"></i>Data Stock On Hand</h5>
                         </div>
                         <div class="col-md-6 mt-3 mt-md-0">
                             <div class="search-box ms-auto">
@@ -431,6 +432,46 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modal Upload dan Download Template -->
+    <div class="modal fade" id="modalUpload" tabindex="-1" aria-labelledby="modalUpload" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalUpload">Upload Stock On Hand</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- Download Template -->
+                    <div class="mb-3 text-center">
+                        <a href="{{ route('rack.stock.soh_download') }}" target="_blank" class="btn btn-action btn-template"
+                            id="btnDownloadTemplate">
+                            <i class="mdi mdi-download"></i>
+                            <span>Download Template</span>
+                        </a>
+                    </div>
+
+                    <hr>
+
+                    <!-- Upload Form -->
+                    <form id="formUploadSoh" enctype="multipart/form-data">
+                        @csrf
+                        <div class="mb-3">
+                            <label class="form-label">Upload File Excel</label>
+                            <input type="file" name="file" id="fileUpload" class="form-control" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" id="btnUploadSubmit">
+                            Upload Sekarang
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -597,6 +638,61 @@
                 renderPagination();
             }
 
+            // Update pagination info
+            function updatePaginationInfo(from, to, total) {
+                $('#showingFrom').text(from);
+                $('#showingTo').text(to);
+                $('#totalRecords').text(total);
+            }
+
+            // Render pagination
+            function renderPagination() {
+                const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
+                const pagination = $('#pagination');
+                pagination.empty();
+
+                if (totalPages <= 1) return;
+
+                // Previous button
+                pagination.append(`
+                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
+                            <i class="mdi mdi-chevron-left"></i>
+                        </a>
+                    </li>
+                `);
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                        pagination.append(`
+                            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+                            </li>
+                        `);
+                    } else if (i === currentPage - 2 || i === currentPage + 2) {
+                        pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                    }
+                }
+
+                // Next button
+                pagination.append(`
+                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
+                            <i class="mdi mdi-chevron-right"></i>
+                        </a>
+                    </li>
+                `);
+            }
+
+            // Change page
+            window.changePage = function(page) {
+                const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
+                if (page < 1 || page > totalPages) return;
+                currentPage = page;
+                renderTable();
+            }
+
             // submit add & edit form
             $('#formStockOnHand').submit(function(e) {
                 e.preventDefault();
@@ -641,6 +737,82 @@
                         toastr.error(msg);
                     }
                 });
+            });
+
+            // Form Upload
+            $('#formUploadSoh').submit(function(e) {
+                e.preventDefault();
+
+                const file = $('#fileUpload')[0].files[0];
+
+                if (!file) {
+                    toastr.warning('Silakan pilih file terlebih dahulu!');
+                    return;
+                }
+
+                // Validasi ukuran file (maks 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    toastr.error('Ukuran file terlalu besar! Maksimal 10MB');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                $.ajax({
+                    url: "{{ route('rack.stock.soh_upload') }}",
+                    type: "POST",
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+
+                    beforeSend: function() {
+                        $('#btnUploadSubmit').prop('disabled', true).text('Uploading...');
+                    },
+
+                    success: function(res) {
+                        toastr.success(res.message);
+
+                        if (res.skipped && res.skipped.length > 0) {
+                            let skippedList = res.skipped.map(item => `<li>${item}</li>`).join(
+                                '');
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Beberapa Data Dilewati',
+                                html: `<ul class="text-start">${skippedList}</ul>`,
+                                width: 500,
+                            });
+                        }
+
+                        $('#modalUploadTemplate').modal('hide'); // ← diperbaiki
+                        $('#formUploadSoh')[0].reset();
+
+                        $('#btnUploadSubmit').prop('disabled', false).text('Upload Sekarang');
+
+                        // reload table jika ada fungsi
+                        if (typeof loadStockLocation === 'function') {
+                            loadStockLocation();
+                        }
+                    },
+
+                    error: function(xhr) {
+                        let msg = 'Terjadi kesalahan saat upload.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+
+                        toastr.error(msg);
+                        $('#btnUploadSubmit').prop('disabled', false).text('Upload Sekarang');
+                    }
+                });
+            });
+
+            // Add button
+            $('#btnAdd').click(function() {
+                $('#modalTitle').text('Tambah Stock On Hand');
+                $('#formStockOnHand')[0].reset();
+                $('#sohId').val('');
+                $('#modalForm').modal('show');
             });
 
             // Edit location
@@ -705,8 +877,6 @@
                     }
                 });
             };
-
-
         });
     </script>
 @endsection
