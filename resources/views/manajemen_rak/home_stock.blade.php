@@ -345,7 +345,9 @@
                             </div>
                             <h5>Stock Opname</h5>
                             <p>Lakukan pengecekan fisik stok dan sesuaikan dengan sistem secara akurat</p>
-                            <a href="{{ route('maintenance') }}" class="btn btn-custom btn-success-custom text-white">
+                            <a href="{{ route('maintenance') }}"
+                                class="btn btn-custom btn-success-custom text-white disabled" tabindex="-1"
+                                aria-disabled="true">
                                 <span>
                                     <i class="mdi mdi-play-circle-outline me-2"></i>Mulai Opname
                                 </span>
@@ -354,7 +356,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 @endsection
