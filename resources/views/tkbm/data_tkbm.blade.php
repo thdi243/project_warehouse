@@ -91,7 +91,7 @@
                                             </tr>
                                             <tr>
                                                 <th colspan="7" class="text-center">PPh {{ $pph }}%</th>
-                                                <th colspan="3">Rp -<span id="tPphAct">0</span></th>
+                                                <th class="text-danger" colspan="3">Rp <span id="tPphAct">0</span></th>
                                             </tr>
                                             <tr>
                                                 <th colspan="7" class="text-center">Grand Total BPS</th>
