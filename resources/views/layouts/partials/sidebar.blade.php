@@ -137,7 +137,7 @@
                                     href="#sideBarRak" data-bs-toggle="collapse" role="button"
                                     aria-expanded="{{ request()->routeIs('rack.*') ? 'true' : 'false' }}"
                                     aria-controls="sideBarRak">
-                                    <i class="mdi mdi-package-variant"></i><span data-key="t-rack">RackMan</span>
+                                    <i class="mdi mdi-package-variant"></i><span data-key="t-rack">WSP Stock</span>
                                 </a>
                                 <div class="collapse menu-dropdown {{ request()->routeIs('rack.*') ? 'show' : '' }}"
                                     id="sideBarRak">
@@ -147,7 +147,19 @@
                                                 class="nav-link {{ request()->routeIs('rack.stock.*') ? 'active' : '' }}"
                                                 data-key="t-input-mst_brg_wfg">
                                                 <i class="mdi mdi-clipboard-list-outline"></i>
-                                                WSP Stock </a>
+                                                Stock Manage </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a href="{{ route('maintenance') }}"
+                                                class="nav-link  d-flex justify-content-between align-items-center {{ request()->routeIs('maintenance') ? 'active' : '' }}"
+                                                data-key="t-input-mst_brg_wfg">
+                                                <span>
+                                                    <i class="mdi mdi-swap-horizontal"></i>
+                                                    Stock Move
+                                                </span>
+
+                                                <span class="badge badge-soft-success rounded-pill">Soon</span>
+                                            </a>
                                         </li>
                                     </ul>
                                 </div>
@@ -251,7 +263,7 @@
                                     aria-expanded="{{ request()->routeIs('wfg.stock_opname.*') ? 'true' : 'false' }}"
                                     aria-controls="sidebarSOp">
                                     <i class="mdi mdi-clipboard-check-outline"></i> <span
-                                        data-key="t-stock_op_wfg">SOP
+                                        data-key="t-stock_op_wfg">Stock Opname
                                         WFG</span>
                                 </a>
                                 <div class="collapse menu-dropdown {{ request()->routeIs('wfg.stock_opname.*') ? 'show' : '' }}"
@@ -267,13 +279,13 @@
                                             <a href="{{ route('wfg.stock_opname.form') }}"
                                                 class="nav-link {{ request()->routeIs('wfg.stock_opname.form') ? 'active' : '' }}"
                                                 data-key="t-input-stock_op_wfg">
-                                                SOP Form</a>
+                                                SO Form</a>
                                         </li>
                                         <li class="nav-item">
                                             <a href="{{ route('wfg.stock_opname.report') }}"
                                                 class="nav-link {{ request()->routeIs('wfg.stock_opname.report') ? 'active' : '' }}"
                                                 data-key="t-stock_op_wfg">
-                                                SOP Report</a>
+                                                SO Report</a>
                                         </li>
                                     </ul>
                                 </div>

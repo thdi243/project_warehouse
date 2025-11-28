@@ -429,6 +429,7 @@
                     principal: currentPrincipal
                 }, function(res) {
                     const status = res.approval_status;
+                    const statusSop = res.status_sop;
                     const note = res.approval_note || '';
                     const isApprover = res.is_approver || false;
                     const isOperator = @json(Auth::user()->jabatan === 'operator');
@@ -487,8 +488,8 @@
                             trackingHtml += '</ul></div>';
                         }
 
-                        // 🔸 Status draft
-                        if (status === 'draft') {
+                        //  Status Sop draft
+                        if (statusSop === 'draft') {
                             btn.removeClass('btn-secondary btn-soft-success')
                                 .addClass('btn-soft-success')
                                 .prop('disabled', false)
@@ -497,7 +498,7 @@
                             wrapper.html('');
                         }
 
-                        // 🔸 Status pending / read
+                        //  Status pending / read
                         else if (status === 'pending' || status === 'read') {
                             btn.removeClass('btn-soft-success').addClass('btn-secondary')
                                 .prop('disabled', true)
@@ -529,7 +530,7 @@
                             `);
                         }
 
-                        // 🔸 Status rejected
+                        // Status rejected
                         else if (status === 'rejected') {
                             btn.removeClass('btn-secondary').addClass('btn-soft-success')
                                 .prop('disabled', false)
@@ -1033,6 +1034,18 @@
                     return;
                 }
 
+                $('#btnSendApproval').prop('disabled', true);
+
+                Swal.fire({
+                    title: 'Mengirim...',
+                    text: 'Mohon tunggu sebentar.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
                 $.ajax({
                     url: "{{ route('wfg.stock_opname.send-approval') }}",
                     method: 'POST',
@@ -1043,17 +1056,22 @@
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(res) {
+                        Swal.close();
+
                         if (res.status === 'success') {
                             Swal.fire('Sukses', res.message, 'success');
                             $('#approvalModal').modal('hide');
-
-                            loadReportData(currentPrincipal);
+                            location.reload();
+                            // loadReportData(currentPrincipal);
                         }
 
                     },
                     error: function(xhr) {
                         Swal.fire('Error', xhr.responseJSON?.message || 'Terjadi kesalahan',
                             'error');
+                    },
+                    complete: function() {
+                        $('#btnSendApproval').prop('disabled', false);
                     }
                 });
             });

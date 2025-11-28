@@ -84,8 +84,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/stock/loc/data', [StockLocationController::class, 'getDataStockLocation'])->name('rack.stock.loc_data');
             Route::get('/stock/loc/download', [StockLocationController::class, 'downloadTemplate'])->name('rack.stock.loc_download');
             Route::post('/stock/loc/upload', [StockLocationController::class, 'upload'])->name('rack.stock.loc_upload');
+            Route::get('/stock/loc/data-barang', [StockLocationController::class, 'getBarang'])->name('rack.stock.loc_data_barang');
 
             Route::get('/stock/soh/data', [StockOnHandController::class, 'getDataSOH'])->name('rack.stock.soh_data');
+            Route::get('/stock/soh/data-barang', [StockOnHandController::class, 'getBarang'])->name('rack.stock.data_barang');
             Route::get('/stock/soh/show/{id}', [StockOnHandController::class, 'show'])->name('rack.stock.soh_show');
             Route::post('/stock/soh/store', [StockOnHandController::class, 'store'])->name('rack.stock.soh_store');
             Route::put('/stock/soh/update/{id}', [StockOnHandController::class, 'update'])->name('rack.stock.soh_update');
@@ -222,8 +224,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
         });
     });
-
-    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
-    Route::delete('/notifications/delete/{id}', [NotificationController::class, 'destroy'])->name('notifications.delete');
-    Route::delete('/notifications/delete-all', [NotificationController::class, 'destroyAll'])->name('notifications.delete-all');
+    Route::prefix('notifications')->group(function () {
+        Route::get('/notif', [NotificationController::class, 'index'])->name('notifications');
+        // Route::post('/read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::delete('/notifications/delete/{id}', [NotificationController::class, 'destroy'])->name('notifications.delete');
+        Route::delete('/notifications/delete-all', [NotificationController::class, 'destroyAll'])->name('notifications.delete-all');
+    });
 });
