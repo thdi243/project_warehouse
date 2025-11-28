@@ -432,15 +432,15 @@
                                     <td class="text-end text-primary fw-bold">${item.qty_soh.toLocaleString('id-ID')}</td>
                                     <td class="text-center">
                                         <div class="d-flex gap-2 justify-content-center">
-                                            <button class="btn btn-sm btn-outline-info"
+                                            <button class="btn btn-outline-info"
                                                 onclick='detailSOH(${JSON.stringify(item)})' title="Detail">
                                                 <i class="mdi mdi-eye-outline"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-warning"
+                                            <button class="btn btn-outline-warning"
                                                 onclick="editSOH(${item.id})" title="Edit">
                                                 <i class="mdi mdi-pencil-outline"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger"
+                                            <button class="btn btn-outline-danger"
                                                 onclick="deleteSOH(${item.id})" title="Hapus">
                                                 <i class="mdi mdi-trash-can-outline"></i>
                                             </button>
