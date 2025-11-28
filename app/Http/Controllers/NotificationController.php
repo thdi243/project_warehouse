@@ -43,7 +43,7 @@ class NotificationController extends Controller
     public function markAsRead($id)
     {
         $notif = NotificationsModel::where('id', $id)
-            ->where('user_id', Auth::id())
+            // ->where('user_id', Auth::id())
             ->first();
 
         Log::info("MarkAsRead dipanggil untuk ID: {$id}");

@@ -331,7 +331,7 @@
                     }
 
                     $.ajax({
-                        url: "{{ url('notifications/read') }}/" + id,
+                        url: `{{ url('api/notifications/read') }}/` + id,
                         type: 'POST',
                         data: {
                             _token: "{{ csrf_token() }}"
