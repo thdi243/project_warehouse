@@ -315,6 +315,7 @@ class StockOpnameWfgController extends Controller
             'user_id' => $user->id,
             'tgl_opname' => now()->toDateString(),
             'status' => 'started',
+            'mode' => 'normal',
             'principal' => optional($user->principal)->principal ?? null,
         ]);
 
@@ -340,15 +341,14 @@ class StockOpnameWfgController extends Controller
         return response()->json(['status' => 'idle']);
     }
 
-
     public function saveTemp(Request $request)
     {
         $request->validate([
             'mode' => 'required|in:qty,note,both',
             'soh_id' => 'required|exists:wfg_soh,id',
             'barang_id' => 'required|exists:wfg_barang,id',
-            'qty_full' => 'nullable|integer',
-            'qty_receh' => 'nullable|integer',
+            'qty_full' => 'nullable|integer|min:0',
+            'qty_receh' => 'nullable|integer|min:0',
             'summary' => 'nullable|integer',
             'keterangan' => 'nullable|string|max:255'
         ]);
@@ -590,7 +590,7 @@ class StockOpnameWfgController extends Controller
             }
         }
 
-        // 🔹 Ambil temp data
+        // Ambil temp data
         $tempData = WfgSopTempModel::query()
             ->when(
                 $user->jabatan === 'operator',
@@ -621,6 +621,7 @@ class StockOpnameWfgController extends Controller
                 $barangBelumOpname[] = [
                     'mid_barang'  => $soh->barang->mid_barang,
                     'nama_barang' => $soh->barang->nama_barang,
+                    'status'      => 'belum_input'
                 ];
             }
         }
@@ -633,7 +634,7 @@ class StockOpnameWfgController extends Controller
             ]);
         }
 
-        // 🔹 Cek selisih
+        // Cek selisih
         $grouped = [];
         foreach ($tempData as $temp) {
             $barangId = $temp->barang_id;
@@ -662,6 +663,7 @@ class StockOpnameWfgController extends Controller
 
             if ($selisih != 0 && empty($keterangan)) {
                 $g['selisih'] = $selisih;
+                $g['status'] = 'selisih';
                 $selisihList[] = $g;
             }
 
@@ -670,12 +672,18 @@ class StockOpnameWfgController extends Controller
 
         // Kalau mode = check → stop di sini
         if ($mode === 'check') {
+            WfgSopStatusModel::query()->update([
+                'mode' => 'check',
+            ]);
+
+            $hasilCheck = array_merge($selisihList, $barangBelumOpname);
+
             return response()->json([
                 'status' => 'success',
                 'message' => count($selisihList) > 0
                     ? 'Ada selisih pada beberapa barang. Silakan periksa kembali sebelum finalisasi.'
                     : 'Semua data opname sudah lengkap & valid.',
-                'data' => $selisihList,
+                'data' => $hasilCheck,
             ]);
         }
 
@@ -961,6 +969,9 @@ class StockOpnameWfgController extends Controller
         $tanggalFilter = $request->input('tanggal');
         $principalFilter = $request->input('principal');
 
+        $sop = WfgSopModel::find($id);
+        $statusSop = $sop->status ?? 'draft';
+
         if ($user->jabatan === 'operator') {
             $activePrincipal = optional($user->principal)->principal;
             if (empty($activePrincipal)) {
@@ -969,6 +980,7 @@ class StockOpnameWfgController extends Controller
                     'approval_status' => 'draft',
                     'approval_note' => null,
                     'approver_tracking' => [],
+                    'status_sop' => 'draft',
                     'message' => 'Principal tidak ditemukan pada akun operator. Hubungi foreman.',
                 ], 422);
             }
@@ -992,18 +1004,18 @@ class StockOpnameWfgController extends Controller
                     'approval_status' => 'draft',
                     'approval_note' => null,
                     'approver_tracking' => [],
+                    'status_sop' => 'draft',
                 ]);
             }
 
             $id = $sop->id; // override id arg dengan sop yang ditemukan
         } else {
-            // jika tidak ada tanggal filter, pastikan SOP id dari param valid
-            $sop = WfgSopModel::find($id);
             if (!$sop) {
                 return response()->json([
                     'approval_status' => 'draft',
                     'approval_note' => null,
                     'approver_tracking' => [],
+                    'status_sop' => 'draft',
                 ]);
             }
 
@@ -1013,14 +1025,17 @@ class StockOpnameWfgController extends Controller
                     'approval_status' => 'draft',
                     'approval_note' => null,
                     'approver_tracking' => [],
+                    'status_sop' => 'draft',
                 ], 403);
             }
         }
 
-        // Ambil semua approval untuk SOP ini (kita pakai sop_id sebagai sumber kebenaran)
+        if ($statusSop === 'draft') {
+            WfgSopApprovalModel::where('sop_id', $sop->id)->delete();
+        }
+
+        // Ambil semua approval untuk SOP ini
         $approvals = WfgSopApprovalModel::where('sop_id', $id)
-            // optional: kalau kamu menyimpan principal di tabel approvals, uncomment berikut:
-            // ->where('principal', $sop->principal)
             ->with('approver:id,username,jabatan')
             ->get();
 
@@ -1043,19 +1058,17 @@ class StockOpnameWfgController extends Controller
                 'approval_note' => $approvalForUser->catatan,
                 'is_approver' => true,
                 'approver_tracking' => $approverTracking,
+                'status_sop' => $statusSop,
             ]);
         }
 
-        // Jika bukan approver, kita hitung status global:
-        // aturan: jika ada rejected -> rejected
-        // else if ada pending/read -> pending
-        // else approved
         if ($approvals->isEmpty()) {
             return response()->json([
                 'approval_status' => 'draft',
                 'approval_note' => null,
                 'is_approver' => false,
                 'approver_tracking' => $approverTracking,
+                'status_sop' => $statusSop,
             ]);
         }
 
@@ -1069,6 +1082,7 @@ class StockOpnameWfgController extends Controller
                 'approval_note' => $rejected->catatan,
                 'is_approver' => false,
                 'approver_tracking' => $approverTracking,
+                'status_sop' => $statusSop,
             ]);
         }
 
@@ -1078,6 +1092,7 @@ class StockOpnameWfgController extends Controller
                 'approval_note' => null,
                 'is_approver' => false,
                 'approver_tracking' => $approverTracking,
+                'status_sop' => $statusSop,
             ]);
         }
 
@@ -1086,6 +1101,7 @@ class StockOpnameWfgController extends Controller
             'approval_note' => null,
             'is_approver' => false,
             'approver_tracking' => $approverTracking,
+            'status_sop' => $statusSop,
         ]);
     }
 
@@ -1135,19 +1151,19 @@ class StockOpnameWfgController extends Controller
                  END AS has_diff")
             )
             ->whereDate('wfg_soh.last_updated', $today);
+        // ->orderBy('wfg_soh.id', 'asc');
 
         // Filter principal
         if ($user->jabatan === 'operator') {
             if ($userPrincipal === 'SMU') {
-                // 🔹 Operator SMU bisa pilih tab principal
+                // Log::info($userPrincipal);
                 if ($principalFilter) {
+                    // Log::info($principalFilter);
                     $finalQuery->where('wfg_barang.principal', $principalFilter);
                 } else {
-                    // default: semua principal kecuali BAS
                     $finalQuery->where('wfg_barang.principal', '!=', 'BAS');
                 }
             } elseif ($userPrincipal) {
-                // 🔹 Operator lain hanya lihat principal-nya sendiri
                 $finalQuery->where('wfg_barang.principal', $userPrincipal);
             } else {
                 $finalQuery->whereRaw('1 = 0');
@@ -1159,6 +1175,10 @@ class StockOpnameWfgController extends Controller
             }
         }
 
+        // Log::info('Query Sebelum mode check', [
+        //     'sql' => $finalQuery->toSql(),
+        //     'bindings' => $finalQuery->getBindings(),
+        // ]);
 
         // Filter pencarian
         if ($searchTerm) {
@@ -1169,28 +1189,44 @@ class StockOpnameWfgController extends Controller
         }
 
         // Urutkan: data yang punya selisih di atas
-        $finalQuery
-            ->orderByDesc('has_diff')
-            ->orderByDesc(DB::raw('ABS(COALESCE(temp_sum.total_summary, 0) - COALESCE(wfg_soh.qty_soh, 0))')) // urutkan berdasarkan besar selisih
-            ->orderBy('wfg_barang.mid_barang', 'asc');
+        $mode = WfgSopStatusModel::getMode();
+
+        if ($mode === 'check') {
+            $finalQuery
+                ->orderByDesc('has_diff')
+                ->orderBy('wfg_barang.mid_barang', 'asc');
+        }
+
+        // Log::info('Query SESUDAH mode check', [
+        //     'sql' => $finalQuery->toSql(),
+        //     'bindings' => $finalQuery->getBindings(),
+        // ]);
 
         // Pagination
-        $total = $finalQuery->count();
-        $currentPage = Paginator::resolveCurrentPage();
-        $items = $finalQuery->skip(($currentPage - 1) * $perPage)->take($perPage)->get();
+        $countQuery = clone $finalQuery;
+        $total = $countQuery->count();
 
-        $mappedItems = $items->map(function ($item) {
+        $currentPage = Paginator::resolveCurrentPage();
+        $items = $finalQuery
+            ->skip(($currentPage - 1) * $perPage)
+            ->take($perPage)
+            ->get();
+
+        $mappedItems = $items->map(function ($item) use ($mode) {
             $selisih = (int) $item->selisih;
 
             // Kalau belum ada data temp sama sekali (total_summary = 0 dan belum diinput), kosongin status diff
             $status = null;
-            if ($item->total_summary !== null && $item->total_summary != 0) {
-                if ($selisih > 0) {
-                    $status = 'lebih';
-                } elseif ($selisih < 0) {
-                    $status = 'kurang';
-                } else {
-                    $status = 'match';
+
+            if ($mode === 'check') {
+                if ($item->total_summary !== null && $item->total_summary != 0) {
+                    if ($selisih > 0) {
+                        $status = 'lebih';
+                    } elseif ($selisih < 0) {
+                        $status = 'kurang';
+                    } else {
+                        $status = 'match';
+                    }
                 }
             }
 
@@ -2078,7 +2114,7 @@ class StockOpnameWfgController extends Controller
                 ->where('sop_id', $sop->id)
                 ->get();
 
-            $approvers = [];
+
 
             // Helper function untuk ambil path tanda tangan user
             $getSignaturePath = function ($user, $status = null) {
@@ -2107,12 +2143,18 @@ class StockOpnameWfgController extends Controller
                 return $dummy;
             };
 
-            $operatorApproval = $sop->user ?? null;
+            $approvers = [];
+            $operatorApproval = $approvals->first(fn($a) => $a->approver_id == $sop->user_id);
             $approvers[] = [
-                'nama' => $operatorApproval?->nama_lengkap ?? $operatorApproval?->username ?? '-',
-                'status' => 'approved', // Operator dianggap otomatis approve
-                'ttd' => $getSignaturePath($operatorApproval, 'approved'),
-                'catatan' => '',
+                'nama' => $operatorApproval?->approver?->nama_lengkap
+                    ?? $operatorApproval?->approver?->username
+                    ?? '-',
+                'status' => $operatorApproval?->status ?? 'approved',
+                'ttd' => $getSignaturePath($operatorApproval?->approver, $operatorApproval?->status),
+                'catatan' => $operatorApproval?->catatan ?? '',
+                'action_at' => $operatorApproval?->action_at
+                    ? \Carbon\Carbon::parse($operatorApproval->action_at)->format('Y-m-d')
+                    : '',
             ];
 
             // === Foreman ===
@@ -2122,6 +2164,9 @@ class StockOpnameWfgController extends Controller
                 'status' => $foremanApproval?->status ?? '-',
                 'ttd' => $getSignaturePath($foremanApproval?->approver, $foremanApproval?->status),
                 'catatan' => $foremanApproval?->catatan ?? '',
+                'action_at' => $foremanApproval?->action_at
+                    ? \Carbon\Carbon::parse($foremanApproval->action_at)->format('Y-m-d')
+                    : '',
             ];
 
             // === Supervisor / Dept Head ===
@@ -2131,6 +2176,9 @@ class StockOpnameWfgController extends Controller
                 'status' => $supervisorApproval?->status ?? '-',
                 'ttd' => $getSignaturePath($supervisorApproval?->approver, $supervisorApproval?->status),
                 'catatan' => $supervisorApproval?->catatan ?? '',
+                'action_at' => $supervisorApproval?->action_at
+                    ? \Carbon\Carbon::parse($supervisorApproval->action_at)->format('Y-m-d')
+                    : '',
             ];
 
             $activePrincipal = $principalFilter ?? ($user->principal->principal ?? null);
@@ -2177,11 +2225,18 @@ class StockOpnameWfgController extends Controller
             }
 
             $tanggalCarbon = \Carbon\Carbon::parse($tanggal);
-            $day   = str_pad($tanggalCarbon->day, 3, '0', STR_PAD_LEFT); // 005
+
+            // 1. Hitung nomor urut berdasarkan jumlah data di WfgSopModel
+            $lastNumber = WfgSopModel::count();
+            $nomor = str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
+            $prefix = $activePrincipal === 'BAS' ? 'WFG' : ($activePrincipal === 'SMU' ? 'SMU' : 'WFG');
+
             $bulanRomawi = bulanRomawi($tanggalCarbon->month);
             $tahun = $tanggalCarbon->year;
 
-            $nomorDokumen = "{$day}/WFG/{$bulanRomawi}/{$tahun}";
+            // 4. Nomor dokumen final
+            $nomorDokumen = "{$nomor}/{$prefix}/{$bulanRomawi}/{$tahun}";
+
 
             $pdf = Pdf::loadView('pdf.sop_wfg_report', [
                 'data'       => $sop,
@@ -2350,7 +2405,7 @@ class StockOpnameWfgController extends Controller
 
         $sopId = $request->sop_id;
 
-        // 🔹 Pastikan SOP sesuai dengan principal login
+        // Pastikan SOP sesuai dengan principal login
         $sop = WfgSopModel::where('id', $sopId)
             ->where('principal', $userPrincipal)
             ->first();
@@ -2363,6 +2418,18 @@ class StockOpnameWfgController extends Controller
         }
 
         // Update/Create approval per approver
+        WfgSopApprovalModel::updateOrCreate(
+            [
+                'sop_id' => $sop->id,
+                'approver_id' => $user->id,
+            ],
+            [
+                'status' => 'approved',
+                'action_at' => now(),
+                'action_by' => $user->id,
+            ]
+        );
+
         $approvers = [$request->foreman_id, $request->supervisor_id];
 
         foreach ($approvers as $userId) {
@@ -2373,9 +2440,15 @@ class StockOpnameWfgController extends Controller
                 ],
                 [
                     'status' => 'pending',
+                    'action_at' => null,
+                    'action_by' => null,
                 ]
             );
         }
+
+        $sop->update([
+            'status' => 'pending'
+        ]);
 
         return response()->json([
             'status' => 'success',
@@ -2420,6 +2493,8 @@ class StockOpnameWfgController extends Controller
         $approval->update([
             'status' => $request->status,
             'catatan' => $request->catatan,
+            'action_at' => now(),
+            'action_by' => $user->id,
         ]);
 
         $approvals = WfgSopApprovalModel::where('sop_id', $request->sop_id)->get();

@@ -180,6 +180,7 @@
 
                         <div class="p-4 mt-2 mb-4 rounded-3 border shadow-sm">
                             <div class="row g-3 align-items-end mb-3">
+                                <input type="hidden" id="opname_mode" value="normal">
 
                                 <!-- Kolom Tanggal Opname -->
                                 <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-3 @endif col-12">
@@ -206,7 +207,7 @@
                                 <!-- Kolom Tombol Aksi -->
                                 <div class="@if (Auth::user()->jabatan != 'operator') col-md-6 @else col-md-9 @endif col-12">
                                     <div class="d-flex flex-column flex-md-row gap-2 text-nowrap">
-                                        <button type="submit" class="btn btn-success w-100" id="btnSaveFinal">
+                                        <button type="button" class="btn btn-success w-100" id="btnSaveFinal">
                                             <i class="mdi mdi-content-save-outline me-1"></i> Check & Submit
                                         </button>
                                         <button type="button" class="btn btn-info w-100" id="btnAddRow">
@@ -312,8 +313,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Principal</label>
-                                    <input type="text" class="form-control" name="principal" placeholder="100"
-                                        min="1">
+                                    <input type="text" class="form-control" name="principal" placeholder="BAS">
                                 </div>
                             </div>
                         </div>
@@ -387,6 +387,7 @@
 
             $.get(sopStatusUrl, function(res) {
                 const btn = $('#btnStartOpname');
+                console.log(res.status);
 
                 if (res.status === 'started') {
                     btn.prop('disabled', true)
@@ -419,6 +420,17 @@
                     `);
 
                     generatePrincipalTabs(false);
+                } else if (res.status === 'idle') {
+                    $('#btnSaveFinal').prop('disabled', true).addClass('disabled');
+                    $('#btnAddRow').prop('disabled', true).addClass('disabled');
+                    $('#btnReset').prop('disabled', true).addClass('disabled');
+                    $('#btnSearchBarang').prop('disabled', true).addClass('disabled');
+                    $('#searchBarang').prop('disabled', true).addClass('disabled');
+
+                    // Hanya START yang aktif
+                    $('#btnStartOpname')
+                        .prop('disabled', false)
+                        .removeClass('disabled');
                 }
             });
 
@@ -440,6 +452,7 @@
                     success: function(res) {
                         if (res.status) {
                             toastr.success(res.message);
+                            location.reload();
                             generatePrincipalTabs(true);
                         } else {
                             toastr.warning(res.message);
@@ -475,7 +488,8 @@
                         page: page,
                         per_page: 25,
                         principal: principal,
-                        search: search
+                        search: search,
+                        mode: $('#opname_mode').val(),
                     },
                     success: function(response) {
                         const items = response.data;
@@ -566,16 +580,16 @@
                                     <td class="text-end fw-bold summary-cell">${item.summary ?? '0'}</td>
                                     <td><input type="text" class="form-control keterangan" placeholder="Isi Catatan"></td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-success btn-save-temp"  title="Simpan">
+                                        <button type="button" class="btn btn-outline-success btn-save-temp"  title="Simpan">
                                             <i class="mdi mdi-content-save-outline"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-history" data-bs-toggle="collapse" data-bs-target="#history-${id}" title="History">
+                                        <button type="button" class="btn btn-outline-secondary btn-history" data-bs-toggle="collapse" data-bs-target="#history-${id}" title="History">
                                             <i class="mdi mdi-history"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary btn-edit-temp" title="Edit">
+                                        <button type="button" class="btn btn-outline-primary btn-edit-temp" title="Edit">
                                             <i class="mdi mdi-pencil"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-reset-temp" title="Reset">
+                                        <button type="button" class="btn btn-outline-danger btn-reset-temp" title="Reset">
                                             <i class="mdi mdi-delete-outline"></i>
                                         </button>
                                     </td>
@@ -857,6 +871,7 @@
                     type: "POST",
                     data,
                     success: function(res) {
+                        toastr.clear();
                         if (res.status === 'success') {
                             toastr.success(res.message, 'Tersimpan!');
 
@@ -935,13 +950,17 @@
             $('#btnSaveFinal').on('click', function(e) {
                 e.preventDefault();
 
+                // console.log(activePrincipal);
+
                 const tgl_opname = $('#tgl_opname').val();
-                const principal = $('#principal_filter').val();
+                // const principal = $('#principal_filter').val();
 
                 if (!tgl_opname) {
                     Swal.fire('Peringatan', 'Tanggal opname wajib diisi!', 'warning');
                     return;
                 }
+
+                $('#opname_mode').val('check');
 
                 // Step 1: Check Progress
                 $.ajax({
@@ -950,7 +969,7 @@
                     data: {
                         _token: $('input[name="_token"]').val(),
                         tgl_opname,
-                        principal,
+                        principal: activePrincipal,
                         mode: 'check'
                     },
                     success: function(res) {
@@ -962,13 +981,23 @@
                                         <div style="max-height: 400px; overflow-y: auto; text-align: left;">
                                             <ul class="list-unstyled mb-0">
                                     `;
+
                                 res.data.forEach(item => {
-                                    listHtml += `
+                                    if (item.status === 'belum_input') {
+                                        listHtml += `
+                                        <li class="mb-3">
+                                            <strong>${item.mid_barang}</strong> - 
+                                            <span class="text-warning fw-bold">Belum Input</span>
+                                        </li>
+                                    `;
+                                    } else if (item.status === 'selisih') {
+                                        listHtml += `
                                             <li class="mb-3">
                                                 <strong>${item.mid_barang}</strong>
-                                                Selisih: <span class="text-danger fw-bold">${item.selisih}</span>
+                                                Selisih: <span class="text-danger fw-bold ">${item.selisih}</span>
                                             </li>
                                         `;
+                                    }
                                 });
                                 listHtml += `
                                             </ul>
@@ -990,7 +1019,7 @@
                                 cancelButtonText: 'Batal'
                             }).then(result => {
                                 if (result.isConfirmed) {
-                                    // Step 2: Finalisasi
+                                    // Step 2: Submit
                                     $.ajax({
                                         url: "{{ route('wfg.stock_opname.process') }}",
                                         method: "POST",
@@ -998,7 +1027,7 @@
                                             _token: $('input[name="_token"]')
                                                 .val(),
                                             tgl_opname,
-                                            principal,
+                                            principal: principal,
                                             mode: 'final'
                                         },
                                         success: function(finalRes) {
@@ -1044,6 +1073,9 @@
                                             'Gagal menyimpan final.',
                                             'error')
                                     });
+                                } else {
+                                    loadBarangForOpname(1, activePrincipal,
+                                        currentSearch);
                                 }
                             });
                         } else {
@@ -1201,9 +1233,15 @@
                                 'Error');
                         }
                     },
-                    error: function() {
-                        toastr.error(res.message || 'Gagal menyimpan data',
-                            'Error');
+                    error: function(xhr) {
+                        let msg = 'Gagal menyimpan data';
+
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+
+                        toastr.error(msg, 'Error');
+                        loadBarangForOpname();
                     }
                 });
             });
