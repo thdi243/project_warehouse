@@ -16,6 +16,11 @@ return new class extends Migration
             $table->foreignId('sop_id')->constrained('wfg_sop')->onDelete('cascade');
             $table->foreignId('approver_id')->constrained('users')->onDelete('cascade');
             $table->enum('status', ['pending', 'read', 'approved', 'rejected'])->default('pending');
+            $table->dateTime('action_at')->nullable();
+            $table->foreignId('action_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
             $table->text('catatan')->nullable();
             $table->timestamps();
 
