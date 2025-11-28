@@ -16,6 +16,7 @@ class WfgSopStatusModel extends Model
         'tgl_opname',
         'user_id',
         'status',
+        'mode',
         'principal',
     ];
 
@@ -25,5 +26,10 @@ class WfgSopStatusModel extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public static function getMode()
+    {
+        return self::first()->mode ?? 'normal';
     }
 }
