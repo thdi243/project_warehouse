@@ -97,7 +97,7 @@ class TokenAuthController extends Controller
             ]);
         } else {
             $user->update([
-                'nama_lengkap' => $userData['name'] ?? $user->name,
+                'nama_lengkap' => $userData['name'] ?? $user->nama_lengkap,
                 'nik' => $userData['nik'] ?? $user->nik,
                 'jabatan' => $userData['jabatan'] ?? $user->jabatan,
                 'departemen' => $userData['departemen'] ?? $user->departemen,
