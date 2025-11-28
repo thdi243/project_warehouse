@@ -195,7 +195,7 @@
                     <tr class="no-border-row">
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $dt->barang->mid_barang }}</td>
-                        <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
+                        <td style="text-align: left; padding-left: 5px;">
                             {{ $dt->barang->nama_barang }}
                         </td>
                         <td>{{ $dt->barang->uom }}</td>
@@ -217,7 +217,7 @@
                 {{-- Tambahan baris kosong --}}
                 @php
                     $jumlahData = count($summaries);
-                    $tambahan = $jumlahData < 20 ? 10 : 5;
+                    $tambahan = $jumlahData < 10 ? 5 : 3;
                 @endphp
 
                 @for ($i = 1; $i <= $tambahan; $i++)
