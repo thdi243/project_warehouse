@@ -18,4 +18,8 @@ class NotificationsModel extends Model
         'url',
         'is_read',
     ];
+
+    protected $casts = [
+        'is_read' => 'boolean',
+    ];
 }

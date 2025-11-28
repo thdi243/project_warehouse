@@ -331,14 +331,12 @@
                     }
 
                     $.ajax({
-                        url: `{{ url('api/notifications/read') }}/${id}`,
+                        url: "{{ url('notifications/read') }}/" + id,
                         type: 'POST',
                         data: {
-                            _token: '{{ csrf_token() }}'
+                            _token: "{{ csrf_token() }}"
                         },
-
                         success: function() {
-
                             item.fadeTo(200, 0.5, function() {
                                 item
                                     .removeClass('bg-white fw-semibold text-dark')
@@ -367,11 +365,13 @@
                 });
 
                 function openNotificationUrl(url) {
-                    if (url.startsWith('http://') || url.startsWith('https://')) {
-                        window.open(url, "_blank");
-                    } else {
-                        window.location.href = url;
-                    }
+                    // if (url.startsWith('http://') || url.startsWith('https://')) {
+                    //     window.open(url);
+                    // } else {
+                    //     window.location.href = url;
+                    // }
+
+                    window.location.href = url;
                 }
 
                 $(document).on('click', '.btn-delete-notif', function(e) {

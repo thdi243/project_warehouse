@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\NotificationsModel;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Events\ShowPortalNotification;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
@@ -20,13 +21,6 @@ class NotificationController extends Controller
         $approvalotification = $this->getSopApprovalNotification($userId);
         $barangBaruNotifications = $this->getBarangBaruNotifications($user);
         $externalNotifications = $this->getExternalNotifications($userId);
-
-        // $notifications = collect()
-        //     ->merge($approvalotification)
-        //     ->merge($barangBaruNotifications)
-        //     ->merge($externalNotifications)
-        //     ->sortByDesc('created_at')
-        //     ->values();
 
         $notifications = NotificationsModel::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
@@ -48,24 +42,31 @@ class NotificationController extends Controller
 
     public function markAsRead($id)
     {
-        $notif = WfgSopApprovalModel::find($id);
+        $notif = NotificationsModel::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
 
-        if ($notif) {
-            $notif->update(['status' => 'read']);
-            return response()->json(['success' => true, 'source' => 'approval']);
+        Log::info("MarkAsRead dipanggil untuk ID: {$id}");
+
+        if (!$notif) {
+            Log::warning("Notifikasi ID {$id} TIDAK ditemukan!");
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Notifikasi tidak ditemukan'
+            ], 404);
         }
 
-        $externalNotif = NotificationsModel::find($id);
+        $notif->update([
+            'is_read' => true
+        ]);
 
-        if ($externalNotif) {
-            $externalNotif->update(['is_read' => true]);
-            return response()->json(['success' => true, 'source' => 'external']);
-        }
+        Log::info("Notifikasi ID {$id} berhasil ditandai read.");
 
         return response()->json([
-            'success' => false,
-            'message' => 'Notifikasi tidak ditemukan'
-        ], 404);
+            'success' => true,
+            'message' => 'Update is read'
+        ]);
     }
 
     private function getSopApprovalNotification($userId)
@@ -184,7 +185,6 @@ class NotificationController extends Controller
             });
     }
 
-
     public function showNotification(Request $request)
     {
         // Validasi internal key
@@ -219,7 +219,6 @@ class NotificationController extends Controller
 
         return response()->json(['status' => 'success']);
     }
-
 
     public function destroy($id)
     {
