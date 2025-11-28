@@ -7,7 +7,6 @@
         <style>
             @page {
                 margin: 50px 30px 50px 30px;
-                /* top, right, bottom, left */
             }
 
             body {
@@ -46,13 +45,13 @@
 
             tfoot {
                 display: table-footer-group;
+                page-break-inside: avoid;
             }
 
             tr {
                 page-break-inside: avoid;
             }
 
-            /* Hapus border atas dari baris pertama body agar nyatu sama header */
             tbody tr:first-child td {
                 border-top: none !important;
             }
@@ -78,7 +77,6 @@
                 text-align: left;
             }
 
-            /* hanya garis bawah saja */
             .border-bottom-only {
                 border: none !important;
                 border-bottom: 1px solid #000 !important;
@@ -107,6 +105,29 @@
                 border-top: none !important;
                 border-bottom: none !important;
                 text-align: center;
+            }
+
+            /* FIX UNTUK BORDER TABEL DATA SAAT PAGE BREAK */
+            .data-table {
+                width: 100%;
+                border-left: 1px solid #000;
+                border-right: 1px solid #000;
+                border-bottom: 1px solid #000;
+            }
+
+            /* Hilangkan border antar row di dalam tbody */
+            .data-table tbody tr td {
+                border-top: none !important;
+                border-bottom: none !important;
+                border-left: 1px solid #000;
+                border-right: 1px solid #000;
+            }
+
+            /* Untuk print */
+            @media print {
+                .data-table tbody tr {
+                    page-break-inside: avoid;
+                }
             }
         </style>
     </head>
@@ -145,8 +166,8 @@
 
             <tr>
                 <td class="no-border text-left border-bottom-only">Hal</td>
-                <td class="no-border text-left border-bottom-only">
-                    : <span class="page-number">1</span> of <span class="page-count"></span></td>
+                <td class="no-border text-left border-bottom-only" id="page-info">
+                    : 1 of 1</td>
             </tr>
 
             <tr>
@@ -155,8 +176,7 @@
         </table>
 
         <!-- TABEL DATA -->
-        <table cellspacing="0" cellpadding="4" class="border-top-th text-center"
-            style="white-space: nowrap; border: 1px solid #000;">
+        <table cellspacing="0" cellpadding="4" class="border-top-th text-center data-table">
             <thead>
                 <tr>
                     <th style="width: 5%;">No</th>
@@ -180,7 +200,7 @@
                         </td>
                         <td>{{ $dt->barang->uom }}</td>
                         <td style="padding-right: 5px;">
-                            {{ $dt->barang->stockOnHand->qty_soh ?? 0 }}
+                            {{ rtrim(rtrim($dt->qty_sistem ?? 0, '0'), '.') }}
                         </td>
                         <td style="padding-right: 5px;">
                             {{ rtrim(rtrim($dt->qty_fisik ?? 0, '0'), '.') }}
@@ -194,7 +214,7 @@
                     </tr>
                 @endforeach
 
-                {{-- Tambahan 5 baris kosong --}}
+                {{-- Tambahan baris kosong --}}
                 @php
                     $jumlahData = count($summaries);
                     $tambahan = $jumlahData < 20 ? 10 : 5;
@@ -234,7 +254,6 @@
                             @endif
                         @endforeach
 
-                        {{-- Jika tidak ada catatan sama sekali --}}
                         @if (collect($approvers)->whereNotNull('catatan')->where('catatan', '!=', '')->isEmpty())
                             <p style="color: #666; font-style: italic; margin: 0;">Tidak ada catatan.</p>
                         @endif
@@ -246,19 +265,16 @@
         {{-- Table ttd --}}
         <table class="text-center" cellspacing="0" cellpadding="4"
             style="white-space: nowrap; border: 1px solid #000; border-top: 0; width: 100%; border-collapse: collapse;">
-            <!-- Spacer -->
             <tr>
                 <td colspan="3" style="height: 10px; border: none; border-bottom: 1px solid #000;"></td>
             </tr>
 
-            <!-- Judul Tanda Tangan -->
             <tr>
                 <td style="width: 33%; border-right: 1px solid #000;">Dibuat oleh,</td>
                 <td style="width: 33%; border-right: 1px solid #000;">Diperiksa oleh,</td>
                 <td style="width: 34%;">Diketahui oleh,</td>
             </tr>
 
-            {{-- ttd --}}
             <tr>
                 <td class="approver-ttd-cell">
                     <img src="{{ $approvers[0]['ttd'] }}" width="80" alt="TTD {{ $approvers[0]['nama'] }}">
@@ -271,42 +287,42 @@
                 </td>
             </tr>
 
-            <!-- Nama Approver (tanpa border) -->
             <tr>
                 <td class="approver-name-cell">
                     @if (isset($approvers[0]))
-                        <span style="font-size: 11px;">{{ $approvers[0]['nama'] }}</span>
+                        <span style="font-size: 11px;"><strong>{{ $approvers[0]['nama'] }}</strong></span>
+                        <br>
+                        <span style="font-size: 11px;">{{ $approvers[0]['action_at'] }}</span>
                     @else
                         &nbsp;
                     @endif
                 </td>
                 <td class="approver-name-cell">
                     @if (isset($approvers[1]))
-                        <span style="font-size: 11px;">{{ $approvers[1]['nama'] }}</span>
+                        <span style="font-size: 11px;"><strong>{{ $approvers[1]['nama'] }}</strong></span>
+                        <br>
+                        <span style="font-size: 11px;">{{ $approvers[1]['action_at'] }}</span>
                     @else
                         &nbsp;
                     @endif
                 </td>
                 <td class="approver-name-cell">
                     @if (isset($approvers[2]))
-                        <span style="font-size: 11px;">{{ $approvers[2]['nama'] }}</span>
+                        <span style="font-size: 11px;"><strong>{{ $approvers[2]['nama'] }}</strong></span>
+                        <br>
+                        <span style="font-size: 11px;">{{ $approvers[2]['action_at'] }}</span>
                     @else
                         &nbsp;
                     @endif
                 </td>
             </tr>
 
-            <!-- Jabatan -->
             <tr style="border-top: 1px solid #000;">
-                <td style="text-align: center;"><span style="font-size: 11px;">Stock
-                        Control</span></td>
-                <td style="text-align: center;"><span style="font-size: 11px;">Foreman</span>
-                </td>
-                <td style="text-align: center;"><span style="font-size: 11px;">Spv/Dept.
-                        Head</span></td>
+                <td style="text-align: center;"><span style="font-size: 11px;">Stock Control</span></td>
+                <td style="text-align: center;"><span style="font-size: 11px;">Foreman</span></td>
+                <td style="text-align: center;"><span style="font-size: 11px;">Spv/Dept. Head</span></td>
             </tr>
 
-            <!-- Spacer Bottom -->
             <tr>
                 <td colspan="3" style="height: 20px; border: none; border-bottom: 1px solid #000;"></td>
             </tr>
@@ -322,36 +338,5 @@
         </table>
 
     </body>
-
-    <script type="text/php">
-        if (isset($pdf)) {
-            $pdf->page_script('
-                $font = $fontMetrics->get_font("Calibri", "normal");
-                $size = 10;
-                
-                // Tulis nomor halaman di elemen <span> yang memiliki class .page-number
-                // Elemen ini harus sudah ada di HTML dan diletakkan di tempat yang benar.
-                $pdf->text($x + 2, $y, $PAGE_NUM, $font, $size); 
-            ');
-            
-            // Tulis jumlah total halaman di elemen <span> yang memiliki class .page-count
-            $pdf->page_script('
-                $font = $fontMetrics->get_font("Calibri", "normal");
-                $size = 10;
-                
-                $pdf->text($x + 2, $y, $PAGE_COUNT, $font, $size); 
-            ', array('select' => 'span.page-count'));
-            
-            // --- HAPUS/KOMENTARI KODE LAMA BERIKUT JIKA MASIH ADA (GARIS MANUAL) ---
-            // $pdf->page_script('
-            //     $w = $pdf->get_width();
-            //     $h = $pdf->get_height();
-            //     $yTop = 110; 
-            //     $yBottom = $h - 80; 
-            //     $pdf->line(20, $yTop, $w - 20, $yTop);
-            //     $pdf->line(20, $yBottom, $w - 20, $yBottom);
-            // ');
-        }
-    </script>
 
 </html>
