@@ -2506,12 +2506,12 @@ class StockOpnameWfgController extends Controller
 
     public function getDataApproval()
     {
-        $foremen = User::where('jabatan', 'foreman')->get(['id', 'username', 'jabatan']);
-        $supervisors = User::where('jabatan', 'supervisor')->get(['id', 'username', 'jabatan']);
-        $managers = User::where('jabatan', 'dept_head')->get(['id', 'username', 'jabatan']);
+        $foreman = User::where('jabatan', 'foreman')->get(['id', 'nama_lengkap', 'username', 'jabatan']);
+        $supervisors = User::where('jabatan', 'supervisor')->get(['id', 'nama_lengkap', 'username', 'jabatan']);
+        $managers = User::where('jabatan', 'dept_head')->get(['id', 'nama_lengkap', 'username', 'jabatan']);
 
         return response()->json([
-            'foremen' => $foremen,
+            'foreman' => $foreman,
             'supervisors' => $supervisors,
             'managers' => $managers
         ]);

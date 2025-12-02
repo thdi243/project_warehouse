@@ -991,9 +991,14 @@
                             <label class="form-label">Foreman</label>
                             <select id="selectForeman" class="form-select">
                                 <option value="">-- Pilih Foreman --</option>`;
-                        data.foremen.forEach(f => {
+                        data.foreman.forEach(f => {
+                            const label = f.nama_lengkap && f.nama_lengkap.trim() !==
+                                "" ?
+                                f.nama_lengkap :
+                                f.username;
+
                             html += `
-                                <option value="${f.id}">${f.username}</option>`;
+                                <option value="${f.id}">${label}</option>`;
                         });
                         html += `
                             </select>
@@ -1006,8 +1011,13 @@
                             <select id="selectSupervisor" class="form-select">
                                 <option value="">-- Pilih Supervisor --</option>`;
                         data.supervisors.forEach(s => {
+                            const label = s.nama_lengkap && s.nama_lengkap.trim() !==
+                                "" ?
+                                s.nama_lengkap :
+                                s.username;
+
                             html += `
-                                <option value="${s.id}">${s.username}</option>`;
+                                <option value="${s.id}">${label}</option>`;
                         });
                         html += `
                             </select>
