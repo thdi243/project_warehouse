@@ -1018,65 +1018,124 @@
                                 confirmButtonText: 'Ya, Submit',
                                 cancelButtonText: 'Batal'
                             }).then(result => {
-                                if (result.isConfirmed) {
-                                    // Step 2: Submit
-                                    $.ajax({
-                                        url: "{{ route('wfg.stock_opname.process') }}",
-                                        method: "POST",
-                                        data: {
-                                            _token: $('input[name="_token"]')
-                                                .val(),
-                                            tgl_opname,
-                                            principal: principal,
-                                            mode: 'final'
-                                        },
-                                        success: function(finalRes) {
-                                            if (finalRes.status ===
-                                                'success') {
-                                                Swal.fire({
-                                                    title: 'Berhasil!',
-                                                    text: finalRes
-                                                        .message,
-                                                    icon: 'success',
-                                                    confirmButtonText: 'OK'
-                                                }).then(() => {
-                                                    location
-                                                        .reload();
-                                                });
-                                            } else if (finalRes.status ===
-                                                'belum_opname') {
-                                                let listHtml =
-                                                    '<ul class="list-unstyled mb-0">';
-                                                finalRes.data.forEach(
-                                                    item => {
-                                                        listHtml +=
-                                                            `<li><strong>${item.mid_barang}</strong></li>`;
-                                                    });
-                                                listHtml += '</ul>';
+                                if (!result.isConfirmed) {
+                                    loadBarangForOpname(1, activePrincipal,
+                                        currentSearch);
+                                    return;
+                                }
 
-                                                Swal.fire({
-                                                    title: 'Belum di-Opname!',
-                                                    html: `
+                                // Step 2: Submit
+                                $.ajax({
+                                    url: "{{ route('wfg.stock_opname.process') }}",
+                                    method: "POST",
+                                    data: {
+                                        _token: $('input[name="_token"]')
+                                            .val(),
+                                        tgl_opname,
+                                        principal: activePrincipal,
+                                        mode: 'final_prepare'
+                                    },
+                                    success: function(finalRes) {
+                                        if (finalRes.status ===
+                                            'need_comment') {
+                                            Swal.fire({
+                                                title: "Tambahkan Komentar",
+                                                input: "textarea",
+                                                inputLabel: "Komentar",
+                                                inputPlaceholder: "Tuliskan komentar di sini...",
+                                                inputAttributes: {
+                                                    rows: 4
+                                                },
+                                                showCancelButton: true,
+                                                confirmButtonText: "Lanjutkan Submit"
+                                            }).then(resComment => {
+                                                if (!resComment
+                                                    .isConfirmed)
+                                                    return;
+                                                // ==============================
+                                                // STEP 4 — FINAL SUBMIT
+                                                // ==============================
+                                                $.ajax({
+                                                    url: "{{ route('wfg.stock_opname.process') }}",
+                                                    method: "POST",
+                                                    data: {
+                                                        _token: $(
+                                                                'input[name="_token"]'
+                                                            )
+                                                            .val(),
+                                                        tgl_opname,
+                                                        principal: activePrincipal,
+                                                        komentar_final: resComment
+                                                            .value,
+                                                        mode: 'final_submit'
+                                                    },
+                                                    success: function(
+                                                        submitRes
+                                                    ) {
+                                                        if (submitRes
+                                                            .status ===
+                                                            'success'
+                                                        ) {
+                                                            Swal.fire({
+                                                                    title: 'Berhasil!',
+                                                                    text: submitRes
+                                                                        .message,
+                                                                    icon: 'success'
+                                                                })
+                                                                .then(
+                                                                    () =>
+                                                                    location
+                                                                    .reload()
+                                                                );
+                                                        } else {
+                                                            Swal.fire(
+                                                                'Error',
+                                                                submitRes
+                                                                .message,
+                                                                'error'
+                                                            );
+                                                        }
+                                                    },
+                                                    error: () =>
+                                                        Swal
+                                                        .fire(
+                                                            'Error',
+                                                            'Gagal melakukan final submit.',
+                                                            'error'
+                                                        )
+                                                });
+
+                                            });
+                                        } else if (finalRes.status ===
+                                            'belum_opname') {
+                                            let listHtml =
+                                                '<ul class="list-unstyled mb-0">';
+                                            finalRes.data.forEach(
+                                                item => {
+                                                    listHtml +=
+                                                        `<li><strong>${item.mid_barang}</strong></li>`;
+                                                });
+                                            listHtml += '</ul>';
+
+                                            Swal.fire({
+                                                title: 'Belum di-Opname!',
+                                                html: `
                                                             <p class="mb-3">${finalRes.message}</p>
                                                             <div style="max-height: 400px; overflow-y: auto;">${listHtml}</div>
                                                         `,
-                                                    icon: 'info',
-                                                    width: 600,
-                                                    confirmButtonText: 'OK'
-                                                });
-                                            } else {
-                                                Swal.fire('Gagal', finalRes
-                                                    .message, 'error');
-                                            }
-                                        },
-                                        error: () => Swal.fire('Error',
-                                            'Gagal menyimpan final.',
-                                            'error')
-                                    });
-                                } else {
-                                    loadBarangForOpname(1, activePrincipal,
-                                        currentSearch);
-                                }
+                                                icon: 'info',
+                                                width: 600,
+                                                confirmButtonText: 'OK'
+                                            });
+                                        } else {
+                                            Swal.fire('Gagal', finalRes
+                                                .message, 'error');
+                                        }
+                                    },
+                                    error: () => Swal.fire('Error',
+                                        'Gagal menyimpan final.',
+                                        'error')
+                                });
                             });
                         } else {
                             Swal.fire('Gagal', res.message, 'error');

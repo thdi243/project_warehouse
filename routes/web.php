@@ -224,10 +224,11 @@ Route::middleware('auth')->group(function () {
             Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
         });
     });
+
     Route::prefix('notifications')->group(function () {
         Route::get('/notif', [NotificationController::class, 'index'])->name('notifications');
         // Route::post('/read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.read');
-        Route::delete('/notifications/delete/{id}', [NotificationController::class, 'destroy'])->name('notifications.delete');
+        Route::delete('/delete/{id}', [NotificationController::class, 'destroy'])->name('notifications.delete');
         Route::delete('/notifications/delete-all', [NotificationController::class, 'destroyAll'])->name('notifications.delete-all');
     });
 });

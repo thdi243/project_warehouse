@@ -563,13 +563,14 @@ class StockOpnameWfgController extends Controller
     {
         $request->validate([
             'tgl_opname' => 'required|date',
-            'mode' => 'required|in:check,final',
+            'mode' => 'required|in:check,final_prepare,final_submit',
         ]);
 
         $mode = $request->mode;
         $user = Auth::user();
         $tglOpname = $request->tgl_opname;
         $keteranganInput = $request->input('keterangan', []);
+        $komentarFinal = $request->input('komentar_final');
 
         // 🔹 Tentukan principal
         if ($user->jabatan === 'operator') {
@@ -626,14 +627,6 @@ class StockOpnameWfgController extends Controller
             }
         }
 
-        if ($mode === 'final' && count($barangBelumOpname) > 0) {
-            return response()->json([
-                'status'  => 'belum_opname',
-                'message' => 'Masih ada barang yang belum di-opname.',
-                'data'    => $barangBelumOpname,
-            ]);
-        }
-
         // Cek selisih
         $grouped = [];
         foreach ($tempData as $temp) {
@@ -682,12 +675,21 @@ class StockOpnameWfgController extends Controller
                 'status' => 'success',
                 'message' => count($selisihList) > 0
                     ? 'Ada selisih pada beberapa barang. Silakan periksa kembali sebelum finalisasi.'
-                    : 'Semua data opname sudah lengkap & valid.',
+                    : 'Semua data lengkap & valid.',
                 'data' => $hasilCheck,
             ]);
         }
 
-        if ($mode === 'final') {
+        // Mode Final Prepare
+        if ($mode === 'final_prepare') {
+            if (count($barangBelumOpname) > 0) {
+                return response()->json([
+                    'status' => 'belum_opname',
+                    'message' => 'Masih ada barang yang belum opname.',
+                    'data' => $barangBelumOpname
+                ]);
+            }
+
             $selisihTanpaKet = collect($grouped)->filter(function ($g) {
                 $selisih = $g['qty_fisik'] - $g['qty_sap'];
                 return $selisih != 0 && empty($g['keterangan']);
@@ -700,90 +702,125 @@ class StockOpnameWfgController extends Controller
                     'data'    => $selisihTanpaKet,
                 ]);
             }
+
+            return response()->json([
+                'status' => 'need_comment',
+                'message' => 'Silakan isi komentar final.'
+            ]);
         }
 
-        if ($mode === 'final' && $user->jabatan === 'operator') {
-            $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)
-                ->where('principal', $principalFilter)
-                ->first();
+        // if ($mode === 'final' && $user->jabatan === 'operator') {
+        //     $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)
+        //         ->where('principal', $principalFilter)
+        //         ->first();
 
-            if ($existingSop) {
+        //     if ($existingSop) {
+        //         return response()->json([
+        //             'status' => 'error',
+        //             'message' => 'Anda sudah melakukan opname hari ini untuk principal ' . $principalFilter . '. Tidak dapat melakukan opname lebih dari sekali per hari. Hubungi Foreman!',
+        //         ]);
+        //     }
+        // }
+
+        // Kalau mode = final submit → lanjut simpan SOP
+        if ($mode === 'final_submit') {
+
+            if (!$komentarFinal) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Anda sudah melakukan opname hari ini untuk principal ' . $principalFilter . '. Tidak dapat melakukan opname lebih dari sekali per hari. Hubungi Foreman!',
+                    'message' => 'Komentar final wajib diisi.'
                 ]);
             }
-        }
 
-        // Kalau mode = final → lanjut simpan SOP
-        try {
-            DB::beginTransaction();
+            if ($user->jabatan === 'operator') {
+                $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)
+                    ->where('principal', $principalFilter)
+                    ->first();
 
-            WfgSopStatusModel::query()->update([
-                'status' => 'finished',
-            ]);
+                if ($existingSop) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Anda sudah melakukan opname hari ini.'
+                    ]);
+                }
+            }
 
-            $sop = WfgSopModel::create([
-                'tgl_opname' => $tglOpname,
-                'user_id' => $user->id,
-                'status' => 'draft',
-                'principal' => $principalFilter,
-            ]);
+            try {
+                DB::beginTransaction();
 
-            foreach ($grouped as $g) {
-                $selisih = $g['qty_fisik'] - $g['qty_sap'];
-                $status = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
+                WfgSopStatusModel::query()->update([
+                    'status' => 'finished',
+                ]);
 
-                WfgSopSummariesModel::create([
+                $sop = WfgSopModel::create([
+                    'tgl_opname' => $tglOpname,
+                    'user_id' => $user->id,
+                    'status' => 'draft',
+                    'principal' => $principalFilter,
+                ]);
+
+                foreach ($grouped as $g) {
+                    $selisih = $g['qty_fisik'] - $g['qty_sap'];
+                    $status = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
+
+                    WfgSopSummariesModel::create([
+                        'sop_id' => $sop->id,
+                        'barang_id' => $g['barang_id'],
+                        'qty_fisik' => $g['qty_fisik'],
+                        'qty_sistem' => $g['qty_sap'],
+                        'selisih' => $selisih,
+                        'status' => $status,
+                        'keterangan' => $g['keterangan'] ?? null,
+                    ]);
+                }
+
+                foreach ($tempData as $temp) {
+                    WfgSopDetailModel::create([
+                        'sop_id' => $sop->id,
+                        'barang_id' => $temp->barang_id,
+                        'qty_full' => $temp->qty_full,
+                        'qty_receh' => $temp->qty_receh,
+                    ]);
+                }
+
+                WfgSopApprovalModel::create([
                     'sop_id' => $sop->id,
-                    'barang_id' => $g['barang_id'],
-                    'qty_fisik' => $g['qty_fisik'],
-                    'qty_sistem' => $g['qty_sap'],
-                    'selisih' => $selisih,
-                    'status' => $status,
-                    'keterangan' => $g['keterangan'] ?? null,
+                    'approver_id' => $user->id,
+                    'status' => 'pending',
+                    'catatan' => $komentarFinal
                 ]);
-            }
 
-            foreach ($tempData as $temp) {
-                WfgSopDetailModel::create([
-                    'sop_id' => $sop->id,
-                    'barang_id' => $temp->barang_id,
-                    'qty_full' => $temp->qty_full,
-                    'qty_receh' => $temp->qty_receh,
+                WfgSopTempModel::where('tgl_opname', $tglOpname)
+                    ->where('principal', $principalFilter)
+                    ->when(
+                        $user->jabatan === 'operator',
+                        fn($q) =>
+                        $q->where('created_by', $user->id)
+                    )
+                    ->delete();
+
+                WfgSopTempNoteModel::where('tgl_opname', $tglOpname)
+                    ->where('principal', $principalFilter)
+                    ->when(
+                        $user->jabatan === 'operator',
+                        fn($q) =>
+                        $q->where('created_by', $user->id)
+                    )
+                    ->delete();
+
+                DB::commit();
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Data opname berhasil disimpan final.',
                 ]);
+            } catch (\Throwable $th) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Gagal simpan data: ' . $th->getMessage(),
+                ], 500);
             }
-
-            WfgSopTempModel::where('tgl_opname', $tglOpname)
-                ->where('principal', $principalFilter)
-                ->when(
-                    $user->jabatan === 'operator',
-                    fn($q) =>
-                    $q->where('created_by', $user->id)
-                )
-                ->delete();
-
-            WfgSopTempNoteModel::where('tgl_opname', $tglOpname)
-                ->where('principal', $principalFilter)
-                ->when(
-                    $user->jabatan === 'operator',
-                    fn($q) =>
-                    $q->where('created_by', $user->id)
-                )
-                ->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Data opname berhasil disimpan final.',
-            ]);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Gagal simpan data: ' . $th->getMessage(),
-            ], 500);
         }
     }
 
@@ -1028,10 +1065,6 @@ class StockOpnameWfgController extends Controller
                     'status_sop' => 'draft',
                 ], 403);
             }
-        }
-
-        if ($statusSop === 'draft') {
-            WfgSopApprovalModel::where('sop_id', $sop->id)->delete();
         }
 
         // Ambil semua approval untuk SOP ini
@@ -1554,8 +1587,6 @@ class StockOpnameWfgController extends Controller
             'principals' => $principals,
         ]);
     }
-
-
 
     /**
      * Update the specified resource in storage.
@@ -2114,8 +2145,6 @@ class StockOpnameWfgController extends Controller
                 ->where('sop_id', $sop->id)
                 ->get();
 
-
-
             // Helper function untuk ambil path tanda tangan user
             $getSignaturePath = function ($user, $status = null) {
                 // $dummy = public_path('storage/images/ttd/dummy.jpg');
@@ -2227,7 +2256,8 @@ class StockOpnameWfgController extends Controller
             $tanggalCarbon = \Carbon\Carbon::parse($tanggal);
 
             // 1. Hitung nomor urut berdasarkan jumlah data di WfgSopModel
-            $lastNumber = WfgSopModel::count();
+            $jumlahDataPrincipal = WfgSopModel::where('principal', $activePrincipal)->count();
+            $lastNumber = $jumlahDataPrincipal + 1;
             $nomor = str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
             $prefix = $activePrincipal === 'BAS' ? 'WFG' : ($activePrincipal === 'SMU' ? 'SMU' : 'WFG');
 
@@ -2417,45 +2447,59 @@ class StockOpnameWfgController extends Controller
             ], 404);
         }
 
-        // Update/Create approval per approver
-        WfgSopApprovalModel::updateOrCreate(
-            [
+        try {
+
+            DB::beginTransaction();
+
+            // Cek approval existing
+            $existingApproval = WfgSopApprovalModel::where('sop_id', $sop->id)
+                ->where('approver_id', $user->id)
+                ->first();
+
+            $oldNote = $existingApproval->catatan ?? null;
+
+            WfgSopApprovalModel::updateOrCreate([
                 'sop_id' => $sop->id,
                 'approver_id' => $user->id,
-            ],
-            [
+            ], [
                 'status' => 'approved',
                 'action_at' => now(),
                 'action_by' => $user->id,
-            ]
-        );
+                'catatan' => $oldNote,
+            ]);
 
-        $approvers = [$request->foreman_id, $request->supervisor_id];
+            // Foreman & supervisor
+            $approvers = [$request->foreman_id, $request->supervisor_id];
 
-        foreach ($approvers as $userId) {
-            WfgSopApprovalModel::updateOrCreate(
-                [
+            foreach ($approvers as $userId) {
+                if ($userId == $user->id) continue;
+
+                WfgSopApprovalModel::updateOrCreate([
                     'sop_id' => $sop->id,
                     'approver_id' => $userId,
-                ],
-                [
+                ], [
                     'status' => 'pending',
                     'action_at' => null,
                     'action_by' => null,
-                ]
-            );
+                ]);
+            }
+
+            // Update status SOP
+            $sop->update([
+                'status' => 'pending'
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Approval berhasil dikirim ke semua approver.",
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+            throw $e;
         }
-
-        $sop->update([
-            'status' => 'pending'
-        ]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => "Approval berhasil dikirim ke semua approver untuk principal {$userPrincipal}."
-        ]);
     }
-
 
     public function getDataApproval()
     {
