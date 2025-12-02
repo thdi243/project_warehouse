@@ -73,7 +73,7 @@ class NotificationController extends Controller
     {
         $approvals = WfgSopApprovalModel::with(['sop'])
             ->where('approver_id', $userId)
-            ->whereIn('status', ['pending', 'read'])
+            ->whereIn('status', ['pending'])
             ->orderBy('created_at', 'desc')
             ->get();
 

@@ -786,7 +786,7 @@ class StockOpnameWfgController extends Controller
                 WfgSopApprovalModel::create([
                     'sop_id' => $sop->id,
                     'approver_id' => $user->id,
-                    'status' => 'pending',
+                    'status' => 'read',
                     'catatan' => $komentarFinal
                 ]);
 
@@ -2256,8 +2256,12 @@ class StockOpnameWfgController extends Controller
             $tanggalCarbon = \Carbon\Carbon::parse($tanggal);
 
             // 1. Hitung nomor urut berdasarkan jumlah data di WfgSopModel
-            $jumlahDataPrincipal = WfgSopModel::where('principal', $activePrincipal)->count();
-            $lastNumber = $jumlahDataPrincipal + 1;
+            $jumlahDataPrincipal = WfgSopModel::where('principal', $activePrincipal)
+                ->whereMonth('tgl_opname', $tanggalCarbon->month)
+                ->whereYear('tgl_opname', $tanggalCarbon->year)
+                ->count();
+
+            $lastNumber = $jumlahDataPrincipal;
             $nomor = str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
             $prefix = $activePrincipal === 'BAS' ? 'WFG' : ($activePrincipal === 'SMU' ? 'SMU' : 'WFG');
 
@@ -2266,7 +2270,6 @@ class StockOpnameWfgController extends Controller
 
             // 4. Nomor dokumen final
             $nomorDokumen = "{$nomor}/{$prefix}/{$bulanRomawi}/{$tahun}";
-
 
             $pdf = Pdf::loadView('pdf.sop_wfg_report', [
                 'data'       => $sop,
