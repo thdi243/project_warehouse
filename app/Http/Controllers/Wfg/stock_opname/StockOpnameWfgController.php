@@ -780,6 +780,8 @@ class StockOpnameWfgController extends Controller
                         'barang_id' => $temp->barang_id,
                         'qty_full' => $temp->qty_full,
                         'qty_receh' => $temp->qty_receh,
+                        'created_at'  => $temp->created_at,
+                        'updated_at'  => $temp->updated_at,
                     ]);
                 }
 
@@ -1069,13 +1071,13 @@ class StockOpnameWfgController extends Controller
 
         // Ambil semua approval untuk SOP ini
         $approvals = WfgSopApprovalModel::where('sop_id', $id)
-            ->with('approver:id,username,jabatan')
+            ->with('approver:id,nama_lengkap,username,jabatan')
             ->get();
 
         // Map untuk tracking (selalu tampilkan semua approver yang terdaftar)
         $approverTracking = $approvals->map(function ($a) {
             return [
-                'nama' => $a->approver->username ?? '-',
+                'nama' => $a->approver->nama_lengkap ?? $a->approver->username ?? '-',
                 'jabatan' => $a->approver->jabatan ?? '-',
                 'status' => ucfirst($a->status),
                 'catatan' => $a->catatan,
@@ -2182,7 +2184,7 @@ class StockOpnameWfgController extends Controller
                 'ttd' => $getSignaturePath($operatorApproval?->approver, $operatorApproval?->status),
                 'catatan' => $operatorApproval?->catatan ?? '',
                 'action_at' => $operatorApproval?->action_at
-                    ? \Carbon\Carbon::parse($operatorApproval->action_at)->format('Y-m-d')
+                    ? \Carbon\Carbon::parse($operatorApproval->action_at)->format('d-m-Y')
                     : '',
             ];
 
@@ -2194,7 +2196,7 @@ class StockOpnameWfgController extends Controller
                 'ttd' => $getSignaturePath($foremanApproval?->approver, $foremanApproval?->status),
                 'catatan' => $foremanApproval?->catatan ?? '',
                 'action_at' => $foremanApproval?->action_at
-                    ? \Carbon\Carbon::parse($foremanApproval->action_at)->format('Y-m-d')
+                    ? \Carbon\Carbon::parse($foremanApproval->action_at)->format('d-m-Y')
                     : '',
             ];
 
@@ -2206,7 +2208,7 @@ class StockOpnameWfgController extends Controller
                 'ttd' => $getSignaturePath($supervisorApproval?->approver, $supervisorApproval?->status),
                 'catatan' => $supervisorApproval?->catatan ?? '',
                 'action_at' => $supervisorApproval?->action_at
-                    ? \Carbon\Carbon::parse($supervisorApproval->action_at)->format('Y-m-d')
+                    ? \Carbon\Carbon::parse($supervisorApproval->action_at)->format('d-m-Y')
                     : '',
             ];
 

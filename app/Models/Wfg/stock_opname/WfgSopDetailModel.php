@@ -18,6 +18,8 @@ class WfgSopDetailModel extends Model
         'qty_receh',
     ];
 
+    public $timestamps = true;
+
     public function sop()
     {
         return $this->belongsTo(WfgSopModel::class, 'sop_id');
