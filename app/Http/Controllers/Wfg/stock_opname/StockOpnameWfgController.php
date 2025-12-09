@@ -781,7 +781,7 @@ class StockOpnameWfgController extends Controller
                         'qty_full' => $temp->qty_full,
                         'qty_receh' => $temp->qty_receh,
                         'created_at'  => $temp->created_at,
-                        'updated_at'  => $temp->updated_at,
+                        'updated_at'  => now(),
                     ]);
                 }
 
