@@ -16,9 +16,9 @@ class WfgSopDetailModel extends Model
         'barang_id',
         'qty_full',
         'qty_receh',
+        'created_at',
+        'updated_at',
     ];
-
-    public $timestamps = true;
 
     public function sop()
     {
