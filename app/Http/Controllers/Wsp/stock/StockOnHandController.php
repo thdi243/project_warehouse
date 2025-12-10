@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use App\Models\Wsp\stock\StockOnHandWspModel;
+use App\Models\Wsp\stock_manage\StockOnHandWspModel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StockOnHandController extends Controller
@@ -17,12 +17,27 @@ class StockOnHandController extends Controller
     public function getDataSOH()
     {
         try {
-            $query = StockOnHandWspModel::with([
-                'barang:id,mid_barang,nama_barang,uom',
-            ]);
+            // Hari ini (format YYYY-MM-DD)
+            $today = now()->toDateString();
 
-            // Ambil semua data
-            $data = $query->orderBy('id', 'desc')->get();
+            // Cek apakah ada data untuk hari ini
+            $todayDataExists = StockOnHandWspModel::whereDate('last_update', $today)->exists();
+
+            if ($todayDataExists) {
+                // Ambil data per hari ini
+                $data = StockOnHandWspModel::with(['barang:id,mid_barang,nama_barang,uom'])
+                    ->whereDate('last_update', $today)
+                    ->orderBy('last_update', 'desc')
+                    ->get();
+            } else {
+                // Jika tidak ada → ambil last_update terbaru
+                $latestDate = StockOnHandWspModel::max('last_update');
+
+                $data = StockOnHandWspModel::with(['barang:id,mid_barang,nama_barang,uom'])
+                    ->where('last_update', $latestDate)
+                    ->orderBy('last_update', 'desc')
+                    ->get();
+            }
 
             return response()->json([
                 'success' => true,
@@ -36,6 +51,33 @@ class StockOnHandController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function getBarang(Request $request)
+    {
+        $search = $request->search;
+
+        $query = BarangModel::select('id', 'mid_barang', 'nama_barang');
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_barang', 'like', "%{$search}%")
+                    ->orWhere('mid_barang', 'like', "%{$search}%");
+            });
+        }
+
+        $barang = $query->limit(20)->get();
+
+        $formatted = $barang->map(function ($item) {
+            return [
+                'id'   => $item->mid_barang,
+                'mid_barang'  => $item->mid_barang,
+                'nama_barang' => $item->nama_barang,
+                'text' => $item->nama_barang,
+            ];
+        });
+
+        return response()->json($formatted);
     }
 
     public function store(Request $request)
@@ -104,6 +146,7 @@ class StockOnHandController extends Controller
                 'barang_id' => $data->barang_id,
                 'mid_barang' => $data->barang->mid_barang ?? '-',
                 'nama_barang' => $data->barang->nama_barang ?? '-',
+                'text' => "(" . $data->barang->mid_barang . ") " . $data->barang->nama_barang,
                 'qty_soh' => $data->qty_soh,
                 'unrest' => $data->unrest,
                 'qual_insp' => $data->qual_insp,
@@ -200,15 +243,43 @@ class StockOnHandController extends Controller
             $saved = 0;
             $userId = Auth::id() ?? null;
 
+            $template = null;
+
+            $headerRow1 = $rows[1] ?? [];
+            $headerRow2 = $rows[1] ?? [];
+
+            if (isset($headerRow1['A']) && stripos($headerRow1['A'], 'MID_BARANG') !== false) {
+                $template = 1;
+            } elseif (isset($headerRow2['D']) && stripos($headerRow2['D'], 'Material') !== false) {
+                $template = 2;
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Format template tidak dikenali.',
+                ], 422);
+            }
+
             // Mulai dari baris ke-2 (karena baris pertama header)
             foreach ($rows as $index => $row) {
-                if ($index === 1) continue; // skip header
+                if ($template == 1) {
+                    // Template 1 → skip header row 1
+                    if ($index == 1) continue;
 
-                $mid_barang = trim($row['A'] ?? '');
-                $unrest = (int) ($row['B'] ?? 0);
-                $qual_insp = (int) ($row['C'] ?? 0);
-                $blocked = (int) ($row['D'] ?? 0);
-                $transf = (int) ($row['E'] ?? 0);
+                    $mid_barang = trim($row['A'] ?? '');
+                    $unrest     = (int) ($row['B'] ?? 0);
+                    $qual_insp  = (int) ($row['C'] ?? 0);
+                    $blocked    = (int) ($row['D'] ?? 0);
+                    $transf     = (int) ($row['E'] ?? 0);
+                } else {
+                    // Template 2 → skip row 1-2
+                    if ($index <= 2) continue;
+
+                    $mid_barang = trim($row['D'] ?? '');
+                    $unrest     = (int) ($row['G'] ?? 0);
+                    $qual_insp  = (int) ($row['H'] ?? 0);
+                    $blocked    = (int) ($row['I'] ?? 0);
+                    $transf     = (int) ($row['J'] ?? 0);
+                }
 
                 if (!$mid_barang) continue;
 
@@ -221,9 +292,9 @@ class StockOnHandController extends Controller
                 }
 
                 // Update atau insert data
-                StockOnHandWspModel::updateOrCreate(
-                    ['barang_id' => $barang->id],
+                StockOnHandWspModel::create(
                     [
+                        'barang_id' => $barang->id,
                         'qty_soh' => $unrest + $qual_insp + $blocked + $transf,
                         'unrest' => $unrest,
                         'qual_insp' => $qual_insp,
@@ -239,9 +310,10 @@ class StockOnHandController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Upload selesai.',
+                'message' => 'Upload data berhasil.',
                 'saved' => $saved,
                 'not_found' => $notFound,
+                'skipped' => $notFound,
                 'total' => count($rows) - 1,
             ]);
         } catch (\Throwable $e) {

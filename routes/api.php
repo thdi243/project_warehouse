@@ -1,7 +1,10 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\P2hController;
+use Illuminate\Support\Facades\Request;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspRakController;
@@ -16,8 +19,11 @@ use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
+use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
+use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -102,6 +108,10 @@ Route::prefix('wsp')->group(function () {
     Route::get('/data/stock/barang', [WspManRakController::class, 'getDataBarang']);
     Route::get('/show/stock/barang/{id}', [WspManRakController::class, 'show']);
     Route::post('/store/transaksi', [TransaksiWspController::class, 'store']);
+
+    Route::get('incoming/getData', [WspIncomingController::class, 'getDataIncoming']);
+    Route::get('outgoing/getData', [WspOutgoingController::class, 'getDataOutgoing']);
+    Route::get('purchase_requisition/getData', [WspPurchaseRequesitionController::class, 'getDataPR']);
 });
 
 Route::prefix('wfg')->group(function () {
@@ -126,6 +136,18 @@ Route::prefix('notifications')->group(function () {
     Route::post('/read/{id}', [NotificationController::class, 'markAsRead']);
     Route::post('/show/kalibrasi', [NotificationController::class, 'showNotification'])->name('notifications.kalibrasi');
 });
+
+Route::middleware(['auth'])->get('/user', function () {
+    return Auth::user();
+});
+
+// Route::middleware('auth:sanctum')->group(function () {
+Route::prefix('purchase-requesition')->group(function () {
+    Route::post('/store', [WspPurchaseRequesitionController::class, 'store']);
+    Route::get('/getBarang/search', [WspPurchaseRequesitionController::class, 'searchBarang']);
+});
+// });
+
 
 Route::get('user/edit/{id}', [UserController::class, 'edit']);
 Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);

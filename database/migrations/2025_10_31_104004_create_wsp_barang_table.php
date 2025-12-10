@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('wsp_barang', function (Blueprint $table) {
             $table->id();
-            $table->string('mid_barang')->unique();
+            $table->integer('mid_barang');
             $table->string('nama_barang');
             $table->string('uom');
             $table->string('image')->nullable();
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('barang');
+        Schema::dropIfExists('wsp_barang');
     }
 };

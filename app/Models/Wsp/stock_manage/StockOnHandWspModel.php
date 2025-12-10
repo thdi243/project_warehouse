@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Wsp\stock;
+namespace App\Models\Wsp\stock_manage;
 
 use App\Models\User;
 use App\Models\Wsp\BarangModel;
