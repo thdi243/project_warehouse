@@ -131,35 +131,35 @@
                                 </div>
                             </li>
 
-                            {{-- RackMan Menu --}}
+                            {{-- WSP Stock Menu --}}
                             <li class="nav-item">
-                                <a class="nav-link menu-link {{ request()->routeIs('rack.*') ? '' : 'collapsed' }}"
+                                <a class="nav-link menu-link {{ request()->routeIs('stock.*') ? '' : 'collapsed' }}"
                                     href="#sideBarRak" data-bs-toggle="collapse" role="button"
-                                    aria-expanded="{{ request()->routeIs('rack.*') ? 'true' : 'false' }}"
+                                    aria-expanded="{{ request()->routeIs('stock.*') ? 'true' : 'false' }}"
                                     aria-controls="sideBarRak">
-                                    <i class="mdi mdi-package-variant"></i><span data-key="t-rack">WSP Stock</span>
+                                    <i class="mdi mdi-package-variant"></i><span data-key="t-stock">WSP Stock</span>
                                 </a>
-                                <div class="collapse menu-dropdown {{ request()->routeIs('rack.*') ? 'show' : '' }}"
+                                <div class="collapse menu-dropdown {{ request()->routeIs('stock.*') ? 'show' : '' }}"
                                     id="sideBarRak">
                                     <ul class="nav nav-sm flex-column">
                                         <li class="nav-item">
-                                            <a href="{{ route('rack.stock.dashboard') }}"
-                                                class="nav-link {{ request()->routeIs('rack.stock.*') ? 'active' : '' }}"
+                                            <a href="{{ route('stock.dashboard') }}"
+                                                class="nav-link {{ request()->is('stock/stock_manage/*') ? 'active' : '' }}"
                                                 data-key="t-input-mst_brg_wfg">
                                                 <i class="mdi mdi-clipboard-list-outline"></i>
                                                 Stock Manage </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a href="{{ route('maintenance') }}"
-                                                class="nav-link  d-flex justify-content-between align-items-center {{ request()->routeIs('maintenance') ? 'active' : '' }}"
+                                            <a href="{{ route('stock.move.index') }}"
+                                                class="nav-link {{ request()->is('stock/stock_move/*') ? 'active' : '' }}"
                                                 data-key="t-input-mst_brg_wfg">
-                                                <span>
-                                                    <i class="mdi mdi-swap-horizontal"></i>
-                                                    Stock Move
-                                                </span>
-
-                                                <span class="badge badge-soft-success rounded-pill">Soon</span>
-                                            </a>
+                                                <i class="mdi mdi-swap-horizontal"></i>Stock Move</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a href="{{ route('stock.pr.index') }}"
+                                                class="nav-link {{ request()->is('purchase-requesition/*') ? 'active' : '' }}"
+                                                data-key="t-input-mst_brg_wfg">
+                                                <i class="mdi mdi-note-plus"></i>Purchase Requesition</a>
                                         </li>
                                     </ul>
                                 </div>
