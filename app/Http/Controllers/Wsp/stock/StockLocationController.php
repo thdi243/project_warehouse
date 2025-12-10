@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use App\Models\Wsp\stock\StockLocationModel;
+use App\Models\Wsp\stock_manage\StockLocationModel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StockLocationController extends Controller
@@ -44,6 +44,33 @@ class StockLocationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function getBarang(Request $request)
+    {
+        $search = $request->search;
+
+        $query = BarangModel::select('id', 'mid_barang', 'nama_barang');
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_barang', 'like', "%{$search}%")
+                    ->orWhere('mid_barang', 'like', "%{$search}%");
+            });
+        }
+
+        $barang = $query->limit(20)->get();
+
+        $formatted = $barang->map(function ($item) {
+            return [
+                'id'   => $item->mid_barang,
+                'mid_barang'  => $item->mid_barang,
+                'nama_barang' => $item->nama_barang,
+                'text' => $item->nama_barang,
+            ];
+        });
+
+        return response()->json($formatted);
     }
 
     public function store(Request $request)
@@ -116,7 +143,9 @@ class StockLocationController extends Controller
             'message' => 'Data berhasil diambil',
             'data' => [
                 'id' => $data->id,
+                'text' => $data->barang->nama_barang,
                 'mid_barang' => $data->barang->mid_barang,
+                'nama_barang' => $data->barang->nama_barang,
                 'area_rak' => $data->rak->area_rak,
                 'nama_rak' => $data->rak->nama_rak,
                 'kolom_rak' => $data->rak->kolom_rak,
@@ -178,7 +207,6 @@ class StockLocationController extends Controller
         return response()->json(['message' => 'Data berhasil dihapus']);
     }
 
-
     public function upload(Request $request)
     {
         $request->validate([
@@ -189,33 +217,51 @@ class StockLocationController extends Controller
             $file = $request->file('file');
             $spreadsheet = IOFactory::load($file->getPathname());
             $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray();
+            $rows = $sheet->toArray(null, true, true, true);
 
-            if (count($rows) <= 1) {
+            if (!is_array($rows) || count($rows) <= 1) {
                 return response()->json([
-                    'message' => 'File kosong atau tidak memiliki data yang valid.',
+                    'message' => 'File kosong atau tidak memiliki data.',
                 ], 422);
             }
 
             DB::beginTransaction();
+
             $inserted = 0;
             $skipped = [];
 
             // Lewati header (baris pertama)
-            foreach (array_slice($rows, 1) as $index => $row) {
-                [$mid_barang, $area_rak, $nama_rak, $kolom_rak, $level_rak, $box_rak] = $row;
+            foreach ($rows as $index => $row) {
 
-                if (!$mid_barang || !$area_rak || !$nama_rak) {
-                    $skipped[] = "Baris " . ($index + 2) . " tidak lengkap.";
+                if ($index == 1) continue;
+
+                $mid_barang = isset($row['A']) ? trim((string)$row['A']) : null;
+                $area_rak   = isset($row['B']) ? trim((string)$row['B']) : null;
+                $nama_rak   = isset($row['C']) ? trim((string)$row['C']) : null;
+                $kolom_rak  = isset($row['D']) ? trim((string)$row['D']) : null;
+                $level_rak  = isset($row['E']) ? trim((string)$row['E']) : null;
+                $box_rak    = isset($row['F']) ? trim((string)$row['F']) : '000';
+
+                if ($mid_barang === '' && $area_rak === '' && $nama_rak === '') {
                     continue;
                 }
 
-                // Cari barang berdasarkan MID
+                if ($mid_barang === '' || $area_rak === '' || $nama_rak === '' || $kolom_rak === '' || $level_rak === '') {
+                    $skipped[] = "Baris " . $index . ": Kolom wajib ada tidak lengkap.";
+                    continue;
+                }
+
                 $barang = BarangModel::where('mid_barang', $mid_barang)->first();
                 if (!$barang) {
-                    $skipped[] = "Baris " . ($index + 2) . ": Barang MID {$mid_barang} tidak ditemukan.";
+                    $skipped[] = "Baris " . ($index + 2) . ": MID Barang {$mid_barang} tidak ditemukan.";
                     continue;
                 }
+
+                $area_rak  = strtoupper($area_rak);
+                $nama_rak  = strtoupper($nama_rak);
+                $kolom_rak = $kolom_rak !== '' ? $kolom_rak : 1;
+                $level_rak = $level_rak !== '' ? $level_rak : 1;
+                $box_rak   = $box_rak !== '' ? $box_rak : '000';
 
                 // Cari atau buat rak
                 $rak = RakModel::firstOrCreate([
@@ -228,13 +274,12 @@ class StockLocationController extends Controller
                     'created_by' => Auth::id() ?? 1,
                 ]);
 
-                // Cegah duplikasi data barang & rak
                 $exists = StockLocationModel::where('barang_id', $barang->id)
                     ->where('rak_id', $rak->id)
                     ->exists();
 
                 if ($exists) {
-                    $skipped[] = "Baris " . ($index + 2) . ": Sudah ada relasi barang & rak ini.";
+                    $skipped[] = "Baris " . ($index + 2) . ": Barang sudah ada di rak.";
                     continue;
                 }
 
@@ -267,42 +312,15 @@ class StockLocationController extends Controller
     // download temlate
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
+        $filePath = public_path('assets/templates/excel/Template_Stock_Location_Wsp.xlsx');
 
-        $headers = [
-            'mid_barang',
-            'area_rak',
-            'nama_rak',
-            'kolom_rak',
-            'level_rak',
-            'box_rak',
-        ];
-
-        $columnIndex = 'A';
-        foreach ($headers as $header) {
-            $sheet->setCellValue($columnIndex . '1', strtoupper($header));
-            $sheet->getStyle($columnIndex . '1')->getFont()->setBold(true);
-            $sheet->getColumnDimension($columnIndex)->setAutoSize(true);
-            $columnIndex++;
+        // cek kalau file memang ada
+        if (!file_exists($filePath)) {
+            abort(404, 'Template tidak ditemukan.');
         }
 
-        $sheet->setCellValue('A2', '1160825');
-        $sheet->setCellValue('B2', 'FL1');
-        $sheet->setCellValue('C2', 'A');
-        $sheet->setCellValue('D2', '1');
-        $sheet->setCellValue('E2', '1');
-        $sheet->setCellValue('F2', '0');
-
-        // Nama file
         $fileName = 'Template_Stock_Location_Wsp_' . date('Y-m-d') . '.xlsx';
 
-        return new StreamedResponse(function () use ($spreadsheet) {
-            $writer = new Xlsx($spreadsheet);
-            $writer->save('php://output');
-        }, 200, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => "attachment;filename=\"{$fileName}\"",
-        ]);
+        return response()->download($filePath, $fileName);
     }
 }

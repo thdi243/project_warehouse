@@ -4,7 +4,7 @@ namespace App\Models\Wsp;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Wsp\stock\StockOnHandWspModel;
+use App\Models\Wsp\stock_manage\StockOnHandWspModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class RakModel extends Model

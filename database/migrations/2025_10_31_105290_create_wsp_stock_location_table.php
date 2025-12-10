@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('stock_location');
+        Schema::dropIfExists('wsp_stock_location');
     }
 };

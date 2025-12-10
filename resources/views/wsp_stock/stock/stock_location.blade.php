@@ -7,14 +7,14 @@
         }
 
         .page-title {
-            color: #2d3748;
+            /* color: #2d3748; */
             font-weight: 700;
             font-size: 1.75rem;
             margin-bottom: 0.5rem;
         }
 
         .page-subtitle {
-            color: #718096;
+            /* color: #718096; */
             font-size: 0.95rem;
         }
 
@@ -60,21 +60,8 @@
             color: white;
         }
 
-        .btn-template {
-            background: white;
-            color: #6c757d;
-            border: 2px solid #dee2e6;
-        }
-
-        .btn-template:hover {
-            background: #f8f9fa;
-            border-color: #adb5bd;
-            transform: translateY(-2px);
-            color: #495057;
-        }
-
         .table-card {
-            background: white;
+            /* background: white; */
             border-radius: 1rem;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             overflow: hidden;
@@ -82,14 +69,14 @@
         }
 
         .table-header {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            /* background: linear-gradient(135deg, #f8f9fa, #e9ecef); */
             padding: 1.25rem 1.5rem;
             border-bottom: 2px solid #dee2e6;
         }
 
         .table-header h5 {
             margin: 0;
-            color: #2d3748;
+            /* color: #2d3748; */
             font-weight: 600;
             font-size: 1.1rem;
         }
@@ -103,8 +90,8 @@
         }
 
         .custom-table thead th {
-            background: #f8f9fa;
-            color: #495057;
+            /* background: #f8f9fa; */
+            /* color: #495057; */
             font-weight: 600;
             font-size: 0.875rem;
             text-transform: uppercase;
@@ -126,7 +113,7 @@
         .custom-table tbody td {
             padding: 1rem 0.75rem;
             vertical-align: middle;
-            color: #4a5568;
+            /* color: #4a5568; */
             font-size: 0.875rem;
         }
 
@@ -190,18 +177,18 @@
 
         .empty-state i {
             font-size: 4rem;
-            color: #cbd5e0;
+            /* color: #cbd5e0; */
             margin-bottom: 1rem;
         }
 
         .empty-state h6 {
-            color: #4a5568;
+            /* color: #4a5568; */
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
 
         .empty-state p {
-            color: #a0aec0;
+            /* color: #a0aec0; */
             font-size: 0.875rem;
         }
 
@@ -213,20 +200,20 @@
         }
 
         .modal-header {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            /* background: linear-gradient(135deg, #f8f9fa, #e9ecef); */
             border-bottom: 2px solid #dee2e6;
             border-radius: 1rem 1rem 0 0;
             padding: 1.25rem 1.5rem;
         }
 
         .modal-title {
-            color: #2d3748;
+            /* color: #2d3748; */
             font-weight: 700;
             font-size: 1.25rem;
         }
 
         .form-label {
-            color: #4a5568;
+            /* color: #4a5568; */
             font-weight: 600;
             font-size: 0.875rem;
             margin-bottom: 0.5rem;
@@ -350,7 +337,12 @@
                     </div>
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
                         <div class="action-buttons justify-content-md-end">
-                            <a href="{{ route('rack.stock.loc_download') }}" target="_blank"
+                            <button type="button" class="btn btn-action btn-upload" id="btnUpload" data-bs-toggle="modal"
+                                data-bs-target="#modalUpload">
+                                <i class="mdi mdi-file-upload"></i>
+                                <span>Upload</span>
+                            </button>
+                            {{-- <a href="{{ route('stock.loc_download') }}" target="_blank"
                                 class="btn btn-action btn-template" id="btnDownloadTemplate">
                                 <i class="mdi mdi-download"></i>
                                 <span>Download Template</span>
@@ -358,7 +350,7 @@
                             <button type="button" class="btn btn-action btn-upload" id="btnUpload">
                                 <i class="mdi mdi-file-upload"></i>
                                 <span>Upload Excel</span>
-                            </button>
+                            </button> --}}
                             <button type="button" class="btn btn-action btn-add" id="btnAdd">
                                 <i class="mdi mdi-plus-circle"></i>
                                 <span>Tambah Data</span>
@@ -378,7 +370,7 @@
                         <div class="col-md-6 mt-3 mt-md-0">
                             <div class="search-box ms-auto">
                                 <i class="mdi mdi-magnify"></i>
-                                <input type="text" class="form-control" id="searchInput" placeholder="Cari lokasi...">
+                                <input type="text" class="form-control" id="searchInput" placeholder="Cari Mid...">
                             </div>
                         </div>
                     </div>
@@ -403,7 +395,7 @@
                             <tbody id="tableBody">
                                 <!-- Data will be loaded here -->
                                 <tr class="empty-state-row">
-                                    <td colspan="7">
+                                    <td colspan="9">
                                         <div class="empty-state">
                                             <i class="mdi mdi-package-variant-closed"></i>
                                             <h6>Belum Ada Data</h6>
@@ -447,9 +439,8 @@
                         <input type="hidden" id="locationId">
 
                         <div class="mb-3">
-                            <label class="form-label">Mid Barang <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="midBarang" placeholder="Contoh: A-01-01"
-                                required>
+                            <label class="form-label">MID Barang <span class="text-danger">*</span></label>
+                            <select id="midBarang" class="form-control" required></select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Area Rak <span class="text-danger">*</span></label>
@@ -485,33 +476,50 @@
     </div>
 
     <!-- Modal Upload -->
-    <div class="modal fade" id="modalUpload" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modalUpload" tabindex="-1" aria-labelledby="modalUpload" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
+
                 <div class="modal-header">
-                    <h5 class="modal-title">Upload File Excel</h5>
+                    <h5 class="modal-title" id="modalUpload">Upload Stock Location</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form id="formUpload">
-                    <div class="modal-body">
+
+                <div class="modal-body">
+                    <!-- Upload Form -->
+                    <form id="formUploadLoc" enctype="multipart/form-data">
+                        @csrf
                         <div class="mb-3">
-                            <label class="form-label">Pilih File <span class="text-danger">*</span></label>
-                            <input type="file" class="form-control" id="fileUpload" accept=".xlsx,.xls,.csv"
-                                required>
+                            <label class="form-label">Upload File Excel</label>
+                            <input type="file" name="file" id="fileUpload" class="form-control" required>
                             <div class="form-text">Format: .xlsx, .xls, .csv (Maks. 10MB)</div>
                         </div>
-                        <div class="alert alert-info mb-0">
+                        <div class="alert alert-info mb-3">
                             <i class="mdi mdi-information-outline me-2"></i>
                             <small>Pastikan format file sesuai dengan template yang telah disediakan</small>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="mdi mdi-upload me-1"></i>Upload
-                        </button>
-                    </div>
-                </form>
+                        <!-- Download Template -->
+                        <div class="row g-2 mb-2 text-nowrap">
+
+                            <!-- Download Template -->
+                            <div class="col-6">
+                                <a href="{{ route('stock.loc_download') }}" target="_blank"
+                                    class="btn btn-outline-info w-100" id="btnDownloadTemplate">
+                                    <i class="mdi mdi-download"></i>
+                                    <span>Download Template</span>
+                                </a>
+                            </div>
+
+                            <!-- Upload -->
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-outline-primary w-100" id="btnUploadSubmit">
+                                    <i class="mdi mdi-upload"></i>Upload Sekarang
+                                </button>
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -530,13 +538,13 @@
             // Ambil data dari backend
             function loadStockLocation() {
                 $.ajax({
-                    url: "{{ route('rack.stock.loc_data') }}",
+                    url: "{{ route('stock.loc_data') }}",
                     type: "GET",
                     dataType: "json",
                     beforeSend: function() {
                         $('#tableBody').html(`
                             <tr>
-                                <td colspan="7" class="text-center py-4">
+                                <td colspan="9" class="text-center py-4">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -552,7 +560,7 @@
                             renderTable();
                         } else {
                             $('#tableBody').html(
-                                '<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
+                                '<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
                             );
                         }
                     },
@@ -560,7 +568,7 @@
                         console.error(xhr);
                         $('#tableBody').html(`
                             <tr>
-                                <td colspan="7" class="text-center text-danger py-3">
+                                <td colspan="9" class="text-center text-danger py-3">
                                     <i class="mdi mdi-alert-circle-outline me-1"></i> Gagal memuat data dari server.
                                 </td>
                             </tr>
@@ -577,7 +585,7 @@
                 if (filteredLocations.length === 0) {
                     tbody.html(`
                         <tr class="empty-state-row">
-                            <td colspan="7">
+                            <td colspan="9">
                                 <div class="empty-state">
                                     <i class="mdi mdi-package-variant-closed"></i>
                                     <h6>Tidak Ada Data</h6>
@@ -682,20 +690,72 @@
                 renderTable();
             }
 
-            // Search functionality
-            $('#searchInput').on('keyup', function() {
-                const searchTerm = $(this).val().toLowerCase();
-                filteredLocations = locations.filter(location =>
-                    location.code.toLowerCase().includes(searchTerm) ||
-                    location.name.toLowerCase().includes(searchTerm) ||
-                    location.warehouse.toLowerCase().includes(searchTerm)
-                );
-                currentPage = 1;
+            // Search
+            $('#searchInput').on('input', function() {
+                const keyword = $(this).val().toLowerCase().trim();
+
+                if (keyword === '') {
+                    filteredLocations = allLocations; // reset
+                } else {
+                    filteredLocations = allLocations.filter(item =>
+                        item.barang &&
+                        item.barang.mid_barang &&
+                        item.barang.mid_barang.toLowerCase().includes(keyword)
+                    );
+                }
+
+                currentPage = 1; // reset ke page 1 saat mencari
                 renderTable();
             });
 
+            function initSelectBarang() {
+                $('#midBarang').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#modalForm'),
+                    placeholder: '-- Pilih Barang --',
+                    allowClear: true,
+                    width: '100%',
+                    ajax: {
+                        url: "{{ route('stock.loc_data_barang') }}",
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) {
+                            return {
+                                search: params.term
+                            };
+                        },
+                        processResults: function(data) {
+                            return {
+                                results: data
+                            };
+                        }
+                    },
+                    escapeMarkup: function(markup) {
+                        return markup;
+                    },
+                    templateResult: function(data) {
+                        if (!data.id) return data.text;
+                        return `<strong>${data.mid_barang}</strong> — ${data.nama_barang}`;
+                    },
+                    templateSelection: function(data) {
+                        if (!data.id) return data.text;
+                        return `<strong>${data.mid_barang}</strong> — ${data.nama_barang}`;
+                    }
+                });
+            }
+
             // Add button
             $('#btnAdd').click(function() {
+                // reset select2
+                $('#midBarang').val(null).trigger('change');
+                $('#midBarang').empty();
+                if ($('#midBarang').hasClass("select2-hidden-accessible")) {
+                    $('#midBarang').select2('destroy');
+                }
+
+                // init ulang
+                initSelectBarang();
+
                 $('#modalTitle').text('Tambah Lokasi Stok');
                 $('#formLocation')[0].reset();
                 $('#locationId').val('');
@@ -704,17 +764,27 @@
 
             // Edit location
             window.editLocation = function(id) {
-                // const showUrl = "{{ route('rack.stock.loc_show', ':id') }}".replace(':id', id);
-
+                $('#midBarang').val(null).trigger('change');
+                $('#midBarang').empty();
+                if ($('#midBarang').hasClass("select2-hidden-accessible")) {
+                    $('#midBarang').select2('destroy');
+                }
+                // initSelectBarang();
                 $.ajax({
-                    url: "{{ route('rack.stock.loc_show', '') }}/" + id,
+                    url: "{{ route('stock.loc_show', '') }}/" + id,
                     type: 'GET',
                     success: function(res) {
                         const data = res.data;
 
-                        // isi form modal dengan data dari backend
                         $('#sohId').val(data.id);
-                        $('#midBarang').val(data.mid_barang);
+                        $('#midBarang')
+                            .append(new Option(
+                                `${data.mid_barang}`,
+                                data.mid_barang,
+                                true,
+                                true
+                            ))
+                            .trigger('change');
                         $('#areaRak').val(data.area_rak);
                         $('#namaRak').val(data.nama_rak);
                         $('#kolomRak').val(data.kolom_rak);
@@ -722,7 +792,7 @@
                         $('#boxRak').val(data.box_rak);
 
                         // ubah judul modal & tampilkan modal
-                        $('#modalFormLabel').text('Edit Stock Location');
+                        $('#modalTitle').text('Edit Stock Location');
                         $('#modalForm').modal('show');
                     },
                     error: function(xhr) {
@@ -746,11 +816,11 @@
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // const deleteUrl = "{{ route('rack.stock.loc_delete', ':id') }}".replace(':id',
+                        // const deleteUrl = "{{ route('stock.loc_delete', ':id') }}".replace(':id',
                         //     id);
                         $.ajax({
                             // url: deleteUrl,
-                            url: "{{ route('rack.stock.loc_delete', '') }}/" + id,
+                            url: "{{ route('stock.loc_delete', '') }}/" + id,
                             type: 'DELETE',
                             success: function(res) {
                                 toastr.success(res.message || 'Data berhasil dihapus');
@@ -787,8 +857,8 @@
                     return;
                 }
 
-                const storeUrl = "{{ route('rack.stock.loc_store') }}";
-                const updateUrl = "{{ route('rack.stock.loc_update', '') }}/" + id;
+                const storeUrl = "{{ route('stock.loc_store') }}";
+                const updateUrl = "{{ route('stock.loc_update', '') }}/" + id;
 
                 const method = id ? 'PUT' : 'POST';
                 const url = id ? updateUrl : storeUrl;
@@ -818,7 +888,7 @@
             });
 
             // Form Upload
-            $('#formUpload').submit(function(e) {
+            $('#formUploadLoc').submit(function(e) {
                 e.preventDefault();
 
                 const file = $('#fileUpload')[0].files[0];
@@ -838,7 +908,7 @@
                 formData.append('file', file);
 
                 $.ajax({
-                    url: "{{ route('rack.stock.loc_upload') }}",
+                    url: "{{ route('stock.loc_upload') }}",
                     type: "POST",
                     data: formData,
                     contentType: false,
@@ -861,7 +931,7 @@
                         }
 
                         $('#modalUpload').modal('hide');
-                        $('#formUpload')[0].reset();
+                        $('#formUploadLoc')[0].reset();
                         $('#btnUploadSubmit').prop('disabled', false).text('Upload');
                         // reload data table / list setelah upload
                         if (typeof loadStockLocation === 'function') loadStockLocation();
@@ -877,7 +947,6 @@
                 });
             });
 
-            // Initial render
             renderTable();
         });
     </script>
