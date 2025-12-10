@@ -241,18 +241,23 @@ class UserController extends Controller
             // === Simpan data user utama ===
             $user->update($data);
 
-            // === Update atau buat data principal (jika ada input) ===
-            if ($request->filled('principal') && trim($request->principal) !== '') {
-                if ($user->principal) {
-                    $user->principal->update([
-                        'principal' => strtoupper($request->principal)
-                    ]);
-                } else {
-                    $user->principal()->create([
-                        'principal' => strtoupper($request->principal)
-                    ]);
+            // === Update principal hanya jika ada input valid ===
+            $oldPrincipal = optional($user->principal)->principal;
+            $newPrincipal = trim($request->principal);
+
+            // Jika principal kosong → jangan update apa pun
+            if ($newPrincipal !== '') {
+                $newPrincipal = strtoupper($newPrincipal);
+
+                // Update hanya jika beda dari sebelumnya
+                if ($newPrincipal !== $oldPrincipal) {
+                    $user->principal()->updateOrCreate(
+                        ['user_id' => $user->id],
+                        ['principal' => $newPrincipal]
+                    );
                 }
             }
+
 
             // === Update atau buat tanda tangan (jika ada input) ===
             if ($request->filled('signature') && trim($request->signature) !== '') {
