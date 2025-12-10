@@ -10,7 +10,7 @@ use App\Models\Tkbm\TkbmFeeModel;
 use App\Models\P2h\PalletMoverModel;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use App\Models\Wsp\stock\StockOnHandWspModel;
+use App\Models\Wsp\stock_manage\StockOnHandWspModel;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
 use App\Models\Wfg\stock_opname\WfgSopModel;
@@ -132,7 +132,7 @@ class WarehouseController extends Controller
 
     public function dashboardStockWsp()
     {
-        return view('manajemen_rak.home_stock');
+        return view('wsp_stock.home_stock');
         // return view('maintenance');
     }
 
@@ -145,15 +145,20 @@ class WarehouseController extends Controller
 
         if ($dataHariIni) {
             // Jika ada data hari ini → arahkan ke view lain
-            return view('manajemen_rak.stock.data_soh');
+            return view('wsp_stock.stock.data_soh');
         }
 
-        return view('manajemen_rak.stock.upload_soh');
+        return view('wsp_stock.stock.upload_soh');
     }
 
     public function stockLocView()
     {
-        return view('manajemen_rak.stock.stock_location');
+        return view('wsp_stock.stock.stock_location');
+    }
+
+    public function sohView()
+    {
+        return view('wsp_stock.stock.data_soh');
     }
 
     public function formSOWFG()
@@ -322,5 +327,10 @@ class WarehouseController extends Controller
             return view('stock_opname_wfg.report_sop', compact('principals', 'warning_message', 'url'));
         }
         return view('stock_opname_wfg.report_sop', compact('principals'));
+    }
+
+    public function viewStockMove()
+    {
+        return view('wsp_stock.home_stock_move');
     }
 }
