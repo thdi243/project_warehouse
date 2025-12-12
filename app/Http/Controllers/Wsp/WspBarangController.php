@@ -221,7 +221,7 @@ class WspBarangController extends Controller
         $barang->uom = $request->uomEdit;
 
         if ($request->hasFile('imageEdit')) {
-            $barang->image = $request->file('image')->store('images/wsp', 'public');
+            $barang->image = $request->file('imageEdit')->store('images/wsp', 'public');
         }
 
         $barang->save();

@@ -223,28 +223,8 @@
                             <p id="detailNama"></p>
                         </div>
                         <div class="col-md-4">
-                            <strong>Kode Rak:</strong>
-                            <p id="detailKodeRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Nama Rak:</strong>
-                            <p id="detailNamaRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Kolom Rak:</strong>
-                            <p id="detailKolomRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Level Rak:</strong>
-                            <p id="detailLevelRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Box Rak:</strong>
-                            <p id="detailBoxRak"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Petugas:</strong>
-                            <p id="detailUser"></p>
+                            <strong>Uom:</strong>
+                            <p id="detailUom"></p>
                         </div>
                         <div class="col-md-12">
                             <strong>Foto Barang:</strong>
@@ -307,6 +287,9 @@
                             className: 'text-center',
                             render: function(data, type, row) {
                                 return `
+                                    <button class="btn btn-sm btn-primary detail-btn" data-id="${row.id}" title="Detail Data">
+                                        <i class="mdi mdi-eye me-2"></i>Detail
+                                    </button>
                                     <button class="btn btn-sm btn-info edit-btn" data-id="${row.id}" title="Edit Data">
                                         <i class="mdi mdi-pencil me-2"></i>Edit
                                     </button>
@@ -639,6 +622,33 @@
                         $('#btnUpload')
                             .prop('disabled', false)
                             .html('<i class="mdi mdi-upload"></i> Upload');
+                    }
+                });
+            });
+
+            $(document).on('click', '.detail-btn', function() {
+                const id = $(this).data('id');
+
+                // Misalnya buka modal edit dan load data dari backend
+                $.ajax({
+                    url: `{{ url('api/wsp/show/barang') }}/${id}`, // sesuaikan dengan route kamu
+                    type: 'GET',
+                    success: function(res) {
+                        // tampilkan datanya di modal form
+                        $('#detailModal').modal('show');
+                        $('#detailMid').text(res.data.mid_barang);
+                        $('#detailNama').text(res.data.nama_barang);
+                        $('#detailUom').text(res.data.uom);
+                        if (res.data.image) {
+                            $('#detailImage')
+                                .attr('src', `{{ asset('storage/') }}/${res.data.image}`)
+                                .show();
+                        } else {
+                            $('#detailImage').hide();
+                        }
+                    },
+                    error: function(xhr) {
+                        toastr.error('Gagal memuat data barang');
                     }
                 });
             });
