@@ -14,6 +14,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
+use App\Jobs\SendWfgSopReportEmailJob;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 use App\Models\Wfg\stock_opname\WfgSopModel;
@@ -2639,20 +2640,18 @@ class StockOpnameWfgController extends Controller
                 throw new \Exception('Tidak ada penerima email terdaftar.');
             }
 
-            // === Kirim email ke masing-masing penerima ===
-            foreach ($approverEmails as $email) {
-                Mail::to($email)->send(
-                    new SendWfgSopReportMail($sop, $absolutePath, $tanggal, $principal)
-                );
-            }
-
-            // (Opsional) kirim juga ke manager dept_head
             $manager = User::where('jabatan', 'dept_head')->first();
-            if ($manager && $manager->email) {
-                Mail::to($manager->email)->send(
-                    new SendWfgSopReportMail($sop, $absolutePath, $tanggal, $principal)
-                );
-            }
+            $managerEmail = $manager?->email;
+
+            // === Kirim email ke masing-masing penerima ===
+            SendWfgSopReportEmailJob::dispatch(
+                $approverEmails,
+                $managerEmail,
+                $sop,
+                $absolutePath,
+                $tanggal,
+                $principal
+            );
 
             // Hapus file setelah semua email terkirim
             Storage::delete($relativePath);
