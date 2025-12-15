@@ -25,7 +25,6 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-
         if (Auth::check()) {
             return response()->json([
                 'success' => true,

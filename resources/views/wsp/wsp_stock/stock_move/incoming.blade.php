@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Stock Outgoing')
+@section('title', 'Stock Incoming')
 
 @section('content')
     <div class="page-content">
@@ -9,8 +9,8 @@
             <div class="page-header mb-3" data-aos="fade-down">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <h3 class="fw-bold fs-3">Stock Outgoing</h3>
-                        <p class="fw-normal fs-6">Kelola Stock Outgoing Anda Tiap Hari</p>
+                        <h3 class="fw-bold fs-3">Stock Incoming</h3>
+                        <p class="fw-normal fs-6">Kelola Stock Incoming Anda Tiap Hari</p>
                     </div>
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
                         <div class="justify-content-md-end">
@@ -30,16 +30,16 @@
                 </div>
             </div>
 
-            {{-- Table --}}
+            {{-- Filter --}}
             <div class="card shadow-sm" data-aos="fade-up">
-                <div class="card-header bg-light py-3">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h5 class="mb-0">
-                                <i class="mdi mdi-table me-2"></i>Data outgoing per hari ini
-                            </h5>
+                <div class="card-body">
+                    <div class="row justify-content-between align-items-center">
+                        <div class="col-md-6">
+                            <label class="form-label">Filter Tanggal</label>
+                            <input type="date" class="form-control" id="filterDate">
                         </div>
-                        <div class="col-md-4 mt-3 mt-md-0">
+                        <div class="col-md-6">
+                            <label class="form-label">Search Mid</label>
                             <div class="input-group">
                                 <span class="input-group-text">
                                     <i class="mdi mdi-magnify"></i>
@@ -50,24 +50,42 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {{-- Table --}}
+            <div class="card shadow-sm" data-aos="fade-up">
+                <div class="card-header bg-light py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5 class="mb-0">
+                                <i class="mdi mdi-table me-2"></i>Data incoming per hari ini
+                            </h5>
+                        </div>
+
+                    </div>
+                </div>
 
                 <div class="card-body">
+
                     <div class="table-responsive">
                         <table class="table table-hover table-borderedless align-middle" id="IncomingTable">
                             <thead class="table-light text-nowrap">
                                 <tr>
                                     <th style="width: 60px;">NO</th>
                                     <th>UPLOADED BY</th>
+                                    <th>REQUEST DATE</th>
+                                    <th>PR NUMBER</th>
                                     <th>MID</th>
                                     <th>NAMA BARANG</th>
-                                    <th>S LOC</th>
-                                    <th>UNIT</th>
+                                    <th>TEXT</th>
+                                    <th>REQUISITIO</th>
+                                    <th>RECIPIENT</th>
+                                    <th>CC EMAIL</th>
+                                    <th>PO NUMBER</th>
+                                    <th>PO DATE</th>
+                                    <th>GR QTY</th>
+                                    <th>GR DATE</th>
                                     <th>MATERIAL DOC</th>
-                                    <th>POSTING DATE</th>
-                                    <th>QTY</th>
-                                    <th>MVT</th>
-                                    <th>VENDOR</th>
-                                    <th>BATCH</th>
                                     <th style="width: 120px;">AKSI</th>
                                 </tr>
                             </thead>
@@ -121,7 +139,7 @@
 
                 <div class="modal-body">
                     <!-- Upload Form -->
-                    <form id="formUploadOutgoing" enctype="multipart/form-data">
+                    <form id="formUploadIncoming" enctype="multipart/form-data">
                         @csrf
                         <div class="mb-3">
                             <label class="form-label">Upload File Excel</label>
@@ -137,7 +155,7 @@
 
                             <!-- Download Template -->
                             <div class="col-6">
-                                <a href="{{ route('stock.move.outgoing.download') }}" target="_blank"
+                                <a href="{{ route('stock.move.incoming.download') }}" target="_blank"
                                     class="btn btn-outline-info w-100" id="btnDownloadTemplate">
                                     <i class="mdi mdi-download"></i>
                                     <span>Download Template</span>
@@ -163,19 +181,19 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalTitle">Tambah Outgoing</h5>
+                    <h5 class="modal-title" id="modalTitle">Tambah Incoming</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
-                <form id="formOutgoing">
+                <form id="formIncoming">
                     <div class="modal-body">
-                        <input type="hidden" id="outgoingId">
+                        <input type="hidden" id="incomingId">
 
                         <div class="row g-3">
 
                             <div class="col-md-6">
                                 <label class="form-label">MID</label>
-                                <input type="number" id="mid" class="form-control">
+                                <input type="text" id="mid" class="form-control">
                             </div>
 
                             <div class="col-md-6">
@@ -184,43 +202,58 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">S Loc</label>
-                                <input type="text" id="sLoc" class="form-control">
+                                <label class="form-label">Request Date</label>
+                                <input type="date" id="requestDate" class="form-control">
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">Unit</label>
-                                <input type="text" id="unit" class="form-control">
+                                <label class="form-label">PR Number</label>
+                                <input type="number" id="prNumber" class="form-control">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">PO Number</label>
+                                <input type="number" id="poNumber" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">PO Date</label>
+                                <input type="date" id="poDate" class="form-control">
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Material Doc</label>
                                 <input type="number" id="materialDoc" class="form-control">
                             </div>
-
                             <div class="col-md-6">
-                                <label class="form-label">Posting Date</label>
-                                <input type="date" id="postDate" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Qty</label>
-                                <input type="number" id="qty" class="form-control">
+                                <label class="form-label">Requisitio</label>
+                                <input type="text" id="requisitio" class="form-control">
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">Mvt</label>
-                                <input type="number" id="mvt" class="form-control">
+                                <label class="form-label">GR Date</label>
+                                <input type="date" id="grDate" class="form-control">
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">Vendor</label>
-                                <input type="text" id="vendor" class="form-control">
+                                <label class="form-label">GR Qty</label>
+                                <input type="number" id="grQty" class="form-control">
                             </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Batch</label>
-                                <input type="number" id="batch" class="form-control">
+                            <div class="col-12">
+                                <label class="form-label">Text</label>
+                                <textarea id="text" class="form-control" rows="2"></textarea>
                             </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Recipient</label>
+                                <textarea id="recipient" class="form-control" rows="2"></textarea>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">CC Email</label>
+                                <textarea id="ccEmail" class="form-control" rows="2"></textarea>
+                            </div>
+
                         </div>
                     </div>
 
@@ -240,18 +273,21 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            loadOutgoingData();
+            loadIncomingData();
 
-            let allOutoging = [];
-            let filteredOutgoing = [];
+            let allIncoming = [];
+            let filteredIncoming = [];
             let currentPage = 1;
             const itemsPerPage = 10;
 
             // Ambil data dari backend
-            function loadOutgoingData() {
+            function loadIncomingData(filterDate = null) {
                 $.ajax({
-                    url: "{{ url('api/wsp/outgoing/getData') }}",
+                    url: "{{ url('api/wsp/incoming/getData') }}",
                     type: "GET",
+                    data: filterDate ? {
+                        date: filterDate
+                    } : {},
                     dataType: "json",
                     beforeSend: function() {
                         $('#tableBody').html(`
@@ -267,8 +303,8 @@
                     },
                     success: function(res) {
                         if (res.success && Array.isArray(res.data)) {
-                            allOutoging = res.data;
-                            filteredOutgoing = allOutoging;
+                            allIncoming = res.data;
+                            filteredIncoming = allIncoming;
                             renderTable();
                         } else {
                             $('#tableBody').html(
@@ -294,14 +330,14 @@
                 const tbody = $('#tableBody');
                 tbody.empty();
 
-                if (filteredOutgoing.length === 0) {
+                if (filteredIncoming.length === 0) {
                     tbody.html(`
                         <tr class="empty-state-row">
-                            <td colspan="16">
+                            <td colspan="16"> 
                                 <div class="empty-state text-center py-3">
-                                    <i class="mdi mdi-package-variant-closed fs-1 text-muted mb-3"></i>
-                                    <h6 class="fw-semibold mb-1">Tidak Ada Data</h6>
-                                    <p class="text-muted mb-0">Data yang Anda cari tidak ditemukan</p>
+                                    <i class="mdi mdi-package-variant-closed fs-1"></i>
+                                    <h6>Tidak Ada Data</h6>
+                                    <p>Data yang Anda cari tidak ditemukan</p>
                                 </div>
                             </td>
                         </tr>
@@ -311,30 +347,33 @@
                 }
 
                 const startIndex = (currentPage - 1) * itemsPerPage;
-                const endIndex = Math.min(startIndex + itemsPerPage, filteredOutgoing.length);
-                const pageData = filteredOutgoing.slice(startIndex, endIndex);
+                const endIndex = Math.min(startIndex + itemsPerPage, filteredIncoming.length);
+                const pageData = filteredIncoming.slice(startIndex, endIndex);
 
-                pageData.forEach((out, index) => {
+                pageData.forEach((inc, index) => {
                     tbody.append(`
                         <tr>
                             <td>${startIndex + index + 1}</td>
-                            <td>${out.user.nama_lengkap}</td>
-                            <td>${out.mid}</td>
-                            <td>${out.nama_barang}</td>
-                            <td>${out.s_loc ?? '-'}</td>
-                            <td>${out.unit ?? '-'}</td>
-                            <td>${out.material_doc ?? '-'}</td>
-                            <td>${out.posting_date ?? '-'}</td>
-                            <td>${out.qty ?? '-'}</td>
-                            <td>${out.mvt ?? '-'}</td>
-                            <td>${out.vendor ?? '-'}</td>
-                            <td>${out.batch ?? '-'}</td>
+                            <td>${inc.user.nama_lengkap}</td>
+                            <td>${inc.request_date}</td>
+                            <td>${inc.pr_number}</td>
+                            <td>${inc.mid}</td>
+                            <td>${inc.nama_barang}</td>
+                            <td>${inc.text}</td>
+                            <td>${inc.requisitio}</td>
+                            <td>${inc.recipient}</td>
+                            <td>${inc.cc_email}</td>
+                            <td>${inc.po_number}</td>
+                            <td>${inc.po_date}</td>
+                            <td><span class="badge badge-soft-success py-2 px-3">${inc.gr_qty ?? '-'}</span></td>
+                            <td>${inc.gr_date}</td>
+                            <td>${inc.material_doc}</td>
                             <td>
                                 <div class="d-flex gap-2">
-                                    <button class="btn btn-info btn-edit" onclick="editSOH(${out.id})" title="Edit">
+                                    <button class="btn btn-info btn-edit" onclick="editSOH(${inc.id})" title="Edit">
                                         <i class="mdi mdi-pencil"></i>
                                     </button>
-                                    <button class="btn btn-danger btn-delete" onclick="deleteSOH(${out.id})" title="Delete">
+                                    <button class="btn btn-danger btn-delete" onclick="deleteSOH(${inc.id})" title="Delete">
                                         <i class="mdi mdi-delete"></i>
                                     </button>
                                 </div>
@@ -343,7 +382,7 @@
                     `);
                 });
 
-                updatePaginationInfo(startIndex + 1, endIndex, filteredOutgoing.length);
+                updatePaginationInfo(startIndex + 1, endIndex, filteredIncoming.length);
                 renderPagination();
             }
 
@@ -356,7 +395,7 @@
 
             // Render pagination
             function renderPagination() {
-                const totalPages = Math.ceil(filteredOutgoing.length / itemsPerPage);
+                const totalPages = Math.ceil(filteredIncoming.length / itemsPerPage);
                 const pagination = $('#pagination');
                 pagination.empty();
 
@@ -396,20 +435,26 @@
 
             // Change page
             window.changePage = function(page) {
-                const totalPages = Math.ceil(filteredOutgoing.length / itemsPerPage);
+                const totalPages = Math.ceil(filteredIncoming.length / itemsPerPage);
                 if (page < 1 || page > totalPages) return;
                 currentPage = page;
                 renderTable();
             }
+
+            // Event filter by date
+            $('#filterDate').on('change', function() {
+                const selectedDate = $(this).val();
+                loadIncomingData(selectedDate);
+            });
 
             // Event search
             $('#searchInput').on('input', function() {
                 const keyword = $(this).val().toLowerCase().trim();
 
                 if (keyword === '') {
-                    filteredOutgoing = allOutoging;
+                    filteredIncoming = allIncoming;
                 } else {
-                    filteredOutgoing = allOutoging.filter(item => {
+                    filteredIncoming = allIncoming.filter(item => {
                         const midMatch = item.mid && String(item.mid).toLowerCase().includes(
                             keyword);
                         const nameMatch = item.nama_barang && item.nama_barang.toLowerCase()
@@ -424,7 +469,7 @@
             });
 
             // Form Upload
-            $('#formUploadOutgoing').submit(function(e) {
+            $('#formUploadIncoming').submit(function(e) {
                 e.preventDefault();
 
                 const file = $('#fileUpload')[0].files[0];
@@ -444,7 +489,7 @@
                 formData.append('file', file);
 
                 $.ajax({
-                    url: "{{ route('stock.move.outgoing.upload') }}",
+                    url: "{{ route('stock.move.incoming.upload') }}",
                     type: "POST",
                     data: formData,
                     contentType: false,
@@ -467,10 +512,9 @@
                         }
 
                         $('#modalUpload').modal('hide');
-                        $('#formUploadOutgoing')[0].reset();
+                        $('#formUploadIncoming')[0].reset();
                         $('#btnUploadSubmit').prop('disabled', false).text('Upload');
-                        // reload data table / list setelah upload
-                        loadOutgoingData();
+                        loadIncomingData(); // reload data
                     },
                     error: function(xhr) {
                         let msg = 'Terjadi kesalahan saat upload.';
@@ -478,38 +522,54 @@
                             msg = xhr.responseJSON.message;
                         }
                         toastr.error(msg);
+
+                        if (xhr.responseJSON && xhr.responseJSON.error_mid) {
+                            let midList = xhr.responseJSON.error_mid
+                                .map(item => `<li>${item}</li>`).join('');
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'MID Tidak Terdaftar!',
+                                html: `<ul class="text-start">${midList}</ul>`,
+                                width: 500,
+                            });
+                        }
+
                         $('#btnUploadSubmit').prop('disabled', false).text('Upload');
                     }
                 });
             });
 
             // submit add & edit form
-            $('#formOutgoing').submit(function(e) {
+            $('#formIncoming').submit(function(e) {
                 e.preventDefault();
 
-                const id = $('#outgoingId').val();
+                const id = $('#incomingId').val();
 
                 const payload = {
+                    request_date: $('#requestDate').val(),
                     mid: $('#mid').val(),
                     nama_barang: $('#namaBarang').val(),
-                    s_loc: $('#sLoc').val(),
-                    unit: $('#unit').val(),
+                    pr_number: $('#prNumber').val(),
+                    po_number: $('#poNumber').val(),
+                    po_date: $('#poDate').val(),
                     material_doc: $('#materialDoc').val(),
-                    posting_date: $('#postDate').val(),
-                    qty: $('#qty').val(),
-                    mvt: $('#mvt').val(),
-                    vendor: $('#vendor').val(),
-                    batch: $('#batch').val(),
+                    requisitio: $('#requisitio').val(),
+                    gr_date: $('#grDate').val(),
+                    gr_qty: $('#grQty').val(),
+                    text: $('#text').val(),
+                    recipient: $('#recipient').val(),
+                    cc_email: $('#ccEmail').val(),
                 };
 
                 // Validasi sederhana
-                if (!payload.mid) {
-                    toastr.warning('MID wajib diisi!');
+                if (!payload.request_date) {
+                    toastr.warning('Request Date wajib diisi!');
                     return;
                 }
 
-                const storeUrl = "{{ route('stock.move.outgoing.store') }}";
-                const updateUrl = "{{ route('stock.move.outgoing.update', '') }}/" + id;
+                const storeUrl = "{{ route('stock.move.incoming.store') }}";
+                const updateUrl = "{{ route('stock.move.incoming.update', '') }}/" + id;
 
                 const method = id ? 'PUT' : 'POST';
                 const url = id ? updateUrl : storeUrl;
@@ -521,7 +581,7 @@
                     success: function(res) {
                         toastr.success(res.message || 'Data berhasil disimpan');
                         $('#modalForm').modal('hide');
-                        loadOutgoingData(); // reload data
+                        loadIncomingData(); // reload data
                     },
                     error: function(xhr) {
                         let msg = 'Gagal menyimpan data';
@@ -534,37 +594,40 @@
             });
 
             $('#btnAdd').click(function() {
-                $('#modalTitle').text('Tambah Outgoing');
-                $('#formOutgoing')[0].reset();
-                $('#outgoingId').val('');
+                $('#modalTitle').text('Tambah Incoming');
+                $('#formIncoming')[0].reset();
+                $('#incomingId').val('');
                 $('#modalForm').modal('show');
             });
 
             // Edit soh
             window.editSOH = function(id) {
                 $.ajax({
-                    url: "{{ route('stock.move.outgoing.show', '') }}/" + id,
+                    url: "{{ route('stock.move.incoming.show', '') }}/" + id,
                     type: 'GET',
                     success: function(res) {
                         const data = res.data;
 
-                        $('#outgoingId').val(data.id);
+                        $('#incomingId').val(data.id);
                         $('#mid').val(data.mid);
                         $('#namaBarang').val(data.nama_barang);
-                        $('#sLoc').val(data.s_loc);
-                        $('#unit').val(data.unit);
+                        $('#requestDate').val(data.request_date);
+                        $('#prNumber').val(data.pr_number);
+                        $('#poNumber').val(data.po_number);
+                        $('#poDate').val(data.po_date);
                         $('#materialDoc').val(data.material_doc);
-                        $('#postDate').val(data.posting_date);
-                        $('#qty').val(data.qty);
-                        $('#mvt').val(data.mvt);
-                        $('#vendor').val(data.vendor);
-                        $('#batch').val(data.batch);
+                        $('#requisitio').val(data.requisitio);
+                        $('#grDate').val(data.gr_date);
+                        $('#grQty').val(data.gr_qty);
+                        $('#text').val(data.text);
+                        $('#recipient').val(data.recipient);
+                        $('#ccEmail').val(data.cc_email);
 
-                        $('#modalTitle').text('Edit Outgoing');
+                        $('#modalTitle').text('Edit Incoming');
                         $('#modalForm').modal('show');
                     },
                     error: function(xhr) {
-                        let msg = 'Gagal mengambil data outgoing';
+                        let msg = 'Gagal mengambil data incoming';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             msg = xhr.responseJSON.message;
                         }
@@ -585,11 +648,11 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: "{{ route('stock.move.outgoing.delete', '') }}/" + id,
+                            url: "{{ route('stock.move.incoming.delete', '') }}/" + id,
                             type: 'DELETE',
                             success: function(res) {
                                 toastr.success(res.message || 'Data berhasil dihapus');
-                                loadOutgoingData(); // reload tabel
+                                loadIncomingData(); // reload tabel
                             },
                             error: function(xhr) {
                                 let msg = 'Gagal menghapus data';

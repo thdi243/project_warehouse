@@ -2,28 +2,43 @@
 
 namespace App\Http\Controllers\Wsp\stock_move;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\Wsp\BarangModel;
+use App\Mail\IncomingMaterialMail;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Jobs\SendIncomingMaterialEmailJob;
 use App\Models\Wsp\stock_move\WspIncomingModel;
 
 class WspIncomingController extends Controller
 {
     public function viewIncoming()
     {
-        return view('wsp_stock.stock_move.incoming');
+        return view('wsp.wsp_stock.stock_move.incoming');
     }
 
-    public function getDataIncoming()
+    public function getDataIncoming(Request $request)
     {
         try {
             $query = WspIncomingModel::with([
                 'user:id,nama_lengkap',
             ]);
 
-            // Ambil semua data
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $query->whereBetween('created_at', [
+                    $request->start_date . ' 00:00:00',
+                    $request->end_date . ' 23:59:59'
+                ]);
+            } elseif ($request->filled('date')) {
+                $query->whereDate('created_at', $request->date);
+            } else {
+                $query->whereDate('created_at', Carbon::today());
+            }
+
             $data = $query->orderBy('id', 'desc')->get();
 
             return response()->json([
@@ -59,9 +74,47 @@ class WspIncomingController extends Controller
         ]);
 
         try {
-            $validated['user_id'] = Auth::id() ?? null; // otomatis ambil user login
+            $barang = BarangModel::where('mid', $validated['mid'])->first();
+
+            if (!$barang) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'MID tidak ditemukan di master barang'
+                ], 422);
+            }
+
+            $validated['user_id'] = Auth::id() ?? 1;
 
             $incoming = WspIncomingModel::create($validated);
+
+            $emails = [];
+            if (!empty($validated['recipient'])) {
+                $emails = array_map('trim', explode(',', $validated['recipient']));
+            }
+
+            // Jika ada CC email
+            if (!empty($validated['cc_email'])) {
+                $ccs = array_map('trim', explode(',', $validated['cc_email']));
+                $emails = array_merge($emails, $ccs);
+            }
+
+            $emails = array_unique($emails);
+
+            if (count($emails) > 0) {
+                $emailData = [
+                    'material_doc' => $incoming->material_doc ?? '-',
+                    'list' => [
+                        [
+                            'mid'         => $incoming->mid,
+                            'nama_barang' => $incoming->nama_barang,
+                            'po_number'   => $incoming->po_number,
+                            'gr_qty'      => $incoming->gr_qty,
+                        ]
+                    ]
+                ];
+
+                SendIncomingMaterialEmailJob::dispatch($emails, $emailData);
+            }
 
             return response()->json([
                 'message' => 'Incoming berhasil ditambahkan',
@@ -74,7 +127,6 @@ class WspIncomingController extends Controller
             ], 500);
         }
     }
-
 
     public function show($id)
     {
@@ -149,6 +201,8 @@ class WspIncomingController extends Controller
 
             $inserted = 0;
             $skipped  = [];
+            $invalid_mid = [];
+            $emailGroup = [];
 
             foreach ($rows as $index => $row) {
 
@@ -189,6 +243,13 @@ class WspIncomingController extends Controller
                     continue;
                 }
 
+                $cekMid = BarangModel::where('mid_barang', $mid)->first();
+
+                if (!$cekMid) {
+                    $invalid_mid[] = "Baris {$index}: MID '{$mid}' tidak ada di master barang.";
+                    continue;
+                }
+
                 // Insert data
                 WspIncomingModel::create([
                     'user_id'      => Auth::id() ?? null,
@@ -208,9 +269,29 @@ class WspIncomingController extends Controller
                 ]);
 
                 $inserted++;
+
+                $emails = array_map('trim', explode(',', $recipient));
+
+                $emailGroup[$material_doc][] = [
+                    'emails'     => $emails,
+                    'mid'        => $mid,
+                    'nama_barang' => $nama_barang,
+                    'po_number'  => $po_number,
+                    'gr_qty'     => $gr_qty,
+                ];
+            }
+
+            if (count($invalid_mid) > 0) {
+                DB::rollBack();
+                return response()->json([
+                    "message" => "Upload ditolak. Terdapat MID yang belum terdaftar di master barang.",
+                    "error_mid" => $invalid_mid
+                ], 422);
             }
 
             DB::commit();
+
+            SendIncomingMaterialEmailJob::dispatch($emailGroup);
 
             return response()->json([
                 "message" => "Upload berhasil. {$inserted} data ditambahkan.",

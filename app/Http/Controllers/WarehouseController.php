@@ -48,7 +48,7 @@ class WarehouseController extends Controller
 
     public function p2hData()
     {
-        return view('p2h.data_p2h');
+        return view('wrm.p2h.data_p2h');
     }
 
     public function showRegForklift()
@@ -87,7 +87,7 @@ class WarehouseController extends Controller
             ->get();
 
         return view(
-            'p2h.forklift_registration',
+            'wrm.p2h.forklift_registration',
             compact('forklifts', 'operators')
         );
     }
@@ -117,7 +117,7 @@ class WarehouseController extends Controller
             ->select('id', 'username', 'nik')
             ->get();
 
-        return view('p2h.pallet_mover_registration', compact('data', 'operators'));
+        return view('wrm.p2h.pallet_mover_registration', compact('data', 'operators'));
     }
 
     public function barangIndex()
@@ -132,7 +132,7 @@ class WarehouseController extends Controller
 
     public function dashboardStockWsp()
     {
-        return view('wsp_stock.home_stock');
+        return view('wsp.wsp_stock.home_stock');
         // return view('maintenance');
     }
 
@@ -145,20 +145,20 @@ class WarehouseController extends Controller
 
         if ($dataHariIni) {
             // Jika ada data hari ini → arahkan ke view lain
-            return view('wsp_stock.stock.data_soh');
+            return view('wsp.wsp_stock.stock.data_soh');
         }
 
-        return view('wsp_stock.stock.upload_soh');
+        return view('wsp.wsp_stock.stock.upload_soh');
     }
 
     public function stockLocView()
     {
-        return view('wsp_stock.stock.stock_location');
+        return view('wsp.wsp_stock.stock.stock_location');
     }
 
     public function sohView()
     {
-        return view('wsp_stock.stock.data_soh');
+        return view('wsp.wsp_stock.stock.data_soh');
     }
 
     public function formSOWFG()
@@ -222,7 +222,7 @@ class WarehouseController extends Controller
         }
 
         $principals = BarangWfgModel::distinct()->pluck('principal');
-        return view('stock_opname_wfg.form', compact('principals'));
+        return view('wfg.stock_opname_wfg.form', compact('principals'));
     }
 
     public function uploadSOHWFG()
@@ -286,7 +286,7 @@ class WarehouseController extends Controller
 
         // 🔹 Jika tidak ada error, tampilkan view
         // return view('stock_opname_wfg.upload_soh', compact('principals', 'barangCount'));
-        return view('stock_opname_wfg.upload_soh', [
+        return view('wfg.stock_opname_wfg.upload_soh', [
             'principals' => $principals,
             'barangCount' => $barangCount,
             'error_message' => session('error'), // ambil error dari session kalau ada
@@ -326,11 +326,11 @@ class WarehouseController extends Controller
             $url = route('wfg.master.barang.index');
             return view('stock_opname_wfg.report_sop', compact('principals', 'warning_message', 'url'));
         }
-        return view('stock_opname_wfg.report_sop', compact('principals'));
+        return view('wfg.stock_opname_wfg.report_sop', compact('principals'));
     }
 
     public function viewStockMove()
     {
-        return view('wsp_stock.home_stock_move');
+        return view('wsp.wsp_stock.home_stock_move');
     }
 }

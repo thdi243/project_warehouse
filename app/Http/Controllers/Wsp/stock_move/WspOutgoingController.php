@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Wsp\stock_move;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\Wsp\BarangModel;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -13,17 +15,27 @@ class WspOutgoingController extends Controller
 {
     public function viewOutgoing()
     {
-        return view('wsp_stock.stock_move.outgoing');
+        return view('wsp.wsp_stock.stock_move.outgoing');
     }
 
-    public function getDataOutgoing()
+    public function getDataOutgoing(Request $request)
     {
         try {
             $query = WspOutgoingModel::with([
                 'user:id,nama_lengkap',
             ]);
 
-            // Ambil semua data
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $query->whereBetween('created_at', [
+                    $request->start_date . ' 00:00:00',
+                    $request->end_date . ' 23:59:59'
+                ]);
+            } elseif ($request->filled('date')) {
+                $query->whereDate('created_at', $request->date);
+            } else {
+                $query->whereDate('created_at', Carbon::today());
+            }
+
             $data = $query->orderBy('id', 'desc')->get();
 
             return response()->json([
@@ -56,7 +68,16 @@ class WspOutgoingController extends Controller
         ]);
 
         try {
-            $validated['user_id'] = Auth::id() ?? null; // otomatis ambil user login
+            $barang = BarangModel::where('mid', $validated['mid'])->first();
+
+            if (!$barang) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'MID tidak ditemukan di master barang'
+                ], 422);
+            }
+
+            $validated['user_id'] = Auth::id() ?? 1;
 
             $outgoing = WspOutgoingModel::create($validated);
 
@@ -142,6 +163,7 @@ class WspOutgoingController extends Controller
 
             $inserted = 0;
             $skipped  = [];
+            $invalid_mid = [];
 
             foreach ($rows as $index => $row) {
 
@@ -181,6 +203,13 @@ class WspOutgoingController extends Controller
                     continue;
                 }
 
+                $cekMid = BarangModel::where('mid_barang', $mid)->first();
+
+                if (!$cekMid) {
+                    $invalid_mid[] = "Baris {$index}: MID '{$mid}' tidak ada di master barang.";
+                    continue;
+                }
+
                 // Insert data
                 WspOutgoingModel::create([
                     'user_id'      => Auth::id() ?? null,
@@ -197,6 +226,14 @@ class WspOutgoingController extends Controller
                 ]);
 
                 $inserted++;
+            }
+
+            if (count($invalid_mid) > 0) {
+                DB::rollBack();
+                return response()->json([
+                    "message" => "Upload ditolak. Terdapat MID yang belum terdaftar di master barang.",
+                    "error_mid" => $invalid_mid
+                ], 422);
             }
 
             DB::commit();

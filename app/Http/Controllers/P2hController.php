@@ -62,7 +62,7 @@ class P2hController extends Controller
         $data_forklift = ForkliftModel::all();
         $data_pallet = PalletMoverModel::all();
 
-        return view('p2h.index', compact('forklifts', 'pallets', 'departemen', 'nomorUnit', 'departemenpallet', 'nomorUnitpallet', 'data_forklift', 'data_pallet'));
+        return view('wrm.p2h.index', compact('forklifts', 'pallets', 'departemen', 'nomorUnit', 'departemenpallet', 'nomorUnitpallet', 'data_forklift', 'data_pallet'));
         // }
         // return redirect('/')->with('error', 'Anda tidak memiliki akses ke halaman ini.');
     }
