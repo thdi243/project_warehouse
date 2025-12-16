@@ -82,6 +82,7 @@
                                     </div>
                                     <div class="p-2 mt-4">
                                         <form id="loginForm">
+                                            @csrf
                                             <div class="mb-3">
                                                 <label for="username" class="form-label">Username</label>
                                                 <input type="text" class="form-control" id="username"
