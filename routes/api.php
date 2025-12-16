@@ -24,6 +24,7 @@ use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
+use App\Http\Controllers\Wsp\Stock\StockOnHandController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -111,6 +112,7 @@ Route::prefix('wsp')->group(function () {
 
     Route::get('incoming/getData', [WspIncomingController::class, 'getDataIncoming']);
     Route::get('outgoing/getData', [WspOutgoingController::class, 'getDataOutgoing']);
+    Route::get('stock-on-hand/getData', [StockOnHandController::class, 'getDataSOH']);
     Route::get('purchase_requisition/getData', [WspPurchaseRequesitionController::class, 'getDataPR']);
 });
 
@@ -137,16 +139,11 @@ Route::prefix('notifications')->group(function () {
     Route::post('/show/kalibrasi', [NotificationController::class, 'showNotification'])->name('notifications.kalibrasi');
 });
 
-Route::middleware(['auth'])->get('/user', function () {
-    return Auth::user();
-});
-
-// Route::middleware('auth:sanctum')->group(function () {
 Route::prefix('purchase-requesition')->group(function () {
-    Route::post('/store', [WspPurchaseRequesitionController::class, 'store']);
+    Route::get('/getData', [WspPurchaseRequesitionController::class, 'getDataPR']);
+    // Route::post('/store', [WspPurchaseRequesitionController::class, 'store']);
     Route::get('/getBarang/search', [WspPurchaseRequesitionController::class, 'searchBarang']);
 });
-// });
 
 
 Route::get('user/edit/{id}', [UserController::class, 'edit']);

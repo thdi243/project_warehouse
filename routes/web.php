@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Events\ShowPortalNotification;
 use App\Http\Controllers\P2hController;
@@ -34,6 +36,18 @@ Route::middleware('web')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+
+    Route::middleware('auth')->get('/me', function (Request $request) {
+        return response()->json([
+            'id' => $request->user()->id,
+            'nama_lengkap' => $request->user()->nama_lengkap,
+            'username' => $request->user()->username,
+            'bagian' => $request->user()->bagian,
+            'image' => $request->user()->image
+                ? asset('storage/' . $request->user()->image)
+                : null,
+        ]);
+    });
 
     // Free access
     Route::view('dashboard', 'dashboard')->name('dashboard');
@@ -137,6 +151,9 @@ Route::middleware('auth')->group(function () {
         // Purchase Requesition
         Route::prefix('purchase-requesition')->group(function () {
             Route::get('/index', [WspPurchaseRequesitionController::class, 'index'])->name('stock.pr.index');
+            Route::post('/store', [WspPurchaseRequesitionController::class, 'store'])->name('stock.pr.store');
+            Route::delete('/delete/{id}', [WspPurchaseRequesitionController::class, 'destroy'])->name('stock.pr.delete');
+            Route::get('/show/{id}', [WspPurchaseRequesitionController::class, 'show'])->name('stock.pr.show');
         });
     });
 
@@ -210,7 +227,7 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    // User
+    // Master Data Management
     Route::middleware(['auth', 'access'])->group(function () {
         // Master WSP
         Route::prefix('wsp')->group(function () {
@@ -270,7 +287,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/notifications/delete-all', [NotificationController::class, 'destroyAll'])->name('notifications.delete-all');
     });
 
-    Route::get('/{any?}', function () {
-        return view('spa');
+    Route::get('/app/{any?}', function () {
+        return view('app');
     })->where('any', '.*');
 });
