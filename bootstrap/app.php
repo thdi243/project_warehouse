@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'access' => AccessByJabatan::class,
         ]);
     })
+
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
