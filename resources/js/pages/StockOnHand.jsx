@@ -29,7 +29,7 @@ const StockOnHandTable = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await axios.get("api/wsp/stock-on-hand/getData");
+            const res = await axios.get("/api/wsp/stock-on-hand/getData");
             if (res.data.success) {
                 setData(res.data.data);
                 setFilteredData(res.data.data);
