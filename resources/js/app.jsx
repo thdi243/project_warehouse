@@ -10,7 +10,9 @@ import Layout from "@/components/layout/AppLayout";
 ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
         <AuthProvider>
-            <BrowserRouter>
+            <BrowserRouter
+                basename={new URL(import.meta.env.VITE_APP_URL).pathname}
+            >
                 <Layout>
                     <AppRouter />
                 </Layout>
