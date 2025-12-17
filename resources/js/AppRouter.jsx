@@ -6,11 +6,11 @@ export default function App() {
     return (
         <Routes>
             <Route
-                path="app/purchase-requesition/form"
+                path="/app/purchase-requesition/form"
                 element={<PurchaseRequisition />}
             />
-            <Route path="app/stock-on-hand" element={<Stock />} />
-            <Route path="*" element={<Navigate to="app/stock-on-hand" />} />
+            <Route path="/app/stock-on-hand" element={<Stock />} />
+            <Route path="*" element={<Navigate to="/app/stock-on-hand" />} />
         </Routes>
     );
 }
