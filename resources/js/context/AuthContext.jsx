@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/me", {
+        fetch("warehouse/public/me", {
             credentials: "include",
             headers: {
                 Accept: "application/json",
