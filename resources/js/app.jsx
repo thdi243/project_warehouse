@@ -1,5 +1,5 @@
 import "../css/app.css";
-import "./bootstrap";
+import "@/bootstrap";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
