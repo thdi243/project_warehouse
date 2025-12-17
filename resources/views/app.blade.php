@@ -8,7 +8,7 @@
         <link rel="shortcut icon" href="{{ asset('assets/images/logo/kecap.png') }}">
 
         @viteReactRefresh
-        @vite('resources/js/app.js')
+        @vite('resources/js/app.jsx')
     </head>
 
     <body>
