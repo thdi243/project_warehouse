@@ -10,7 +10,7 @@ export default function App() {
                 element={<PurchaseRequisition />}
             />
             <Route path="/app/stock-on-hand" element={<Stock />} />
-            <Route path="*" element={<Navigate to="/" />} />
+            <Route path="*" element={<Navigate to="/app/stock-on-hand" />} />
         </Routes>
     );
 }
