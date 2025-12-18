@@ -11,7 +11,7 @@ use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Api\WspManRakController;
 use App\Http\Controllers\Wsp\WspBarangController;
-use App\Http\Controllers\Auth\TokenAuthController;
+use App\Http\Controllers\TokenAuthController;
 use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Api\P2hDashboardController;
 use App\Http\Controllers\Api\RakDashboardController;
