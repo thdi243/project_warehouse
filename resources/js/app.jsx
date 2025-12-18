@@ -10,7 +10,9 @@ import Layout from "@/components/layout/AppLayout";
 ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
         <AuthProvider>
-            <BrowserRouter basename="/warehouse/public">
+            <BrowserRouter
+                basename={process.env.MIX_APP_BASE || "/warehouse/public"}
+            >
                 <Layout>
                     <AppRouter />
                 </Layout>
