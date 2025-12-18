@@ -24,7 +24,7 @@ use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
-use App\Http\Controllers\Wsp\Stock\StockOnHandController;
+use App\Http\Controllers\Wsp\stock\StockOnHandController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
