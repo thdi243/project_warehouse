@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Wsp\Stock;
+namespace App\Http\Controllers\Wsp\stock;
 
 use Illuminate\Http\Request;
 use App\Models\Wsp\BarangModel;
