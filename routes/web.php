@@ -287,7 +287,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/notifications/delete-all', [NotificationController::class, 'destroyAll'])->name('notifications.delete-all');
     });
 
-    Route::get('/warehouse/public/app/{any?}', function () {
-        return view('app');
+    Route::get('/app/{any?}', function () {
+        // return view('app');
+        return 'LARAVEL OK';
     })->where('any', '.*');
 });
