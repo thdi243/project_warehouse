@@ -30,6 +30,8 @@ class WfgSopStatusModel extends Model
 
     public static function getModeByUser($userId, $principal)
     {
-        return self::where('user_id', $userId and 'principal', $principal)->value('mode') ?? 'normal';
+        return self::where('user_id', $userId)
+            ->where('principal', $principal)
+            ->value('mode') ?? 'normal';
     }
 }

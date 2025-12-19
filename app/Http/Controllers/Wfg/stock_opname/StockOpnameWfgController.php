@@ -1176,7 +1176,7 @@ class StockOpnameWfgController extends Controller
             ? DB::raw("
                 CASE 
                     WHEN temp_sum.total_summary IS NOT NULL 
-                    AND wfg_soh.qty_soh != temp_sum.total_summary 
+                        AND wfg_soh.qty_soh != temp_sum.total_summary 
                     THEN 1 ELSE 0 
                 END AS has_diff
             ")
@@ -1250,7 +1250,7 @@ class StockOpnameWfgController extends Controller
             ->take($perPage)
             ->get();
 
-        $mappedItems = $items->map(function ($item) use ($mode, $userId, $userPrincipal) {
+        $mappedItems = $items->map(function ($item) use ($mode) {
             $selisih = (int) $item->selisih;
 
             $status = null;
