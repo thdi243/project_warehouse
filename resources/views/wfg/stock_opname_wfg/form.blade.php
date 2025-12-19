@@ -74,8 +74,9 @@
 
         #tableInputOpname thead th:first-child {
             position: sticky;
+            top: 0;
             left: 0;
-            z-index: 202;
+            z-index: 300;
             background: #f3f6f9;
         }
 
@@ -90,14 +91,32 @@
 
         #tableInputOpname thead th:nth-child(2) {
             position: sticky;
+            top: 0;
             left: 35px;
-            z-index: 201;
+            z-index: 299;
+            background: #f3f6f9;
+        }
+
+        #tableInputOpname thead th {
+            position: sticky;
+            top: 0;
+            z-index: 200;
             background: #f3f6f9;
         }
 
         #soInputTableContainer {
             overflow-x: auto;
+            max-height: 70vh
         }
+
+        .table-scroll {
+            max-height: 70vh;
+            /* WAJIB */
+            overflow-y: auto;
+            /* WAJIB */
+            overflow-x: auto;
+        }
+
 
         /* --- Dark Mode Overrides (Memastikan background solid dan z-index sesuai) --- */
 
@@ -244,8 +263,13 @@
                         </div>
 
                         <div id="principalTabsContainer" class="mb-3"></div>
-                        <div class="table-responsive" id="soInputTableContainer">
+                        <div id="soInputTableContainer" class="table-scroll">
+                            {{-- <table class="table table-bordered align-middle mb-0 text-nowrap" id="tableInputOpname"
+                                style="width: 100%;">
+                                ...
+                            </table> --}}
                         </div>
+
                     </form>
                 </div>
             </div>
@@ -510,7 +534,7 @@
 
                         let tableHtml = `
                             <h5 class="mb-3 text-dark fw-bold mb-2">Daftar Barang untuk Opname</h5>
-                            <div class="table-responsive">
+                            
                                 <table class="table table-bordered align-middle mb-0 text-nowrap" id="tableInputOpname" style="width: 100%;">
                                     <thead class="bg-light text-center align-middle">
                                         <tr>
@@ -602,7 +626,7 @@
                             `;
                         });
 
-                        tableHtml += `</tbody></table></div>`;
+                        tableHtml += `</tbody></table>`;
 
                         // --- Pagination ---
                         tableHtml += `

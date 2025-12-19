@@ -1144,6 +1144,7 @@ class StockOpnameWfgController extends Controller
     public function getData(Request $request)
     {
         $user = Auth::user();
+        $userId = Auth::user()->id;
         $searchTerm = $request->input('search');
         $principalFilter = $request->input('principal');
         $perPage = 150;
@@ -1165,6 +1166,23 @@ class StockOpnameWfgController extends Controller
             ->whereDate('tgl_opname', $today)
             ->groupBy('soh_id');
 
+        $mode = WfgSopStatusModel::getModeByUser($userId, $userPrincipal);
+
+        $selisihSelect = $mode === 'check'
+            ? DB::raw("(COALESCE(temp_sum.total_summary, 0) - COALESCE(wfg_soh.qty_soh, 0)) AS selisih")
+            : DB::raw("NULL AS selisih");
+
+        $hasDiffSelect = $mode === 'check'
+            ? DB::raw("
+                CASE 
+                    WHEN temp_sum.total_summary IS NOT NULL 
+                    AND wfg_soh.qty_soh != temp_sum.total_summary 
+                    THEN 1 ELSE 0 
+                END AS has_diff
+            ")
+            : DB::raw("0 AS has_diff");
+
+
         // Ambil data SOH + summary opname
         $finalQuery = DB::table('wfg_soh')
             ->join('wfg_barang', 'wfg_soh.barang_id', '=', 'wfg_barang.id')
@@ -1179,12 +1197,8 @@ class StockOpnameWfgController extends Controller
                 'wfg_barang.qty_box',
                 'wfg_barang.principal',
                 DB::raw("COALESCE(temp_sum.total_summary, 0) AS total_summary"),
-                DB::raw("(COALESCE(temp_sum.total_summary, 0) - COALESCE(wfg_soh.qty_soh, 0)) AS selisih"),
-                DB::raw("CASE 
-                    WHEN temp_sum.total_summary IS NOT NULL 
-                         AND wfg_soh.qty_soh != temp_sum.total_summary 
-                    THEN 1 ELSE 0 
-                 END AS has_diff")
+                $selisihSelect,
+                $hasDiffSelect
             )
             ->whereDate('wfg_soh.last_updated', $today);
         // ->orderBy('wfg_soh.id', 'asc');
@@ -1211,11 +1225,6 @@ class StockOpnameWfgController extends Controller
             }
         }
 
-        // Log::info('Query Sebelum mode check', [
-        //     'sql' => $finalQuery->toSql(),
-        //     'bindings' => $finalQuery->getBindings(),
-        // ]);
-
         // Filter pencarian
         if ($searchTerm) {
             $finalQuery->where(function ($q) use ($searchTerm) {
@@ -1225,18 +1234,11 @@ class StockOpnameWfgController extends Controller
         }
 
         // Urutkan: data yang punya selisih di atas
-        $mode = WfgSopStatusModel::getMode();
-
         if ($mode === 'check') {
             $finalQuery
                 ->orderByDesc('has_diff')
                 ->orderBy('wfg_barang.mid_barang', 'asc');
         }
-
-        // Log::info('Query SESUDAH mode check', [
-        //     'sql' => $finalQuery->toSql(),
-        //     'bindings' => $finalQuery->getBindings(),
-        // ]);
 
         // Pagination
         $countQuery = clone $finalQuery;
@@ -1248,10 +1250,9 @@ class StockOpnameWfgController extends Controller
             ->take($perPage)
             ->get();
 
-        $mappedItems = $items->map(function ($item) use ($mode) {
+        $mappedItems = $items->map(function ($item) use ($mode, $userId, $userPrincipal) {
             $selisih = (int) $item->selisih;
 
-            // Kalau belum ada data temp sama sekali (total_summary = 0 dan belum diinput), kosongin status diff
             $status = null;
 
             if ($mode === 'check') {
@@ -1264,6 +1265,8 @@ class StockOpnameWfgController extends Controller
                         $status = 'match';
                     }
                 }
+            } else {
+                $status = '';
             }
 
             return (object) [
@@ -1272,7 +1275,7 @@ class StockOpnameWfgController extends Controller
                 'barang_id' => $item->barang_id,
                 'qty_soh' => (int) $item->qty_soh,
                 'selisih' => (int) $item->selisih,
-                'diff_status' => $status,
+                'diff_status' => $status ?? '',
                 'last_updated' => $item->last_updated,
                 'mid_barang' => $item->mid_barang,
                 'nama_barang' => $item->nama_barang,
