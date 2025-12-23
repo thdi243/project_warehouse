@@ -24,13 +24,6 @@
             box-shadow: 0 10px 30px rgba(79, 70, 229, 0.2);
         }
 
-        .search-bar {
-            background: white;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
         .search-bar input {
             transition: all 0.3s ease;
         }
@@ -300,48 +293,50 @@
                 </div>
             </div>
 
-            <div class="search-bar mb-4" data-aos="fade-up" data-aos-delay="100">
-                <div class="row g-2 align-items-center">
-                    <div class="col-12 col-md-6 col-lg-4">
-                        <div class="position-relative">
-                            <i class="mdi mdi-magnify position-absolute"
-                                style="left: 1rem; top: 50%; transform: translateY(-50%); color: var(--gray-600);"></i>
-                            <input type="text" id="searchInput" placeholder="Cari MID atau Nama Barang..."
-                                class="form-control ps-5">
+            <div class="card search-bar shadow-sm mb-4" data-aos="fade-up" data-aos-delay="100">
+                <div class="card-body p-4">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="position-relative">
+                                <i class="mdi mdi-magnify position-absolute"
+                                    style="left: 1rem; top: 50%; transform: translateY(-50%); color: var(--gray-600);"></i>
+                                <input type="text" id="searchInput" placeholder="Cari MID atau Nama Barang..."
+                                    class="form-control ps-5">
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="col-12 col-md-6 col-lg-2">
-                        <select id="statusFilter" class="form-select w-100">
-                            <option value="active">Barang Aktif</option>
-                            <option value="trashed">Barang Nonaktif</option>
-                        </select>
-                    </div>
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <select id="statusFilter" class="form-select w-100">
+                                <option value="active">Barang Aktif</option>
+                                <option value="trashed">Barang Nonaktif</option>
+                            </select>
+                        </div>
 
-                    <!-- 🔽 Tambahkan dropdown principal di sini -->
-                    <div class="col-12 col-md-6 col-lg-2">
-                        <select id="principalFilter" class="form-select w-100">
-                            <option value="">Semua Principal</option>
-                            @foreach ($principals as $p)
-                                <option value="{{ $p }}">{{ $p }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                        <!-- 🔽 Tambahkan dropdown principal di sini -->
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <select id="principalFilter" class="form-select w-100">
+                                <option value="">Semua Principal</option>
+                                @foreach ($principals as $p)
+                                    <option value="{{ $p }}">{{ $p }}</option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                    <div class="col-12 col-md-6 col-lg-2">
-                        <button data-bs-toggle="modal" data-bs-target="#uploadModal"
-                            class="btn btn-success w-100 text-nowrap">
-                            <i class="mdi mdi-cloud-upload-outline me-2"></i>
-                            Upload
-                        </button>
-                    </div>
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <button data-bs-toggle="modal" data-bs-target="#uploadModal"
+                                class="btn btn-success w-100 text-nowrap">
+                                <i class="mdi mdi-cloud-upload-outline me-2"></i>
+                                Upload
+                            </button>
+                        </div>
 
-                    <div class="col-12 col-md-6 col-lg-2">
-                        <button onclick="openModal()" data-bs-toggle="modal" data-bs-target="#itemModal"
-                            class="btn btn-primary w-100 text-nowrap">
-                            <i class="mdi mdi-plus-circle me-2"></i>
-                            Tambah
-                        </button>
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <button onclick="openModal()" data-bs-toggle="modal" data-bs-target="#itemModal"
+                                class="btn btn-primary w-100 text-nowrap">
+                                <i class="mdi mdi-plus-circle me-2"></i>
+                                Tambah
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
