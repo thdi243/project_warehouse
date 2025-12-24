@@ -2153,8 +2153,8 @@ class StockOpnameWfgController extends Controller
 
             // Helper function untuk ambil path tanda tangan user
             $getSignaturePath = function ($user, $status = null) {
-                // $dummy = public_path('storage/images/ttd/dummy.jpg');
-                $dummy = '';
+                $dummy = public_path('storage/images/ttd/approved_sticker.png');
+                // $dummy = '';
 
                 if ($status !== 'approved') {
                     return $dummy;
