@@ -274,7 +274,6 @@
                 <td style="width: 33%; border-right: 1px solid #000;">Diperiksa oleh,</td>
                 <td style="width: 34%;">Diketahui oleh,</td>
             </tr>
-
             <tr>
                 <td class="approver-ttd-cell">
                     <img src="{{ $approvers[0]['ttd'] }}" width="80" alt="TTD {{ $approvers[0]['nama'] }}">

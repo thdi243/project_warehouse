@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Jobs\SendWfgSopReportEmailJob;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
+use App\Jobs\GenerateAndSendSopReportJob;
 use App\Models\Wfg\stock_opname\WfgSopModel;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -2569,7 +2570,7 @@ class StockOpnameWfgController extends Controller
 
         // Jika semua approved, otomatis kirim laporan
         if ($finalStatus === 'approved') {
-            $this->sendReportAuto($request->sop_id);
+            GenerateAndSendSopReportJob::dispatch($request->sop_id);
         }
 
         return response()->json([
@@ -2579,7 +2580,7 @@ class StockOpnameWfgController extends Controller
     }
 
     // Send report
-    protected function sendReportAuto($sop_id)
+    public function sendReportAuto($sop_id)
     {
         try {
             // Ambil data SOP lengkap dengan relasi user dan approvals
@@ -2648,7 +2649,7 @@ class StockOpnameWfgController extends Controller
 
             // === Kirim email ke masing-masing penerima ===
             SendWfgSopReportEmailJob::dispatch(
-                $approverEmails,
+                $approverEmails->toArray(),
                 $managerEmail,
                 $sop,
                 $absolutePath,
@@ -2657,7 +2658,7 @@ class StockOpnameWfgController extends Controller
             );
 
             // Hapus file setelah semua email terkirim
-            Storage::delete($relativePath);
+            // Storage::delete($relativePath);
 
             Log::info('AUTO SEND REPORT SUCCESS', [
                 'sop_id' => $sop_id,

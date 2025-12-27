@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Mail\SendWfgSopReportMail;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
@@ -64,6 +65,10 @@ class SendWfgSopReportEmailJob implements ShouldQueue
                     $this->principal
                 )
             );
+        }
+
+        if (file_exists($this->absolutePath)) {
+            unlink($this->absolutePath);
         }
     }
 }
