@@ -811,9 +811,9 @@
                                 <tr>
                                     <th>MID</th>
                                     <th>Nama Barang</th>
-                                    <th class="text-end">Full Box</th>
-                                    <th class="text-end">Receh (pcs)</th>
-                                    <th class="text-end">Total (pcs)</th>
+                                    <th class="text-end">Full Pallet</th>
+                                    <th class="text-end">Receh (Box)</th>
+                                    <th class="text-end">Total (Box)</th>
                                 </tr>
                             </thead>
                             <tbody>

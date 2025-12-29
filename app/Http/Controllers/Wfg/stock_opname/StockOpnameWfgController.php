@@ -2154,30 +2154,49 @@ class StockOpnameWfgController extends Controller
 
             // Helper function untuk ambil path tanda tangan user
             $getSignaturePath = function ($user, $status = null) {
-                $dummy = public_path('storage/images/ttd/approved_sticker.png');
-                // $dummy = '';
 
-                if ($status !== 'approved') {
-                    return $dummy;
+                $dummyApproved = public_path('storage/images/ttd/approved_sticker.png');
+                $dummyRejected = public_path('storage/images/ttd/rejected_sticker.png');
+
+                // selain approved & rejected → kosong
+                if (!in_array($status, ['approved', 'rejected'])) {
+                    return null;
                 }
 
-                if (!$user) return $dummy;
+                // rejected → langsung dummy rejected
+                if ($status === 'rejected') {
+                    return $dummyRejected;
+                }
 
-                if (isset($user->signature) && !empty($user->signature->signature)) {
+                // approved tapi user null → dummy approved
+                if (!$user) {
+                    return $dummyApproved;
+                }
+
+                // approved & ada signature relasi
+                if (
+                    isset($user->signature) &&
+                    !empty($user->signature->signature)
+                ) {
                     $signaturePath = public_path($user->signature->signature);
                     if (File::exists($signaturePath)) {
                         return $signaturePath;
                     }
                 }
 
-                $usernameFile = 'uploads/signatures/signature_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $user->username) . '.png';
+                // fallback by username
+                $usernameFile = 'uploads/signatures/signature_' .
+                    preg_replace('/[^A-Za-z0-9_\-]/', '_', $user->username) . '.png';
+
                 $filePath = public_path($usernameFile);
                 if (File::exists($filePath)) {
                     return $filePath;
                 }
 
-                return $dummy;
+                // approved tapi tetap tidak ada signature
+                return $dummyApproved;
             };
+
 
             $approvers = [];
             $operatorApproval = $approvals->first(fn($a) => $a->approver_id == $sop->user_id);
