@@ -1310,7 +1310,8 @@
                             toastr.success(res.message, 'Berhasil');
                             $('#editModal').modal('hide');
 
-                            loadBarangForOpname(); // refresh tabel
+                            loadBarangForOpname(1, activePrincipal,
+                                currentSearch); // refresh tabel
                         } else {
                             toastr.error(res.message || 'Gagal menyimpan data',
                                 'Error');
@@ -1324,7 +1325,8 @@
                         }
 
                         toastr.error(msg, 'Error');
-                        loadBarangForOpname();
+                        loadBarangForOpname(1, activePrincipal,
+                            currentSearch);
                     }
                 });
             });
@@ -1511,7 +1513,8 @@
                             });
 
                             $('#modalAddItem').modal('hide');
-                            loadBarangForOpname(1, $('#principal_filter').val());
+                            loadBarangForOpname(1, activePrincipal,
+                                currentSearch);
                         } else {
                             Swal.fire('Gagal', res.message ||
                                 'Tidak dapat menambahkan item baru.', 'warning');

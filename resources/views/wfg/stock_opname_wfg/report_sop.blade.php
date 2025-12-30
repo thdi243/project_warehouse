@@ -411,7 +411,7 @@
                     wrapper.html(`
                         <div class="alert alert-info rounded-3 mt-3">
                             <i class="mdi mdi-information-outline me-2"></i>
-                            <strong>Belum ada SOP untuk tanggal ${tanggal}</strong>
+                            <strong>Belum ada SO untuk tanggal ${tanggal}</strong>
                         </div>
                     `);
                     $('#btn_approval').hide();
@@ -441,52 +441,59 @@
                     }
 
                     // ===================== OPERATOR =====================
+                    let trackingHtml = '';
+
+                    if (res.approver_tracking && res.approver_tracking.length > 0) {
+                        trackingHtml = `
+                            <div class="mt-4">
+                                <h6 class="fw-semibold mb-3">
+                                    <i class="mdi mdi-account-check-outline text-primary me-2"></i>
+                                    Riwayat Persetujuan
+                                </h6>
+                                <ul class="list-unstyled mb-0">
+                        `;
+
+                        res.approver_tracking.forEach(a => {
+                            const s = a.status?.toLowerCase() || '';
+                            let icon = '<i class="mdi mdi-timer-sand text-warning me-1"></i>';
+                            let badgeClass = 'warning';
+                            let statusLabel = s.charAt(0).toUpperCase() + s.slice(1); // capitalize
+
+                            if (s === 'approved') {
+                                icon = '<i class="mdi mdi-check-circle text-success me-1"></i>';
+                                badgeClass = 'success';
+                            } else if (s === 'rejected') {
+                                icon = '<i class="mdi mdi-close-circle text-danger me-1"></i>';
+                                badgeClass = 'danger';
+                            } else if (s === 'read') {
+                                icon = '<i class="mdi mdi-eye text-info me-1"></i>';
+                                badgeClass = 'info';
+                                statusLabel = 'Dibaca';
+                            } else if (s === 'pending') {
+                                statusLabel = 'Menunggu';
+                            }
+
+                            trackingHtml += `
+                                <li class="mb-3 ps-1">
+                                    ${icon}
+                                    <strong>${a.nama || '-'}</strong> 
+                                    <span class="text-muted">(${a.jabatan || '-'})</span>
+                                    <span class="badge bg-${badgeClass} ms-2">${statusLabel}</span>
+                                    ${a.catatan ? `<br><small class="text-muted ms-4 d-block mt-1">Catatan: ${a.catatan}</small>` : ''}
+                                    ${a.action_at ? `<br><small class="text-muted ms-4">Pada: ${a.action_at}</small>` : ''}
+                                </li>
+                            `;
+                        });
+
+                        trackingHtml += `
+                                </ul>
+                            </div>
+                        `;
+                    }
+
                     if (isOperator) {
                         const btn = $('#btn_approval');
                         btn.show();
-
-                        // 🔹 Buat trackingHtml sekali di awal
-                        let trackingHtml = '';
-                        if (res.approver_tracking && res.approver_tracking.length > 0) {
-                            trackingHtml = `
-                                <div class="mt-3">
-                                    <h6 class="fw-semibold mb-2">
-                                        <i class="mdi mdi-account-check-outline text-primary me-2"></i>
-                                        Status Approval
-                                    </h6>
-                                    <ul class="list-unstyled mb-0">
-                            `;
-
-                            res.approver_tracking.forEach(a => {
-                                const s = a.status?.toLowerCase() || '';
-                                let icon = '<i class="mdi mdi-timer-sand text-warning me-1"></i>';
-                                let badgeClass = 'warning';
-                                let statusLabel = s;
-
-                                if (s === 'approved') {
-                                    icon = '<i class="mdi mdi-check-circle text-success me-1"></i>';
-                                    badgeClass = 'success';
-                                } else if (s === 'rejected') {
-                                    icon = '<i class="mdi mdi-close-circle text-danger me-1"></i>';
-                                    badgeClass = 'danger';
-                                } else if (s === 'read') {
-                                    icon = '<i class="mdi mdi-eye text-info me-1"></i>';
-                                    badgeClass = 'info';
-                                    statusLabel = 'Read';
-                                }
-
-                                trackingHtml += `
-                                    <li class="mb-2">
-                                        ${icon}
-                                        <strong>${a.nama}</strong> <span class="text-muted">(${a.jabatan})</span>
-                                        <span class="badge bg-${badgeClass} ms-2 text-uppercase">${statusLabel}</span>
-                                        ${a.catatan ? `<br><small class="text-muted ms-4">Catatan: ${a.catatan}</small>` : ''}
-                                    </li>
-                                `;
-                            });
-
-                            trackingHtml += '</ul></div>';
-                        }
 
                         //  Status Sop draft
                         if (statusSop === 'draft') {
@@ -556,7 +563,7 @@
                             <div class="approval-section">
                                 <h6 class="fw-semibold mb-3">
                                     <i class="mdi mdi-check-decagram-outline text-success me-2"></i>
-                                    Persetujuan SOP
+                                    Persetujuan SO
                                 </h6>
                                 <div class="row g-3 align-items-center">
                                     <div class="col-md-8">
@@ -580,8 +587,17 @@
                         `);
                         }
 
-                        // Jika user bukan approver tapi ingin lihat status saja
-                        else if (status === 'approved' || status === 'rejected') {
+                        // Jika user approver tapi ingin lihat status saja
+                        else if (isApprover && (status === 'approved' || status === 'rejected')) {
+                            wrapper.html(`
+                                <div class="alert ${status === 'approved' ? 'alert-success' : 'alert-danger'} rounded-3 mt-3">
+                                    <i class="mdi ${status === 'approved' ? 'mdi-check-decagram-outline' : 'mdi-close-octagon-outline'} me-2"></i>
+                                    <strong>${status === 'approved' ? 'Sudah Disetujui' : 'Ditolak'}</strong>
+                                    ${note ? `<br><small class="text-muted">Catatan: ${note}</small>` : ''}
+                                </div>
+                                ${trackingHtml}
+                            `);
+                        } else if (status === 'approved' || status === 'rejected') {
                             const labelHtml = `
                                 <div class="alert ${status === 'approved' ? 'alert-success' : 'alert-danger'} rounded-3 mt-3">
                                     <i class="mdi ${status === 'approved' ? 'mdi-check-decagram-outline' : 'mdi-close-octagon-outline'} me-2"></i>
@@ -592,7 +608,7 @@
                             wrapper.html(labelHtml);
                         }
 
-                        // Jika user bukan approver & status masih pending → hanya lihat alert
+                        // Jika user approver & status masih pending → hanya lihat alert
                         else if (status === 'pending' || status === 'read') {
                             wrapper.html(`
                                 <div class="alert alert-warning rounded-3 mt-3">
@@ -1207,7 +1223,7 @@
                         } else {
                             Swal.fire('Error', res.message || 'Gagal menyimpan data', 'error');
                         }
-                        loadReportData(principal);
+                        loadReportData(currentPrincipal, currentSearch);
                     },
                     error: function(xhr) {
                         Swal.fire('Error', xhr.responseJSON?.message || 'Terjadi kesalahan.',

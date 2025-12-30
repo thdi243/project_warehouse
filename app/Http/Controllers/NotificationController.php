@@ -32,7 +32,7 @@ class NotificationController extends Controller
                     'message' => $n->message,
                     'url' => $n->url,
                     'type' => $n->type,
-                    'created_at' => $n->created_at->diffForHumans(),
+                    'created_at' => $n->created_at->format('d F Y, H:i'),
                     'is_read' => $n->is_read
                 ];
             });
@@ -79,8 +79,8 @@ class NotificationController extends Controller
 
         foreach ($approvals as $a) {
 
-            $title = 'Approval Diperlukan';
-            $message = 'SOP tanggal ' . $a->sop->tgl_opname . ' menunggu persetujuan Anda.';
+            $title = 'Approval SO WFG';
+            $message = 'SO' . $a->sop->principal . 'tanggal ' . $a->sop->tgl_opname . ' menunggu persetujuan Anda.';
             $url = route('wfg.stock_opname.report') . '?tanggal=' . $a->sop->tgl_opname .
                 '&principal=' . urlencode($a->sop->principal ?? '');
 

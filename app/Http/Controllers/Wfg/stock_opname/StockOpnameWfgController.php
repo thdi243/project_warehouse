@@ -32,161 +32,8 @@ use App\Models\Wfg\stock_opname\WfgSopSummariesModel;
 
 class StockOpnameWfgController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    // public function store(Request $request)
-    // {
-    //     $request->validate([
-    //         'mid' => 'required|exists:wfg_barang,mid_barang',
-    //         'tgl_opname' => 'required|date',
-    //         'qty_full' => 'required|array',
-    //         'qty_receh' => 'required|array',
-    //         // 'keterangan' => 'nullable|string|max:255',
-    //     ], [
-    //         'tgl_opname.required' => 'Tanggal opname wajib diisi.',
-    //         'mid.required' => 'MID barang wajib dipilih.',
-    //     ]);
-
-    //     $qtyFull = $request->input('qty_full', []);
-    //     $qtyReceh = $request->input('qty_receh', []);
-
-    //     $hasQty = false;
-    //     foreach ($qtyFull as $index => $full) {
-    //         $fullVal = $full ?? null;
-    //         $recehVal = $qtyReceh[$index] ?? null;
-
-    //         if (!empty($fullVal) || !empty($recehVal)) {
-    //             $hasQty = true;
-    //             break;
-    //         }
-    //     }
-
-    //     if (!$hasQty) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Minimal isi salah satu Qty Full atau Qty Receh sebelum menyimpan.'
-    //         ], 422);
-    //     }
-
-    //     try {
-    //         $barang = BarangWfgModel::where('mid_barang', $request->mid)->firstOrFail();
-
-    //         // Cek existing data (kode tetap sama)
-    //         $existing = WfgSopSummariesModel::whereHas('sop', function ($q) use ($request) {
-    //             $q->where('tgl_opname', $request->tgl_opname);
-    //         })->where('barang_id', $barang->id)->first();
-
-    //         if ($existing) {
-    //             return response()->json([
-    //                 'status' => 'warning',
-    //                 'message' => 'Stock opname sudah ada. Lanjutkan update?',
-    //                 'sop_id' => $existing->sop_id,
-    //             ], 200);
-    //         }
-
-    //         // $soh = StockOnHandModel::where('barang_id', $barang->id)->first();
-    //         // $qty_sistem = $soh ? $soh->qty_soh : 0;
-
-    //         $entriesCount = count($request->qty_full);
-    //         $totalFisik = 0;
-    //         for ($i = 0; $i < $entriesCount; $i++) {
-    //             $qty_full = $request->qty_full[$i] ?? 0;
-    //             $qty_receh = $request->qty_receh[$i] ?? 0;
-    //             $qty_fisik = ($qty_full * (float)($barang->qty_box ?? 1)) + $qty_receh;
-    //             $totalFisik += $qty_fisik;
-    //         }
-
-    //         // // Hitung Selisih
-    //         // $selisih = $totalFisik - $qty_sistem;
-
-    //         // if (abs($selisih) > 0 && empty($request->keterangan)) {
-    //         //     return response()->json([
-    //         //         'status' => 'selisih',
-    //         //         'message' => "Terdapat selisih (Fisik: {$totalFisik}, Sistem: {$qty_sistem}). Keterangan wajib diisi."
-    //         //     ]);
-    //         // }
-
-    //         // $status = '';
-
-    //         // if ($selisih === 0) {
-    //         //     $status = 'sesuai';
-    //         // } else if ($selisih > 0) {
-    //         //     $status = 'lebih';
-    //         // } else {
-    //         //     $status = 'kurang';
-    //         // };
-
-    //         DB::beginTransaction();
-
-    //         // 4. Proses Simpan SOP (Kode selanjutnya sama seperti sebelumnya, tapi menggunakan $totalFisik dan $selisih yang sudah dihitung)
-    //         $sop = WfgSopModel::create([
-    //             'tgl_opname' => $request->tgl_opname,
-    //             'user_id' => Auth::id() ?? 1,
-    //         ]);
-
-    //         // Simpan Detail
-    //         for ($i = 0; $i < $entriesCount; $i++) {
-    //             $qty_full = $request->qty_full[$i] ?? 0;
-    //             $qty_receh = $request->qty_receh[$i] ?? 0;
-
-    //             WfgSopDetailModel::create([
-    //                 'sop_id' => $sop->id,
-    //                 'barang_id' => $barang->id,
-    //                 'qty_full' => $qty_full,
-    //                 'qty_receh' => $qty_receh,
-    //             ]);
-    //         }
-
-    //         // Simpan summary
-    //         // WfgSopSummariesModel::create([
-    //         //     'sop_id' => $sop->id,
-    //         //     'barang_id' => $barang->id,
-    //         //     'qty_fisik' => $totalFisik ?? 0,
-    //         //     'qty_sistem' => $qty_sistem ?? 0,
-    //         //     'selisih' => $selisih ?? 0,
-    //         //     'status' => $status ?? '',
-    //         //     'keterangan' => null,
-    //         //     // 'keterangan' => $request->keterangan ?? null,
-    //         // ]);
-
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'status' => 'success',
-    //             'message' => 'Stock opname berhasil disimpan',
-    //             'sop_id' => $sop->id
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Gagal menyimpan stock opname: ' . $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
     public function store(Request $request)
     {
-        // dd($request);
-
         $request->validate([
             'mid' => 'required|exists:wfg_barang,mid_barang',
             'tgl_opname' => 'required|date',
@@ -710,19 +557,6 @@ class StockOpnameWfgController extends Controller
                 'message' => 'Silakan isi komentar final.'
             ]);
         }
-
-        // if ($mode === 'final' && $user->jabatan === 'operator') {
-        //     $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)
-        //         ->where('principal', $principalFilter)
-        //         ->first();
-
-        //     if ($existingSop) {
-        //         return response()->json([
-        //             'status' => 'error',
-        //             'message' => 'Anda sudah melakukan opname hari ini untuk principal ' . $principalFilter . '. Tidak dapat melakukan opname lebih dari sekali per hari. Hubungi Foreman!',
-        //         ]);
-        //     }
-        // }
 
         // Kalau mode = final submit → lanjut simpan SOP
         if ($mode === 'final_submit') {
@@ -1483,7 +1317,7 @@ class StockOpnameWfgController extends Controller
                 return response()->json([
                     'status' => 'success',
                     'data' => [],
-                    'message' => 'Belum ada SOP final untuk tanggal ini.'
+                    'message' => 'Belum ada SO final untuk tanggal ini.'
                 ]);
             }
 
@@ -1523,7 +1357,7 @@ class StockOpnameWfgController extends Controller
                 'details' => $details,
             ]);
         } catch (\Exception $e) {
-            Log::error('Gagal mengambil data report SOP: ' . $e->getMessage());
+            Log::error('Gagal mengambil data report SO: ' . $e->getMessage());
 
             return response()->json([
                 'status' => 'error',
@@ -1744,7 +1578,7 @@ class StockOpnameWfgController extends Controller
             }
 
             if (!$barang_id) {
-                throw new \Exception('Tidak dapat menentukan barang terkait SOP ini.');
+                throw new \Exception('Tidak dapat menentukan barang terkait SO ini.');
             }
 
             // 2. Ambil info barang (qty_box)
@@ -2103,22 +1937,22 @@ class StockOpnameWfgController extends Controller
 
             if ($request->has('check')) {
                 if (!$sop) {
-                    return response()->json(['message' => "SOP tidak ditemukan untuk tanggal {$tanggal}."], 404);
+                    return response()->json(['message' => "SO tidak ditemukan untuk tanggal {$tanggal}."], 404);
                 }
                 return response()->json(['message' => 'Data siap diunduh.'], 200);
             }
 
             if (!$sop) {
                 if ($asContent) {
-                    throw new \Exception("SOP tidak ditemukan untuk principal {$principalFilter} pada tanggal {$tanggal}");
+                    throw new \Exception("SO tidak ditemukan untuk principal {$principalFilter} pada tanggal {$tanggal}");
                 }
-                return redirect()->back()->with('error', "SOP tidak ditemukan untuk principal Anda pada tanggal {$tanggal}.");
+                return redirect()->back()->with('error', "SO tidak ditemukan untuk principal Anda pada tanggal {$tanggal}.");
             }
 
             if (!$sop) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => "Tidak ada SOP untuk tanggal $tanggal",
+                    'message' => "Tidak ada SO untuk tanggal $tanggal",
                 ], 404);
             }
 
@@ -2313,7 +2147,7 @@ class StockOpnameWfgController extends Controller
                 $principalFilter = $user->principal?->principal;
             }
 
-            $fileName = "SOP_WFG_REPORT_{$tanggal}" . ($principalFilter ? "_{$principalFilter}" : "") . ".pdf";
+            $fileName = "SO_WFG_REPORT_{$tanggal}" . ($principalFilter ? "_{$principalFilter}" : "") . ".pdf";
 
             if ($asContent) {
                 return $pdf->output(); // kembalikan byte content PDF
@@ -2472,7 +2306,7 @@ class StockOpnameWfgController extends Controller
         if (!$sop) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Data SOP tidak ditemukan untuk principal Anda.',
+                'message' => 'Data SO tidak ditemukan untuk principal Anda.',
             ], 404);
         }
 
@@ -2559,7 +2393,7 @@ class StockOpnameWfgController extends Controller
 
         if (!$approval) {
             return response()->json([
-                'message' => 'Anda tidak terdaftar sebagai approver untuk SOP ini.'
+                'message' => 'Anda tidak terdaftar sebagai approver untuk SO ini.'
             ], 403);
         }
 
@@ -2593,7 +2427,7 @@ class StockOpnameWfgController extends Controller
         }
 
         return response()->json([
-            'message' => $request->status === 'approved' ? 'SOP berhasil disetujui.' : 'SOP telah ditolak.',
+            'message' => $request->status === 'approved' ? 'SO berhasil disetujui.' : 'SO telah ditolak.',
             'data' => $approval
         ]);
     }
@@ -2635,7 +2469,7 @@ class StockOpnameWfgController extends Controller
             $dir = 'public/reports';
             Storage::makeDirectory($dir);
 
-            $fileName = "SOP_WFG_REPORT_{$tanggal}_{$principal}.pdf";
+            $fileName = "SO_WFG_REPORT_{$tanggal}_{$principal}.pdf";
             $relativePath = "{$dir}/{$fileName}";
             $absolutePath = Storage::path($relativePath);
 

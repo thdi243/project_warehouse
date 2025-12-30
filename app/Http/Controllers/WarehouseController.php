@@ -165,59 +165,68 @@ class WarehouseController extends Controller
     {
         $user = Auth::user();
 
+        $today = Carbon::today()->format('Y-m-d');
+
         // Ambil principal user kalau ada
         $userPrincipal = optional($user->principal)->principal
             ? strtoupper(trim($user->principal->principal))
             : null;
+
+        $smuRelevantPrincipals = ['HAS', 'SMU', 'AMG', 'PAS', 'KAS', 'TAS', 'DAM', 'MDU', 'KIAS'];
 
         // --- LOGIKA UNTUK OPERATOR ---
         if ($user->jabatan === 'operator') {
             $allowedPrincipals = ['BAS', 'SMU'];
 
             if (!$userPrincipal) {
-                return Redirect::route('dashboard')->with('error', "Akun Anda belum memiliki principal yang valid untuk mengakses fitur ini.");
+                return redirect()->route('dashboard')
+                    ->with('error', 'Akun Anda belum terkait dengan principal. Hubungi administrator.');
             }
 
             if (!in_array($userPrincipal, $allowedPrincipals)) {
-                return Redirect::route('dashboard')->with('error', "Anda tidak memiliki akses untuk fitur ini.");
+                return redirect()->route('dashboard')
+                    ->with('error', "Principal Anda ({$userPrincipal}) tidak diizinkan mengakses fitur ini.");
             }
-        }
 
-        $today = Carbon::today()->toDateString();
+            $today = Carbon::today()->format('Y-m-d');
 
-        // --- CEK DATA SOH ---
-        if ($user->jabatan === 'operator') {
-            // Untuk operator → cek hanya principal miliknya
-            $dataExists = StockOnHandModel::whereDate('last_updated', $today)
-                ->whereHas('barang', function ($query) use ($userPrincipal) {
-                    $query->whereRaw('UPPER(TRIM(principal)) = ?', [$userPrincipal]);
-                })
-                ->exists();
-
-            if (!$dataExists) {
-                return Redirect::route('wfg.stock_opname.soh')
-                    ->with('error', "Data Stock On Hand (SOH) untuk principal {$userPrincipal} pada tanggal {$today} belum diunggah. Silakan unggah data terlebih dahulu.");
-            }
-        } else {
-            $principals = ['BAS', 'SMU'];
-            $missing = [];
-
-            foreach ($principals as $principal) {
-                $exists = StockOnHandModel::whereDate('last_updated', $today)
-                    ->whereHas('barang', function ($query) use ($principal) {
-                        $query->whereRaw('UPPER(TRIM(principal)) = ?', [$principal]);
+            // === KHUSUS OPERATOR SMU ===
+            if ($userPrincipal === 'SMU') {
+                // Cek apakah ADA SETIDAKNYA SATU principal dari list yang punya SOH hari ini
+                $hasAnySoh = StockOnHandModel::whereDate('last_updated', $today)
+                    ->whereHas('barang', function ($query) use ($smuRelevantPrincipals) {
+                        $query->whereIn('principal', $smuRelevantPrincipals); // tanpa UPPER/TRIM karena sudah di-handle di upload
+                        // Kalau mau lebih aman:
+                        // $query->whereRaw('UPPER(TRIM(principal)) IN (' . implode(',', array_fill(0, count($smuRelevantPrincipals), '?')) . ')', $smuRelevantPrincipals);
                     })
                     ->exists();
 
-                if (!$exists) {
-                    $missing[] = $principal;
+                if (!$hasAnySoh) {
+                    $listText = implode(', ', $smuRelevantPrincipals);
+                    return redirect()->route('wfg.stock_opname.soh')
+                        ->with('error', "Belum ada data Stock On Hand (SOH) hari ini ({$today}) dari principal manapun ({$listText}). Silakan unggah setidaknya satu data SOH terlebih dahulu sebelum melanjutkan.");
+                }
+
+                // Jika ADA minimal satu → boleh lanjut
+            } else {
+                // Untuk operator BAS → tetap cek hanya BAS saja
+                $sohExists = StockOnHandModel::whereDate('last_updated', $today)
+                    ->whereHas('barang', function ($query) use ($userPrincipal) {
+                        $query->whereRaw('UPPER(TRIM(principal)) = ?', [$userPrincipal]);
+                    })
+                    ->exists();
+
+                if (!$sohExists) {
+                    return redirect()->route('wfg.stock_opname.soh')
+                        ->with('error', "Data Stock On Hand (SOH) untuk principal <strong>{$userPrincipal}</strong> pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
                 }
             }
+        } else {
+            $hasAnySoh = StockOnHandModel::whereDate('last_updated', $today)->exists();
 
-            if (!empty($missing)) {
-                $missingList = implode(' dan ', $missing);
-                return Redirect::route('wfg.stock_opname.soh')
-                    ->with('error', "Data Stock On Hand (SOH) untuk principal {$missingList} pada tanggal {$today} belum diunggah. Silakan unggah data terlebih dahulu.");
+            if (!$hasAnySoh) {
+                return redirect()->route('wfg.stock_opname.soh')
+                    ->with('error', "Belum ada data Stock On Hand (SOH) hari ini ({$today}). Silakan tunggu data diunggah.");
             }
         }
 

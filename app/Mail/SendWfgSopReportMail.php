@@ -28,7 +28,7 @@ class SendWfgSopReportMail extends Mailable
 
     public function build()
     {
-        return $this->subject("SOP WFG Report {$this->tanggal} - {$this->principal}")
+        return $this->subject("SO WFG Report {$this->tanggal} - {$this->principal}")
             ->view('emails.sop_report')
             ->with([
                 'manager' => $this->manager,

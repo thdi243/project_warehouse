@@ -182,7 +182,7 @@
                                 </div>
                             @endif
 
-                            @if ($barangCount > 0 && empty($error_message))
+                            @if ($barangCount > 0 || empty($error_message))
                                 <div
                                     class="@if (Auth::user()->jabatan != 'operator') col-lg-6 @else col-lg-6 @endif col-md-4 d-flex justify-content-between">
                                     <button class="btn btn-success w-100 me-2" data-bs-toggle="modal"
@@ -316,6 +316,7 @@
                     <i class="mdi mdi-information-outline me-2"></i>Detail Stock On Hand
                 </h5>
                 <small id="offcanvasMID" class="text-white d-block mt-1"></small>
+                <small id="principalBarang" class="text-white d-block mt-1"></small>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
@@ -771,6 +772,7 @@
             // Set title
             $('#offcanvasTitle').text(item.barang?.nama_barang ?? 'Detail Stock On Hand');
             $('#offcanvasMID').text(`MID: ${item.barang?.mid_barang ?? 'N/A'}`);
+            $('#principalBarang').text(`Principal: ${item.barang?.principal ?? 'N/A'}`);
 
             // Set content
             const content = `

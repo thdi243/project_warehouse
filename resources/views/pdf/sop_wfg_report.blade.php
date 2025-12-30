@@ -3,7 +3,7 @@
 
     <head>
         <meta charset="UTF-8">
-        <title>Laporan SOP WFG</title>
+        <title>Laporan SO WFG</title>
         <style>
             @page {
                 margin: 50px 30px 50px 30px;
