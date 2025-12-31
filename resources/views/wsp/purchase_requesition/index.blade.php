@@ -322,24 +322,35 @@
                 const endIndex = Math.min(startIndex + itemsPerPage, filteredPR.length);
                 const pageData = filteredPR.slice(startIndex, endIndex);
 
+                const badgeStatus = {
+                    'pending': 'warning',
+                    'approved': 'success',
+                    'rejected': 'danger',
+                };
+
                 pageData.forEach((pr, index) => {
+                    const badgeClass = badgeStatus[pr.status] ?? 'secondary';
                     tbody.append(`
                         <tr>
                             <td>${startIndex + index + 1}</td>
                             <td>${pr.pr_date}</td>
                             <td>${pr.requested_by}</td>
                             <td>${pr.department}</td>
-                            <td>${pr.status}</td>
+                            <td>
+                                <span class="badge badge-soft-${badgeClass}">
+                                    ${pr.status}
+                                </span>
+                            </td>
                             <td>
                                 <div class="d-flex gap-2">
-                                    <button class="btn btn-primary btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
+                                    <button class="btn btn-info btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
                                         <i class="mdi mdi-eye"></i>
-                                    </button>
-                                    <button class="btn btn-info btn-edit btn-sm" onclick="editPR(${pr.id})" title="Edit">
-                                        <i class="mdi mdi-pencil"></i>
                                     </button>
                                     <button class="btn btn-danger btn-delete btn-sm" onclick="deletePR(${pr.id})" title="Delete">
                                         <i class="mdi mdi-delete"></i>
+                                    </button>
+                                    <button class="btn btn-primary btn-print btn-sm" onclick="printPR(${pr.id})" title="Print">
+                                        <i class="mdi mdi-printer"></i>
                                     </button>
                                 </div>
                             </td>
@@ -422,7 +433,7 @@
                             item.requested_by.toLowerCase() :
                             '';
 
-                        return mid.includes(keyword) || requestedBy.includes(keyword);
+                        return requestedBy.includes(keyword);
                     });
                 }
 
@@ -441,9 +452,10 @@
                     type: 'GET',
                     success: function(res) {
                         const data = res.data;
+                        const barang = data.items.barang;
 
                         $('#outgoingId').val(data.id);
-                        $('#mid').val(data.barang.mid_barang);
+                        $('#mid').val(data.barang?.mid_barang ?? '');
                         $('#prDate').val(data.pr_date);
                         $('#departemen').val(data.department);
                         $('#qty').val(data.qty);
@@ -511,6 +523,7 @@
                     `<span class="badge bg-warning text-dark">${pr.status}</span>`
                 );
 
+
                 const tbody = $('#detailItems');
                 tbody.empty();
 
@@ -540,6 +553,12 @@
                 $('#modalDetailPR').modal('show');
             };
 
+            window.printPR = function(id) {
+                window.open(
+                    `/api/purchase-requesition/print-riwayat/${id}`,
+                    "_blank"
+                );
+            }
         });
     </script>
 @endsection

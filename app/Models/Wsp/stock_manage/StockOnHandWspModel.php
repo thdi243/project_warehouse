@@ -31,4 +31,12 @@ class StockOnHandWspModel extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    protected static function booted()
+    {
+        static::saving(function ($stock) {
+            $stock->qty_soh = $stock->unrest + $stock->qual_insp + $stock->blocked + $stock->transf;
+            $stock->last_update = now();
+        });
+    }
 }

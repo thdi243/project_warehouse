@@ -18,6 +18,7 @@ class WspPurchaseRequesitionModel extends Model
         'department',
         'jenis',
         'detail_jenis',
+        'no_io',
         'status',
         'user_id',
     ];
@@ -30,5 +31,10 @@ class WspPurchaseRequesitionModel extends Model
     public function items()
     {
         return $this->hasMany(WspPurchaseRequesitionItemsModel::class, 'pr_id');
+    }
+
+    public function approval()
+    {
+        return $this->hasMany(WspPurchaseRequesitionApprovalModel::class, 'pr_id');
     }
 }

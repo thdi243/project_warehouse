@@ -21,7 +21,7 @@ const buttonVariants = cva(
                 link: "text-primary underline-offset-4 hover:underline",
                 success: "bg-green-600 text-white hover:bg-green-700",
                 warning: "bg-yellow-600 text-white hover:bg-yellow-700",
-                info: "bg-blue-300 text-white hover:bg-blue-500",
+                info: "bg-blue-300 text-white hover:bg-blue-400",
                 dark: "bg-gray-800 text-white hover:bg-gray-900",
             },
             size: {

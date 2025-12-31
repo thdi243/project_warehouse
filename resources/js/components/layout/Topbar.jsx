@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sun, Moon, User, LogOut, Menu } from "lucide-react";
+import { Sun, Moon, User, LogOut, Menu, History } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
@@ -18,13 +18,18 @@ import {
     NavigationMenuLink,
 } from "@/components/ui/navigation-menu";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+    Sheet,
+    SheetContent,
+    SheetTrigger,
+    SheetClose,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { getTheme, setTheme } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Home", href: "/app/dashboard" },
     { label: "Purchase Requesition", href: "/app/purchase-requesition/form" },
     { label: "Stock On Hand", href: "/app/stock-on-hand" },
 ];
@@ -128,7 +133,7 @@ export default function Topbar() {
                     </Button>
 
                     {/* USER */}
-                    <DropdownMenu>
+                    <DropdownMenu className="me-2">
                         <DropdownMenuTrigger asChild>
                             <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
                                 <Avatar className="h-8 w-8">
@@ -145,12 +150,32 @@ export default function Topbar() {
                                 {user.nama_lengkap}
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center cursor-pointer">
                                 <User className="mr-2 h-4 w-4" />
                                 Profile
                             </DropdownMenuItem>
+
+                            <DropdownMenuItem asChild>
+                                <Link
+                                    to="/app/riwayat-pr"
+                                    className="flex items-center cursor-pointer"
+                                >
+                                    <History className="mr-2 h-4 w-4" />
+                                    Riwayat PR
+                                </Link>
+                            </DropdownMenuItem>
+                            {/* <DropdownMenuItem asChild>
+                                <Link
+                                    to="/app/approval-pr/:1"
+                                    className="flex items-center cursor-pointer"
+                                >
+                                    <History className="mr-2 h-4 w-4" />
+                                    Approval PR
+                                </Link>
+                            </DropdownMenuItem> */}
+
                             <DropdownMenuItem
-                                className="text-red-600"
+                                className="text-red-600 cursor-pointer flex items-center"
                                 onClick={handleLogout}
                             >
                                 <LogOut className="mr-2 h-4 w-4" />
@@ -177,18 +202,19 @@ export default function Topbar() {
                                     const active = isActive(item.href);
 
                                     return (
-                                        <a
-                                            key={item.href}
-                                            href={item.href}
-                                            className={cn(
-                                                "rounded-md px-3 py-2 text-sm transition",
-                                                active
-                                                    ? "bg-accent font-semibold"
-                                                    : "hover:bg-accent"
-                                            )}
-                                        >
-                                            {item.label}
-                                        </a>
+                                        <SheetClose asChild key={item.href}>
+                                            <Link
+                                                to={item.href}
+                                                className={cn(
+                                                    "px-3 py-2 text-sm rounded-md transition",
+                                                    active
+                                                        ? "bg-accent text-foreground font-semibold"
+                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                                                )}
+                                            >
+                                                {item.label}
+                                            </Link>
+                                        </SheetClose>
                                     );
                                 })}
                             </nav>

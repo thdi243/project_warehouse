@@ -150,10 +150,16 @@ Route::middleware('auth')->group(function () {
 
         // Purchase Requesition
         Route::prefix('purchase-requesition')->group(function () {
-            Route::get('/index', [WspPurchaseRequesitionController::class, 'index'])->name('stock.pr.index');
             Route::post('/store', [WspPurchaseRequesitionController::class, 'store'])->name('stock.pr.store');
+            Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved'])->name('stock.pr.reserved');
+            Route::get('/my-reservations', [WspPurchaseRequesitionController::class, 'myReservations']);
+            Route::delete('/release/{id}', [WspPurchaseRequesitionController::class, 'release'])->name('stock.pr.release');
+            Route::delete('/release-session/{id}', [WspPurchaseRequesitionController::class, 'releaseSession'])->name('stock.pr.release-session');
+            Route::get('/index', [WspPurchaseRequesitionController::class, 'index'])->name('stock.pr.index');
             Route::delete('/delete/{id}', [WspPurchaseRequesitionController::class, 'destroy'])->name('stock.pr.delete');
             Route::get('/show/{id}', [WspPurchaseRequesitionController::class, 'show'])->name('stock.pr.show');
+            Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
+            Route::get('/approval-action/{id}', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.approval-action');
         });
     });
 

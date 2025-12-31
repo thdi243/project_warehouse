@@ -222,32 +222,34 @@
                                 </div>
                             </div>
                         </div>
+                        @if (Auth::user()->jabatan != 'operator')
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Tanda Tangan <small
+                                            class="text-muted">(opsional)</small></label>
 
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Tanda Tangan <small
-                                        class="text-muted">(opsional)</small></label>
+                                    <div class="border rounded p-3 bg-light signature-container">
+                                        <canvas id="signatureCanvas"
+                                            style="border: 1px solid #ccc; border-radius: 4px; background: white; touch-action: none; width: 100%; height: auto;">
+                                        </canvas>
 
-                                <div class="border rounded p-3 bg-light signature-container">
-                                    <canvas id="signatureCanvas"
-                                        style="border: 1px solid #ccc; border-radius: 4px; background: white; touch-action: none; width: 100%; height: auto;">
-                                    </canvas>
-
-                                    <div class="mt-2">
-                                        <button type="button" id="clearSignature" class="btn btn-sm btn-outline-danger">
-                                            <i class="bx bx-trash"></i> Hapus Tanda Tangan
-                                        </button>
+                                        <div class="mt-2">
+                                            <button type="button" id="clearSignature"
+                                                class="btn btn-sm btn-outline-danger">
+                                                <i class="bx bx-trash"></i> Hapus Tanda Tangan
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    <small class="form-text text-muted d-block mt-2">
+                                        Gambar tanda tangan Anda menggunakan mouse atau sentuhan jari
+                                    </small>
+
+                                    <!-- Hidden input untuk base64 -->
+                                    <input type="hidden" name="signature" id="signatureData">
                                 </div>
-
-                                <small class="form-text text-muted d-block mt-2">
-                                    Gambar tanda tangan Anda menggunakan mouse atau sentuhan jari
-                                </small>
-
-                                <!-- Hidden input untuk base64 -->
-                                <input type="hidden" name="signature" id="signatureData">
                             </div>
-                        </div>
+                        @endif
 
                         <div class="row mt-3">
                             <!-- Preview Gambar -->
@@ -260,17 +262,19 @@
                                         style="max-width: 200px; max-height: 200px; display: none;" class="img-thumbnail">
                                 </div>
                             </div>
-                            <div class="col-md-6 text-center">
-                                <label class="form-label fw-semibold">Tanda Tangan Saat Ini</label>
-                                <div class="border rounded p-3 bg-light">
-                                    <img id="currentSignature" src="" alt="Tanda Tangan Saat Ini"
-                                        style="max-width: 200px; max-height: 200px; display: none;"
-                                        class="img-thumbnail shadow-sm img-thumbnail">
-                                    <p id="noSignatureText" class="text-muted mt-3 mb-0">
-                                        Belum ada tanda tangan tersimpan
-                                    </p>
+                            @if (Auth::user()->jabatan != 'operator')
+                                <div class="col-md-6 text-center">
+                                    <label class="form-label fw-semibold">Tanda Tangan Saat Ini</label>
+                                    <div class="border rounded p-3 bg-light">
+                                        <img id="currentSignature" src="" alt="Tanda Tangan Saat Ini"
+                                            style="max-width: 200px; max-height: 200px; display: none;"
+                                            class="img-thumbnail shadow-sm img-thumbnail">
+                                        <p id="noSignatureText" class="text-muted mt-3 mb-0">
+                                            Belum ada tanda tangan tersimpan
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
 
                     </div>

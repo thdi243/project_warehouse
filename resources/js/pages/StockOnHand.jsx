@@ -196,7 +196,7 @@ const StockOnHandTable = () => {
                                     <TableHead>Nama Barang</TableHead>
                                     <TableHead>UoM</TableHead>
                                     <TableHead>Stock</TableHead>
-                                    <TableHead>Last Update</TableHead>
+                                    <TableHead>Last Updated</TableHead>
                                 </TableRow>
                             </TableHeader>
 
@@ -234,7 +234,13 @@ const StockOnHandTable = () => {
                                                 {item.barang?.uom}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="info">
+                                                <Badge
+                                                    variant={
+                                                        item.qty_soh > 0
+                                                            ? "info"
+                                                            : "soft_destructive"
+                                                    }
+                                                >
                                                     {item.qty_soh}
                                                 </Badge>
                                             </TableCell>

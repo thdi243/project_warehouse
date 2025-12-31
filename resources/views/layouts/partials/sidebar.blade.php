@@ -150,16 +150,16 @@
                                                 Stock Manage </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a href="{{ route('stock.move.index') }}"
-                                                class="nav-link {{ request()->is('stock/stock_move/*') ? 'active' : '' }}"
-                                                data-key="t-input-mst_brg_wfg">
-                                                <i class="mdi mdi-swap-horizontal"></i>Stock Move</a>
-                                        </li>
-                                        <li class="nav-item">
                                             <a href="{{ route('stock.pr.index') }}"
                                                 class="nav-link {{ request()->is('purchase-requesition/*') ? 'active' : '' }}"
                                                 data-key="t-input-mst_brg_wfg">
                                                 <i class="mdi mdi-note-plus"></i>Purchase Requesition</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a href="{{ route('stock.move.index') }}"
+                                                class="nav-link {{ request()->is('stock/stock_move/*') ? 'active' : '' }}"
+                                                data-key="t-input-mst_brg_wfg">
+                                                <i class="mdi mdi-swap-horizontal"></i>Stock Move</a>
                                         </li>
                                     </ul>
                                 </div>

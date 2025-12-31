@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('department');
             $table->string('jenis')->nullable();
             $table->string('detail_jenis')->nullable();
+            $table->string('no_io')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->timestamps();

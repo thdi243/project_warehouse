@@ -4,6 +4,7 @@ namespace App\Models\Wsp\purchase_requesition;
 
 use App\Models\Wsp\BarangModel;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Wsp\stock_manage\StockOnHandWspModel;
 
 class WspPurchaseRequesitionItemsModel extends Model
 {
@@ -19,5 +20,11 @@ class WspPurchaseRequesitionItemsModel extends Model
     public function barang()
     {
         return $this->belongsTo(BarangModel::class);
+    }
+
+    public function latestStock()
+    {
+        return $this->hasOne(StockOnHandWspModel::class, 'barang_id', 'barang_id')
+            ->latest('last_update');
     }
 }

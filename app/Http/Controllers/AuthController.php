@@ -59,10 +59,15 @@ class AuthController extends Controller
 
             // $redirectUrl = ;
 
+            $intended = session('url.intended', $this->redirectUser($user));
+
+            // Hapus dari session biar tidak dipakai lagi
+            session()->forget('url.intended');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Login berhasil',
-                'redirect' => $this->redirectUser($user),
+                'redirect' => $intended,
             ]);
         }
 

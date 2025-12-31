@@ -17,27 +17,17 @@ class StockOnHandController extends Controller
     public function getDataSOH()
     {
         try {
-            // Hari ini (format YYYY-MM-DD)
-            $today = now()->toDateString();
+            $latestPerBarang = StockOnHandWspModel::select('barang_id')
+                ->selectRaw('MAX(last_update) as last_update')
+                ->groupBy('barang_id');
 
-            // Cek apakah ada data untuk hari ini
-            $todayDataExists = StockOnHandWspModel::whereDate('last_update', $today)->exists();
-
-            if ($todayDataExists) {
-                // Ambil data per hari ini
-                $data = StockOnHandWspModel::with(['barang:id,mid_barang,nama_barang,uom'])
-                    ->whereDate('last_update', $today)
-                    ->orderBy('last_update', 'desc')
-                    ->get();
-            } else {
-                // Jika tidak ada → ambil last_update terbaru
-                $latestDate = StockOnHandWspModel::max('last_update');
-
-                $data = StockOnHandWspModel::with(['barang:id,mid_barang,nama_barang,uom'])
-                    ->where('last_update', $latestDate)
-                    ->orderBy('last_update', 'desc')
-                    ->get();
-            }
+            $data = StockOnHandWspModel::with(['barang:id,mid_barang,nama_barang,uom'])
+                ->joinSub($latestPerBarang, 'latest', function ($join) {
+                    $join->on('wsp_stock_on_hand.barang_id', '=', 'latest.barang_id')
+                        ->on('wsp_stock_on_hand.last_update', '=', 'latest.last_update');
+                })
+                ->orderBy('wsp_stock_on_hand.last_update', 'desc')
+                ->get();
 
             return response()->json([
                 'success' => true,
@@ -100,6 +90,18 @@ class StockOnHandController extends Controller
                 ], 404);
             }
 
+            // Cek apakah data hari ini sudah ada
+            $existsToday = StockOnHandWspModel::where('barang_id', $barang->id)
+                ->whereDate('last_update', now())
+                ->exists();
+
+            if ($existsToday) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Data Stock On Hand untuk barang ini hari ini sudah ada.',
+                ], 422);
+            }
+
             $qty_soh =
                 ($request->unrest ?? 0) +
                 ($request->qual_insp ?? 0) +
@@ -107,16 +109,16 @@ class StockOnHandController extends Controller
                 ($request->transf ?? 0);
 
             // Simpan data baru
-            $soh = new StockOnHandWspModel();
-            $soh->barang_id = $barang->id;
-            $soh->qty_soh = $qty_soh;
-            $soh->unrest = $request->unrest ?? 0;
-            $soh->qual_insp = $request->qual_insp ?? 0;
-            $soh->blocked = $request->blocked ?? 0;
-            $soh->transf = $request->transf ?? 0;
-            $soh->last_update = now();
-            $soh->created_by = Auth::id() ?? null;
-            $soh->save();
+            $soh = StockOnHandWspModel::create([
+                'barang_id'   => $barang->id,
+                'qty_soh'     => $qty_soh,
+                'unrest'      => $request->unrest ?? 0,
+                'qual_insp'   => $request->qual_insp ?? 0,
+                'blocked'     => $request->blocked ?? 0,
+                'transf'      => $request->transf ?? 0,
+                'last_update' => now(),
+                'created_by'  => Auth::id() ?? 1,
+            ]);
 
             return response()->json([
                 'status' => 'success',
@@ -193,15 +195,16 @@ class StockOnHandController extends Controller
                 ($request->transf ?? 0);
 
             // Update data
-            $soh->barang_id = $barang->id;
-            $soh->qty_soh = $qty_soh;
-            $soh->unrest = $request->unrest ?? 0;
-            $soh->qual_insp = $request->qual_insp ?? 0;
-            $soh->blocked = $request->blocked ?? 0;
-            $soh->transf = $request->transf ?? 0;
-            $soh->last_update = now();
-            $soh->created_by = Auth::id() ?? null;
-            $soh->save();
+            $soh->update([
+                'barang_id'   => $barang->id,
+                'qty_soh'     => $qty_soh,
+                'unrest'      => $request->unrest ?? 0,
+                'qual_insp'   => $request->qual_insp ?? 0,
+                'blocked'     => $request->blocked ?? 0,
+                'transf'      => $request->transf ?? 0,
+                'last_update' => now(),
+                'created_by'  => Auth::id() ?? 1,
+            ]);
 
             return response()->json([
                 'status' => 'success',
