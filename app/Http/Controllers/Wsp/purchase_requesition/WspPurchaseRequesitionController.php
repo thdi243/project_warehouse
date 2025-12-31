@@ -234,41 +234,37 @@ class WspPurchaseRequesitionController extends Controller
     public function searchSOH(Request $request)
     {
         $keyword = $request->keyword;
-        $currentUserId = Auth::id();
-        $currentSessionId = $request->header('X-Session-Id'); // kirim dari frontend
-        $today = now()->toDateString();
+        $currentSessionId = $request->header('X-Session-Id');
 
-        // Cek apakah ada data hari ini
-        $todayDataExists = StockOnHandWspModel::whereDate('last_update', $today)->exists();
+        // Subquery untuk mendapatkan last_update terbaru per barang
+        $latestPerBarang = StockOnHandWspModel::select('barang_id')
+            ->selectRaw('MAX(last_update) as last_update')
+            ->groupBy('barang_id');
 
-        // Tentukan query dasar
+        // Query dasar dengan join ke subquery latest
         $query = StockOnHandWspModel::with(['barang:id,mid_barang,nama_barang,uom'])
+            ->joinSub($latestPerBarang, 'latest', function ($join) {
+                $join->on('wsp_stock_on_hand.barang_id', '=', 'latest.barang_id')
+                    ->on('wsp_stock_on_hand.last_update', '=', 'latest.last_update');
+            })
             ->whereHas('barang', function ($q) use ($keyword) {
                 $q->where('mid_barang', 'LIKE', "%{$keyword}%")
                     ->orWhere('nama_barang', 'LIKE', "%{$keyword}%");
             });
 
-        if ($todayDataExists) {
-            $query->whereDate('last_update', $today);
-        } else {
-            $latestDate = StockOnHandWspModel::max('last_update');
-            $query->where('last_update', $latestDate);
-        }
-
         $data = $query
-            ->orderBy('last_update', 'desc')
+            ->orderBy('wsp_stock_on_hand.last_update', 'desc')
             ->limit(10)
             ->get()
             ->map(function ($item) use ($currentSessionId) {
                 $mid = $item->barang->mid_barang;
 
-                // Cek apakah ada ACTIVE reservation dari user LAIN
+                // Cek reservasi aktif
                 $activeReservations = WspStockReservations::where('mid_barang', $mid)
                     ->where('status', 'booked')
                     ->where('expired_at', '>', now())
                     ->get();
 
-                // Pisahkan antara reservasi user ini vs user lain
                 $otherUsersReservations = $activeReservations->where('session_id', '!=', $currentSessionId);
                 $myReservations = $activeReservations->where('session_id', '=', $currentSessionId);
 
@@ -276,17 +272,9 @@ class WspPurchaseRequesitionController extends Controller
                 $reservedByMe = $myReservations->sum('qty');
                 $totalReserved = $reservedByOthers + $reservedByMe;
 
-                $hasStock = $item->qty_soh > 0;
-                $hasActiveReservation = $activeReservations->count() > 0;
-
-                $isBeingBooked = $hasActiveReservation;
-
-                // Informasi saja (untuk badge / tooltip)
-                $availableQty = $item->qty_soh - $totalReserved;
-                if ($availableQty < 0) $availableQty = 0;
-
-                // LOGIKA FINAL
-                $isAvailable = $hasStock && !$hasActiveReservation;
+                $availableQty = max(0, $item->qty_soh - $totalReserved);
+                $isBeingBooked = $activeReservations->count() > 0;
+                $isAvailable = $item->qty_soh > 0 && !$isBeingBooked;
 
                 return [
                     'id' => $item->id,
@@ -299,8 +287,6 @@ class WspPurchaseRequesitionController extends Controller
                     'is_being_booked' => $isBeingBooked,
                     'is_available' => $isAvailable,
                     'last_update' => $item->last_update,
-
-                    // Info untuk ditampilkan
                     'booking_info' => $this->getBookingInfo(
                         $isBeingBooked,
                         $reservedByOthers,
