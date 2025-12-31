@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Mail\SendWfgSopReportMail;
+use App\Models\NotificationsModel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
@@ -1370,7 +1371,12 @@ class StockOpnameWfgController extends Controller
     {
         $tanggal = $request->input('tanggal'); // ambil dari query param
 
-        $query = WfgSopDetailModel::with('barang:id,mid_barang,nama_barang,qty_box')
+        $query = WfgSopDetailModel::with([
+            'barang:id,mid_barang,nama_barang,qty_box',
+            'sop.summaries' => function ($query) use ($barangId) {
+                $query->where('barang_id', $barangId);
+            }
+        ])
             ->where('barang_id', $barangId)
             ->whereHas('sop', function ($q) use ($tanggal) {
                 if ($tanggal) {
@@ -1700,10 +1706,12 @@ class StockOpnameWfgController extends Controller
             'items.*.qty_full' => 'required|numeric',
             'items.*.qty_receh' => 'required|numeric',
             'items.*.tanggal' => 'required|date',
+            'note'           => 'nullable|string|max:1000',
         ]);
 
         try {
             DB::beginTransaction();
+            $note = $validated['note'];
             foreach ($validated['items'] as $item) {
                 $detail = WfgSopDetailModel::with(['barang', 'sop'])
                     ->where('id', $item['id'])
@@ -1763,6 +1771,7 @@ class StockOpnameWfgController extends Controller
                     } else {
                         $summary->status = 'kurang';
                     }
+                    $summary->keterangan = $note;
                     $summary->save();
                 }
             }
@@ -1989,8 +1998,8 @@ class StockOpnameWfgController extends Controller
             // Helper function untuk ambil path tanda tangan user
             $getSignaturePath = function ($user, $status = null) {
 
-                $dummyApproved = public_path('storage/images/ttd/approved_sticker.png');
-                $dummyRejected = public_path('storage/images/ttd/rejected_sticker.png');
+                $dummyApproved = public_path('assets/images/ttd/approved_sticker.png');
+                $dummyRejected = public_path('assets/images/ttd/rejected_sticker.png');
 
                 // selain approved & rejected → kosong
                 if (!in_array($status, ['approved', 'rejected'])) {
@@ -2332,25 +2341,47 @@ class StockOpnameWfgController extends Controller
             ]);
 
             // Foreman & supervisor
-            $approvers = [$request->foreman_id, $request->supervisor_id];
+            $approverIds = array_unique([$request->foreman_id, $request->supervisor_id]);
 
-            foreach ($approvers as $userId) {
-                if ($userId == $user->id) continue;
+            foreach ($approverIds as $approverId) {
+                if ($approverId == $user->id) continue; // skip kalau sama dengan pengirim
 
                 WfgSopApprovalModel::updateOrCreate([
-                    'sop_id' => $sop->id,
-                    'approver_id' => $userId,
+                    'sop_id'      => $sop->id,
+                    'approver_id' => $approverId,
                 ], [
-                    'status' => 'pending',
-                    'action_at' => null,
-                    'action_by' => null,
+                    'status'     => 'pending',
+                    'action_at'  => null,
+                    'action_by'  => null,
+                    'catatan'    => null,
                 ]);
             }
 
-            // Update status SOP
-            $sop->update([
-                'status' => 'pending'
-            ]);
+            $sop->update(['status' => 'pending']);
+
+            $title   = 'Approval SO WFG';
+            $message = 'SO ' . $sop->principal . ' tanggal ' . $sop->tgl_opname . ' menunggu persetujuan Anda.';
+            $url     = route('wfg.stock_opname.report') . '?tanggal=' . $sop->tgl_opname .
+                '&principal=' . urlencode($sop->principal ?? '');
+
+            foreach ($approverIds as $approverId) {
+                if ($approverId == $user->id) continue; // jangan kirim ke diri sendiri
+
+                // Cek apakah notifikasi dengan URL sama sudah ada (hindari duplikat)
+                $existingNotif = NotificationsModel::where('user_id', $approverId)
+                    ->where('url', $url)
+                    ->first();
+
+                if (!$existingNotif) {
+                    NotificationsModel::create([
+                        'user_id'   => $approverId,
+                        'title'     => $title,
+                        'message'   => $message,
+                        'url'       => $url,
+                        'is_read'   => false,
+                    ]);
+                }
+            }
 
             DB::commit();
 

@@ -71,33 +71,33 @@ class NotificationController extends Controller
 
     private function getSopApprovalNotification($userId)
     {
-        $approvals = WfgSopApprovalModel::with(['sop'])
-            ->where('approver_id', $userId)
-            ->whereIn('status', ['pending'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // $approvals = WfgSopApprovalModel::with(['sop'])
+        //     ->where('approver_id', $userId)
+        //     ->whereIn('status', ['pending'])
+        //     ->orderBy('created_at', 'desc')
+        //     ->get();
 
-        foreach ($approvals as $a) {
+        // foreach ($approvals as $a) {
 
-            $title = 'Approval SO WFG';
-            $message = 'SO' . $a->sop->principal . 'tanggal ' . $a->sop->tgl_opname . ' menunggu persetujuan Anda.';
-            $url = route('wfg.stock_opname.report') . '?tanggal=' . $a->sop->tgl_opname .
-                '&principal=' . urlencode($a->sop->principal ?? '');
+        //     $title = 'Approval SO WFG';
+        //     $message = 'SO' . ' ' . $a->sop->principal . ' ' . 'tanggal ' . $a->sop->tgl_opname . ' menunggu persetujuan Anda.';
+        //     $url = route('wfg.stock_opname.report') . '?tanggal=' . $a->sop->tgl_opname .
+        //         '&principal=' . urlencode($a->sop->principal ?? '');
 
-            $existing = NotificationsModel::where('user_id', $userId)
-                ->where('url', $url)
-                ->first();
+        //     $existing = NotificationsModel::where('user_id', $userId)
+        //         ->where('url', $url)
+        //         ->first();
 
-            if (!$existing) {
-                NotificationsModel::create([
-                    'user_id' => $userId,
-                    'title' => $title,
-                    'message' => $message,
-                    'url' => $url,
-                    'is_read' => false,
-                ]);
-            }
-        }
+        //     if (!$existing) {
+        //         NotificationsModel::create([
+        //             'user_id' => $userId,
+        //             'title' => $title,
+        //             'message' => $message,
+        //             'url' => $url,
+        //             'is_read' => false,
+        //         ]);
+        //     }
+        // }
 
         // 4) Ambil semua notifikasi milik user ini
         $notifications = NotificationsModel::where('user_id', $userId)

@@ -218,7 +218,7 @@ class WarehouseController extends Controller
 
                 if (!$sohExists) {
                     return redirect()->route('wfg.stock_opname.soh')
-                        ->with('error', "Data Stock On Hand (SOH) untuk principal <strong>{$userPrincipal}</strong> pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
+                        ->with('error', "Data Stock On Hand (SOH) untuk principal {$userPrincipal} pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
                 }
             }
         } else {

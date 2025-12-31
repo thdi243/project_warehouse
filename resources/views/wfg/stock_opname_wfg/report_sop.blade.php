@@ -1087,7 +1087,8 @@
                         if (res.status === 'success') {
                             Swal.fire('Sukses', res.message, 'success');
                             $('#approvalModal').modal('hide');
-                            location.reload();
+                            // location.reload();
+                            loadReportData(currentPrincipal, currentSearch);
                             // loadReportData(currentPrincipal);
                         }
 
@@ -1207,12 +1208,15 @@
                     return;
                 }
 
+                const note = $('#editModal .temp_note').val()?.trim() || null;
+
                 $.ajax({
                     url: "{{ route('wfg.stock_opname.edit.update') }}",
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
                         items: items,
+                        note: note,
                         tanggal: tanggal // bisa dikirim global juga untuk jaga-jaga
                     },
                     success: function(res) {
@@ -1286,11 +1290,10 @@
                 },
                 success: function(res) {
                     if (res.status === 'success') {
-                        const items = res.data; // array
+                        const items = res.data;
                         let html = '';
 
                         items.forEach(item => {
-                            // Safety check untuk tanggal
                             const updatedAt = item.updated_at ? item.updated_at.replace(' ', 'T') :
                                 new Date();
                             const dateObj = new Date(updatedAt);
@@ -1303,11 +1306,15 @@
                             };
                             const formattedDate = dateObj.toLocaleString('id-ID', options);
 
-                            // Format angka tanpa .00
                             const formatQty = (val) => {
                                 if (val == null) return 0;
                                 return parseFloat(val) % 1 === 0 ? parseInt(val) : parseFloat(val);
                             };
+
+                            const summary = item.sop.summaries && item.sop.summaries.length > 0 ?
+                                item.sop.summaries[0] :
+                                null;
+                            const noteText = summary && summary.keterangan ? summary.keterangan : '';
 
                             html += `
                                 <div class="mb-3 border p-2 rounded temp-item" data-tempid="${item.id}">
@@ -1319,6 +1326,17 @@
                                     <input type="number" class="form-control qty_receh mb-2" value="${formatQty(item.qty_receh)}">
                                     <button type="button" class="btn btn-danger btn-sm btn-delete-edit mt-1">
                                         <i class="mdi mdi-delete"></i> Hapus
+                                    </button>
+                                </div>
+                            `;
+
+                            html += `
+                                <hr>
+                                <div class="mb-3 border border-info p-2 rounded temp-note" data-barangid="${item.barang_id}">
+                                    <label>Catatan</label>
+                                    <textarea class="form-control temp_note bg-light" rows="3" placeholder="Belum ada catatan">${noteText}</textarea>
+                                    <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1" data-type="note">
+                                        <i class="mdi mdi-delete"></i> Hapus Catatan
                                     </button>
                                 </div>
                             `;

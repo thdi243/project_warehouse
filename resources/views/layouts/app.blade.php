@@ -259,53 +259,57 @@
 
                             notifList.empty();
 
-                            // ✔ Jika tidak ada notif
+                            // Jika tidak ada notif
                             if (response.length === 0) {
                                 notifList.html(
                                     '<p class="text-center text-muted py-3 mb-0">Tidak ada notifikasi</p>'
-                                );
+                                    );
                                 notifBadge.hide();
                                 return;
                             }
 
-                            // ✔ Hitung unread
-                            const unread = response.filter(n => !n.is_read).length;
-                            unread > 0 ? notifBadge.text(unread).show() : notifBadge.hide();
-
-                            if (showToast && unread) {
-                                const newestId = response[0].id;
-
-                                if (lastNotificationId !== newestId) {
-                                    toastr.info(response[0].message, response[0].title);
-                                }
-
-                                lastNotificationId = newestId;
+                            // Hitung unread
+                            const unreadCount = response.filter(n => !n.is_read).length;
+                            if (unreadCount > 0) {
+                                notifBadge.text(unreadCount).show();
+                            } else {
+                                notifBadge.hide();
                             }
 
+                            // === PERBAIKAN TOAST DI SINI ===
+                            if (showToast && unreadCount > 0) {
+                                // Cari notif terbaru yang BELUM dibaca
+                                const newestUnread = response.find(n => !n.is_read);
 
-                            // ✔ Render tiap item
+                                if (newestUnread && newestUnread.id !== lastNotificationId) {
+                                    toastr.info(newestUnread.message, newestUnread.title);
+                                    lastNotificationId = newestUnread
+                                    .id; // update ID terakhir yang ditampilkan toast
+                                }
+                            }
+                            // ==================================
+
+                            // Render semua notif
                             response.forEach(n => {
                                 const clone = template.clone();
 
                                 clone.attr('data-id', n.id);
-                                clone.attr('data-url', n
-                                    .url); // penting! biar click handler konsisten
+                                clone.attr('data-url', n.url);
 
-                                // isi data
                                 clone.find('.notif-title').text(n.title);
                                 clone.find('.notif-message').text(n.message);
                                 clone.find('.notif-time').text(n.created_at);
 
-                                // icon
                                 const icon = clone.find('.notif-icon');
                                 if (n.is_read) {
-                                    icon.addClass('bx bx-check-circle text-success');
+                                    icon.removeClass().addClass('bx bx-check-circle text-success');
+                                    clone.removeClass('bg-white fw-semibold').addClass(
+                                        'bg-light text-muted');
                                 } else {
-                                    icon.addClass('bx bx-bell text-warning');
+                                    icon.removeClass().addClass('bx bx-bell text-warning');
+                                    clone.removeClass('bg-light text-muted').addClass(
+                                        'bg-white fw-semibold');
                                 }
-
-                                clone.toggleClass('bg-light text-muted', n.is_read);
-                                clone.toggleClass('bg-white fw-semibold', !n.is_read);
 
                                 notifList.append(clone);
                             });

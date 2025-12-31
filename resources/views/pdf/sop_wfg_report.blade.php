@@ -200,13 +200,32 @@
                         </td>
                         <td>{{ $dt->barang->uom }}</td>
                         <td style="padding-right: 5px;">
-                            {{ rtrim(rtrim($dt->qty_sistem ?? 0, '0'), '.') }}
+                            @php
+                                $val = $dt->qty_sistem ?? 0;
+                                $formatted = number_format($val, 2, ',', '.');
+                                $clean = preg_replace('/,00$/', '', $formatted);
+                            @endphp
+                            {{ $clean }}
+                            {{-- {{ number_format($dt->qty_sistem ?? 0, 2, ',', '.') }} --}}
+                            {{-- {{ rtrim(rtrim($dt->qty_sistem ?? 0, '0'), '.') }} --}}
                         </td>
                         <td style="padding-right: 5px;">
-                            {{ rtrim(rtrim($dt->qty_fisik ?? 0, '0'), '.') }}
+                            @php
+                                $val = $dt->qty_fisik ?? 0;
+                                $formatted = number_format($val, 2, ',', '.');
+                                $clean = preg_replace('/,00$/', '', $formatted);
+                            @endphp
+                            {{ $clean }}
+                            {{-- {{ number_format($dt->qty_fisik ?? 0, 2, ',', '.') }} --}}
+                            {{-- {{ rtrim(rtrim($dt->qty_fisik ?? 0, '0'), '.') }} --}}
                         </td>
                         <td style="padding-right: 5px;">
-                            {{ rtrim(rtrim($dt->selisih ?? 0, '0'), '.') }}
+                            @php
+                                $val = $dt->selisih ?? 0;
+                                $formatted = number_format($val, 2, ',', '.');
+                                $clean = preg_replace('/,00$/', '', $formatted);
+                            @endphp
+                            {{-- {{ rtrim(rtrim($dt->selisih ?? 0, '0'), '.') }} --}}
                         </td>
                         <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
                             <b>{{ $dt->keterangan }}</b>
