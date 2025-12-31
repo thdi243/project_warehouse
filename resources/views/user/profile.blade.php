@@ -39,6 +39,29 @@
         .info-value {
             font-size: 15px;
         }
+
+        .signature-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .signature-container canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .signature-container {
+            aspect-ratio: 4 / 1;
+        }
+
+        @container (max-width: 768px)
+
+            {
+            .signature-container {
+                aspect-ratio: 3 / 1;
+            }
+        }
     </style>
 @endsection
 
@@ -169,6 +192,9 @@
                                     <select class="form-select" id="editDepartemen" name="editDepartemen" required>
                                         <option value="">Pilih Departemen</option>
                                         <option value="warehouse">Warehouse</option>
+                                        <option value="engineering">Engineering</option>
+                                        <option value="quality_control">Quality Control</option>
+                                        <option value="produksi">Produksi</option>
                                     </select>
                                 </div>
                             </div>
@@ -197,15 +223,52 @@
                             </div>
                         </div>
 
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Tanda Tangan <small
+                                        class="text-muted">(opsional)</small></label>
+
+                                <div class="border rounded p-3 bg-light signature-container">
+                                    <canvas id="signatureCanvas"
+                                        style="border: 1px solid #ccc; border-radius: 4px; background: white; touch-action: none; width: 100%; height: auto;">
+                                    </canvas>
+
+                                    <div class="mt-2">
+                                        <button type="button" id="clearSignature" class="btn btn-sm btn-outline-danger">
+                                            <i class="bx bx-trash"></i> Hapus Tanda Tangan
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <small class="form-text text-muted d-block mt-2">
+                                    Gambar tanda tangan Anda menggunakan mouse atau sentuhan jari
+                                </small>
+
+                                <!-- Hidden input untuk base64 -->
+                                <input type="hidden" name="signature" id="signatureData">
+                            </div>
+                        </div>
+
                         <div class="row mt-3">
                             <!-- Preview Gambar -->
                             <div class="col-md-6 text-center">
-                                <label class="form-label fw-semibold">Preview Gambar</label>
+                                <label class="form-label fw-semibold">Preview Profile</label>
                                 <div>
                                     <img id="imagePreview" src="" alt="Image Preview"
                                         style="max-width: 200px; max-height: 200px; display: none;" class="img-thumbnail">
                                     <img id="currentImage" src="" alt="Current Image"
                                         style="max-width: 200px; max-height: 200px; display: none;" class="img-thumbnail">
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-center">
+                                <label class="form-label fw-semibold">Tanda Tangan Saat Ini</label>
+                                <div class="border rounded p-3 bg-light">
+                                    <img id="currentSignature" src="" alt="Tanda Tangan Saat Ini"
+                                        style="max-width: 200px; max-height: 200px; display: none;"
+                                        class="img-thumbnail shadow-sm img-thumbnail">
+                                    <p id="noSignatureText" class="text-muted mt-3 mb-0">
+                                        Belum ada tanda tangan tersimpan
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -260,6 +323,25 @@
                             $("#imagePreview").hide();
                         }
 
+                        if (user.signature && user.signature.signature) {
+                            let sigPath = "{{ asset('') }}" + user.signature.signature;
+                            console.log('Signature path:', sigPath); // debug
+
+                            $('#currentSignature')
+                                .attr('src', sigPath)
+                                .show()
+                                .on('error', function() {
+                                    $(this).hide();
+                                    $("#noSignatureText").text(
+                                        'Gambar tanda tangan tidak ditemukan').show();
+                                });
+
+                            $("#noSignatureText").hide();
+                        } else {
+                            $('#currentSignature').hide();
+                            $("#noSignatureText").show();
+                        }
+
                         // Reset file input
                         $("#imgEdit").val('');
 
@@ -281,6 +363,8 @@
             $(document).on('click', '.editBtn', function() {
                 let userId = $(this).data('id');
                 editUser(userId);
+                initSignatureCanvas();
+                clearSignature();
             });
 
             // Reset form ketika modal ditutup
@@ -304,6 +388,18 @@
 
             $("#editUserForm").submit(async function(e) {
                 e.preventDefault();
+
+                const rawSignature = document.getElementById('signatureData').value;
+
+                if (rawSignature && rawSignature.trim() !== '') {
+                    const cropped = getCroppedSignature();
+
+                    if (cropped && cropped.trim() !== '') {
+                        document.getElementById('signatureData').value = cropped;
+                    } else {
+                        document.getElementById('signatureData').value = canvas.toDataURL('image/png');
+                    }
+                }
 
                 let id = $("#editId").val();
 
@@ -331,6 +427,13 @@
                     formData.append('image', imageFile);
                 }
 
+                let signatureData = $("#signatureData").val();
+
+                if (signatureData && signatureData.trim() !== '') {
+                    formData.append('signature', signatureData);
+                } else {
+                    formData.append('signature', '');
+                }
 
                 // Laravel membutuhkan method spoofing untuk PUT
                 formData.append('_method', 'PUT');
@@ -394,5 +497,156 @@
                 });
             });
         })
+
+        let canvas, ctx;
+        let canvasWidth = 800;
+        let canvasHeight = 200;
+
+        function initSignatureCanvas() {
+            canvas = document.getElementById('signatureCanvas');
+            ctx = canvas.getContext('2d');
+
+            // Fungsi resize canvas
+            function resizeCanvas() {
+                // Simpan gambar sementara
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                // Set ukuran display sesuai container
+                const container = canvas.parentElement;
+                canvas.width = canvasWidth; // resolusi tinggi tetap
+                canvas.height = canvasHeight;
+
+                // Scale CSS agar pas di container
+                canvas.style.width = '100%';
+                canvas.style.height = 'auto';
+
+                // Kembalikan gambar yang sudah digambar (biar tidak hilang saat resize)
+                ctx.putImageData(imageData, 0, 0);
+
+                // Reset style garis
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2.5;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+            }
+
+            // Resize saat load dan saat window resize
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Clear canvas
+            document.getElementById('clearSignature').addEventListener('click', clearSignature);
+
+            // Drawing events (mouse + touch)
+            let isDrawing = false;
+
+            const startDrawing = (e) => {
+                isDrawing = true;
+                draw(e);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+                ctx.lineTo(x * scaleX, y * scaleY);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x * scaleX, y * scaleY);
+            };
+
+            const stopDrawing = () => {
+                if (isDrawing) {
+                    isDrawing = false;
+                    ctx.beginPath();
+
+                    const fullDataUrl = canvas.toDataURL('image/png');
+                    document.getElementById('signatureData').value = fullDataUrl;
+                }
+            };
+
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing);
+            canvas.addEventListener('touchmove', draw);
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('signatureData').value = '';
+        }
+
+        // Panggil saat modal muncul
+        $('#editUserModal').on('shown.bs.modal', function() {
+            initSignatureCanvas();
+        });
+
+        // Bersihkan saat modal ditutup (opsional)
+        $('#editUserModal').on('hidden.bs.modal', function() {
+            if (canvas) clearSignature();
+        });
+
+        function getCroppedSignature() {
+            if (!canvas || !ctx) return '';
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            let minX = canvas.width;
+            let minY = canvas.height;
+            let maxX = 0;
+            let maxY = 0;
+
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const index = (y * canvas.width + x) * 4;
+                    const alpha = data[index + 3];
+
+                    if (alpha > 10) { // garis hitam pasti alpha = 255
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+
+            // Jika tidak ada pixel terdeteksi
+            if (maxX <= minX || maxY <= minY) {
+                return '';
+            }
+
+            // Padding
+            const padding = 30;
+            minX = Math.max(minX - padding, 0);
+            minY = Math.max(minY - padding, 0);
+            maxX = Math.min(maxX + padding, canvas.width);
+            maxY = Math.min(maxY + padding, canvas.height);
+
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            tempCtx.drawImage(canvas, minX, minY, width, height, 0, 0, width, height);
+
+            return tempCanvas.toDataURL('image/png');
+        }
     </script>
 @endsection

@@ -258,10 +258,11 @@ class UserController extends Controller
                 }
             }
 
-
             // === Update atau buat tanda tangan (jika ada input) ===
             if ($request->filled('signature') && trim($request->signature) !== '') {
                 $signatureData = $request->input('signature');
+
+                // dd($signatureData);
 
                 // Decode base64 image
                 $signature = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
@@ -291,7 +292,6 @@ class UserController extends Controller
                     ]);
                 }
             } elseif ($request->has('signature') && trim($request->signature) === '') {
-                // === Signature dikosongkan → hapus file lama ===
                 if ($user->signature && File::exists(public_path($user->signature->signature))) {
                     File::delete(public_path($user->signature->signature));
                     $user->signature()->delete();

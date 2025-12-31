@@ -217,8 +217,13 @@
 
                                 <div class="mb-3">
                                     <label for="departemen" class="form-label">Departemen</label>
-                                    <input type="text" class="form-control" id="departemen" name="departemen"
-                                        value="warehouse">
+                                    <select class="form-select" id="departemen" name="departemen" required>
+                                        <option value="" disabled selected>Pilih Departemen</option>
+                                        <option value="warehouse">Warehouse</option>
+                                        <option value="engineering">Engineering</option>
+                                        <option value="quality_control">Quality Control</option>
+                                        <option value="produksi">Produksi</option>
+                                    </select>
                                     {{-- <div class="invalid-feedback">Please select a Departemen.</div> --}}
                                 </div>
 
@@ -336,6 +341,9 @@
                                     <select class="form-select" id="editDepartemen" name="editDepartemen" required>
                                         <option value="">Pilih Departemen</option>
                                         <option value="warehouse">Warehouse</option>
+                                        <option value="engineering">Engineering</option>
+                                        <option value="quality_control">Quality Control</option>
+                                        <option value="produksi">Produksi</option>
                                     </select>
                                 </div>
                             </div>
@@ -350,6 +358,9 @@
                                         <option value="warehouse_finish_goods">Warehouse Finish Good</option>
                                         <option value="warehouse_raw_material">Warehouse Raw Material</option>
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
+                                        <option value="engineering">Engineering</option>
+                                        <option value="quality_control">Quality Control</option>
+                                        <option value="produksi">Produksi</option>
                                     </select>
                                 </div>
                             </div>
@@ -811,21 +822,21 @@
                 }
 
                 // Pastikan tanda tangan tidak kosong
-                if (addSignaturePad.isEmpty()) {
-                    Swal.fire('Tanda Tangan Diperlukan', 'Silakan isi tanda tangan terlebih dahulu.',
-                        'warning');
-                    return;
-                }
+                // if (addSignaturePad.isEmpty()) {
+                //     Swal.fire('Tanda Tangan Diperlukan', 'Silakan isi tanda tangan terlebih dahulu.',
+                //         'warning');
+                //     return;
+                // }
 
                 const dataURL = addSignaturePad.toDataURL();
                 const trimmedDataURL = await trimSignature(dataURL);
 
-                if (!trimmedDataURL) {
-                    Swal.fire('Tanda Tangan Kosong', 'Tanda tangan tidak terdeteksi.', 'warning');
-                    return;
-                }
+                // if (!trimmedDataURL) {
+                //     Swal.fire('Tanda Tangan Kosong', 'Tanda tangan tidak terdeteksi.', 'warning');
+                //     return;
+                // }
 
-                // ✅ Siapkan form data
+                // Siapkan form data
                 const formData = new FormData(form);
                 formData.append('signature', trimmedDataURL);
                 formData.append('_token', $('meta[name="csrf-token"]').attr('content'));

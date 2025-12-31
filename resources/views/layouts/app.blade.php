@@ -263,7 +263,7 @@
                             if (response.length === 0) {
                                 notifList.html(
                                     '<p class="text-center text-muted py-3 mb-0">Tidak ada notifikasi</p>'
-                                    );
+                                );
                                 notifBadge.hide();
                                 return;
                             }
@@ -276,18 +276,15 @@
                                 notifBadge.hide();
                             }
 
-                            // === PERBAIKAN TOAST DI SINI ===
                             if (showToast && unreadCount > 0) {
-                                // Cari notif terbaru yang BELUM dibaca
                                 const newestUnread = response.find(n => !n.is_read);
 
                                 if (newestUnread && newestUnread.id !== lastNotificationId) {
                                     toastr.info(newestUnread.message, newestUnread.title);
                                     lastNotificationId = newestUnread
-                                    .id; // update ID terakhir yang ditampilkan toast
+                                        .id;
                                 }
                             }
-                            // ==================================
 
                             // Render semua notif
                             response.forEach(n => {
