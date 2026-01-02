@@ -216,16 +216,15 @@
                                 $clean = preg_replace('/,00$/', '', $formatted);
                             @endphp
                             {{ $clean }}
-                            {{-- {{ number_format($dt->qty_fisik ?? 0, 2, ',', '.') }} --}}
-                            {{-- {{ rtrim(rtrim($dt->qty_fisik ?? 0, '0'), '.') }} --}}
                         </td>
                         <td style="padding-right: 5px;">
                             @php
-                                $val = $dt->selisih ?? 0;
-                                $formatted = number_format($val, 2, ',', '.');
-                                $clean = preg_replace('/,00$/', '', $formatted);
+                                $nilai = floatval($dt->selisih ?? 0);
+                                $formatted = number_format($nilai, 2, ',', '.');
+                                $formatted = rtrim(rtrim($formatted, '0'), ',');
                             @endphp
-                            {{-- {{ rtrim(rtrim($dt->selisih ?? 0, '0'), '.') }} --}}
+
+                            {{ $formatted }}
                         </td>
                         <td style="text-align: left; padding-left: 5px; word-wrap: break-word;">
                             <b>{{ $dt->keterangan }}</b>
