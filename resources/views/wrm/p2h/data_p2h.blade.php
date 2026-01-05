@@ -182,22 +182,22 @@
                 paginatedData.forEach((item, index) => {
                     const shiftKeys = Object.keys(item.shifts).join(', ');
                     $('#p2hTableBody').append(`
-                    <tr>
-                        <td>${item.tanggal}</td>
-                        <td>${item.nomor_unit}</td>
-                        <td>${item.jenis_p2h}</td>
-                        <td>${shiftKeys}</td>
-                        <td>
-                            <button 
-                                class="btn btn-sm btn-primary btn-detail" 
-                                data-index="${start + index}"
-                                data-type="${item.jenis_p2h === 'Pallet Mover' ? 'pallet' : 'forklift'}"
-                            >
-                                Detail
-                            </button>
-                        </td>
-                    </tr>
-                `);
+                        <tr>
+                            <td>${item.tanggal}</td>
+                            <td>${item.nomor_unit}</td>
+                            <td>${item.jenis_p2h}</td>
+                            <td>${shiftKeys}</td>
+                            <td>
+                                <button 
+                                    class="btn btn-sm btn-primary btn-detail" 
+                                    data-index="${start + index}"
+                                    data-type="${item.jenis_p2h === 'Pallet Mover' ? 'pallet' : 'forklift'}"
+                                >
+                                    Detail
+                                </button>
+                            </td>
+                        </tr>
+                    `);
                 });
 
                 renderPagination(data.length, page);
@@ -206,18 +206,102 @@
             // Fungsi render tombol pagination
             function renderPagination(totalItems, currentPage) {
                 const totalPages = Math.ceil(totalItems / rowsPerPage);
+                if (totalPages <= 1) {
+                    $('#pagination').empty();
+                    return;
+                }
+
                 let html = '';
 
-                for (let i = 1; i <= totalPages; i++) {
-                    html += `
-                <button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-primary'} mx-1 page-btn" data-page="${i}">
-                    ${i}
-                </button>
-            `;
+                // Tombol Previous
+                html += `
+                    <button class="btn btn-sm ${currentPage === 1 ? 'btn-secondary disabled' : 'btn-outline-primary'} mx-1 prev-btn" 
+                            ${currentPage === 1 ? 'disabled' : ''} data-page="${currentPage - 1}">
+                        Prev
+                    </button>
+                `;
+
+                const maxVisible = 7; // Ubah angka ini kalau mau lebih/sedikit tombol angka yang keliatan
+                let startPage, endPage;
+
+                if (totalPages <= maxVisible) {
+                    // Kalau total halaman sedikit, tampilkan semua
+                    startPage = 1;
+                    endPage = totalPages;
+                } else {
+                    // Hitung range di sekitar current page
+                    const half = Math.floor(maxVisible / 2);
+                    if (currentPage <= half + 1) {
+                        startPage = 1;
+                        endPage = maxVisible - 1; // sisakan tempat untuk last page
+                    } else if (currentPage >= totalPages - half) {
+                        startPage = totalPages - maxVisible + 2; // sisakan tempat untuk page 1
+                        endPage = totalPages;
+                    } else {
+                        startPage = currentPage - half + 1;
+                        endPage = currentPage + half - 1;
+                    }
                 }
+
+                // Page 1
+                if (startPage > 1) {
+                    html += `
+                        <button class="btn btn-sm ${1 === currentPage ? 'btn-primary' : 'btn-outline-primary'} mx-1 page-btn" data-page="1">
+                            1
+                        </button>
+                    `;
+                    if (startPage > 2) {
+                        html += `<span class="mx-1 align-middle">...</span>`;
+                    }
+                }
+
+                // Halaman tengah
+                for (let i = startPage; i <= endPage; i++) {
+                    html += `
+                        <button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-primary'} mx-1 page-btn" data-page="${i}">
+                            ${i}
+                        </button>
+                    `;
+                }
+
+                // Last page + ellipsis
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        html += `<span class="mx-1 align-middle">...</span>`;
+                    }
+                    html += `
+                        <button class="btn btn-sm ${totalPages === currentPage ? 'btn-primary' : 'btn-outline-primary'} mx-1 page-btn" data-page="${totalPages}">
+                            ${totalPages}
+                        </button>
+                    `;
+                }
+
+                // Tombol Next
+                html += `
+                    <button class="btn btn-sm ${currentPage === totalPages ? 'btn-secondary disabled' : 'btn-outline-primary'} mx-1 next-btn" 
+                            ${currentPage === totalPages ? 'disabled' : ''} data-page="${currentPage + 1}">
+                        Next
+                    </button>
+                `;
 
                 $('#pagination').html(html);
             }
+
+            $('#pagination').on('click', '.page-btn', function() {
+                const page = parseInt($(this).data('page'));
+                renderTable(filteredData || originalData,
+                page); // ganti filteredData sesuai variabel filter kamu
+            });
+
+            $('#pagination').on('click', '.prev-btn:not(.disabled)', function() {
+                const page = parseInt($(this).data('page'));
+                renderTable(filteredData || originalData, page);
+            });
+
+            $('#pagination').on('click', '.next-btn:not(.disabled)', function() {
+                const page = parseInt($(this).data('page'));
+                renderTable(filteredData || originalData, page);
+            });
 
             // Fungsi filter berdasarkan keyword dan tanggal
             function applyFilter() {
@@ -300,14 +384,14 @@
                     });
 
                     html += `
-                    <div class="mb-4">
-                        <h5 class="mb-2">Shift ${shift}</h5>
-                        <p>
-                            <i class="bi bi-person-circle me-1"></i><strong>Operator:</strong> ${detail.operator_name}
-                            <i class="bi bi-clock ms-3 me-1"></i><strong>Jam Input:</strong> ${time} WIB
-                        </p>
-                        <div class="row">
-                    `;
+                        <div class="mb-4">
+                            <h5 class="mb-2">Shift ${shift}</h5>
+                            <p>
+                                <i class="bi bi-person-circle me-1"></i><strong>Operator:</strong> ${detail.operator_name}
+                                <i class="bi bi-clock ms-3 me-1"></i><strong>Jam Input:</strong> ${time} WIB
+                            </p>
+                            <div class="row">
+                        `;
 
                     for (const [key, value] of Object.entries(detail)) {
                         if (['id', 'created_at', 'updated_at', 'jenis_p2h', 'operator_name',
@@ -329,10 +413,10 @@
                         }
 
                         html += `
-                        <div class="col-md-4 mb-2">
-                            <strong>${label}</strong><br>${badge}
-                        </div>
-                    `;
+                            <div class="col-md-4 mb-2">
+                                <strong>${label}</strong><br>${badge}
+                            </div>
+                        `;
                     }
 
                     html += `</div></div>`;
