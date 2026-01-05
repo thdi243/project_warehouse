@@ -2051,7 +2051,7 @@ class StockOpnameWfgController extends Controller
                 'ttd' => $getSignaturePath($operatorApproval?->approver, $operatorApproval?->status),
                 'catatan' => $operatorApproval?->catatan ?? '',
                 'action_at' => $operatorApproval?->action_at
-                    ? \Carbon\Carbon::parse($operatorApproval->action_at)->format('d-m-Y')
+                    ? \Carbon\Carbon::parse($operatorApproval->action_at)
                     : '',
             ];
 
@@ -2063,7 +2063,7 @@ class StockOpnameWfgController extends Controller
                 'ttd' => $getSignaturePath($foremanApproval?->approver, $foremanApproval?->status),
                 'catatan' => $foremanApproval?->catatan ?? '',
                 'action_at' => $foremanApproval?->action_at
-                    ? \Carbon\Carbon::parse($foremanApproval->action_at)->format('d-m-Y')
+                    ? \Carbon\Carbon::parse($foremanApproval->action_at)
                     : '',
             ];
 
@@ -2075,7 +2075,7 @@ class StockOpnameWfgController extends Controller
                 'ttd' => $getSignaturePath($supervisorApproval?->approver, $supervisorApproval?->status),
                 'catatan' => $supervisorApproval?->catatan ?? '',
                 'action_at' => $supervisorApproval?->action_at
-                    ? \Carbon\Carbon::parse($supervisorApproval->action_at)->format('d-m-Y')
+                    ? \Carbon\Carbon::parse($supervisorApproval->action_at)
                     : '',
             ];
 
