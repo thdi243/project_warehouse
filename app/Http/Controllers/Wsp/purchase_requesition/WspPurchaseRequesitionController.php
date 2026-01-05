@@ -442,36 +442,40 @@ class WspPurchaseRequesitionController extends Controller
             ], 422);
         }
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($request) {
             $mid = $request->mid;
             $requestedQty = $request->qty;
             $sessionId = $request->session_id;
 
-            $alreadyBooked = WspStockReservations::where('mid_barang', $mid)
+            // Lock query cek existing booked (ini pencegah race condition utama)
+            $existingBooked = WspStockReservations::where('mid_barang', $mid)
                 ->where('status', 'booked')
                 ->where('expired_at', '>', now())
-                ->exists();
+                ->lockForUpdate()  // <--- LOCK DI SINI, agar request lain tunggu
+                ->exists();  // Atau gunakan ->count() > 0 untuk lebih aman
 
-            if ($alreadyBooked) {
+            if ($existingBooked) {
                 return response()->json([
                     'message' => 'Barang sedang dibooking. Silakan tunggu hingga expired.',
                 ], 423);
             }
 
-            // Cek SOH
+            // Cek barang
             $barang = BarangModel::where('mid_barang', $mid)->first();
             if (!$barang) {
-                DB::rollBack();
-                return response()->json(['message' => 'Barang tidak ditemukan'], 404);
+                throw new \Exception('Barang tidak ditemukan');
             }
 
-            $stock = StockOnHandWspModel::where('barang_id', $barang->id)->first();
+            // Lock stok juga (untuk cek available stock akurat)
+            $stock = StockOnHandWspModel::where('barang_id', $barang->id)
+                ->lockForUpdate()
+                ->first();
+
             if (!$stock) {
-                DB::rollBack();
-                return response()->json(['message' => 'Data stok tidak ditemukan'], 404);
+                throw new \Exception('Data stok tidak ditemukan');
             }
 
+            // Hitung total reserved (fresh setelah lock)
             $totalReserved = WspStockReservations::where('mid_barang', $mid)
                 ->where('status', 'booked')
                 ->where('expired_at', '>', now())
@@ -479,14 +483,11 @@ class WspPurchaseRequesitionController extends Controller
 
             $availableStock = $stock->qty_soh - $totalReserved;
 
-            // if ($availableStock < $requestedQty) {
-            //     DB::rollBack();
-            //     return response()->json([
-            //         'message' => "Stok tidak cukup. Tersedia: {$availableStock}, diminta: {$requestedQty}",
-            //     ], 400);
-            // }
+            if ($availableStock < $requestedQty) {
+                throw new \Exception('Stok tidak cukup. Tersedia: ' . $availableStock);
+            }
 
-            // Buat reservasi (expired dalam 30 menit)
+            // Buat reservasi baru (hanya satu yang bisa sampai sini)
             $reservation = WspStockReservations::create([
                 'mid_barang' => $mid,
                 'qty' => $requestedQty,
@@ -497,24 +498,81 @@ class WspPurchaseRequesitionController extends Controller
                 'expired_at' => now()->addMinutes(15),
             ]);
 
-            DB::commit();
-
             return response()->json([
                 'reservation_id' => $reservation->id,
                 'message' => 'Barang berhasil dibooking',
                 'expires_in_minutes' => 15,
                 'expired_at' => $reservation->expired_at->format('Y-m-d H:i:s'),
             ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Reserve error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return response()->json([
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        }, 5);
+
+
+        // DB::beginTransaction();
+        // try {
+        //     $mid = $request->mid;
+        //     $requestedQty = $request->qty;
+        //     $sessionId = $request->session_id;
+
+        //     $alreadyBooked = WspStockReservations::where('mid_barang', $mid)
+        //         ->where('status', 'booked')
+        //         ->where('expired_at', '>', now())
+        //         ->exists();
+
+        //     if ($alreadyBooked) {
+        //         return response()->json([
+        //             'message' => 'Barang sedang dibooking. Silakan tunggu hingga expired.',
+        //         ], 423);
+        //     }
+
+        //     // Cek SOH
+        //     $barang = BarangModel::where('mid_barang', $mid)->first();
+        //     if (!$barang) {
+        //         DB::rollBack();
+        //         return response()->json(['message' => 'Barang tidak ditemukan'], 404);
+        //     }
+
+        //     $stock = StockOnHandWspModel::where('barang_id', $barang->id)->first();
+        //     if (!$stock) {
+        //         DB::rollBack();
+        //         return response()->json(['message' => 'Data stok tidak ditemukan'], 404);
+        //     }
+
+        //     $totalReserved = WspStockReservations::where('mid_barang', $mid)
+        //         ->where('status', 'booked')
+        //         ->where('expired_at', '>', now())
+        //         ->sum('qty');
+
+        //     $availableStock = $stock->qty_soh - $totalReserved;
+
+        //     // Buat reservasi (expired dalam 30 menit)
+        //     $reservation = WspStockReservations::create([
+        //         'mid_barang' => $mid,
+        //         'qty' => $requestedQty,
+        //         'session_id' => $sessionId,
+        //         'user_id' => Auth::id(),
+        //         'status' => 'booked',
+        //         'reserved_at' => now(),
+        //         'expired_at' => now()->addMinutes(15),
+        //     ]);
+
+        //     DB::commit();
+
+        //     return response()->json([
+        //         'reservation_id' => $reservation->id,
+        //         'message' => 'Barang berhasil dibooking',
+        //         'expires_in_minutes' => 15,
+        //         'expired_at' => $reservation->expired_at->format('Y-m-d H:i:s'),
+        //     ]);
+        // } catch (\Exception $e) {
+        //     DB::rollBack();
+        //     Log::error('Reserve error', [
+        //         'error' => $e->getMessage(),
+        //         'trace' => $e->getTraceAsString(),
+        //     ]);
+        //     return response()->json([
+        //         'message' => $e->getMessage()
+        //     ], 500);
+        // }
     }
 
     public function release($reservationId)
