@@ -422,7 +422,7 @@ class StockOpnameWfgController extends Controller
         $keteranganInput = $request->input('keterangan', []);
         $komentarFinal = $request->input('komentar_final');
 
-        // 🔹 Tentukan principal
+        // Tentukan principal
         if ($user->jabatan === 'operator') {
             $principalFilter = optional($user->principal)->principal ?? null;
             if (empty($principalFilter)) {
@@ -515,9 +515,17 @@ class StockOpnameWfgController extends Controller
 
         // Kalau mode = check → stop di sini
         if ($mode === 'check') {
-            WfgSopStatusModel::query()->update([
-                'mode' => 'check',
-            ]);
+            WfgSopStatusModel::updateOrCreate(
+                [
+                    'tgl_opname' => $tglOpname,
+                    'principal'  => $principalFilter,
+                ],
+                [
+                    'user_id' => $user->id,
+                    'mode'    => 'check',
+                    'status'  => 'started', // atau sesuai logika kamu
+                ]
+            );
 
             $hasilCheck = array_merge($selisihList, $barangBelumOpname);
 
@@ -585,9 +593,16 @@ class StockOpnameWfgController extends Controller
             try {
                 DB::beginTransaction();
 
-                WfgSopStatusModel::query()->update([
-                    'status' => 'finished',
-                ]);
+                WfgSopStatusModel::updateOrCreate(
+                    [
+                        'tgl_opname' => $tglOpname,
+                        'principal'  => $principalFilter,
+                    ],
+                    [
+                        'user_id' => $user->id,
+                        'status'  => 'finished',
+                    ]
+                );
 
                 $sop = WfgSopModel::create([
                     'tgl_opname' => $tglOpname,
