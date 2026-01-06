@@ -13,14 +13,16 @@ class SendWfgSopReportMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $manager;
+    public $sop;
     public $filePath;
     public $tanggal;
     public $principal;
+    public $recipientName;
 
-    public function __construct($manager, $filePath, $tanggal, $principal)
+    public function __construct($sop, $recipientName, $filePath, $tanggal, $principal)
     {
-        $this->manager = $manager;
+        $this->sop = $sop;
+        $this->recipientName = $recipientName;
         $this->filePath = $filePath;
         $this->tanggal = $tanggal;
         $this->principal = $principal;
@@ -30,11 +32,6 @@ class SendWfgSopReportMail extends Mailable
     {
         return $this->subject("SO WFG Report {$this->tanggal} - {$this->principal}")
             ->view('emails.sop_report')
-            ->with([
-                'manager' => $this->manager,
-                'tanggal' => $this->tanggal,
-                'principal' => $this->principal,
-            ])
             ->attach($this->filePath, [
                 'as' => basename($this->filePath),
                 'mime' => 'application/pdf',

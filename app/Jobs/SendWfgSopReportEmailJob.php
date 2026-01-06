@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\User;
 use App\Mail\SendWfgSopReportMail;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
@@ -45,24 +46,41 @@ class SendWfgSopReportEmailJob implements ShouldQueue
     {
         // === Kirim ke approver ===
         foreach ($this->approverEmails as $email) {
+            $user = User::where('email', $email)->first();
+            $recipientName = $user?->nama_lengkap ?? 'Approver';
+
             Mail::to($email)->send(
                 new SendWfgSopReportMail(
-                    $this->sop,
-                    $this->absolutePath,
-                    $this->tanggal,
-                    $this->principal
+                    sop: $this->sop,
+                    recipientName: $recipientName,
+                    filePath: $this->absolutePath,
+                    tanggal: $this->tanggal,
+                    principal: $this->principal
+
+                    // $this->sop,
+                    // $this->absolutePath,
+                    // $this->tanggal,
+                    // $this->principal
                 )
             );
         }
 
         // === Kirim ke dept_head ===
         if ($this->managerEmail) {
+            $managerUser = User::where('email', $this->managerEmail)->first();
+            $managerName = $managerUser?->nama_lengkap ?? 'Manager';
+
             Mail::to($this->managerEmail)->send(
                 new SendWfgSopReportMail(
-                    $this->sop,
-                    $this->absolutePath,
-                    $this->tanggal,
-                    $this->principal
+                    sop: $this->sop,
+                    recipientName: $managerName,
+                    filePath: $this->absolutePath,
+                    tanggal: $this->tanggal,
+                    principal: $this->principal
+                    // $this->sop,
+                    // $this->absolutePath,
+                    // $this->tanggal,
+                    // $this->principal
                 )
             );
         }

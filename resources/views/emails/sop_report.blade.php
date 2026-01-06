@@ -105,7 +105,7 @@
             <!-- Content -->
             <div class="content">
                 <div class="greeting">
-                    Halo <strong>{{ $manager->username }}</strong>,
+                    Halo <strong>{{ $recipientName }}</strong>,
                 </div>
 
                 <p>Terlampir laporan <strong>SO WFG</strong> tanggal <strong>{{ $tanggal }}</strong> untuk
