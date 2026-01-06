@@ -1292,6 +1292,8 @@
                     if (res.status === 'success') {
                         const items = res.data;
                         let html = '';
+                        const summary = items.sop?.summaries?.length > 0 ? items.sop.summaries[0] : null;
+                        const noteText = summary?.keterangan?.trim() || '';
 
                         items.forEach(item => {
                             const updatedAt = item.updated_at ? item.updated_at.replace(' ', 'T') :
@@ -1311,11 +1313,6 @@
                                 return parseFloat(val) % 1 === 0 ? parseInt(val) : parseFloat(val);
                             };
 
-                            const summary = item.sop.summaries && item.sop.summaries.length > 0 ?
-                                item.sop.summaries[0] :
-                                null;
-                            const noteText = summary && summary.keterangan ? summary.keterangan : '';
-
                             html += `
                                 <div class="mb-3 border p-2 rounded temp-item" data-tempid="${item.id}">
                                     <input type="hidden" class="temp_id" value="${item.id}">
@@ -1330,17 +1327,18 @@
                                 </div>
                             `;
 
-                            html += `
-                                <hr>
-                                <div class="mb-3 border border-info p-2 rounded temp-note" data-barangid="${item.barang_id}">
-                                    <label>Catatan</label>
-                                    <textarea class="form-control temp_note bg-light" rows="3" placeholder="Belum ada catatan">${noteText}</textarea>
-                                    <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1" data-type="note">
-                                        <i class="mdi mdi-delete"></i> Hapus Catatan
-                                    </button>
-                                </div>
-                            `;
                         });
+
+                        html += `
+                            <hr>
+                            <div class="mb-3 border border-info p-2 rounded temp-note" data-barangid="${items.barang_id}">
+                                <label>Catatan</label>
+                                <textarea class="form-control temp_note bg-light" rows="3" placeholder="Belum ada catatan">${noteText}</textarea>
+                                <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1" data-type="note">
+                                    <i class="mdi mdi-delete"></i> Hapus Catatan
+                                </button>
+                            </div>
+                        `;
 
                         $('#editModal .modal-body').html(html);
                         $('#editModal').modal('show');
