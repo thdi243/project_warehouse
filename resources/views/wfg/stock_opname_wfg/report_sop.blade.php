@@ -693,7 +693,7 @@
                             <td class="text-end">${formatNumber(qty_sistem)}</td>
                             <td class="text-end">${formatNumber(qty_fisik)}</td>
                             <td class="text-center">${statusBadge}</td>
-                            <td class="text-start">${keterangan}</td>
+                            <td class="text-start text-wrap">${keterangan}</td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center align-items-center gap-2 flex-nowrap">
                                     <button class="btn btn-outline-primary btn-sm"  onclick="showDetail(${summary.id})">
