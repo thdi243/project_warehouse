@@ -995,7 +995,7 @@ class StockOpnameWfgController extends Controller
     public function getData(Request $request)
     {
         $user = Auth::user();
-        $userId = Auth::user()->id;
+        $userId = $user->id;
         $searchTerm = $request->input('search');
         $principalFilter = $request->input('principal');
         $perPage = 150;
@@ -1008,6 +1008,8 @@ class StockOpnameWfgController extends Controller
 
         $userPrincipal = $user->principal?->principal;
 
+
+
         // 🔹 Subquery: total summary per SOH (hari ini)
         $tempSummarySubquery = DB::table('wfg_sop_temp')
             ->select(
@@ -1017,7 +1019,7 @@ class StockOpnameWfgController extends Controller
             ->whereDate('tgl_opname', $today)
             ->groupBy('soh_id');
 
-        $mode = WfgSopStatusModel::getModeByUser($userId, $userPrincipal);
+        $mode = WfgSopStatusModel::getModeByUser($userId, $userPrincipal, $today);
 
         $selisihSelect = $mode === 'check'
             ? DB::raw("(COALESCE(temp_sum.total_summary, 0) - COALESCE(wfg_soh.qty_soh, 0)) AS selisih")

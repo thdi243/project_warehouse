@@ -28,10 +28,13 @@ class WfgSopStatusModel extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public static function getModeByUser($userId, $principal)
+    public static function getModeByUser($userId, $principal, $tglOpname = null)
     {
+        $tglOpname = $tglOpname ?? now()->toDateString();
+
         return self::where('user_id', $userId)
             ->where('principal', $principal)
+            ->whereDate('tgl_opname', $tglOpname)  // 🔹 Tambahkan ini!
             ->value('mode') ?? 'normal';
     }
 }
