@@ -1933,6 +1933,25 @@ class StockOpnameWfgController extends Controller
     }
 
     // Export SOP Report dengan pengecekan approval
+    private function bulanRomawi($bulan)
+    {
+        $romawi = [
+            1 => 'I',
+            2 => 'II',
+            3 => 'III',
+            4 => 'IV',
+            5 => 'V',
+            6 => 'VI',
+            7 => 'VII',
+            8 => 'VIII',
+            9 => 'IX',
+            10 => 'X',
+            11 => 'XI',
+            12 => 'XII'
+        ];
+        return $romawi[intval($bulan)] ?? '';
+    }
+
     public function exportPdfSOPWFG(Request $request, $asContent = false)
     {
         $request->validate([
@@ -2120,25 +2139,6 @@ class StockOpnameWfgController extends Controller
                 $logoWidth = 170;
             }
 
-            function bulanRomawi($bulan)
-            {
-                $romawi = [
-                    1 => 'I',
-                    2 => 'II',
-                    3 => 'III',
-                    4 => 'IV',
-                    5 => 'V',
-                    6 => 'VI',
-                    7 => 'VII',
-                    8 => 'VIII',
-                    9 => 'IX',
-                    10 => 'X',
-                    11 => 'XI',
-                    12 => 'XII'
-                ];
-                return $romawi[intval($bulan)] ?? '';
-            }
-
             $tanggalCarbon = \Carbon\Carbon::parse($tanggal);
 
             // 1. Hitung nomor urut berdasarkan jumlah data di WfgSopModel
@@ -2151,7 +2151,7 @@ class StockOpnameWfgController extends Controller
             $nomor = str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
             $prefix = $activePrincipal === 'BAS' ? 'WFG' : ($activePrincipal === 'SMU' ? 'SMU' : 'WFG');
 
-            $bulanRomawi = bulanRomawi($tanggalCarbon->month);
+            $bulanRomawi = $this->bulanRomawi($tanggalCarbon->month);
             $tahun = $tanggalCarbon->year;
 
             // 4. Nomor dokumen final
