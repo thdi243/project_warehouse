@@ -181,6 +181,10 @@
 
                 paginatedData.forEach((item, index) => {
                     const shiftKeys = Object.keys(item.shifts).join(', ');
+
+                    // Gunakan index di filteredData (bukan index global)
+                    const filteredIndex = start + index;
+
                     $('#p2hTableBody').append(`
                         <tr>
                             <td>${item.tanggal}</td>
@@ -190,7 +194,7 @@
                             <td>
                                 <button 
                                     class="btn btn-sm btn-primary btn-detail" 
-                                    data-index="${start + index}"
+                                    data-index="${filteredIndex}"
                                     data-type="${item.jenis_p2h === 'Pallet Mover' ? 'pallet' : 'forklift'}"
                                 >
                                     Detail
@@ -287,20 +291,19 @@
                 $('#pagination').html(html);
             }
 
-            $('#pagination').on('click', '.page-btn', function() {
+            $(document).on('click', '.page-btn', function() {
                 const page = parseInt($(this).data('page'));
-                renderTable(filteredData || originalData,
-                page); // ganti filteredData sesuai variabel filter kamu
+                renderTable(filteredData || getSourceData(), page); // sesuaikan getSourceData()
             });
 
-            $('#pagination').on('click', '.prev-btn:not(.disabled)', function() {
+            $(document).on('click', '.prev-btn:not(.disabled)', function() {
                 const page = parseInt($(this).data('page'));
-                renderTable(filteredData || originalData, page);
+                renderTable(filteredData || getSourceData(), page);
             });
 
-            $('#pagination').on('click', '.next-btn:not(.disabled)', function() {
+            $(document).on('click', '.next-btn:not(.disabled)', function() {
                 const page = parseInt($(this).data('page'));
-                renderTable(filteredData || originalData, page);
+                renderTable(filteredData || getSourceData(), page);
             });
 
             // Fungsi filter berdasarkan keyword dan tanggal
@@ -373,35 +376,41 @@
             $(document).on('click', '.btn-detail', function() {
                 const index = $(this).data('index');
                 const type = $(this).data('type');
-                const data = type === 'pallet' ? palletData[index] : currentData[index];
+
+                const displayedData = filteredData || ($('#table-title').text().includes('Pallet') ?
+                    palletData : currentData);
+                const item = displayedData[index];
+
+                if (!item) {
+                    alert('Data tidak ditemukan!');
+                    return;
+                }
 
                 let html = '';
 
-                Object.entries(data.shifts).forEach(([shift, detail]) => {
+                Object.entries(item.shifts).forEach(([shift, detail]) => {
                     const time = new Date(detail.created_at).toLocaleTimeString('id-ID', {
                         hour: '2-digit',
                         minute: '2-digit',
                     });
 
                     html += `
-                        <div class="mb-4">
-                            <h5 class="mb-2">Shift ${shift}</h5>
-                            <p>
-                                <i class="bi bi-person-circle me-1"></i><strong>Operator:</strong> ${detail.operator_name}
-                                <i class="bi bi-clock ms-3 me-1"></i><strong>Jam Input:</strong> ${time} WIB
-                            </p>
-                            <div class="row">
-                        `;
+            <div class="mb-4">
+                <h5 class="mb-2">Shift ${shift}</h5>
+                <p>
+                    <i class="bi bi-person-circle me-1"></i><strong>Operator:</strong> ${detail.operator_name || '-'}
+                    <i class="bi bi-clock ms-3 me-1"></i><strong>Jam Input:</strong> ${time} WIB
+                </p>
+                <div class="row">
+            `;
 
                     for (const [key, value] of Object.entries(detail)) {
                         if (['id', 'created_at', 'updated_at', 'jenis_p2h', 'operator_name',
-                                'p2h_model_id',
-                                'shift'
+                                'p2h_model_id', 'shift'
                             ].includes(key)) continue;
 
                         let label = key === 'jam_operasional' ? 'Hours Meter' : key.replace(/_/g,
-                            ' ').replace(
-                            /\b\w/g, l => l.toUpperCase());
+                            ' ').replace(/\b\w/g, l => l.toUpperCase());
                         let badge = '';
 
                         if (value === 1 || value === '1') {
@@ -409,14 +418,14 @@
                         } else if (value === 0 || value === '0') {
                             badge = `<span class="badge bg-danger">NOK</span>`;
                         } else {
-                            badge = `<span class="text-muted">${value}</span>`;
+                            badge = `<span class="text-muted">${value || '-'}</span>`;
                         }
 
                         html += `
-                            <div class="col-md-4 mb-2">
-                                <strong>${label}</strong><br>${badge}
-                            </div>
-                        `;
+                <div class="col-md-4 mb-2">
+                    <strong>${label}</strong><br>${badge}
+                </div>
+            `;
                     }
 
                     html += `</div></div>`;
