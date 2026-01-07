@@ -253,7 +253,7 @@ class StockOnHandController extends Controller
 
             if (isset($headerRow1['A']) && stripos($headerRow1['A'], 'MID_BARANG') !== false) {
                 $template = 1;
-            } elseif (isset($headerRow2['D']) && stripos($headerRow2['D'], 'Material') !== false) {
+            } elseif (isset($headerRow2['D']) && stripos($headerRow2['E'], 'Material') !== false) {
                 $template = 2;
             } else {
                 return response()->json([
@@ -277,11 +277,11 @@ class StockOnHandController extends Controller
                     // Template 2 → skip row 1-2
                     if ($index <= 2) continue;
 
-                    $mid_barang = trim($row['D'] ?? '');
-                    $unrest     = (int) ($row['G'] ?? 0);
-                    $qual_insp  = (int) ($row['H'] ?? 0);
-                    $blocked    = (int) ($row['I'] ?? 0);
-                    $transf     = (int) ($row['J'] ?? 0);
+                    $mid_barang = trim($row['E'] ?? '');
+                    $unrest     = (int) ($row['F'] ?? 0);
+                    $qual_insp  = (int) ($row['G'] ?? 0);
+                    $blocked    = (int) ($row['H'] ?? 0);
+                    $transf     = (int) ($row['I'] ?? 0);
                 }
 
                 if (!$mid_barang) continue;
