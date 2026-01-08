@@ -119,7 +119,7 @@
                                         <th>Nomor Unit</th>
                                         <th>Jenis P2H</th>
                                         <th>Shift Tersedia</th>
-                                        <th>Aksi</th>
+                                        <th class="text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="p2hTableBody">
@@ -132,37 +132,94 @@
                 </div>
             </div>
 
-            <!-- Modal Detail Shift -->
-            <div class="modal fade" id="modalDetailP2H" tabindex="-1" aria-labelledby="detailModalLabel"
-                aria-hidden="true">
-                <div class="modal-dialog modal-lg modal-dialog-scrollable">
-                    <div class="modal-content">
-                        <div class="modal-header ">
-                            <h5 class="modal-title" id="detailModalLabel">Detail Pemeriksaan Shift</h5><br>
+        </div>
+    </div>
+
+    <!-- Modal Detail Shift -->
+    <div class="modal fade" id="modalDetailP2H" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header ">
+                    <h5 class="modal-title" id="detailModalLabel">Detail Pemeriksaan Shift</h5><br>
 
 
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                                aria-label="Tutup"></button>
-                        </div>
-                        <div class="modal-body" id="modalDetailBody">
-                            <!-- Konten detail akan diisi via JS -->
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                            <button type="button" class="btn btn-primary" id="downloadPDF">Download PDF</button>
-                        </div>
-                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body" id="modalDetailBody">
+                    <!-- Konten detail akan diisi via JS -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary" id="downloadPDF">Download PDF</button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Modal Edit Shift -->
+    {{-- Modal Edit --}}
+    <div class="modal fade" id="editP2HModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <form id="editP2HForm">
+                    @csrf
+                    <input type="hidden" name="tanggal" id="editTanggal">
+                    <input type="hidden" name="nomor_unit" id="editNomorUnit">
+                    <input type="hidden" name="jenis_p2h" id="editJenisP2H">
 
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit P2H - <span id="editUnitTitle"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
 
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label>Tanggal</label>
+                                <input type="date" class="form-control" name="tanggal" id="editTanggalDisplay"
+                                    readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Nomor Unit</label>
+                                <input type="text" class="form-control" name="nomor_unit" id="editNomorUnitDisplay"
+                                    readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Jenis</label>
+                                <input type="text" class="form-control" name="janis_p2h" id="editJenisDisplay"
+                                    readonly>
+                            </div>
+                        </div>
+
+                        <!-- Tab Dinamis -->
+                        <ul class="nav nav-tabs" id="shiftTabs" role="tablist"></ul>
+
+                        <div class="tab-content pt-3" id="shiftTabContent">
+                            <!-- Content akan di-append di sini -->
+                        </div>
+
+                        <!-- Tombol Tambah Shift Baru -->
+                        {{-- <div class="mt-3 text-center">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addNewShiftBtn">
+                                <i class="mdi mdi-plus"></i> Tambah Shift Baru
+                            </button>
+                        </div> --}}
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-success">Simpan Semua Shift</button>
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 @endsection
 
 @section('scripts')
+    <script>
+        window.authJabatan = '{{ Auth::user()->jabatan }}';
+    </script>
     <script>
         $(document).ready(function() {
             let currentData = [];
@@ -170,6 +227,7 @@
             let filteredData = [];
             const rowsPerPage = 10;
             let currentPage = 1;
+            let currentUnitType = '';
 
             // Fungsi render tabel dengan pagination
             function renderTable(data, page = 1) {
@@ -179,11 +237,34 @@
 
                 $('#p2hTableBody').empty();
 
-                paginatedData.forEach((item, index) => {
-                    const shiftKeys = Object.keys(item.shifts).join(', ');
+                const authJabatan = window.authJabatan || 'operator';
 
-                    // Gunakan index di filteredData (bukan index global)
-                    const filteredIndex = start + index;
+                paginatedData.forEach((item, index) => {
+                    const shiftKeys = Object.keys(item.shifts || {}).sort().join(', ') || '-';
+
+                    // Buat unique key dari data item
+                    const uniqueKey = `${item.tanggal}|${item.nomor_unit}|${item.jenis_p2h}`;
+                    const globalIndex = start + index;
+                    let editButton = '';
+                    if (authJabatan !== 'operator') {
+                        editButton = `
+                            <button 
+                                class="btn btn-sm btn-warning me-2 btn-edit" 
+                                data-key="${uniqueKey}"
+                                title="Edit">
+                                <i class="mdi mdi-pencil"></i> Edit
+                            </button>
+                        `;
+                    }
+
+                    const detailButton = `
+                       <button 
+                            class="btn btn-sm btn-primary btn-detail" 
+                            data-index="${globalIndex}"
+                            title="Detail">
+                            <i class="mdi mdi-eye"></i> Detail
+                        </button>
+                    `;
 
                     $('#p2hTableBody').append(`
                         <tr>
@@ -191,14 +272,9 @@
                             <td>${item.nomor_unit}</td>
                             <td>${item.jenis_p2h}</td>
                             <td>${shiftKeys}</td>
-                            <td>
-                                <button 
-                                    class="btn btn-sm btn-primary btn-detail" 
-                                    data-index="${filteredIndex}"
-                                    data-type="${item.jenis_p2h === 'Pallet Mover' ? 'pallet' : 'forklift'}"
-                                >
-                                    Detail
-                                </button>
+                            <td class="text-center">
+                                ${editButton}
+                                ${detailButton}
                             </td>
                         </tr>
                     `);
@@ -345,7 +421,8 @@
             // Event listener klik unit
             $('.card-p2h').on('click', function() {
                 const unit = $(this).data('unit');
-                console.log("Unit dipilih:", unit);
+                currentUnitType = unit;
+
                 const isPallet = unit === 'Pallet Mover';
 
                 const fetchUrl = isPallet ?
@@ -356,8 +433,8 @@
                     url: fetchUrl,
                     method: "GET",
                     success: function(response) {
-                        palletData = isPallet ? response : [];
-                        currentData = !isPallet ? response : [];
+                        // PERBAIKAN UTAMA: currentData selalu diisi dengan response
+                        currentData = response;
                         filteredData = response;
 
                         $('#table-title').text(`Data P2H - ${unit}`);
@@ -395,14 +472,14 @@
                     });
 
                     html += `
-            <div class="mb-4">
-                <h5 class="mb-2">Shift ${shift}</h5>
-                <p>
-                    <i class="bi bi-person-circle me-1"></i><strong>Operator:</strong> ${detail.operator_name || '-'}
-                    <i class="bi bi-clock ms-3 me-1"></i><strong>Jam Input:</strong> ${time} WIB
-                </p>
-                <div class="row">
-            `;
+                        <div class="mb-4">
+                            <h5 class="mb-2">Shift ${shift}</h5>
+                            <p>
+                                <i class="bi bi-person-circle me-1"></i><strong>Operator:</strong> ${detail.operator_name || '-'}
+                                <i class="bi bi-clock ms-3 me-1"></i><strong>Jam Input:</strong> ${time} WIB
+                            </p>
+                            <div class="row">
+                    `;
 
                     for (const [key, value] of Object.entries(detail)) {
                         if (['id', 'created_at', 'updated_at', 'jenis_p2h', 'operator_name',
@@ -422,10 +499,10 @@
                         }
 
                         html += `
-                <div class="col-md-4 mb-2">
-                    <strong>${label}</strong><br>${badge}
-                </div>
-            `;
+                            <div class="col-md-4 mb-2">
+                                <strong>${label}</strong><br>${badge}
+                            </div>
+                        `;
                     }
 
                     html += `</div></div>`;
@@ -476,6 +553,302 @@
                     .set(opt)
                     .from(exportContainer)
                     .save();
+            });
+
+            // Edit P2H
+            $(document).on('click', '.btn-edit', function() {
+                const uniqueKey = $(this).data('key');
+
+                const [tanggal, nomorUnit, jenisP2h] = uniqueKey.split('|');
+
+                const item = currentData.find(d =>
+                    d.tanggal === tanggal &&
+                    d.nomor_unit === nomorUnit &&
+                    d.jenis_p2h === jenisP2h
+                );
+
+                if (!item) {
+                    Swal.fire('Error', 'Data tidak ditemukan! Pastikan data sudah dimuat.', 'error');
+                    return;
+                }
+
+                // Header modal
+                $('#editUnitTitle').text(`${item.nomor_unit} - ${item.tanggal}`);
+                $('#editTanggal').val(item.tanggal);
+                $('#editTanggalDisplay').val(item.tanggal);
+                $('#editNomorUnit').val(item.nomor_unit);
+                $('#editNomorUnitDisplay').val(item.nomor_unit);
+                $('#editJenisDisplay').val(item.jenis_p2h);
+                $('#editJenisP2H').val(item.jenis_p2h);
+
+                // Kosongkan tab dan content
+                $('#shiftTabs').empty();
+                $('#shiftTabContent').empty();
+
+                // === DETEKSI JENIS UNIT ===
+                const isPalletMover = item.jenis_p2h === 'Pallet Mover';
+
+                // === CHECKLIST & LABEL KHUSUS PER JENIS ===
+                let checklistItems, labelMap;
+
+                if (isPalletMover) {
+                    checklistItems = [
+                        'check_air_accu', 'check_battery', 'check_body_unit', 'check_klakson',
+                        'check_roda', 'check_sistem_kemudi', 'check_kebersihan_unit',
+                        'check_kunci_pm', 'check_hydraulic'
+                    ];
+
+                    labelMap = {
+                        check_air_accu: 'Air Accu',
+                        check_battery: 'Battery',
+                        check_body_unit: 'Body Unit',
+                        check_klakson: 'Klakson',
+                        check_roda: 'Roda',
+                        check_sistem_kemudi: 'Sistem Kemudi',
+                        check_kebersihan_unit: 'Kebersihan Unit',
+                        check_kunci_pm: 'Kunci PM',
+                        check_hydraulic: 'Hydraulic'
+                    };
+                } else {
+                    // Default: Forklift
+                    checklistItems = [
+                        'cek_baterai', 'air_aki', 'kondisi_ban', 'rantai_lift', 'sistem_hidrolik',
+                        'sistem_kemudi', 'fungsi_rem', 'klakson', 'buzzer_mundur', 'lampu_kiri',
+                        'lampu_kanan', 'lampu_sorot', 'lampu_sign_depan_kiri', 'lampu_sign_depan_kanan',
+                        'kaca_spion', 'kipas_belakang', 'panel_display', 'kondisi_axle',
+                        'kondisi_body_kebersihan', 'cek_fork'
+                    ];
+
+                    labelMap = {
+                        cek_baterai: 'Cek Baterai',
+                        air_aki: 'Air Aki',
+                        kondisi_ban: 'Kondisi Ban',
+                        rantai_lift: 'Rantai Lift',
+                        sistem_hidrolik: 'Sistem Hidrolik',
+                        sistem_kemudi: 'Sistem Kemudi',
+                        fungsi_rem: 'Fungsi Rem',
+                        klakson: 'Klakson',
+                        buzzer_mundur: 'Buzzer Mundur',
+                        lampu_kiri: 'Lampu Kiri',
+                        lampu_kanan: 'Lampu Kanan',
+                        lampu_sorot: 'Lampu Sorot',
+                        lampu_sign_depan_kiri: 'Lampu Sign Depan Kiri',
+                        lampu_sign_depan_kanan: 'Lampu Sign Depan Kanan',
+                        kaca_spion: 'Kaca Spion',
+                        kipas_belakang: 'Kipas Belakang',
+                        panel_display: 'Panel Display',
+                        kondisi_axle: 'Kondisi Axle',
+                        kondisi_body_kebersihan: 'Kondisi Body & Kebersihan',
+                        cek_fork: 'Cek Fork'
+                    };
+                }
+
+                let hasAnyShift = false;
+                let firstShift = true;
+
+                [1, 2, 3].forEach(shift => {
+                    const shiftData = item.shifts?.[shift] || {};
+
+                    const hasData = shiftData.operator_name ||
+                        shiftData.jam_operasional ||
+                        Object.keys(shiftData).some(key => checklistItems.includes(key) &&
+                            shiftData[key] == 1);
+
+                    if (!hasData) return;
+
+                    hasAnyShift = true;
+
+                    const isActive = firstShift;
+                    firstShift = false;
+
+                    const activeClass = isActive ? 'active' : '';
+                    const showClass = isActive ? 'show active' : '';
+
+                    $('#shiftTabs').append(`
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link ${activeClass}" data-bs-toggle="tab" 
+                                    data-bs-target="#shift${shift}Tab" type="button">
+                                Shift ${shift} ${shiftData.operator_name ? '(' + shiftData.operator_name + ')' : ''}
+                            </button>
+                        </li>
+                    `);
+
+                    $('#shiftTabContent').append(`
+                        <div class="tab-pane fade ${showClass}" id="shift${shift}Tab">
+                            <div class="pt-3" id="shift${shift}Content"></div>
+                        </div>
+                    `);
+
+                    // Generate form checklist
+                    // Di dalam loop shift
+                    let headerHtml = `
+                        <div class="row mb-4">
+                            <div class="col-md-${item.jenis_p2h !== 'Pallet Mover' ? '6' : '12'}">
+                                <label>Operator</label>
+                                <input type="text" class="form-control" name="shifts[${shift}][operator_name]" 
+                                    value="${shiftData.operator_name || ''}" placeholder="Nama operator">
+                            </div>
+                    `;
+
+                    if (item.jenis_p2h !== 'Pallet Mover') {
+                        headerHtml += `
+                            <div class="col-md-6">
+                                <label>Hours Meter</label>
+                                <input type="number" class="form-control" name="shifts[${shift}][jam_operasional]" 
+                                    value="${shiftData.jam_operasional || ''}" placeholder="Jam">
+                            </div>
+                        `;
+                    }
+
+                    headerHtml += `</div>`; // tutup row
+
+                    let html = headerHtml + `
+                        <h6 class="mt-3">Checklist</h6>
+                        <div class="row">
+                    `;
+
+                    let generalCatatan = shiftData.catatan || '';
+
+                    checklistItems.forEach(field => {
+                        let value = shiftData[field] ?? 0;
+                        let checked = value == 1 ? 'checked' : '';
+                        let noteValue = shiftData[`${field}_note`] || '';
+
+                        // === LOGIC BARU: Ekstrak dari catatan umum kalau note per item kosong ===
+                        if (value == 0 && !noteValue && generalCatatan) {
+                            const label = labelMap[field];
+                            const regex = new RegExp(
+                                `${label}\\s*[:\\-\\–]\\s*(.+?)(?=\\s*\\|\\s*|$)`, 'i');
+                            const match = generalCatatan.match(regex);
+
+                            if (match && match[1].trim()) {
+                                noteValue = match[1].trim();
+                                // HAPUS bagian yang diekstrak dari generalCatatan
+                                generalCatatan = generalCatatan.replace(match[0], '')
+                                    .trim();
+                                generalCatatan = generalCatatan.replace(/^\|\s*|\s*\|$/,
+                                    ''); // Bersihkan pipe di ujung
+                                generalCatatan = generalCatatan.replace(/\s*\|\s*\|/,
+                                    ' | '); // Bersihkan pipe ganda
+                            }
+                        }
+
+                        const showNote = value == 0 ? '' : 'd-none';
+
+                        html += `
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input type="hidden" name="shifts[${shift}][${field}]" value="0">
+                                    <input class="form-check-input checklist-item" type="checkbox" 
+                                        name="shifts[${shift}][${field}]" value="1" ${checked}>
+                                    <label class="form-check-label">${labelMap[field] || field}</label>
+                                </div>
+                                <div class="note-container mt-2 ${showNote}">
+                                    <label class="form-label text-danger">
+                                        <small>Keterangan (wajib isi kenapa NOK)</small>
+                                    </label>
+                                    <input type="text" class="form-control form-control-sm note-input" 
+                                        name="shifts[${shift}][${field}_note]" value="${noteValue}"
+                                        placeholder="Jelaskan kerusakan...">
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    $(`#shift${shift}Content`).html(html);
+                });
+
+                // Jika tidak ada shift sama sekali
+                if (!hasAnyShift) {
+                    $('#shiftTabs').html(
+                        '<li class="nav-item"><span class="nav-link text-muted">Belum ada data P2H untuk hari ini</span></li>'
+                    );
+                    $('#shiftTabContent').html(`
+                        <div class="text-center py-5 text-muted">
+                            <i class="mdi mdi-clipboard-off mdi-48px"></i>
+                            <h5>Belum ada checklist diisi</h5>
+                        </div>
+                    `);
+                }
+
+                $('#editP2HModal').modal('show');
+            });
+
+            $(document).on('change', '.checklist-item', function() {
+                const $checkbox = $(this);
+                const checked = $checkbox.is(':checked');
+                const $container = $checkbox.closest('.form-check').siblings('.note-container');
+                const $input = $container.find('.note-input');
+                const $label = $container.find('label small');
+
+                if (checked) {
+                    // OK → sembunyikan keterangan + hapus required + ubah teks jadi opsional
+                    $container.addClass('d-none');
+                    $input.removeAttr('required');
+                    $label.text('Keterangan opsional (kenapa NOK?)');
+                } else {
+                    // NOK → tampilkan + required + teks wajib
+                    $container.removeClass('d-none');
+                    $input.attr('required', 'required');
+                    $label.text('Keterangan wajib (kenapa NOK?)');
+                }
+            });
+
+            $('#editP2HForm').on('submit', function(e) {
+                e.preventDefault();
+
+                const $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin"></i> Menyimpan...');
+
+                const formData = new FormData(this);
+
+                // Ambil jenis unit dari hidden input di modal (paling akurat)
+                const jenisP2H = $('#editJenisP2H').val();
+                const isPalletMover = jenisP2H === 'Pallet Mover';
+
+                // Tentukan route update sesuai jenis unit
+                const updateUrl = isPalletMover ?
+                    "{{ url('api/p2h/update/multi-pallet') }}" // Route untuk Pallet Mover
+                    :
+                    "{{ url('api/p2h/update/multi') }}"; // Route untuk Forklift
+
+                $.ajax({
+                    url: updateUrl,
+                    type: 'POST', // Lebih tepat pakai PUT untuk update
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        Swal.fire('Berhasil!', res.message || 'Data berhasil diperbarui!',
+                            'success');
+
+                        // Reload data sesuai jenis unit yang sedang aktif
+                        const fetchUrl = isPalletMover ?
+                            "{{ url('api/p2h/data/pallet-mover') }}" :
+                            "{{ url('api/p2h/data/forklift-data') }}";
+
+                        $.get(fetchUrl, function(newData) {
+                            currentData = newData;
+                            filteredData = newData;
+                            renderTable(filteredData, 1);
+                        });
+
+                        $('#editP2HModal').modal('hide');
+                    },
+                    error: function(xhr) {
+                        let msg = 'Terjadi kesalahan';
+                        if (xhr.responseJSON?.message) {
+                            msg = xhr.responseJSON.message;
+                        } else if (xhr.responseJSON?.errors) {
+                            const errors = xhr.responseJSON.errors;
+                            msg = Object.values(errors).flat().join('<br>• ');
+                        }
+                        Swal.fire('Gagal', msg, 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).text('Simpan Perubahan');
+                    }
+                });
             });
         });
     </script>

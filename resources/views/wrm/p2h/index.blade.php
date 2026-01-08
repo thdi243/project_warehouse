@@ -293,9 +293,9 @@
                                             name="operator_name" readonly>
                                     </div>
                                     <!-- <div class="col-md-12 mb-3">
-                                                                                                                                                                                                    <label>Catatan</label>
-                                                                                                                                                                                                    <textarea class="form-control" name="catatan"></textarea>
-                                                                                                                                                                                                </div> -->
+                                                                                                                                                                                                                        <label>Catatan</label>
+                                                                                                                                                                                                                        <textarea class="form-control" name="catatan"></textarea>
+                                                                                                                                                                                                                    </div> -->
                                 </div>
 
                                 <hr>
@@ -427,11 +427,11 @@
                 <div class="col-md-10 offset-md-1">
                     <div class="card">
                         <div class="card-header">
-                            <h5 id="form-title">Form Pemeriksaan</h5>
+                            <h5 id="form-title">Form Pemeriksaan - Pallet Mover</h5>
                         </div>
                         <div class="card-body">
 
-                            <form id="formP2HPalletMover" data-url="{{ url('api/p2h/store/pallet') }}">
+                            <form id="formP2HPalletMover" data-url="{{ url('api/p2h/store/pallet-mover') }}">
                                 @csrf
                                 <input type="hidden" name="jenis_p2h" value="Pallet Mover" />
 
@@ -744,15 +744,24 @@
                 const formId = $(form).attr("id");
                 let notes = [];
 
+                // Kumpulin note dari item yang "Tidak OK"
                 $(`#${formId} .item-note:visible`).each(function() {
-                    let label = $(this).closest('.mb-3').find('label').first().text().trim();
-                    label = label.replace(/^check\s+/i, '').trim();
+                    const $noteInput = $(this);
+                    const text = $noteInput.val().trim();
+                    if (text) {
+                        // Ambil label asli (misal: "Fungsi Rem")
+                        let label = $noteInput.closest('.mb-3').find('label').first().text().trim();
 
-                    const text = $(this).val().trim();
-                    if (text) notes.push(`${label.toLowerCase()} ${text}`);
+                        // Bersihkan label dari kata "check" atau nomor jika ada
+                        label = label.replace(/^\d+\.\s*/, '').replace(/^check\s+/i, '').trim();
+
+                        // Format rapi: "Label: keterangan"
+                        notes.push(`${label}: ${text}`);
+                    }
                 });
 
-                const gabungan = notes.join(', ');
+                // Gabung dengan pipe, sama seperti backend update
+                const gabungan = notes.join(' | ');
                 $(`#${formId} [name="catatan"]`).val(gabungan);
 
                 $.ajax({
@@ -794,7 +803,7 @@
                     error: function(xhr) {
                         let msg = 'Terjadi kesalahan.';
                         if (xhr.responseJSON?.errors) {
-                            msg = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                            msg = Object.values(xhr.responseJSON.errors).flat().join('<br>• ');
                         } else if (xhr.responseJSON?.message) {
                             msg = xhr.responseJSON.message;
                         }

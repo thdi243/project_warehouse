@@ -11,10 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('forklifts', function (Blueprint $table) {
+        Schema::create('pallet_movers', function (Blueprint $table) {
             $table->id();
-            $table->string('nomor_unit', 10)->unique();
-            $table->enum('departemen', ['warehouse', 'produksi'])->default('warehouse');
+            $table->string('nomor_unit', 10);
+            $table->string('departemen')->nullable();
+            $table->string('section')->nullable();
             $table->enum('status', ['active', 'maintenance', 'inactive'])->default('active');
             $table->text('description')->nullable();
             $table->timestamps();
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('forklifts');
+        Schema::dropIfExists('pallet_movers');
     }
 };

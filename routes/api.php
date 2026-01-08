@@ -2,29 +2,29 @@
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\P2hController;
 use Illuminate\Support\Facades\Request;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Wrm\P2HController;
 use App\Http\Controllers\Wsp\TkbmController;
+use App\Http\Controllers\TokenAuthController;
 use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Api\WspManRakController;
 use App\Http\Controllers\Wsp\WspBarangController;
-use App\Http\Controllers\TokenAuthController;
 use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Api\P2hDashboardController;
 use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
+use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
 use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
-use App\Http\Controllers\Wsp\stock\StockOnHandController;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -69,30 +69,28 @@ Route::prefix('tkbm')->group(function () {
 
 Route::prefix('p2h')->group(function () {
     // Forklift
-    Route::post('/store/forklift', [P2hController::class, 'store']);
-    Route::get('/data/forklift-data', [P2hController::class, 'showForklift']);
-    Route::get('/data/registration/forklift', [P2hController::class, 'showRegForklift']);
-    Route::post('/store/forklift/registration', [P2hController::class, 'storeForkliftRegistration']);
-    Route::get('/backups/forklift/{id}', [P2hController::class, 'getBackupForklift']);
-    Route::get('/show/forklift/{id}', [P2hController::class, 'showForkliftDetail']);
-    Route::put('/update/forklift/{id}', [P2hController::class, 'updateForklift']);
-    Route::delete('/delete/forklift/{id}', [P2hController::class, 'destroyForklift']);
-    Route::post('/store/forklift/assignment', [P2hController::class, 'storeForkliftAssignment']);
-    Route::get('/show/forklift/assignment/{id}', [P2hController::class, 'showForkliftAssignment']);
-    Route::post('/update/forklift/assignment', [P2hController::class, 'updateForkliftAssignment']);
+    Route::post('/store/forklift', [P2HController::class, 'store']);
+    Route::get('/data/forklift-data', [P2HController::class, 'showForklift']);
+    Route::get('/data/registration/forklift', [P2HController::class, 'showRegForklift']);
+    Route::post('/store/forklift/registration', [P2HController::class, 'storeForkliftRegistration']);
+    Route::get('/backups/forklift/{id}', [P2HController::class, 'getBackupForklift']);
+    Route::get('/show/forklift/{id}', [P2HController::class, 'showForkliftDetail']);
+    Route::put('/update/forklift/{id}', [P2HController::class, 'updateForklift']);
+    Route::post('/update/multi', [P2HController::class, 'updateMultiShiftP2H']);
+    Route::delete('/delete/forklift/{id}', [P2HController::class, 'destroyForklift']);
+    Route::get('/show/forklift/assignment/{id}', [P2HController::class, 'showForkliftAssignment']);
 
     // Pallet Mover
-    Route::post('/store/pallet-mover', [P2hController::class, 'storePalletMover']);
-    Route::get('/data/pallet-mover', [P2hController::class, 'showPalletMover']);
-    Route::get('/data/registration/pallet-mover', [P2hController::class, 'getPalletData']);
-    Route::post('/store/registration/pallet-mover', [P2hController::class, 'storePallMovReg']);
-    Route::post('/store/pallet-mover/assignment', [P2hController::class, 'storePallMovAssignment']);
-    Route::get('/detail/pallet-mover/{id}', [P2hController::class, 'showPallMovDetail']);
-    Route::put('/update/pallet-mover/{id}', [P2hController::class, 'updatePallMov']);
-    Route::delete('/delete/pallet-mover/{id}', [P2hController::class, 'destroyPallMov']);
-    Route::get('/backups/pallet-mover/{id}', [P2hController::class, 'getBackupPallMov']);
-    Route::get('/detail/pallet-mover/assignment/{id}', [P2hController::class, 'editPallMovAssignment']);
-    Route::post('/update/pallet-mover/assignment/{id}', [P2hController::class, 'updatePallMovAssignment']);
+    Route::post('/store/pallet-mover', [P2HController::class, 'storePalletMover']);
+    Route::get('/data/pallet-mover', [P2HController::class, 'showPalletMover']);
+    Route::get('/data/registration/pallet-mover', [P2HController::class, 'getPalletData']);
+    Route::post('/store/registration/pallet-mover', [P2HController::class, 'storePallMovReg']);
+    Route::post('/update/multi-pallet', [P2HController::class, 'updateMultiShiftPalletMover']);
+    Route::get('/detail/pallet-mover/{id}', [P2HController::class, 'showPallMovDetail']);
+    Route::put('/update/pallet-mover/{id}', [P2HController::class, 'updatePallMov']);
+    Route::delete('/delete/pallet-mover/{id}', [P2HController::class, 'destroyPallMov']);
+    Route::get('/backups/pallet-mover/{id}', [P2HController::class, 'getBackupPallMov']);
+    Route::get('/detail/pallet-mover/assignment/{id}', [P2HController::class, 'editPallMovAssignment']);
 });
 
 Route::prefix('wsp')->group(function () {

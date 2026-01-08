@@ -18,6 +18,7 @@ class ForkliftModel extends Model
     protected $fillable = [
         'nomor_unit',
         'departemen',
+        'section',
         'status',
         'description',
     ];
@@ -29,31 +30,31 @@ class ForkliftModel extends Model
 
     // Relasi ke User Assignment
     // Konstanta untuk enum values
-    const DEPARTEMEN_WAREHOUSE = 'warehouse';
-    const DEPARTEMEN_PRODUKSI = 'produksi';
+    // const DEPARTEMEN_WAREHOUSE = 'warehouse';
+    // const DEPARTEMEN_PRODUKSI = 'produksi';
 
-    const STATUS_ACTIVE = 'active';
-    const STATUS_MAINTENANCE = 'maintenance';
-    const STATUS_INACTIVE = 'inactive';
+    // const STATUS_ACTIVE = 'active';
+    // const STATUS_MAINTENANCE = 'maintenance';
+    // const STATUS_INACTIVE = 'inactive';
 
     // Accessor untuk mendapatkan array departemen
-    public static function getDepartemenOptions()
-    {
-        return [
-            self::DEPARTEMEN_WAREHOUSE => 'Warehouse',
-            self::DEPARTEMEN_PRODUKSI => 'Produksi',
-        ];
-    }
+    // public static function getDepartemenOptions()
+    // {
+    //     return [
+    //         self::DEPARTEMEN_WAREHOUSE => 'Warehouse',
+    //         self::DEPARTEMEN_PRODUKSI => 'Produksi',
+    //     ];
+    // }
 
     // Accessor untuk mendapatkan array status
-    public static function getStatusOptions()
-    {
-        return [
-            self::STATUS_ACTIVE => 'Active',
-            self::STATUS_MAINTENANCE => 'Maintenance',
-            self::STATUS_INACTIVE => 'Inactive',
-        ];
-    }
+    // public static function getStatusOptions()
+    // {
+    //     return [
+    //         self::STATUS_ACTIVE => 'Active',
+    //         self::STATUS_MAINTENANCE => 'Maintenance',
+    //         self::STATUS_INACTIVE => 'Inactive',
+    //     ];
+    // }
 
     // Relationship dengan UserForkliftAssignmentModel
     public function userAssignments(): HasMany
@@ -62,19 +63,19 @@ class ForkliftModel extends Model
     }
 
     // Relationship untuk mendapatkan assignment yang aktif
-    public function activeAssignments(): HasMany
-    {
-        return $this->hasMany(UserForkliftAssignmentModel::class, 'forklift_id')
-            ->where('is_active', true);
-    }
+    // public function activeAssignments(): HasMany
+    // {
+    //     return $this->hasMany(UserForkliftAssignmentModel::class, 'forklift_id')
+    //         ->where('is_active', true);
+    // }
 
     // Relationship untuk mendapatkan primary assignment yang aktif
-    public function primaryAssignment(): HasOne
-    {
-        return $this->hasOne(UserForkliftAssignmentModel::class, 'forklift_id')
-            ->where('is_active', true)
-            ->where('is_primary', true);
-    }
+    // public function primaryAssignment(): HasOne
+    // {
+    //     return $this->hasOne(UserForkliftAssignmentModel::class, 'forklift_id')
+    //         ->where('is_active', true)
+    //         ->where('is_primary', true);
+    // }
 
     // Get all assigned operators (termasuk backup) - sesuai dengan controller
     public function assignedOperators(): BelongsToMany
@@ -84,84 +85,87 @@ class ForkliftModel extends Model
             'user_forklift_assignments',
             'forklift_id',
             'user_id'
-        )->withPivot('id', 'is_primary', 'assigned_date', 'is_active', 'notes')
-            ->wherePivot('is_active', true);
+        )
+            ->withPivot(['id', 'operator_type', 'assigned_date', 'is_active', 'notes'])
+            ->withTimestamps()
+            ->wherePivot('is_active', true)
+            ->orderByPivot('operator_type', 'asc'); // urutkan: 1 dulu, lalu 2, 3, dst
     }
 
     // Get primary operator - sesuai dengan controller
-    public function primaryOperator()
-    {
-        return $this->assignedOperators()
-            ->wherePivot('is_primary', true)
-            ->first();
-    }
+    // public function primaryOperator()
+    // {
+    //     return $this->assignedOperators()
+    //         ->wherePivot('is_primary', true)
+    //         ->first();
+    // }
 
     // Scope untuk filter berdasarkan departemen
-    public function scopeByDepartemen($query, $departemen)
-    {
-        return $query->where('departemen', $departemen);
-    }
+    // public function scopeByDepartemen($query, $departemen)
+    // {
+    //     return $query->where('departemen', $departemen);
+    // }
 
     // Scope untuk filter berdasarkan status
-    public function scopeByStatus($query, $status)
-    {
-        return $query->where('status', $status);
-    }
+    // public function scopeByStatus($query, $status)
+    // {
+    //     return $query->where('status', $status);
+    // }
 
     // Scope untuk forklift yang aktif
-    public function scopeActive($query)
-    {
-        return $query->where('status', self::STATUS_ACTIVE);
-    }
+    // public function scopeActive($query)
+    // {
+    //     return $query->where('status', self::STATUS_ACTIVE);
+    // }
 
     // Scope untuk forklift warehouse
-    public function scopeWarehouse($query)
-    {
-        return $query->where('departemen', self::DEPARTEMEN_WAREHOUSE);
-    }
+    // public function scopeWarehouse($query)
+    // {
+    //     return $query->where('departemen', self::DEPARTEMEN_WAREHOUSE);
+    // }
 
-    // Scope untuk forklift produksi
-    public function scopeProduksi($query)
-    {
-        return $query->where('departemen', self::DEPARTEMEN_PRODUKSI);
-    }
+    // // Scope untuk forklift produksi
+    // public function scopeProduksi($query)
+    // {
+    //     return $query->where('departemen', self::DEPARTEMEN_PRODUKSI);
+    // }
 
-    // Method untuk mengecek apakah forklift sedang aktif
-    public function isActive(): bool
-    {
-        return $this->status === self::STATUS_ACTIVE;
-    }
+    // // Method untuk mengecek apakah forklift sedang aktif
+    // public function isActive(): bool
+    // {
+    //     return $this->status === self::STATUS_ACTIVE;
+    // }
 
-    // Method untuk mengecek apakah forklift sedang maintenance
-    public function isMaintenance(): bool
-    {
-        return $this->status === self::STATUS_MAINTENANCE;
-    }
+    // // Method untuk mengecek apakah forklift sedang maintenance
+    // public function isMaintenance(): bool
+    // {
+    //     return $this->status === self::STATUS_MAINTENANCE;
+    // }
 
-    // Method untuk mengecek apakah forklift inactive
-    public function isInactive(): bool
-    {
-        return $this->status === self::STATUS_INACTIVE;
-    }
+    // // Method untuk mengecek apakah forklift inactive
+    // public function isInactive(): bool
+    // {
+    //     return $this->status === self::STATUS_INACTIVE;
+    // }
 
-    // Method untuk mengecek apakah user bisa mengoperasikan forklift ini
-    public function canBeOperatedBy($userId): bool
-    {
-        return $this->userAssignments()
-            ->where('user_id', $userId)
-            ->where('is_active', true)
-            ->exists();
-    }
+    // // Method untuk mengecek apakah user bisa mengoperasikan forklift ini
+    // public function canBeOperatedBy($userId): bool
+    // {
+    //     return $this->userAssignments()
+    //         ->where('user_id', $userId)
+    //         ->where('is_active', true)
+    //         ->exists();
+    // }
 
-    // Method untuk mendapatkan user yang sedang assigned ke forklift ini
-    public function getCurrentUsers()
-    {
-        return $this->assignedOperators;
-    }
+    // // Method untuk mendapatkan user yang sedang assigned ke forklift ini
+    // public function getCurrentUsers()
+    // {
+    //     return $this->assignedOperators;
+    // }
 
-    // Method untuk mendapatkan primary user
-    public function getPrimaryUser()
-    {
-        return $this->primaryOperator();
-    }
+    // // Method untuk mendapatkan primary user
+    // public function getPrimaryUser()
+    // {
+    //     return $this->primaryOperator();
+    // }
 }

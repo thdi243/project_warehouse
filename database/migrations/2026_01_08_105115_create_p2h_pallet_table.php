@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('p2h_pallet', function (Blueprint $table) {
+        Schema::create('p2h_pallet_mover', function (Blueprint $table) {
             $table->id(); // AUTO_INCREMENT PRIMARY KEY
             $table->date('tanggal');
             $table->string('nomor_unit', 50);
@@ -41,6 +41,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('p2h_pallet');
+        Schema::dropIfExists('p2h_pallet_mover');
     }
 };

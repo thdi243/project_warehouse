@@ -4,9 +4,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Events\ShowPortalNotification;
-use App\Http\Controllers\P2hController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Wrm\P2HController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wsp\WspRakController;
@@ -167,10 +167,16 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['auth', 'access:warehouse_raw_material'])->group(function () {
         // P2H
         Route::prefix('p2h')->group(function () {
-            Route::get('/online/index', [P2hController::class, 'index'])->name('p2h.online.index');
+            Route::get('/online/index', [P2HController::class, 'index'])->name('p2h.online.index');
+            Route::post('/store/forklift/assignment', [P2HController::class, 'storeForkliftAssignment']);
+            Route::post('/update/forklift/assignment', [P2HController::class, 'updateForkliftAssignment']);
             Route::get('/online/data', [WarehouseController::class, 'p2hData'])->name('p2h.online.data');
             Route::get('/registration/forklift', [WarehouseController::class, 'showRegForklift'])->name('p2h.registration.forklift');
+
+            // Pallet Mover
+            Route::post('/store/pallet-mover/assignment', [P2HController::class, 'storePallMovAssignment']);
             Route::get('/registration/pallet-mover', [WarehouseController::class, 'showRegPalletMover'])->name('p2h.registration.pallet-mover');
+            Route::post('/update/pallet-mover/assignment/{id}', [P2HController::class, 'updatePallMovAssignment']);
         });
     });
 

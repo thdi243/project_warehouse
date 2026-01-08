@@ -314,7 +314,7 @@
                                                 class="nav-link {{ request()->routeIs('wfg.master.barang.index') ? 'active' : '' }}"
                                                 data-key="t-input-mst_brg_wfg">
                                                 <i class="mdi mdi-package"></i>
-                                                Master Barang SOP </a>
+                                                Master Barang SO </a>
                                         </li>
                                     </ul>
                                 </div>
@@ -350,7 +350,7 @@
                                                 class="nav-link {{ request()->routeIs('wsp.master.barang') ? 'active' : '' }}"
                                                 data-key="t-input-mst_brg_wfg">
                                                 <i class="mdi mdi-package-variant-closed"></i>
-                                                Barang
+                                                Master Barang
                                             </a>
                                         </li>
 
@@ -360,7 +360,7 @@
                                                 class="nav-link {{ request()->routeIs('wsp.master.rak') ? 'active' : '' }}"
                                                 data-key="t-input-mst_rak_wfg">
                                                 <i class="mdi mdi-view-grid-outline"></i>
-                                                Rak
+                                                Master Rak
                                             </a>
                                         </li>
 

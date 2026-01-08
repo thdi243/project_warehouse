@@ -13,8 +13,9 @@
             {{-- Section: Tambah Pallet Mover --}}
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Tambah Pallet Mover</span>
-                    <button type="submit" form="addPalletForm" class="btn btn-primary btn-sm">Simpan Pallet</button>
+                    <h5>Tambah Forklift</h5>
+                    <button type="submit" form="addPalletForm" class="btn btn-primary">
+                        <i class="mdi mdi-plus me-2"></i>Simpan</button>
                 </div>
                 <div class="card-body">
                     <form id="addPalletForm">
@@ -29,6 +30,13 @@
                                 <select name="departemen" class="form-select" required>
                                     <option value="warehouse">Warehouse</option>
                                     <option value="produksi">Produksi</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Section</label>
+                                <select name="section" class="form-select" required>
+                                    <option value="warehouse_raw_material">Warehouse Raw Material</option>
+                                    <option value="warehouse_finish_goods">Warehouse Finish Goods</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -50,25 +58,30 @@
 
             {{-- Section: Data Pallet Mover --}}
             <div class="card">
-                <div class="card-header">Daftar Pallet Mover Terdaftar</div>
+                <div class="card-header">
+                    <h5>Daftar Pallet Mover Terdaftar</h5>
+                </div>
                 <div class="card-body">
-                    <table id="palletTable" class="table table-bordered table-striped dt-responsive w-100">
-                        <thead>
-                            <tr>
-                                <th>Unit</th>
-                                <th>Status</th>
-                                <th>Deskripsi</th>
-                                <th>Departemen</th>
-                                <th>Operator Utama</th>
-                                <th>Jumlah Cadangan</th>
-                                <th>Waktu Buat</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{-- AJAX inject data --}}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table id="palletTable" class="table table-bordered table-striped text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Unit</th>
+                                    <th>Status</th>
+                                    <th>Deskripsi</th>
+                                    <th>Departemen</th>
+                                    <th>Section</th>
+                                    <th>Operator 1</th>
+                                    <th>Operator 2</th>
+                                    <th>Operator 3</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{-- AJAX inject data --}}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -94,10 +107,11 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Tipe Assignment</label>
-                        <select name="is_primary" class="form-select">
-                            <option value="1">Primary</option>
-                            <option value="0">Backup</option>
+                        <label for="operator" class="form-label">Tipe Assignment</label>
+                        <select name="operator" class="form-select">
+                            <option value="1">Operator 1</option>
+                            <option value="2">Operator 2</option>
+                            <option value="3">Operator 3</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -132,6 +146,13 @@
                         <select name="departemen" id="editDepartemen" class="form-select" required>
                             <option value="warehouse">Warehouse</option>
                             <option value="produksi">Produksi</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Section</label>
+                        <select name="section" id="editSection" class="form-select" required>
+                            <option value="warehouse_raw_material">Warehouse Raw Material</option>
+                            <option value="warehouse_finish_goods">Warehouse Finish Goods</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -185,13 +206,16 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Operator Utama</label>
-                        <select name="primary_operator_id" id="editPrimaryOperatorSelect" class="form-select"
-                            required></select>
+                        <label class="form-label">Operator 1</label>
+                        <select name="operator_1" id="operator_1" class="form-select" required></select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Cadangan Operator</label>
-                        <select name="backup_operator_ids[]" id="editBackupOperatorsSelect" class="form-select"></select>
+                        <label class="form-label">Operator 2</label>
+                        <select name="operator_2" id="operator_2" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Operator 3</label>
+                        <select name="operator_3" id="operator_3" class="form-select"></select>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -208,73 +232,113 @@
             const routeList = {
                 data: "{{ url('api/p2h/data/registration/pallet-mover') }}",
                 store: "{{ url('api/p2h/store/registration/pallet-mover') }}",
-                assignmentStore: "{{ url('api/p2h/store/pallet-mover/assignment') }}",
+                assignmentStore: "{{ url('/p2h/store/pallet-mover/assignment') }}",
                 csrf: '{{ csrf_token() }}',
                 detail: "{{ url('api/p2h/detail/pallet-mover/') }}",
                 update: "{{ url('api/p2h/update/pallet-mover/') }}",
                 delete: "{{ url('api/p2h/delete/pallet-mover/') }}",
                 backups: "{{ url('api/p2h/backups/pallet-mover/') }}",
                 assignmentDetail: "{{ url('api/p2h/detail/pallet-mover/assignment') }}",
-                assignmentUpdate: "{{ url('api/p2h/update/pallet-mover/assignment') }}"
+                assignmentUpdate: "{{ url('/p2h/update/pallet-mover/assignment') }}"
             };
 
-            $('#palletTable').DataTable({
-                ajax: routeList.data,
-                responsive: true,
-                scrollX: true,
-                autoWidth: false,
-                columns: [{
-                        data: 'nomor_unit'
-                    },
-                    {
-                        data: 'status',
-                        render: function(data) {
-                            let badgeClass = 'bg-success';
-                            if (data === 'maintenance') badgeClass = 'bg-warning';
-                            if (data === 'inactive') badgeClass = 'bg-danger';
-                            return `<span class="badge ${badgeClass}">${data}</span>`;
+            loadPalletMoverData();
+
+            function loadPalletMoverData() {
+                $('#loadingRow').show();
+                $('#emptyState').addClass('d-none');
+                $('#palletTable tbody tr:not(#loadingRow)').remove(); // clear rows kecuali loading
+
+                $.get(routeList.data)
+                    .done(function(response) {
+                        const data = response.data || response;
+
+                        $('#loadingRow').hide();
+
+                        if (data.length === 0) {
+                            $('#emptyState').removeClass('d-none');
+                            return;
                         }
-                    }, {
-                        data: 'notes'
-                    },
-                    {
-                        data: 'departemen'
-                    },
-                    {
-                        data: 'primary_operator'
-                    },
-                    {
-                        data: 'backup_count',
-                        title: 'Cadangan',
-                        render: function(count, _, row) {
-                            return `
-                                <span class="badge bg-info backup-detail-btn"
-                                    style="cursor: pointer;"
-                                    data-id="${row.id}"
-                                    data-unit="${row.nomor_unit}">
-                                    ${count}
-                                </span>`;
-                        }
-                    },
-                    {
-                        data: 'created_at'
-                    },
-                    {
-                        data: 'id',
-                        render: function(id, _, row) {
-                            return `
-                                <div class="btn-group" role="group">
-                                     <button class="btn btn-sm btn-primary assign-btn" data-id="${id}" data-unit="${row.nomor_unit}">Assign</button>
-                                    <button class="btn btn-sm btn-info edit-assignment-btn" data-id="${id}" data-unit="${row.nomor_unit}">Edit Assignment</button>
-                                    <button class="btn btn-sm btn-warning edit-btn" data-id="${id}">Edit</button>
-                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${id}" data-unit="${row.nomor_unit}">Delete</button>
-                                </div>
-                              
+
+                        let rows = '';
+
+                        data.forEach(function(row) {
+                            // Status badge
+                            let statusBadge = 'bg-success';
+                            let statusText = row.status.charAt(0).toUpperCase() + row.status.slice(1);
+                            if (row.status === 'maintenance') statusBadge = 'bg-warning text-dark';
+                            if (row.status === 'inactive') statusBadge = 'bg-danger';
+
+                            // Operator 1 highlight
+                            let op1 = row.operator_1 && row.operator_1 !== '-' ?
+                                `<strong>${row.operator_1}</strong>` :
+                                '<span class="text-danger fw-bold">Belum Ditentukan</span>';
+
+                            let op2 = row.operator_2 && row.operator_2 !== '-' ? row.operator_2 :
+                                '<em class="text-muted">-</em>';
+                            let op3 = row.operator_3 && row.operator_3 !== '-' ? row.operator_3 :
+                                '<em class="text-muted">-</em>';
+
+                            // Deskripsi
+                            let notes = row.notes && row.notes !== '-' ? row.notes :
+                                '<em class="text-muted">-</em>';
+
+                            // Section display
+                            let sectionDisplay = row.section === 'warehouse_raw_material' ?
+                                'Warehouse Raw Material' :
+                                row.section === 'warehouse_finish_goods' ? 'Warehouse Finish Goods' :
+                                row.section;
+
+                            rows += `
+                                <tr>
+                                    <td class="text-center fw-bold">${row.nomor_unit.toUpperCase()}</td>
+                                    <td class="text-center">
+                                        <span class="badge ${statusBadge}">${statusText}</span>
+                                    </td>
+                                    <td>${notes}</td>
+                                    <td class="text-center">${row.departemen.charAt(0).toUpperCase() + row.departemen.slice(1)}</td>
+                                    <td class="text-center">${sectionDisplay}</td>
+                                    <td class="text-center">${op1}</td>
+                                    <td class="text-center">${op2}</td>
+                                    <td class="text-center">${op3}</td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-primary assign-btn" 
+                                                    data-id="${row.id}" 
+                                                    data-unit="${row.nomor_unit}" 
+                                                    title="Assign Operator">
+                                                <i class="mdi mdi-account-plus me-1"></i>Assign
+                                            </button>
+                                            <button class="btn btn-sm btn-info edit-assignment-btn" 
+                                                    data-id="${row.id}" 
+                                                    data-unit="${row.nomor_unit}" 
+                                                    title="Edit Assignment">
+                                                <i class="mdi mdi-account-edit me-1"></i>Edit Assign
+                                            </button>
+                                            <button class="btn btn-sm btn-warning edit-btn" 
+                                                    data-id="${row.id}" 
+                                                    title="Edit Pallet Mover">
+                                                <i class="mdi mdi-pencil me-1"></i>Edt
+                                            </button>
+                                            <button class="btn btn-sm btn-danger delete-btn" 
+                                                    data-id="${row.id}" 
+                                                    data-unit="${row.nomor_unit}" 
+                                                    title="Hapus">
+                                                <i class="mdi mdi-delete me-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
                             `;
-                        }
-                    }
-                ]
-            });
+                        });
+
+                        $('#palletTable tbody').append(rows);
+                    })
+                    .fail(function() {
+                        $('#loadingRow').hide();
+                        Swal.fire('Error', 'Gagal memuat data pallet mover', 'error');
+                    });
+            }
 
             // Backup detail modal
             $('#palletTable').on('click', '.backup-detail-btn', function() {
@@ -308,7 +372,8 @@
                 $.post(routeList.assignmentStore, $(this).serialize(), function(res) {
                     if (res.success) {
                         Swal.fire('Success', res.message, 'success');
-                        $('#palletTable').DataTable().ajax.reload();
+                        // $('#palletTable').DataTable().ajax.reload();
+                        loadPalletMoverData();
                         $('#palletAssignmentModal').modal('hide');
                     } else {
                         Swal.fire('Error', res.message || 'Gagal menyimpan', 'error');
@@ -322,7 +387,8 @@
                 $.post(routeList.store, $(this).serialize(), function(res) {
                     if (res.success) {
                         Swal.fire('Berhasil', res.message, 'success');
-                        $('#palletTable').DataTable().ajax.reload();
+                        loadPalletMoverData();
+                        // $('#palletTable').DataTable().ajax.reload();
                         $('#addPalletForm')[0].reset();
                     } else {
                         Swal.fire('Gagal', res.error || 'Pallet mover gagal disimpan',
@@ -338,6 +404,7 @@
                     $('#editPalletId').val(id);
                     $('#editNomorUnit').val(data.data.nomor_unit);
                     $('#editDepartemen').val(data.data.departemen);
+                    $('#editSection').val(data.data.section);
                     $('#editStatus').val(data.data.status);
                     $('#editDescription').val(data.data.description);
                     $('#editPalletModal').modal('show');
@@ -356,7 +423,8 @@
                     success: function(res) {
                         if (res.success) {
                             Swal.fire('Berhasil', res.message, 'success');
-                            $('#palletTable').DataTable().ajax.reload();
+                            // $('#palletTable').DataTable().ajax.reload();
+                            loadPalletMoverData();
                             $('#editPalletModal').modal('hide');
                         } else {
                             Swal.fire('Gagal', res.error ||
@@ -397,8 +465,9 @@
                                 if (res.success) {
                                     Swal.fire('Dihapus', res.message,
                                         'success');
-                                    $('#palletTable').DataTable().ajax
-                                        .reload();
+                                    loadPalletMoverData();
+                                    // $('#palletTable').DataTable().ajax
+                                    //     .reload();
                                 } else {
                                     Swal.fire('Gagal', res.message ||
                                         'Gagal menghapus',
@@ -430,10 +499,12 @@
                             `<option value="${op.id}">${op.username} (${op.nik})</option>`;
                     });
 
-                    $('#editPrimaryOperatorSelect').html(operatorOptions).val(res
-                        .primary_operator_id);
-                    $('#editBackupOperatorsSelect').html(operatorOptions).val(res
-                        .backup_operator_ids);
+                    $('#operator_1').html(operatorOptions).val(res
+                        .operator_1);
+                    $('#operator_2').html(operatorOptions).val(res
+                        .operator_2);
+                    $('#operator_3').html(operatorOptions).val(res
+                        .operator_3);
                     $('#editPalletAssignmentModal').modal('show');
                 });
             });
@@ -446,7 +517,8 @@
                     res) {
                     if (res.success) {
                         Swal.fire('Berhasil', res.message, 'success');
-                        $('#palletTable').DataTable().ajax.reload();
+                        // $('#palletTable').DataTable().ajax.reload();
+                        loadPalletMoverData();
                         $('#editPalletAssignmentModal').modal('hide');
                     } else {
                         Swal.fire('Gagal', res.error || 'Gagal update assignment',

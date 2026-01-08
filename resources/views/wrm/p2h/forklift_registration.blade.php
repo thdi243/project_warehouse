@@ -78,8 +78,9 @@
             {{-- Section: Tambah Forklift --}}
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Tambah Forklift</span>
-                    <button type="submit" form="addForkliftForm" class="btn btn-primary btn-sm">Simpan Forklift</button>
+                    <h5>Tambah Forklift</h5>
+                    <button type="submit" form="addForkliftForm" class="btn btn-primary">
+                        <i class="mdi mdi-plus me-2"></i>Simpan</button>
                 </div>
                 <div class="card-body">
                     <form id="addForkliftForm">
@@ -94,6 +95,13 @@
                                 <select name="departemen" class="form-select" required>
                                     <option value="warehouse">Warehouse</option>
                                     <option value="produksi">Produksi</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Section</label>
+                                <select name="section" class="form-select" required>
+                                    <option value="warehouse_raw_material">Warehouse Raw Material</option>
+                                    <option value="warehouse_finish_goods">Warehouse Finish Goods</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -115,28 +123,31 @@
 
             {{-- Section: Data Forklift --}}
             <div class="card">
-                <div class="card-header">Daftar Forklift Terdaftar</div>
+                <div class="card-header">
+                    <h5>Daftar Forklift Terdaftar</h5>
+                </div>
                 <div class="card-body">
                     <!-- Tambahkan wrapper untuk horizontal scroll di mobile -->
-                    {{-- <div class="table-responsive"> --}}
-                    <table id="forkliftTable" class="table table-bordered table-striped nowrap" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th>Unit</th>
-                                <th>Status</th>
-                                <th>Departemen</th>
-                                <th>Deskripsi</th>
-                                <th>Operator Utama</th>
-                                <th>Jumlah Cadangan</th>
-                                <th>Waktu Buat</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{-- AJAX akan inject data di sini --}}
-                        </tbody>
-                    </table>
-                    {{-- </div> --}}
+                    <div class="table-responsive">
+                        <table id="forkliftTable" class="table table-bordered table-striped text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Unit</th>
+                                    <th>Status</th>
+                                    <th>Departemen</th>
+                                    <th>Section</th>
+                                    <th>Deskripsi</th>
+                                    <th>Operator 1</th>
+                                    <th>Operator 2</th>
+                                    <th>Operator 3</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{-- AJAX akan inject data di sini --}}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -157,15 +168,18 @@
                         <label for="user_id" class="form-label">Pilih Operator</label>
                         <select class="form-select" name="user_id" id="userSelect">
                             @foreach ($operators as $user)
-                                <option value="{{ $user->id }}">{{ $user->username }} ({{ $user->nik }})</option>
+                                <option value="{{ $user->id }}">{{ $user->nama_lengkap ?? $user->username }}
+                                    ({{ $user->nik }})
+                                </option>
                             @endforeach
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="is_primary" class="form-label">Tipe Assignment</label>
-                        <select name="is_primary" class="form-select">
-                            <option value="1">Primary</option>
-                            <option value="0">Backup</option>
+                        <label for="operator" class="form-label">Tipe Assignment</label>
+                        <select name="operator" class="form-select">
+                            <option value="1">Operator 1</option>
+                            <option value="2">Operator 2</option>
+                            <option value="3">Operator 3</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -185,6 +199,7 @@
         <div class="modal-dialog">
             <form id="editForkliftForm" class="modal-content">
                 @csrf
+                @method('PUT') <!-- Tambahkan ini kalau pakai RESTful update -->
                 <input type="hidden" name="forklift_id" id="editForkliftId">
                 <div class="modal-header">
                     <h5 class="modal-title">✏️ Edit Forklift</h5>
@@ -193,13 +208,21 @@
                 <div class="modal-body row g-3 px-3">
                     <div class="col-md-6">
                         <label class="form-label">Nomor Unit</label>
-                        <input type="text" name="nomor_unit" id="editNomorUnit" class="form-control" required>
+                        <input type="text" name="nomor_unit" id="editNomorUnit" class="form-control" required
+                            maxlength="10">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Departemen</label>
                         <select name="departemen" id="editDepartemen" class="form-select" required>
                             <option value="warehouse">Warehouse</option>
                             <option value="produksi">Produksi</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Section</label>
+                        <select name="section" id="editSection" class="form-select" required>
+                            <option value="warehouse_raw_material">Warehouse Raw Material</option>
+                            <option value="warehouse_finish_goods">Warehouse Finish Goods</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -210,13 +233,16 @@
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="form-label">Deskripsi</label>
-                        <input type="text" name="description" id="editDescription" class="form-control">
+                        <input type="text" name="description" id="editDescription" class="form-control"
+                            placeholder="Opsional">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-success">Update</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="mdi mdi-content-save"></i> Update
+                    </button>
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
                 </div>
             </form>
@@ -253,13 +279,16 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Operator Utama</label>
-                        <select name="primary_operator_id" id="primaryOperatorSelect" class="form-select"
-                            required></select>
+                        <label class="form-label">Operator 1</label>
+                        <select name="operator_1" id="operator_1" class="form-select" required></select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Cadangan Operator</label>
-                        <select name="backup_operator_ids[]" id="backupOperatorsSelect" class="form-select"></select>
+                        <label class="form-label">Operator 2</label>
+                        <select name="operator_2" id="operator_2" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Operator 3</label>
+                        <select name="operator_3" id="operator_3" class="form-select"></select>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -273,128 +302,103 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            // Load Forklift ke DataTable dengan pengaturan responsif yang lebih baik
-            $('#forkliftTable').DataTable({
-                ajax: "{{ url('api/p2h/data/registration/forklift') }}",
-                responsive: true,
-                scrollX: true,
-                autoWidth: false,
-                columnDefs: [{
-                        targets: -1, // Kolom terakhir (Aksi)
-                        orderable: false,
-                        className: 'text-center',
-                        width: '200px'
-                    },
-                    {
-                        targets: [4], // Kolom cadangan
-                        className: 'text-center',
-                        width: '80px'
-                    },
-                    {
-                        targets: [1], // Status
-                        width: '80px'
-                    },
-                    {
-                        targets: [2], // Departemen
-                        width: '100px'
-                    }
-                ],
-                columns: [{
-                        data: 'nomor_unit',
-                        width: '100px'
-                    },
-                    {
-                        data: 'status',
-                        render: function(data) {
-                            let badgeClass = 'bg-success';
-                            if (data === 'maintenance') badgeClass = 'bg-warning';
-                            if (data === 'inactive') badgeClass = 'bg-danger';
-                            return `<span class="badge ${badgeClass}">${data}</span>`;
+            loadForkliftData();
+
+            function loadForkliftData() {
+                $('#loadingRow').show();
+                $('#emptyState').addClass('d-none');
+                $('#forkliftTable tbody tr:not(#loadingRow)').remove(); // clear rows kecuali loading
+
+                $.get("{{ url('api/p2h/data/registration/forklift') }}")
+                    .done(function(response) {
+                        const data = response.data || response;
+
+                        $('#loadingRow').hide();
+
+                        if (data.length === 0) {
+                            $('#emptyState').removeClass('d-none');
+                            return;
                         }
-                    },
-                    {
-                        data: 'departemen'
-                    },
-                    {
-                        data: 'notes',
-                        render: function(data) {
-                            return data;
-                        }
-                    }, {
-                        data: 'primary_operator',
-                        render: function(data) {
-                            return data || '<span class="text-muted">-</span>';
-                        }
-                    },
-                    {
-                        data: 'backup_count',
-                        render: function(count, _, row) {
-                            return `
-                            <span class="badge bg-info backup-detail-btn" 
-                                style="cursor: pointer;" 
-                                data-id="${row.id}" 
-                                data-unit="${row.nomor_unit}">
-                                ${count}
-                            </span>
-                        `;
-                        }
-                    },
-                    {
-                        data: 'created_at',
-                        render: function(data) {
-                            return data;
-                        }
-                    },
-                    {
-                        data: 'id',
-                        render: function(id, _, row) {
-                            return `
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-sm btn-primary assign-btn" data-id="${id}" data-unit="${row.nomor_unit}" title="Assign Operator">
-                                   Assign Operator
-                                </button>
-                                <button class="btn btn-sm btn-info edit-assignment-btn" data-id="${id}" data-unit="${row.nomor_unit}" title="Edit Assignment">
-                                    Edit Assignment
-                                </button>
-                                <button class="btn btn-sm btn-warning edit-btn" data-id="${id}" title="Edit Forklift">
-                                    Edit Forklift
-                                </button>
-                                <button class="btn btn-sm btn-danger delete-btn" data-id="${id}" data-unit="${row.nomor_unit}" title="Delete">
-                                    Delete Data
-                                </button>
-                            </div>
-                        `;
-                        }
-                    }
-                ],
-                language: {
-                    "decimal": "",
-                    "emptyTable": "Tidak ada data tersedia",
-                    "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ entri",
-                    "infoEmpty": "Menampilkan 0 sampai 0 dari 0 entri",
-                    "infoFiltered": "(disaring dari _MAX_ total entri)",
-                    "infoPostFix": "",
-                    "thousands": ",",
-                    "lengthMenu": "Tampilkan _MENU_ entri",
-                    "loadingRecords": "Memuat...",
-                    "processing": "Memproses...",
-                    "search": "Cari:",
-                    "zeroRecords": "Tidak ditemukan data yang sesuai",
-                    "paginate": {
-                        "first": "Pertama",
-                        "last": "Terakhir",
-                        "next": "Selanjutnya",
-                        "previous": "Sebelumnya"
-                    },
-                    "aria": {
-                        "sortAscending": ": aktifkan untuk mengurutkan kolom secara ascending",
-                        "sortDescending": ": aktifkan untuk mengurutkan kolom secara descending"
-                    }
-                },
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
-                    '<"row"<"col-sm-12"tr>>' +
-                    '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
-            });
+
+                        let rows = '';
+
+                        data.forEach(function(row) {
+                            // Status badge
+                            let statusBadge = 'bg-success';
+                            let statusText = row.status.charAt(0).toUpperCase() + row.status.slice(1);
+                            if (row.status === 'maintenance') statusBadge = 'bg-warning text-dark';
+                            if (row.status === 'inactive') statusBadge = 'bg-danger';
+
+                            // Operator 1 highlight
+                            let op1 = row.operator_1 && row.operator_1 !== '-' ?
+                                `<strong>${row.operator_1}</strong>` :
+                                '<span class="text-danger fw-bold">Belum Ditentukan</span>';
+
+                            let op2 = row.operator_2 && row.operator_2 !== '-' ? row.operator_2 :
+                                '<em class="text-muted">-</em>';
+                            let op3 = row.operator_3 && row.operator_3 !== '-' ? row.operator_3 :
+                                '<em class="text-muted">-</em>';
+
+                            // Deskripsi
+                            let notes = row.notes && row.notes !== '-' ? row.notes :
+                                '<em class="text-muted">-</em>';
+
+                            // Section display
+                            let sectionDisplay = row.section === 'warehouse_raw_material' ?
+                                'Warehouse Raw Material' :
+                                row.section === 'warehouse_finish_goods' ? 'Warehouse Finish Goods' :
+                                row.section;
+
+                            rows += `
+                                <tr>
+                                    <td class="text-center fw-bold">${row.nomor_unit.toUpperCase()}</td>
+                                    <td class="text-center">
+                                        <span class="badge ${statusBadge}">${statusText}</span>
+                                    </td>
+                                    <td class="text-center">${row.departemen.charAt(0).toUpperCase() + row.departemen.slice(1)}</td>
+                                    <td class="text-center">${sectionDisplay}</td>
+                                    <td>${notes}</td>
+                                    <td class="text-center">${op1}</td>
+                                    <td class="text-center">${op2}</td>
+                                    <td class="text-center">${op3}</td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-primary assign-btn" 
+                                                    data-id="${row.id}" 
+                                                    data-unit="${row.nomor_unit}" 
+                                                    title="Assign Operator">
+                                                <i class="mdi mdi-account-plus me-1"></i>Assign
+                                            </button>
+                                            <button class="btn btn-sm btn-info edit-assignment-btn" 
+                                                    data-id="${row.id}" 
+                                                    data-unit="${row.nomor_unit}" 
+                                                    title="Edit Assignment">
+                                                <i class="mdi mdi-account-edit me-1"></i>Edit Assign
+                                            </button>
+                                            <button class="btn btn-sm btn-warning edit-btn" 
+                                                    data-id="${row.id}" 
+                                                    title="Edit Forklift">
+                                                <i class="mdi mdi-pencil me-1"></i>Edt
+                                            </button>
+                                            <button class="btn btn-sm btn-danger delete-btn" 
+                                                    data-id="${row.id}" 
+                                                    data-unit="${row.nomor_unit}" 
+                                                    title="Hapus">
+                                                <i class="mdi mdi-delete me-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+
+                        $('#forkliftTable tbody').append(rows);
+                    })
+                    .fail(function() {
+                        $('#loadingRow').hide();
+                        Swal.fire('Error', 'Gagal memuat data forklift', 'error');
+                    });
+            }
 
             // Event handlers tetap sama seperti sebelumnya
             $('#forkliftTable').on('click', '.backup-detail-btn', function() {
@@ -432,35 +436,90 @@
             // Handle submit assignment
             $('#assignmentForm').on('submit', function(e) {
                 e.preventDefault();
-                $.post("{{ url('api/p2h/store/forklift/assignment') }}", $(this).serialize())
+
+                const $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true).text('Menyimpan...');
+
+                $.post("{{ url('/p2h/store/forklift/assignment') }}", $(this).serialize())
                     .done(function(res) {
                         if (res.success) {
-                            Swal.fire('Success', res.message, 'success');
-                            $('#forkliftTable').DataTable().ajax.reload();
+                            Swal.fire('Berhasil!', res.message, 'success');
+                            // $('#forkliftTable').DataTable().ajax.reload(null, false);
+                            loadForkliftData();
                             $('#assignmentModal').modal('hide');
+                            $('#assignmentForm')[0].reset();
                         } else {
-                            Swal.fire('Error', res.message || 'Gagal menyimpan', 'error');
+                            Swal.fire('Gagal', res.message || 'Gagal menyimpan', 'error');
                         }
                     })
                     .fail(function(xhr) {
-                        let res = xhr.responseJSON;
-                        Swal.fire('Error', res.message || 'Terjadi kesalahan server', 'error');
+                        let msg = 'Terjadi kesalahan server';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire('Error', msg, 'error');
+                    })
+                    .always(function() {
+                        $btn.prop('disabled', false).text('Simpan');
                     });
-
             });
 
             // Forklift creation handler
             $('#addForkliftForm').on('submit', function(e) {
                 e.preventDefault();
-                $.post("{{ url('api/p2h/store/forklift/registration') }}", $(this).serialize(), function(
-                    res) {
-                    if (res.success) {
-                        Swal.fire('Berhasil', res.message, 'success');
-                        $('#forkliftTable').DataTable().ajax.reload();
-                        $('#addForkliftForm')[0].reset();
-                    } else {
-                        Swal.fire('Gagal', res.error || 'Forklift gagal disimpan',
-                            'error');
+
+                const $form = $(this);
+                const $btn = $('#submitForkliftBtn');
+                const formData = new FormData($form[0]); // Lebih reliable dari serialize()
+
+                // Loading state
+                $btn.prop('disabled', true).html(
+                    '<i class="mdi mdi-loading mdi-spin me-2"></i>Menyimpan...');
+
+                $.ajax({
+                    url: "{{ url('api/p2h/store/forklift/registration') }}",
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.fire({
+                                title: 'Berhasil!',
+                                text: res.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            loadForkliftData();
+                            $form[0].reset();
+                            $('select').prop('selectedIndex', 0); // Reset dropdown
+                        } else {
+                            Swal.fire({
+                                title: 'Gagal!',
+                                text: res.message || res.error ||
+                                    'Forklift gagal disimpan',
+                                icon: 'error'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'Terjadi kesalahan server';
+                        try {
+                            const res = JSON.parse(xhr.responseText);
+                            errorMsg = res.message || res.error || errorMsg;
+                        } catch (e) {}
+
+                        Swal.fire({
+                            title: 'Error!',
+                            text: errorMsg,
+                            icon: 'error'
+                        });
+                    },
+                    complete: function() {
+                        // Reset button
+                        $btn.prop('disabled', false).html(
+                            '<i class="mdi mdi-plus me-2"></i>Simpan');
                     }
                 });
             });
@@ -468,41 +527,74 @@
             // Open Edit Modal
             $(document).on('click', '.edit-btn', function() {
                 const id = $(this).data('id');
-                $.get("{{ url('api/p2h/show/forklift') }}/" + id,
-                    function(data) {
-                        $('#editForkliftId').val(id);
+
+                $.get("{{ url('api/p2h/show/forklift') }}/" + id)
+                    .done(function(res) {
+                        const data = res.data || res;
+
+                        $('#editForkliftId').val(data.id);
                         $('#editNomorUnit').val(data.nomor_unit);
                         $('#editDepartemen').val(data.departemen);
+                        $('#editSection').val(data.section);
                         $('#editStatus').val(data.status);
-                        $('#editDescription').val(data.description);
+                        $('#editDescription').val(data.description || '');
+
                         $('#editForkliftModal').modal('show');
+                    })
+                    .fail(function() {
+                        Swal.fire('Error', 'Gagal memuat data forklift', 'error');
                     });
             });
 
             $('#editForkliftForm').on('submit', function(e) {
                 e.preventDefault();
 
+                const $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin"></i> Menyimpan...');
+
                 const id = $('#editForkliftId').val();
                 const formData = $(this).serialize();
 
                 $.ajax({
                     url: "{{ url('api/p2h/update/forklift') }}/" + id,
-                    type: 'PUT',
+                    type: 'POST',
                     data: formData,
                     success: function(res) {
                         if (res.success) {
-                            Swal.fire('Berhasil', res.message, 'success');
-                            $('#forkliftTable').DataTable().ajax.reload();
+                            Swal.fire({
+                                title: 'Berhasil!',
+                                text: res.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            loadForkliftData();
+                            // $('#forkliftTable').DataTable().ajax.reload(null, false);
                             $('#editForkliftModal').modal('hide');
                         } else {
-                            Swal.fire('Gagal', res.error || 'Gagal update forklift',
-                                'error');
+                            Swal.fire('Gagal', res.message || 'Gagal update forklift', 'error');
                         }
                     },
                     error: function(xhr) {
-                        const res = xhr.responseJSON;
-                        Swal.fire('Error', res?.error ||
-                            'Terjadi kesalahan saat update', 'error');
+                        let msg = 'Terjadi kesalahan server';
+
+                        if (xhr.status === 422 && xhr.responseJSON) {
+                            // Validation error Laravel
+                            if (xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            } else if (xhr.responseJSON.errors) {
+                                // Ambil error pertama
+                                const firstError = Object.values(xhr.responseJSON.errors)[0];
+                                msg = Array.isArray(firstError) ? firstError[0] : firstError;
+                            }
+                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+
+                        Swal.fire('Error!', msg, 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html('Update');
                     }
                 });
             });
@@ -531,8 +623,9 @@
                                 if (res.success) {
                                     Swal.fire('Dihapus', res.message,
                                         'success');
-                                    $('#forkliftTable').DataTable().ajax
-                                        .reload();
+                                    loadForkliftData();
+                                    // $('#forkliftTable').DataTable().ajax
+                                    //     .reload();
                                 } else {
                                     Swal.fire('Gagal', res.message ||
                                         'Gagal menghapus', 'error');
@@ -563,26 +656,48 @@
                                 `<option value="${op.id}">${op.username} (${op.nik})</option>`;
                         });
 
-                        $('#primaryOperatorSelect').html(operatorOptions).val(res
-                            .primary_operator_id);
-                        $('#backupOperatorsSelect').html(operatorOptions).val(res
-                            .backup_operator_ids);
+                        $('#operator_1').html(operatorOptions).val(res
+                            .operator_1);
+                        $('#operator_2').html(operatorOptions).val(res
+                            .operator_2);
+                        $('#operator_3').html(operatorOptions).val(res
+                            .operator_3);
                         $('#editAssignmentModal').modal('show');
                     });
             });
 
             $('#editAssignmentForm').on('submit', function(e) {
                 e.preventDefault();
-                $.post("{{ url('api/p2h/update/forklift/assignment') }}", $(this).serialize(),
-                    function(res) {
+
+                const $btn = $(this).find('button[type="submit"]');
+                $btn.prop('disabled', true).text('Menyimpan...');
+
+                $.post("{{ url('/p2h/update/forklift/assignment') }}", $(this).serialize())
+                    .done(function(res) {
                         if (res.success) {
-                            Swal.fire('Berhasil', res.message, 'success');
-                            $('#forkliftTable').DataTable().ajax.reload();
+                            Swal.fire({
+                                title: 'Berhasil!',
+                                text: res.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            loadForkliftData();
+                            // $('#forkliftTable').DataTable().ajax.reload(null, false);
                             $('#editAssignmentModal').modal('hide');
                         } else {
-                            Swal.fire('Gagal', res.error || 'Gagal update assignment',
-                                'error');
+                            Swal.fire('Gagal', res.message || 'Gagal update assignment', 'error');
                         }
+                    })
+                    .fail(function(xhr) {
+                        let msg = 'Terjadi kesalahan server';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire('Error', msg, 'error');
+                    })
+                    .always(function() {
+                        $btn.prop('disabled', false).text('Simpan Perubahan');
                     });
             });
         });

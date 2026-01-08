@@ -83,7 +83,7 @@ class WarehouseController extends Controller
         // Ambil daftar operator warehouse untuk dropdown assignment
         $operators = User::where('jabatan', 'operator')
             ->where('departemen', 'warehouse')
-            ->select('id', 'username', 'nik')
+            ->select('id', 'username', 'nama_lengkap', 'nik')
             ->get();
 
         return view(
