@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class P2HPalletMoverModel extends Model
 {
-    protected $table = 'p2h_pallet';
+    protected $table = 'p2h_pallet_mover';
     protected $primaryKey = 'id';
     protected $fillable = [
         'tanggal',
