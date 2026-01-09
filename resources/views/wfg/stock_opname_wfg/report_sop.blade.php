@@ -166,18 +166,19 @@
             <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="200">
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle shadow-sm rounded-3 text-nowrap" id="tableOpname">
+                        <table class="table table-hover align-middle shadow-sm rounded-3 text-nowrap sortable"
+                            id="tableOpname">
                             <thead class="bg-soft-info text-dark border-bottom">
                                 <tr>
-                                    <th class="text-center" style="width: 70px;">ID</th>
-                                    <th>Tanggal Opname</th>
-                                    <th>MID Barang</th>
-                                    <th>Nama Barang</th>
+                                    <th class="text-center no-sort" style="width: 70px;">ID</th>
+                                    <th class="no-sort">Tanggal Opname</th>
+                                    <th class="no-sort">MID Barang</th>
+                                    <th class="no-sort">Nama Barang</th>
                                     <th>Qty SAP</th>
                                     <th>Qty Fisik</th>
                                     <th>Selisih</th>
                                     <th>Keterangan</th>
-                                    <th class="text-center" style="width: 130px;">Aksi</th>
+                                    <th class="text-center no-sort" style="width: 130px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -650,6 +651,7 @@
                     const qty_fisik = summary.qty_fisik ?? 0;
                     const selisih = summary.selisih ?? 0;
                     const keterangan = summary.keterangan || '-';
+                    const selisihNum = parseFloat(summary.selisih ?? 0);
 
                     // Tentukan status
                     let statusClass, statusIcon, statusText;
@@ -669,7 +671,9 @@
                     }
 
                     const statusBadge = `
-                        <span class="badge badge-soft-${statusClass} fs-6" title="${statusText}">${formatNumber(selisih)}</span>
+                        <span class="badge badge-soft-${statusClass} fs-6" title="${statusText}">
+                            ${formatNumber(selisih)} 
+                        </span>
                     `;
 
                     const isOperator = @json(Auth::user()->jabatan === 'operator');
@@ -692,7 +696,7 @@
                             <td>${nama_barang}</td>
                             <td class="text-end">${formatNumber(qty_sistem)}</td>
                             <td class="text-end">${formatNumber(qty_fisik)}</td>
-                            <td class="text-center">${statusBadge}</td>
+                            <td class="text-center" data-sort="${selisihNum}">${statusBadge}</td>
                             <td class="text-start text-wrap">${keterangan}</td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center align-items-center gap-2 flex-nowrap">
@@ -707,6 +711,7 @@
                 });
 
                 $('#tableBody').html(html);
+
             }
 
             window.showDetail = function(summaryId) {
@@ -1339,9 +1344,6 @@
                             <div class="mb-3 border border-info p-2 rounded temp-note" data-barangid="${items.barang_id}">
                                 <label>Catatan</label>
                                 <textarea class="form-control temp_note bg-light" rows="3" placeholder="Belum ada catatan">${noteText}</textarea>
-                                <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-1" data-type="note">
-                                    <i class="mdi mdi-delete"></i> Hapus Catatan
-                                </button>
                             </div>
                         `;
 
