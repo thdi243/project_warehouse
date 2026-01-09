@@ -1292,8 +1292,13 @@
                     if (res.status === 'success') {
                         const items = res.data;
                         let html = '';
-                        const summary = items.sop?.summaries?.length > 0 ? items.sop.summaries[0] : null;
-                        const noteText = summary?.keterangan?.trim() || '';
+                        let noteText = '';
+                        const firstItemWithSummary = items.find(item =>
+                            item.sop?.summaries && item.sop.summaries.length > 0
+                        );
+                        if (firstItemWithSummary) {
+                            noteText = firstItemWithSummary.sop.summaries[0].keterangan?.trim() || '';
+                        }
 
                         items.forEach(item => {
                             const updatedAt = item.updated_at ? item.updated_at.replace(' ', 'T') :
