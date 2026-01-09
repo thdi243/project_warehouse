@@ -38,7 +38,7 @@ return new class extends Migration
             $table->timestamps();
 
             // 1 forklift tidak boleh punya operator level sama
-            $table->unique(['forklift_id', 'operator_type'], 'unique_forklift_operator');
+            // $table->unique(['forklift_id', 'operator_type'], 'unique_forklift_operator');
 
             // index bantu query
             $table->index(['forklift_id', 'is_active']);

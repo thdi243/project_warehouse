@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('user_pallet_assignments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('pallet_mover_id')->constrained('pallet_movers')->onDelete('cascade');
+            $table->foreignId('pallet_mover_id')->constrained()->onDelete('cascade');
             $table->unsignedTinyInteger('operator_type');
             $table->date('assigned_date')->useCurrent();
             $table->foreignId('assigned_by')->nullable()->constrained('users')->nullOnDelete();
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamps();
 
             // 1 pallet mover tidak boleh punya operator level sama
-            $table->unique(['pallet_mover_id', 'operator_type'], 'unique_pallet_operator');
+            // $table->unique(['pallet_mover_id', 'operator_type'], 'unique_pallet_operator');
             // index bantu performa
             $table->index(['user_id', 'is_active']);
         });

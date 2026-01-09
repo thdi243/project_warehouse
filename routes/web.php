@@ -164,7 +164,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Warehouse Raw Material
-    Route::middleware(['auth', 'access:warehouse_raw_material'])->group(function () {
+    Route::middleware(['auth', 'access:warehouse_raw_material,warehouse_finish_goods'])->group(function () {
         // P2H
         Route::prefix('p2h')->group(function () {
             Route::get('/online/index', [P2HController::class, 'index'])->name('p2h.online.index');
