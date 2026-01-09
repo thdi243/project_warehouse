@@ -211,7 +211,6 @@
                 </div>
             </div>
 
-
             <div class="row mt-4" id="form-forklift" style="display: none;">
                 <div class="col-md-10 offset-md-1">
                     <div class="card">
@@ -293,9 +292,9 @@
                                             name="operator_name" readonly>
                                     </div>
                                     <!-- <div class="col-md-12 mb-3">
-                                                                                                                                                                                                                        <label>Catatan</label>
-                                                                                                                                                                                                                        <textarea class="form-control" name="catatan"></textarea>
-                                                                                                                                                                                                                    </div> -->
+                                                                                                                                                                                                                                                                                            <label>Catatan</label>
+                                                                                                                                                                                                                                                                                            <textarea class="form-control" name="catatan"></textarea>
+                                                                                                                                                                                                                                                                                        </div> -->
                                 </div>
 
                                 <hr>
@@ -390,7 +389,7 @@
                                     @endphp
 
                                     @foreach ($checks as $key => $item)
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-6 mb-3" data-label="{{ $item['label'] }}">
                                             <label>{{ $item['label'] }}</label>
                                             <small class="text-muted d-block">{{ $item['desc'] }}</small>
                                             <div class="d-flex gap-2">
@@ -545,7 +544,7 @@
                                     @endphp
 
                                     @foreach ($checks as $key => $item)
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-6 mb-3" data-label="{{ $item['label'] }}">
                                             <label>{{ $item['label'] }}</label>
                                             <small class="text-muted d-block">{{ $item['desc'] }}</small>
                                             <div class="d-flex gap-2">
@@ -740,24 +739,77 @@
 
             // Reusable AJAX submit logic
             function submitP2HForm(form) {
+                const $form = $(form);
                 const actionUrl = $(form).data("url");
                 const formId = $(form).attr("id");
                 let notes = [];
 
-                // Kumpulin note dari item yang "Tidak OK"
-                $(`#${formId} .item-note:visible`).each(function() {
-                    const $noteInput = $(this);
-                    const text = $noteInput.val().trim();
-                    if (text) {
-                        // Ambil label asli (misal: "Fungsi Rem")
-                        let label = $noteInput.closest('.mb-3').find('label').first().text().trim();
+                // Deteksi jenis form berdasarkan ID
+                const isForklift = formId.includes('Forklift') || formId.includes('forklift');
+                const isPallet = formId.includes('Pallet') || formId.includes('pallet');
 
-                        // Bersihkan label dari kata "check" atau nomor jika ada
-                        label = label.replace(/^\d+\.\s*/, '').replace(/^check\s+/i, '').trim();
+                // Mapping label khusus untuk Forklift
+                const forkliftLabelMap = {
+                    'Check Baterai': 'Cek Baterai',
+                    'Pengecekan Fork': 'Cek Fork',
+                    'Check Body Unit dan Kebersihan': 'Kondisi Body & Kebersihan',
+                    'Check Kombinasi Lampu Kiri': 'Lampu Kiri',
+                    'Check Kombinasi Lampu Kanan': 'Lampu Kanan',
+                    'Check Lampu Sorot / Headlamp': 'Lampu Sorot',
+                    'Check Lampu Sign Depan Kanan': 'Lampu Sign Depan Kanan',
+                    'Check Lampu Sign Depan Kiri': 'Lampu Sign Depan Kiri',
+                    'Pengecekan Fan Belakang': 'Kipas Belakang',
+                    'Lift Chains': 'Rantai Lift',
+                    'Hydraulic System + Selang': 'Sistem Hidrolik',
+                    'Check Kondisi Axle': 'Kondisi Axle',
+                    'Sistem Kemudi': 'Sistem Kemudi',
+                    'Check Panel Display': 'Panel Display',
+                    'Check Isi Air Aki': 'Air Aki',
+                    'Check Klakson / Horn': 'Klakson',
+                    'Check Buzzer Back': 'Buzzer Mundur',
+                    'Check Kaca Spion': 'Kaca Spion',
+                    'Check Ban': 'Kondisi Ban',
+                    'Check Fungsi Rem': 'Fungsi Rem'
+                };
 
-                        // Format rapi: "Label: keterangan"
-                        notes.push(`${label}: ${text}`);
+                // Pallet Mover label sudah bersih, jadi mapping minimal atau tidak perlu
+                const palletLabelMap = {
+                    'Air Accu': 'Air Accu',
+                    'Battery': 'Battery',
+                    'Body Unit': 'Body Unit',
+                    'Klakson': 'Klakson',
+                    'Roda': 'Roda',
+                    'Sistem Kemudi': 'Sistem Kemudi',
+                    'Kebersihan Unit': 'Kebersihan Unit',
+                    'Kunci PM': 'Kunci PM',
+                    'Hydraulic': 'Hydraulic'
+                };
+
+                $(`#${formId} input[type="radio"]:checked[value="0"]`).each(function() {
+                    const $radio = $(this);
+                    const $container = $radio.closest('.mb-3');
+                    const rawLabel = $container.data('label').trim();
+
+                    let finalLabel = rawLabel;
+
+                    if (isForklift) {
+                        // Bersihkan dulu untuk forklift
+                        let cleanLabel = rawLabel
+                            .replace(/^Check\s+/i, '')
+                            .replace(/^Pengecekan\s+/i, '')
+                            .trim();
+
+                        finalLabel = forkliftLabelMap[rawLabel] || cleanLabel;
+                    } else if (isPallet) {
+                        // Untuk pallet, langsung pakai yang ada (sudah bersih)
+                        finalLabel = palletLabelMap[rawLabel] || rawLabel;
                     }
+
+                    const $noteInput = $container.find('.item-note');
+                    const text = $noteInput.val().trim();
+
+                    let noteText = `${finalLabel}: ${text || 'no'}`;
+                    notes.push(noteText);
                 });
 
                 // Gabung dengan pipe, sama seperti backend update

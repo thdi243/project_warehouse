@@ -551,6 +551,10 @@
             });
 
             // Edit P2H
+            function escapeRegExp(string) {
+                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
             $(document).on('click', '.btn-edit', function() {
                 const uniqueKey = $(this).data('key');
 
@@ -710,45 +714,67 @@
                         let noteValue = shiftData[`${field}_note`] || '';
 
                         // === LOGIC BARU: Ekstrak dari catatan umum kalau note per item kosong ===
-                        if (value == 0 && !noteValue && generalCatatan) {
-                            const label = labelMap[field];
-                            const regex = new RegExp(
-                                `${label}\\s*[:\\-\\–]\\s*(.+?)(?=\\s*\\|\\s*|$)`, 'i');
-                            const match = generalCatatan.match(regex);
+                        // if (value == 0 && !noteValue && generalCatatan) {
+                        //     const label = labelMap[field];
+                        //     const regex = new RegExp(
+                        //         `${label}\\s*[:\\-\\–]\\s*(.+?)(?=\\s*\\|\\s*|$)`, 'i');
+                        //     const match = generalCatatan.match(regex);
 
-                            if (match && match[1].trim()) {
-                                noteValue = match[1].trim();
-                                // HAPUS bagian yang diekstrak dari generalCatatan
-                                generalCatatan = generalCatatan.replace(match[0], '')
-                                    .trim();
-                                generalCatatan = generalCatatan.replace(/^\|\s*|\s*\|$/,
-                                    ''); // Bersihkan pipe di ujung
-                                generalCatatan = generalCatatan.replace(/\s*\|\s*\|/,
-                                    ' | '); // Bersihkan pipe ganda
+                        //     if (match && match[1].trim()) {
+                        //         noteValue = match[1].trim();
+                        //         // HAPUS bagian yang diekstrak dari generalCatatan
+                        //         generalCatatan = generalCatatan.replace(match[0], '')
+                        //             .trim();
+                        //         generalCatatan = generalCatatan.replace(/^\|\s*|\s*\|$/,
+                        //             ''); // Bersihkan pipe di ujung
+                        //         generalCatatan = generalCatatan.replace(/\s*\|\s*\|/,
+                        //             ' | '); // Bersihkan pipe ganda
+                        //     }
+                        // }
+
+                        if (value == 0 && !noteValue && generalCatatan) {
+
+                            const label = labelMap[field];
+                            const newFormat = generalCatatan.match(
+                                new RegExp(
+                                    `${escapeRegExp(label)}\\s*[:\\-]\\s*(.+?)(?=\\s*\\||$)`,
+                                    'i'
+                                )
+                            );
+
+                            if (newFormat && newFormat[1]) {
+                                noteValue = newFormat[1].trim();
+                            }
+
+                            if (!noteValue) {
+                                noteValue = extractLegacyNote(generalCatatan, field);
                             }
                         }
+
 
                         const showNote = value == 0 ? '' : 'd-none';
 
                         html += `
-                            <div class="col-md-6 mb-3">
-                                <div class="form-check">
-                                    <input type="hidden" name="shifts[${shift}][${field}]" value="0">
-                                    <input class="form-check-input checklist-item" type="checkbox" 
-                                        name="shifts[${shift}][${field}]" value="1" ${checked}>
-                                    <label class="form-check-label">${labelMap[field] || field}</label>
-                                </div>
-                                <div class="note-container mt-2 ${showNote}">
-                                    <label class="form-label text-danger">
-                                        <small>Keterangan (wajib isi kenapa NOK)</small>
-                                    </label>
-                                    <input type="text" class="form-control form-control-sm note-input" 
-                                        name="shifts[${shift}][${field}_note]" value="${noteValue}"
-                                        placeholder="Jelaskan kerusakan...">
-                                </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input type="hidden" name="shifts[${shift}][${field}]" value="0">
+                                <input class="form-check-input checklist-item" type="checkbox" 
+                                    name="shifts[${shift}][${field}]" value="1" ${checked}>
+                                <label class="form-check-label">${labelMap[field] || field}</label>
                             </div>
-                        `;
+                            <div class="note-container mt-2 ${showNote}">
+                                <label class="form-label text-danger">
+                                    <small>Keterangan (wajib isi kenapa NOK)</small>
+                                </label>
+                                <input type="text" class="form-control form-control-sm note-input" 
+                                    name="shifts[${shift}][${field}_note]" value="${noteValue}"
+                                    placeholder="Jelaskan kerusakan...">
+                            </div>
+                        </div>
+                    `;
                     });
+
+
 
                     $(`#shift${shift}Content`).html(html);
                 });
@@ -768,6 +794,147 @@
 
                 $('#editP2HModal').modal('show');
             });
+
+            function extractLegacyNote(catatan, fieldKey) {
+                const legacyLabelAliases = {
+                    kondisi_body_kebersihan: [
+                        'body unit dan kebersihan',
+                        'kondisi body dan kebersihan',
+                        'body unit',
+                    ],
+                    sistem_hidrolik: [
+                        'hydraulic system + selang',
+                        'hydraulic system',
+                        'sistem hidrolik',
+                        'hydraulic'
+                    ],
+                    sistem_kemudi: [
+                        'sistem kemudi'
+                    ],
+                    kondisi_ban: [
+                        'ban',
+                        'kondisi ban'
+                    ],
+                    fungsi_rem: [
+                        'fungsi rem',
+                        'rem'
+                    ],
+                    cek_fork: [
+                        'pengecekan fork',
+                        'fork'
+                    ],
+                    cek_baterai: [
+                        'baterai',
+                        'cek baterai'
+                    ],
+                    klakson: [
+                        'klakson',
+                        'horn',
+                        'klakson / horn'
+                    ],
+                    air_aki: [
+                        'air aki',
+                        'level air aki'
+                    ],
+                    rantai_lift: [
+                        'rantai lift',
+                        'lift chains',
+                        'chain lift'
+                    ],
+                    buzzer_mundur: [
+                        'buzzer mundur',
+                        'buzzer back'
+                    ],
+                    lampu_kiri: [
+                        'lampu kiri',
+                        'kombinasi lampu kiri'
+                    ],
+                    lampu_kanan: [
+                        'lampu kanan',
+                        'kombinasi lampu kanan'
+                    ],
+                    lampu_sorot: [
+                        'lampu sorot',
+                        'headlamp'
+                    ],
+                    lampu_sign_depan_kiri: [
+                        'lampu sign depan kiri',
+                        'left signal light'
+                    ],
+                    lampu_sign_depan_kanan: [
+                        'lampu sign depan kanan',
+                        'right signal light'
+                    ],
+                    kaca_spion: [
+                        'kaca spion',
+                        'rearview mirror'
+                    ],
+                    panel_display: [
+                        'panel display'
+                    ],
+                    kondisi_axle: [
+                        'kondisi axle',
+                        'axle condition'
+                    ],
+
+                    // Pallet Mover
+                    check_air_accu: [
+                        'air accu',
+                        'Air Accu'
+                    ],
+                    check_battery: [
+                        'battery',
+                        'kondisi battery'
+                    ],
+                    check_body_unit: [
+                        'body unit'
+                    ],
+                    check_klakson: [
+                        'klakson',
+                        'horn',
+                        'klakson / horn'
+                    ],
+                    check_roda: [
+                        'roda',
+                    ],
+                    check_sistem_kemudi: [
+                        'sistem kemudi',
+                    ],
+                    check_kebersihan_unit: [
+                        'kebersihan unit',
+                        'unit cleanliness'
+                    ],
+                    check_kunci_pm: [
+                        'kunci pm',
+                        'pm key'
+                    ],
+                    check_hydraulic: [
+                        'hydraulic',
+                        'sistem hydraulic'
+                    ]
+
+                };
+
+                if (!catatan || !legacyLabelAliases[fieldKey]) return '';
+
+                const text = catatan.toLowerCase();
+
+                for (const alias of legacyLabelAliases[fieldKey]) {
+                    const escaped = escapeRegExp(alias);
+
+                    const regex = new RegExp(
+                        `${escaped}\\s+([^,]+)`,
+                        'i'
+                    );
+
+                    const match = text.match(regex);
+                    if (match && match[1]) {
+                        return match[1].trim()
+                            .replace(/^./, c => c.toUpperCase());
+                    }
+                }
+                return '';
+            }
 
             $(document).on('change', '.checklist-item', function() {
                 const $checkbox = $(this);
