@@ -167,7 +167,7 @@
                         @endif
 
                         {{-- WRM Menu --}}
-                        @if ($jabatan != 'dept_head' && in_array($bagian, ['warehouse', 'warehouse_raw_material']))
+                        @if ($jabatan != 'dept_head' && in_array($bagian, ['warehouse', 'warehouse_raw_material', 'warehouse_finish_goods']))
                             {{-- P2H Menu --}}
                             <li class="nav-item">
                                 <a class="nav-link menu-link  {{ request()->routeIs('p2h.*') ? '' : 'collapsed' }}"
