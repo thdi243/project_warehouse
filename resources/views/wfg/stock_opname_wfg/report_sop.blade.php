@@ -780,8 +780,8 @@
                         <div class="col-md-6">
                             <table class="table table-sm">
                                 <tr>
-                                    <td width="120">ID Data</td>
-                                    <td><strong>${data.summaries[0].id}</strong></td>
+                                    <td width="120">Principal</td>
+                                    <td><strong>${data.summaries[0].barang.principal}</strong></td>
                                 </tr>
                                 <tr>
                                     <td width="120">Tanggal</td>
