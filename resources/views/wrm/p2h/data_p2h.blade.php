@@ -386,12 +386,12 @@
             function applyFilter() {
                 const keyword = $('#searchInput').val().toLowerCase();
                 const selectedDate = $('#filterDate').val();
-                const sourceData = $('#table-title').text().includes('Pallet') ? palletData : currentData;
+                const sourceData = currentData || []; // selalu pakai currentData
 
                 filteredData = sourceData.filter(item => {
-                    const unit = item.nomor_unit.toLowerCase();
-                    const jenis = item.jenis_p2h.toLowerCase();
-                    const tanggal = item.tanggal;
+                    const unit = (item.nomor_unit || '').toLowerCase();
+                    const jenis = (item.jenis_p2h || '').toLowerCase();
+                    const tanggal = item.tanggal || '';
 
                     const matchKeyword = unit.includes(keyword) || jenis.includes(keyword);
                     const matchDate = !selectedDate || tanggal === selectedDate;
@@ -410,12 +410,6 @@
                 $('#searchInput').val('');
                 $('#filterDate').val('');
                 applyFilter();
-            });
-
-            // Event listener pagination
-            $(document).on('click', '.page-btn', function() {
-                currentPage = parseInt($(this).data('page'));
-                renderTable(filteredData, currentPage);
             });
 
             // Event listener klik unit
@@ -439,7 +433,8 @@
 
                         $('#table-title').text(`Data P2H - ${unit}`);
                         $('#table-container').slideDown();
-
+                        $('#searchInput').val('');
+                        $('#filterDate').val('');
                         currentPage = 1;
                         renderTable(filteredData, currentPage);
                     },

@@ -167,6 +167,7 @@
                     <div class="mb-3">
                         <label for="user_id" class="form-label">Pilih Operator</label>
                         <select class="form-select" name="user_id" id="userSelect">
+                            <option value="">Pilih Operator</option>
                             @foreach ($operators as $user)
                                 <option value="{{ $user->id }}">{{ $user->nama_lengkap ?? $user->username }}
                                     ({{ $user->nik }})
@@ -284,11 +285,14 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Operator 2</label>
-                        <select name="operator_2" id="operator_2" class="form-select"></select>
+                        <select name="operator_2" id="operator_2" class="form-select">
+                        </select>
+
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Operator 3</label>
-                        <select name="operator_3" id="operator_3" class="form-select"></select>
+                        <select name="operator_3" id="operator_3" class="form-select">
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -651,6 +655,8 @@
                 $.get("{{ url('api/p2h/show/forklift/assignment') }}/" + forkliftId,
                     function(res) {
                         let operatorOptions = '';
+                        operatorOptions +=
+                            `<option value="">Pilih Operator</option>`;
                         res.operators.forEach(op => {
                             operatorOptions +=
                                 `<option value="${op.id}">${op.username} (${op.nik})</option>`;

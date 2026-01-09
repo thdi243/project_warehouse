@@ -101,6 +101,7 @@
                     <div class="mb-3">
                         <label class="form-label">Pilih Operator</label>
                         <select class="form-select" name="user_id" id="palletOperatorSelect">
+                            <option value="">Pilih Operator</option>
                             @foreach ($operators as $user)
                                 <option value="{{ $user->id }}">{{ $user->username }} ({{ $user->nik }})</option>
                             @endforeach
@@ -369,14 +370,54 @@
 
             $('#palletAssignmentForm').on('submit', function(e) {
                 e.preventDefault();
-                $.post(routeList.assignmentStore, $(this).serialize(), function(res) {
-                    if (res.success) {
-                        Swal.fire('Success', res.message, 'success');
-                        // $('#palletTable').DataTable().ajax.reload();
-                        loadPalletMoverData();
-                        $('#palletAssignmentModal').modal('hide');
-                    } else {
-                        Swal.fire('Error', res.message || 'Gagal menyimpan', 'error');
+
+                // Bersihin error lama
+                $('.form-control').removeClass('is-invalid');
+                $('.invalid-feedback').remove();
+
+                let $btn = $(this).find('button[type="submit"]');
+                let btnText = $btn.html();
+                $btn.prop('disabled', true).html('Menyimpan...');
+
+                $.ajax({
+                    url: routeList.assignmentStore,
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.fire('Berhasil!', res.message, 'success');
+                            loadPalletMoverData();
+                            $('#palletAssignmentModal').modal('hide');
+                        } else {
+                            Swal.fire('Gagal', res.message || 'Terjadi kesalahan', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        let msg = 'Terjadi kesalahan saat menyimpan';
+
+                        if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                            let errors = xhr.responseJSON.errors;
+
+                            // Tampilkan error di masing-masing field
+                            $.each(errors, function(field, messages) {
+                                let $input = $('[name="' + field + '"]');
+                                $input.addClass('is-invalid');
+                                $input.parent().append(
+                                    '<div class="invalid-feedback">' + messages[0] +
+                                    '</div>');
+                            });
+
+                            // Ambil error pertama buat alert
+                            msg = Object.values(errors)[0][0];
+                        } else if (xhr.responseJSON?.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+
+                        Swal.fire('Error', msg, 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html(btnText);
                     }
                 });
             });
@@ -494,6 +535,8 @@
 
                 $.get(`${routeList.assignmentDetail}/${id}`, function(res) {
                     let operatorOptions = '';
+                    operatorOptions +=
+                        `<option value="">Pilih Operator</option>`;
                     res.operators.forEach(op => {
                         operatorOptions +=
                             `<option value="${op.id}">${op.username} (${op.nik})</option>`;
@@ -511,24 +554,59 @@
 
             $('#editPalletAssignmentForm').on('submit', function(e) {
                 e.preventDefault();
-                const id = $('#editPalletAssignmentId').val();
 
-                $.post(`${routeList.assignmentUpdate}/${id}`, $(this).serialize(), function(
-                    res) {
-                    if (res.success) {
-                        Swal.fire('Berhasil', res.message, 'success');
-                        // $('#palletTable').DataTable().ajax.reload();
-                        loadPalletMoverData();
-                        $('#editPalletAssignmentModal').modal('hide');
-                    } else {
-                        Swal.fire('Gagal', res.error || 'Gagal update assignment',
-                            'error');
+                // Bersihkan error lama
+                $('.form-control').removeClass('is-invalid');
+                $('.invalid-feedback').remove();
+
+                const id = $('#editPalletAssignmentId').val();
+                const url = `${routeList.assignmentUpdate}/${id}`;
+
+                let $btn = $(this).find('button[type="submit"]');
+                let btnText = $btn.html();
+                $btn.prop('disabled', true).html('Menyimpan...');
+
+                $.ajax({
+                    url: url,
+                    method: 'POST', // atau 'PUT' kalau pakai method spoofing, tapi biasanya POST + _method=PUT
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.fire('Berhasil!', res.message, 'success');
+                            loadPalletMoverData();
+                            $('#editPalletAssignmentModal').modal('hide');
+                        } else {
+                            Swal.fire('Gagal', res.message || 'Gagal update assignment',
+                                'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        let msg = 'Terjadi kesalahan saat update assignment';
+
+                        if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                            let errors = xhr.responseJSON.errors;
+
+                            // Tampilkan error di tiap field
+                            $.each(errors, function(field, messages) {
+                                let $input = $('[name="' + field + '"]');
+                                $input.addClass('is-invalid');
+                                $input.parent().append(
+                                    '<div class="invalid-feedback">' + messages[0] +
+                                    '</div>');
+                            });
+
+                            // Pesan utama ambil dari error pertama
+                            msg = Object.values(errors)[0][0];
+                        } else if (xhr.responseJSON?.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+
+                        Swal.fire('Error', msg, 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html(btnText);
                     }
-                }).fail(function(xhr) {
-                    const res = xhr.responseJSON;
-                    Swal.fire('Error', res?.error ||
-                        'Terjadi kesalahan saat update assignment',
-                        'error');
                 });
             });
         });

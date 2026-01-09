@@ -463,18 +463,15 @@ class P2HController extends Controller
             ], 422);
         }
 
-        if ($request->operator == 1) {
-            $alreadyPrimary = UserForkliftAssignmentModel::where('user_id', $request->user_id)
-                ->where('operator_type', 1)
-                ->where('is_active', true)
-                ->exists();
+        $alreadyAssignedElsewhere = UserForkliftAssignmentModel::where('user_id', $request->user_id)
+            ->where('is_active', true)
+            ->exists();
 
-            if ($alreadyPrimary) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Operator ini sudah menjadi Operator Utama (Operator 1) di forklift lain. Satu operator hanya boleh menjadi Operator Utama di satu forklift saja.'
-                ], 422);
-            }
+        if ($alreadyAssignedElsewhere) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Operator ini sudah di-assign aktif ke forklift lain. Satu operator hanya boleh aktif di satu unit forklift saja.'
+            ], 422);
         }
 
         try {
@@ -604,18 +601,15 @@ class P2HController extends Controller
         }
 
         // === VALIDASI KHUSUS: Operator 1 hanya boleh di SATU Pallet Mover ===
-        if ($request->operator == 1) {
-            $alreadyPrimary = PalletAssignmentModel::where('user_id', $request->user_id)
-                ->where('operator_type', 1)
-                ->where('is_active', true)
-                ->exists();
+        $alreadyAssignedElsewhere = PalletAssignmentModel::where('user_id', $request->user_id)
+            ->where('is_active', true)
+            ->exists();
 
-            if ($alreadyPrimary) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Operator ini sudah menjadi Operator Utama (Operator 1) di Pallet Mover lain. Satu operator hanya boleh menjadi Operator Utama di satu Pallet Mover saja.'
-                ], 422);
-            }
+        if ($alreadyAssignedElsewhere) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Operator ini sudah di-assign aktif ke pallet mover lain. Satu operator hanya boleh aktif di satu unit saja.'
+            ], 422);
         }
 
         try {
@@ -1201,7 +1195,7 @@ class P2HController extends Controller
 
         $request->validate([
             'forklift_id' => 'required|exists:forklifts,id',
-            'operator_1'  => 'nullable|exists:users,id',
+            'operator_1'  => 'required|exists:users,id',
             'operator_2'  => 'nullable|exists:users,id',
             'operator_3'  => 'nullable|exists:users,id',
         ]);
@@ -1242,22 +1236,20 @@ class P2HController extends Controller
             foreach ([1, 2, 3] as $type) {
                 $newUserId = $inputs[$type] ?? null;
 
-                if ($newUserId && $type == 1) {
-                    // Cek apakah user ini sudah jadi Operator 1 di forklift LAIN (bukan yang sedang diedit)
-                    $alreadyPrimaryElsewhere = UserForkliftAssignmentModel::where('user_id', $newUserId)
-                        ->where('operator_type', 1)
+                if ($newUserId) {
+                    $alreadyAssignedElsewhere = UserForkliftAssignmentModel::where('user_id', $newUserId)
                         ->where('is_active', true)
-                        ->where('forklift_id', '!=', $forkliftId)  // !== penting: kecualikan forklift saat ini
+                        ->where('forklift_id', '!=', $forkliftId)
                         ->exists();
 
-                    if ($alreadyPrimaryElsewhere) {
+                    if ($alreadyAssignedElsewhere) {
+                        DB::rollBack();
                         return response()->json([
                             'success' => false,
-                            'message' => 'Operator ini sudah menjadi Operator Utama di forklift lain. Satu operator hanya boleh Operator Utama di satu forklift.'
+                            'message' => 'Operator ini sudah di-assign ke Forklift lain. Satu operator hanya boleh aktif di satu unit saja.'
                         ], 422);
                     }
                 }
-
                 // Cari assignment existing untuk type ini
                 $existing = UserForkliftAssignmentModel::where('forklift_id', $forkliftId)
                     ->where('operator_type', $type)
@@ -1411,18 +1403,17 @@ class P2HController extends Controller
                 $newUserId = $inputs[$type] ?? null;
 
                 // === VALIDASI KHUSUS: Operator 1 hanya boleh di SATU Pallet Mover ===
-                if ($newUserId && $type == 1) {
-                    $alreadyPrimaryElsewhere = PalletAssignmentModel::where('user_id', $newUserId)
-                        ->where('operator_type', 1)
+                if ($newUserId) {
+                    $alreadyAssignedElsewhere = PalletAssignmentModel::where('user_id', $newUserId)
                         ->where('is_active', true)
-                        ->where('pallet_mover_id', '!=', $palletMoverId) // kecualikan yang sedang diedit
+                        ->where('pallet_mover_id', '!=', $palletMoverId)
                         ->exists();
 
-                    if ($alreadyPrimaryElsewhere) {
+                    if ($alreadyAssignedElsewhere) {
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
-                            'message' => 'Operator ini sudah menjadi Operator Utama (Operator 1) di Pallet Mover lain. Satu operator hanya boleh menjadi Operator Utama di satu unit saja.'
+                            'message' => 'Operator ini sudah di-assign ke Pallet Mover lain. Satu operator hanya boleh aktif di satu unit saja.'
                         ], 422);
                     }
                 }
@@ -1464,8 +1455,7 @@ class P2HController extends Controller
                 } else {
                     // Kosong → soft delete assignment untuk type ini
                     if ($existing) {
-                        DB::table('user_pallet_mover_assignments')
-                            ->where('id', $existing->id)
+                        PalletAssignmentModel::where('id', $existing->id)
                             ->update(['is_active' => false, 'updated_at' => now()]);
                     }
                 }
