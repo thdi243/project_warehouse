@@ -23,7 +23,7 @@
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
-            <h4 class="mb-4 fw-bold">Dashboard Pemeriksaan P2H OKE MANTAP</h4>
+            <h4 class="mb-4 fw-bold">Dashboard Pemeriksaan P2H OKE MANTAP TES Banget INI</h4>
 
             {{-- Widget --}}
             <div class="row">
