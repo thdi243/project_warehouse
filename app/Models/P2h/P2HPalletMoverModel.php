@@ -27,47 +27,41 @@ class P2HPalletMoverModel extends Model
         'catatan',
     ];
 
-    public function calculateKelayakan()
+    public function calculateKelayakan(): array
     {
+
+        // Pendukung (20%)
         $group1 = [
-            'cek_baterai',
-            'cek_fork',
-            'kondisi_body_kebersihan',
-            'lampu_kiri',
-            'lampu_kanan',
-            'lampu_sorot',
-            'lampu_sign_depan_kanan',
-            'lampu_sign_depan_kiri',
-            'kipas_belakang',
+            'check_body_unit',
+            'check_kebersihan_unit',
+            'check_kunci_pm',
         ];
 
+        // Sistem utama / kritikal (50%)
         $group2 = [
-            'rantai_lift',
-            'sistem_hidrolik',
-            'kondisi_axle',
-            'sistem_kemudi',
-            'panel_display',
+            'check_battery',
+            'check_hydraulic',
+            'check_sistem_kemudi',
         ];
 
+        // Safety & operasional (30%)
         $group3 = [
-            'air_aki',
-            'klakson',
-            'buzzer_mundur',
-            'kaca_spion',
-            'kondisi_ban',
-            'fungsi_rem',
+            'check_air_accu',
+            'check_klakson',
+            'check_roda',
         ];
 
-        $score = 0;
-
-        // Hitung kontribusi berdasarkan nilai "1"
-        $score += collect($group1)->filter(fn($field) => $this->$field == 1)->count() / count($group1) * 20;
-        $score += collect($group2)->filter(fn($field) => $this->$field == 1)->count() / count($group2) * 50;
-        $score += collect($group3)->filter(fn($field) => $this->$field == 1)->count() / count($group3) * 30;
+        $score =
+            $this->hitungGroup($group1, 20) +
+            $this->hitungGroup($group2, 50) +
+            $this->hitungGroup($group3, 30);
 
         $score = round($score, 2);
 
-        if ($score > 80) {
+        /**
+         * STATUS FINAL
+         */
+        if ($score >= 85) {
             $status = 'Layak';
         } elseif ($score >= 70) {
             $status = 'Perlu Perhatian';
@@ -79,5 +73,18 @@ class P2HPalletMoverModel extends Model
             'persentase' => $score,
             'status' => $status
         ];
+    }
+
+    private function hitungGroup(array $fields, float $bobot): float
+    {
+        if (count($fields) === 0) {
+            return 0;
+        }
+
+        $valid = collect($fields)
+            ->filter(fn($field) => ($this->$field ?? 0) == 1)
+            ->count();
+
+        return ($valid / count($fields)) * $bobot;
     }
 }

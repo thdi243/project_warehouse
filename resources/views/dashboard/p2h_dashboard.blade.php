@@ -25,109 +25,417 @@
         <div class="container-fluid">
             <h4 class="mb-4">Dashboard Pemeriksaan P2H</h4>
 
-            {{-- <div class="row">
-                <!-- Summary Cards -->
-                <div class="col-md-3" id="card-total"></div>
-                <div class="col-md-3" id="card-today"></div>
-                <div class="col-md-3" id="card-pending"></div>
-                <div class="col-md-3" id="card-completed"></div>
-            </div> --}}
+            {{-- Widget --}}
             <div class="row">
-                <div class="col-12">
-                    <div class="card shadow-sm border-0 rounded-4 welcome-card p-4" data-aos="fade-up">
-                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-                            <div>
-                                <h1 class="fw-bold mb-2">
-                                    Selamat Datang Kembali, {{ Auth::user()->username }} 👋
-                                </h1>
-                                <p class="mb-0">
-                                    Senang melihatmu kembali! Berikut ringkasan aktivitas dan laporan terbarumu.
-                                </p>
+                <div class="col-xl-3 col-md-6">
+                    <div data-aos="fade-up">
+                        <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="text-uppercase fw-bold text-dark mb-0">Total Forklift Aktif</p>
+                                    <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
+                                        style="width: 50px; height: 50px; background: rgba(181, 254, 215, 0.6);">
+                                        <i class="mdi mdi-forklift text-success fs-1"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2">
+                                        <span class="counter-value text-success" id="totalForklift">0</span>
+                                    </h4>
+                                </div>
                             </div>
-                            <div class="mt-3 mt-md-0">
-                                <img src="{{ session('image_url', asset('material/assets/images/users/user-dummy-img.jpg')) }}"
-                                    alt="avatar" class="rounded-circle img-dashboard">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div data-aos="fade-up">
+                        <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="text-uppercase fw-bold text-dark mb-0">Total Pallet Mover Aktif</p>
+                                    <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
+                                        style="width: 50px; height: 50px; background: rgba(181, 193, 254, 0.6);">
+                                        <i class="mdi mdi-dolly text-primary fs-1"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2">
+                                        <span class="counter-value text-primary" id="totalPalletMover">0</span>
+                                    </h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div data-aos="fade-up">
+                        <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="text-uppercase fw-bold text-dark mb-0">Operator Forklift Aktif</p>
+                                    <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
+                                        style="width: 50px; height: 50px; background: rgba(254, 181, 181, 0.6);">
+                                        <i class="bx bx-user-circle text-danger fs-1"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2">
+                                        <span class="counter-value text-danger" id="opForklift">0</span>
+                                    </h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div data-aos="fade-up">
+                        <div class="card card-animate shadow-lg border-0 rounded-4 overflow-hidden">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="text-uppercase fw-bold text-dark mb-0">Operator Pallet Mover Aktif</p>
+                                    <div class="icon-box d-flex align-items-center justify-content-center rounded-4 shadow-sm"
+                                        style="width: 50px; height: 50px; background: rgba(243, 254, 181, 0.6);">
+                                        <i class="mdi mdi-human-dolly text-warning fs-1"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="fs-3 fw-semibold ff-secondary mb-2">
+                                        <span class="counter-value text-warning" id="opPalletMover">0</span>
+                                    </h4>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row mt-4">
+            {{-- Chart Forklift --}}
+            <div class="row">
                 <!-- Grafik Kelayakan -->
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Distribusi Kelayakan</h5>
-                            <div id="chartKelayakan"></div>
+                    <div class="" data-aos="fade-up">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Distribusi Kelayakan Forklift Monthly</h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #F2C36B">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span>Filter</span>
+                                    </a>
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="bulanChart1" class="form-label">Pilih Bulan</label>
+                                            <input type="month" id="bulanChart1" class="form-control shadow-sm">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanChart1">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="chartKelayakan" dir="ltr" style="height: 350px;"></div>
+                                {{-- <div id="tkbmQtyTerpal" class="apex-charts" dir="ltr"></div> --}}
+                            </div>
                         </div>
                     </div>
                 </div>
+
                 <!-- Komponen Masalah Terbanyak -->
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Komponen Masalah Terbanyak</h5>
-                            <div id="chartTopMasalah"></div>
+                    <div class="" data-aos="fade-up">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Komponen Masalah Forklift Monthly</h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #D73535">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span>Filter</span>
+                                    </a>
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="bulanChart2" class="form-label">Pilih Bulan</label>
+                                            <input type="month" id="bulanChart2" class="form-control shadow-sm">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanChart2">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="chartTopMasalah" dir="ltr" style="height: 350px;"></div>
+                                {{-- <div id="tkbmQtyTerpal" class="apex-charts" dir="ltr"></div> --}}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row mt-4">
-                <!-- Operator terbanyak -->
+            <div class="row">
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Top Operator Pemeriksa</h5>
-                            <div id="chartOperator"></div>
+                    <div class="" data-aos="fade-up">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Operator Pemeriksa Forklift Monthly</h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #1C4D8D">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span>Filter</span>
+                                    </a>
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="bulanChart3" class="form-label">Pilih Bulan</label>
+                                            <input type="month" id="bulanChart3" class="form-control shadow-sm">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanChart3">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="chartOperator" dir="ltr" style="height: 350px;"></div>
+                                {{-- <div id="tkbmQtyTerpal" class="apex-charts" dir="ltr"></div> --}}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Shift distribusi -->
+                <!-- Unit Forklift distribusi -->
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Distribusi Shift</h5>
-                            <div id="chartShift"></div>
+                    <div class="" data-aos="fade-up">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Unit Forklift Bermasalah Monthly</h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #0C7779">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span>Filter</span>
+                                    </a>
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="bulanChart4" class="form-label">Pilih Bulan</label>
+                                            <input type="month" id="bulanChart4" class="form-control shadow-sm">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanChart4">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="chartUnitForklift" dir="ltr" style="height: 350px;"></div>
+                                {{-- <div id="tkbmQtyTerpal" class="apex-charts" dir="ltr"></div> --}}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            {{-- Dashboard Pallet Mover --}}
-            <div class="row mt-4">
+
+
+            {{-- Chart Pallet Mover --}}
+            <div class="row">
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Distribusi Kelayakan – Pallet Mover</h5>
-                            <div id="chartKelayakanPallMov"></div>
+                    <div class="" data-aos="fade-up">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Distribusi Kelayakan Pallet Mover Monthly</h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #F2C36B">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span>Filter</span>
+                                    </a>
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="bulanChart5" class="form-label">Pilih Bulan</label>
+                                            <input type="month" id="bulanChart5" class="form-control shadow-sm">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanChart5">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="chartKelayakanPallMov" dir="ltr" style="height: 350px;"></div>
+                                {{-- <div id="tkbmQtyTerpal" class="apex-charts" dir="ltr"></div> --}}
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Komponen Masalah Terbanyak -->
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Komponen Masalah Terbanyak – Pallet Mover</h5>
-                            <div id="chartMasalahPallMov"></div>
+                    <div class="" data-aos="fade-up">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Komponen Masalah Pallet Mover Monthly</h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #D73535">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span>Filter</span>
+                                    </a>
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="bulanChart6" class="form-label">Pilih Bulan</label>
+                                            <input type="month" id="bulanChart6" class="form-control shadow-sm">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanChart6">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="chartTopMasalahPallMov" dir="ltr" style="height: 350px;"></div>
+                                {{-- <div id="tkbmQtyTerpal" class="apex-charts" dir="ltr"></div> --}}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="row mt-4">
+
+            <div class="row">
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Top Operator Pemeriksa – Pallet Mover</h5>
-                            <div id="chartOperatorPallMov"></div>
+                    <div class="" data-aos="fade-up">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Operator Pemeriksa Pallet Mover Monthly</h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #1C4D8D">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span>Filter</span>
+                                    </a>
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="bulanChart7" class="form-label">Pilih Bulan</label>
+                                            <input type="month" id="bulanChart7" class="form-control shadow-sm">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanChart7">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="chartOperatorPallMov" dir="ltr" style="height: 350px;"></div>
+                                {{-- <div id="tkbmQtyTerpal" class="apex-charts" dir="ltr"></div> --}}
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Unit Pallet Mover distribusi -->
                 <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Distribusi Shift – Pallet Mover</h5>
-                            <div id="chartShiftPallMov"></div>
+                    <div class="" data-aos="fade-up">
+                        <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Unit Pallet Mover Bermasalah Monthly</h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #0C7779">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span>Filter</span>
+                                    </a>
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="bulanChart8" class="form-label">Pilih Bulan</label>
+                                            <input type="month" id="bulanChart8" class="form-control shadow-sm">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanChart8">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-body">
+                                <div id="chartUnitPallMov" dir="ltr" style="height: 350px;"></div>
+                                {{-- <div id="tkbmQtyTerpal" class="apex-charts" dir="ltr"></div> --}}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -139,224 +447,670 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            loadSummary();
+            loadKelayakanChart();
+            loadTopMasalahChart();
+            loadOperatorChart();
+            loadUnitForkliftMasalah();
+            loadKelayakanChartPallMov();
+            loadTopMasalahChartPallMov();
+            loadOperatorChartPallMov();
+            loadUnitPallMovMasalah();
+
             // Load summary
-            $.ajax({
-                url: "{{ url('api/dashboard/p2h/summary') }}",
-                method: 'GET',
-                dataType: 'json',
-                success: function(data) {
-                    $('#card-total').html(
-                        `<div class="card"><div class="card-body"><h6>Total</h6><h3>${data.total}</h3></div></div>`
-                    );
-                    $('#card-today').html(
-                        `<div class="card"><div class="card-body"><h6>Hari Ini</h6><h3>${data.today}</h3></div></div>`
-                    );
-                    $('#card-pending').html(
-                        `<div class="card"><div class="card-body"><h6>Pending</h6><h3>${data.pending}</h3></div></div>`
-                    );
-                    $('#card-completed').html(
-                        `<div class="card"><div class="card-body"><h6>Completed</h6><h3>${data.completed}</h3></div></div>`
-                    );
-                },
-                error: function(xhr, status, error) {
-                    console.error('Gagal load summary:', error);
-                }
-            });
+            function loadSummary() {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/summary') }}",
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(res) {
+                        $('#totalForklift').text(res.forklift_aktif);
+                        $('#totalPalletMover').text(res.pallet_mover_aktif);
+                        $('#opForklift').text(res.operator_forklift_aktif);
+                        $('#opPalletMover').text(res.operator_pallet_mover_aktif);
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load summary:', xhr.responseText);
+                    }
+                });
+            }
 
             // Kelayakan - Doughnut Chart
-            $.ajax({
-                url: "{{ url('api/dashboard/p2h/kelayakan') }}",
-                method: 'GET',
-                dataType: 'json',
-                success: function(res) {
-                    var options = {
-                        chart: {
-                            type: 'donut',
-                            height: 350
-                        },
-                        labels: [
-                            'Layak (> 80%)',
-                            'Perlu Perhatian (70–80%)',
-                            'Tidak Layak (< 70%)'
-                        ],
-                        series: [res.layak, res.perlu_perhatian, res.tidak_layak],
-                        fill: {
-                            type: 'gradient',
-                        },
-                        colors: ['#28a745', '#ffc107', '#dc3545'],
-                        legend: {
-                            position: 'bottom'
-                        },
-                        responsive: [{
-                            breakpoint: 480,
-                            options: {
-                                chart: {
-                                    height: 250
-                                },
-                                legend: {
-                                    position: 'bottom'
-                                }
-                            }
-                        }]
-                    };
+            function loadKelayakanChart(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/kelayakan') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
 
-                    var chart = new ApexCharts(document.querySelector("#chartKelayakan"), options);
-                    chart.render();
-                },
-                error: function(xhr, status, error) {
-                    console.error('Gagal load kelayakan:', error);
-                }
-            });
+                        Highcharts.chart('chartKelayakan', {
+                            chart: {
+                                type: 'pie',
+                                backgroundColor: null
+                            },
+                            title: {
+                                text: null
+                            },
+                            subtitle: {
+                                text: res.bulan ? 'Periode: ' + res.bulan : null
+                            },
+                            plotOptions: {
+                                pie: {
+                                    innerSize: '60%', // donut
+                                    allowPointSelect: true,
+                                    cursor: 'pointer',
+                                    dataLabels: {
+                                        enabled: true,
+                                        format: '<b>{point.name}</b>: {point.y}'
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                pointFormat: '<b>{point.y}</b> unit'
+                            },
+                            series: [{
+                                name: 'Jumlah',
+                                colorByPoint: true,
+                                data: [{
+                                        name: 'Layak (≥ 95%)',
+                                        y: res.kategori.layak,
+                                        color: '#28a745'
+                                    },
+                                    {
+                                        name: 'Perlu Perhatian (85–94%)',
+                                        y: res.kategori.perlu_perhatian,
+                                        color: '#ffc107'
+                                    },
+                                    {
+                                        name: 'Tidak Layak (< 85%)',
+                                        y: res.kategori.tidak_layak,
+                                        color: '#dc3545'
+                                    }
+                                ]
+                            }]
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load kelayakan:', xhr.responseText);
+                    }
+                });
+            }
 
             // Masalah Terbanyak - Horizontal Bar Chart
-            $.ajax({
-                url: "{{ url('api/dashboard/p2h/masalah-terbanyak') }}",
-                method: 'GET',
-                dataType: 'json',
-                success: function(res) {
-                    var labels = Object.keys(res);
-                    var data = Object.values(res);
+            function loadTopMasalahChart(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/masalah-terbanyak') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
 
-                    var options = {
-                        chart: {
-                            type: 'bar',
-                            height: 350,
-                            toolbar: {
-                                show: false
+                        // 🔥 AMBIL DATA YANG BENAR
+                        const rawData = res.data;
+
+                        const categories = Object.keys(rawData).map(item =>
+                            item.replace(/_/g, ' ').toUpperCase()
+                        );
+                        const values = Object.values(rawData);
+
+                        Highcharts.chart('chartTopMasalah', {
+                            chart: {
+                                type: 'column',
+                                backgroundColor: null
+                            },
+                            title: {
+                                text: null
+                            },
+                            subtitle: {
+                                text: res.bulan ? 'Periode: ' + res.bulan : null
+                            },
+                            xAxis: {
+                                categories: categories,
+                                crosshair: true
+                            },
+                            yAxis: {
+                                min: 0,
+                                title: {
+                                    text: 'Jumlah Masalah'
+                                }
+                            },
+                            tooltip: {
+                                headerFormat: '<b>{point.key}</b><br>',
+                                pointFormat: '{point.y} temuan'
+                            },
+                            plotOptions: {
+                                column: {
+                                    borderRadius: 4,
+                                    dataLabels: {
+                                        enabled: true
+                                    }
+                                }
+                            },
+                            series: [{
+                                name: 'Masalah',
+                                data: values,
+                                color: '#D73535'
+                            }],
+                            credits: {
+                                enabled: false
                             }
-                        },
-                        plotOptions: {
-                            bar: {
-                                horizontal: true,
-                                barHeight: '60%'
-                            }
-                        },
-                        dataLabels: {
-                            enabled: false
-                        },
-                        series: [{
-                            name: 'Jumlah Masalah',
-                            data: data
-                        }],
-                        xaxis: {
-                            categories: labels
-                        },
-                        colors: ['#dc3545']
-                    };
-                    var chart = new ApexCharts(document.querySelector("#chartTopMasalah"), options);
-                    chart.render();
-                },
-                error: function(xhr, status, error) {
-                    console.error('Gagal load masalah terbanyak:', error);
-                }
-            });
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load masalah terbanyak:', xhr.responseText);
+                    }
+                });
+            }
 
             // Operator - Vertical Bar Chart
-            $.ajax({
-                url: "{{ url('api/dashboard/p2h/operator') }}",
-                method: 'GET',
-                dataType: 'json',
-                success: function(res) {
-                    var labels = res.map(x => x.operator ?? 'Tidak Diketahui');
-                    var data = res.map(x => x.jumlah);
+            function loadOperatorChart(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/operator') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
 
-                    var options = {
-                        chart: {
-                            type: 'bar',
-                            height: 350,
-                            toolbar: {
-                                show: false
-                            }
-                        },
-                        plotOptions: {
-                            bar: {
-                                horizontal: false,
-                                columnWidth: '55%'
-                            }
-                        },
-                        dataLabels: {
-                            enabled: false
-                        },
-                        series: [{
-                            name: 'Jumlah Pemeriksaan',
-                            data: data
-                        }],
-                        xaxis: {
-                            categories: labels
-                        },
-                        fill: {
-                            type: 'gradient',
-                            gradient: {
-                                shade: 'light',
-                                type: "vertical", // "vertical" or "horizontal"
-                                shadeIntensity: 0.5,
-                                gradientToColors: [
-                                    '#2e2370'
-                                ], // warna tujuan (lebih gelap dari #3FBFBF)
-                                inverseColors: false,
-                                opacityFrom: 1,
-                                opacityTo: 1,
-                                stops: [0, 100]
-                            }
-                        },
-                        colors: ['#007bff']
-                    };
+                        const data = res.data ?? [];
 
-                    var chart = new ApexCharts(document.querySelector("#chartOperator"), options);
-                    chart.render();
-                },
-                error: function(xhr, status, error) {
-                    console.error('Gagal load operator:', error);
-                }
-            });
+                        const categories = data.map(item =>
+                            item.operator ?? 'Tidak Diketahui'
+                        );
 
+                        const seriesData = data.map(item => ({
+                            y: item.jumlah,
+                            rata_kelayakan: item.rata_kelayakan
+                        }));
+
+                        Highcharts.chart('chartOperator', {
+                            chart: {
+                                type: 'column',
+                                backgroundColor: null
+                            },
+                            title: {
+                                text: null
+                            },
+                            subtitle: {
+                                text: res.bulan ? 'Periode: ' + res.bulan : null
+                            },
+                            xAxis: {
+                                categories: categories,
+                                title: {
+                                    text: 'Operator'
+                                }
+                            },
+                            yAxis: {
+                                min: 0,
+                                title: {
+                                    text: 'Jumlah Pemeriksaan'
+                                }
+                            },
+                            tooltip: {
+                                formatter: function() {
+                                    return `
+                                        <b>${this.x}</b><br>
+                                        Jumlah Pemeriksaan: <b>${this.y}</b><br>
+                                        Rata-rata Kelayakan: <b>${this.point.rata_kelayakan}%</b>
+                                    `;
+                                }
+                            },
+                            plotOptions: {
+                                column: {
+                                    borderRadius: 6,
+                                    dataLabels: {
+                                        enabled: true
+                                    }
+                                }
+                            },
+                            series: [{
+                                name: 'Jumlah Pemeriksaan',
+                                data: seriesData,
+                                color: '#1C4D8D'
+                            }],
+                            credits: {
+                                enabled: false
+                            }
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load operator:', xhr.responseText);
+                    }
+                });
+            }
+
+            function loadUnitForkliftMasalah(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/masalah/unit-forklift') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
+
+                        const data = res.data ?? [];
+
+                        const categories = data.map(item => item.nomor_unit);
+                        const seriesData = data.map(item => item.jumlah_masalah);
+
+                        Highcharts.chart('chartUnitForklift', {
+                            chart: {
+                                type: 'column',
+                                backgroundColor: null
+                            },
+                            title: {
+                                text: null
+                            },
+                            subtitle: {
+                                text: res.bulan ? 'Periode: ' + res.bulan : null
+                            },
+                            xAxis: {
+                                categories: categories,
+                                title: {
+                                    text: 'Nomor Unit Forklift'
+                                }
+                            },
+                            yAxis: {
+                                min: 0,
+                                title: {
+                                    text: 'Jumlah Masalah'
+                                }
+                            },
+                            tooltip: {
+                                pointFormat: '<b>{point.y}</b> masalah'
+                            },
+                            plotOptions: {
+                                column: {
+                                    borderRadius: 8,
+                                    dataLabels: {
+                                        enabled: true
+                                    }
+                                }
+                            },
+                            series: [{
+                                name: 'Jumlah Masalah',
+                                data: seriesData,
+                                color: '#0C7779' // soft red
+                            }],
+                            credits: {
+                                enabled: false
+                            }
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load unit forklift bermasalah:', xhr.responseText);
+                    }
+                });
+            }
 
             // Shift - Pie Chart
-            $.ajax({
-                url: "{{ url('api/dashboard/p2h/shift') }}",
-                method: 'GET',
-                dataType: 'json',
-                success: function(res) {
-                    // Ganti null jadi 'Tidak Diisi' dan tambahkan label "Shift x"
-                    var labels = res.map(x => x.shift === null ? 'Tidak Diisi' : 'Shift ' + x.shift);
-                    var data = res.map(x => x.total);
+            // $.ajax({
+            //     url: "{{ url('api/dashboard/p2h/shift') }}",
+            //     method: 'GET',
+            //     dataType: 'json',
+            //     success: function(res) {
+            //         // Ganti null jadi 'Tidak Diisi' dan tambahkan label "Shift x"
+            //         var labels = res.map(x => x.shift === null ? 'Tidak Diisi' : 'Shift ' + x.shift);
+            //         var data = res.map(x => x.total);
 
-                    var options = {
-                        chart: {
-                            type: 'pie',
-                            height: 350
-                        },
-                        labels: labels,
-                        series: data,
-                        fill: {
-                            type: 'gradient',
-                        },
-                        colors: ['#007bff', '#28a745', '#ffc107',
-                            '#dc3545'
-                        ], // Tambah warna kalau perlu
-                        legend: {
-                            position: 'bottom'
-                        },
-                        responsive: [{
-                            breakpoint: 480,
-                            options: {
-                                chart: {
-                                    height: 250
-                                },
-                                legend: {
-                                    position: 'bottom'
+            //         var options = {
+            //             chart: {
+            //                 type: 'pie',
+            //                 height: 350
+            //             },
+            //             labels: labels,
+            //             series: data,
+            //             fill: {
+            //                 type: 'gradient',
+            //             },
+            //             colors: [
+            //                 '#8EC5FC', // soft blue
+            //                 '#9EE6B8', // soft green
+            //                 '#FFE29A', // soft yellow
+            //                 '#F4A6A6' // soft red
+            //             ],
+            //             legend: {
+            //                 position: 'bottom'
+            //             },
+            //             responsive: [{
+            //                 breakpoint: 480,
+            //                 options: {
+            //                     chart: {
+            //                         height: 250
+            //                     },
+            //                     legend: {
+            //                         position: 'bottom'
+            //                     }
+            //                 }
+            //             }]
+            //         };
+            //         var chart = new ApexCharts(document.querySelector("#chartShift"), options);
+            //         chart.render();
+            //     },
+            //     error: function(xhr, status, error) {
+            //         console.error('Gagal load shift:', error);
+            //     }
+            // });
+
+            function loadKelayakanChartPallMov(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/pallet-mover/kelayakan') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
+
+                        Highcharts.chart('chartKelayakanPallMov', {
+                            chart: {
+                                type: 'pie',
+                                backgroundColor: null
+                            },
+                            title: {
+                                text: null
+                            },
+                            subtitle: {
+                                text: res.bulan ? 'Periode: ' + res.bulan : null
+                            },
+                            plotOptions: {
+                                pie: {
+                                    innerSize: '60%', // donut
+                                    allowPointSelect: true,
+                                    cursor: 'pointer',
+                                    dataLabels: {
+                                        enabled: true,
+                                        format: '<b>{point.name}</b>: {point.y}'
+                                    }
                                 }
+                            },
+                            tooltip: {
+                                pointFormat: '<b>{point.y}</b> unit'
+                            },
+                            series: [{
+                                name: 'Jumlah',
+                                colorByPoint: true,
+                                data: [{
+                                        name: 'Layak (≥ 95%)',
+                                        y: res.kategori.layak,
+                                        color: '#28a745'
+                                    },
+                                    {
+                                        name: 'Perlu Perhatian (85–94%)',
+                                        y: res.kategori.perlu_perhatian,
+                                        color: '#ffc107'
+                                    },
+                                    {
+                                        name: 'Tidak Layak (< 85%)',
+                                        y: res.kategori.tidak_layak,
+                                        color: '#dc3545'
+                                    }
+                                ]
+                            }]
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load kelayakan:', xhr.responseText);
+                    }
+                });
+            }
+
+            function loadTopMasalahChartPallMov(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/pallet-mover/part-masalah') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
+
+                        // 🔥 AMBIL DATA YANG BENAR
+                        const rawData = res.data;
+
+                        const categories = Object.keys(rawData).map(item =>
+                            item.replace(/_/g, ' ').toUpperCase()
+                        );
+                        const values = Object.values(rawData);
+
+                        Highcharts.chart('chartTopMasalahPallMov', {
+                            chart: {
+                                type: 'column',
+                                backgroundColor: null
+                            },
+                            title: {
+                                text: null
+                            },
+                            subtitle: {
+                                text: res.bulan ? 'Periode: ' + res.bulan : null
+                            },
+                            xAxis: {
+                                categories: categories,
+                                crosshair: true
+                            },
+                            yAxis: {
+                                min: 0,
+                                title: {
+                                    text: 'Jumlah Masalah'
+                                }
+                            },
+                            tooltip: {
+                                headerFormat: '<b>{point.key}</b><br>',
+                                pointFormat: '{point.y} temuan'
+                            },
+                            plotOptions: {
+                                column: {
+                                    borderRadius: 4,
+                                    dataLabels: {
+                                        enabled: true
+                                    }
+                                }
+                            },
+                            series: [{
+                                name: 'Masalah',
+                                data: values,
+                                color: '#D73535'
+                            }],
+                            credits: {
+                                enabled: false
                             }
-                        }]
-                    };
-                    var chart = new ApexCharts(document.querySelector("#chartShift"), options);
-                    chart.render();
-                },
-                error: function(xhr, status, error) {
-                    console.error('Gagal load shift:', error);
-                }
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load masalah terbanyak:', xhr.responseText);
+                    }
+                });
+            }
+
+            function loadOperatorChartPallMov(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/pallet-mover/operator') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
+
+                        const data = res.data ?? [];
+
+                        const categories = data.map(item =>
+                            item.operator ?? 'Tidak Diketahui'
+                        );
+
+                        const seriesData = data.map(item => ({
+                            y: item.jumlah,
+                            rata_kelayakan: item.rata_kelayakan
+                        }));
+
+                        Highcharts.chart('chartOperatorPallMov', {
+                            chart: {
+                                type: 'column',
+                                backgroundColor: null
+                            },
+                            title: {
+                                text: null
+                            },
+                            subtitle: {
+                                text: res.bulan ? 'Periode: ' + res.bulan : null
+                            },
+                            xAxis: {
+                                categories: categories,
+                                title: {
+                                    text: 'Operator'
+                                }
+                            },
+                            yAxis: {
+                                min: 0,
+                                title: {
+                                    text: 'Jumlah Pemeriksaan'
+                                }
+                            },
+                            tooltip: {
+                                formatter: function() {
+                                    return `
+                                        <b>${this.x}</b><br>
+                                        Jumlah Pemeriksaan: <b>${this.y}</b><br>
+                                        Rata-rata Kelayakan: <b>${this.point.rata_kelayakan}%</b>
+                                    `;
+                                }
+                            },
+                            plotOptions: {
+                                column: {
+                                    borderRadius: 6,
+                                    dataLabels: {
+                                        enabled: true
+                                    }
+                                }
+                            },
+                            series: [{
+                                name: 'Jumlah Pemeriksaan',
+                                data: seriesData,
+                                color: '#1C4D8D'
+                            }],
+                            credits: {
+                                enabled: false
+                            }
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load operator:', xhr.responseText);
+                    }
+                });
+            }
+
+            function loadUnitPallMovMasalah(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/masalah/unit-pallet-mover') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
+
+                        const data = res.data ?? [];
+
+                        const categories = data.map(item => item.nomor_unit);
+                        const seriesData = data.map(item => item.jumlah_masalah);
+
+                        Highcharts.chart('chartUnitPallMov', {
+                            chart: {
+                                type: 'column',
+                                backgroundColor: null
+                            },
+                            title: {
+                                text: null
+                            },
+                            subtitle: {
+                                text: res.bulan ? 'Periode: ' + res.bulan : null
+                            },
+                            xAxis: {
+                                categories: categories,
+                                title: {
+                                    text: 'Nomor Unit Forklift'
+                                }
+                            },
+                            yAxis: {
+                                min: 0,
+                                title: {
+                                    text: 'Jumlah Masalah'
+                                }
+                            },
+                            tooltip: {
+                                pointFormat: '<b>{point.y}</b> masalah'
+                            },
+                            plotOptions: {
+                                column: {
+                                    borderRadius: 8,
+                                    dataLabels: {
+                                        enabled: true
+                                    }
+                                }
+                            },
+                            series: [{
+                                name: 'Jumlah Masalah',
+                                data: seriesData,
+                                color: '#0C7779' // soft red
+                            }],
+                            credits: {
+                                enabled: false
+                            }
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load unit forklift bermasalah:', xhr.responseText);
+                    }
+                });
+            }
+
+            // Filter
+            $('#filterBulanChart1').on('click', function() {
+                var bulan = $('#bulanChart1').val();
+                loadKelayakanChart(bulan);
             });
 
+            $('#filterBulanChart2').on('click', function() {
+                var bulan = $('#bulanChart2').val();
+                loadTopMasalahChart(bulan);
+            });
+
+            $('#filterBulanChart3').on('click', function() {
+                var bulan = $('#bulanChart3').val();
+                loadOperatorChart(bulan);
+            });
+
+            $('#filterBulanChart4').on('click', function() {
+                var bulan = $('#bulanChart4').val();
+                loadUnitForkliftMasalah(bulan);
+            });
+
+            $('#filterBulanChart5').on('click', function() {
+                var bulan = $('#bulanChart5').val();
+                loadKelayakanChartPallMov(bulan);
+            });
+
+            $('#filterBulanChart6').on('click', function() {
+                var bulan = $('#bulanChart6').val();
+                loadTopMasalahChartPallMov(bulan);
+            });
+
+            $('#filterBulanChart7').on('click', function() {
+                var bulan = $('#bulanChart7').val();
+                loadOperatorChartPallMov(bulan);
+            });
+
+            $('#filterBulanChart8').on('click', function() {
+                var bulan = $('#bulanChart8').val();
+                loadUnitPallMovMasalah(bulan);
+            });
         });
     </script>
 @endsection

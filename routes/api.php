@@ -50,7 +50,11 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/masalah-terbanyak', [P2hDashboardController::class, 'topMasalah']);
         Route::get('/operator', [P2hDashboardController::class, 'operatorStat']);
         Route::get('/shift', [P2hDashboardController::class, 'shiftDistribusi']);
-        Route::get('/kelayakan/pallet-mover', [P2hDashboardController::class, 'kelayakanSummaryPalletMover']);
+        Route::get('/masalah/unit-forklift', [P2hDashboardController::class, 'unitForkliftMasalah']);
+        Route::get('/pallet-mover/kelayakan', [P2hDashboardController::class, 'kelayakanSummaryPalletMover']);
+        Route::get('/pallet-mover/part-masalah', [P2hDashboardController::class, 'topMasalahPalletMover']);
+        Route::get('/pallet-mover/operator', [P2hDashboardController::class, 'operatorStatPalletMover']);
+        Route::get('/masalah/unit-pallet-mover', [P2hDashboardController::class, 'unitPalletMoverMasalah']);
     });
 
     // WSP

@@ -215,33 +215,45 @@ class P2HController extends Controller
         // === VALIDASI JAM OPERASIONAL (sama persis dengan update) ===
         $jamSekarang = $request->jam_operasional;
 
-        // Vs kemarin
-        $jamKemarin = P2HForklfitModel::where('nomor_unit', $request->nomor_unit)
-            ->whereDate('tanggal', '<', $request->tanggal)
-            ->max('jam_operasional') ?? 0;
+        // // Vs kemarin
+        // $jamKemarin = P2HForklfitModel::where('nomor_unit', $request->nomor_unit)
+        //     ->whereDate('tanggal', '<', $request->tanggal)
+        //     ->max('jam_operasional') ?? 0;
 
-        if ($jamSekarang < $jamKemarin) {
+        // if ($jamSekarang < $jamKemarin) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => "Jam operasional ({$jamSekarang}) mundur dari kemarin ({$jamKemarin})"
+        //     ], 422);
+        // }
+
+        // Validasi jam operasional
+        $lastRecord = P2HForklfitModel::where('nomor_unit', $request->nomor_unit)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($lastRecord && $request->jam_operasional < $lastRecord->jam_operasional) {
             return response()->json([
                 'success' => false,
-                'message' => "Jam operasional ({$jamSekarang}) mundur dari kemarin ({$jamKemarin})"
+                'message' => 'Hours Meter unit ini tidak boleh lebih kecil dari data sebelumnya (' . $lastRecord->jam_operasional . '). Cek kembali!'
             ], 422);
         }
 
         // Vs shift sebelumnya hari ini
-        $prevShift = $request->shift - 1;
-        if ($prevShift >= 1) {
-            $jamPrev = P2HForklfitModel::where('nomor_unit', $request->nomor_unit)
-                ->where('tanggal', $request->tanggal)
-                ->where('shift', $prevShift)
-                ->value('jam_operasional') ?? 0;
+        // $prevShift = $request->shift - 1;
+        // if ($prevShift >= 1) {
+        //     $jamPrev = P2HForklfitModel::where('nomor_unit', $request->nomor_unit)
+        //         ->where('tanggal', $request->tanggal)
+        //         ->where('shift', $prevShift)
+        //         ->value('jam_operasional') ?? 0;
 
-            if ($jamSekarang < $jamPrev) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Jam operasional ({$jamSekarang}) mundur dari Shift {$prevShift} ({$jamPrev})"
-                ], 422);
-            }
-        }
+        //     if ($jamSekarang < $jamPrev) {
+        //         return response()->json([
+        //             'success' => false,
+        //             'message' => "Jam operasional ({$jamSekarang}) mundur dari Shift {$prevShift} ({$jamPrev})"
+        //         ], 422);
+        //     }
+        // }
 
         // Hitung persentase
         $groups = [

@@ -4,79 +4,90 @@ namespace App\Http\Controllers\Api;
 
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\P2h\ForkliftModel;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\P2h\P2HForklfitModel;
+use App\Models\P2h\PalletMoverModel;
 use App\Models\P2h\P2HPalletMoverModel;
+use App\Models\P2h\PalletAssignmentModel;
+use App\Models\P2h\UserForkliftAssignmentModel;
 
 class P2hDashboardController extends Controller
 {
     // 1. Total pemeriksaan dan status
     public function summary()
     {
-        $today = Carbon::today();
+        $forkliftAktif = ForkliftModel::where('status', 'active')->count();
+        $palletMoverAktif = PalletMoverModel::where('status', 'active')->count();
 
-        // Total semua entri
-        $total = P2HForklfitModel::count();
+        $operatorForkliftAktif = UserForkliftAssignmentModel::where('is_active', 1)
+            ->distinct('user_id')
+            ->count('user_id');
 
-        // Total entri hari ini
-        $todayCount = P2HForklfitModel::whereDate('tanggal', $today)->count();
-
-        // Completed: nomor_unit + tanggal yang sudah ada 3 shift
-        $completed = P2HForklfitModel::select('nomor_unit', 'tanggal')
-            ->groupBy('nomor_unit', 'tanggal')
-            ->havingRaw('COUNT(DISTINCT shift) = 3')
-            ->get()
-            ->count();
-
-        // Pending: nomor_unit + tanggal yang belum lengkap 3 shift
-        $pending = P2HForklfitModel::select('nomor_unit', 'tanggal')
-            ->groupBy('nomor_unit', 'tanggal')
-            ->havingRaw('COUNT(DISTINCT shift) < 3')
-            ->get()
-            ->count();
+        $operatorPalletAktif = PalletAssignmentModel::where('is_active', 1)
+            ->distinct('user_id')
+            ->count('user_id');
 
         return response()->json([
-            'total' => $total,
-            'today' => $todayCount,
-            'completed' => $completed,
-            'pending' => $pending,
+            'forklift_aktif' => $forkliftAktif,
+            'pallet_mover_aktif' => $palletMoverAktif,
+            'operator_forklift_aktif' => $operatorForkliftAktif,
+            'operator_pallet_mover_aktif' => $operatorPalletAktif,
         ]);
     }
 
     // 2. Persentase kelayakan rata-rata dan kategori
-    public function kelayakanSummary()
+    public function kelayakanSummary(Request $request)
     {
-        $data = P2HForklfitModel::all();
+        // Ambil bulan dari request (format: YYYY-MM)
+        $bulan = $request->get('bulan') ?? Carbon::now()->format('Y-m');
+
+        $query = P2HForklfitModel::query();
+
+        if ($bulan) {
+            $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+
+            $query->whereYear('tanggal', $tanggal->year)
+                ->whereMonth('tanggal', $tanggal->month);
+        }
+
+        $data = $query->get();
         $total = $data->count();
 
         $kategori = [
             'layak' => 0,
             'perlu_perhatian' => 0,
             'tidak_layak' => 0,
-
         ];
 
         if ($total > 0) {
-            $totalPersen = 0;
-
             foreach ($data as $item) {
                 $result = $item->calculateKelayakan();
                 $persen = $result['persentase'];
-                $totalPersen += $persen;
 
-                if ($persen >= 95) $kategori['layak']++;
-                elseif ($persen >= 85) $kategori['perlu_perhatian']++;
-                else $kategori['tidak_layak']++;
+                if ($persen >= 95) {
+                    $kategori['layak']++;
+                } elseif ($persen >= 85) {
+                    $kategori['perlu_perhatian']++;
+                } else {
+                    $kategori['tidak_layak']++;
+                }
             }
         }
 
-        return response()->json($kategori);
+        return response()->json([
+            'bulan' => $bulan,
+            'total_data' => $total,
+            'kategori' => $kategori
+        ]);
     }
 
     // 3. Komponen paling sering rusak (nilai ≠ OK)
-    public function topMasalah()
+    public function topMasalah(Request $request)
     {
+        $bulan = $request->get('bulan') ?? Carbon::now()->format('Y-m');
+
         $komponen = [
             'cek_baterai',
             'cek_fork',
@@ -100,79 +111,353 @@ class P2hDashboardController extends Controller
             'fungsi_rem'
         ];
 
-        $rusak = [];
+        $queryBase = P2HForklfitModel::query();
 
-        foreach ($komponen as $item) {
-            $rusak[$item] = P2HForklfitModel::where($item, '!=', 'OK')->count();
+        // 🔹 Filter bulan (jika ada)
+        if ($bulan) {
+            $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+            $queryBase->whereYear('tanggal', $tanggal->year)
+                ->whereMonth('tanggal', $tanggal->month);
         }
 
-        arsort($rusak); // urutkan dari terbanyak
-        $top = array_slice($rusak, 0, 5); // ambil 5 teratas
+        $result = [];
 
-        return response()->json($top);
+        foreach ($komponen as $item) {
+            $result[$item] = (clone $queryBase)
+                ->where($item, 0)
+                ->count();
+        }
+
+        return response()->json([
+            'bulan' => $bulan,
+            'data' => $result
+        ]);
     }
 
     // 4. Operator terbanyak + avg kelayakan
-    public function operatorStat()
+    public function operatorStat(Request $request)
     {
-        $data = P2HForklfitModel::select('operator_name', DB::raw('COUNT(*) as jumlah'))
+        $bulan = $request->get('bulan') ?? Carbon::now()->format('Y-m');
+
+        $query = P2HForklfitModel::query();
+
+        if ($bulan) {
+            $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+            $query->whereYear('tanggal', $tanggal->year)
+                ->whereMonth('tanggal', $tanggal->month);
+        }
+
+        // Ambil top operator berdasarkan jumlah pemeriksaan
+        $data = $query
+            ->select('operator_name', DB::raw('COUNT(*) as jumlah'))
             ->groupBy('operator_name')
             ->orderByDesc('jumlah')
-            ->take(5)
+            ->limit(5)
             ->get();
 
-        $hasil = $data->map(function ($item) {
-            $records = P2HForklfitModel::where('operator_name', $item->operator_name)->get();
-            $avg = $records->avg(fn($r) => $r->calculateKelayakan()['persentase']);
+        // Hitung rata-rata kelayakan per operator
+        $hasil = $data->map(function ($item) use ($bulan) {
+
+            $recordsQuery = P2HForklfitModel::where('operator_name', $item->operator_name);
+
+            if ($bulan) {
+                $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+                $recordsQuery->whereYear('tanggal', $tanggal->year)
+                    ->whereMonth('tanggal', $tanggal->month);
+            }
+
+            $records = $recordsQuery->get();
+
+            $avg = $records->avg(function ($r) {
+                return $r->calculateKelayakan()['persentase'];
+            });
 
             return [
-                'operator' => $item->operator_name,
-                'jumlah' => $item->jumlah,
-                'rata_kelayakan' => round($avg, 2)
+                'operator'        => $item->operator_name,
+                'jumlah'          => $item->jumlah,
+                'rata_kelayakan'  => round($avg ?? 0, 2),
             ];
         });
 
-        return response()->json($hasil);
+        return response()->json([
+            'bulan' => $bulan,
+            'data'  => $hasil
+        ]);
+    }
+
+    public function unitForkliftMasalah(Request $request)
+    {
+        $bulan = $request->get('bulan') ?? Carbon::now()->format('Y-m');
+
+        $komponen = [
+            'cek_baterai',
+            'cek_fork',
+            'kondisi_body_kebersihan',
+            'lampu_kiri',
+            'lampu_kanan',
+            'lampu_sorot',
+            'lampu_sign_depan_kanan',
+            'lampu_sign_depan_kiri',
+            'kipas_belakang',
+            'rantai_lift',
+            'sistem_hidrolik',
+            'kondisi_axle',
+            'sistem_kemudi',
+            'panel_display',
+            'air_aki',
+            'klakson',
+            'buzzer_mundur',
+            'kaca_spion',
+            'kondisi_ban',
+            'fungsi_rem',
+        ];
+
+        $query = P2HForklfitModel::query();
+
+        // filter bulan (YYYY-MM)
+        if ($bulan) {
+            $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+            $query->whereYear('tanggal', $tanggal->year)
+                ->whereMonth('tanggal', $tanggal->month);
+        }
+
+        $data = $query->get();
+
+        $hasil = [];
+
+        foreach ($data as $item) {
+            $jumlahMasalah = 0;
+
+            foreach ($komponen as $field) {
+                // asumsi: 1 = OK, 0 = bermasalah
+                if (isset($item->$field) && $item->$field == 0) {
+                    $jumlahMasalah++;
+                }
+            }
+
+            if ($jumlahMasalah > 0) {
+                if (!isset($hasil[$item->nomor_unit])) {
+                    $hasil[$item->nomor_unit] = 0;
+                }
+
+                $hasil[$item->nomor_unit] += $jumlahMasalah;
+            }
+        }
+
+        // urutkan dari yang paling bermasalah
+        arsort($hasil);
+
+        // ambil top 10
+        $top = collect($hasil)->take(10)->map(function ($val, $key) {
+            return [
+                'nomor_unit' => $key,
+                'jumlah_masalah' => $val
+            ];
+        })->values();
+
+        return response()->json([
+            'bulan' => $bulan,
+            'total_unit' => $top->count(),
+            'data' => $top
+        ]);
     }
 
     // 5. Distribusi shift
-    public function shiftDistribusi()
-    {
-        $data = P2HForklfitModel::select('shift', DB::raw('COUNT(*) as total'))
-            ->groupBy('shift')
-            ->orderBy('shift')
-            ->get();
+    // public function shiftDistribusi()
+    // {
+    //     $data = P2HForklfitModel::select('shift', DB::raw('COUNT(*) as total'))
+    //         ->groupBy('shift')
+    //         ->orderBy('shift')
+    //         ->get();
 
-        return response()->json($data);
-    }
+    //     return response()->json($data);
+    // }
 
     // Pallet Mover
-    public function kelayakanSummaryPalletMover()
+    public function kelayakanSummaryPalletMover(Request $request)
     {
-        $data = P2HPalletMoverModel::all();
-        $total = $data->count();
+        $bulan = $request->get('bulan') ?? now()->format('Y-m');
+
+        $query = P2HPalletMoverModel::query();
+
+        if ($bulan) {
+            $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+            $query->whereYear('tanggal', $tanggal->year)
+                ->whereMonth('tanggal', $tanggal->month);
+        }
+
+        $data = $query->get();
 
         $kategori = [
             'layak' => 0,
             'perlu_perhatian' => 0,
             'tidak_layak' => 0,
-
         ];
 
-        if ($total > 0) {
-            $totalPersen = 0;
+        foreach ($data as $item) {
+            $status = $item->calculateKelayakan()['status'];
 
-            foreach ($data as $item) {
-                $result = $item->calculateKelayakan();
-                $persen = $result['persentase'];
-                $totalPersen += $persen;
+            match ($status) {
+                'Layak' => $kategori['layak']++,
+                'Perlu Perhatian' => $kategori['perlu_perhatian']++,
+                default => $kategori['tidak_layak']++,
+            };
+        }
 
-                if ($persen >= 95) $kategori['layak']++;
-                elseif ($persen >= 85) $kategori['perlu_perhatian']++;
-                else $kategori['tidak_layak']++;
+        return response()->json([
+            'bulan' => $bulan,
+            'total_data' => $data->count(),
+            'kategori' => $kategori
+        ]);
+    }
+
+    public function topMasalahPalletMover(Request $request)
+    {
+        $bulan = $request->get('bulan') ?? Carbon::now()->format('Y-m');
+
+        $komponen = [
+            'check_air_accu',
+            'check_battery',
+            'check_body_unit',
+            'check_klakson',
+            'check_roda',
+            'check_sistem_kemudi',
+            'check_kebersihan_unit',
+            'check_kunci_pm',
+            'check_hydraulic',
+        ];
+
+        $queryBase = P2HPalletMoverModel::query();
+
+        // 🔹 Filter bulan
+        if ($bulan) {
+            $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+            $queryBase->whereYear('tanggal', $tanggal->year)
+                ->whereMonth('tanggal', $tanggal->month);
+        }
+
+        $result = [];
+
+        foreach ($komponen as $item) {
+            $result[$item] = (clone $queryBase)
+                ->where($item, 0) // 0 = bermasalah
+                ->count();
+        }
+
+        return response()->json([
+            'bulan' => $bulan,
+            'data'  => $result
+        ]);
+    }
+
+    public function operatorStatPalletMover(Request $request)
+    {
+        $bulan = $request->get('bulan') ?? Carbon::now()->format('Y-m');
+
+        $query = P2HPalletMoverModel::query();
+
+        if ($bulan) {
+            $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+            $query->whereYear('tanggal', $tanggal->year)
+                ->whereMonth('tanggal', $tanggal->month);
+        }
+
+        // Ambil top operator berdasarkan jumlah pemeriksaan
+        $data = $query
+            ->select('operator_name', DB::raw('COUNT(*) as jumlah'))
+            ->groupBy('operator_name')
+            ->orderByDesc('jumlah')
+            ->limit(5)
+            ->get();
+
+        // Hitung rata-rata kelayakan per operator
+        $hasil = $data->map(function ($item) use ($bulan) {
+
+            $recordsQuery = P2HPalletMoverModel::where('operator_name', $item->operator_name);
+
+            if ($bulan) {
+                $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+                $recordsQuery->whereYear('tanggal', $tanggal->year)
+                    ->whereMonth('tanggal', $tanggal->month);
+            }
+
+            $records = $recordsQuery->get();
+
+            $avg = $records->avg(function ($r) {
+                return $r->calculateKelayakan()['persentase'];
+            });
+
+            return [
+                'operator'        => $item->operator_name,
+                'jumlah'          => $item->jumlah,
+                'rata_kelayakan'  => round($avg ?? 0, 2),
+            ];
+        });
+
+        return response()->json([
+            'bulan' => $bulan,
+            'data'  => $hasil
+        ]);
+    }
+
+    public function unitPalletMoverMasalah(Request $request)
+    {
+        $bulan = $request->get('bulan') ?? Carbon::now()->format('Y-m');
+
+        $komponen = [
+            'check_air_accu',
+            'check_battery',
+            'check_body_unit',
+            'check_klakson',
+            'check_roda',
+            'check_sistem_kemudi',
+            'check_kebersihan_unit',
+            'check_kunci_pm',
+            'check_hydraulic',
+        ];
+
+        $query = P2HPalletMoverModel::query();
+
+        // 🔹 Filter bulan (YYYY-MM)
+        if ($bulan) {
+            $tanggal = Carbon::createFromFormat('Y-m', $bulan);
+            $query->whereYear('tanggal', $tanggal->year)
+                ->whereMonth('tanggal', $tanggal->month);
+        }
+
+        $data = $query->get();
+
+        $hasil = [];
+
+        foreach ($data as $item) {
+            $jumlahMasalah = 0;
+
+            foreach ($komponen as $field) {
+                if (isset($item->$field) && $item->$field == 0) {
+                    $jumlahMasalah++;
+                }
+            }
+
+            if ($jumlahMasalah > 0) {
+                $hasil[$item->nomor_unit] = ($hasil[$item->nomor_unit] ?? 0) + $jumlahMasalah;
             }
         }
 
-        return response()->json($kategori);
+        // 🔥 Urutkan dari yang paling bermasalah
+        arsort($hasil);
+
+        // 🔹 Ambil top 10 unit
+        $top = collect($hasil)->take(10)->map(function ($val, $key) {
+            return [
+                'nomor_unit' => $key,
+                'jumlah_masalah' => $val
+            ];
+        })->values();
+
+        return response()->json([
+            'bulan' => $bulan,
+            'total_unit' => $top->count(),
+            'data' => $top
+        ]);
     }
 }
