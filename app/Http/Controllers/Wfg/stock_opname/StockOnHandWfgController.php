@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Wfg\stock_opname;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
@@ -14,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
 use App\Models\Wfg\stock_opname\WfgSopDetailModel;
+use App\Models\Wfg\stock_opname\WfgSopStatusModel;
 use App\Models\Wfg\stock_opname\WfgSopSummariesModel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\Wsp\StockOnHandModel as WspStockOnHandModel;
@@ -216,7 +218,6 @@ class StockOnHandWfgController extends Controller
         ]);
     }
 
-
     /**
      * Update the specified resource in storage.
      */
@@ -259,6 +260,32 @@ class StockOnHandWfgController extends Controller
                 'user_id' => Auth::id() ?? $soh->user_id,
                 'last_updated' => now()
             ]);
+
+            $today = Carbon::today()->toDateString();
+
+            // Cari SOP yang masih aktif
+            $sop = WfgSopModel::whereDate('tgl_opname', $today)
+                ->where('principal', $principal)
+                ->first();
+
+            if ($sop) {
+                $summary = WfgSopSummariesModel::where('sop_id', $sop->id)
+                    ->where('barang_id', $soh->barang_id)
+                    ->first();
+
+                if ($summary) {
+                    $qtySistem = $qty_soh;
+                    $qtyFisik = $summary->qty_fisik ?? 0;
+                    $selisih = $qtyFisik - $qtySistem;
+                    $status = $selisih > 0 ? 'kurang' : ($selisih < 0 ? 'lebih' : 'match');
+
+                    $summary->update([
+                        'qty_sistem' => $qtySistem,
+                        'selisih'    => $selisih,
+                        'status'     => $status,
+                    ]);
+                }
+            }
 
             return response()->json([
                 'status' => true,
