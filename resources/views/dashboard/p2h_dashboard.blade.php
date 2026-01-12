@@ -23,7 +23,7 @@
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
-            <h4 class="mb-4">Dashboard Pemeriksaan P2H</h4>
+            <h4 class="mb-4 fw-bold">Dashboard Pemeriksaan P2H</h4>
 
             {{-- Widget --}}
             <div class="row">
@@ -277,6 +277,7 @@
                 </div>
             </div>
 
+            <h4 class="mb-4 text-center fw-bold">Pallet Mover</h4>
 
             {{-- Chart Pallet Mover --}}
             <div class="row">
