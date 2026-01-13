@@ -128,7 +128,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('stock.inventory');
             });
 
-            Route::prefix('stock_move')->middleware(['permission:ws-stock-move'])->group(function () {
+            Route::prefix('stock_move')->middleware(['permission:wsp-stock-move'])->group(function () {
                 Route::get('/index', [WarehouseController::class, 'viewStockMove'])->name('stock.move.index');
 
                 Route::prefix('incoming')->group(function () {
