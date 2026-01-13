@@ -13,6 +13,8 @@ use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
+use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\UserPermissionController;
 use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wsp\stock\StockLocationController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
@@ -60,43 +62,46 @@ Route::middleware('auth')->group(function () {
     });
 
     // Dashboard
-    Route::middleware(['auth', 'access'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
         Route::prefix('dashboard')->group(function () {
             // Main
             Route::view('/main', 'dashboard.foreman_spv_home')->name('dashboard.main');
             // TKBM
-            Route::view('/tkbm', 'dashboard.tkbm_dashboard')->name('dashboard.tkbm');
+            Route::view('/tkbm', 'dashboard.tkbm_dashboard')->name('dashboard.tkbm')
+                ->middleware(['permission:dashboard-bps']);
             // Route::get('/tkbm/get-data', [TkbmDashboardController::class, 'tkbmDashboard'])->name('dashboard.tkbm.data');
-            Route::view('/p2h', 'dashboard.p2h_dashboard')->name('dashboard.p2h');
+            Route::view('/p2h', 'dashboard.p2h_dashboard')->name('dashboard.p2h')
+                ->middleware(['permission:dashboard-p2h']);
             // Rak Management
-            Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak');
+            Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak')
+                ->middleware(['permission:dashboard-rak']);
         });
     });
 
     // Warehouse Sparepart (TKBM, Rak Management)
-    Route::middleware(['auth', 'access:warehouse_sparepart'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
         // TKBM
-        Route::prefix('tkbm')->group(function () {
-            Route::get('/input', [WarehouseController::class, 'stock'])->name('tkbm.stock');
-            Route::post('/simpan', [TkbmController::class, 'store'])->name('tkbm.store');
-            Route::get('/data', [TkbmController::class, 'index'])->name('tkbm.data');
-            Route::get('/data/show', [TkbmController::class, 'show'])->name('tkbm.data.show');
-            Route::get('/data/edit/{id}', [TkbmController::class, 'edit'])->name('tkbm.data.edit');
-            Route::put('/data/update/{id}', [TkbmController::class, 'update'])->name('tkbm.data.update');
-            Route::delete('/data/delete/{id}', [TkbmController::class, 'destroy'])->name('tkbm.data.delete');
-            Route::get('/data/export', [TkbmController::class, 'export'])->name('tkbm.data.export');
-            // Route::get('/data/export-pdf', [TkbmController::class, 'exportPdf'])->name('tkbm.data.export-pdf');
-            Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
-            Route::post('/fee/simpan', [TkbmController::class, 'simpanFeeTkbm'])->name('tkbm.fee.simpan');
-            Route::get('/fee/history', [TkbmController::class, 'historyFeeTkbm'])->name('tkbm.fee.history');
-            Route::post('/harga-produk/simpan', [TkbmController::class, 'simpanHargaProduk'])->name('tkbm.harga-produk.simpan');
-            Route::get('/harga-produk/history', [TkbmController::class, 'historyProductPrice'])->name('tkbm.harga-produk.history');
-            Route::get('/sync-totals', [TkbmController::class, 'syncTotalsTkbm']);
+        Route::prefix('tkbm')->middleware(['permission:tkbm'])->group(function () {
+            Route::middleware(['permission:tkbm-bps'])->group(function () {
+                Route::get('/input', [WarehouseController::class, 'stock'])->name('tkbm.stock');
+                Route::post('/simpan', [TkbmController::class, 'store'])->name('tkbm.store');
+                Route::get('/data', [TkbmController::class, 'index'])->name('tkbm.data');
+                Route::get('/data/show', [TkbmController::class, 'show'])->name('tkbm.data.show');
+                Route::get('/data/edit/{id}', [TkbmController::class, 'edit'])->name('tkbm.data.edit');
+                Route::put('/data/update/{id}', [TkbmController::class, 'update'])->name('tkbm.data.update');
+                Route::delete('/data/delete/{id}', [TkbmController::class, 'destroy'])->name('tkbm.data.delete');
+                Route::get('/data/export', [TkbmController::class, 'export'])->name('tkbm.data.export');
+                // Route::get('/data/export-pdf', [TkbmController::class, 'exportPdf'])->name('tkbm.data.export-pdf');
+            });
+
+            Route::middleware(['permission:tkbm-ikat-terpal'])->group(function () {
+                // Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
+            });
         });
 
         // Stock WSP
-        Route::prefix('stock')->group(function () {
-            Route::prefix('stock_manage')->group(function () {
+        Route::prefix('stock')->middleware(['permission:wsp-stock'])->group(function () {
+            Route::prefix('stock_manage')->middleware(['permission:wsp-stock-manage'])->group(function () {
                 Route::get('/dashboard', [WarehouseController::class, 'dashboardStockWsp'])->name('stock.dashboard');
                 Route::get('/stock-on-hand', [WarehouseController::class, 'stockOnHandView'])->name('stock.stock-on-hand');
                 Route::get('/location', [WarehouseController::class, 'stockLocView'])->name('stock.stock-location');
@@ -123,7 +128,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('stock.inventory');
             });
 
-            Route::prefix('stock_move')->group(function () {
+            Route::prefix('stock_move')->middleware(['permission:ws-stock-move'])->group(function () {
                 Route::get('/index', [WarehouseController::class, 'viewStockMove'])->name('stock.move.index');
 
                 Route::prefix('incoming')->group(function () {
@@ -149,7 +154,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // Purchase Requesition
-        Route::prefix('purchase-requesition')->group(function () {
+        Route::prefix('purchase-requesition')->middleware(['permission:wsp-stock-pr'])->group(function () {
             Route::post('/store', [WspPurchaseRequesitionController::class, 'store'])->name('stock.pr.store');
             Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved'])->name('stock.pr.reserved');
             Route::get('/my-reservations', [WspPurchaseRequesitionController::class, 'myReservations']);
@@ -164,28 +169,30 @@ Route::middleware('auth')->group(function () {
     });
 
     // Warehouse Raw Material
-    Route::middleware(['auth', 'access:warehouse_raw_material,warehouse_finish_goods'])->group(function () {
+    Route::middleware(['auth', 'permission:p2h,p2h-form,p2h-unit-regis'])->group(function () {
         // P2H
         Route::prefix('p2h')->group(function () {
             Route::get('/online/index', [P2HController::class, 'index'])->name('p2h.online.index');
             Route::post('/store/forklift/assignment', [P2HController::class, 'storeForkliftAssignment']);
             Route::post('/update/forklift/assignment', [P2HController::class, 'updateForkliftAssignment']);
             Route::get('/online/data', [WarehouseController::class, 'p2hData'])->name('p2h.online.data');
-            Route::get('/registration/forklift', [WarehouseController::class, 'showRegForklift'])->name('p2h.registration.forklift');
+            Route::get('/registration/forklift', [WarehouseController::class, 'showRegForklift'])->name('p2h.registration.forklift')
+                ->middleware(['permission:p2h-unit-regis']);
 
             // Pallet Mover
             Route::post('/store/pallet-mover/assignment', [P2HController::class, 'storePallMovAssignment']);
-            Route::get('/registration/pallet-mover', [WarehouseController::class, 'showRegPalletMover'])->name('p2h.registration.pallet-mover');
+            Route::get('/registration/pallet-mover', [WarehouseController::class, 'showRegPalletMover'])->name('p2h.registration.pallet-mover')
+                ->middleware(['permission:p2h-unit-regis']);
             Route::post('/update/pallet-mover/assignment/{id}', [P2HController::class, 'updatePallMovAssignment']);
         });
     });
 
     // Warehouse Finish Goods
-    Route::middleware(['auth', 'access:warehouse_finish_goods'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
         Route::prefix('wfg')->group(function () {
 
             // Maste Barang SO WFG
-            Route::prefix('master')->group(function () {
+            Route::prefix('master')->middleware(['permission:master-wfg'])->group(function () {
                 Route::get('/barang/index', [BarangWfgController::class, 'index'])->name('wfg.master.barang.index');
                 Route::post('/barang/store', [BarangWfgController::class, 'store'])->name('wfg.master.barang.store');
                 Route::get('/barang/data', [BarangWfgController::class, 'data'])->name('wfg.master.barang.data');
@@ -194,7 +201,7 @@ Route::middleware('auth')->group(function () {
             });
 
             // Stock Opname WFG
-            Route::prefix('stock_opname')->group(function () {
+            Route::prefix('stock_opname')->middleware(['permission:stock-opname-wfg'])->group(function () {
                 // Form SOP WFG
                 Route::post('/sop/start', [StockOpnameWfgController::class, 'startOpname'])->name('startOpname');
                 Route::get('/sop/status', [StockOpnameWfgController::class, 'getStatusOpname'])->name('getStatusOpname');
@@ -240,12 +247,18 @@ Route::middleware('auth')->group(function () {
     });
 
     // Master Data Management
-    Route::middleware(['auth', 'access'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
         // Master WSP
-        Route::prefix('wsp')->group(function () {
+        Route::prefix('wsp')->middleware(['permission:master-wsp'])->group(function () {
             Route::prefix('master')->group(function () {
                 // TKBM
                 Route::get('/fee', [WarehouseController::class, 'feeTkbm'])->name('wsp.master.fee');
+                Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
+                Route::post('/fee/simpan', [TkbmController::class, 'simpanFeeTkbm'])->name('tkbm.fee.simpan');
+                Route::get('/fee/history', [TkbmController::class, 'historyFeeTkbm'])->name('tkbm.fee.history');
+                Route::post('/harga-produk/simpan', [TkbmController::class, 'simpanHargaProduk'])->name('tkbm.harga-produk.simpan');
+                Route::get('/harga-produk/history', [TkbmController::class, 'historyProductPrice'])->name('tkbm.harga-produk.history');
+                Route::get('/sync-totals', [TkbmController::class, 'syncTotalsTkbm']);
 
                 // Barang
                 Route::get('/master/barang', [WarehouseController::class, 'barangIndex'])->name('wsp.master.barang');
@@ -264,7 +277,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // Master WFG
-        Route::prefix('wfg')->group(function () {
+        Route::prefix('wfg')->middleware(['permission:master-wfg'])->group(function () {
             Route::prefix('master')->group(function () {
                 Route::get('/barang/index', [BarangWfgController::class, 'index'])->name('wfg.master.barang.index');
                 Route::get('/barang/new', [BarangWfgController::class, 'getNewItems'])->name('wfg.master.barang.new');
@@ -283,7 +296,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // Master User
-        Route::prefix('user')->group(function () {
+        Route::prefix('user')->middleware(['permission:manage-user'])->group(function () {
             Route::get('/index', [UserController::class, 'index'])->name('user.index');
             Route::get('/get-data', [UserController::class, 'create'])->name('user.getData');
             Route::post('/store', [UserController::class, 'store'])->name('user.store');
@@ -302,4 +315,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/app/{any?}', function () {
         return view('app');
     })->where('any', '.*');
+
+    Route::prefix('admin')->name('admin.')->middleware(['auth', 'permission:super-admin,manage-permissions'])->group(function () {
+
+        // Permission CRUD
+        Route::get('/permissions/data', [PermissionController::class, 'data'])->name('permissions.data');
+        Route::get('/permissions/{id}/edit-ajax', [PermissionController::class, 'edit'])->name('permissions.edit');
+        Route::resource('permissions', PermissionController::class);
+
+        // Assign permission ke user
+        Route::get('users/permissions', [UserPermissionController::class, 'index'])->name('permissions.users');
+        Route::get('users/permissions/data', [UserPermissionController::class, 'getUsersData'])->name('permissions.users.data');
+        Route::get('users/permissions/search', [UserPermissionController::class, 'searchUsers'])->name('permissions.users.search');
+        Route::get('users/permissions/{id}', [UserPermissionController::class, 'getUserPermissions'])->name('permissions.users.get');
+        Route::put('users/permissions/{user}', [UserPermissionController::class, 'update'])->name('permissions.users.update');
+    });
 });

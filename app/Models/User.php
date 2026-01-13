@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Wsp\TransaksiModel;
+use App\Models\Permission\Permission;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -75,5 +76,22 @@ class User extends Authenticatable
     public function signature()
     {
         return $this->hasOne(UserSignatureModel::class);
+    }
+
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class)
+            ->withTimestamps();
+    }
+
+    public function hasPermission(string $permissionName): bool
+    {
+        return $this->permissions()->where('name', $permissionName)->exists();
+    }
+
+    // Bonus: check multiple
+    public function hasAnyPermission(array $permissions): bool
+    {
+        return $this->permissions()->whereIn('name', $permissions)->exists();
     }
 }

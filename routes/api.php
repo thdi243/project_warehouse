@@ -141,19 +141,17 @@ Route::prefix('notifications')->group(function () {
     Route::post('/show/kalibrasi', [NotificationController::class, 'showNotification'])->name('notifications.kalibrasi');
 });
 
-Route::prefix('purchase-requesition')->middleware('web')
-    ->group(function () {
-        Route::get('/getData', [WspPurchaseRequesitionController::class, 'getDataPR']);
-        // Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR']);
-        // Route::post('/store', [WspPurchaseRequesitionController::class, 'store']);
-        Route::get('/print-riwayat/{id}', [WspPurchaseRequesitionController::class, 'printRiwayat']);
-        Route::get('/getBarang/search', [WspPurchaseRequesitionController::class, 'searchSOH']);
-        // Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved']);
-        Route::post('/release-item', [WspPurchaseRequesitionController::class, 'releaseItem']);
-        Route::get('/pr-data/approval/{id}', [WspPurchaseRequesitionController::class, 'getDataApproval']);
-        Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action']);
-    });
-
+Route::prefix('purchase-requesition')->middleware('web')->group(function () {
+    Route::get('/getData', [WspPurchaseRequesitionController::class, 'getDataPR']);
+    // Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR']);
+    // Route::post('/store', [WspPurchaseRequesitionController::class, 'store']);
+    Route::get('/print-riwayat/{id}', [WspPurchaseRequesitionController::class, 'printRiwayat']);
+    Route::get('/getBarang/search', [WspPurchaseRequesitionController::class, 'searchSOH']);
+    // Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved']);
+    Route::post('/release-item', [WspPurchaseRequesitionController::class, 'releaseItem']);
+    Route::get('/pr-data/approval/{id}', [WspPurchaseRequesitionController::class, 'getDataApproval']);
+    Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action']);
+});
 
 Route::get('user/edit/{id}', [UserController::class, 'edit']);
 Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);
