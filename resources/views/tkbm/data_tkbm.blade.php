@@ -64,18 +64,21 @@
                                             <th>Qty Terpal</th>
                                             <th>Qty Slipsheet</th>
                                             <th>Qty Pallet</th>
-                                            @if (Session::get('jabatan') !== 'operator')
+                                            {{-- @if (Session::get('jabatan') !== 'operator') --}}
+                                            @can('permission', 'tkbm-bps-plus')
                                                 <th>Total</th>
                                                 <th>Keterangan Fee</th>
                                                 <th></th>
                                                 <th data-orderable="false">Action</th>
-                                            @endif
+                                            @endcan
+                                            {{-- @endif --}}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {{-- di isi oleh js --}}
                                     </tbody>
-                                    @if (Session::get('jabatan') !== 'operator')
+                                    {{-- @if (Session::get('jabatan') !== 'operator') --}}
+                                    @can('permission', 'tkbm-bps-plus')
                                         <tfoot class="table-bordered table-light mt-4">
                                             <tr>
                                                 <th colspan="3" class="text-center">Total</th>
@@ -98,16 +101,19 @@
                                                 <th colspan="3">Rp <span id="tGrandTotal">0</span></th>
                                             </tr>
                                         </tfoot>
-                                    @endif
+                                    @endcan
+                                    {{-- @endif --}}
                                 </table>
-                                @if (Session::get('jabatan') !== 'operator')
+                                {{-- @if (Session::get('jabatan') !== 'operator') --}}
+                                @can('permission', 'tkbm-bps-plus')
                                     <div class="d-flex gap-2">
                                         <button class="btn btn-success" id="exportExcel"><i
                                                 class="mdi mdi-microsoft-excel me-2"></i>Export Excel</button>
                                         <button class="btn btn-primary" id="downloadPdf"><i
                                                 class="mdi mdi-printer me-2"></i>Print</button>
                                     </div>
-                                @endif
+                                @endcan
+                                {{-- @endif --}}
                             </div>
                         </div>
                     </div>
@@ -327,15 +333,17 @@
                                         <td>${item.qty_slipsheet ?? 0}</td>
                                         <td>${item.qty_pallet ?? 0}</td>
                                         @if (Session::get('jabatan') !== 'operator'))
-                                            <td>Rp ${fmtID(item.total_qty)}</td>
-                                            <td>Rp ${fmtID(item.total_fee)}</td>
-                                            <td class="text-white">
-                                                <span class="badge bg-success px-2 py-2 rounded-pill">${item.fee_value}%</span>
-                                            </td>
-                                            <td class="text-center gap-2 d-flex justify-content-center">
-                                                <button class="btn btn-sm btn-info editBtn" data-id="${item.id}">Edit</button>
-                                                <button class="btn btn-sm btn-danger deleteBtn" data-id="${item.id}">Delete</button>
-                                            </td>
+                                            @can('permission', 'tkbm-bps-plus')
+                                                <td>Rp ${fmtID(item.total_qty)}</td>
+                                                <td>Rp ${fmtID(item.total_fee)}</td>
+                                                <td class="text-white">
+                                                    <span class="badge bg-success px-2 py-2 rounded-pill">${item.fee_value}%</span>
+                                                </td>
+                                                <td class="text-center gap-2 d-flex justify-content-center">
+                                                    <button class="btn btn-sm btn-info editBtn" data-id="${item.id}">Edit</button>
+                                                    <button class="btn btn-sm btn-danger deleteBtn" data-id="${item.id}">Delete</button>
+                                                </td>
+                                            @endcan
                                         @endif 
                                     </tr>
                                 `;
