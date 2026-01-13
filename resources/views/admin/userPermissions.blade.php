@@ -1,5 +1,40 @@
 @extends('layouts.app')
 
+@section('styles')
+    <style>
+        #user-table td.text-wrap {
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            hyphens: auto;
+            /* optional: pecah kata panjang */
+            max-width: 280px;
+            /* batasi lebar maksimal agar tidak melebar terlalu jauh */
+        }
+
+        /* Override nowrap bawaan badge Velzon/Bootstrap */
+        #user-table .badge {
+            white-space: normal !important;
+            word-break: break-word !important;
+            display: inline-block !important;
+            max-width: 100% !important;
+            /* badge tidak boleh lebih lebar dari td */
+            line-height: 1.4;
+            /* biar lebih mudah dibaca kalau wrap */
+            padding: 0.4em 0.8em;
+            /* padding lebih nyaman */
+        }
+
+        /* Kalau badge terlalu panjang, biar rapi di mobile */
+        @media (max-width: 768px) {
+            #user-table td.text-wrap {
+                max-width: 180px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+@endsection
+
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
@@ -32,7 +67,7 @@
 
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0 align-middle" id="user-table">
+                        <table class="table table-hover table-striped mb-0 align-middle wrap" id="user-table">
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center" style="width: 60px;">No</th>
@@ -142,7 +177,7 @@
                                         <td>${user.nama_lengkap || user.username}</td>
                                         <td>${user.nik || '-'}</td>
                                         <td>${user.jabatan || '-'}</td>
-                                        <td id="permissions-${user.id}">${permissionsBadge}</td>
+                                        <td class="text-wrap" id="permissions-${user.id}">${permissionsBadge}</td>
                                         <td class="text-center">
                                             <button class="btn btn-sm btn-primary btn-atur-permission" data-id="${user.id}">
                                                <i class="mdi mdi-pencil me-2"></i>Set Permission

@@ -296,7 +296,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // Master User
-        Route::prefix('user')->middleware(['permission:manage-user'])->group(function () {
+        Route::prefix('user')->middleware(['permission:manage-users'])->group(function () {
             Route::get('/index', [UserController::class, 'index'])->name('user.index');
             Route::get('/get-data', [UserController::class, 'create'])->name('user.getData');
             Route::post('/store', [UserController::class, 'store'])->name('user.store');
