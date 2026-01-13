@@ -467,10 +467,12 @@
                                 id="sidebarPermissions">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item">
-                                        <a href="{{ route('admin.permissions.index') }}"
-                                            class="nav-link menu-link {{ request()->routeIs('admin.permissions.index') ? 'active' : '' }}">
-                                            <i class="mdi mdi-view-grid"></i> <span data-key="t-tkbm">Permissions</span>
-                                        </a>
+                                        @can('permission', 'super-admin')
+                                            <a href="{{ route('admin.permissions.index') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('admin.permissions.index') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-tkbm">Permissions</span>
+                                            </a>
+                                        @endcan
                                         <a href="{{ route('admin.permissions.users') }}"
                                             class="nav-link menu-link {{ request()->routeIs('admin.permissions.users') ? 'active' : '' }}">
                                             <i class="mdi mdi-view-grid"></i> <span data-key="t-tkbm">
