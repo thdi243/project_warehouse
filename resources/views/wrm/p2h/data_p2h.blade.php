@@ -217,9 +217,9 @@
 @endsection
 
 @section('scripts')
-    <script>
+    {{-- <script>
         window.authJabatan = '{{ Auth::user()->jabatan }}';
-    </script>
+    </script> --}}
     <script>
         $(document).ready(function() {
             let currentData = [];
@@ -237,8 +237,6 @@
 
                 $('#p2hTableBody').empty();
 
-                const authJabatan = window.authJabatan || 'operator';
-
                 paginatedData.forEach((item, index) => {
                     const shiftKeys = Object.keys(item.shifts || {}).sort().join(', ') || '-';
 
@@ -246,7 +244,7 @@
                     const uniqueKey = `${item.tanggal}|${item.nomor_unit}|${item.jenis_p2h}`;
                     const globalIndex = start + index;
                     let editButton = '';
-                    if (authJabatan !== 'operator') {
+                    @can('permission', 'p2h-form-plus')
                         editButton = `
                             <button 
                                 class="btn btn-sm btn-warning me-2 btn-edit" 
@@ -255,7 +253,7 @@
                                 <i class="mdi mdi-pencil"></i> Edit
                             </button>
                         `;
-                    }
+                    @endcan
 
                     const detailButton = `
                        <button 
