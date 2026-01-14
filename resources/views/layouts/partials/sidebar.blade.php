@@ -37,7 +37,7 @@
         <div class="container-fluid">
             <div id="two-column-menu">
             </div>
-            @if (in_array($jabatan, ['dept_head', 'foreman', 'operator', 'supervisor']))
+            @if (in_array($jabatan, ['dept_head', 'foreman', 'operator', 'supervisor', 'admin']))
                 <ul class="navbar-nav" id="navbar-nav">
 
                     @can('permission', 'dashboard-manager')

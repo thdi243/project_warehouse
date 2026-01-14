@@ -171,40 +171,46 @@
                                                 accept="image/png, image/jpeg" />
                                         </div>
                                     </div>
-                                    <p class="text-muted mt-2 mb-0">Klik ikon kamera untuk mengubah foto</p>
+                                    <p class="text-muted mt-2 mb-0">Klik ikon kamera untuk upload foto</p>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="nama_lengkap" class="form-label">Nama Lengkap</label>
+                                    <label for="nama_lengkap" class="form-label">Nama Lengkap <span
+                                            class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap"
                                         placeholder="Enter full name" required />
                                     <div class="invalid-feedback">Please enter a member name.</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="username" class="form-label">Username</label>
+                                    <label for="username" class="form-label">Username <span
+                                            class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="username" name="username"
                                         placeholder="Enter name" required />
                                     <div class="invalid-feedback">Please enter a member name.</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="email" class="form-label">Email</label>
+                                    <label for="email" class="form-label">Email <span
+                                            class="text-danger">*</span></label>
                                     <input type="email" class="form-control" id="email" name="email"
                                         placeholder="Enter email" required />
                                     <div class="invalid-feedback">Please enter a valid email.</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="nik" class="form-label">NIK</label>
+                                    <label for="nik" class="form-label">NIK <span
+                                            class="text-danger">*</span></label>
                                     <input type="number" class="form-control" id="nik" name="nik"
                                         placeholder="Enter nik" required />
                                     <div class="invalid-feedback">Please enter nik.</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="password" class="form-label">Password</label>
+                                    <label for="password" class="form-label">Password <span
+                                            class="text-danger">*</span></label>
                                     <input type="password" class="form-control" id="password" name="password"
                                         placeholder="Enter password" required />
                                     <div class="invalid-feedback">Please enter a password</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="jabatan" class="form-label">Jabatan</label>
+                                    <label for="jabatan" class="form-label">Jabatan <span
+                                            class="text-danger">*</span></label>
                                     <select class="form-select" id="jabatan" name="jabatan" required>
                                         <option value="" disabled selected>Pilih Jabatan</option>
                                         <option value="dept_head">Head of Departemen</option>
@@ -216,7 +222,8 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label for="departemen" class="form-label">Departemen</label>
+                                    <label for="departemen" class="form-label">Departemen <span
+                                            class="text-danger">*</span></label>
                                     <select class="form-select" id="departemen" name="departemen" required>
                                         <option value="" disabled selected>Pilih Departemen</option>
                                         <option value="warehouse">Warehouse</option>
@@ -228,7 +235,8 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label for="bagian" class="form-label">Bagian</label>
+                                    <label for="bagian" class="form-label">Bagian <span
+                                            class="text-danger">*</span></label>
                                     <select class="form-select" id="bagian" name="bagian" required>
                                         <option value="" disabled selected>Pilih Bagian</option>
                                         <option value="warehouse">Warehouse</option>
@@ -340,7 +348,8 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="editDepartemen" class="form-label">Departemen</label>
+                                    <label for="editDepartemen" class="form-label">Departemen <span
+                                            class="text-danger">*</span></label>
                                     <select class="form-select" id="editDepartemen" name="editDepartemen" required>
                                         <option value="">Pilih Departemen</option>
                                         <option value="warehouse">Warehouse</option>
@@ -638,7 +647,7 @@
                         if (!users || users.length === 0) {
                             $("#userRow").html(`
                                 <div class="col-12 d-flex justify-content-center">
-                                   <div class="card border-0 shadow-sm py-3">
+                                <div class="card border-0 shadow-sm py-3">
                                         <div class="card-body">
                                             <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
                                             <h5 class="text-muted">Tidak ada hasil yang cocok</h5>
@@ -677,6 +686,13 @@
                             const imgSrc = user.image_url || "/default.png";
                             const delay = (index * 200) % 1000;
 
+                            // Cek apakah user adalah admin → disable tombol edit & delete
+                            const isAdmin = (user.jabatan || "").toLowerCase() === "admin";
+                            const editDisabled = isAdmin ? "disabled" : "";
+                            const deleteDisabled = isAdmin ? "disabled" : "";
+                            const btnClassDisabled = isAdmin ? "opacity-50 cursor-not-allowed" :
+                                "";
+
                             const card = `
                                 <div class="col-md-3 mb-3">
                                     <div data-aos="fade-up" data-aos-delay="${delay}" data-aos-anchor-placement="top-bottom">
@@ -691,8 +707,10 @@
                                                 <p class="card-text text-muted mb-1 bagian"><i class="bi bi-building"></i> ${bagianFormatted}</p>
                                             </div>
                                             <div class="card-footer border-0 d-flex justify-content-between">
-                                                <button class="btn btn-outline-primary btn-sm editBtn" data-id="${user.id}">Edit</button>
-                                                <button class="btn btn-outline-danger btn-sm deleteBtn" data-id="${user.id}">Delete</button>
+                                                <button class="btn btn-outline-primary btn-sm editBtn ${btnClassDisabled}" 
+                                                    data-id="${user.id}" ${editDisabled}>Edit</button>
+                                                <button class="btn btn-outline-danger btn-sm deleteBtn ${btnClassDisabled}" 
+                                                    data-id="${user.id}" ${deleteDisabled}>Delete</button>
                                             </div>
                                         </div>
                                     </div>
@@ -972,7 +990,8 @@
 
                         // Show existing signature if available
                         if (user.signature && user.signature.signature) {
-                            let sigPath = "{{ asset('') }}" + user.signature.signature + '?v=' +
+                            let sigPath = "{{ asset('storage') }}/" + user.signature.signature +
+                                '?v=' +
                                 new Date().getTime();
                             $('#edit-signature-image').attr('src', sigPath);
                             $('#edit-signature-preview').show();

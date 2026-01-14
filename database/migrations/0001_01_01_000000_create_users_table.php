@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('email')->unique();
             // $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('jabatan', ['dept_head', 'supervisor', 'foreman', 'operator'])->default('operator');
+            $table->enum('jabatan', ['dept_head', 'supervisor', 'foreman', 'operator', 'admin'])->default('operator');
             $table->string('departemen')->nullable();
             $table->string('bagian')->nullable();
             $table->bigInteger('nik')->nullable();
