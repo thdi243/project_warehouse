@@ -442,9 +442,6 @@ class BarangWfgController extends Controller
         }
     }
 
-
-
-
     public function downloadTemplate()
     {
         // Buat spreadsheet baru
