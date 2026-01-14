@@ -280,77 +280,116 @@ class WspBarangController extends Controller
         ]);
 
         try {
-            DB::beginTransaction();
-
             $file = $request->file('file');
             $spreadsheet = IOFactory::load($file->getPathname());
             $worksheet = $spreadsheet->getActiveSheet();
-            $rows = $worksheet->toArray();
+            $highestRow = $worksheet->getHighestRow();
 
-            $successCount = 0;
-            $errorCount = 0;
+            $dataToProcess = [];
             $errors = [];
+            $midNormList = []; // untuk cek duplikat dalam file
 
-            foreach ($rows as $index => $row) {
-                if ($index === 0) continue; // skip header
-                if (empty(array_filter($row))) continue; // skip empty row
+            for ($row = 2; $row <= $highestRow; $row++) {
+                $rawMid     = trim((string) $worksheet->getCell('A' . $row)->getValue() ?? '');
+                $namaBarang = trim((string) $worksheet->getCell('B' . $row)->getValue() ?? '');
+                $uom        = trim((string) $worksheet->getCell('C' . $row)->getValue() ?? '');
+                $s_loc      = trim((string) $worksheet->getCell('D' . $row)->getValue() ?? '');
 
-                $midBarang  = isset($row[0]) ? trim($row[0]) : null;
-                $namaBarang = isset($row[1]) ? trim($row[1]) : null;
-                $uom        = isset($row[2]) ? trim($row[2]) : null;
-                $s_loc      = isset($row[3]) ? trim($row[3]) : null;
+                // Normalisasi MID seperti di WFG
+                $midDigits = preg_replace('/\D+/', '', $rawMid);
+                $midKey    = ltrim($midDigits, '0');
+                if ($midKey === '') $midKey = '0';
 
-                // --- Validasi dasar ---
-                if (!$midBarang || !$namaBarang || !$uom) {
-                    $errors[] = "Baris " . ($index + 1) . ": Data tidak lengkap";
-                    $errorCount++;
+                $midForSave = (string)((int) $midKey); // format final konsisten
+
+                $rowErrors = [];
+
+                // Validasi
+                if ($midDigits === '' || strlen($midDigits) < 1 || strlen($midDigits) > 8) {
+                    $rowErrors[] = 'MID Barang harus 1–8 digit angka.';
+                }
+                if (empty($namaBarang)) {
+                    $rowErrors[] = 'Nama Barang wajib diisi.';
+                }
+                if (empty($uom)) {
+                    $rowErrors[] = 'UOM wajib diisi.';
+                }
+
+                // Cek duplikat dalam file (pakai midKey yang sudah dinormalisasi)
+                if (in_array($midKey, $midNormList, true)) {
+                    $rowErrors[] = 'MID Barang duplikat dalam file import ini.';
+                } else {
+                    $midNormList[] = $midKey;
+                }
+
+                if (!empty($rowErrors)) {
+                    $errors[] = [
+                        'baris' => $row,
+                        'data'  => compact('rawMid', 'namaBarang', 'uom', 's_loc'),
+                        'error' => implode(', ', $rowErrors),
+                    ];
                     continue;
                 }
 
-                if (!is_numeric($midBarang) || strlen($midBarang) != 8) {
-                    $errors[] = "Baris " . ($index + 1) . ": MID Barang harus 8 digit angka";
-                    $errorCount++;
-                    continue;
-                }
-
-                if (BarangModel::where('mid_barang', $midBarang)->exists()) {
-                    $errors[] = "Baris " . ($index + 1) . ": MID $midBarang sudah terdaftar";
-                    $errorCount++;
-                    continue;
-                }
-
-                try {
-                    BarangModel::create([
-                        'created_by'  => Auth::id() ?? 1,
-                        'mid_barang'  => $midBarang,
-                        'nama_barang' => $namaBarang,
-                        'uom'         => $uom,
-                        's_loc'       => $s_loc,
-                        'image'       => null,
-                    ]);
-                    $successCount++;
-                } catch (\Exception $e) {
-                    $errors[] = "Baris " . ($index + 1) . ": " . $e->getMessage();
-                    $errorCount++;
-                }
+                $dataToProcess[] = [
+                    'mid_barang'   => $midForSave,
+                    'nama_barang'  => strtoupper($namaBarang),
+                    'uom'          => strtoupper($uom),
+                    's_loc'        => strtoupper($s_loc),
+                    'created_by'   => Auth::id() ?? 1,
+                    'updated_at'   => now(),
+                    'created_at'   => now(),
+                ];
             }
 
-            DB::commit();
+            if (empty($dataToProcess)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Tidak ada data valid untuk diimpor.',
+                    'errors'  => $errors,
+                ], 400);
+            }
 
+            DB::beginTransaction();
+            try {
+                foreach ($dataToProcess as $item) {
+                    $midInt = (int) $item['mid_barang'];
+
+                    // Cari berdasarkan nilai numeric (agar "00123" == "123")
+                    $existing = BarangModel::whereRaw('CAST(mid_barang AS SIGNED) = ?', [$midInt])->first();
+
+                    if ($existing) {
+                        // Update data yang sudah ada
+                        $existing->update([
+                            'nama_barang' => $item['nama_barang'],
+                            'uom'         => $item['uom'],
+                            's_loc'       => $item['s_loc'],
+                            'updated_at'  => now(),
+                        ]);
+                    } else {
+                        // Insert baru
+                        BarangModel::create($item);
+                    }
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => count($dataToProcess) . ' data berhasil diimpor/update, ' . count($errors) . ' baris gagal.',
+                    'errors'  => $errors,
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Terjadi kesalahan saat menyimpan data ke database: ' . $e->getMessage(),
+                ], 500);
+            }
+        } catch (\Throwable $e) {
             return response()->json([
-                'status' => $errorCount === 0,
-                'message' => "Import selesai! Sukses: $successCount, Gagal: $errorCount",
-                'data' => [
-                    'success_count' => $successCount,
-                    'error_count'   => $errorCount,
-                    'errors'        => $errors
-                ]
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'status' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'status'  => false,
+                'message' => 'Gagal memproses file: ' . $e->getMessage(),
             ], 500);
         }
     }

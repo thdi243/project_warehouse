@@ -597,35 +597,43 @@
                         const {
                             status,
                             message,
-                            data
+                            errors = []
                         } = response;
 
-                        if (status && data.error_count === 0) {
-                            // ✅ Semua sukses
+                        if (status === true) {
+                            // Sukses total (errors kosong)
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Berhasil!',
-                                text: message
+                                text: message || 'Import selesai tanpa error.',
+                                timer: 3000,
+                                showConfirmButton: false
                             });
                         } else {
-                            // ⚠️ Ada error sebagian
-                            let errorList = data?.errors?.length ?
-                                data.errors.map(e => `<li>${e}</li>`).join('') :
+                            // Ada error (atau partial)
+                            let errorListHtml = errors.length > 0 ?
+                                errors.map(err => {
+                                    // Sesuaikan format error dari WSP (baris + error)
+                                    if (typeof err === 'object') {
+                                        return `<li>Baris ${err.baris}: ${err.error}</li>`;
+                                    }
+                                    return `<li>${err}</li>`;
+                                }).join('') :
                                 '<li>Tidak ada rincian error.</li>';
 
                             Swal.fire({
                                 icon: 'warning',
                                 title: 'Sebagian Gagal!',
                                 html: `
-                                    <p>${message}</p>
+                                    <p>${message || 'Import selesai dengan beberapa error.'}</p>
                                     <hr>
-                                    <ul style="text-align:left">${errorList}</ul>
+                                    <ul style="text-align:left; max-height: 200px; overflow-y: auto;">${errorListHtml}</ul>
                                 `,
                                 width: 600
                             });
                         }
 
-                        // Reset & reload
+                        // Reset & reload table
                         $('#modalImport').modal('hide');
                         $('#formImport')[0].reset();
                         $('#wspTable').DataTable().ajax.reload();
