@@ -9,6 +9,7 @@
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <title>Warehouse @yield('title')</title>
         <meta content="Themesbrand" name="author" />
+        <meta name="current-user-id" content="{{ Auth::id() }}">
 
         <script>
             (function() {

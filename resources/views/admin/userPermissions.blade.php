@@ -7,9 +7,7 @@
             word-break: break-word !important;
             overflow-wrap: break-word !important;
             hyphens: auto;
-            /* optional: pecah kata panjang */
             max-width: 280px;
-            /* batasi lebar maksimal agar tidak melebar terlalu jauh */
         }
 
         /* Override nowrap bawaan badge Velzon/Bootstrap */
@@ -18,11 +16,8 @@
             word-break: break-word !important;
             display: inline-block !important;
             max-width: 100% !important;
-            /* badge tidak boleh lebih lebar dari td */
             line-height: 1.4;
-            /* biar lebih mudah dibaca kalau wrap */
             padding: 0.4em 0.8em;
-            /* padding lebih nyaman */
         }
 
         /* Kalau badge terlalu panjang, biar rapi di mobile */
@@ -155,6 +150,8 @@
                 let url = "{{ route('admin.permissions.users.data') }}?query=" + encodeURIComponent(query) +
                     "&page=" + page;
 
+                const currentUserId = parseInt($('meta[name="current-user-id"]').attr('content')) || 0;
+
                 $.ajax({
                     url: url,
                     method: 'GET',
@@ -171,20 +168,34 @@
                                     `<span class="badge badge-soft-info">${user.permissions.join(', ')}</span>` :
                                     `<span class="badge badge-soft-danger">Nothing</span>`;
 
+                                // Cek apakah user ini adalah admin
+                                const isAdmin = (user.jabatan || '').toLowerCase() ===
+                                    'admin' ||
+                                    (user.jabatan || '').toLowerCase() === 'super-admin';
+
+                                // Tombol disabled hanya jika: 
+                                // - user adalah admin/super-admin DAN bukan user login sendiri
+                                const shouldDisable = isAdmin && (user.id !== currentUserId);
+
+                                const btnDisabled = shouldDisable ? 'disabled' : '';
+                                const btnClassDisabled = shouldDisable ?
+                                    'opacity-50 cursor-not-allowed' : '';
+
                                 tbodyHtml += `
-                                    <tr data-id="${user.id}">
-                                        <td class="text-center">${globalIndex}</td>
-                                        <td>${user.nama_lengkap || user.username}</td>
-                                        <td>${user.nik || '-'}</td>
-                                        <td>${user.jabatan || '-'}</td>
-                                        <td class="text-wrap" id="permissions-${user.id}">${permissionsBadge}</td>
-                                        <td class="text-center">
-                                            <button class="btn btn-sm btn-primary btn-atur-permission" data-id="${user.id}">
-                                               <i class="mdi mdi-pencil me-2"></i>Set Permission
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `;
+                        <tr data-id="${user.id}">
+                            <td class="text-center">${globalIndex}</td>
+                            <td>${user.nama_lengkap || user.username}</td>
+                            <td>${user.nik || '-'}</td>
+                            <td>${user.jabatan || '-'}</td>
+                            <td class="text-wrap" id="permissions-${user.id}">${permissionsBadge}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-primary btn-atur-permission ${btnClassDisabled}" 
+                                    data-id="${user.id}" ${btnDisabled}>
+                                    <i class="mdi mdi-pencil me-2"></i>Set Permission
+                                </button>
+                            </td>
+                        </tr>
+                    `;
                             });
                         } else {
                             tbodyHtml =

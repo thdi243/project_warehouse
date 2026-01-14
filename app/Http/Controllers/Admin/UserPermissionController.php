@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\User;
-use App\Models\Permission\Permission;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Permission\Permission;
 use Illuminate\Routing\Controllers\HasMiddleware;
 
 class UserPermissionController extends Controller
@@ -54,22 +55,30 @@ class UserPermissionController extends Controller
     // Endpoint AJAX untuk load detail permission user (untuk modal)
     public function getUserPermissions($id)
     {
-        $user = User::findOrFail($id);
+        $targetUser = User::findOrFail($id);
+        $currentUser = Auth::user();
+
         $permissions = Permission::all();
+
+        $isAdminLogin = strtolower($currentUser->jabatan) === 'admin';
+
+        $filteredPermissions = $permissions->filter(function ($perm) use ($isAdminLogin) {
+            return $isAdminLogin || strtolower($perm->name) !== 'super-admin';
+        })->values(); // reset keys
 
         return response()->json([
             'user' => [
-                'id' => $user->id,
-                'name' => $user->nama_lengkap ?? $user->username,
-                'email' => $user->email,
-                'jabatan' => $user->jabatan,
+                'id' => $targetUser->id,
+                'name' => $targetUser->nama_lengkap ?? $targetUser->username,
+                'email' => $targetUser->email,
+                'jabatan' => $targetUser->jabatan,
             ],
-            'permissions' => $permissions->map(function ($perm) use ($user) {
+            'permissions' => $filteredPermissions->map(function ($perm) use ($targetUser) {
                 return [
                     'id' => $perm->id,
                     'name' => $perm->name,
                     'description' => $perm->description ?? 'no desc',
-                    'checked' => $user->permissions->contains($perm->id),
+                    'checked' => $targetUser->permissions->contains($perm->id),
                 ];
             }),
         ]);
