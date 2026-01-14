@@ -110,9 +110,24 @@ class UserController extends Controller
         ]);
 
         // === Upload Foto (jika ada) ===
+        // $imagePath = null;
+        // if ($request->hasFile('image')) {
+        //     $imagePath = $request->file('image')->store('/images/users', 'public');
+        // }
+
+        // === Upload Foto (jika ada) ===
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('/images/users', 'public');
+            $file = $request->file('image');
+            $identifier = Str::slug($request->username);
+            $uniqueSuffix = Str::random(8);
+            $imageName = "profile_{$identifier}_{$uniqueSuffix}." . $file->getClientOriginalExtension();
+
+            $relativePath = "images/users/{$imageName}";
+
+            Storage::disk('public')->putFileAs('images/users', $file, $imageName);
+
+            $imagePath = $relativePath;
         }
 
         // === Simpan User ===
@@ -242,13 +257,35 @@ class UserController extends Controller
             }
 
             // === Update foto profil jika ada file baru ===
+            // if ($request->hasFile('image')) {
+            //     if ($user->image && Storage::disk('public')->exists($user->image)) {
+            //         Storage::disk('public')->delete($user->image);
+            //     }
+
+            //     $path = $request->file('image')->store('images/users', 'public');
+            //     $data['image'] = $path;
+            // }
+
+            // === Update foto profil jika ada file baru ===
             if ($request->hasFile('image')) {
+                $file = $request->file('image');
+
+                // Hapus file lama kalau ada
                 if ($user->image && Storage::disk('public')->exists($user->image)) {
                     Storage::disk('public')->delete($user->image);
                 }
 
-                $path = $request->file('image')->store('images/users', 'public');
-                $data['image'] = $path;
+                // Buat nama baru yang konsisten + unik
+                $identifier = Str::slug($user->username);
+                $uniqueSuffix = Str::random(8);
+                $imageName = "profile_{$identifier}_{$uniqueSuffix}." . $file->getClientOriginalExtension();
+
+                $relativePath = "images/users/{$imageName}";
+
+                // Simpan file baru
+                Storage::disk('public')->putFileAs('images/users', $file, $imageName);
+
+                $data['image'] = $relativePath;
             }
 
             // === Simpan data user utama ===
