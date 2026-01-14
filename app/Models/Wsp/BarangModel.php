@@ -17,6 +17,7 @@ class BarangModel extends Model
         'mid_barang',
         'nama_barang',
         'uom',
+        's_loc',
         'image',
     ];
 

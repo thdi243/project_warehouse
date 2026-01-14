@@ -16,6 +16,7 @@ return new class extends Migration
             $table->integer('mid_barang');
             $table->string('nama_barang');
             $table->string('uom');
+            $table->string('s_loc')->nullable();
             $table->string('image')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();

@@ -42,6 +42,7 @@ class WspBarangController extends Controller
             'mid_barang'  => 'required|digits_between:1,8|integer',
             'nama_barang' => 'required|string|max:255',
             'uom'         => 'required|string|max:50',
+            's_loc'         => 'nullable|string|max:50',
             'image'       => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
@@ -66,6 +67,7 @@ class WspBarangController extends Controller
                 'mid_barang'  => $request->mid_barang,
                 'nama_barang' => $request->nama_barang,
                 'uom'         => $request->uom,
+                's_loc'       => $request->s_loc,
                 'image'       => $imagePath,
             ]);
 
@@ -107,6 +109,7 @@ class WspBarangController extends Controller
             'nama_barang' => $barang->nama_barang,
             'mid_barang' => $barang->mid_barang,
             'uom' => $barang->uom,
+            's_loc' => $barang->s_loc,
             'image' => $barang->image,
             'username' => $barang->user->username ?? null,
         ];
@@ -131,6 +134,7 @@ class WspBarangController extends Controller
                     'mid_barang'  => $barang->mid_barang,
                     'nama_barang' => $barang->nama_barang,
                     'uom'         => $barang->uom,
+                    's_loc'         => $barang->s_loc,
                     'username'    => $barang->user->username ?? null,
                     'image'       => $barang->image ? asset('storage/' . $barang->image) : null,
                 ];
@@ -204,6 +208,7 @@ class WspBarangController extends Controller
             'midBarangEdit'  => 'required|digits_between:1,8|integer',
             'namaBarangEdit' => 'required|string|max:255',
             'uomEdit'        => 'required|string|max:50',
+            'sLocEdit'        => 'required|string|max:50',
             'imageEdit'      => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
@@ -219,6 +224,7 @@ class WspBarangController extends Controller
         $barang->mid_barang = $request->midBarangEdit;
         $barang->nama_barang = $request->namaBarangEdit;
         $barang->uom = $request->uomEdit;
+        $barang->s_loc = $request->sLocEdit;
 
         if ($request->hasFile('imageEdit')) {
             $barang->image = $request->file('imageEdit')->store('images/wsp', 'public');
@@ -292,6 +298,7 @@ class WspBarangController extends Controller
                 $midBarang  = isset($row[0]) ? trim($row[0]) : null;
                 $namaBarang = isset($row[1]) ? trim($row[1]) : null;
                 $uom        = isset($row[2]) ? trim($row[2]) : null;
+                $s_loc      = isset($row[3]) ? trim($row[3]) : null;
 
                 // --- Validasi dasar ---
                 if (!$midBarang || !$namaBarang || !$uom) {
@@ -318,6 +325,7 @@ class WspBarangController extends Controller
                         'mid_barang'  => $midBarang,
                         'nama_barang' => $namaBarang,
                         'uom'         => $uom,
+                        's_loc'       => $s_loc,
                         'image'       => null,
                     ]);
                     $successCount++;
@@ -356,24 +364,27 @@ class WspBarangController extends Controller
         $sheet->setCellValue('A1', 'MID Barang');
         $sheet->setCellValue('B1', 'Nama Barang');
         $sheet->setCellValue('C1', 'Uom');
+        $sheet->setCellValue('D1', 'SLoc');
 
         // Add example data
         $sheet->setCellValue('A2', 12345678);
         $sheet->setCellValue('B2', 'Contoh Barang 1');
         $sheet->setCellValue('C2', 'Pcs');
+        $sheet->setCellValue('D2', 'G001');
 
         $sheet->setCellValue('A3', 87654321);
         $sheet->setCellValue('B3', 'Contoh Barang 2');
         $sheet->setCellValue('C3', 'Pcs');
+        $sheet->setCellValue('D3', 'G001');
 
         // Auto width columns
-        foreach (range('A', 'C') as $column) {
+        foreach (range('A', 'D') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
         // Style header
-        $sheet->getStyle('A1:C1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:C1')->getFill()
+        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:D1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFCCCCCC');
 

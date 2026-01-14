@@ -41,6 +41,7 @@
                                     <th>Mid Barang</th>
                                     <th>Nama Barang</th>
                                     <th>Uom</th>
+                                    <th>SLoc</th>
                                     @if (Session::get('jabatan') !== 'operator')
                                         <th class="text-center" data-orderable="false">Aksi</th>
                                     @endif
@@ -123,6 +124,10 @@
                                 <label for="uom" class="form-label">Uom</label>
                                 <input type="text" class="form-control" id="uom" name="uom">
                             </div>
+                            <div class="col-xxl-4 col-md-6">
+                                <label for="s_loc" class="form-label">Storage Location</label>
+                                <input type="text" class="form-control" id="s_loc" name="s_loc">
+                            </div>
                             <div class="col-xxl-6 col-md-6">
                                 <label for="image" class="form-label">Foto Barang (Opsional)</label>
                                 <input type="file" class="form-control" id="image" name="image"
@@ -171,6 +176,10 @@
                             <div class="col-xxl-3 col-md-6">
                                 <label for="uomEdit" class="form-label">Uom</label>
                                 <input type="text" class="form-control" id="uomEdit" name="uomEdit">
+                            </div>
+                            <div class="col-xxl-3 col-md-6">
+                                <label for="sLocEdit" class="form-label">Storage Location</label>
+                                <input type="text" class="form-control" id="sLocEdit" name="sLocEdit">
                             </div>
                             <div class="col-xxl-6 col-md-6">
                                 <div class="mb-3">
@@ -226,6 +235,10 @@
                             <strong>Uom:</strong>
                             <p id="detailUom"></p>
                         </div>
+                        <div class="col-md-4">
+                            <strong>SLoc:</strong>
+                            <p id="detailSLoc"></p>
+                        </div>
                         <div class="col-md-12">
                             <strong>Foto Barang:</strong>
                             <div>
@@ -276,6 +289,12 @@
                     },
                     {
                         data: 'uom',
+                        render: function(data, type, row) {
+                            return data || '-';
+                        }
+                    },
+                    {
+                        data: 's_loc',
                         render: function(data, type, row) {
                             return data || '-';
                         }
@@ -419,6 +438,7 @@
                         $('#midBarangEdit').val(res.data.mid_barang);
                         $('#namaBarangEdit').val(res.data.nama_barang);
                         $('#uomEdit').val(res.data.uom);
+                        $('#sLocEdit').val(res.data.s_loc);
                     },
                     error: function(xhr) {
                         toastr.error('Gagal memuat data barang');
@@ -495,52 +515,52 @@
                 });
             });
 
-            // detail button click event
-            $('#wspTable').on('click', '.detail-btn', function() {
-                const id = $(this).data('id');
+            // // detail button click event
+            // $('#wspTable').on('click', '.detail-btn', function() {
+            //     const id = $(this).data('id');
 
-                $.ajax({
-                    url: `{{ url('api/wsp/show/barang') }}/${id}`,
-                    method: 'GET',
-                    success: function(response) {
-                        const data = response.data;
+            //     $.ajax({
+            //         url: `{{ url('api/wsp/show/barang') }}/${id}`,
+            //         method: 'GET',
+            //         success: function(response) {
+            //             const data = response.data;
 
-                        $('#detailMid').text(data.mid_barang);
-                        $('#detailNama').text(data.nama_barang);
-                        $('#detailKodeRak').text(data.kode_rak);
-                        $('#detailNamaRak').text(data.nama_rak);
-                        $('#detailKolomRak').text(data.kolom_rak);
-                        $('#detailLevelRak').text(data.level_rak);
-                        $('#detailBoxRak').text(data.box_rak ?? '0');
-                        $('#detailQty').text(data.qty);
-                        $('#detailUser').text(
-                            data.username ?
-                            data.username.replace(/\b\w/g, function(l) {
-                                return l.toUpperCase();
-                            }) :
-                            '-'
-                        );
-                        $('#detailTanggal').text(data.tgl_transaksi);
-                        // $('#jenisTransaksi').text(data.jenis_transaksi);
+            //             $('#detailMid').text(data.mid_barang);
+            //             $('#detailNama').text(data.nama_barang);
+            //             $('#detailKodeRak').text(data.kode_rak);
+            //             $('#detailNamaRak').text(data.nama_rak);
+            //             $('#detailKolomRak').text(data.kolom_rak);
+            //             $('#detailLevelRak').text(data.level_rak);
+            //             $('#detailBoxRak').text(data.box_rak ?? '0');
+            //             $('#detailQty').text(data.qty);
+            //             $('#detailUser').text(
+            //                 data.username ?
+            //                 data.username.replace(/\b\w/g, function(l) {
+            //                     return l.toUpperCase();
+            //                 }) :
+            //                 '-'
+            //             );
+            //             $('#detailTanggal').text(data.tgl_transaksi);
+            //             // $('#jenisTransaksi').text(data.jenis_transaksi);
 
-                        if (data.image) {
-                            $('#detailImage')
-                                .attr('src',
-                                    `{{ asset('storage/') }}/${data.image}`)
-                                .show();
-                        } else {
-                            $('#detailImage').hide();
-                        }
+            //             if (data.image) {
+            //                 $('#detailImage')
+            //                     .attr('src',
+            //                         `{{ asset('storage/') }}/${data.image}`)
+            //                     .show();
+            //             } else {
+            //                 $('#detailImage').hide();
+            //             }
 
-                        $('#detailModal').modal('show');
-                    },
-                    error: function(err) {
-                        console.error("Error fetching detail:", err);
-                        Swal.fire('Error!', 'Gagal mengambil detail data.',
-                            'error');
-                    }
-                });
-            });
+            //             $('#detailModal').modal('show');
+            //         },
+            //         error: function(err) {
+            //             console.error("Error fetching detail:", err);
+            //             Swal.fire('Error!', 'Gagal mengambil detail data.',
+            //                 'error');
+            //         }
+            //     });
+            // });
 
             // Tombol Upload diklik
             $('#btnUpload').on('click', function(e) {
@@ -639,6 +659,7 @@
                         $('#detailMid').text(res.data.mid_barang);
                         $('#detailNama').text(res.data.nama_barang);
                         $('#detailUom').text(res.data.uom);
+                        $('#detailSLoc').text(res.data.s_loc);
                         if (res.data.image) {
                             $('#detailImage')
                                 .attr('src', `{{ asset('storage/') }}/${res.data.image}`)
