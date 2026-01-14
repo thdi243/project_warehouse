@@ -177,7 +177,8 @@
                                 <div class="mb-3">
                                     <label for="editJabatan" class="form-label">Jabatan <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="editJabatan" name="editJabatan" required>
+                                    <select class="form-select" id="editJabatan" name="editJabatan" required
+                                        @if (Auth::user()->jabatan === 'operator') disabled @endif>
                                         <option value="">Pilih Jabatan</option>
                                         <option value="dept_head">Head of Departement</option>
                                         <option value="supervisor">Supervisor</option>
@@ -189,7 +190,8 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editDepartemen" class="form-label">Departemen</label>
-                                    <select class="form-select" id="editDepartemen" name="editDepartemen" required>
+                                    <select class="form-select" id="editDepartemen" name="editDepartemen" required
+                                        @if (Auth::user()->jabatan === 'operator') disabled @endif>
                                         <option value="">Pilih Departemen</option>
                                         <option value="warehouse">Warehouse</option>
                                         <option value="engineering">Engineering</option>
@@ -202,13 +204,17 @@
                                 <div class="mb-3">
                                     <label for="editBagian" class="form-label">Bagian <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="editBagian" name="editBagian" required>
+                                    <select class="form-select" id="editBagian" name="editBagian" required
+                                        @if (Auth::user()->jabatan === 'operator') disabled @endif>
                                         <option value="" disabled>Pilih Bagian</option>
                                         <option value="warehouse">Warehouse</option>
                                         <option value="warehouse_co_product">Warehouse Co Product</option>
                                         <option value="warehouse_finish_goods">Warehouse Finish Good</option>
                                         <option value="warehouse_raw_material">Warehouse Raw Material</option>
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
+                                        <option value="engineering">Engineering</option>
+                                        <option value="quality_control">Quality Control</option>
+                                        <option value="produksi">Produksi</option>
                                     </select>
                                 </div>
                             </div>
@@ -293,9 +299,8 @@
         $(document).ready(function() {
             // edit modal
             function editUser(userId) {
-                // Ambil data user dari server
                 $.ajax({
-                    url: "{{ route('user.edit', '') }}/" + userId, // atau endpoint yang sesuai
+                    url: "{{ route('user.edit', '') }}/" + userId,
                     method: 'GET',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -303,7 +308,7 @@
                     success: function(response) {
                         let user = response.data || response;
 
-                        // Isi form dengan data user
+                        // Isi form fields...
                         $("#editId").val(user.id);
                         $("#editNamaLengkap").val(user.nama_lengkap);
                         $("#editUsername").val(user.username);
@@ -314,10 +319,9 @@
                         $("#editBagian").val(user.bagian);
                         $("#editPrincipal").val(user.principal?.principal || '-');
 
-                        // Reset password field
                         $("#editPassword").val('');
 
-                        // Show current image if exists
+                        // Handle foto profil
                         if (user.image) {
                             let imagePath = "{{ asset('storage') }}/" + user.image;
                             $("#currentImage").attr('src', imagePath).show();
@@ -327,14 +331,17 @@
                             $("#imagePreview").hide();
                         }
 
+                        // Handle signature (FIX PATH DISINI)
                         if (user.signature && user.signature.signature) {
-                            let sigPath = "{{ asset('') }}" + user.signature.signature;
-                            console.log('Signature path:', sigPath); // debug
+                            // Pakai asset('storage') + path dari database
+                            let sigPath = "{{ asset('storage') }}/" + user.signature.signature;
+                            console.log('Signature path:', sigPath); // debug: cek di console
 
                             $('#currentSignature')
                                 .attr('src', sigPath)
                                 .show()
                                 .on('error', function() {
+                                    console.log('Gagal load signature:', sigPath);
                                     $(this).hide();
                                     $("#noSignatureText").text(
                                         'Gambar tanda tangan tidak ditemukan').show();
@@ -343,13 +350,12 @@
                             $("#noSignatureText").hide();
                         } else {
                             $('#currentSignature').hide();
-                            $("#noSignatureText").show();
+                            $("#noSignatureText").text('Tidak ada tanda tangan').show();
                         }
 
                         // Reset file input
                         $("#imgEdit").val('');
 
-                        // Show modal
                         $("#editUserModal").modal('show');
                     },
                     error: function(xhr) {
@@ -357,7 +363,7 @@
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Failed to load user data',
+                            text: 'Gagal memuat data user',
                         });
                     }
                 });

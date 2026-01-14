@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
@@ -139,24 +140,36 @@ class UserController extends Controller
             $signatureData = $request->input('signature');
 
             // Decode base64 image
-            $signature = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
-            $signature = str_replace(' ', '+', $signature);
+            $imageData = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
+            $imageData = str_replace(' ', '+', $imageData);
 
-            // Gunakan username (aman untuk nama file)
-            $identifier = preg_replace('/[^A-Za-z0-9_\-]/', '_', $user->username);
-            $signatureName = 'signature_' . $identifier . '.png';
-            $signaturePath = public_path('uploads/signatures');
+            $binaryData = base64_decode($imageData);
 
-            if (!File::exists($signaturePath)) {
-                File::makeDirectory($signaturePath, 0755, true);
+            if ($binaryData === false) {
+                // Optional: handle error decode
+                return response()->json(['error' => 'Gagal decode gambar signature'], 422);
             }
 
-            File::put($signaturePath . '/' . $signatureName, base64_decode($signature));
+            // Buat nama file yang aman dan unik (hindari overwrite kalau user ganti ttd berkali-kali)
+            $identifier = Str::slug($user->username);
+            $uniqueSuffix = Str::random(8);
+            $signatureName = "signature_{$identifier}_{$uniqueSuffix}.png";
 
-            // Simpan ke relasi hanya jika model Signature ada
-            $user->signature()->create([
-                'signature' => 'uploads/signatures/' . $signatureName
-            ]);
+            // Simpan ke storage disk 'public' → storage/app/public/uploads/signatures
+            $relativePath = "uploads/signatures/{$signatureName}";
+
+            Storage::disk('public')->put($relativePath, $binaryData);
+
+            // Optional: hapus signature lama kalau ada (biar tidak numpuk file)
+            if ($user->signature && $user->signature->signature) {
+                Storage::disk('public')->delete($user->signature->signature);
+            }
+
+            // Simpan path relatif ke database (tanpa 'storage/')
+            $user->signature()->updateOrCreate(
+                ['user_id' => $user->id],
+                ['signature' => $relativePath]
+            );
         }
 
         return response()->json(['success' => 'User created successfully.']);
@@ -262,38 +275,45 @@ class UserController extends Controller
             if ($request->filled('signature') && trim($request->signature) !== '') {
                 $signatureData = $request->input('signature');
 
-                // dd($signatureData);
-
                 // Decode base64 image
-                $signature = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
-                $signature = str_replace(' ', '+', $signature);
+                $imageData = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
+                $imageData = str_replace(' ', '+', $imageData);
 
-                // Gunakan username sebagai nama file
-                $identifier = $user->username;
-                $identifier = preg_replace('/[^A-Za-z0-9_\-]/', '_', $identifier);
+                $binaryData = base64_decode($imageData);
 
-                $signatureName = 'signature_' . $identifier . '.png';
-                $signaturePath = public_path('uploads/signatures');
-
-                if (!File::exists($signaturePath)) {
-                    File::makeDirectory($signaturePath, 0755, true);
+                if ($binaryData === false) {
+                    // Optional: handle error decode
+                    return response()->json(['message' => 'Gagal decode data signature'], 422);
                 }
 
-                File::put($signaturePath . '/' . $signatureName, base64_decode($signature));
+                // Buat nama file aman + unik (hindari overwrite kalau user upload berkali-kali)
+                $identifier = Str::slug($user->username); // aman untuk nama file
+                $uniqueSuffix = Str::random(8);
+                $signatureName = "signature_{$identifier}_{$uniqueSuffix}.png";
 
-                // Simpan path file signature ke database
-                if ($user->signature) {
-                    $user->signature->update([
-                        'signature' => 'uploads/signatures/' . $signatureName
-                    ]);
-                } else {
-                    $user->signature()->create([
-                        'signature' => 'uploads/signatures/' . $signatureName
-                    ]);
+                // Path relatif yang akan disimpan di DB
+                $relativePath = "uploads/signatures/{$signatureName}";
+
+                // Simpan ke storage disk 'public'
+                Storage::disk('public')->put($relativePath, $binaryData);
+
+                // Hapus signature lama kalau ada (biar tidak numpuk file sampah)
+                if ($user->signature && $user->signature->signature) {
+                    Storage::disk('public')->delete($user->signature->signature);
                 }
+
+                // Update atau create record signature
+                $user->signature()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['signature' => $relativePath]
+                );
             } elseif ($request->has('signature') && trim($request->signature) === '') {
-                if ($user->signature && File::exists(public_path($user->signature->signature))) {
-                    File::delete(public_path($user->signature->signature));
+                // User menghapus signature (kirim string kosong)
+                if ($user->signature && $user->signature->signature) {
+                    // Hapus file fisik dari storage
+                    Storage::disk('public')->delete($user->signature->signature);
+
+                    // Hapus record di database
                     $user->signature()->delete();
                 }
             }
