@@ -749,8 +749,8 @@ class TkbmController extends Controller
         // );
 
         // Isi label PPn dan PPh
-        $sheet->setCellValue('A30', "PPn " . ($lastFeeData->ppn ?? 0) . "%");
-        $sheet->setCellValue('A32', "PPh " . ($lastFeeData->pph ?? 0) . "%");
+        $sheet->setCellValue('A30', "PPn " . ($ppnRate ?? 0) . "%");
+        $sheet->setCellValue('A32', "PPh " . ($pphRate ?? 0) . "%");
     }
 
     private function fillSheetTotals($sheet, $startRow, $endRow, $dataChunk)
