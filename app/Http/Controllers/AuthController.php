@@ -16,6 +16,7 @@ class AuthController extends Controller
         'supervisor' => '/dashboard',
         'foreman' => '/dashboard',
         'operator' => '/dashboard',
+        'admin' => '/dashboard',
     ];
 
     public function showLoginForm()

@@ -184,6 +184,9 @@
                                         <option value="supervisor">Supervisor</option>
                                         <option value="foreman">Foreman</option>
                                         <option value="operator">Operator</option>
+                                        @if (Auth::user()->jabatan === 'admin')
+                                            <option value="admin">Admin</option>
+                                        @endif
                                     </select>
                                 </div>
                             </div>
