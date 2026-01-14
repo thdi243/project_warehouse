@@ -243,30 +243,30 @@ class StockOnHandController extends Controller
             $rows = $sheet->toArray(null, true, true, true);
 
             $notFound = [];
-            $saved = 0;
             $userId = Auth::id() ?? null;
 
             $template = null;
 
             $headerRow1 = $rows[1] ?? [];
-            $headerRow2 = $rows[1] ?? [];
+            $headerRow2 = $rows[2] ?? []; // lebih aman pakai row 2 untuk template kedua
 
             if (isset($headerRow1['A']) && stripos($headerRow1['A'], 'MID_BARANG') !== false) {
                 $template = 1;
-            } elseif (isset($headerRow2['D']) && stripos($headerRow2['E'], 'Material') !== false) {
+            } elseif (isset($headerRow2['E']) && stripos($headerRow2['E'], 'Material') !== false) {
                 $template = 2;
             } else {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => 'Format template tidak dikenali.',
                 ], 422);
             }
 
-            // Mulai dari baris ke-2 (karena baris pertama header)
+            // Kumpulkan dulu semua data + validasi existence
+            $validData = [];
+
             foreach ($rows as $index => $row) {
                 if ($template == 1) {
-                    // Template 1 → skip header row 1
-                    if ($index == 1) continue;
+                    if ($index == 1) continue; // skip header
 
                     $mid_barang = trim($row['A'] ?? '');
                     $unrest     = (int) ($row['B'] ?? 0);
@@ -274,8 +274,7 @@ class StockOnHandController extends Controller
                     $blocked    = (int) ($row['D'] ?? 0);
                     $transf     = (int) ($row['E'] ?? 0);
                 } else {
-                    // Template 2 → skip row 1-2
-                    if ($index <= 2) continue;
+                    if ($index <= 2) continue; // skip header 1 & 2
 
                     $mid_barang = trim($row['E'] ?? '');
                     $unrest     = (int) ($row['F'] ?? 0);
@@ -286,7 +285,6 @@ class StockOnHandController extends Controller
 
                 if (!$mid_barang) continue;
 
-                // Cek apakah mid_barang ada di master_barang
                 $barang = BarangModel::where('mid_barang', $mid_barang)->first();
 
                 if (!$barang) {
@@ -294,34 +292,43 @@ class StockOnHandController extends Controller
                     continue;
                 }
 
-                // Update atau insert data
-                StockOnHandWspModel::create(
-                    [
-                        'barang_id' => $barang->id,
-                        'qty_soh' => $unrest + $qual_insp + $blocked + $transf,
-                        'unrest' => $unrest,
-                        'qual_insp' => $qual_insp,
-                        'blocked' => $blocked,
-                        'transf' => $transf,
-                        'last_update' => now(),
-                        'created_by' => $userId,
-                    ]
-                );
+                $validData[] = [
+                    'barang_id'  => $barang->id,
+                    'qty_soh'    => $unrest + $qual_insp + $blocked + $transf,
+                    'unrest'     => $unrest,
+                    'qual_insp'  => $qual_insp,
+                    'blocked'    => $blocked,
+                    'transf'     => $transf,
+                    'last_update' => now(),
+                    'created_by'  => $userId,
+                ];
+            }
 
+            // Jika ada yang tidak ditemukan → langsung reject
+            if (!empty($notFound)) {
+                return response()->json([
+                    'status'   => 'error',
+                    'message'  => 'Beberapa MID tidak ditemukan di master barang.',
+                    'not_found' => $notFound,
+                    'total_checked' => count($rows) - ($template == 1 ? 1 : 2),
+                ], 422);
+            }
+
+            $saved = 0;
+            foreach ($validData as $data) {
+                StockOnHandWspModel::create($data);
                 $saved++;
             }
 
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Upload data berhasil.',
-                'saved' => $saved,
-                'not_found' => $notFound,
-                'skipped' => $notFound,
-                'total' => count($rows) - 1,
+                'saved'   => $saved,
+                'total'   => count($validData),
             ]);
         } catch (\Throwable $e) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Terjadi kesalahan saat memproses file: ' . $e->getMessage(),
             ], 500);
         }

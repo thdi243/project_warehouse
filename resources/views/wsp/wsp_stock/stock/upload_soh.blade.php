@@ -307,8 +307,20 @@
                 uploadFile(file);
             }
 
-            // Upload ke backend
             function uploadFile(file) {
+                // Validasi cepat client-side (biar user nggak nunggu server reject)
+                const allowed = ['.xlsx', '.xls', '.csv'];
+                const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+
+                if (!allowed.includes(ext)) {
+                    toastr.error('Hanya file .xlsx, .xls, atau .csv yang boleh.');
+                    return;
+                }
+                if (file.size > 10 * 1024 * 1024) {
+                    toastr.error('File maksimal 10 MB.');
+                    return;
+                }
+
                 const formData = new FormData();
                 formData.append('file', file);
 
@@ -316,51 +328,61 @@
                 uploadArea.addClass('loading');
 
                 $.ajax({
-                    url: "{{ route('stock.soh_upload') }}", // Ganti dengan route upload-mu
+                    url: "{{ route('stock.soh_upload') }}",
                     method: "POST",
                     data: formData,
                     processData: false,
                     contentType: false,
+                    timeout: 45000, // 45 detik
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     },
                     success: function(res) {
+                        // Sukses 200 → cek apakah ada not_found (meski seharusnya tidak, tapi safety)
                         if (res.status === 'success') {
-
-                            // Jika ada barang tidak ditemukan → tampilkan Swal
                             if (res.not_found && res.not_found.length > 0) {
+                                showNotFoundWarning(res);
+                            } else {
                                 Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Sebagian Data Tidak Ditemukan',
-                                    html: `
-                                        <p><strong>${res.saved}</strong> dari <strong>${res.total}</strong> baris berhasil disimpan.</p>
-                                        <hr>
-                                        <p class="text-start"><strong>Barang tidak ditemukan di Master Barang (${res.not_found.length}):</strong></p>
-                                        <div style="max-height: 200px; overflow-y: auto; text-align: left;">
-                                            <ul style="padding-left: 20px; margin-bottom: 0;">
-                                                ${res.not_found.map(id => `<li>${id}</li>`).join('')}
-                                            </ul>
-                                        </div>
-                                    `,
-                                    confirmButtonText: 'OK',
-                                    confirmButtonColor: '#f0ad4e'
+                                    icon: 'success',
+                                    title: 'Upload Berhasil',
+                                    html: `<p>${res.message || 'Data stok berhasil diperbarui.'}</p>`,
+                                    confirmButtonText: 'Oke',
+                                    confirmButtonColor: '#28a745',
+                                    allowOutsideClick: false
                                 }).then(() => {
                                     location.reload();
                                 });
-                            } else {
-                                toastr.success(res.message);
-                                setTimeout(() => location.reload(), 1500);
                             }
                         } else {
-                            toastr.error(res.message || 'Upload gagal.');
+                            let msg = res.message || 'Upload gagal.';
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Upload Gagal',
+                                html: `<p>${msg}</p>`,
+                                confirmButtonText: 'Oke',
+                                confirmButtonColor: '#d33',
+                                allowOutsideClick: false
+                            });
                         }
                     },
                     error: function(xhr) {
-                        let msg = 'Terjadi kesalahan saat upload file';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
+                        let res = {};
+                        try {
+                            res = JSON.parse(xhr.responseText || '{}');
+                        } catch (e) {}
+
+                        if (xhr.status === 422 && res.not_found && res.not_found.length > 0) {
+                            // Ini yang paling penting: tangani kasus MID not found dari 422
+                            showNotFoundWarning(res);
+                        } else {
+                            // Error lain (template salah, exception, dll)
+                            let msg = res.message || 'Terjadi kesalahan saat proses file';
+                            if (xhr.status === 413) msg = 'File terlalu besar (max 10 MB)';
+                            if (xhr.status === 0 || xhr.status === 504) msg =
+                                'Koneksi lambat atau server timeout';
+                            toastr.error(msg);
                         }
-                        toastr.error(msg);
                     },
                     complete: function() {
                         loadingSpinner.hide();
@@ -370,6 +392,72 @@
                 });
             }
 
+            function showNotFoundWarning(res) {
+                const notFoundList = res.not_found || [];
+                const count = notFoundList.length;
+                const totalChecked = res.total_checked || '–';
+                const textToCopy = notFoundList.join('\n');
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'MID Barang Tidak Ditemukan',
+                    html: `
+                        <p style="text-align:center">
+                            <strong>${count}</strong> kode barang tidak ditemukan.<br>
+                            <strong style="color:#d32f2f">Data TIDAK disimpan!</strong>
+                        </p>
+
+                        <div style="max-height:220px; overflow:auto; text-align:left;
+                            background:#fff; padding:12px; border:1px solid #ddd; border-radius:6px;">
+                            <ul style="padding-left:20px; margin:0">
+                                ${notFoundList.map(id => `<li><code>${id}</code></li>`).join('')}
+                            </ul>
+                        </div>
+                    `,
+                    footer: `
+                        <a href="javascript:void(0)" id="copy-mid-link"
+                        style="font-weight:600; color:#6c757d; text-decoration:none;">
+                            📋 Copy daftar MID
+                        </a>
+                    `,
+                    confirmButtonText: 'Oke, Saya Perbaiki',
+                    confirmButtonColor: '#f0ad4e',
+                    allowOutsideClick: false,
+
+                    didOpen: () => {
+                        const link = document.getElementById('copy-mid-link');
+
+                        link.addEventListener('click', async () => {
+                            try {
+                                await navigator.clipboard.writeText(textToCopy);
+
+                                Swal.update({
+                                    title: 'Daftar MID berhasil di-copy!',
+                                    icon: 'success'
+                                });
+
+                                link.textContent = '✔ MID sudah di-copy';
+                                link.style.color = '#28a745';
+
+                                setTimeout(() => {
+                                    link.textContent = '📋 Copy daftar MID';
+                                    link.style.color = '#6c757d';
+
+                                    Swal.update({
+                                        title: 'MID Barang Tidak Ditemukan',
+                                        icon: 'warning'
+                                    });
+                                }, 3000);
+
+                            } catch {
+                                Swal.showValidationMessage(
+                                    'Gagal copy. Silakan Ctrl+C manual.'
+                                );
+                            }
+                        });
+                    }
+                });
+            }
         });
     </script>
 @endsection
