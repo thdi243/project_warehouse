@@ -34,9 +34,11 @@
                                 <a href="{{ route('tkbm.ikat-terpal.index') }}" class="btn btn-primary me-2">
                                     <i class="mdi mdi-plus"></i> Tambah Data Baru
                                 </a>
-                                <button type="button" class="btn btn-success" id="btn-print-pdf">
-                                    <i class="mdi mdi-printer"></i> Print PDF
-                                </button>
+                                @can('permission', 'tkbm-ikat-terpal-plus')
+                                    <button type="button" class="btn btn-success" id="btn-print-pdf">
+                                        <i class="mdi mdi-printer"></i> Print PDF
+                                    </button>
+                                @endcan
                             </div>
                         </div>
 
@@ -178,14 +180,16 @@
                                         <td>${item.jml_buruh || '-'}</td>
                                         <td>Rp ${parseFloat(item.subtotal_barang).toLocaleString('id-ID')}</td>
                                         <td>Rp ${parseFloat(item.total_fee).toLocaleString('id-ID')}</td>
-                                        <td class="text-nowrap">
-                                            <button class="btn btn-sm btn-warning btn-edit" data-id="${item.id}">
-                                                <i class="mdi mdi-pencil"></i> Edit
-                                            </button>
-                                            <button class="btn btn-sm btn-danger btn-delete" data-id="${item.id}">
-                                                <i class="mdi mdi-delete"></i> Hapus
-                                            </button>
-                                        </td>
+                                        @can('permission', 'tkbm-ikat-terpal-plus')
+                                            <td class="text-nowrap">
+                                                <button class="btn btn-sm btn-warning btn-edit" data-id="${item.id}">
+                                                    <i class="mdi mdi-pencil"></i> Edit
+                                                </button>
+                                                <button class="btn btn-sm btn-danger btn-delete" data-id="${item.id}">
+                                                    <i class="mdi mdi-delete"></i> Hapus
+                                                </button>
+                                            </td>
+                                        @endcan
                                     </tr>
                                 `;
                                 tableBody.append(row);
