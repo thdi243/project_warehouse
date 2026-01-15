@@ -80,6 +80,55 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Edit -->
+    <div class="modal fade" id="modalEdit" tabindex="-1" aria-labelledby="modalEditLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEditLabel">Edit Data Ikat Terpal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-edit">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="id" id="edit-id">
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Tanggal</label>
+                                <input type="date" class="form-control" name="tanggal" id="edit-tanggal" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Qty Pallet</label>
+                                <input type="number" class="form-control" name="qty_pallet" id="edit-qty_pallet"
+                                    min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Jumlah Buruh</label>
+                                <select class="form-select" name="jml_buruh" id="edit-jml_buruh">
+                                    <option value="" selected>Pilih Jumlah Buruh</option>
+                                    @for ($i = 1; $i <= 3; $i++)
+                                        <option value="{{ $i }}" {{ old('jml_buruh') == $i ? 'selected' : '' }}>
+                                            {{ $i }} Buruh</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Catatan</label>
+                                <textarea class="form-control" name="catatan" id="edit-catatan" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="btn-update">Update Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -130,9 +179,9 @@
                                         <td>Rp ${parseFloat(item.subtotal_barang).toLocaleString('id-ID')}</td>
                                         <td>Rp ${parseFloat(item.total_fee).toLocaleString('id-ID')}</td>
                                         <td class="text-nowrap">
-                                            <a href="{{ url('/ikat-terpal') }}/${item.id}/edit" class="btn btn-sm btn-warning">
+                                            <button class="btn btn-sm btn-warning btn-edit" data-id="${item.id}">
                                                 <i class="mdi mdi-pencil"></i> Edit
-                                            </a>
+                                            </button>
                                             <button class="btn btn-sm btn-danger btn-delete" data-id="${item.id}">
                                                 <i class="mdi mdi-delete"></i> Hapus
                                             </button>
@@ -185,19 +234,50 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: '{{ url('/tkbm/ikat-terpal') }}/' + deleteId,
+                            url: "{{ url('/tkbm/ikat-terpal/destroy') }}/" + deleteId,
                             method: 'DELETE',
                             data: {
                                 _token: '{{ csrf_token() }}'
                             },
-                            success: function() {
-                                Swal.fire('Terhapus!', 'Data berhasil dihapus.',
-                                    'success');
-                                loadData();
+                            success: function(response) {
+                                if (response.status === 'success') {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Terhapus!',
+                                        text: response.message ||
+                                            'Data berhasil dihapus.',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    });
+
+                                    loadData();
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Gagal',
+                                        text: response.message ||
+                                            'Terjadi kesalahan.'
+                                    });
+                                }
                             },
-                            error: function() {
-                                Swal.fire('Gagal', 'Tidak bisa menghapus data.',
-                                    'error');
+                            error: function(xhr) {
+                                let response = xhr.responseJSON || {};
+                                let msg = 'Gagal menghapus data. Silakan coba lagi.';
+
+                                if (xhr.status === 404) {
+                                    msg = response.message || 'Data tidak ditemukan.';
+                                } else if (xhr.status === 403) {
+                                    msg = response.message ||
+                                        'Anda tidak memiliki izin untuk menghapus data ini.';
+                                } else if (response.message) {
+                                    msg = response.message;
+                                }
+
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: msg
+                                });
                             }
                         });
                     }
@@ -231,6 +311,75 @@
                 window.open(url, '_blank');
             });
 
+            // Handler tombol Edit
+            $(document).on('click', '.btn-edit', function() {
+                const id = $(this).data('id');
+                const url = `{{ url('/tkbm/ikat-terpal/show') }}/${id}`; // sesuaikan route show/edit
+
+                $.ajax({
+                    url: url,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            const data = response.data;
+
+                            $('#edit-id').val(data.id);
+                            $('#edit-tanggal').val(data.tanggal);
+                            $('#edit-qty_pallet').val(data.qty_pallet);
+                            $('#edit-jml_buruh').val(data.jml_buruh || '');
+                            $('#edit-catatan').val(data.catatan || '');
+
+                            // Tampilkan modal
+                            $('#modalEdit').modal('show');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'Gagal memuat data untuk edit.', 'error');
+                    }
+                });
+            });
+
+            // Handler tombol Update di modal
+            $('#btn-update').on('click', function() {
+                const id = $('#edit-id').val();
+                const url = `{{ url('/tkbm/ikat-terpal/update') }}/${id}`; // route update
+
+                const formData = $('#form-edit').serialize();
+
+                $.ajax({
+                    url: url,
+                    method: 'PUT',
+                    data: formData,
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: response.message || 'Data berhasil diupdate',
+                                timer: 2000
+                            });
+
+                            $('#modalEdit').modal('hide');
+                            loadData(); // refresh table
+                        }
+                    },
+                    error: function(xhr) {
+                        let msg = 'Gagal update data';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            msg = Object.values(xhr.responseJSON.errors).flat().join('<br>');
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            html: msg
+                        });
+                    }
+                });
+            });
         });
     </script>
 @endsection

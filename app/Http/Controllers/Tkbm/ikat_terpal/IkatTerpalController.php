@@ -26,45 +26,80 @@ class IkatTerpalController extends Controller
 
     public function store(Request $request)
     {
-        // Validation
+        // Validation input dasar
         $request->validate([
-            'tanggal' => 'required|date',
+            'tanggal'    => 'required|date',
             'qty_pallet' => 'required|numeric|min:0',
-            'jml_buruh' => 'nullable|numeric|min:0',
-            'catatan' => 'nullable|string'
+            'jml_buruh'  => 'nullable|numeric|min:0',
+            'catatan'    => 'nullable|string'
         ]);
 
         try {
             DB::beginTransaction();
 
-            $produkId = ProdukIkatTerpal::where('aktif', true)->first()->id;
-            $feeId = FeeIkatTerpal::where('aktif', true)->first()->id;
-            $subTotalBarang = $request->qty_pallet * ProdukIkatTerpal::find($produkId)->harga_pallet;
-            $totalFee = (FeeIkatTerpal::find($feeId)->fee / 100)  * $subTotalBarang;
+            // 1. Cek produk aktif
+            $produkAktif = ProdukIkatTerpal::where('aktif', true)->first();
+            if (!$produkAktif) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Tidak ada harga produk aktif. Silakan atur master harga produk terlebih dahulu.'
+                ], 422);
+            }
 
+            // 2. Cek fee aktif
+            $feeAktif = FeeIkatTerpal::where('aktif', true)->first();
+            if (!$feeAktif) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Tidak ada fee aktif. Silakan atur master fee terlebih dahulu.'
+                ], 422);
+            }
+
+            // 3. Cek apakah sudah ada entri untuk tanggal yang sama
+            $tanggalInput = $request->tanggal;
+            $dataExist = IkatTerpal::whereDate('tanggal', $tanggalInput)->exists();
+
+            if ($dataExist) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Sudah ada data Ikat Terpal untuk tanggal ' . \Carbon\Carbon::parse($tanggalInput)->translatedFormat('j F Y') . '. Silahkan hubungin foreman untuk mengedit.'
+                ], 422);
+            }
+
+            // Ambil nilai yang dibutuhkan
+            $produkId       = $produkAktif->id;
+            $feeId          = $feeAktif->id;
+            $hargaPallet    = $produkAktif->harga_pallet;
+            $feePersen      = $feeAktif->fee;
+
+            // Hitung
+            $subTotalBarang = $request->qty_pallet * $hargaPallet;
+            $totalFee       = ($feePersen / 100) * $subTotalBarang;
+
+            // Simpan data
             $data = IkatTerpal::create([
-                'tanggal' => $request->tanggal ?? date('Y-m-d'),
-                'produk_id' => $produkId,
-                'fee_id' => $feeId,
-                'user_id' => Auth::id() ?? 1,
-                'qty_pallet' => $request->qty_pallet,
-                'jml_buruh' => $request->jml_buruh,
+                'tanggal'         => $tanggalInput,
+                'produk_id'       => $produkId,
+                'fee_id'          => $feeId,
+                'user_id'         => Auth::id() ?? 1,
+                'qty_pallet'      => $request->qty_pallet,
+                'jml_buruh'       => $request->jml_buruh,
                 'subtotal_barang' => $subTotalBarang,
-                'total_fee' => $totalFee,
-                'catatan' => $request->catatan,
+                'total_fee'       => $totalFee,
+                'catatan'         => $request->catatan,
             ]);
 
             DB::commit();
 
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Data Ikat Terpal berhasil disimpan',
-                'data' => $data
+                'data'    => $data
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ], 500);
         }
@@ -171,5 +206,117 @@ class IkatTerpalController extends Controller
 
         $nomor = $start->day <= 15 ? '001' : '002';
         return sprintf("%s/WRM/%s/%s", $nomor, $romawi[$month], $year);
+    }
+
+    public function show($id)
+    {
+        $data = IkatTerpal::with(['produk', 'fee'])->find($id);
+
+        if (!$data) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data tidak ditemukan'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal'    => 'required|date',
+            'qty_pallet' => 'required|numeric|min:0',
+            'jml_buruh'  => 'nullable|numeric|min:0',
+            'catatan'    => 'nullable|string'
+        ]);
+
+        try {
+            DB::beginTransaction();
+            $data = IkatTerpal::findOrFail($id);
+
+            $tanggalInput = $request->tanggal;
+            $dataExist = IkatTerpal::whereDate('tanggal', $tanggalInput)->exists();
+
+            if ($dataExist) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Sudah ada data Ikat Terpal untuk tanggal ' . \Carbon\Carbon::parse($tanggalInput)->translatedFormat('j F Y')
+                ], 422);
+            }
+
+            // Hitung ulang subtotal & fee (karena qty bisa berubah)
+            $hargaPallet = $data->produk->harga_pallet;
+            $feePersen   = $data->fee->fee;
+
+            $subtotalBarang = $request->qty_pallet * $hargaPallet;
+            $totalFee       = ($feePersen / 100) * $subtotalBarang;
+
+            $data->update([
+                'tanggal'         => $request->tanggal,
+                'qty_pallet'      => $request->qty_pallet,
+                'jml_buruh'       => $request->jml_buruh,
+                'subtotal_barang' => $subtotalBarang,
+                'total_fee'       => $totalFee,
+                'catatan'         => $request->catatan,
+                'user_id'         => Auth::id()
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Data Ikat Terpal berhasil diupdate',
+                'data'    => $data
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal menyimpan data: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $data = IkatTerpal::find($id);
+
+            if (!$data) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Data Ikat Terpal tidak ditemukan'
+                ], 404);
+            }
+
+            $data->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Data Ikat Terpal berhasil dihapus',
+                'id'      => $id
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal menghapus data: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

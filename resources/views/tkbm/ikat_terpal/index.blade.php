@@ -37,7 +37,7 @@
                             <label for="jml_buruh" class="col-sm-3 col-form-label">Jumlah Buruh</label>
                             <div class="col-sm-9">
                                 <select class="form-select" name="jml_buruh" id="jml_buruh">
-                                    <option value="" disabled selected>Pilih Jumlah Buruh</option>
+                                    <option value="" selected>Pilih Jumlah Buruh</option>
                                     @for ($i = 1; $i <= 3; $i++)
                                         <option value="{{ $i }}" {{ old('jml_buruh') == $i ? 'selected' : '' }}>
                                             {{ $i }} Buruh</option>
@@ -81,16 +81,21 @@
         $(document).ready(function() {
 
             $('#form-ikat-terpal').on('submit', function(e) {
-                e.preventDefault(); // cegah submit biasa
+                e.preventDefault();
 
                 const $form = $(this);
-                const $btn = $('#btn-submit');
-                $btn.prop('disabled', true).html(
-                    '<span class="spinner-border spinner-border-sm" role="status"></span> Menyimpan...');
+                const $btn = $('#btn-submit'); // pastikan button punya id="btn-submit"
+                const originalBtnText = $btn.text(); // simpan text asli
 
-                // Reset error sebelumnya
-                $('.invalid-feedback').remove();
-                $('.is-invalid').removeClass('is-invalid');
+                // Disable button & tampilkan loading
+                $btn.prop('disabled', true)
+                    .html(
+                        '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Menyimpan...'
+                    );
+
+                // Reset error hanya di form ini
+                $form.find('.invalid-feedback').remove();
+                $form.find('.is-invalid').removeClass('is-invalid');
 
                 $.ajax({
                     url: $form.attr('action'),
@@ -101,8 +106,8 @@
                         if (response.status === 'success') {
                             Swal.fire({
                                 icon: 'success',
-                                title: 'Sukses',
-                                text: response.message,
+                                title: 'Berhasil!',
+                                text: response.message || 'Data berhasil disimpan',
                                 timer: 2000,
                                 showConfirmButton: false
                             });
@@ -111,39 +116,51 @@
                         } else {
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error',
+                                title: 'Gagal',
                                 text: response.message ||
-                                    'Terjadi kesalahan. Silakan coba lagi.'
+                                    'Terjadi kesalahan saat menyimpan data'
                             });
                         }
                     },
                     error: function(xhr) {
-                        const response = xhr.responseJSON;
+                        const response = xhr.responseJSON || {};
 
                         if (xhr.status === 422) {
-                            // Validasi Laravel error
-                            $.each(response.errors, function(field, messages) {
-                                const $input = $('[name="' + field + '"]');
-                                $input.addClass('is-invalid');
-                                $input.after('<div class="invalid-feedback d-block">' +
-                                    messages.join('<br>') + '</div>');
-                            });
-                        } else if (response && response.message) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: response.message
-                            });
+                            if (response.errors) {
+                                $.each(response.errors, function(field, messages) {
+                                    const $input = $form.find('[name="' + field + '"]');
+                                    if ($input.length) {
+                                        $input.addClass('is-invalid');
+                                        $input.after(
+                                            '<div class="invalid-feedback d-block">' +
+                                            messages.join('<br>') + '</div>');
+                                    }
+                                });
+
+                                const firstErrorField = Object.keys(response.errors)[0];
+                                $form.find('[name="' + firstErrorField + '"]').focus();
+                            }
+
+                            if (response.message) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Perhatian',
+                                    text: response.message
+                                });
+                            }
                         } else {
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error',
-                                text: 'Terjadi kesalahan. Silakan coba lagi.'
+                                title: 'Error Server',
+                                text: response.message ||
+                                    'Terjadi kesalahan. Silakan coba lagi atau hubungi admin.'
                             });
                         }
                     },
                     complete: function() {
-                        $btn.prop('disabled', false).text('Simpan Data');
+                        // Kembalikan button ke kondisi normal
+                        $btn.prop('disabled', false)
+                            .html(originalBtnText);
                     }
                 });
             });

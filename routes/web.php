@@ -107,6 +107,9 @@ Route::middleware('auth')->group(function () {
                     Route::post('/store/fee', [MasterIkatTerpalController::class, 'storeFee']);
                     Route::post('/store/produk', [MasterIkatTerpalController::class, 'storeProduk']);
                     Route::post('/store', [IkatTerpalController::class, 'store']);
+                    Route::delete('/destroy/{id}', [IkatTerpalController::class, 'destroy']);
+                    Route::get('/show/{id}', [IkatTerpalController::class, 'show']);
+                    Route::put('/update/{id}', [IkatTerpalController::class, 'update']);
                 });
             });
         });
