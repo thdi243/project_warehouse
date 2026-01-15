@@ -6,7 +6,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\P2h\ForkliftModel;
-use App\Models\Tkbm\TkbmFeeModel;
+use App\Models\Tkbm\bps\TkbmFeeModel;
 use App\Models\P2h\PalletMoverModel;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;

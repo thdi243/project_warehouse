@@ -160,7 +160,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="row g-2">
-                        <div class="col-12">
+                        {{-- <div class="col-12">
                             @php
                                 $bulanRomawi = [
                                     1 => 'I',
@@ -187,7 +187,7 @@
                                 <option value="002/WCP/{{ $romawiBulan }}/{{ $tahun }}">
                                     002/WCP/{{ $romawiBulan }}/{{ $tahun }}</option>
                             </select>
-                        </div>
+                        </div> --}}
 
                         <div class="col-6 mt-2">
                             <label for="startDatePdf" class="form-label">Start Date</label>
@@ -483,7 +483,7 @@
 
                 // arahkan ke route export dengan query string
                 let url =
-                    "{{ url('api/dashboard/tkbm/export-pdf') }}" +
+                    "{{ url('tkbm/bps/export-pdf') }}" +
                     "?start_date=" + startDate +
                     "&end_date=" + endDate +
                     "&no_dok=" + encodeURIComponent(noDok);

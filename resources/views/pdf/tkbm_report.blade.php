@@ -114,7 +114,7 @@
                 </tr>
             @endforeach
             <tr>
-                <td style="padding-top: 10px; border: none;" colspan="29">
+                <td style="padding-top: 10px;" colspan="29">
                     <p style="text-align: left; margin: 0;"></p>
                 </td>
             </tr>

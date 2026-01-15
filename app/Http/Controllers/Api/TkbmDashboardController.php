@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Api;
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Models\Tkbm\TkbmModel;
+use App\Models\Tkbm\bps\TkbmModel;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\Tkbm\TkbmFeeModel;
+use App\Models\Tkbm\bps\TkbmFeeModel;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\Tkbm\TotalsTkbmModel;
+use App\Models\Tkbm\bps\TotalsTkbmModel;
 
 class TkbmDashboardController extends Controller
 {
@@ -295,110 +295,5 @@ class TkbmDashboardController extends Controller
             'pallet'     => $sum_pallet,
             'grand_total'      => $grand_total,
         ]);
-    }
-
-
-
-
-
-
-    // Export Pdf
-    public function exportPdf(Request $request)
-    {
-        $startDate = $request->query('start_date');
-        $endDate   = $request->query('end_date');
-        $noDok = $request->query('no_dok');
-
-        // if (!$startDate) {
-        //     $startDate = now()->startOfMonth()->format('Y-m-d'); // tanggal 1 bulan ini
-        // }
-        // if (!$endDate) {
-        //     $endDate = now()->startOfMonth()->addDays(14)->format('Y-m-d'); // tanggal 15 bulan ini
-        // }
-
-        // Validasi input
-        if (!$startDate || !$endDate) {
-            return redirect()->back()->with('error', 'Tanggal awal dan akhir wajib diisi.');
-        }
-
-        try {
-            $start = Carbon::parse($startDate)->startOfDay();
-            $end   = Carbon::parse($endDate)->endOfDay();
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Format tanggal tidak valid.');
-        }
-
-        if ($end->lt($start)) {
-            return redirect()->back()->with('error', 'Tanggal akhir harus lebih besar atau sama dengan tanggal awal.');
-        }
-
-        // Ambil data dari database berdasarkan rentang tanggal
-        $data = TkbmModel::whereBetween('date', [$start, $end])
-            ->orderBy('date', 'asc')
-            ->get();
-
-        if ($data->isEmpty()) {
-            return redirect()->back()->with('error', 'Tidak ada data pada rentang tanggal tersebut.');
-        }
-
-        $sum_terpal = 0;
-        $sum_slipsheet = 0;
-        $sum_pallet = 0;
-        $sum_total_qty = 0;
-        $sum_total_fee = 0;
-
-        foreach ($data as $d) {
-            $sum_terpal += $d['qty_terpal'];
-            $sum_slipsheet += $d['qty_slipsheet'];
-            $sum_pallet += $d['qty_pallet'];
-            $sum_total_qty += $d['total_qty'];
-            $sum_total_fee += $d['total_fee'];
-        }
-
-        // Ambil fee terbaru
-        $latestFee = TkbmFeeModel::latest()->first();
-
-        // Hitung PPn & PPh berdasarkan fee terbaru
-        $ppn = ($latestFee->ppn / 100) * $sum_total_fee;
-        $pph = ($latestFee->pph / 100) * $sum_total_fee;
-        $grand_total = $sum_total_qty + $sum_total_fee + $ppn - $pph;
-
-        // return response()->json([
-        //     'status' => true,
-        //     'message' => 'Data berhasil ditemukan',
-        //     'data' => $data,
-        //     "summary" => [
-        //         "sum_terpal" => $sum_terpal,
-        //         "sum_slipsheet" => $sum_slipsheet,
-        //         "sum_pallet" => $sum_pallet,
-        //         "sum_total_qty" => $sum_total_qty,
-        //         "sum_total_fee" => $sum_total_fee,
-        //         "ppn" => $ppn,
-        //         "pph" => $pph,
-        //         "grand_total" => $grand_total
-        //     ]
-        // ]);
-
-        $summary = (object)[
-            "sum_terpal" => $sum_terpal,
-            "sum_slipsheet" => $sum_slipsheet,
-            "sum_pallet" => $sum_pallet,
-            "sum_total_qty" => $sum_total_qty,
-            "sum_total_fee" => $sum_total_fee,
-            "ppn" => $ppn,
-            "pph" => $pph,
-            "grand_total" => $grand_total,
-            "no_dok" => $noDok
-        ];
-
-        $pdf = Pdf::loadView('pdf.tkbm_report', [
-            "data" => $data,
-            "summary" => $summary,
-            "latestFee" => $latestFee
-        ])->setPaper('a4', 'portrait');
-
-        // // kalau mau langsung preview di browser:
-        $filename = 'report-tkbm-' . time() . '.pdf';
-        return $pdf->stream($filename);
     }
 }
