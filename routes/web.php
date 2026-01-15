@@ -20,8 +20,10 @@ use App\Http\Controllers\Wsp\stock\StockLocationController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
 use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
+use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
 
 // use App\Http\Controllers\Api\TkbmDashboardController;
@@ -83,19 +85,29 @@ Route::middleware('auth')->group(function () {
         // TKBM
         Route::prefix('tkbm')->middleware(['permission:tkbm'])->group(function () {
             Route::middleware(['permission:tkbm-bps'])->group(function () {
-                Route::get('/input', [WarehouseController::class, 'stock'])->name('tkbm.stock');
-                Route::post('/simpan', [TkbmController::class, 'store'])->name('tkbm.store');
-                Route::get('/data', [TkbmController::class, 'index'])->name('tkbm.data');
-                Route::get('/data/show', [TkbmController::class, 'show'])->name('tkbm.data.show');
-                Route::get('/data/edit/{id}', [TkbmController::class, 'edit'])->name('tkbm.data.edit');
-                Route::put('/data/update/{id}', [TkbmController::class, 'update'])->name('tkbm.data.update');
-                Route::delete('/data/delete/{id}', [TkbmController::class, 'destroy'])->name('tkbm.data.delete');
-                Route::get('/data/export', [TkbmController::class, 'export'])->name('tkbm.data.export');
-                // Route::get('/data/export-pdf', [TkbmController::class, 'exportPdf'])->name('tkbm.data.export-pdf');
+                Route::prefix('bps')->group(function () {
+                    Route::get('/input', [WarehouseController::class, 'stock'])->name('tkbm.stock');
+                    Route::post('/simpan', [TkbmController::class, 'store'])->name('tkbm.store');
+                    Route::get('/data', [TkbmController::class, 'index'])->name('tkbm.data');
+                    Route::get('/data/show', [TkbmController::class, 'show'])->name('tkbm.data.show');
+                    Route::get('/data/edit/{id}', [TkbmController::class, 'edit'])->name('tkbm.data.edit');
+                    Route::put('/data/update/{id}', [TkbmController::class, 'update'])->name('tkbm.data.update');
+                    Route::delete('/data/delete/{id}', [TkbmController::class, 'destroy'])->name('tkbm.data.delete');
+                    Route::get('/data/export', [TkbmController::class, 'export'])->name('tkbm.data.export');
+                    Route::get('/export-pdf', [TkbmController::class, 'exportPdf']);
+                    // Route::get('/data/export-pdf', [TkbmController::class, 'exportPdf'])->name('tkbm.data.export-pdf');
+                });
             });
 
             Route::middleware(['permission:tkbm-ikat-terpal'])->group(function () {
-                // Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
+                Route::prefix('ikat-terpal')->group(function () {
+                    Route::get('/index', [IkatTerpalController::class, 'index'])->name('tkbm.ikat-terpal.index');
+                    Route::get('/report', [IkatTerpalController::class, 'report'])->name('tkbm.ikat-terpal.report');
+                    Route::get('/report/print-pdf', [IkatTerpalController::class, 'exportPdf']);
+                    Route::post('/store/fee', [MasterIkatTerpalController::class, 'storeFee']);
+                    Route::post('/store/produk', [MasterIkatTerpalController::class, 'storeProduk']);
+                    Route::post('/store', [IkatTerpalController::class, 'store']);
+                });
             });
         });
 
@@ -292,6 +304,19 @@ Route::middleware('auth')->group(function () {
                     ->name('wfg.master.barang.forceDelete');
                 Route::post('/barang/import', [BarangWfgController::class, 'import'])->name('wfg.master.barang.import');
                 Route::get('/barang/template', [BarangWfgController::class, 'downloadTemplate'])->name('wfg.master.barang.template');
+            });
+        });
+
+        // Master WRM
+        Route::prefix('wrm')->middleware(['permission:master-wrm'])->group(function () {
+            Route::prefix('master')->group(function () {
+                Route::prefix('ikat-terpal')->group(function () {
+                    Route::get('/index', [MasterIkatTerpalController::class, 'index'])->name('wrm.master.ikat-terpal.index');
+                    Route::post('/store/fee', [MasterIkatTerpalController::class, 'storeFee']);
+                    Route::post('/store/produk', [MasterIkatTerpalController::class, 'storeProduk']);
+                    Route::get('/fee-aktif', [MasterIkatTerpalController::class, 'getFeeAktif']);
+                    Route::get('/produk-aktif', [MasterIkatTerpalController::class, 'getProdukAktif']);
+                });
             });
         });
 

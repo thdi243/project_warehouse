@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
+use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
+use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
 use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
@@ -38,7 +40,6 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/qty-pallet', [TkbmDashboardController::class, 'qtyPalletDay']);
         Route::get('/total-qty', [TkbmDashboardController::class, 'tkbmTotalPerhari']);
         Route::get('/grand-total', [TkbmDashboardController::class, 'tkbmDashboardGrandTotal']);
-        Route::get('/export-pdf', [TkbmDashboardController::class, 'exportPdf']);
         Route::get('/widget', [TkbmDashboardController::class, 'dataWidget']);
         Route::get('/all_qty_produk', [TkbmDashboardController::class, 'tkbmAllProduk']);
     });
@@ -69,6 +70,7 @@ Route::prefix('dashboard')->group(function () {
 
 Route::prefix('tkbm')->group(function () {
     Route::get('/data/show', [TkbmController::class, 'show']);
+    Route::get('/get-data/ikat-terpal', [IkatTerpalController::class, 'getDataReport']);
 });
 
 Route::prefix('p2h')->group(function () {

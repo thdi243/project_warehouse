@@ -116,25 +116,25 @@
                     {{-- TKBM Menu --}}
                     @can('permission', 'tkbm')
                         <li class="nav-item">
-                            <a class="nav-link menu-link {{ request()->routeIs('tkbm.*') ? '' : 'collapsed' }}"
+                            <a class="nav-link menu-link {{ request()->is('tkbm/*') ? '' : 'collapsed' }}"
                                 href="#sideBarTkbm" data-bs-toggle="collapse" role="button"
-                                aria-expanded="{{ request()->routeIs('tkbm.*') ? 'true' : 'false' }}"
+                                aria-expanded="{{ request()->is('tkbm/*') ? 'true' : 'false' }}"
                                 aria-controls="sideBarTkbm">
                                 <i class="mdi mdi-human-dolly"></i> <span data-key="t-tkbm">TKBM</span>
                             </a>
-                            <div class="collapse menu-dropdown {{ request()->routeIs('tkbm.*') ? 'show' : '' }}"
+                            <div class="collapse menu-dropdown {{ request()->is('tkbm/*') ? 'show' : '' }}"
                                 id="sideBarTkbm">
                                 <ul class="nav nav-sm flex-column">
                                     @can('permission', 'tkbm-bps')
                                         <li class="nav-item">
                                             <a href="#" data-bs-target="#sidebarTkbmBps" data-bs-toggle="collapse"
                                                 role="button"
-                                                aria-expanded="{{ request()->routeIs('tkbm.*') ? 'true' : 'false' }}"
-                                                aria-controls="sidebarTkbmBps" class="nav-link" {{-- class="nav-link {{ request()->routeIs('tkbm.*') ? 'active' : '' }}" --}}
+                                                aria-expanded="{{ request()->is('tkbm/bps/*') ? 'true' : 'false' }}"
+                                                aria-controls="sidebarTkbmBps" class="nav-link" {{-- class="nav-link {{ request()->is('tkbm/bps/*') ? 'active' : '' }}" --}}
                                                 data-key="t-m-tkbm">
                                                 <i class="mdi mdi-view-grid"></i>BPS
                                             </a>
-                                            <div class="collapse menu-dropdown {{ request()->routeIs('tkbm.*') ? 'show' : '' }}"
+                                            <div class="collapse menu-dropdown {{ request()->is('tkbm/bps/*') ? 'show' : '' }}"
                                                 id="sidebarTkbmBps">
                                                 <ul class="nav nav-sm flex-column">
                                                     <li class="nav-item">
@@ -157,23 +157,23 @@
                                         <li class="nav-item">
                                             <a href="#" data-bs-target="#sidebarTkbmIkatTerpal"
                                                 data-bs-toggle="collapse" role="button"
-                                                aria-expanded="{{ request()->routeIs('tkbm.*') ? 'true' : 'false' }}"
-                                                aria-controls="sidebarTkbmIkatTerpal" class="nav-link" {{-- class="nav-link {{ request()->routeIs('tkbm.*') ? 'active' : '' }}" --}}
+                                                aria-expanded="{{ request()->is('tkbm/ikat-terpal/*') ? 'true' : 'false' }}"
+                                                aria-controls="sidebarTkbmIkatTerpal" class="nav-link" {{-- class="nav-link {{ request()->is('tkbm.*') ? 'active' : '' }}" --}}
                                                 data-key="t-m-tkbm">
                                                 <i class="mdi mdi-view-grid"></i>Ikat Terpal
                                             </a>
-                                            <div class="collapse menu-dropdown {{ request()->routeIs('tkbm.*') ? 'show' : '' }}"
+                                            <div class="collapse menu-dropdown {{ request()->is('tkbm/ikat-terpal/*') ? 'show' : '' }}"
                                                 id="sidebarTkbmIkatTerpal">
                                                 <ul class="nav nav-sm flex-column">
                                                     <li class="nav-item">
-                                                        <a href="{{ route('tkbm.stock') }}"
-                                                            class="nav-link {{ request()->routeIs('tkbm.stock') ? 'active' : '' }}"
+                                                        <a href="{{ route('tkbm.ikat-terpal.index') }}"
+                                                            class="nav-link {{ request()->routeIs('tkbm.ikat-terpal.index') ? 'active' : '' }}"
                                                             data-key="t-input-tkbm">
                                                             Form Ikat Terpal </a>
                                                     </li>
                                                     <li class="nav-item">
-                                                        <a href="{{ route('tkbm.data') }}"
-                                                            class="nav-link {{ request()->routeIs('tkbm.data') ? 'active' : '' }}"
+                                                        <a href="{{ route('tkbm.ikat-terpal.report') }}"
+                                                            class="nav-link {{ request()->routeIs('tkbm.ikat-terpal.report') ? 'active' : '' }}"
                                                             data-key="t-tkbm">
                                                             Report Ikat Terpal </a>
                                                     </li>
@@ -434,8 +434,36 @@
                                             Master Rak
                                         </a>
                                     </li>
+                                </ul>
+                            </div>
+                        </li>
+                        {{-- @endif --}}
+                    @endcan
 
+                    @can('permission', 'master-wrm')
+                        {{-- @if (in_array($bagian, ['warehouse', 'warehouse_sparepart'])) --}}
+                        <li class="nav-item">
+                            <a class="nav-link menu-link {{ request()->routeIs('wrm.master.*') ? 'collapsed' : '' }}"
+                                href="#sidebarMasterWrm" data-bs-toggle="collapse" role="button"
+                                aria-expanded="{{ request()->routeIs('wrm.master.*') ? 'true' : 'false' }}"
+                                aria-controls="sidebarMasterWrm">
+                                <i class="mdi mdi-store-settings"></i>
+                                <span data-key="t-stock_op_wfg">WRM</span>
+                            </a>
 
+                            <div class="collapse menu-dropdown {{ request()->routeIs('wrm.master.*') ? 'show' : '' }}"
+                                id="sidebarMasterWrm">
+                                <ul class="nav nav-sm flex-column">
+                                    {{-- Master Fees & taxes TKBM --}}
+                                    @can('permission', 'master-ikat-terpal')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.master.ikat-terpal.index') }}"
+                                                class="nav-link {{ request()->routeIs('wrm.master.ikat-terpal.index') ? 'active' : '' }}"
+                                                data-key="t-input-tkbm">
+                                                <i class="mdi mdi-view-grid"></i>Master Ikat Terpal
+                                            </a>
+                                        </li>
+                                    @endcan
                                 </ul>
                             </div>
                         </li>
