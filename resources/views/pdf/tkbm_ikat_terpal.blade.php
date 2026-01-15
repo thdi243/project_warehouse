@@ -331,7 +331,7 @@
                     <strong style="font-size: 11px;">Foreman</strong>
                 </td>
                 <td class="approver-name" style="text-align: center;">
-                    <strong style="font-size: 11px;">SPV Head</strong>
+                    <strong style="font-size: 11px;">SPV</strong>
                 </td>
                 <td class="approver-name" style="text-align: center;">
                     <strong style="font-size: 11px; padding-right: 80px">WRH Manager</strong>
