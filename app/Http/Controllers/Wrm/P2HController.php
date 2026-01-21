@@ -1011,6 +1011,8 @@ class P2HController extends Controller
 
                 $data = $shifts[$shift];
 
+                // dd($data);
+
                 // **CEK APAKAH SHIFT BENAR-BENAR KOSONG**
                 $hasData = !empty(array_filter($data, fn($v) => $v !== null && $v !== '' && $v !== '0'));
                 if (!$hasData) {
@@ -1120,43 +1122,29 @@ class P2HController extends Controller
                 $finalCatatan = implode(' | ', array_filter($notes));
 
                 // === VALIDASI JAM OPERASIONAL ===
-                $jamSekarang = $data['jam_operasional'];
+                $jamSekarang = (float) $data['jam_operasional']; // pastikan numeric/float
 
-                // Ambil record terakhir berdasarkan created_at (atau bisa pakai id DESC jika created_at kurang reliable)
+                // Cari record "sebelumnya" untuk unit ini
                 $lastRecord = P2HForklfitModel::where('nomor_unit', $nomorUnit)
-                    ->orderByDesc('created_at')
+                    ->where(function ($query) use ($tanggal, $shift) {
+                        $query->where('tanggal', '<', $tanggal)
+                            ->orWhere(function ($q) use ($tanggal, $shift) {
+                                $q->where('tanggal', $tanggal)
+                                    ->where('shift', '<', $shift);
+                            });
+                    })
+                    ->orderByDesc('tanggal')
+                    ->orderByDesc('shift')
                     ->first();
 
                 // Jika ada record sebelumnya DAN jam sekarang lebih kecil → tolak
                 if ($lastRecord && $jamSekarang < $lastRecord->jam_operasional) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Jam operasional ({$jamSekarang}) tidak boleh lebih kecil dari data sebelumnya ({$lastRecord->jam_operasional}). Cek kembali!"
+                        'message' => "Shift {$shift} ({$tanggal}): Jam operasional {$jamSekarang} tidak boleh lebih kecil dari data sebelumnya "
+                            . "({$lastRecord->tanggal} shift {$lastRecord->shift}: {$lastRecord->jam_operasional}). Cek kembali!"
                     ], 422);
                 }
-                // Vs kemarin
-                // $jamKemarin = P2HForklfitModel::where('nomor_unit', $nomorUnit)
-                //     ->whereDate('tanggal', '<', $tanggal)
-                //     ->max('jam_operasional') ?? 0;
-
-                // if ($jamSekarang < $jamKemarin) {
-                //     return response()->json([
-                //         'success' => false,
-                //         'message' => "Shift {$shift}: Jam ({$jamSekarang}) mundur dari kemarin ({$jamKemarin})"
-                //     ], 422);
-                // }
-
-                // // Vs shift sebelumnya
-                // $prevShift = $shift - 1;
-                // if ($prevShift >= 1 && isset($shifts[$prevShift]) && !empty($shifts[$prevShift])) {
-                //     $jamPrev = $shifts[$prevShift]['jam_operasional'] ?? 0;
-                //     if ($jamSekarang < $jamPrev) {
-                //         return response()->json([
-                //             'success' => false,
-                //             'message' => "Shift {$shift} ({$jamSekarang}) mundur dari Shift {$prevShift} ({$jamPrev})"
-                //         ], 422);
-                //     }
-                // }
 
                 // Hitung persentase (sama seperti sebelumnya)
                 $groups = [

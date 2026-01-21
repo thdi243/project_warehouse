@@ -982,15 +982,14 @@
                         Swal.fire('Berhasil!', res.message || 'Data berhasil diperbarui!',
                             'success');
 
-                        // Reload data sesuai jenis unit yang sedang aktif
                         const fetchUrl = isPalletMover ?
                             "{{ url('api/p2h/data/pallet-mover') }}" :
                             "{{ url('api/p2h/data/forklift-data') }}";
 
                         $.get(fetchUrl, function(newData) {
                             currentData = newData;
-                            filteredData = newData;
-                            renderTable(filteredData, 1);
+                            applyFilter();
+                            renderTable(filteredData, currentPage);
                         });
 
                         $('#editP2HModal').modal('hide');
