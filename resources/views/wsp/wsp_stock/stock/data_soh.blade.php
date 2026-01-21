@@ -391,8 +391,9 @@
                             <thead>
                                 <tr>
                                     <th>No</th>
-                                    <th>Mid Barang</th>
-                                    <th>Qty SOH</th>
+                                    <th>Mid</th>
+                                    <th>DESC</th>
+                                    <th>Total Qty SOH</th>
                                     <th>Unrest</th>
                                     <th>Qual Insp</th>
                                     <th>Blocked</th>
@@ -622,6 +623,7 @@
                         <tr>
                             <td>${startIndex + index + 1}</td>
                             <td><strong>${soh.barang.mid_barang}</strong></td>
+                            <td><strong>${soh.barang.nama_barang}</strong></td>
                             <td>${soh.qty_soh}</td>
                             <td>${soh.unrest}</td>
                             <td>${soh.qual_insp}</td>

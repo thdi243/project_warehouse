@@ -109,8 +109,13 @@ class IkatTerpalController extends Controller
     {
         $query = IkatTerpal::with(['produk:id,harga_pallet', 'fee:id,fee,ppn,pph', 'user:id,nama_lengkap,username']);
 
+        $startOfMonth = now()->startOfMonth()->format('Y-m-d');
+        $endOfMonth   = now()->endOfMonth()->format('Y-m-d');
+
         if ($request->has('start_date') && $request->has('end_date')) {
             $query->whereBetween('tanggal', [$request->start_date, $request->end_date]);
+        } else {
+            $query->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
         }
 
         $data = $query->orderBy('tanggal', 'asc')->get();

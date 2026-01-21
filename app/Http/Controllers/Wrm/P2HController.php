@@ -1122,29 +1122,41 @@ class P2HController extends Controller
                 // === VALIDASI JAM OPERASIONAL ===
                 $jamSekarang = $data['jam_operasional'];
 
-                // Vs kemarin
-                $jamKemarin = P2HForklfitModel::where('nomor_unit', $nomorUnit)
-                    ->whereDate('tanggal', '<', $tanggal)
-                    ->max('jam_operasional') ?? 0;
+                // Ambil record terakhir berdasarkan created_at (atau bisa pakai id DESC jika created_at kurang reliable)
+                $lastRecord = P2HForklfitModel::where('nomor_unit', $nomorUnit)
+                    ->orderByDesc('created_at')
+                    ->first();
 
-                if ($jamSekarang < $jamKemarin) {
+                // Jika ada record sebelumnya DAN jam sekarang lebih kecil → tolak
+                if ($lastRecord && $jamSekarang < $lastRecord->jam_operasional) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Shift {$shift}: Jam ({$jamSekarang}) mundur dari kemarin ({$jamKemarin})"
+                        'message' => "Jam operasional ({$jamSekarang}) tidak boleh lebih kecil dari data sebelumnya ({$lastRecord->jam_operasional}). Cek kembali!"
                     ], 422);
                 }
+                // Vs kemarin
+                // $jamKemarin = P2HForklfitModel::where('nomor_unit', $nomorUnit)
+                //     ->whereDate('tanggal', '<', $tanggal)
+                //     ->max('jam_operasional') ?? 0;
 
-                // Vs shift sebelumnya
-                $prevShift = $shift - 1;
-                if ($prevShift >= 1 && isset($shifts[$prevShift]) && !empty($shifts[$prevShift])) {
-                    $jamPrev = $shifts[$prevShift]['jam_operasional'] ?? 0;
-                    if ($jamSekarang < $jamPrev) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Shift {$shift} ({$jamSekarang}) mundur dari Shift {$prevShift} ({$jamPrev})"
-                        ], 422);
-                    }
-                }
+                // if ($jamSekarang < $jamKemarin) {
+                //     return response()->json([
+                //         'success' => false,
+                //         'message' => "Shift {$shift}: Jam ({$jamSekarang}) mundur dari kemarin ({$jamKemarin})"
+                //     ], 422);
+                // }
+
+                // // Vs shift sebelumnya
+                // $prevShift = $shift - 1;
+                // if ($prevShift >= 1 && isset($shifts[$prevShift]) && !empty($shifts[$prevShift])) {
+                //     $jamPrev = $shifts[$prevShift]['jam_operasional'] ?? 0;
+                //     if ($jamSekarang < $jamPrev) {
+                //         return response()->json([
+                //             'success' => false,
+                //             'message' => "Shift {$shift} ({$jamSekarang}) mundur dari Shift {$prevShift} ({$jamPrev})"
+                //         ], 422);
+                //     }
+                // }
 
                 // Hitung persentase (sama seperti sebelumnya)
                 $groups = [

@@ -403,7 +403,7 @@
                     title: 'MID Barang Tidak Ditemukan',
                     html: `
                         <p style="text-align:center">
-                            <strong>${count}</strong> kode barang tidak ditemukan.<br>
+                            <strong>${count}</strong> mid barang tidak ditemukan.<br>
                             <strong style="color:#d32f2f">Data TIDAK disimpan!</strong>
                         </p>
 
