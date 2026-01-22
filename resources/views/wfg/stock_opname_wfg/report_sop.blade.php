@@ -657,7 +657,7 @@
                     let statusClass, statusIcon, statusText;
                     switch (summary.status.toLowerCase()) {
                         case 'lebih':
-                            statusClass = 'warning';
+                            statusClass = 'success';
                             statusText = 'Lebih';
                             break;
                         case 'kurang':
@@ -665,7 +665,7 @@
                             statusText = 'Kurang';
                             break;
                         default:
-                            statusClass = 'success';
+                            statusClass = 'secondary';
                             statusText = 'Sesuai';
                             break;
                     }
@@ -859,11 +859,11 @@
                         statusIcon = 'arrow-down-bold-circle';
                         statusText = 'Selisih Kurang';
                     } else if (status === 'lebih') {
-                        statusClass = 'warning';
+                        statusClass = 'success';
                         statusIcon = 'arrow-up-bold-circle';
                         statusText = 'Selisih Lebih';
                     } else {
-                        statusClass = 'success';
+                        statusClass = 'secondary';
                         statusIcon = 'check';
                         statusText = 'Sesuai';
                     }
