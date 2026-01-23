@@ -1640,6 +1640,7 @@ class P2HController extends Controller
                         'nomor_unit' => $nomorUnit,
                         'jenis_p2h'  => $jenisP2H,
                         'shift'      => $shift,
+                        'updated_by' => Auth::id() ?? 53,
                     ],
                     array_merge($data, [
                         'dept'    => 'Warehouse',
