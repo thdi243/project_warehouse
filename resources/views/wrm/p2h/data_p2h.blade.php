@@ -968,9 +968,9 @@
 
                 // Tentukan route update sesuai jenis unit
                 const updateUrl = isPalletMover ?
-                    "{{ url('api/p2h/update/multi-pallet') }}" // Route untuk Pallet Mover
+                    "{{ url('/p2h/update/multi-pallet') }}" // Route untuk Pallet Mover
                     :
-                    "{{ url('api/p2h/update/multi') }}"; // Route untuk Forklift
+                    "{{ url('/p2h/update/multi') }}"; // Route untuk Forklift
 
                 $.ajax({
                     url: updateUrl,

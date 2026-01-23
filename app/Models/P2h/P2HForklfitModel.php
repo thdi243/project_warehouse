@@ -38,6 +38,7 @@ class P2HForklfitModel extends Model
         'operator_name',
         'catatan',
         'persentase',
+        'updated_by',
     ];
 
     public function calculateKelayakan()

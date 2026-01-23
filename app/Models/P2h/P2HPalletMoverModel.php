@@ -25,6 +25,7 @@ class P2HPalletMoverModel extends Model
         'shift',
         'operator_name',
         'catatan',
+        'updated_by',
     ];
 
     public function calculateKelayakan(): array

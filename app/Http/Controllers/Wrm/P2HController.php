@@ -1027,7 +1027,7 @@ class P2HController extends Controller
                 // Validasi field wajib HANYA jika ada data
                 $validator = Validator::make($data, [
                     'operator_name'   => 'required|string|max:100',
-                    'jam_operasional' => 'required|numeric|min:0',
+                    'jam_operasional' => 'nullable|numeric|min:0',
                     'catatan'         => 'nullable|string',
                 ]);
 
@@ -1175,6 +1175,7 @@ class P2HController extends Controller
                         'nomor_unit' => $nomorUnit,
                         'jenis_p2h'  => $jenisP2H,
                         'shift'      => $shift,
+                        'updated_by' => Auth::id() ?? 53
                     ],
                     array_merge($data, [
                         'dept'       => 'Warehouse',

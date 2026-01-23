@@ -193,12 +193,14 @@ Route::middleware('auth')->group(function () {
             Route::get('/online/data', [WarehouseController::class, 'p2hData'])->name('p2h.online.data');
             Route::get('/registration/forklift', [WarehouseController::class, 'showRegForklift'])->name('p2h.registration.forklift')
                 ->middleware(['permission:p2h-unit-regis']);
+            Route::post('/update/multi', [P2HController::class, 'updateMultiShiftP2H']);
 
             // Pallet Mover
             Route::post('/store/pallet-mover/assignment', [P2HController::class, 'storePallMovAssignment']);
             Route::get('/registration/pallet-mover', [WarehouseController::class, 'showRegPalletMover'])->name('p2h.registration.pallet-mover')
                 ->middleware(['permission:p2h-unit-regis']);
             Route::post('/update/pallet-mover/assignment/{id}', [P2HController::class, 'updatePallMovAssignment']);
+            Route::post('/update/multi-pallet', [P2HController::class, 'updateMultiShiftPalletMover']);
         });
     });
 

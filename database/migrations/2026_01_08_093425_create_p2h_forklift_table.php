@@ -42,6 +42,7 @@ return new class extends Migration
             $table->string('catatan')->nullable();
             $table->string('jenis_p2h', 50)->nullable();
             $table->float('persentase');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
         });
     }

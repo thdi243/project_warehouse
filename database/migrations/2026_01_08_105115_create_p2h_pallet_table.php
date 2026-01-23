@@ -32,6 +32,7 @@ return new class extends Migration
             $table->string('shift', 20)->nullable();
             $table->string('operator_name', 100)->nullable();
             $table->string('catatan', 255)->nullable();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
         });
     }

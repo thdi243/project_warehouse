@@ -82,7 +82,7 @@ Route::prefix('p2h')->group(function () {
     Route::get('/backups/forklift/{id}', [P2HController::class, 'getBackupForklift']);
     Route::get('/show/forklift/{id}', [P2HController::class, 'showForkliftDetail']);
     Route::put('/update/forklift/{id}', [P2HController::class, 'updateForklift']);
-    Route::post('/update/multi', [P2HController::class, 'updateMultiShiftP2H']);
+
     Route::delete('/delete/forklift/{id}', [P2HController::class, 'destroyForklift']);
     Route::get('/show/forklift/assignment/{id}', [P2HController::class, 'showForkliftAssignment']);
 
@@ -91,7 +91,6 @@ Route::prefix('p2h')->group(function () {
     Route::get('/data/pallet-mover', [P2HController::class, 'showPalletMover']);
     Route::get('/data/registration/pallet-mover', [P2HController::class, 'getPalletData']);
     Route::post('/store/registration/pallet-mover', [P2HController::class, 'storePallMovReg']);
-    Route::post('/update/multi-pallet', [P2HController::class, 'updateMultiShiftPalletMover']);
     Route::get('/detail/pallet-mover/{id}', [P2HController::class, 'showPallMovDetail']);
     Route::put('/update/pallet-mover/{id}', [P2HController::class, 'updatePallMov']);
     Route::delete('/delete/pallet-mover/{id}', [P2HController::class, 'destroyPallMov']);
