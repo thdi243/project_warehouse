@@ -3,6 +3,7 @@
 namespace App\Models\Wfg\stock_opname;
 
 use App\Models\User;
+use App\Models\NotificationsModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -29,6 +30,11 @@ class WfgSopApprovalModel extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approver_id');
+    }
+
+    public function notifications()
+    {
+        return $this->morphMany(NotificationsModel::class, 'notifiable');
     }
 
     // protected static function booted()

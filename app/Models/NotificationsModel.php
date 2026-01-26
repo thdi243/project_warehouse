@@ -13,6 +13,8 @@ class NotificationsModel extends Model
 
     protected $fillable = [
         'user_id',
+        'notifiable_type',
+        'notifiable_id',
         'title',
         'message',
         'url',
@@ -22,4 +24,9 @@ class NotificationsModel extends Model
     protected $casts = [
         'is_read' => 'boolean',
     ];
+
+    public function notifiable()
+    {
+        return $this->morphTo();
+    }
 }

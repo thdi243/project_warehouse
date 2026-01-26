@@ -2347,7 +2347,7 @@ class StockOpnameWfgController extends Controller
 
             $oldNote = $existingApproval->catatan ?? null;
 
-            WfgSopApprovalModel::updateOrCreate([
+            $approval = WfgSopApprovalModel::updateOrCreate([
                 'sop_id' => $sop->id,
                 'approver_id' => $user->id,
             ], [
@@ -2358,20 +2358,33 @@ class StockOpnameWfgController extends Controller
             ]);
 
             // Foreman & supervisor
-            $approverIds = array_unique([$request->foreman_id, $request->supervisor_id]);
+            $foremanIds = User::where('jabatan', 'foreman')
+                ->where('bagian', 'warehouse_finish_goods')
+                ->pluck('id')
+                ->toArray();
+
+            $approverIds = array_unique(array_merge(
+                $foremanIds,
+                [$request->supervisor_id]
+            ));
+
+            $approvals = [];
 
             foreach ($approverIds as $approverId) {
-                if ($approverId == $user->id) continue; // skip kalau sama dengan pengirim
+                if ($approverId == $user->id) continue;
 
-                WfgSopApprovalModel::updateOrCreate([
-                    'sop_id'      => $sop->id,
-                    'approver_id' => $approverId,
-                ], [
-                    'status'     => 'pending',
-                    'action_at'  => null,
-                    'action_by'  => null,
-                    'catatan'    => null,
-                ]);
+                $approvals[$approverId] = WfgSopApprovalModel::updateOrCreate(
+                    [
+                        'sop_id'      => $sop->id,
+                        'approver_id' => $approverId,
+                    ],
+                    [
+                        'status'    => 'pending',
+                        'action_at' => null,
+                        'action_by' => null,
+                        'catatan'   => null,
+                    ]
+                );
             }
 
             $sop->update(['status' => 'pending']);
@@ -2390,13 +2403,17 @@ class StockOpnameWfgController extends Controller
                     ->first();
 
                 if (!$existingNotif) {
-                    NotificationsModel::create([
-                        'user_id'   => $approverId,
-                        'title'     => $title,
-                        'message'   => $message,
-                        'url'       => $url,
-                        'is_read'   => false,
-                    ]);
+                    foreach ($approvals as $approverId => $approvalModel) {
+                        NotificationsModel::create([
+                            'user_id'         => $approverId,
+                            'notifiable_type' => WfgSopApprovalModel::class,
+                            'notifiable_id'   => $approvalModel->id,
+                            'title'           => $title,
+                            'message'         => $message,
+                            'url'             => $url,
+                            'is_read'         => false,
+                        ]);
+                    }
                 }
             }
 
@@ -2414,14 +2431,20 @@ class StockOpnameWfgController extends Controller
 
     public function getDataApproval()
     {
-        $foreman = User::where('jabatan', 'foreman')->get(['id', 'nama_lengkap', 'username', 'jabatan']);
-        $supervisors = User::where('jabatan', 'supervisor')->get(['id', 'nama_lengkap', 'username', 'jabatan']);
-        $managers = User::where('jabatan', 'dept_head')->get(['id', 'nama_lengkap', 'username', 'jabatan']);
+        $users = User::where(function ($q) {
+            $q->where('jabatan', 'foreman')
+                ->where('bagian', 'warehouse_finish_goods');
+        })
+            ->orWhere(function ($q) {
+                $q->whereIn('jabatan', ['supervisor', 'dept_head'])
+                    ->where('departemen', 'warehouse');
+            })
+            ->get(['id', 'nama_lengkap', 'username', 'jabatan']);
 
         return response()->json([
-            'foreman' => $foreman,
-            'supervisors' => $supervisors,
-            'managers' => $managers
+            'foreman'     => $users->where('jabatan', 'foreman')->values(),
+            'supervisors' => $users->where('jabatan', 'supervisor')->values(),
+            'managers'    => $users->where('jabatan', 'dept_head')->values(),
         ]);
     }
 
@@ -2443,6 +2466,30 @@ class StockOpnameWfgController extends Controller
             return response()->json([
                 'message' => 'Anda tidak terdaftar sebagai approver untuk SO ini.'
             ], 403);
+        }
+
+        $isForeman = $user->jabatan === 'foreman';
+
+        if ($isForeman && $request->status === 'approved') {
+
+            // Ambil approval foreman lain (selain yang approve)
+            $otherForemanApprovals = WfgSopApprovalModel::where('sop_id', $request->sop_id)
+                ->where('approver_id', '!=', $user->id)
+                ->whereHas('approver', function ($q) {
+                    $q->where('jabatan', 'foreman');
+                })
+                ->get();
+
+            foreach ($otherForemanApprovals as $otherApproval) {
+
+                // 🔥 HAPUS NOTIFIKASI TERKAIT
+                NotificationsModel::where('notifiable_type', WfgSopApprovalModel::class)
+                    ->where('notifiable_id', $otherApproval->id)
+                    ->delete();
+
+                // 🔥 HAPUS APPROVAL FOREMAN LAIN
+                $otherApproval->delete();
+            }
         }
 
         $approval->update([
