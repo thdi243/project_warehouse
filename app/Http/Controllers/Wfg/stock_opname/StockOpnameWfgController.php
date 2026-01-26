@@ -498,15 +498,37 @@ class StockOpnameWfgController extends Controller
         $tempNotes = WfgSopTempNoteModel::where('tgl_opname', $tglOpname)
             ->pluck('catatan', 'barang_id'); // hasil: [barang_id => keterangan]
 
+        // $selisihList = [];
+        // foreach ($grouped as $barangId => $g) {
+        //     $selisih = $g['qty_fisik'] - $g['qty_sap'];
+        //     $keterangan = $keteranganInput[$barangId]
+        //         ?? ($tempNotes[$barangId] ?? null);
+
+        //     if ($selisih != 0 && empty($keterangan)) {
+        //         $g['selisih'] = $selisih;
+        //         $g['status'] = 'selisih';
+        //         $selisihList[] = $g;
+        //     }
+
+        //     $grouped[$barangId]['keterangan'] = $keterangan;
+        // }
+
         $selisihList = [];
         foreach ($grouped as $barangId => $g) {
             $selisih = $g['qty_fisik'] - $g['qty_sap'];
             $keterangan = $keteranganInput[$barangId]
                 ?? ($tempNotes[$barangId] ?? null);
 
-            if ($selisih != 0 && empty($keterangan)) {
+            if ($selisih != 0) {
                 $g['selisih'] = $selisih;
-                $g['status'] = 'selisih';
+                $g['keterangan'] = $keterangan;
+
+                if (empty($keterangan)) {
+                    $g['status'] = 'selisih_belum_valid'; // ❌
+                } else {
+                    $g['status'] = 'selisih_valid'; // ✅
+                }
+
                 $selisihList[] = $g;
             }
 
@@ -533,7 +555,7 @@ class StockOpnameWfgController extends Controller
                 'status' => 'success',
                 'message' => count($selisihList) > 0
                     ? 'Ada selisih pada beberapa barang. Silakan periksa kembali sebelum finalisasi.'
-                    : 'Semua data lengkap & valid.',
+                    : 'Semua selisih sudah diberi keterangan & valid.',
                 'data' => $hasilCheck,
             ]);
         }

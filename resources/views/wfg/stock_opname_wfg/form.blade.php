@@ -669,6 +669,7 @@
 
                         container.html(tableHtml);
 
+                        // applyAutoSaveToAllRows();
                         loadAllTempData();
 
                         // --- Event pagination ---
@@ -851,7 +852,6 @@
                     return;
                 }
 
-
                 const btn = $(this);
                 const isTempItem = String(id).startsWith('temp-');
 
@@ -905,11 +905,22 @@
                                 row.find('.qty_receh').val('');
                             }
 
+                            btn.html('<i class="mdi mdi-check-bold text-success"></i>');
+
+                            // Setelah 1.2 detik, kembalikan icon save + enable tombol
+                            setTimeout(() => {
+                                btn.html('<i class="mdi mdi-content-save-outline"></i>')
+                                    .prop('disabled',
+                                        false); // ← PASTIKAN ENABLE DI SINI
+                            }, 1200);
+
                             // kalau note, biarkan input keterangan tetap biar user bisa edit lanjut
                             // loadBarangForOpname(1, '');
                             loadAllTempData();
                         } else {
                             toastr.warning(res.message, 'Gagal!');
+                            btn.html('<i class="mdi mdi-content-save-outline"></i>')
+                                .prop('disabled', false);
                         }
                     },
                     error: function(xhr) {
@@ -917,11 +928,14 @@
                             xhr.responseJSON?.message || 'Terjadi kesalahan pada server.',
                             'Kesalahan!'
                         );
+
+                        btn.html('<i class="mdi mdi-content-save-outline"></i>')
+                            .prop('disabled', false);
                     },
-                    complete: function() {
-                        btn.prop('disabled', false)
-                            .html('<i class="mdi mdi-content-save-outline"></i>');
-                    }
+                    // complete: function() {
+                    //     btn.prop('disabled', false)
+                    //         .html('<i class="mdi mdi-content-save-outline"></i>');
+                    // }
                 });
             });
 
@@ -944,7 +958,7 @@
                             timeStyle: 'short'
                         });
                         historyHtml += `
-                            <div class="col-md-3 col-6">
+                            <div class="col-md-3 col-3">
                                 <div class="p-2 border border-info rounded h-100 fade show bg-light">
                                     <div class="fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center">
                                         <span>Full: ${h.qty_full}, Receh: ${h.qty_receh}</span>
@@ -1007,40 +1021,76 @@
                                     `;
 
                                 res.data.forEach(item => {
+
                                     if (item.status === 'belum_input') {
                                         listHtml += `
-                                        <li class="mb-3">
-                                            <strong>${item.mid_barang}</strong> - 
-                                            <span class="text-warning fw-bold">Belum Input</span>
-                                        </li>
-                                    `;
-                                    } else if (item.status === 'selisih') {
+                                            <li class="mb-3">
+                                                <strong>${item.mid_barang}</strong> -
+                                                <span class="text-warning fw-bold">Belum Input</span>
+                                            </li>
+                                        `;
+                                        return;
+                                    }
+
+                                    // 👉 semua SELISIH ditampilkan (valid / belum valid)
+                                    if (item.selisih !== 0) {
+                                        const badgeClass =
+                                            item.status === 'selisih_valid' ?
+                                            'text-success' :
+                                            'text-danger';
+
+                                        const badgeText =
+                                            item.status === 'selisih_valid' ?
+                                            'Valid' :
+                                            'Belum Valid';
+
                                         listHtml += `
                                             <li class="mb-3">
                                                 <strong>${item.mid_barang}</strong>
-                                                Selisih: <span class="text-danger fw-bold ">${item.selisih}</span>
+                                                Selisih:
+                                                <span class="${badgeClass} fw-bold">
+                                                    ${item.selisih}
+                                                </span><br>
+                                                <small class="text-muted">
+                                                    ${item.keterangan ?? '-'}
+                                                </small><br>
                                             </li>
                                         `;
                                     }
                                 });
+
                                 listHtml += `
                                             </ul>
                                         </div>
                                     `;
                             }
 
+                            const hasInvalidSelisih = res.data?.some(
+                                item => item.status === 'selisih_belum_valid'
+                            );
+
                             Swal.fire({
-                                title: res.data?.length > 0 ? 'Terdapat Selisih!' :
-                                    'Data Lengkap!',
+                                title: hasInvalidSelisih ?
+                                    'Terdapat Selisih yang Belum Valid!' :
+                                    'Data Valid & Siap Disubmit',
+
                                 html: `
                                         <p class="mb-3">${res.message}</p>
                                         ${listHtml}
                                     `,
-                                icon: res.data?.length > 0 ? 'info' : 'success',
+
+                                icon: hasInvalidSelisih ? 'warning' : 'success',
+
                                 width: 600,
                                 showCancelButton: true,
-                                confirmButtonText: 'Ya, Submit',
-                                cancelButtonText: 'Batal'
+
+                                confirmButtonText: hasInvalidSelisih ?
+                                    'Lengkapi Data' : 'Ya, Submit',
+
+                                cancelButtonText: 'Batal',
+
+                                confirmButtonColor: hasInvalidSelisih ? '#d33' :
+                                    '#28a745'
                             }).then(result => {
                                 if (!result.isConfirmed) {
                                     loadBarangForOpname(1, activePrincipal,
@@ -1532,6 +1582,152 @@
                     }
                 });
             });
+
+            let autoSaveTimers = {};
+
+            function setupAutoSaveOnRow(row) {
+                const rowId = row.data('id');
+                const inputs = row.find('.qty_full, .qty_receh, .keterangan');
+
+                inputs.off('input.autoSave keyup.autoSave');
+
+                inputs.on('input.autoSave keyup.autoSave', function() {
+                    if (autoSaveTimers[rowId]) {
+                        clearTimeout(autoSaveTimers[rowId]);
+                    }
+
+                    row.css('background-color', '#fffbeb'); // waiting feedback
+
+                    autoSaveTimers[rowId] = setTimeout(function() {
+                        const qty_full_raw = row.find('.qty_full').val().trim();
+                        const qty_receh_raw = row.find('.qty_receh').val().trim();
+                        const keterangan = row.find('.keterangan').val().trim();
+
+                        if (qty_full_raw === '' && qty_receh_raw === '' && keterangan === '') {
+                            row.css('background-color', '');
+                            return;
+                        }
+
+                        // === LOGIKA SAMA PERSIS DENGAN MANUAL SAVE ===
+                        const id = row.data('id');
+                        const soh_id = row.data('sohid');
+                        const barang_id = row.data('barangid');
+                        const qty_box = parseInt(row.data('qtybox')) || 1;
+
+                        let barang = {};
+                        try {
+                            const raw = row.attr('data-barang');
+                            barang = raw ? JSON.parse(raw) : {};
+                        } catch (e) {}
+
+                        const qty_full = parseInt(qty_full_raw || 0, 10);
+                        const qty_receh = parseInt(qty_receh_raw || 0, 10);
+                        const summary = (qty_full * qty_box) + qty_receh;
+                        const principal = $('#principal_filter').val();
+
+                        let mode = '';
+                        const hasQty = qty_full_raw !== '' || qty_receh_raw !== '';
+
+                        if (hasQty && keterangan !== '') mode = 'both';
+                        else if (hasQty) mode = 'qty';
+                        else if (keterangan !== '') mode = 'note';
+
+                        const isTempItem = String(id).startsWith('temp-');
+
+                        let url, data;
+                        if (isTempItem) {
+                            const mid_barang = barang.mid_barang || '';
+                            const nama_barang = barang.nama_barang || '';
+                            url = "{{ route('wfg.stock_opname.save-temp-new') }}";
+                            data = {
+                                mid_barang,
+                                nama_barang,
+                                qty_box,
+                                qty_full,
+                                qty_receh,
+                                summary,
+                                keterangan,
+                                principal,
+                                mode,
+                                _token: '{{ csrf_token() }}'
+                            };
+                        } else {
+                            url = "{{ route('wfg.stock_opname.save-temp') }}";
+                            data = {
+                                soh_id,
+                                barang_id,
+                                qty_full,
+                                qty_receh,
+                                summary,
+                                keterangan,
+                                principal,
+                                mode,
+                                _token: '{{ csrf_token() }}'
+                            };
+                        }
+
+                        // Loading state
+                        const btnSave = row.find('.btn-save-temp');
+                        btnSave.prop('disabled', true)
+                            .html(
+                                '<span class="spinner-border spinner-border-sm" role="status"></span>'
+                            );
+
+                        $.ajax({
+                            url: url,
+                            type: "POST",
+                            data: data,
+                            success: function(res) {
+                                toastr.clear();
+                                if (res.status === 'success') {
+                                    toastr.success(res.message, 'Tersimpan!');
+
+                                    if (mode === 'qty' || mode === 'both') {
+                                        row.find('.qty_full').val('');
+                                        row.find('.qty_receh').val('');
+                                    }
+
+                                    btnSave.html(
+                                        '<i class="mdi mdi-check-bold text-success"></i>'
+                                    );
+                                    setTimeout(() => {
+                                        btnSave.html(
+                                                '<i class="mdi mdi-content-save-outline"></i>'
+                                            )
+                                            .prop('disabled', false);
+                                    }, 1200);
+
+                                    loadAllTempData();
+                                } else {
+                                    toastr.warning(res.message, 'Gagal!');
+                                    btnSave.html(
+                                        '<i class="mdi mdi-content-save-outline"></i>'
+                                    ).prop('disabled', false);
+                                }
+                            },
+                            error: function(xhr) {
+                                toastr.error(xhr.responseJSON?.message ||
+                                    'Server error', 'Kesalahan!');
+                                btnSave.html(
+                                        '<i class="mdi mdi-content-save-outline"></i>')
+                                    .prop('disabled', false);
+                            }
+                        });
+
+                        // Reset warna row
+                        setTimeout(() => row.css('background-color', ''), 600);
+                        delete autoSaveTimers[rowId];
+
+                    }, 1000);
+                });
+            }
+
+            // Pasang auto-save ke semua row yang baru di-load
+            function applyAutoSaveToAllRows() {
+                $('#tableInputOpname tbody tr.soh-row').each(function() {
+                    setupAutoSaveOnRow($(this));
+                });
+            }
         });
 
         @if (session('error'))
