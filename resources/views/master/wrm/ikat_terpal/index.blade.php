@@ -34,7 +34,7 @@
                     <!-- Nilai Aktif -->
                     <div id="fee-aktif" class="alert alert-info mb-4 d-none">
                         <strong>Nilai Aktif Saat Ini:</strong><br>
-                        Fee: <span id="fee-value"></span><br>
+                        Fee: <span id="fee-value"></span>%<br>
                         PPN: <span id="ppn-value"></span>%<br>
                         PPh: <span id="pph-value"></span>%<br>
                         Keterangan: <span id="keterangan-value"></span><br>
@@ -121,22 +121,42 @@
             loadFeeAktif();
             loadProdukAktif();
 
+            function formatIDNumber(value) {
+                if (value === null || value === undefined || value === '') return '-';
+
+                let num = Number(value);
+
+                if (Number.isInteger(num)) {
+                    return num.toLocaleString('id-ID');
+                }
+
+                return num
+                    .toLocaleString('id-ID', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                    })
+                    .replace(/,?0+$/, '');
+            }
+
+
             function loadFeeAktif() {
                 $.ajax({
                     url: "{{ url('wrm/master/ikat-terpal/fee-aktif') }}", // pastikan route ini benar
                     type: 'GET',
                     success: function(data) {
                         if (data.fee !== null) {
-                            $('#fee-value').text(data.fee);
-                            $('#ppn-value').text(data.ppn);
-                            $('#pph-value').text(data.pph);
+                            $('#fee-value').text(formatIDNumber(data.fee));
+                            $('#ppn-value').text(formatIDNumber(data.ppn));
+                            $('#pph-value').text(formatIDNumber(data.pph));
                             $('#keterangan-value').text(data.keterangan || '-');
-                            $('#user-value').text(data.user?.nama_lengkap || data.user?.username ||
-                                '-');
+                            $('#user-value').text(
+                                data.user?.nama_lengkap || data.user?.username || '-'
+                            );
                             $('#created-fee').text(data.created_at || '-');
                             $('#fee-aktif').removeClass('d-none');
                         }
                     }
+
                 });
             }
 
@@ -146,15 +166,17 @@
                     type: 'GET',
                     success: function(data) {
                         if (data.harga_pallet !== null) {
-                            $('#harga-value').text(data.harga_pallet.toLocaleString('id-ID'));
+                            $('#harga-value').text(formatIDNumber(data.harga_pallet));
                             $('#satuan-value').text(data.satuan || '-');
                             $('#keterangan-produk-value').text(data.keterangan || '-');
-                            $('#user-produk-value').text(data.user?.nama_lengkap || data.user
-                                ?.username || '-');
+                            $('#user-produk-value').text(
+                                data.user?.nama_lengkap || data.user?.username || '-'
+                            );
                             $('#created-produk').text(data.created_at || '-');
                             $('#produk-aktif').removeClass('d-none');
                         }
                     }
+
                 });
             }
 
