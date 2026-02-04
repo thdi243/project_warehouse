@@ -676,6 +676,7 @@ class P2HController extends Controller
             }
 
             $result[] = [
+                // 'id' => $id,
                 'tanggal' => $tanggal,
                 'nomor_unit' => $nomor_unit,
                 'jenis_p2h' => $jenis_p2h,
@@ -938,9 +939,9 @@ class P2HController extends Controller
     public function updateMultiShiftP2H(Request $request)
     {
         $request->validate([
-            'tanggal'    => 'required|date',
-            'nomor_unit' => 'required|string|max:50',
-            'jenis_p2h'  => 'required|string|in:Forklift,Pallet Mover',
+            'tanggal'    => 'nullable|date',
+            'nomor_unit' => 'nullable|string|max:50',
+            'jenis_p2h'  => 'nullable|string|in:Forklift,Pallet Mover',
             'shifts'     => 'required|array',
         ]);
 
@@ -997,32 +998,20 @@ class P2HController extends Controller
                 'fungsi_rem' => 'Fungsi Rem'
             ];
 
+            $allowedFields = array_merge(
+                ['operator_name', 'jam_operasional', 'catatan', 'persentase', 'updated_by'],
+                $checklistFields
+            );
+
             // **HANYA PROSES SHIFT YANG ADA DATA**
-            foreach ([1, 2, 3] as $shift) {
-                if (!isset($shifts[$shift]) || empty($shifts[$shift])) {
-                    // HAPUS shift kosong
-                    P2HForklfitModel::where('tanggal', $tanggal)
-                        ->where('nomor_unit', $nomorUnit)
-                        ->where('jenis_p2h', $jenisP2H)
-                        ->where('shift', $shift)
-                        ->delete();
+            foreach ($shifts as $shiftNumber => $data) {
+                if (!is_array($data)) {
                     continue;
                 }
 
-                $data = $shifts[$shift];
-
-                // dd($data);
-
-                // **CEK APAKAH SHIFT BENAR-BENAR KOSONG**
-                $hasData = !empty(array_filter($data, fn($v) => $v !== null && $v !== '' && $v !== '0'));
-                if (!$hasData) {
-                    P2HForklfitModel::where('tanggal', $tanggal)
-                        ->where('nomor_unit', $nomorUnit)
-                        ->where('jenis_p2h', $jenisP2H)
-                        ->where('shift', $shift)
-                        ->delete();
-                    continue;
-                }
+                // dd($shift);
+                $id = $data['id'] ?? null;
+                $shift = $shiftNumber;
 
                 // Validasi field wajib HANYA jika ada data
                 $validator = Validator::make($data, [
@@ -1168,21 +1157,20 @@ class P2HController extends Controller
                     $persentase = 50.00;
                 }
 
-                // Simpan
-                P2HForklfitModel::updateOrCreate(
-                    [
-                        'tanggal'    => $tanggal,
-                        'nomor_unit' => $nomorUnit,
-                        'jenis_p2h'  => $jenisP2H,
-                        'shift'      => $shift,
-                        'updated_by' => Auth::id() ?? 53
-                    ],
-                    array_merge($data, [
-                        'dept'       => 'Warehouse',
+                $payload = collect($data)
+                    ->only($allowedFields)
+                    ->merge([
                         'catatan'    => $finalCatatan,
                         'persentase' => $persentase,
+                        'updated_by' => Auth::id() ?? 53,
                     ])
-                );
+                    ->toArray();
+
+                if ($id) {
+                    P2HForklfitModel::where('id', $id)->update($payload);
+                } else {
+                    P2HForklfitModel::create($payload);
+                }
             }
 
             DB::commit();
@@ -1495,15 +1483,12 @@ class P2HController extends Controller
     public function updateMultiShiftPalletMover(Request $request)
     {
         $request->validate([
-            'tanggal'    => 'required|date',
-            'nomor_unit' => 'required|string|max:50',
-            'jenis_p2h'  => 'required|string|in:Pallet Mover',
+            'tanggal'    => 'nullable|date',
+            'nomor_unit' => 'nullable|string|max:50',
+            'jenis_p2h'  => 'nullable|string|in:Pallet Mover',
             'shifts'     => 'required|array',
         ]);
 
-        $tanggal   = $request->tanggal;
-        $nomorUnit = $request->nomor_unit;
-        $jenisP2H  = $request->jenis_p2h;
         $shifts    = $request->shifts;
 
         DB::beginTransaction();
@@ -1532,27 +1517,14 @@ class P2HController extends Controller
                 'check_hydraulic'       => 'Hydraulic',
             ];
 
-            foreach ([1, 2, 3] as $shift) {
-                if (!isset($shifts[$shift]) || empty($shifts[$shift])) {
-                    P2HPalletMoverModel::where('tanggal', $tanggal)
-                        ->where('nomor_unit', $nomorUnit)
-                        ->where('jenis_p2h', $jenisP2H)
-                        ->where('shift', $shift)
-                        ->delete();
-                    continue;
-                }
+            $allowedFields = array_merge(
+                ['operator_name', 'catatan', 'updated_by'],
+                $checklistFields
+            );
 
-                $data = $shifts[$shift];
-
-                $hasData = !empty(array_filter($data, fn($v) => $v !== null && $v !== '' && $v !== '0'));
-                if (!$hasData) {
-                    P2HPalletMoverModel::where('tanggal', $tanggal)
-                        ->where('nomor_unit', $nomorUnit)
-                        ->where('jenis_p2h', $jenisP2H)
-                        ->where('shift', $shift)
-                        ->delete();
-                    continue;
-                }
+            // **HANYA PROSES SHIFT YANG ADA DATA**
+            foreach ($shifts as $shiftNumber => $data) {
+                $id = $data['id'] ?? null;
 
                 $validator = Validator::make($data, [
                     'operator_name' => 'required|string|max:100',
@@ -1562,7 +1534,7 @@ class P2HController extends Controller
                     DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => "Shift {$shift}: " . $validator->errors()->first()
+                        'message' => "Shift {$shiftNumber}: " . $validator->errors()->first()
                     ], 422);
                 }
 
@@ -1571,7 +1543,7 @@ class P2HController extends Controller
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
-                            'message' => "Checklist {$labelMap[$field]} Shift {$shift} wajib diisi"
+                            'message' => "Checklist {$labelMap[$field]} Shift {$shiftNumber} wajib diisi"
                         ], 422);
                     }
                 }
@@ -1628,25 +1600,25 @@ class P2HController extends Controller
                 if ($hasNok && empty($notes)) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Shift {$shift}: Ada NOK tapi tidak ada keterangan"
+                        'message' => "Shift {$shiftNumber}: Ada NOK tapi tidak ada keterangan"
                     ], 422);
                 }
 
                 $finalCatatan = implode(' | ', array_filter($notes));
 
-                P2HPalletMoverModel::updateOrCreate(
-                    [
-                        'tanggal'    => $tanggal,
-                        'nomor_unit' => $nomorUnit,
-                        'jenis_p2h'  => $jenisP2H,
-                        'shift'      => $shift,
+                $payload = collect($data)
+                    ->only($allowedFields)
+                    ->merge([
+                        'catatan'    => $finalCatatan,
                         'updated_by' => Auth::id() ?? 53,
-                    ],
-                    array_merge($data, [
-                        'dept'    => 'Warehouse',
-                        'catatan' => $finalCatatan,
                     ])
-                );
+                    ->toArray();
+
+                if ($id) {
+                    P2HForklfitModel::where('id', $id)->update($payload);
+                } else {
+                    P2HForklfitModel::create($payload);
+                }
             }
 
             DB::commit();

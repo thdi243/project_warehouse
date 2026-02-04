@@ -571,6 +571,7 @@
 
                 // Header modal
                 $('#editUnitTitle').text(`${item.nomor_unit} - ${item.tanggal}`);
+                // $('#editId').val(item.id);
                 $('#editTanggal').val(item.tanggal);
                 $('#editTanggalDisplay').val(item.tanggal);
                 $('#editNomorUnit').val(item.nomor_unit);
@@ -645,7 +646,6 @@
 
                 [1, 2, 3].forEach(shift => {
                     const shiftData = item.shifts?.[shift] || {};
-
                     const hasData = shiftData.operator_name ||
                         shiftData.jam_operasional ||
                         Object.keys(shiftData).some(key => checklistItems.includes(key) &&
@@ -679,6 +679,7 @@
                     // Generate form checklist
                     // Di dalam loop shift
                     let headerHtml = `
+                        <input type="hidden" name="shifts[${shift}][id]" value="${shiftData.id || ''}">
                         <div class="row mb-4">
                             <div class="col-md-${item.jenis_p2h !== 'Pallet Mover' ? '6' : '12'}">
                                 <label>Operator</label>
