@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
             $table->date('tanggal');
             $table->string('location');
-            $table->integer('no_spb');
+            $table->bigInteger('no_spb');
             $table->integer('qty');
             $table->date('incoming_date');
             $table->string('supplier');
