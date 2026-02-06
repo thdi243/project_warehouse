@@ -363,10 +363,8 @@
                     @can('permission', 'stock-gula-wrm')
                         <li class="nav-item">
                             <a href="{{ route('wrm.stock_gula.index') }}"
-                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}"
-                                data-key="t-input-tkbm">
-                                <i class="mdi mdi-cube-outline"></i>
-                                Stock Gula
+                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}">
+                                <i class="mdi mdi-cube-outline"></i> <span data-key="t-stock-gula">Stock Gula</span>
                             </a>
                         </li>
                     @endcan

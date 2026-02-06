@@ -637,6 +637,17 @@
 
             getData();
 
+            const jabatanLevel = {
+                operator: 1,
+                foreman: 2,
+                supervisor: 3,
+                dept_head: 4,
+                admin: 5
+            };
+
+            const currentUserJabatan = "{{ auth()->user()->jabatan }}";
+            const currentUserLevel = jabatanLevel[currentUserJabatan] || 0;
+
             function getData() {
                 $.ajax({
                     url: "{{ route('user.getData') }}",
@@ -687,11 +698,23 @@
                             const delay = (index * 200) % 1000;
 
                             // Cek apakah user adalah admin → disable tombol edit & delete
-                            const isAdmin = (user.jabatan || "").toLowerCase() === "admin";
-                            const editDisabled = isAdmin ? "disabled" : "";
-                            const deleteDisabled = isAdmin ? "disabled" : "";
-                            const btnClassDisabled = isAdmin ? "opacity-50 cursor-not-allowed" :
-                                "";
+                            const targetLevel = jabatanLevel[(user.jabatan || "")
+                                .toLowerCase()] || 0;
+
+                            // admin bebas segalanya
+                            let canModify = false;
+
+                            if (currentUserLevel === 5) {
+                                canModify = true;
+                            } else {
+                                // hanya boleh edit/delete user dengan level lebih rendah
+                                canModify = currentUserLevel > targetLevel;
+                            }
+
+                            const editDisabled = canModify ? "" : "disabled";
+                            const deleteDisabled = canModify ? "" : "disabled";
+                            const btnClassDisabled = canModify ? "" :
+                                "opacity-50 cursor-not-allowed";
 
                             const card = `
                                 <div class="col-md-3 mb-3">
