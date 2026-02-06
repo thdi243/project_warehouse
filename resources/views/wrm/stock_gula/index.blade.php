@@ -32,7 +32,9 @@
                                     <th>Qty</th>
                                     <th>Status</th>
                                     <th>Incoming Date</th>
-                                    <th class="text-center">Aksi</th>
+                                    @can('permission', 'stock-gula-plus')
+                                        <th class="text-center">Aksi</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -220,10 +222,12 @@
                                 <td>${v.qty}</td>
                                 <td>${v.status}</td>
                                 <td>${v.incoming_date}</td>
-                                <td class="text-center">
-                                    <button class="btn btn-sm btn-warning btnEdit" data-id="${v.id}" data-data='${JSON.stringify(v)}'>Edit</button>
-                                    <button class="btn btn-sm btn-danger btnDelete" data-id="${v.id}">Hapus</button>
-                                </td>
+                                @can('permission', 'stock-gula-plus')
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-warning btnEdit" data-id="${v.id}" data-data='${JSON.stringify(v)}'>Edit</button>
+                                        <button class="btn btn-sm btn-danger btnDelete" data-id="${v.id}">Hapus</button>
+                                    </td>
+                                @endcan
                             </tr>
                         `;
                     });

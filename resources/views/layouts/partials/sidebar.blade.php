@@ -360,7 +360,7 @@
                         {{-- @endif --}}
                     @endcan
 
-                    @can('permission', 'stock-gula-wrm')
+                    @can('permission', 'stock-gula')
                         <li class="nav-item">
                             <a href="{{ route('wrm.stock_gula.index') }}"
                                 class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}">

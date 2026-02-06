@@ -207,7 +207,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // Stock Gula
-        Route::prefix('stock-gula')->middleware(['permission:stock-gula,stock-gula-form,stock-gula-plus'])->group(function () {
+        Route::prefix('stock-gula')->middleware(['permission:stock-gula,stock-gula-plus'])->group(function () {
             Route::get('/index', [StockGulaController::class, 'index'])->name('wrm.stock_gula.index');
             Route::post('/store', [StockGulaController::class, 'store'])->name('wrm.stock_gula.store');
             Route::get('/data', [StockGulaController::class, 'getData'])->name('wrm.stock_gula.getData');
