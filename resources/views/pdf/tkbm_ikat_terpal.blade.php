@@ -131,7 +131,7 @@
             </tr>
             <tr>
                 <td class="no-border text-left">Tanggal</td>
-                <td class="no-border text-left">{{ \Carbon\Carbon::now()->format('d/m/Y') }}</td>
+                <td class="no-border text-left">{{ \Carbon\Carbon::now()->format('d M Y') }}</td>
             </tr>
 
             <tr>
@@ -163,7 +163,7 @@
                 @foreach ($data as $index => $item)
                     <tr>
                         <td class="text-center">
-                            {{ \Carbon\Carbon::parse($item->tanggal)->translatedFormat('j F Y') ?? '-' }}
+                            {{ \Carbon\Carbon::parse($item->tanggal)->translatedFormat('d/M/Y') ?? '-' }}
                         </td>
                         <td class="text-right">{{ $item->qty_pallet ?? '-' }}</td>
                         <td class="text-right">
@@ -269,7 +269,7 @@
                         <tr>
                             <td style="text-align:left; border:none;">Rp</td>
                             <td style="text-align:right; border:none;">
-                                {{ number_format($summary['total_pph'], 0, ',', '.') }}
+                                ( {{ number_format($summary['total_pph'], 0, ',', '.') }} )
                                 {{-- {{ smart_number_format($summary['total_pph'] ?? '0') }} --}}
                             </td>
                         </tr>

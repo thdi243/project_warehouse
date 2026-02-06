@@ -55,20 +55,57 @@
                                             <th>Jml Buruh</th>
                                             <th>Total</th>
                                             <th>Keterangan (Fee <span id="fee-value"></span>)</th>
-                                            <th>Aksi</th>
+                                            @can('permission', 'tkbm-ikat-terpal-plus')
+                                                <th class="text-center">Aksi</th>
+                                            @endcan
                                         </tr>
                                     </thead>
-                                    <tbody></tbody>
-                                    <tfoot>
-                                    </tfoot>
+                                    <tbody>
+                                        <tr id="loadingRow" class="d-none">
+                                            <td colspan="8" class="text-center py-5">
+                                                <div class="spinner-border text-primary"></div>
+                                                <p class="mt-2 mb-0">Memuat data...</p>
+                                            </td>
+                                        </tr>
+
+                                        <tr id="emptyRow" class="d-none">
+                                            <td colspan="8" class="text-center py-5 text-muted">
+                                                Tidak ada data
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    @can('permission', 'tkbm-ikat-terpal-plus')
+                                        <tfoot class="table-bordered table-light mt-4">
+                                            <tr>
+                                                <th colspan="2" class="text-center">Total</th>
+                                                <th><span id="qtyPallet">0</span></th>
+                                                <th></th> {{-- Harga / Pallet --}}
+                                                <th></th> {{-- Jml Buruh --}}
+                                                <th>Rp <span id="totalQty">0</span></th>
+                                                <th>Rp <span id="totalFee">0</span></th>
+                                                <th colspan="2"></th>
+                                            </tr>
+
+                                            <tr>
+                                                <th colspan="6" class="text-center">PPn {{ $feeMaster->ppn }}%</th>
+                                                <th>Rp <span id="tPpnAct">0</span></th>
+                                                <th colspan="3"></th>
+                                            </tr>
+
+                                            <tr>
+                                                <th colspan="6" class="text-center">PPh {{ $feeMaster->pph }}%</th>
+                                                <th class="text-danger">(Rp <span id="tPphAct">0</span>)</th>
+                                                <th colspan="3"></th>
+                                            </tr>
+
+                                            <tr>
+                                                <th colspan="6" class="text-center">Grand Total BPS</th>
+                                                <th>Rp <span id="tGrandTotal">0</span></th>
+                                                <th colspan="3"></th>
+                                            </tr>
+                                        </tfoot>
+                                    @endcan
                                 </table>
-                                <!-- Loading indicator -->
-                                <div id="loading" class="text-center py-5 d-none">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <p class="mt-2">Memuat data...</p>
-                                </div>
                             </div>
 
                             <!-- Jika data kosong -->
@@ -137,17 +174,18 @@
     <script>
         $(document).ready(function() {
             const tableBody = $('#table-ikat-terpal tbody');
-            const loadingDiv = $('#loading');
-            const noDataDiv = $('#no-data');
             const formFilter = $('#form-filter');
             let deleteId = null;
 
             loadData();
 
+            const fmtID = n => Number(n || 0).toLocaleString('id-ID');
+            const PPN = {{ $feeMaster->ppn ?? 0 }};
+            const PPH = {{ $feeMaster->pph ?? 0 }};
+
             function loadData(params = {}) {
-                loadingDiv.removeClass('d-none');
-                tableBody.empty();
-                noDataDiv.addClass('d-none');
+                $('#tableBody .data-row').remove();
+                showLoading();
 
                 $.ajax({
                     url: `{{ url('api/tkbm/get-data/ikat-terpal') }}`, // atau '/api/ikat-terpal' kalau pakai api
@@ -155,7 +193,12 @@
                     data: params,
                     dataType: 'json',
                     success: function(response) {
-                        loadingDiv.addClass('d-none');
+                        hideState();
+
+
+                        let sumQtyPallet = 0;
+                        let sumTotalQty = 0;
+                        let sumTotalFee = 0;
 
                         if (response.status === 'success' && response.data && response.data.length >
                             0) {
@@ -181,7 +224,7 @@
                                         <td>Rp ${parseFloat(item.subtotal_barang).toLocaleString('id-ID')}</td>
                                         <td>Rp ${parseFloat(item.total_fee).toLocaleString('id-ID')}</td>
                                         @can('permission', 'tkbm-ikat-terpal-plus')
-                                            <td class="text-nowrap">
+                                            <td class="text-nowrap text-center">
                                                 <button class="btn btn-sm btn-warning btn-edit" data-id="${item.id}">
                                                     <i class="mdi mdi-pencil"></i> Edit
                                                 </button>
@@ -193,13 +236,28 @@
                                     </tr>
                                 `;
                                 tableBody.append(row);
+
+                                sumQtyPallet += Number(item.qty_pallet || 0);
+                                sumTotalQty += Number(item.subtotal_barang || 0);
+                                sumTotalFee += Number(item.total_fee || 0);
                             });
+
+                            const ppnAct = sumTotalFee * (PPN / 100);
+                            const pphAct = sumTotalFee * (PPH / 100);
+                            const grandTotal = sumTotalQty + sumTotalFee + ppnAct - pphAct;
+
+                            $('#qtyPallet').text(fmtID(sumQtyPallet));
+                            $('#totalQty').text(fmtID(sumTotalQty));
+                            $('#totalFee').text(fmtID(sumTotalFee));
+                            $('#tPpnAct').text(fmtID(ppnAct));
+                            $('#tPphAct').text(fmtID(pphAct));
+                            $('#tGrandTotal').text(fmtID(grandTotal));
                         } else {
-                            noDataDiv.removeClass('d-none');
+                            showEmpty();
                         }
                     },
                     error: function() {
-                        loadingDiv.addClass('d-none');
+                        showEmpty();
                         Swal.fire('Error', 'Gagal memuat data ikat terpal.', 'error');
                     }
                 });
@@ -384,6 +442,21 @@
                     }
                 });
             });
+
+            function showLoading() {
+                $('#tableBody tr').addClass('d-none');
+                $('#loadingRow').removeClass('d-none');
+            }
+
+            function showEmpty() {
+                $('#tableBody tr').addClass('d-none');
+                $('#emptyRow').removeClass('d-none');
+            }
+
+            function hideState() {
+                $('#loadingRow, #emptyRow').addClass('d-none');
+            }
+
         });
     </script>
 @endsection

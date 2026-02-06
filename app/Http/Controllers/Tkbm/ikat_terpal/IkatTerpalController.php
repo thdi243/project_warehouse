@@ -21,7 +21,9 @@ class IkatTerpalController extends Controller
 
     public function report()
     {
-        return view('tkbm.ikat_terpal.report');
+        $feeMaster = FeeIkatTerpal::orderBy('created_at', 'desc')->first();
+
+        return view('tkbm.ikat_terpal.report', compact('feeMaster'));
     }
 
     public function store(Request $request)
