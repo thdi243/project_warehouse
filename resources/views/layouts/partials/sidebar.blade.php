@@ -359,6 +359,17 @@
                         </li>
                         {{-- @endif --}}
                     @endcan
+
+                    @can('permission', 'stock-gula-wrm')
+                        <li class="nav-item">
+                            <a href="{{ route('wrm.stock_gula.index') }}"
+                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}"
+                                data-key="t-input-tkbm">
+                                <i class="mdi mdi-cube-outline"></i>
+                                Stock Gula
+                            </a>
+                        </li>
+                    @endcan
                     {{-- @endif --}}
 
                     {{-- Data Master --}}
@@ -454,6 +465,16 @@
                             <div class="collapse menu-dropdown {{ request()->routeIs('wrm.master.*') ? 'show' : '' }}"
                                 id="sidebarMasterWrm">
                                 <ul class="nav nav-sm flex-column">
+                                    @can('permission', 'master-barang-wrm')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.master.barang.index') }}"
+                                                class="nav-link {{ request()->routeIs('wrm.master.barang.index') ? 'active' : '' }}"
+                                                data-key="t-input-tkbm">
+                                                <i class="mdi mdi-view-grid"></i>Master Barang WRM
+                                            </a>
+                                        </li>
+                                    @endcan
+
                                     {{-- Master Fees & taxes TKBM --}}
                                     @can('permission', 'master-ikat-terpal')
                                         <li class="nav-item">
@@ -464,6 +485,7 @@
                                             </a>
                                         </li>
                                     @endcan
+
                                 </ul>
                             </div>
                         </li>

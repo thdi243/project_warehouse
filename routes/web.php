@@ -1,5 +1,6 @@
 <?php
 
+use Wrm\stock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Wrm\MasterBarangController;
 use App\Http\Controllers\Admin\UserPermissionController;
 use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wsp\stock\StockLocationController;
@@ -24,6 +26,7 @@ use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
+use App\Http\Controllers\Wrm\stock_gula\StockGulaController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
 
 // use App\Http\Controllers\Api\TkbmDashboardController;
@@ -184,9 +187,9 @@ Route::middleware('auth')->group(function () {
     });
 
     // Warehouse Raw Material
-    Route::middleware(['auth', 'permission:p2h,p2h-form,p2h-unit-regis'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
         // P2H
-        Route::prefix('p2h')->group(function () {
+        Route::prefix('p2h')->middleware(['permission:p2h,p2h-form,p2h-unit-regis'])->group(function () {
             Route::get('/online/index', [P2HController::class, 'index'])->name('p2h.online.index');
             Route::post('/store/forklift/assignment', [P2HController::class, 'storeForkliftAssignment']);
             Route::post('/update/forklift/assignment', [P2HController::class, 'updateForkliftAssignment']);
@@ -201,6 +204,18 @@ Route::middleware('auth')->group(function () {
                 ->middleware(['permission:p2h-unit-regis']);
             Route::post('/update/pallet-mover/assignment/{id}', [P2HController::class, 'updatePallMovAssignment']);
             Route::post('/update/multi-pallet', [P2HController::class, 'updateMultiShiftPalletMover']);
+        });
+
+        // Stock Gula
+        Route::prefix('stock-gula')->middleware(['permission:stock-gula,stock-gula-form,stock-gula-plus'])->group(function () {
+            Route::get('/index', [StockGulaController::class, 'index'])->name('wrm.stock_gula.index');
+            Route::post('/store', [StockGulaController::class, 'store'])->name('wrm.stock_gula.store');
+            Route::get('/data', [StockGulaController::class, 'getData'])->name('wrm.stock_gula.getData');
+            Route::get('/get-barang', [StockGulaController::class, 'getBarang'])->name('wrm.stock_gula.getBarang');
+            Route::put('/update/{id}', [StockGulaController::class, 'update'])->name('wrm.stock_gula.update');
+            Route::delete('/delete/{id}', [StockGulaController::class, 'destroy'])->name('wrm.stock_gula.delete');
+            Route::get('/template', [StockGulaController::class, 'downloadTemplate'])->name('wrm.stock_gula.template');
+            Route::post('/upload', [StockGulaController::class, 'upload'])->name('wrm.stock_gula.upload');
         });
     });
 
@@ -315,6 +330,15 @@ Route::middleware('auth')->group(function () {
         // Master WRM
         Route::prefix('wrm')->middleware(['permission:master-wrm'])->group(function () {
             Route::prefix('master')->group(function () {
+                Route::prefix('barang')->group(function () {
+                    Route::get('/index', [MasterBarangController::class, 'index'])->name('wrm.master.barang.index');
+                    Route::get('/get-data', [MasterBarangController::class, 'getData'])->name('wrm.master.barang.get-data');
+                    Route::post('/store', [MasterBarangController::class, 'store'])->name('wrm.master.barang.store');
+                    Route::put('/update/{id}', [MasterBarangController::class, 'update'])->name('wrm.master.barang.update');
+                    Route::delete('/delete/{id}', [MasterBarangController::class, 'destroy'])->name('wrm.master.barang.delete');
+                    Route::get('/template', [MasterBarangController::class, 'downloadTemplate'])->name('wrm.master.barang.template');
+                    Route::post('/upload', [MasterBarangController::class, 'upload'])->name('wrm.master.barang.upload');
+                });
                 Route::prefix('ikat-terpal')->group(function () {
                     Route::get('/index', [MasterIkatTerpalController::class, 'index'])->name('wrm.master.ikat-terpal.index');
                     Route::post('/store/fee', [MasterIkatTerpalController::class, 'storeFee']);
