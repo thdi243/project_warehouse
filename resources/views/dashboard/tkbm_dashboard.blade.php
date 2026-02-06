@@ -38,26 +38,6 @@
     <div class="page-content">
         <div class="container-fluid">
 
-            {{-- <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card shadow-sm border-0 rounded-4 welcome-card p-4" data-aos="fade-up">
-                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-                            <div>
-                                <h1 class="fw-bold mb-2">
-                                    Selamat Datang Kembali, {{ Auth::user()->username }} 👋
-                                </h1>
-                                <p class="mb-0">
-                                    Senang melihatmu kembali! Berikut ringkasan aktivitas dan laporan terbarumu.
-                                </p>
-                            </div>
-                            <div class="mt-3 mt-md-0">
-                                <img src="{{ session('image_url', asset('material/assets/images/users/user-dummy-img.jpg')) }}"
-                                    alt="avatar" class="rounded-circle img-dashboard">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> --}}
             {{-- Widget --}}
             <div class="row">
                 <div class="col-xl-3 col-md-6">
@@ -620,91 +600,96 @@
                     url: "{{ url('api/dashboard/tkbm/grand-total') }}",
                     type: 'GET',
                     dataType: 'json',
-                    success: function(response) {
-                        if (response.length > 0) { // langsung response.length
-                            let categories = [];
-                            let grandTotalSeries = [];
+                    success: function(response) { // langsung response.length
+                        const data = response.data || [];
 
-                            response.forEach(item => {
-                                // Ambil nama bulan saja (sebelum spasi)
-                                categories.push(item.bulan.split(" ")[0]);
-                                grandTotalSeries.push(parseFloat(item.grand_total));
-                            });
+                        if (data.length === 0) {
+                            $("#tkbmGrandTotal").html("<p class='text-center'>Tidak ada data</p>");
+                            return;
+                        }
 
-                            const options = {
-                                chart: {
-                                    type: 'bar',
-                                    height: 350
+                        let categories = [];
+                        let grandTotalSeries = [];
+
+                        data.forEach(item => {
+                            categories.push(item.bulan.split(" ")[0]); // Jan, Feb, dst
+                            grandTotalSeries.push(Number(item.grand_total));
+                        });
+
+                        const options = {
+                            chart: {
+                                type: 'bar',
+                                height: 350
+                            },
+                            series: [{
+                                name: 'Grand Total',
+                                data: grandTotalSeries
+                            }],
+                            xaxis: {
+                                categories: categories,
+                                title: {
+                                    text: 'Month',
+                                    offsetY: 90, // Tambahkan ini untuk menurunkan posisi title
+                                }
+                            },
+                            fill: {
+                                type: 'gradient',
+                                gradient: {
+                                    shade: 'light',
+                                    type: "vertical", // "vertical" or "horizontal"
+                                    shadeIntensity: 0.5,
+                                    gradientToColors: [
+                                        '#2e2370'
+                                    ], // warna tujuan (lebih gelap dari #3FBFBF)
+                                    inverseColors: false,
+                                    opacityFrom: 1,
+                                    opacityTo: 1,
+                                    stops: [0, 100]
+                                }
+                            },
+                            colors: ['#3FBFBF'],
+                            yaxis: {
+                                title: {
+                                    text: 'Grand Total (Rp)'
                                 },
-                                series: [{
-                                    name: 'Grand Total',
-                                    data: grandTotalSeries
-                                }],
-                                xaxis: {
-                                    categories: categories,
-                                    title: {
-                                        text: 'Month',
-                                        offsetY: 90, // Tambahkan ini untuk menurunkan posisi title
-                                    }
-                                },
-                                fill: {
-                                    type: 'gradient',
-                                    gradient: {
-                                        shade: 'light',
-                                        type: "vertical", // "vertical" or "horizontal"
-                                        shadeIntensity: 0.5,
-                                        gradientToColors: [
-                                            '#2e2370'
-                                        ], // warna tujuan (lebih gelap dari #3FBFBF)
-                                        inverseColors: false,
-                                        opacityFrom: 1,
-                                        opacityTo: 1,
-                                        stops: [0, 100]
-                                    }
-                                },
-                                colors: ['#3FBFBF'],
-                                yaxis: {
-                                    title: {
-                                        text: 'Grand Total (Rp)'
-                                    },
-                                    labels: {
-                                        formatter: function(val) {
-                                            return 'Rp ' + val.toLocaleString("id-ID");
-                                        }
-                                    }
-                                },
-                                dataLabels: {
-                                    enabled: true,
+                                labels: {
                                     formatter: function(val) {
-                                        if (val >= 1000000000) {
-                                            return 'Rp ' + (val / 1000000000).toFixed(1) + 'M';
-                                        } else if (val >= 1000000) {
-                                            return 'Rp ' + (val / 1000000).toFixed(1) + 'Jt';
-                                        } else if (val >= 1000) {
-                                            return 'Rp ' + (val / 1000).toFixed(0) + 'K';
-                                        }
-                                        return '';
-                                    },
-                                    style: {
-                                        fontSize: '12px',
-                                        fontWeight: 'bold',
-                                        rotation: 90
-                                    },
-                                    background: {
-                                        enabled: false
-                                    },
-                                    offsetY: 0,
-                                    textAnchor: 'middle'
+                                        return 'Rp ' + val.toLocaleString("id-ID");
+                                    }
+                                }
+                            },
+                            dataLabels: {
+                                enabled: true,
+                                formatter: function(val) {
+                                    if (val >= 1000000000) {
+                                        return 'Rp ' + (val / 1000000000).toFixed(1) + 'M';
+                                    } else if (val >= 1000000) {
+                                        return 'Rp ' + (val / 1000000).toFixed(1) + 'Jt';
+                                    } else if (val >= 1000) {
+                                        return 'Rp ' + (val / 1000).toFixed(0) + 'K';
+                                    }
+                                    return '';
                                 },
-                                tooltip: {
-                                    custom: function({
-                                        series,
-                                        seriesIndex,
-                                        dataPointIndex
-                                    }) {
-                                        let item = response[
-                                            dataPointIndex]; // ambil data sesuai bar
-                                        return `
+                                style: {
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    rotation: 90
+                                },
+                                background: {
+                                    enabled: false
+                                },
+                                offsetY: 0,
+                                textAnchor: 'middle'
+                            },
+                            tooltip: {
+                                custom: function({
+                                    series,
+                                    seriesIndex,
+                                    dataPointIndex
+                                }) {
+                                    let item = response[
+                                        dataPointIndex]; // ambil data sesuai bar
+                                    return `
                                             <div class="my-tooltip" style="padding:8px;">
                                                 <b>${item.bulan}</b><br/>
                                                 Produk: Rp ${parseFloat(item.total_produk).toLocaleString("id-ID")}<br/>
@@ -714,16 +699,14 @@
                                                 <b>Grand Total: Rp ${parseFloat(item.grand_total).toLocaleString("id-ID")}</b>
                                             </div>
                                         `;
-                                    }
                                 }
-                            };
+                            }
+                        };
 
-                            const chart = new ApexCharts(document.querySelector("#tkbmGrandTotal"),
-                                options);
-                            chart.render();
-                        } else {
-                            $("#tkbmGrandTotal").html("<p class='text-center'>Tidak ada data</p>");
-                        }
+                        const chart = new ApexCharts(document.querySelector("#tkbmGrandTotal"),
+                            options);
+                        chart.render();
+
                     },
                     error: function(err) {
                         console.error("Gagal ambil data:", err);
@@ -734,82 +717,116 @@
             }
 
             function barProdukTkbm(bulan = null) {
-                renderChart("allProdukChart", "{{ url('api/dashboard/tkbm/all_qty_produk') }}", bulan, function(
-                    response) {
-                    if (!response || response.length === 0) {
-                        return {
+                $.ajax({
+                    url: "{{ url('api/dashboard/tkbm/all_qty_produk') }}",
+                    type: 'GET',
+                    data: {
+                        bulan: bulan
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+
+                        if (!response || response.length === 0) {
+                            $("#allProdukChart").html(
+                                "<p class='text-center'>Tidak ada data</p>"
+                            );
+                            return;
+                        }
+
+                        const data = response.data;
+
+                        const categories = data.map(item => item.bulan.split(" ")[0]);
+                        const dataTerpal = data.map(item => parseInt(item.total_terpal) || 0);
+                        const dataSlipsheet = data.map(item => parseInt(item.total_slipsheet) || 0);
+                        const dataPallet = data.map(item => parseInt(item.total_pallet) || 0);
+
+
+                        const options = {
                             chart: {
                                 type: 'bar',
-                                height: 300
+                                height: 350,
+                                stacked: false
                             },
-                            series: [],
+                            series: [{
+                                    name: 'Qty Terpal',
+                                    data: dataTerpal
+                                },
+                                {
+                                    name: 'Qty Slipsheet',
+                                    data: dataSlipsheet
+                                },
+                                {
+                                    name: 'Qty Pallet',
+                                    data: dataPallet
+                                }
+                            ],
                             xaxis: {
-                                categories: []
-                            }
+                                categories: categories
+                            },
+                            yaxis: {
+                                title: {
+                                    text: 'Pcs'
+                                }
+                            },
+                            colors: ['#F2C36B', '#4968A6', '#3FBFBF'],
+                            dataLabels: {
+                                enabled: true,
+                                formatter: val => val === 0 ? '' : `${val} pcs`
+                            },
+                            plotOptions: {
+                                bar: {
+                                    columnWidth: '25%',
+                                    borderRadius: 0,
+                                    borderRadiusApplication: 'end'
+                                }
+                            },
+                            grid: {
+                                padding: {
+                                    left: 10,
+                                    right: 10
+                                }
+                            },
+                            stroke: {
+                                show: false
+                            },
+                            tooltip: {
+                                y: {
+                                    formatter: val => `${val} pcs`
+                                }
+                            },
+                            legend: {
+                                position: 'bottom'
+                            },
+                            dataLabels: {
+                                enabled: true,
+                                offsetY: 50,
+                                style: {
+                                    colors: ['#000'], // 🖤 hitam
+                                    fontSize: '12px',
+                                    fontWeight: 'bold'
+                                },
+                                formatter: function(val) {
+                                    return val === 0 ? '' : `${val}`;
+                                }
+                            },
+
                         };
+
+                        // 🔥 penting biar ga double render
+                        $("#allProdukChart").empty();
+
+                        const chart = new ApexCharts(
+                            document.querySelector("#allProdukChart"),
+                            options
+                        );
+                        chart.render();
+                    },
+                    error: function(err) {
+                        console.error(err);
+                        $("#allProdukChart").html(
+                            "<p class='text-center text-danger'>Gagal load data</p>"
+                        );
                     }
-
-                    // Ambil semua bulan
-                    const categories = response.map(item => item.bulan.split(" ")[0]);
-                    const dataTerpal = response.map(item => parseInt(item.total_terpal) || 0);
-                    const dataSlipsheet = response.map(item => parseInt(item.total_slipsheet) || 0);
-                    const dataPallet = response.map(item => parseInt(item.total_pallet) || 0);
-
-                    return {
-                        chart: {
-                            type: 'bar',
-                            height: 350,
-                        },
-                        series: [{
-                                name: 'Qty Terpal',
-                                data: dataTerpal
-                            },
-                            {
-                                name: 'Qty Slipsheet',
-                                data: dataSlipsheet
-                            },
-                            {
-                                name: 'Qty Pallet',
-                                data: dataPallet
-                            }
-                        ],
-                        xaxis: {
-                            categories: categories
-                        },
-                        yaxis: {
-                            title: {
-                                text: 'Pcs'
-                            }
-                        },
-                        colors: ['#F2C36B', '#4968A6', '#3FBFBF'],
-                        dataLabels: {
-                            enabled: true,
-                            formatter: function(val) {
-                                return val === 0 ? "" : `${val} pcs`;
-                            }
-                        },
-                        plotOptions: {
-                            bar: {
-                                horizontal: false,
-                                columnWidth: '40%',
-                                borderRadius: 5,
-                                borderRadiusApplication: 'end',
-                            },
-                        },
-                        stroke: {
-                            show: true,
-                            width: 2,
-                            colors: ['transparent']
-                        },
-                        tooltip: {
-                            y: {
-                                formatter: val => `${val} pcs`
-                            }
-                        },
-                        legend: {
-                            position: 'bottom'
-                        }
-                    };
                 });
             }
 

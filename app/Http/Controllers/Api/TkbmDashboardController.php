@@ -90,9 +90,12 @@ class TkbmDashboardController extends Controller
         return response()->json($data);
     }
 
-    public function tkbmAllProduk()
+    public function tkbmAllProduk(Request $request)
     {
-        // Ambil data dari tabel dan group per tahun-bulan
+        // Ambil tahun dari request, default: tahun sekarang
+        $year = $request->get('year', Carbon::now()->year);
+
+        // Query data hanya untuk tahun yang dipilih
         $produk = TkbmModel::selectRaw('
             YEAR(date) as year,
             MONTH(date) as month,
@@ -100,30 +103,31 @@ class TkbmDashboardController extends Controller
             SUM(qty_slipsheet) as total_slipsheet,
             SUM(qty_pallet) as total_pallet
         ')
+            ->whereYear('date', $year)
             ->groupBy('year', 'month')
-            ->orderBy('year', 'asc')
             ->orderBy('month', 'asc')
             ->get()
-            ->groupBy('year');
+            ->keyBy('month'); // key per bulan biar gampang lookup
 
         $result = [];
 
-        foreach ($produk as $year => $rows) {
-            // loop 1-12 bulan
-            for ($m = 1; $m <= 12; $m++) {
-                $data = $rows->firstWhere('month', $m);
+        // Loop fix 12 bulan
+        for ($m = 1; $m <= 12; $m++) {
+            $data = $produk->get($m);
 
-                $result[] = [
-                    'bulan'          => \Carbon\Carbon::createFromDate($year, $m, 1)->format('F Y'),
-                    'year'           => $year,
-                    'total_terpal'   => $data->total_terpal ?? '',
-                    'total_slipsheet' => $data->total_slipsheet ?? '',
-                    'total_pallet'   => $data->total_pallet ?? '',
-                ];
-            }
+            $result[] = [
+                'bulan'            => Carbon::createFromDate($year, $m, 1)->format('F Y'),
+                'year'             => $year,
+                'total_terpal'     => (int) ($data->total_terpal ?? 0),
+                'total_slipsheet'  => (int) ($data->total_slipsheet ?? 0),
+                'total_pallet'     => (int) ($data->total_pallet ?? 0),
+            ];
         }
 
-        return response()->json($result);
+        return response()->json([
+            'year' => $year,
+            'data' => $result
+        ]);
     }
 
     public function qtyTerpalDay(Request $request)
@@ -202,46 +206,47 @@ class TkbmDashboardController extends Controller
         return response()->json($data);
     }
 
-    public function tkbmDashboardGrandTotal()
+    public function tkbmDashboardGrandTotal(Request $request)
     {
-        // Ambil data dari tabel
-        $grandTotals = TotalsTkbmModel::selectRaw('
-                year,
-                month,
-                total_produk,
-                total_fee,
-                total_ppn,
-                total_pph,
-                grand_total
-            ')
-            ->orderBy('year', 'asc')
+        // Tahun dari request, default: tahun sekarang
+        $year = $request->get('year', Carbon::now()->year);
+
+        // Ambil data hanya untuk tahun tersebut
+        $grandTotals = TotalsTkbmModel::select(
+            'month',
+            'total_produk',
+            'total_fee',
+            'total_ppn',
+            'total_pph',
+            'grand_total'
+        )
+            ->where('year', $year)
             ->orderBy('month', 'asc')
             ->get()
-            ->groupBy('year');
+            ->keyBy('month');
 
         $result = [];
 
-        foreach ($grandTotals as $year => $rows) {
-            // loop bulan 1 - 12
-            for ($m = 1; $m <= 12; $m++) {
-                $data = $rows->firstWhere('month', $m);
+        // Loop fix 12 bulan
+        for ($m = 1; $m <= 12; $m++) {
+            $data = $grandTotals->get($m);
 
-                $result[] = [
-                    'bulan'        => \Carbon\Carbon::createFromDate($year, $m, 1)->format('F Y'),
-                    'year'         => $year,
-                    'total_produk' => $data->total_produk ?? 0,
-                    'total_fee'    => $data->total_fee ?? 0,
-                    'total_ppn'    => $data->total_ppn ?? 0,
-                    'total_pph'    => $data->total_pph ?? 0,
-                    'grand_total'  => $data->grand_total ?? 0,
-                ];
-            }
+            $result[] = [
+                'bulan'        => Carbon::createFromDate($year, $m, 1)->format('F Y'),
+                'year'         => $year,
+                'total_produk' => (float) ($data->total_produk ?? 0),
+                'total_fee'    => (float) ($data->total_fee ?? 0),
+                'total_ppn'    => (float) ($data->total_ppn ?? 0),
+                'total_pph'    => (float) ($data->total_pph ?? 0),
+                'grand_total'  => (float) ($data->grand_total ?? 0),
+            ];
         }
 
-        return response()->json($result);
+        return response()->json([
+            'year' => $year,
+            'data' => $result
+        ]);
     }
-
-
 
     public function dataWidget()
     {
