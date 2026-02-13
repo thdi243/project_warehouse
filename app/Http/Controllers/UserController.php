@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Support\Str;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -239,6 +239,13 @@ class UserController extends Controller
         // dd($request['signature']);
         $user = User::findOrFail($id);
 
+        if (!$this->canModify(Auth::user(), $user)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Anda tidak memiliki izin.',
+            ], 403);
+        }
+
         try {
             // === Siapkan data dasar untuk update ===
             $data = [
@@ -371,6 +378,26 @@ class UserController extends Controller
                 'message' => 'Gagal mengupdate data: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+
+    private function canModify($currentUser, $targetUser)
+    {
+        $levels = [
+            'operator' => 1,
+            'foreman' => 2,
+            'supervisor' => 3,
+            'dept_head' => 4,
+            'admin' => 5,
+        ];
+
+        $current = $levels[$currentUser->jabatan] ?? 0;
+        $target  = $levels[$targetUser->jabatan] ?? 0;
+
+        if ($current == 5) return true;
+        if ($currentUser->id == $targetUser->id) return true;
+
+        return $current > $target;
     }
 
     /**
