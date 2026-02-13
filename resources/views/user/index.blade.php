@@ -646,6 +646,7 @@
             };
 
             const currentUserJabatan = "{{ auth()->user()->jabatan }}";
+            const currentUserId = "{{ auth()->user()->id }}";
             const currentUserLevel = jabatanLevel[currentUserJabatan] || 0;
 
             function getData() {
@@ -705,6 +706,8 @@
                             let canModify = false;
 
                             if (currentUserLevel === 5) {
+                                canModify = true;
+                            } else if (parseInt(user.id) === parseInt(currentUserId)) {
                                 canModify = true;
                             } else {
                                 // hanya boleh edit/delete user dengan level lebih rendah
