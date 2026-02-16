@@ -107,16 +107,38 @@ class IkatTerpalController extends Controller
         }
     }
 
+    // public function getDataReport(Request $request)
+    // {
+    //     $query = IkatTerpal::with(['produk:id,harga_pallet', 'fee:id,fee,ppn,pph', 'user:id,nama_lengkap,username']);
+
+    //     $startOfMonth = now()->startOfMonth()->format('Y-m-d');
+    //     $endOfMonth   = now()->endOfMonth()->format('Y-m-d');
+
+    //     if ($request->has('start_date') && $request->has('end_date')) {
+    //         $query->whereBetween('tanggal', [$request->start_date, $request->end_date]);
+    //     } else {
+    //         $query->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
+    //     }
+
+    //     $data = $query->orderBy('tanggal', 'asc')->get();
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => $data
+    //     ]);
+    // }
+
     public function getDataReport(Request $request)
     {
         $query = IkatTerpal::with(['produk:id,harga_pallet', 'fee:id,fee,ppn,pph', 'user:id,nama_lengkap,username']);
 
-        $startOfMonth = now()->startOfMonth()->format('Y-m-d');
-        $endOfMonth   = now()->endOfMonth()->format('Y-m-d');
-
-        if ($request->has('start_date') && $request->has('end_date')) {
+        // Gunakan filled() untuk memastikan nilai tidak kosong
+        if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('tanggal', [$request->start_date, $request->end_date]);
         } else {
+            // Default: bulan ini
+            $startOfMonth = now()->startOfMonth()->format('Y-m-d');
+            $endOfMonth   = now()->endOfMonth()->format('Y-m-d');
             $query->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
         }
 
