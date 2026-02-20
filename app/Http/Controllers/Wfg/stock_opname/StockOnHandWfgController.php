@@ -475,6 +475,29 @@ class StockOnHandWfgController extends Controller
                 ]);
 
                 $countSuccess++;
+
+                $sop = WfgSopModel::whereDate('tgl_opname', $today)
+                    ->where('principal', $barang->principal)
+                    ->first();
+
+                if ($sop) {
+                    $summary = WfgSopSummariesModel::where('sop_id', $sop->id)
+                        ->where('barang_id', $barang->id)
+                        ->first();
+
+                    if ($summary) {
+                        $qtySistem = $qty_soh;
+                        $qtyFisik  = $summary->qty_fisik ?? 0;
+                        $selisih   = $qtyFisik - $qtySistem;
+                        $status    = $selisih > 0 ? 'kurang' : ($selisih < 0 ? 'lebih' : 'match');
+
+                        $summary->update([
+                            'qty_sistem' => $qtySistem,
+                            'selisih'    => $selisih,
+                            'status'     => $status,
+                        ]);
+                    }
+                }
             }
 
             return response()->json([
