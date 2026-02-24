@@ -97,19 +97,24 @@
                         {{ $item->date ? \Carbon\Carbon::parse($item->date)->format('d/M/Y') : '-' }}
                     </td>
                     <td colspan="4">
-                        {{ ($item->qty_terpal ?? 0) == 0 ? '-' : $item->qty_terpal }}
+                        {{ number_format($item->qty_terpal, 0, ',', '.') ?? '-' }}
+                        {{-- {{ ($item->qty_terpal ?? 0) == 0 ? '-' : $item->qty_terpal }} --}}
                     </td>
                     <td colspan="4">
-                        {{ ($item->qty_slipsheet ?? 0) == 0 ? '-' : $item->qty_slipsheet }}
+                        {{ number_format($item->qty_slipsheet, 0, ',', '.') ?? '-' }}
+                        {{-- {{ ($item->qty_slipsheet ?? 0) == 0 ? '-' : $item->qty_slipsheet }} --}}
                     </td>
                     <td colspan="4">
-                        {{ ($item->qty_pallet ?? 0) == 0 ? '-' : $item->qty_pallet }}
+                        {{ number_format($item->qty_pallet, 0, ',', '.') ?? '-' }}
+                        {{-- {{ ($item->qty_pallet ?? 0) == 0 ? '-' : $item->qty_pallet }} --}}
                     </td>
                     <td colspan="5" style="font-weight: bold;">
-                        {{ ($item->total_qty ?? 0) == 0 ? '-' : number_format($item->total_qty) }}
+                        {{ number_format($item->total_qty, 0, ',', '.') ?? '-' }}
+                        {{-- {{ ($item->total_qty ?? 0) == 0 ? '-' : number_format($item->total_qty) }} --}}
                     </td>
                     <td colspan="6" style="font-weight: bold;">
-                        {{ ($item->total_fee ?? 0) == 0 ? '-' : number_format($item->total_fee) }}
+                        {{ number_format($item->total_fee, 0, ',', '.') ?? '-' }}
+                        {{-- {{ ($item->total_fee ?? 0) == 0 ? '-' : number_format($item->total_fee) }} --}}
                     </td>
                 </tr>
             @endforeach

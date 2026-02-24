@@ -94,7 +94,7 @@
                                             </tr>
                                             <tr>
                                                 <th colspan="7" class="text-center">PPh {{ $pph }}%</th>
-                                                <th class="text-danger" colspan="3">Rp <span id="tPphAct">0</span></th>
+                                                <th class="text-danger" colspan="3">(Rp <span id="tPphAct">0</span>)</th>
                                             </tr>
                                             <tr>
                                                 <th colspan="7" class="text-center">Grand Total BPS</th>
@@ -292,7 +292,9 @@
             let year = now.getFullYear();
             $("#bulanFilter").val(`${year}-${month}`);
 
-            const fmtID = n => Number(n || 0).toLocaleString('id-ID');
+            const fmtID = (n) => {
+                return Math.round(Number(n || 0)).toLocaleString('id-ID');
+            };
 
             // data table
             const PPN = {{ $ppn ?? 0 }};
