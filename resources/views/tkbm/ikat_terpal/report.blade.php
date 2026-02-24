@@ -99,7 +99,7 @@
                                             </tr>
 
                                             <tr>
-                                                <th colspan="6" class="text-center">Grand Total BPS</th>
+                                                <th colspan="6" class="text-center">Grand Total Ikat Terpal</th>
                                                 <th>Rp <span id="tGrandTotal">0</span></th>
                                                 <th colspan="3"></th>
                                             </tr>
