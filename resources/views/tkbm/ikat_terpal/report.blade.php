@@ -87,13 +87,20 @@
                                             </tr>
 
                                             <tr>
-                                                <th colspan="6" class="text-center">PPn {{ $feeMaster->ppn }}%</th>
+                                                <th colspan="6" class="text-center">
+                                                    PPn
+                                                    {{ rtrim(rtrim(number_format($feeMaster->ppn, 2, ',', '.'), '0'), ',') }}%
+                                                </th>
                                                 <th>Rp <span id="tPpnAct">0</span></th>
                                                 <th colspan="3"></th>
                                             </tr>
 
                                             <tr>
-                                                <th colspan="6" class="text-center">PPh {{ $feeMaster->pph }}%</th>
+                                                <th colspan="6" class="text-center">
+                                                    PPh
+                                                    {{ rtrim(rtrim(number_format($feeMaster->pph, 2, ',', '.'), '0'), ',') }}%
+                                                </th>
+                                                {{-- <th colspan="6" class="text-center">PPh {{ $feeMaster->pph }}%</th> --}}
                                                 <th class="text-danger">(Rp <span id="tPphAct">0</span>)</th>
                                                 <th colspan="3"></th>
                                             </tr>
