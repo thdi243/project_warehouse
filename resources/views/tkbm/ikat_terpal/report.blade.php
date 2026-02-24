@@ -220,7 +220,7 @@
                                 const row = `
                                     <tr class="data-row">
                                         <td>${index + 1}</td>
-                                        <td>${item.tanggal}</td>
+                                        <td>${moment(item.tanggal).format("DD-MM-YYYY")}</td>
                                         <td>${item.qty_pallet}</td>
                                         <td>Rp ${fmtID(item.produk.harga_pallet)}</td>
                                         <td>${item.jml_buruh || '-'}</td>
