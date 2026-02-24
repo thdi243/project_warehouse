@@ -483,11 +483,23 @@
                             ' ').replace(/\b\w/g, l => l.toUpperCase());
                         let badge = '';
 
-                        if (value === 1 || value === '1') {
+                        if (key === 'jam_operasional') {
+
+                            const formatted = Math.round(Number(value || 0))
+                                .toLocaleString('id-ID');
+
+                            badge = `<span class="text-muted">${formatted}</span>`;
+
+                        } else if (value === 1 || value === '1') {
+
                             badge = `<span class="badge bg-success">OK</span>`;
+
                         } else if (value === 0 || value === '0') {
+
                             badge = `<span class="badge bg-danger">NOK</span>`;
+
                         } else {
+
                             badge = `<span class="text-muted">${value || '-'}</span>`;
                         }
 
