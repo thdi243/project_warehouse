@@ -257,10 +257,10 @@ export default function PurchaseRequisitionForm() {
                                         <SelectValue placeholder="Pilih jenis" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Barang">
+                                        <SelectItem value="barang">
                                             Barang
                                         </SelectItem>
-                                        <SelectItem value="Jasa">
+                                        <SelectItem value="jasa">
                                             Jasa
                                         </SelectItem>
                                     </SelectContent>
@@ -268,15 +268,33 @@ export default function PurchaseRequisitionForm() {
                             </Field>
 
                             <Field label="Detail Jenis">
-                                <Input
+                                <Select
                                     value={form.detail_jenis}
-                                    onChange={(e) =>
+                                    onValueChange={(value) =>
                                         setForm({
                                             ...form,
-                                            detail_jenis: e.target.value,
+                                            detail_jenis: value,
                                         })
                                     }
-                                />
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Pilih jenis" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="project">
+                                            Project
+                                        </SelectItem>
+                                        <SelectItem value="asset">
+                                            Asset
+                                        </SelectItem>
+                                        <SelectItem value="consumable">
+                                            Consumable
+                                        </SelectItem>
+                                        <SelectItem value="cost_center">
+                                            Cost Center
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </Field>
 
                             <Field label="No IO">

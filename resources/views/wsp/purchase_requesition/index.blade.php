@@ -2,6 +2,17 @@
 
 @section('title', '| Purchase Requesition')
 
+@section('styles')
+    <style>
+        .signature-canvas {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+    </style>
+@endsection
+
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
@@ -58,7 +69,7 @@
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>STATUS</th>
-                                    <th style="width: 120px;">AKSI</th>
+                                    <th class="text-center">AKSI</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -203,7 +214,7 @@
                     <h6 class="mb-2">Detail Items</h6>
                     <div class="table-responsive">
                         <table class="table table-borderedless table-sm">
-                            <thead class="table-light">
+                            <thead class="table-light align-middle">
                                 <tr>
                                     <th>No</th>
                                     <th>MID Barang</th>
@@ -211,6 +222,7 @@
                                     <th>Qty</th>
                                     <th>UOM</th>
                                     <th>Keterangan</th>
+                                    <th class="text-center">Status Manager <br> User, WRH </th>
                                 </tr>
                             </thead>
                             <tbody id="detailItems">
@@ -231,6 +243,78 @@
         </div>
     </div>
 
+    {{-- Modal tracking --}}
+    <div class="modal fade" id="approvalModal" tabindex="-1">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Tracking Approval PR</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="approvalTracking"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Confirm --}}
+    <div class="modal fade" id="confirmModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm PR</h5>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="confirm_pr_id">
+
+                    <label>No PR</label>
+                    <input type="text" id="no_pr" class="form-control">
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" id="btnFinished">Finished</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal TTD --}}
+    <div class="modal fade" id="signatureModal">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Signature</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body text-center">
+
+                    <canvas id="signaturePad" class="signature-canvas"></canvas>
+
+                    <button class="btn btn-sm btn-danger mt-2" id="clearSignature">
+                        Clear
+                    </button>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="submitSignature">
+                        Submit
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -325,11 +409,13 @@
                 const badgeStatus = {
                     'pending': 'warning',
                     'approved': 'success',
+                    'finished': 'info',
                     'rejected': 'danger',
                 };
 
                 pageData.forEach((pr, index) => {
                     const badgeClass = badgeStatus[pr.status] ?? 'secondary';
+                    const isConfirmed = pr.status === 'finished';
                     tbody.append(`
                         <tr>
                             <td>${startIndex + index + 1}</td>
@@ -337,19 +423,35 @@
                             <td>${pr.requested_by}</td>
                             <td>${pr.department}</td>
                             <td>
-                                <span class="badge badge-soft-${badgeClass}">
+                                <span 
+                                    class="badge badge-soft-${badgeClass}" 
+                                    style="cursor:pointer"
+                                    onclick="showApprovalTracking(${pr.id})"
+                                >
                                     ${pr.status}
                                 </span>
                             </td>
                             <td>
-                                <div class="d-flex gap-2">
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button 
+                                        class="btn ${isConfirmed ? 'btn-light' : 'btn-success'} btn-confirm btn-sm"
+                                        data-id="${pr.id}"
+                                        title="Confirm"
+                                        ${isConfirmed ? 'disabled' : ''}
+                                    >
+                                        <i class="mdi ${isConfirmed ? 'mdi-check-all' : 'mdi-check'}"></i>
+                                        ${isConfirmed ? 'Confirmed' : 'Confirm'}
+                                    </button>
+                                    <button class="btn btn-primary btn-copy btn-sm" onclick="copyFormatted(${pr.id})" title="Copy Formatted">
+                                        <i class="mdi mdi-content-copy"></i> Copy
+                                    </button>
                                     <button class="btn btn-info btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
                                         <i class="mdi mdi-eye"></i>
                                     </button>
                                     <button class="btn btn-danger btn-delete btn-sm" onclick="deletePR(${pr.id})" title="Delete">
                                         <i class="mdi mdi-delete"></i>
                                     </button>
-                                    <button class="btn btn-primary btn-print btn-sm" onclick="printPR(${pr.id})" title="Print">
+                                    <button class="btn btn-warning btn-print btn-sm" onclick="printPR(${pr.id})" title="Print">
                                         <i class="mdi mdi-printer"></i>
                                     </button>
                                 </div>
@@ -446,36 +548,6 @@
                 loadPRData();
             });
 
-            window.editPR = function(id) {
-                $.ajax({
-                    url: "{{ route('stock.pr.show', '') }}/" + id,
-                    type: 'GET',
-                    success: function(res) {
-                        const data = res.data;
-                        const barang = data.items.barang;
-
-                        $('#outgoingId').val(data.id);
-                        $('#mid').val(data.barang?.mid_barang ?? '');
-                        $('#prDate').val(data.pr_date);
-                        $('#departemen').val(data.department);
-                        $('#qty').val(data.qty);
-                        $('#keterangan').val(data.keterangan);
-                        $('#namaPeminta').val(data.requested_by);
-                        $('#batch').val(data.batch);
-
-                        $('#modalTitle').text('Edit Outgoing');
-                        $('#modalForm').modal('show');
-                    },
-                    error: function(xhr) {
-                        let msg = 'Gagal mengambil data outgoing';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
-                        }
-                        toastr.error(msg);
-                    }
-                });
-            };
-
             // Delete soh
             window.deletePR = function(id) {
                 Swal.fire({
@@ -545,6 +617,7 @@
                                 <td>${item.qty}</td>
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td>${item.keterangan ?? '-'}</td>
+                                <td>${item.approval?.map(a => a.status).join(', ') ?? '-'}</td>
                             </tr>
                         `);
                     });
@@ -559,6 +632,315 @@
                     "_blank"
                 );
             }
+
+            window.showApprovalTracking = function(id) {
+
+                const pr = allPR.find(p => p.id === id);
+
+                if (!pr || !pr.approval) return;
+
+                const approvals = [...pr.approval].sort((a, b) => a.level - b.level);
+
+                let html = '';
+
+                approvals.forEach(a => {
+
+                    let badge = 'secondary';
+                    let icon = 'mdi-clock-outline';
+                    let text = 'Pending';
+
+                    if (a.status === 'approved') {
+                        badge = 'success';
+                        icon = 'mdi-check-circle';
+                        text = 'Approved';
+                    }
+
+                    if (a.status === 'rejected') {
+                        badge = 'danger';
+                        icon = 'mdi-close-circle';
+                        text = 'Rejected';
+                    }
+
+                    html += `
+                        <div class="d-flex align-items-start mb-3 border-bottom pb-2">
+                            
+                            <div class="me-3">
+                                <i class="mdi ${icon} fs-3 text-${badge}"></i>
+                            </div>
+
+                            <div class="flex-grow-1">
+                                <div class="fw-bold text-capitalize">
+                                    Level ${a.level} - ${a.role.replace('_',' ')}
+                                </div>
+
+                                <span class="badge bg-${badge}">
+                                    ${text}
+                                </span>
+
+                                <div class="small text-muted mt-1">
+                                    ${a.action_at ? a.action_at : 'Belum diproses'}
+                                </div>
+
+                                ${a.catatan ? `
+                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                        ` : ''}
+                            </div>
+
+                        </div>
+                    `;
+                });
+
+                $('#approvalTracking').html(html);
+                $('#approvalModal').modal('show');
+            }
+
+            window.copyFormatted = function(prId) {
+
+                const pr = allPR.find(p => p.id === prId);
+                if (!pr) return;
+
+                // hanya boleh copy jika approved
+                if (pr.status !== 'finished') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Belum Bisa Copy',
+                        text: 'PR harus finished terlebih dahulu',
+                        confirmButtonColor: '#f59e0b'
+                    });
+                    return;
+                }
+
+                const deptMap = {
+                    engineering: 'BAS-ENG',
+                    ite: 'BAS-ITE',
+                    produksi: 'BAS-PRD',
+                    quality_control: 'BAS-QC'
+                };
+
+                const deptCode = deptMap[pr.department] ?? 'BAS-Dept User';
+
+                let rows = [];
+
+                pr.items.forEach(item => {
+
+                    const mid = item.barang?.mid_barang ?? '';
+                    const qty = item.qty ?? '';
+                    const sLoc = item.barang?.s_loc ?? '';
+                    const prNumber = pr.pr_number ?? '';
+
+                    const row = [
+                        mid,
+                        '',
+                        qty,
+                        '',
+                        '',
+                        '',
+                        '',
+                        '1006',
+                        sLoc,
+                        '',
+                        deptCode,
+                        '',
+                        prNumber
+                    ].join('\t');
+
+                    rows.push(row);
+                });
+
+                const textToCopy = rows.join('\n');
+
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Format SAP berhasil disalin ke clipboard',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    })
+                    .catch(err => {
+                        console.error(err);
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: 'Gagal menyalin data ke clipboard'
+                        });
+                    });
+            }
+
+            // TTD
+            let prID = null;
+
+            // klik confirm
+            $(document).on('click', '.btn-confirm', function() {
+
+                prID = $(this).data('id');
+
+                $('#confirm_pr_id').val(prID);
+
+                $('#confirmModal').modal('show');
+            });
+
+            $('#btnFinished').click(function() {
+
+                let no_pr = $('#no_pr').val();
+
+                if (!no_pr) {
+                    alert('No PR wajib diisi');
+                    return;
+                }
+
+                $('#confirmModal').modal('hide');
+                $('#signatureModal').modal('show');
+
+            });
+
+            let canvas = document.getElementById("signaturePad");
+
+            function resizeCanvas() {
+
+                let ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+
+                canvas.getContext("2d").scale(ratio, ratio);
+            }
+
+            let signaturePad = new SignaturePad(canvas, {
+                minWidth: 1,
+                maxWidth: 2.5,
+                penColor: "black"
+            });
+
+            $('#signatureModal').on('shown.bs.modal', function() {
+                resizeCanvas();
+                signaturePad.clear();
+            });
+
+            $('#clearSignature').click(function() {
+                signaturePad.clear();
+            });
+
+            function trimCanvas(canvas) {
+
+                const ctx = canvas.getContext("2d");
+                const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = pixels.data;
+
+                let top = null,
+                    left = null,
+                    right = null,
+                    bottom = null;
+
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+
+                        let index = (y * canvas.width + x) * 4;
+
+                        if (data[index + 3] > 0) {
+
+                            if (top === null) top = y;
+                            if (left === null || x < left) left = x;
+                            if (right === null || x > right) right = x;
+                            if (bottom === null || y > bottom) bottom = y;
+
+                        }
+
+                    }
+                }
+
+                let width = right - left;
+                let height = bottom - top;
+
+                let trimmed = ctx.getImageData(left, top, width, height);
+
+                let copy = document.createElement("canvas");
+                let copyCtx = copy.getContext("2d");
+
+                copy.width = width;
+                copy.height = height;
+
+                copyCtx.putImageData(trimmed, 0, 0);
+
+                return copy;
+            }
+
+            $('#submitSignature').click(function() {
+
+                if (signaturePad.isEmpty()) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Tanda tangan kosong",
+                        text: "Silakan buat tanda tangan terlebih dahulu"
+                    });
+                    return;
+                }
+
+                // let signature = signaturePad.toDataURL();
+                let trimmedCanvas = trimCanvas(canvas);
+                let signature = trimmedCanvas.toDataURL();
+                let no_pr = $('#no_pr').val();
+
+                Swal.fire({
+                    title: "Konfirmasi PR?",
+                    text: "Pastikan data sudah benar",
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Submit",
+                }).then((result) => {
+
+                    if (result.isConfirmed) {
+
+                        Swal.fire({
+                            title: "Menyimpan...",
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        $.ajax({
+                            url: `/purchase-requesition/approval-pr/action/${prID}`,
+                            type: "POST",
+                            data: {
+                                status: "approved",
+                                ttd: signature,
+                                no_pr: no_pr,
+                                _token: $('meta[name="csrf-token"]').attr('content')
+                            },
+                            success: function(res) {
+
+                                $('#signatureModal').modal('hide');
+
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Berhasil",
+                                    text: res.message
+                                });
+
+                                loadPRData();
+
+                            },
+                            error: function(xhr) {
+
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Gagal",
+                                    text: xhr.responseJSON?.message ??
+                                        "Terjadi kesalahan"
+                                });
+
+                            }
+                        });
+
+                    }
+
+                });
+
+            });
         });
     </script>
 @endsection

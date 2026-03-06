@@ -120,7 +120,7 @@
                     PURCHASE REQUESITION
                 </td>
                 <td class="no-border text-left" style="width: 10%;">No Rec</td>
-                <td class="no-border text-left" style="width: 25%;">{{ $pr->no_rec ?? '-' }}</td>
+                <td class="no-border text-left" style="width: 25%;">{{ $pr->no_doc ?? '-' }}</td>
             </tr>
 
             <tr>
@@ -207,10 +207,10 @@
                             {{ rtrim(rtrim($item->qty ?? 0, '0'), '.') }}
                         </td>
                         <td style="padding-right: 5px;">
-                            {{ rtrim(rtrim($item->latestStock->qty_soh ?? 0, '0'), '.') }}
+
                         </td>
                         <td style="padding-right: 5px;">
-                            {{ rtrim(rtrim($item->latestStock->qty_soh - $item->qty ?? 0, '0'), '.') }}
+
                         </td>
                         <td style="padding-right: 5px;">
                             {{ $item->keterangan ?? '-' }}

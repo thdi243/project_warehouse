@@ -16,6 +16,7 @@ export default function ApprovalPR() {
 
     const [showSignature, setShowSignature] = useState(false);
     const [pendingStatus, setPendingStatus] = useState(null);
+    const [selectedItems, setSelectedItems] = useState([]);
 
     useEffect(() => {
         fetch(`/api/purchase-requesition/pr-data/approval/${id}`)
@@ -27,8 +28,8 @@ export default function ApprovalPR() {
         if (!comment || comment.trim() === "") {
             Swal.fire({
                 icon: "warning",
-                title: "Alasan wajib diisi",
-                text: "Harap tulis alasan penolakan PR sebelum melanjutkan.",
+                title: "Komentar wajib diisi",
+                text: "Harap tulis komentar penolakan PR sebelum melanjutkan.",
                 confirmButtonText: "OK",
                 confirmButtonColor: "#ef4444",
             });
@@ -68,8 +69,9 @@ export default function ApprovalPR() {
                         status: "rejected",
                         comment: comment,
                         ttd: null,
+                        items: selectedItems,
                     }),
-                }
+                },
             );
 
             const data = await res.json();
@@ -107,11 +109,29 @@ export default function ApprovalPR() {
 
     const refreshPrData = async () => {
         const refreshRes = await fetch(
-            `/api/purchase-requesition/pr-data/approval/${id}`
+            `/api/purchase-requesition/pr-data/approval/${id}`,
         );
         const freshData = await refreshRes.json();
         if (freshData.status === true) {
             setPr(freshData.data);
+        }
+    };
+
+    const toggleItem = (itemId) => {
+        setSelectedItems((prev) => {
+            if (prev.includes(itemId)) {
+                return prev.filter((id) => id !== itemId);
+            } else {
+                return [...prev, itemId];
+            }
+        });
+    };
+
+    const toggleAllItems = () => {
+        if (selectedItems.length === pr.items.length) {
+            setSelectedItems([]);
+        } else {
+            setSelectedItems(pr.items.map((item) => item.id));
         }
     };
 
@@ -135,10 +155,10 @@ export default function ApprovalPR() {
                         pr.status === "pending"
                             ? "warning"
                             : pr.status === "approved"
-                            ? "success"
-                            : pr.status === "rejected"
-                            ? "destructive"
-                            : "default"
+                              ? "success"
+                              : pr.status === "rejected"
+                                ? "destructive"
+                                : "default"
                     }
                 >
                     {pr.status.toUpperCase()}
@@ -168,29 +188,87 @@ export default function ApprovalPR() {
                     <table className="w-full text-sm border">
                         <thead>
                             <tr className="bg-muted">
+                                <th className="p-2 border text-center w-10">
+                                    <input
+                                        type="checkbox"
+                                        onChange={toggleAllItems}
+                                        checked={
+                                            pr.items.length > 0 &&
+                                            selectedItems.length ===
+                                                pr.items.length
+                                        }
+                                    />
+                                </th>
                                 <th className="p-2 border">MID</th>
                                 <th className="p-2 border">Desc</th>
-                                <th className="p-2 border text-center">Qty</th>
+                                <th className="p-2 border text-center">
+                                    Qty PR
+                                </th>
+                                <th className="p-2 border text-center">
+                                    Qty SOH
+                                </th>
+                                <th className="p-2 border text-center">
+                                    Qty Actual
+                                </th>
+                                <th className="p-2 border text-center">UoM</th>
                                 <th className="p-2 border">Keterangan</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {pr.items.map((item) => (
-                                <tr key={item.id}>
-                                    <td className="p-2 border">
-                                        {item.barang.mid_barang}
-                                    </td>
-                                    <td className="p-2 border">
-                                        {item.barang.nama_barang}
-                                    </td>
-                                    <td className="p-2 border text-center">
-                                        {item.qty}
-                                    </td>
-                                    <td className="p-2 border">
-                                        {item.keterangan || "-"}
-                                    </td>
-                                </tr>
-                            ))}
+                            {pr.items.map((item) => {
+                                const latestStock = item.barang.stock?.sort(
+                                    (a, b) =>
+                                        new Date(b.last_update) -
+                                        new Date(a.last_update),
+                                )[0];
+
+                                const qtySoh = latestStock?.qty_soh ?? 0;
+                                const qtyActual = qtySoh + item.qty;
+
+                                return (
+                                    <tr key={item.id}>
+                                        <td className="p-2 border text-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedItems.includes(
+                                                    item.id,
+                                                )}
+                                                onChange={() =>
+                                                    toggleItem(item.id)
+                                                }
+                                            />
+                                        </td>
+
+                                        <td className="p-2 border">
+                                            {item.barang.mid_barang}
+                                        </td>
+
+                                        <td className="p-2 border">
+                                            {item.barang.nama_barang}
+                                        </td>
+
+                                        <td className="p-2 border text-center">
+                                            {item.qty}
+                                        </td>
+
+                                        <td className="p-2 border text-center">
+                                            {qtySoh}
+                                        </td>
+
+                                        <td className="p-2 border text-center">
+                                            {qtyActual}
+                                        </td>
+
+                                        <td className="p-2 border text-center">
+                                            {item.barang.uom}
+                                        </td>
+
+                                        <td className="p-2 border">
+                                            {item.keterangan || "-"}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </CardContent>
@@ -297,7 +375,7 @@ export default function ApprovalPR() {
                                     </span>{" "}
                                     {pr.user_action.action_at
                                         ? new Date(
-                                              pr.user_action.action_at
+                                              pr.user_action.action_at,
                                           ).toLocaleString("id-ID", {
                                               dateStyle: "medium",
                                               timeStyle: "short",
@@ -354,6 +432,15 @@ export default function ApprovalPR() {
                         return;
                     }
 
+                    if (selectedItems.length === 0) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "Pilih Item",
+                            text: "Pilih minimal satu item untuk diproses.",
+                        });
+                        return;
+                    }
+
                     setLoading(true);
                     try {
                         const res = await fetch(
@@ -366,7 +453,7 @@ export default function ApprovalPR() {
                                     Accept: "application/json",
                                     "X-CSRF-TOKEN": document
                                         .querySelector(
-                                            'meta[name="csrf-token"]'
+                                            'meta[name="csrf-token"]',
                                         )
                                         .getAttribute("content"),
                                 },
@@ -374,15 +461,16 @@ export default function ApprovalPR() {
                                     status: pendingStatus,
                                     comment: comment,
                                     ttd: signatureBase64,
+                                    items: selectedItems,
                                 }),
-                            }
+                            },
                         );
 
                         const data = await res.json();
 
                         if (!res.ok) {
                             throw new Error(
-                                data.message || "Gagal menyimpan approval"
+                                data.message || "Gagal menyimpan approval",
                             );
                         }
 
@@ -401,7 +489,7 @@ export default function ApprovalPR() {
                         });
 
                         const refreshRes = await fetch(
-                            `/api/purchase-requesition/pr-data/approval/${id}`
+                            `/api/purchase-requesition/pr-data/approval/${id}`,
                         );
                         const freshData = await refreshRes.json();
 

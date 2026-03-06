@@ -83,7 +83,7 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    // Warehouse Sparepart (TKBM, Rak Management)
+    // Warehouse Sparepart (TKBM, PR)
     Route::middleware(['auth'])->group(function () {
         // TKBM
         Route::prefix('tkbm')->middleware(['permission:tkbm'])->group(function () {
@@ -173,16 +173,16 @@ Route::middleware('auth')->group(function () {
 
         // Purchase Requesition
         Route::prefix('purchase-requesition')->middleware(['permission:wsp-stock-pr'])->group(function () {
+            Route::get('/index', [WspPurchaseRequesitionController::class, 'index'])->name('stock.pr.index');
             Route::post('/store', [WspPurchaseRequesitionController::class, 'store'])->name('stock.pr.store');
             Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved'])->name('stock.pr.reserved');
             Route::get('/my-reservations', [WspPurchaseRequesitionController::class, 'myReservations']);
             Route::delete('/release/{id}', [WspPurchaseRequesitionController::class, 'release'])->name('stock.pr.release');
             Route::delete('/release-session/{id}', [WspPurchaseRequesitionController::class, 'releaseSession'])->name('stock.pr.release-session');
-            Route::get('/index', [WspPurchaseRequesitionController::class, 'index'])->name('stock.pr.index');
             Route::delete('/delete/{id}', [WspPurchaseRequesitionController::class, 'destroy'])->name('stock.pr.delete');
             Route::get('/show/{id}', [WspPurchaseRequesitionController::class, 'show'])->name('stock.pr.show');
             Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
-            Route::get('/approval-action/{id}', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.approval-action');
+            Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action'])->name('stock.pr.approval-action');
         });
     });
 
@@ -304,7 +304,6 @@ Route::middleware('auth')->group(function () {
                 Route::put('/update/rak/{id}', [WspRakController::class, 'update'])->name('wsp.rak.update');
                 Route::post('/store/rak', [WspRakController::class, 'store'])->name('wsp.store.rak');
                 Route::delete('/delete/rak/{id}', [WspRakController::class, 'destroy'])->name('wsp.delete.rak');
-                Route::post('/store/opname', [StockOpnameController::class, 'store'])->name('wsp.rak.store.opname');
             });
         });
 

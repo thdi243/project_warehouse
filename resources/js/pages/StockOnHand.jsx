@@ -48,10 +48,10 @@ const StockOnHandTable = () => {
     useEffect(() => {
         const filtered = data.filter(
             (item) =>
-                item.barang?.nama_barang
+                item.nama_barang
                     ?.toLowerCase()
                     .includes(search.toLowerCase()) ||
-                String(item.barang?.mid_barang)?.includes(search)
+                String(item.mid_barang)?.includes(search),
         );
         setFilteredData(filtered);
         setCurrentPage(1);
@@ -102,9 +102,9 @@ const StockOnHandTable = () => {
         filteredData.forEach((item, index) => {
             tableRows.push([
                 index + 1,
-                item.barang?.mid_barang,
-                item.barang?.nama_barang,
-                item.barang?.uom,
+                item.mid_barang,
+                item.nama_barang,
+                item.uom,
                 item.qty_soh,
                 item.last_update,
             ]);
@@ -124,12 +124,12 @@ const StockOnHandTable = () => {
         doc.text(
             `Generated automatically by system`,
             14,
-            doc.internal.pageSize.height - 10
+            doc.internal.pageSize.height - 10,
         );
         doc.text(
             `Page 1 of ${pageCount}`,
             260,
-            doc.internal.pageSize.height - 10
+            doc.internal.pageSize.height - 10,
         );
 
         const filename = `Stock_On_Hand_${getFormattedDate()}.pdf`;
@@ -225,14 +225,12 @@ const StockOnHandTable = () => {
                                                 {indexOfFirstRow + index + 1}
                                             </TableCell>
                                             <TableCell className="font-medium">
-                                                {item.barang?.mid_barang}
+                                                {item.mid_barang}
                                             </TableCell>
                                             <TableCell>
-                                                {item.barang?.nama_barang}
+                                                {item.nama_barang}
                                             </TableCell>
-                                            <TableCell>
-                                                {item.barang?.uom}
-                                            </TableCell>
+                                            <TableCell>{item.uom}</TableCell>
                                             <TableCell>
                                                 <Badge
                                                     variant={

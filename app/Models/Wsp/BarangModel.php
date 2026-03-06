@@ -23,7 +23,7 @@ class BarangModel extends Model
 
     public function stock()
     {
-        return $this->hasMany(StockOnHandWspModel::class);
+        return $this->hasMany(StockOnHandWspModel::class, 'barang_id');
     }
 
     public function transaksi()

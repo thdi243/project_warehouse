@@ -24,7 +24,7 @@
                 </li>
             </ul>
 
-            <div class="tab-content border border-top-0 p-4 bg-white shadow-sm mb-4" id="ikatTerpalTabsContent">
+            <div class="tab-content border border-top-0 p-4 shadow-sm mb-4" id="ikatTerpalTabsContent">
 
                 <!-- Tab Fee -->
                 <div class="tab-pane fade show active" id="fee" role="tabpanel" aria-labelledby="fee-tab">

@@ -2,23 +2,24 @@
 
 namespace App\Http\Controllers\Wsp\purchase_requesition;
 
-use App\Models\User;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Models\Wsp\BarangModel;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Http\Controllers\Controller;
 use App\Jobs\SendPrApprovalEmail;
 use App\Models\NotificationsModel;
+use App\Models\User;
+use App\Models\Wsp\BarangModel;
+use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionApprovalModel;
+use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionItemApprovalModel;
+use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionModel;
+use App\Models\Wsp\purchase_requesition\WspStockReservations;
+use App\Models\Wsp\stock_manage\StockOnHandWspModel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use App\Models\Wsp\stock_manage\StockOnHandWspModel;
-use App\Models\Wsp\purchase_requesition\WspStockReservations;
-use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionModel;
-use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionApprovalModel;
+use Illuminate\Support\Str;
 
 class WspPurchaseRequesitionController extends Controller
 {
@@ -93,13 +94,26 @@ class WspPurchaseRequesitionController extends Controller
                 }
             }
 
-            $prNumber = '50000' . random_int(10000, 99999);
+            // $noDoc = 
+            // $prNumber = '50000' . random_int(10000, 99999);
+
+            $no = WspPurchaseRequesitionModel::count() + 1;
+
+            // Ambil department
+            $dept = strtoupper(trim($request->department));
+
+            // Ambil bulan dan tahun
+            $bulan = date('m');
+            $tahun = date('Y');
+
+            // Format no_doc
+            $noDoc = $no . '/' . $dept . '/' . $bulan . '/' . $tahun;
 
             $pr = WspPurchaseRequesitionModel::create([
-                'pr_number'     => $prNumber,
+                'pr_number'     => null,
                 'pr_date'       => $request->pr_date,
                 'hal'           => $request->hal,
-                'no_doc'        => $request->no_doc,
+                'no_doc'        => $noDoc,
                 'requested_by'  => $request->requested_by,
                 'department'    => strtolower(trim($request->department)),
                 'jenis'         => $request->jenis,
@@ -110,6 +124,8 @@ class WspPurchaseRequesitionController extends Controller
             ]);
 
             // 5. Create PR Items & Confirm Reservations
+            $createdItems = [];
+
             foreach ($request->items as $item) {
                 $barang = BarangModel::where('mid_barang', $item['mid'])->first();
 
@@ -121,12 +137,14 @@ class WspPurchaseRequesitionController extends Controller
                     ], 422);
                 }
 
-                $pr->items()->create([
+                $prItem = $pr->items()->create([
                     'pr_id'      => $pr->id,
                     'barang_id'  => $barang->id,
                     'qty'        => $item['qty'],
                     'keterangan' => $item['keterangan'] ?? null,
                 ]);
+
+                $createdItems[] = $prItem;
 
                 $stock = StockOnHandWspModel::where('barang_id', $barang->id)
                     ->orderByDesc('last_update')
@@ -141,22 +159,28 @@ class WspPurchaseRequesitionController extends Controller
                     ], 422);
                 }
 
-                $currentReserved = WspStockReservations::where('mid_barang', $item['mid'])
-                    ->where('status', 'booked')
-                    ->where('expired_at', '>', now())
-                    ->where('id', '!=', $item['reservation_id'])
-                    ->sum('qty');
+                $stock = StockOnHandWspModel::where('barang_id', $barang->id)
+                    ->orderBy('last_update', 'desc')
+                    ->lockForUpdate()
+                    ->first();
 
-                $availableStock = $stock->unrest - $currentReserved;
-
-                $stock->unrest -= $item['qty'];
-                if ($stock->unrest < 0) {
-                    $stock->unrest = 0;
+                if (!$stock) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status'  => false,
+                        'message' => "Stock tidak ditemukan untuk MID {$item['mid']}"
+                    ], 422);
                 }
 
-                $stock->qty_soh = $stock->unrest + $stock->qual_insp + $stock->blocked + $stock->transf;
-                $stock->last_update = now();
-                $stock->save();
+                // UPDATE LANGSUNG (tanpa hitung2 lagi)
+                $stock->update([
+                    'unrest'      => 0,
+                    'qual_insp'   => 0,
+                    'blocked'     => 0,
+                    'transf'      => 0,
+                    'qty_soh'     => 0,
+                    'last_update' => now(),
+                ]);
 
                 $reservation = WspStockReservations::find($item['reservation_id']);
 
@@ -166,8 +190,33 @@ class WspPurchaseRequesitionController extends Controller
                 ]);
             }
 
-            $this->createApprovalFlow($pr, $request->ttd);
+            $approvals = $this->createApprovalFlow($pr, $request->ttd);
 
+            // Item Approval
+            $filteredApprovals = collect($approvals)->whereIn('role', [
+                'Manager User',
+                'Manager Warehouse'
+            ]);
+
+            $bulkInsert = [];
+
+            foreach ($createdItems as $item) {
+
+                foreach ($filteredApprovals as $approval) {
+
+                    $bulkInsert[] = [
+                        'pr_item_id'  => $item->id,
+                        'approval_id' => $approval->id,
+                        'status'      => 'pending',
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ];
+                }
+            }
+
+            WspPurchaseRequesitionItemApprovalModel::insert($bulkInsert);
+
+            // Notification
             $pendingApprovals = $pr->approval()
                 ->where('status', 'pending')
                 ->get();
@@ -175,11 +224,19 @@ class WspPurchaseRequesitionController extends Controller
             foreach ($pendingApprovals as $approval) {
                 if (!$approval->approver_id) continue;
 
+                $user = User::find($approval->approver_id);
+
+                if ($user && $user->jabatan == 'foreman') {
+                    $url = "/purchase-requesition/index";
+                } else {
+                    $url = "/app/approval-pr/{$pr->id}";
+                }
+
                 NotificationsModel::create([
                     'user_id' => $approval->approver_id,
-                    'title'   => 'Approval PR Baru',
-                    'message' => "PR {$pr->pr_number} dari {$pr->requested_by} dept. {$pr->department} menunggu persetujuan Anda",
-                    'url'     => "/app/approval-pr/{$pr->id}",
+                    'title'   => 'Approval PR',
+                    'message' => "PR dari {$pr->requested_by} dept. {$pr->department} menunggu persetujuan Anda",
+                    'url'     => $url,
                     'is_read' => false,
                 ]);
             }
@@ -189,7 +246,6 @@ class WspPurchaseRequesitionController extends Controller
             return response()->json([
                 'status'      => true,
                 'message' => 'Purchase Requisition berhasil dibuat.',
-                'data'    => $pr->load('items.barang')
             ], 200);
         } catch (\Exception $e) {
 
@@ -221,7 +277,7 @@ class WspPurchaseRequesitionController extends Controller
 
     public function getDataPR()
     {
-        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang')
+        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval', 'approval')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -236,66 +292,88 @@ class WspPurchaseRequesitionController extends Controller
         $keyword = $request->keyword;
         $currentSessionId = $request->header('X-Session-Id');
 
-        // Subquery untuk mendapatkan last_update terbaru per barang
-        $latestPerBarang = StockOnHandWspModel::select('barang_id')
+        // subquery: last SOH per barang
+        $latestSOH = StockOnHandWspModel::select('barang_id')
             ->selectRaw('MAX(last_update) as last_update')
             ->groupBy('barang_id');
 
-        // Query dasar dengan join ke subquery latest
-        $query = StockOnHandWspModel::with(['barang:id,mid_barang,nama_barang,uom'])
-            ->joinSub($latestPerBarang, 'latest', function ($join) {
-                $join->on('wsp_stock_on_hand.barang_id', '=', 'latest.barang_id')
-                    ->on('wsp_stock_on_hand.last_update', '=', 'latest.last_update');
+        // START DARI MASTER BARANG
+        $query = BarangModel::query()
+            ->leftJoinSub($latestSOH, 'latest', function ($join) {
+                $join->on('wsp_barang.id', '=', 'latest.barang_id');
             })
-            ->whereHas('barang', function ($q) use ($keyword) {
-                $q->where('mid_barang', 'LIKE', "%{$keyword}%")
-                    ->orWhere('nama_barang', 'LIKE', "%{$keyword}%");
-            });
-
-        $data = $query
-            ->orderBy('wsp_stock_on_hand.last_update', 'desc')
+            ->leftJoin('wsp_stock_on_hand as soh', function ($join) {
+                $join->on('wsp_barang.id', '=', 'soh.barang_id')
+                    ->on('soh.last_update', '=', 'latest.last_update');
+            })
+            ->where(function ($q) use ($keyword) {
+                $q->where('wsp_barang.mid_barang', 'LIKE', "%{$keyword}%")
+                    ->orWhere('wsp_barang.nama_barang', 'LIKE', "%{$keyword}%");
+            })
+            ->select([
+                'soh.id as soh_id',
+                'wsp_barang.id as barang_id',
+                'wsp_barang.mid_barang',
+                'wsp_barang.nama_barang',
+                'wsp_barang.uom',
+                DB::raw('COALESCE(soh.qty_soh, 0) as qty_soh'),
+                'soh.last_update',
+            ])
+            ->orderBy('soh.last_update', 'desc')
             ->limit(10)
-            ->get()
-            ->map(function ($item) use ($currentSessionId) {
-                $mid = $item->barang->mid_barang;
+            ->get();
 
-                // Cek reservasi aktif
-                $activeReservations = WspStockReservations::where('mid_barang', $mid)
-                    ->where('status', 'booked')
-                    ->where('expired_at', '>', now())
-                    ->get();
+        $data = $query->map(function ($item) use ($currentSessionId) {
 
-                $otherUsersReservations = $activeReservations->where('session_id', '!=', $currentSessionId);
-                $myReservations = $activeReservations->where('session_id', '=', $currentSessionId);
+            // reservasi (TETAP SAMA)
+            $activeReservations = WspStockReservations::where('mid_barang', $item->mid_barang)
+                ->where('status', 'booked')
+                ->where('expired_at', '>', now())
+                ->get();
 
-                $reservedByOthers = $otherUsersReservations->sum('qty');
-                $reservedByMe = $myReservations->sum('qty');
-                $totalReserved = $reservedByOthers + $reservedByMe;
+            $reservedByOthers = $activeReservations
+                ->where('session_id', '!=', $currentSessionId)
+                ->sum('qty');
 
-                $availableQty = max(0, $item->qty_soh - $totalReserved);
-                $isBeingBooked = $activeReservations->count() > 0;
-                $isAvailable = $item->qty_soh > 0 && !$isBeingBooked;
+            $reservedByMe = $activeReservations
+                ->where('session_id', '=', $currentSessionId)
+                ->sum('qty');
 
-                return [
-                    'id' => $item->id,
-                    'barang' => $item->barang,
-                    'qty_soh' => $item->qty_soh,
-                    'reserved_by_others' => $reservedByOthers,
-                    'reserved_by_me' => $reservedByMe,
-                    'total_reserved' => $totalReserved,
-                    'available_qty' => $availableQty,
-                    'is_being_booked' => $isBeingBooked,
-                    'is_available' => $isAvailable,
-                    'last_update' => $item->last_update,
-                    'booking_info' => $this->getBookingInfo(
-                        $isBeingBooked,
-                        $reservedByOthers,
-                        $reservedByMe,
-                        $availableQty,
-                        $item->qty_soh
-                    ),
-                ];
-            });
+            $totalReserved = $reservedByOthers + $reservedByMe;
+            $availableQty = max(0, $item->qty_soh - $totalReserved);
+            $isBeingBooked = $activeReservations->count() > 0;
+            // $isAvailable = $item->qty_soh > 0 && !$isBeingBooked;
+            $isAvailable = !$isBeingBooked;
+
+            return [
+                // ID TETAP ADA (pakai SOH ID kalau ada, fallback barang_id)
+                'id' => $item->soh_id ?? $item->barang_id,
+                'barang' => [
+                    'id' => $item->barang_id,
+                    'mid_barang' => $item->mid_barang,
+                    'nama_barang' => $item->nama_barang,
+                    'uom' => $item->uom,
+                ],
+
+                'qty_soh' => (int) $item->qty_soh,
+                'reserved_by_others' => $reservedByOthers,
+                'reserved_by_me' => $reservedByMe,
+                'total_reserved' => $totalReserved,
+                'available_qty' => $availableQty,
+                'is_being_booked' => $isBeingBooked,
+                'is_available' => $isAvailable,
+                'last_update' => $item->last_update,
+
+                // booking_info TETAP
+                'booking_info' => $this->getBookingInfo(
+                    $isBeingBooked,
+                    $reservedByOthers,
+                    $reservedByMe,
+                    $availableQty,
+                    $item->qty_soh
+                ),
+            ];
+        });
 
         return response()->json([
             'status' => true,
@@ -360,6 +438,8 @@ class WspPurchaseRequesitionController extends Controller
             'approval.approver.signature'
         ])->findOrFail($id);
 
+        // dd($pr);
+
         // Dummy TTD berdasarkan status
         $dummyApproved = public_path('storage/images/ttd/approved_sticker.png');
         $dummyRejected = public_path('storage/images/ttd/rejected_sticker.png');
@@ -418,14 +498,16 @@ class WspPurchaseRequesitionController extends Controller
             ];
         }
 
-        Log::info('PR APPROVERS RIWAYAT', $approvers);
+        // Log::info('PR APPROVERS RIWAYAT', $pr[]);
 
         $pdf = Pdf::loadView('pdf.wsp_pr_riwayat', [
             'pr'        => $pr,
             'approvers' => $approvers
         ])->setPaper('A5', 'landscape');
 
-        return $pdf->stream("PR-{$pr->pr_number}.pdf");
+        $prNumber = $pr->pr_number ?? 'Waiting';
+
+        return $pdf->stream("PR-{$prNumber}.pdf");
     }
 
     public function reserved(Request $request)
@@ -463,7 +545,10 @@ class WspPurchaseRequesitionController extends Controller
             // Cek barang
             $barang = BarangModel::where('mid_barang', $mid)->first();
             if (!$barang) {
-                throw new \Exception('Barang tidak ditemukan');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Barang tidak ditemukan',
+                ], 422);
             }
 
             // Lock stok juga (untuk cek available stock akurat)
@@ -472,7 +557,10 @@ class WspPurchaseRequesitionController extends Controller
                 ->first();
 
             if (!$stock) {
-                throw new \Exception('Data stok tidak ditemukan');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data stok tidak ditemukan',
+                ], 422);
             }
 
             // Hitung total reserved (fresh setelah lock)
@@ -481,11 +569,15 @@ class WspPurchaseRequesitionController extends Controller
                 ->where('expired_at', '>', now())
                 ->sum('qty');
 
-            $availableStock = $stock->qty_soh - $totalReserved;
+            // $availableStock = $stock->qty_soh - $totalReserved;
 
-            if ($availableStock < $requestedQty) {
-                throw new \Exception('Stok tidak cukup. Tersedia: ' . $availableStock);
-            }
+            // if ($availableStock < $requestedQty) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Stok tidak cukup',
+            //         'available_stock' => $availableStock,
+            //     ], 422);
+            // }
 
             // Buat reservasi baru (hanya satu yang bisa sampai sini)
             $reservation = WspStockReservations::create([
@@ -505,74 +597,6 @@ class WspPurchaseRequesitionController extends Controller
                 'expired_at' => $reservation->expired_at->format('Y-m-d H:i:s'),
             ]);
         }, 5);
-
-
-        // DB::beginTransaction();
-        // try {
-        //     $mid = $request->mid;
-        //     $requestedQty = $request->qty;
-        //     $sessionId = $request->session_id;
-
-        //     $alreadyBooked = WspStockReservations::where('mid_barang', $mid)
-        //         ->where('status', 'booked')
-        //         ->where('expired_at', '>', now())
-        //         ->exists();
-
-        //     if ($alreadyBooked) {
-        //         return response()->json([
-        //             'message' => 'Barang sedang dibooking. Silakan tunggu hingga expired.',
-        //         ], 423);
-        //     }
-
-        //     // Cek SOH
-        //     $barang = BarangModel::where('mid_barang', $mid)->first();
-        //     if (!$barang) {
-        //         DB::rollBack();
-        //         return response()->json(['message' => 'Barang tidak ditemukan'], 404);
-        //     }
-
-        //     $stock = StockOnHandWspModel::where('barang_id', $barang->id)->first();
-        //     if (!$stock) {
-        //         DB::rollBack();
-        //         return response()->json(['message' => 'Data stok tidak ditemukan'], 404);
-        //     }
-
-        //     $totalReserved = WspStockReservations::where('mid_barang', $mid)
-        //         ->where('status', 'booked')
-        //         ->where('expired_at', '>', now())
-        //         ->sum('qty');
-
-        //     $availableStock = $stock->qty_soh - $totalReserved;
-
-        //     // Buat reservasi (expired dalam 30 menit)
-        //     $reservation = WspStockReservations::create([
-        //         'mid_barang' => $mid,
-        //         'qty' => $requestedQty,
-        //         'session_id' => $sessionId,
-        //         'user_id' => Auth::id(),
-        //         'status' => 'booked',
-        //         'reserved_at' => now(),
-        //         'expired_at' => now()->addMinutes(15),
-        //     ]);
-
-        //     DB::commit();
-
-        //     return response()->json([
-        //         'reservation_id' => $reservation->id,
-        //         'message' => 'Barang berhasil dibooking',
-        //         'expires_in_minutes' => 15,
-        //         'expired_at' => $reservation->expired_at->format('Y-m-d H:i:s'),
-        //     ]);
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
-        //     Log::error('Reserve error', [
-        //         'error' => $e->getMessage(),
-        //         'trace' => $e->getTraceAsString(),
-        //     ]);
-        //     return response()->json([
-        //         'message' => $e->getMessage()
-        //     ], 500);
-        // }
     }
 
     public function release($reservationId)
@@ -627,8 +651,6 @@ class WspPurchaseRequesitionController extends Controller
 
         $deptMap = [
             'ite' => 'engineering',
-            'it'  => 'engineering',
-            'eng' => 'engineering',
         ];
 
         $approvalDept = $deptMap[$pr->department] ?? $pr->department;
@@ -639,7 +661,10 @@ class WspPurchaseRequesitionController extends Controller
             ->first();
 
         if (!$deptHead) {
-            throw new \Exception("Dept Head untuk departemen {$approvalDept} tidak ditemukan");
+            return response()->json([
+                'success' => false,
+                'message' => 'Dept Head untuk departemen' . $approvalDept . 'tidak ditemukan',
+            ], 422);
         }
 
         // Dept Head Warehouse
@@ -648,7 +673,10 @@ class WspPurchaseRequesitionController extends Controller
             ->first();
 
         if (!$warehouseHead) {
-            throw new \Exception("Dept Head warehouse tidak ditemukan");
+            return response()->json([
+                'success' => false,
+                'message' => 'Dept Head warehouse tidak ditemukan',
+            ], 422);
         }
 
         // Foreman WSP
@@ -657,7 +685,10 @@ class WspPurchaseRequesitionController extends Controller
             ->first();
 
         if (!$foreman) {
-            throw new \Exception("Foreman WSP tidak ditemukan");
+            return response()->json([
+                'success' => false,
+                'message' => 'Foreman WSP tidak ditemukan',
+            ], 422);
         }
 
         $ttdPath = null;
@@ -685,23 +716,25 @@ class WspPurchaseRequesitionController extends Controller
             ],
             [
                 'level'       => 2,
-                'role'        => 'manager_user',
+                'role'        => 'Manager User',
                 'approver_id' => $deptHead->id,
                 'status'      => 'pending',
             ],
             [
                 'level'       => 3,
-                'role'        => 'manager_warehouse',
+                'role'        => 'Manager Warehouse',
                 'approver_id' => $warehouseHead->id,
                 'status'      => 'pending',
             ],
             [
                 'level'       => 4,
-                'role'        => 'foreman_wsp',
+                'role'        => 'Foreman Wsp',
                 'approver_id' => $foreman->id,
                 'status'      => 'pending',
             ],
         ];
+
+        $createdApprovals = [];
 
         foreach ($approvals as $approvalData) {
 
@@ -716,6 +749,8 @@ class WspPurchaseRequesitionController extends Controller
                 'ttd'         => $approvalData['ttd'] ?? null,
             ]);
 
+            $createdApprovals[] = $approval;
+
             if ($approval->status === 'pending') {
                 $approver = User::find($approval->approver_id);
 
@@ -728,11 +763,13 @@ class WspPurchaseRequesitionController extends Controller
                 }
             }
         }
+
+        return $createdApprovals;
     }
 
     public function getDataApproval($id)
     {
-        $pr = WspPurchaseRequesitionModel::with(['items.barang', 'approval.approver'])
+        $pr = WspPurchaseRequesitionModel::with(['items.barang.stock', 'approval.approver'])
             ->findOrFail($id);
 
         $currentUserId = Auth::id();
@@ -767,6 +804,9 @@ class WspPurchaseRequesitionController extends Controller
             'status'  => 'required|in:approved,rejected',
             'comment' => 'nullable|string|max:500',
             'ttd'     => 'required_if:status,approved|nullable',
+            'no_pr'   => 'nullable',
+            'items'   => 'nullable|array',
+            'items.*' => 'exists:wsp_purchase_requesition_items,id'
         ]);
 
         try {
@@ -774,6 +814,29 @@ class WspPurchaseRequesitionController extends Controller
 
             $pr = WspPurchaseRequesitionModel::with('approval')->findOrFail($id);
             $currentUserId = Auth::id();
+
+            $approval = $pr->approval()
+                ->where('approver_id', $currentUserId)
+                ->where('status', 'pending')
+                ->first();
+
+            if (!$approval) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki hak untuk melakukan approval PR ini.'
+                ], 403);
+            }
+
+            // update item yang dipilih
+            if (!empty($request->items)) {
+
+                WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)
+                    ->whereIn('pr_item_id', $request->items)
+                    ->update([
+                        'status' => $request->status,
+                        'catatan' => $request->comment
+                    ]);
+            }
 
             $approval = $pr->approval()
                 ->where('approver_id', $currentUserId)
@@ -788,14 +851,22 @@ class WspPurchaseRequesitionController extends Controller
             $pendingPrevious = $previousApprovals->where('status', 'pending');
             if ($pendingPrevious->isNotEmpty()) {
                 $pendingRole = $pendingPrevious->first()->role;
-                throw new \Exception("Belum di-approve oleh {$pendingRole}. Harap tunggu urutan.");
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Belum di approve oleh ' . $pendingRole . '. Harap tunggu urutan.',
+                ], 422);
             }
 
             // Jika ada level sebelumnya yang sudah rejected → langsung tolak PR
             $rejectedPrevious = $previousApprovals->where('status', 'rejected');
             if ($rejectedPrevious->isNotEmpty()) {
                 $pr->update(['status' => 'rejected']);
-                throw new \Exception("PR sudah ditolak oleh approver sebelumnya.");
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PR sudah ditolak oleh approver sebelumnya.',
+                ], 422);
             }
 
             // Simpan TTD jika status approved
@@ -805,7 +876,10 @@ class WspPurchaseRequesitionController extends Controller
                 $image = base64_decode($base64);
 
                 if ($image === false) {
-                    throw new \Exception('Format TTD tidak valid');
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Format TTD tidak valid.',
+                    ], 422);
                 }
 
                 $fileName = "approval_{$approval->id}_" . Auth::user()->username . '_' . time() . '.png';
@@ -823,17 +897,29 @@ class WspPurchaseRequesitionController extends Controller
                 'action_by' => Auth::id(),
             ]);
 
+            if ($request->filled('no_pr')) {
+                $pr->update([
+                    'pr_number' => $request->no_pr
+                ]);
+            }
+
             // Refresh approvals
-            $allApprovals = $pr->approval()->get();
+            $currentLevel = $approval->level;
 
-            // Cek status keseluruhan PR
-            $pending = $allApprovals->where('status', 'pending');
-            $rejected = $allApprovals->where('status', 'rejected');
-
-            if ($rejected->isNotEmpty()) {
+            // jika ada yang reject
+            $rejected = $pr->approval()->where('status', 'rejected')->exists();
+            if ($rejected) {
                 $pr->update(['status' => 'rejected']);
-            } elseif ($pending->isEmpty()) {
+            }
+
+            // jika level 3 approve → PR approved
+            elseif ($request->status === 'approved' && $currentLevel == 3) {
                 $pr->update(['status' => 'approved']);
+            }
+
+            // jika level 4 approve → PR finished
+            elseif ($request->status === 'approved' && $currentLevel == 4) {
+                $pr->update(['status' => 'finished']);
             }
 
             DB::commit();

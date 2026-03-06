@@ -111,7 +111,6 @@ Route::prefix('wsp')->group(function () {
     Route::post('/store/rak', [WspRakController::class, 'storeRak']);
     Route::get('/data/stock/barang', [WspManRakController::class, 'getDataBarang']);
     Route::get('/show/stock/barang/{id}', [WspManRakController::class, 'show']);
-    Route::post('/store/transaksi', [TransaksiWspController::class, 'store']);
 
     Route::get('incoming/getData', [WspIncomingController::class, 'getDataIncoming']);
     Route::get('outgoing/getData', [WspOutgoingController::class, 'getDataOutgoing']);

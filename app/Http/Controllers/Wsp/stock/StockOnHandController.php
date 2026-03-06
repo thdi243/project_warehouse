@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Wsp\stock;
 
 use Illuminate\Http\Request;
 use App\Models\Wsp\BarangModel;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -17,16 +18,29 @@ class StockOnHandController extends Controller
     public function getDataSOH()
     {
         try {
+            // subquery: ambil last_update terbaru per barang
             $latestPerBarang = StockOnHandWspModel::select('barang_id')
                 ->selectRaw('MAX(last_update) as last_update')
                 ->groupBy('barang_id');
 
-            $data = StockOnHandWspModel::with(['barang:id,mid_barang,nama_barang,uom'])
-                ->joinSub($latestPerBarang, 'latest', function ($join) {
-                    $join->on('wsp_stock_on_hand.barang_id', '=', 'latest.barang_id')
-                        ->on('wsp_stock_on_hand.last_update', '=', 'latest.last_update');
+            $data = BarangModel::query()
+                ->leftJoinSub($latestPerBarang, 'latest', function ($join) {
+                    $join->on('wsp_barang.id', '=', 'latest.barang_id');
                 })
-                ->orderBy('wsp_stock_on_hand.last_update', 'desc')
+                ->leftJoin('wsp_stock_on_hand as soh', function ($join) {
+                    $join->on('wsp_barang.id', '=', 'soh.barang_id')
+                        ->on('soh.last_update', '=', 'latest.last_update');
+                })
+                ->select([
+                    'soh.id',
+                    'wsp_barang.id as barang_id',
+                    'wsp_barang.mid_barang',
+                    'wsp_barang.nama_barang',
+                    'wsp_barang.uom',
+                    DB::raw('COALESCE(soh.qty_soh, 0) as qty_soh'),
+                    'soh.last_update',
+                ])
+                ->orderBy('soh.last_update', 'desc')
                 ->get();
 
             return response()->json([

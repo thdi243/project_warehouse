@@ -14,7 +14,8 @@ class WspPurchaseRequesitionItemsModel extends Model
         'pr_id',
         'barang_id',
         'qty',
-        'keterangan'
+        'keterangan',
+        'status'
     ];
 
     public function barang()
@@ -26,5 +27,10 @@ class WspPurchaseRequesitionItemsModel extends Model
     {
         return $this->hasOne(StockOnHandWspModel::class, 'barang_id', 'barang_id')
             ->latest('last_update');
+    }
+
+    public function approval()
+    {
+        return $this->hasMany(WspPurchaseRequesitionItemApprovalModel::class, 'pr_item_id');
     }
 }
