@@ -368,6 +368,15 @@
                             </a>
                         </li>
                     @endcan
+
+                    @can('permission', 'pr-form')
+                        <li class="nav-item">
+                            <a href="{{ url('/app/purchase-requesition/form') }}" target="_blank"
+                                class="nav-link menu-link {{ request()->Is('/app/purchase-requesition/form') ? 'active' : '' }}">
+                                <i class="mdi mdi-text-box-plus"></i> <span data-key="t-stock-gula">Form PR</span>
+                            </a>
+                        </li>
+                    @endcan
                     {{-- @endif --}}
 
                     {{-- Data Master --}}
