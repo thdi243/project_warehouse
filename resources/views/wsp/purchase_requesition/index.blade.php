@@ -682,10 +682,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                            ` : ''}
                             </div>
 
                         </div>
@@ -751,25 +751,38 @@
 
                 const textToCopy = rows.join('\n');
 
-                navigator.clipboard.writeText(textToCopy)
-                    .then(() => {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: 'Format SAP berhasil disalin ke clipboard',
-                            timer: 1500,
-                            showConfirmButton: false
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textToCopy)
+                        .then(() => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: 'Format SAP berhasil disalin ke clipboard',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        })
+                        .catch(err => {
+                            console.error(err);
                         });
-                    })
-                    .catch(err => {
-                        console.error(err);
+                } else {
 
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal',
-                            text: 'Gagal menyalin data ke clipboard'
-                        });
+                    // fallback lama
+                    const textarea = document.createElement("textarea");
+                    textarea.value = textToCopy;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textarea);
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: 'Format SAP berhasil disalin ke clipboard',
+                        timer: 1500,
+                        showConfirmButton: false
                     });
+                }
             }
 
             // TTD
