@@ -29,7 +29,7 @@ import { getTheme, setTheme } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
-    { label: "Home", href: "/app/dashboard" },
+    // { label: "Home", href: "/app/dashboard" },
     { label: "Purchase Requesition", href: "/app/purchase-requesition/form" },
     { label: "Stock On Hand", href: "/app/stock-on-hand" },
 ];
@@ -103,7 +103,7 @@ export default function Topbar() {
                                                     "px-3 py-2 text-sm rounded-md transition",
                                                     active
                                                         ? "bg-accent text-foreground font-semibold"
-                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent",
                                                 )}
                                             >
                                                 {item.label}
@@ -209,7 +209,7 @@ export default function Topbar() {
                                                     "px-3 py-2 text-sm rounded-md transition",
                                                     active
                                                         ? "bg-accent text-foreground font-semibold"
-                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent",
                                                 )}
                                             >
                                                 {item.label}
