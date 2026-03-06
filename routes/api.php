@@ -137,6 +137,7 @@ Route::prefix('wfg')->group(function () {
 });
 
 Route::prefix('notifications')->group(function () {
+    Route::get('/index', [NotificationController::class, 'index']);
     Route::post('/read/{id}', [NotificationController::class, 'markAsRead']);
     Route::post('/show/kalibrasi', [NotificationController::class, 'showNotification'])->name('notifications.kalibrasi');
 });

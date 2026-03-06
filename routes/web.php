@@ -181,9 +181,10 @@ Route::middleware('auth')->group(function () {
             Route::delete('/release-session/{id}', [WspPurchaseRequesitionController::class, 'releaseSession'])->name('stock.pr.release-session');
             Route::delete('/delete/{id}', [WspPurchaseRequesitionController::class, 'destroy'])->name('stock.pr.delete');
             Route::get('/show/{id}', [WspPurchaseRequesitionController::class, 'show'])->name('stock.pr.show');
-            Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
             Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action'])->name('stock.pr.approval-action');
         });
+
+        Route::get('purchase-requesition/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
     });
 
     // Warehouse Raw Material

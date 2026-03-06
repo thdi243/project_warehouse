@@ -17,7 +17,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, Printer } from "lucide-react";
+import { Eye, Printer, Inbox } from "lucide-react";
 
 const statusVariant = {
     pending: "warning",
@@ -55,7 +55,7 @@ export default function RiwayatPR() {
     const handlePrintPdf = (pr) => {
         window.open(
             `/api/purchase-requesition/print-riwayat/${pr.id}`,
-            "_blank"
+            "_blank",
         );
     };
 
@@ -189,7 +189,19 @@ export default function RiwayatPR() {
 
             <CardContent>
                 {loading ? (
-                    <p className="text-sm text-muted-foreground">Loading...</p>
+                    <div className="flex justify-center py-10 text-sm text-muted-foreground">
+                        Loading data...
+                    </div>
+                ) : data.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
+
+                        <h3 className="text-lg font-semibold">Belum ada PR</h3>
+
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Anda belum pernah membuat Purchase Requisition.
+                        </p>
+                    </div>
                 ) : (
                     <Table>
                         <TableHeader>

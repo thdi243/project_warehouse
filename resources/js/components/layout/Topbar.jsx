@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Sun, Moon, User, LogOut, Menu, History } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
@@ -118,6 +119,8 @@ export default function Topbar() {
 
                 {/* RIGHT */}
                 <div className="flex items-center gap-1">
+                    <NotificationBell />
+
                     {/* THEME TOGGLE */}
                     <Button
                         variant="ghost"
