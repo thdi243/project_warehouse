@@ -18,6 +18,7 @@ class BarangModel extends Model
         'nama_barang',
         'uom',
         's_loc',
+        'plant',
         'image',
     ];
 

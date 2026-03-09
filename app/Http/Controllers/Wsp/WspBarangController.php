@@ -17,21 +17,6 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class WspBarangController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -42,7 +27,8 @@ class WspBarangController extends Controller
             'mid_barang'  => 'required|digits_between:1,8|integer',
             'nama_barang' => 'required|string|max:255',
             'uom'         => 'required|string|max:50',
-            's_loc'         => 'nullable|string|max:50',
+            's_loc'       => 'nullable|string|max:50',
+            'plant'       => 'nullable|string|max:50',
             'image'       => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
@@ -68,6 +54,7 @@ class WspBarangController extends Controller
                 'nama_barang' => $request->nama_barang,
                 'uom'         => $request->uom,
                 's_loc'       => $request->s_loc,
+                'plant'       => $request->plant,
                 'image'       => $imagePath,
             ]);
 
@@ -134,7 +121,8 @@ class WspBarangController extends Controller
                     'mid_barang'  => $barang->mid_barang,
                     'nama_barang' => $barang->nama_barang,
                     'uom'         => $barang->uom,
-                    's_loc'         => $barang->s_loc,
+                    's_loc'       => $barang->s_loc,
+                    'plant'       => $barang->plant,
                     'username'    => $barang->user->username ?? null,
                     'image'       => $barang->image ? asset('storage/' . $barang->image) : null,
                 ];
@@ -192,14 +180,6 @@ class WspBarangController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
@@ -208,7 +188,8 @@ class WspBarangController extends Controller
             'midBarangEdit'  => 'required|digits_between:1,8|integer',
             'namaBarangEdit' => 'required|string|max:255',
             'uomEdit'        => 'required|string|max:50',
-            'sLocEdit'        => 'required|string|max:50',
+            'sLocEdit'       => 'required|string|max:50',
+            'plantEdit'      => 'nullable|string|max:50',
             'imageEdit'      => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
@@ -225,6 +206,7 @@ class WspBarangController extends Controller
         $barang->nama_barang = $request->namaBarangEdit;
         $barang->uom = $request->uomEdit;
         $barang->s_loc = $request->sLocEdit;
+        $barang->plant = $request->plantEdit;
 
         if ($request->hasFile('imageEdit')) {
             $barang->image = $request->file('imageEdit')->store('images/wsp', 'public');
@@ -294,6 +276,7 @@ class WspBarangController extends Controller
                 $namaBarang = trim((string) $worksheet->getCell('B' . $row)->getValue() ?? '');
                 $uom        = trim((string) $worksheet->getCell('C' . $row)->getValue() ?? '');
                 $s_loc      = trim((string) $worksheet->getCell('D' . $row)->getValue() ?? '');
+                $plant      = trim((string) $worksheet->getCell('E' . $row)->getValue() ?? '');
 
                 // Normalisasi MID seperti di WFG
                 $midDigits = preg_replace('/\D+/', '', $rawMid);
@@ -336,6 +319,7 @@ class WspBarangController extends Controller
                     'nama_barang'  => strtoupper($namaBarang),
                     'uom'          => strtoupper($uom),
                     's_loc'        => strtoupper($s_loc),
+                    'plant'        => strtoupper($plant),
                     'created_by'   => Auth::id() ?? 1,
                     'updated_at'   => now(),
                     'created_at'   => now(),
@@ -364,6 +348,7 @@ class WspBarangController extends Controller
                             'nama_barang' => $item['nama_barang'],
                             'uom'         => $item['uom'],
                             's_loc'       => $item['s_loc'],
+                            'plant'       => $item['plant'],
                             'updated_at'  => now(),
                         ]);
                     } else {
@@ -404,26 +389,29 @@ class WspBarangController extends Controller
         $sheet->setCellValue('B1', 'Nama Barang');
         $sheet->setCellValue('C1', 'Uom');
         $sheet->setCellValue('D1', 'SLoc');
+        $sheet->setCellValue('E1', 'Plant');
 
         // Add example data
         $sheet->setCellValue('A2', 12345678);
         $sheet->setCellValue('B2', 'Contoh Barang 1');
         $sheet->setCellValue('C2', 'Pcs');
         $sheet->setCellValue('D2', 'G001');
+        $sheet->setCellValue('E2', '1006');
 
         $sheet->setCellValue('A3', 87654321);
         $sheet->setCellValue('B3', 'Contoh Barang 2');
         $sheet->setCellValue('C3', 'Pcs');
         $sheet->setCellValue('D3', 'G001');
+        $sheet->setCellValue('E3', '1006');
 
         // Auto width columns
-        foreach (range('A', 'D') as $column) {
+        foreach (range('A', 'E') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
         // Style header
-        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:D1')->getFill()
+        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:E1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFCCCCCC');
 
