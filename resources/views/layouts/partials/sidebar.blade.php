@@ -64,6 +64,13 @@
                                 <span data-key="rak-dashboard">Rak Dashboard</span>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a href="{{ route('dashboard.wrm') }}"
+                                class="nav-link menu-link {{ request()->routeIs('dashboard.wrm') ? 'active' : '' }}">
+                                <i class="mdi mdi-warehouse"></i>
+                                <span data-key="wrm-dashboard">WRM Dashboard</span>
+                            </a>
+                        </li>
                     @endcan
                     {{-- Semua dashboard --}}
                     @can('permission', 'dashboard')
@@ -99,6 +106,13 @@
                                             <a href="{{ route('dashboard.rak') }}"
                                                 class="nav-link {{ request()->routeIs('dashboard.rak') ? 'active' : '' }}">
                                                 <i class="mdi mdi-view-grid-plus"></i>Rak Dashboard </a>
+                                        </li>
+                                    @endcan
+                                    @can('permission', 'dashboard-wrm')
+                                        <li class="nav-item">
+                                            <a href="{{ route('dashboard.wrm') }}"
+                                                class="nav-link {{ request()->routeIs('dashboard.wrm') ? 'active' : '' }}">
+                                                <i class="mdi mdi-warehouse"></i> WRM Dashboard </a>
                                         </li>
                                     @endcan
                                 </ul>

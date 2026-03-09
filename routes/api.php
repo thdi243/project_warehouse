@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\RakDashboardController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
+use App\Http\Controllers\Api\WrmInboundDashboardController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
 use App\Http\Controllers\Wsp\stock\StockOnHandController;
@@ -65,6 +66,15 @@ Route::prefix('dashboard')->group(function () {
     Route::prefix('user')->group(function () {
         Route::get('/data', [UserDashboardController::class, 'create']);
         Route::get('/statistik', [UserDashboardController::class, 'statistik']);
+    });
+
+    // WRM
+    Route::prefix('wrm')->group(function () {
+        Route::get('/inbound/widget',            [WrmInboundDashboardController::class, 'widget']);
+        Route::get('/inbound/per-periode',       [WrmInboundDashboardController::class, 'perPeriode']);
+        Route::get('/inbound/stok-per-barang',   [WrmInboundDashboardController::class, 'stokPerBarang']);
+        Route::get('/inbound/distribusi-status', [WrmInboundDashboardController::class, 'distribusiStatus']);
+        Route::get('/inbound/stok-per-gudang',   [WrmInboundDashboardController::class, 'stokPerGudang']);
     });
 });
 

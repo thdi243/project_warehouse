@@ -80,6 +80,9 @@ Route::middleware('auth')->group(function () {
             // Rak Management
             Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak')
                 ->middleware(['permission:dashboard-rak']);
+            // WRM
+            Route::view('/wrm', 'dashboard.wrm_dashboard')->name('dashboard.wrm')
+                ->middleware(['permission:dashboard-wrm']);
         });
     });
 
