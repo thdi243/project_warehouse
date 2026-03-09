@@ -6,9 +6,49 @@
     <div class="page-content">
         <div class="container-fluid">
 
+            {{-- Card Filter --}}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Filter Data</h5>
+                </div>
+
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Group</label>
+                            <select class="form-select" id="filterGroup">
+                                <option value="">Semua Group</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="filterStatus">
+                                <option value="">Semua Status</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">MID</label>
+                            <input type="text" class="form-control" id="filterMid" placeholder="Cari MID">
+                        </div>
+
+                        <div class="col-md-3 d-flex align-items-end gap-2 text-nowrap">
+                            <button class="btn btn-primary w-100" id="btnFilter">
+                                <i class="mdi mdi-magnify"></i> Filter
+                            </button>
+
+                            <button class="btn btn-secondary w-100" id="btnReset">
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">List Inventory Stock Gula</h5>
+                    <h5 class="mb-0">Raw Material Stock Gula</h5>
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-primary" id="btnUpload">
                             <i class="mdi mdi-upload"></i> Upload
@@ -29,6 +69,7 @@
                                     <th>Mid</th>
                                     <th>Nama Barang</th>
                                     <th>Uom</th>
+                                    <th>Group</th>
                                     <th>Qty</th>
                                     <th>Status</th>
                                     <th>Incoming Date</th>
@@ -61,31 +102,26 @@
 
                     <div class="modal-body row g-3">
                         <div class="col-md-6">
+                            <label class="form-label">No SPB <span class="text-danger">*</span></label>
+                            <input type="number" name="no_spb" class="form-control" id="no_spb" required>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">MID / Nama Barang <span class="text-danger">*</span></label>
                             <select class="form-select" name="barang_id" id="barang_id" required>
                             </select>
                         </div>
-
                         <div class="col-md-6">
-                            <label class="form-label">No SPB <span class="text-danger">*</span></label>
-                            <input type="number" name="no_spb" class="form-control" id="no_spb" required>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Qty <span class="text-danger">*</span></label>
-                            <input type="number" name="qty" class="form-control" id="qty" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Incoming Date <span class="text-danger">*</span></label>
-                            <input type="date" name="incoming_date" class="form-control" required>
+                            <label class="form-label">Group <span class="text-danger">*</span></label>
+                            <select class="form-select" name="group" id="group" required>
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Status <span class="text-danger">*</span></label>
                             <select class="form-select" name="status" required>
                                 <option value="" selected>Pilih Status</option>
                                 <option value="unrest">Unrest</option>
-                                <option value="blocked">Blocked</option>
-                                <option value="other">Other</option>
+                                <option value="qi">QI</option>
+                                <option value="leleh">Leleh</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -96,15 +132,6 @@
                             <label class="form-label">Supplier <span class="text-danger">*</span></label>
                             <input type="text" name="supplier" class="form-control" required>
                         </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Location <span class="text-danger">*</span></label>
-                            <input type="text" name="location" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Pallet <span class="text-danger">*</span></label>
-                            <input type="text" name="pallet" class="form-control" required>
-                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Expired Date</label>
                             <input type="date" name="expired_date" class="form-control">
@@ -113,6 +140,30 @@
                         <div class="col-12">
                             <label class="form-label">Catatan</label>
                             <textarea name="catatan" class="form-control"></textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Jumlah Pallet</label>
+                            <input type="number" id="jumlah_pallet" class="form-control">
+                        </div>
+
+                        <div class="col-12 mt-3">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Pallet ID</th>
+                                        <th>Qty</th>
+                                        <th width="100">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="palletContainer"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-center">
+                            <button type="button" class="btn btn-sm btn-success text-center" id="addPallet">
+                                + Tambah Pallet
+                            </button>
                         </div>
                     </div>
 
@@ -206,38 +257,101 @@
                 }
             });
 
+            function loadGroup() {
+
+                $.ajax({
+                    url: '/wrm/master/group-stock/get-data',
+                    type: 'GET',
+                    success: function(res) {
+
+                        $('#group').html('<option value="">Pilih Group</option>');
+
+                        res.data.forEach(function(item) {
+
+                            $('#group').append(`
+                                <option value="${item.id}">
+                                    ${item.group}
+                                </option>
+                            `);
+
+                        });
+
+                    }
+                });
+
+            }
+
             loadData();
 
             function loadData() {
-                $.get("{{ route('wrm.stock_gula.getData') }}", function(res) {
+                let group = $('#filterGroup').val();
+                let status = $('#filterStatus').val();
+                let mid = $('#filterMid').val();
+
+                $.get("{{ route('wrm.stock_gula.getData') }}", {
+                    group_id: group,
+                    status: status,
+                    mid: mid
+                }, function(res) {
                     let html = '';
-                    res.data.forEach((v, index) => {
-                        html += `
+
+                    if (res.data.length === 0) {
+                        html = `
                             <tr>
-                                <td class="text-center">${index + 1}</td>
-                                <td>${v.no_spb}</td>
-                                <td>${v.barang.mid}</td>
-                                <td>${v.barang.nama_barang}</td>
-                                <td>${v.barang.uom}</td>
-                                <td>${v.qty}</td>
-                                <td>${v.status}</td>
-                                <td>${v.incoming_date}</td>
-                                @can('permission', 'stock-gula-plus')
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-warning btnEdit" data-id="${v.id}" data-data='${JSON.stringify(v)}'>Edit</button>
-                                        <button class="btn btn-sm btn-danger btnDelete" data-id="${v.id}">Hapus</button>
-                                    </td>
-                                @endcan
+                                <td colspan="10" class="text-center text-muted py-4">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <i class="mdi mdi-database-off-outline" style="font-size:32px"></i>
+                                        <span class="mt-2">Data tidak ditemukan</span>
+                                    </div>
+                                </td>
                             </tr>
                         `;
-                    });
+
+                    } else {
+
+                        res.data.forEach((v, index) => {
+
+                            html += `
+                                <tr>
+                                    <td class="text-center">${index + 1}</td>
+                                    <td>${v.no_spb}</td>
+                                    <td>${v.barang.mid}</td>
+                                    <td>${v.barang.nama_barang}</td>
+                                    <td>${v.barang.uom}</td>
+                                    <td>${v.group.group}</td>
+                                    <td>${v.qty}</td>
+                                    <td>${v.status.toUpperCase()}</td>
+                                    <td>${v.incoming_date}</td>
+                                    @can('permission', 'stock-gula-plus')
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-warning btnEdit"
+                                            data-id="${v.id}"
+                                            data-data='${JSON.stringify(v)}'>
+                                            Edit
+                                        </button>
+
+                                        <button class="btn btn-sm btn-danger btnDelete"
+                                            data-id="${v.id}">
+                                            Hapus
+                                        </button>
+                                    </td>
+                                    @endcan
+                                </tr>
+                            `;
+
+                        });
+
+                    }
                     $('#tableStock tbody').html(html);
+
+                    setStatusFilter(res.data);
                 });
             }
 
             $('#btnTambah').click(() => {
                 $('#formStock')[0].reset();
                 $('#id').val('');
+                loadGroup();
                 $('#modalForm').modal('show');
             });
 
@@ -274,7 +388,6 @@
                 $('#modalForm').modal('show');
             });
 
-
             $('#formStock').submit(function(e) {
                 e.preventDefault();
                 let id = $('#id').val();
@@ -300,6 +413,7 @@
                             timer: 1500,
                             showConfirmButton: false
                         });
+                        $('#formStock')[0].reset();
                         $('#modalForm').modal('hide');
                         loadData();
                     },
@@ -396,6 +510,111 @@
                     }
                 });
             });
+
+            $('#addPallet').click(function() {
+
+                let row = `
+                    <tr>
+                        <td>
+                            <input type="text" name="pallet_id[]" class="form-control" required>
+                        </td>
+                        <td>
+                            <input type="number" name="qty[]" class="form-control" required>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-danger btn-sm removePallet">X</button>
+                        </td>
+                    </tr>
+                    `;
+
+                $('#palletContainer').append(row);
+
+            });
+
+            $(document).on('click', '.removePallet', function() {
+                $(this).closest('tr').remove();
+            });
+
+            $('#jumlah_pallet').on('change', function() {
+
+                let jumlah = $(this).val();
+
+                $('#palletContainer').html('');
+
+                for (let i = 1; i <= jumlah; i++) {
+
+                    let row = `
+                        <tr>
+                            <td>
+                                <input type="text" name="pallet_id[]" class="form-control" value="${i}">
+                            </td>
+                            <td>
+                                <input type="number" name="qty[]" class="form-control" required>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-danger text-center btn-sm removePallet">X</button>
+                            </td>
+                        </tr>
+                    `;
+
+                    $('#palletContainer').append(row);
+
+                }
+
+            });
+
+            $('#btnFilter').click(function() {
+                loadData();
+            });
+
+            $('#btnReset').click(function() {
+
+                $('#filterGroup').val('');
+                $('#filterStatus').val('');
+                $('#filterMid').val('');
+
+                loadData();
+
+            });
+
+            function loadGroupFilter() {
+
+                $.get('/wrm/master/group-stock/get-data', function(res) {
+
+                    let html = `<option value="">Semua Group</option>`;
+
+                    res.data.forEach(g => {
+
+                        html += `<option value="${g.id}">${g.group}</option>`;
+
+                    });
+
+                    $('#filterGroup').html(html);
+
+                });
+
+            }
+
+            function setStatusFilter(data) {
+
+                let statusSet = new Set();
+
+                data.forEach(v => {
+                    if (v.status) {
+                        statusSet.add(v.status.toUpperCase());
+                    }
+                });
+
+                let html = `<option value="">Semua Status</option>`;
+
+                statusSet.forEach(s => {
+                    html += `<option value="${s}">${s}</option>`;
+                });
+
+                $('#filterStatus').html(html);
+            }
+
+            loadGroupFilter();
         })
     </script>
 @endsection

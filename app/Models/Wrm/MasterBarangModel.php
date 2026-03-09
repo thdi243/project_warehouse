@@ -17,6 +17,7 @@ class MasterBarangModel extends Model
         'nama_barang',
         'uom',
         's_loc',
+        'plant',
         'created_by',
         'updated_by',
     ];

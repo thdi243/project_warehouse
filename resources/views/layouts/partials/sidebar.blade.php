@@ -496,6 +496,16 @@
                                         </li>
                                     @endcan
 
+                                    @can('permission', 'master-group-stock')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.master.group-stock.index') }}"
+                                                class="nav-link {{ request()->routeIs('wrm.master.group-stock.index') ? 'active' : '' }}"
+                                                data-key="t-input-tkbm">
+                                                <i class="mdi mdi-view-grid"></i>Master Group Stock
+                                            </a>
+                                        </li>
+                                    @endcan
+
                                     {{-- Master Fees & taxes TKBM --}}
                                     @can('permission', 'master-ikat-terpal')
                                         <li class="nav-item">

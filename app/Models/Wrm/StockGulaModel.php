@@ -14,37 +14,38 @@ class StockGulaModel extends Model
 
     protected $fillable = [
         'barang_id',
-        'tanggal',
-        'location',
         'no_spb',
+        'pallet_id',
+        'group',
         'qty',
         'incoming_date',
         'supplier',
         'status',
         'gudang',
-        'pallet',
+        'loc',
         'catatan',
         'expired_date',
+        'transaksi',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
-        'tanggal'       => 'date:Y-m-d',
         'incoming_date' => 'date:Y-m-d',
         'expired_date'  => 'date:Y-m-d',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
+    // Relationships
 
     // relasi ke master barang
     public function barang()
     {
         return $this->belongsTo(MasterBarangModel::class, 'barang_id');
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(GroupStockModel::class, 'group');
     }
 
     // user pembuat

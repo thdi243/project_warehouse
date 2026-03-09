@@ -11,12 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('wrm_master_barang', function (Blueprint $table) {
+        Schema::create('wrm_group_stock', function (Blueprint $table) {
             $table->id();
-            $table->integer('mid')->unique();
-            $table->string('nama_barang');
-            $table->string('uom');
-            $table->string('s_loc');
+            $table->string('group');
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
@@ -28,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('wrm_master_barang');
+        Schema::dropIfExists('wrm_group_stock');
     }
 };

@@ -1,33 +1,34 @@
 <?php
 
-use Wrm\stock;
+use App\Events\ShowPortalNotification;
+use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\UserPermissionController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
+use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
+use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
+use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+use App\Http\Controllers\Wrm\GroupStockController;
+use App\Http\Controllers\Wrm\MasterBarangController;
+use App\Http\Controllers\Wrm\P2HController;
+use App\Http\Controllers\Wrm\stock_gula\StockGulaController;
+use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
+use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
+use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
+use App\Http\Controllers\Wsp\stock\StockLocationController;
+use App\Http\Controllers\Wsp\stock\StockOnHandController;
+use App\Http\Controllers\Wsp\StockOpnameController;
+use App\Http\Controllers\Wsp\TkbmController;
+use App\Http\Controllers\Wsp\WspBarangController;
+use App\Http\Controllers\Wsp\WspRakController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use App\Events\ShowPortalNotification;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\Wrm\P2HController;
-use App\Http\Controllers\Wsp\TkbmController;
-use App\Http\Controllers\WarehouseController;
-use App\Http\Controllers\Wsp\WspRakController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\Wsp\WspBarangController;
-use App\Http\Controllers\Wsp\StockOpnameController;
-use App\Http\Controllers\Admin\PermissionController;
-use App\Http\Controllers\Wrm\MasterBarangController;
-use App\Http\Controllers\Admin\UserPermissionController;
-use App\Http\Controllers\Wsp\stock\StockOnHandController;
-use App\Http\Controllers\Wsp\stock\StockLocationController;
-use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
-use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
-use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
-use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
-use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
-use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
-use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
-use App\Http\Controllers\Wrm\stock_gula\StockGulaController;
-use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
+use Wrm\stock;
 
 // use App\Http\Controllers\Api\TkbmDashboardController;
 
@@ -348,6 +349,14 @@ Route::middleware('auth')->group(function () {
                     Route::post('/store/produk', [MasterIkatTerpalController::class, 'storeProduk']);
                     Route::get('/fee-aktif', [MasterIkatTerpalController::class, 'getFeeAktif']);
                     Route::get('/produk-aktif', [MasterIkatTerpalController::class, 'getProdukAktif']);
+                });
+
+                Route::prefix('group-stock')->group(function () {
+                    Route::get('/index', [GroupStockController::class, 'index'])->name('wrm.master.group-stock.index');
+                    Route::get('/get-data', [GroupStockController::class, 'getData'])->name('wrm.group-stock.get-data');
+                    Route::post('/store', [GroupStockController::class, 'store'])->name('wrm.group-stock.store');
+                    Route::put('/update/{id}', [GroupStockController::class, 'update'])->name('wrm.group-stock.update');
+                    Route::delete('/delete/{id}', [GroupStockController::class, 'destroy'])->name('wrm.group-stock.delete');
                 });
             });
         });

@@ -24,6 +24,7 @@ class MasterBarangController extends Controller
     {
         $barang = MasterBarangModel::create([
             ...$request->validated(),
+            'plant' => $request->plant ?? 1006,
             'created_by' => Auth::id(),
         ]);
 
@@ -118,6 +119,7 @@ class MasterBarangController extends Controller
                 'nama_barang' => $row[1] ?? '',
                 'uom' => $row[2] ?? '',
                 's_loc' => $row[3] ?? '',
+                'plant' => $row[4] ?? '',
                 'created_by' => Auth::id(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -154,9 +156,10 @@ class MasterBarangController extends Controller
         $sheet->setCellValue('B1', 'nama_barang');
         $sheet->setCellValue('C1', 'uom');
         $sheet->setCellValue('D1', 's_loc');
+        $sheet->setCellValue('E1', 'plant');
 
         // Style header (opsional tapi cakep)
-        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
 
         $writer = new Xlsx($spreadsheet);
 

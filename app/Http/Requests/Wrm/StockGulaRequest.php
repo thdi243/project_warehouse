@@ -23,16 +23,20 @@ class StockGulaRequest extends FormRequest
     {
         return [
             'barang_id'     => 'required|exists:wrm_master_barang,id',
-            'location'      => 'required|string|max:100',
+            'loc'           => 'nullable|string|max:100',
             'no_spb'        => 'required|integer',
-            'qty'           => 'required|integer|min:1',
-            'incoming_date' => 'required|date',
+            'group'         => 'nullable|string|max:255',
             'supplier'      => 'required|string|max:255',
             'status'        => 'required|string|max:50',
             'gudang'        => 'required|string|max:50',
-            'pallet'        => 'required|string|max:50',
             'catatan'       => 'nullable|string',
             'expired_date'  => 'nullable|date',
+
+            'pallet_id'     => 'required|array',
+            'pallet_id.*'   => 'nullable|string|max:50',
+
+            'qty'           => 'required|array',
+            'qty.*'         => 'required|integer|min:1',
         ];
     }
 }

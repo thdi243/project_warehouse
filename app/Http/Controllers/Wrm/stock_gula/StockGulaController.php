@@ -52,25 +52,61 @@ class StockGulaController extends Controller
         ]);
     }
 
-
     public function store(StockGulaRequest $request)
     {
-        $stock = StockGulaModel::create([
-            ...$request->validated(),
-            'tanggal' => now()->format('Y-m-d'),
-            'created_by' => Auth::id(),
-        ]);
+        $data = $request->validated();
+
+        $stocks = [];
+
+        foreach ($data['pallet_id'] as $i => $pallet) {
+
+            $stocks[] = StockGulaModel::create([
+                'barang_id'     => $data['barang_id'],
+                'no_spb'        => $data['no_spb'],
+                'pallet_id'     => $pallet,
+                'group'         => $data['group'],
+                'qty'           => $data['qty'][$i],
+                'incoming_date' => now(),
+                'supplier'      => $data['supplier'],
+                'status'        => $data['status'],
+                'gudang'        => $data['gudang'],
+                'loc'           => $data['loc'] ?? 'D01',
+                'catatan'       => $data['catatan'] ?? null,
+                'expired_date'  => $data['expired_date'] ?? null,
+                'transaksi'     => 'inbound',
+                'created_by'    => Auth::id(),
+            ]);
+        }
 
         return response()->json([
             'status'  => true,
             'message' => 'Stock gula berhasil disimpan',
-            'data'    => $stock,
+            'data'    => $stocks
         ]);
     }
 
-    public function getData()
+    public function getData(Request $request)
     {
-        $barang = StockGulaModel::with('barang:id,mid,nama_barang,uom,s_loc')->get();
+        $query = StockGulaModel::with(
+            'barang:id,mid,nama_barang,uom,s_loc',
+            'group:id,group'
+        );
+
+        if ($request->group_id) {
+            $query->where('group', $request->group_id);
+        }
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->mid) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', 'like', '%' . $request->mid . '%');
+            });
+        }
+
+        $barang = $query->get();
 
         return response()->json([
             'status' => true,
@@ -116,6 +152,7 @@ class StockGulaController extends Controller
         DB::beginTransaction();
 
         try {
+
             $sheet = IOFactory::load($request->file('file'))->getActiveSheet();
             $rows = $sheet->toArray();
 
@@ -127,6 +164,7 @@ class StockGulaController extends Controller
             foreach ($rows as $i => $row) {
 
                 $line = $i + 2;
+
                 $mid = trim($row[0] ?? '');
 
                 if ($mid === '') {
@@ -141,29 +179,36 @@ class StockGulaController extends Controller
                     continue;
                 }
 
+                if (($row[4] ?? 0) <= 0) {
+                    $errors[] = "Baris {$line}: Qty harus lebih dari 0";
+                }
+
                 $mappedRows[] = [
                     'barang_id'     => $barang->id,
                     'tanggal'       => now()->format('Y-m-d'),
-                    'location'      => $row[1] ?? '',
+
+                    'location'      => $row[1] ?? null,
                     'no_spb'        => $row[2] ?? null,
-                    'qty'           => $row[3] ?? 0,
-                    'incoming_date' => $row[4] ?? null,
-                    'supplier'      => $row[5] ?? '',
-                    'status'        => $row[6] ?? '',
-                    'gudang'        => $row[7] ?? '',
-                    'pallet'        => $row[8] ?? '',
-                    'catatan'       => $row[9] ?? null,
-                    'expired_date'  => $row[10] ?? null,
+                    'pallet_id'     => $row[3] ?? null,
+                    'qty'           => $row[4] ?? 0,
+                    'group'         => $row[5] ?? null,
+                    'incoming_date' => $this->parseDate($row[6] ?? null),
+                    'supplier'      => $row[7] ?? null,
+                    'status'        => strtoupper($row[8] ?? ''),
+                    'gudang'        => $row[9] ?? null,
+                    'pallet'        => $row[10] ?? null,
+                    'catatan'       => $row[11] ?? null,
+                    'expired_date'  => $this->parseDate($row[12] ?? null),
+                    'transaksi'     => 'inbound',
+
                     'created_by'    => Auth::id(),
                 ];
             }
 
-            // kalau ada error → batal semua
             if ($errors) {
                 throw new \Exception(implode("\n", $errors));
             }
 
-            // ✅ insert setelah semua aman
             foreach ($mappedRows as $data) {
                 StockGulaModel::create($data);
             }
@@ -193,9 +238,9 @@ class StockGulaController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->fromArray([
-            ['MID', 'LOCATION', 'NO_SPB', 'QTY', 'INCOMING_DATE', 'SUPPLIER', 'STATUS', 'GUDANG', 'PALLET', 'CATATAN', 'EXPIRED_DATE'],
-            ['MID001', 'F26', 12345, 100, '30/12/2026', 'Supplier A', 'unrest', 'WRM 6', 'Pallet-01', '', ''],
-            ['MID002', 'F25', 12346, 200, '30/12/2026', 'Supplier B', 'unrest', 'WRM 6', 'Pallet-02', '', ''],
+            ['MID', 'LOC', 'NO_SPB', 'PALLET_ID', 'QTY', 'GROUP', 'INCOMING_DATE', 'SUPPLIER', 'STATUS', 'GUDANG', 'PALLET', 'CATATAN', 'EXPIRED_DATE'],
+            ['MID001', 'F26', 12345, 1, 100, 'A', '30/12/2026', 'Supplier A', 'UNREST', 'WRM 6', 'HOLLO GULA', '', ''],
+            ['MID002', 'F26', 12345, 2, 100, 'A', '30/12/2026', 'Supplier B', 'UNREST', 'WRM 6', 'HOLLO GULA', '', ''],
         ]);
 
         $writer = new Xlsx($spreadsheet);
@@ -205,5 +250,23 @@ class StockGulaController extends Controller
             fn() => $writer->save('php://output'),
             $filename
         );
+    }
+
+    private function parseDate($value)
+    {
+        if (!$value) return null;
+
+        try {
+
+            if (is_numeric($value)) {
+                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)
+                    ->format('Y-m-d');
+            }
+
+            return \Carbon\Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+
+            return null;
+        }
     }
 }

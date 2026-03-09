@@ -682,10 +682,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                            ` : ''}
                             </div>
 
                         </div>
@@ -723,11 +723,25 @@
 
                 let rows = [];
 
-                pr.items.forEach(item => {
+                const approvedItems = pr.items.filter(item =>
+                    item.approval?.some(a => a.status === 'approved')
+                );
+
+                if (approvedItems.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Tidak Ada Item Approved',
+                        text: 'Tidak ada item yang bisa dicopy ke SAP'
+                    });
+                    return;
+                }
+
+                approvedItems.forEach(item => {
 
                     const mid = item.barang?.mid_barang ?? '';
                     const qty = item.qty ?? '';
                     const sLoc = item.barang?.s_loc ?? '';
+                    const plant = item.barang?.plant ?? '';
                     const prNumber = pr.pr_number ?? '';
 
                     const row = [
@@ -738,7 +752,7 @@
                         '',
                         '',
                         '',
-                        '1006',
+                        plant,
                         sLoc,
                         '',
                         deptCode,
