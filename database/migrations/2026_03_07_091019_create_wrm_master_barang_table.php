@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('nama_barang');
             $table->string('uom');
             $table->string('s_loc');
-            $table->string('plant');
+            $table->string('plant')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
