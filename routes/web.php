@@ -213,9 +213,9 @@ Route::middleware('auth')->group(function () {
         });
 
 
-        Route::prefix('wrm')->middleware(['permission:wrm'])->group(function () {
+        Route::prefix('wrm')->middleware(['permission:wrm-stock'])->group(function () {
             // Stock Gula
-            Route::prefix('stock-gula')->middleware(['permission:stock-gula,stock-gula-plus'])->group(function () {
+            Route::prefix('stock-gula')->middleware(['permission:stock-gula,stock-gula-plus,stock-gula-data'])->group(function () {
                 Route::get('/index', [StockGulaController::class, 'index'])->name('wrm.stock_gula.index');
                 Route::get('/index-upload', [StockGulaController::class, 'indexUpload'])->name('wrm.stock_gula.index-upload');
                 Route::get('/index-transfer', [StockGulaController::class, 'indexTransfer'])->name('wrm.stock_gula.index-transfer');
