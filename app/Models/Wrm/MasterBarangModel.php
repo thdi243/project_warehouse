@@ -3,8 +3,9 @@
 namespace App\Models\Wrm;
 
 use App\Models\User;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Wrm\StockGula\StockGulaModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class MasterBarangModel extends Model
 {
@@ -16,8 +17,7 @@ class MasterBarangModel extends Model
         'mid',
         'nama_barang',
         'uom',
-        's_loc',
-        'plant',
+        'loc_id',
         'created_by',
         'updated_by',
     ];
@@ -32,6 +32,11 @@ class MasterBarangModel extends Model
     public function stockGula()
     {
         return $this->hasMany(StockGulaModel::class, 'barang_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(MasterLocationModel::class, 'loc_id', 'id');
     }
 
     // user pembuat

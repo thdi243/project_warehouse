@@ -72,7 +72,17 @@
 
                         <div class="mb-2">
                             <label>S Loc <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="s_loc" required>
+
+                            <select name="loc_id" id="loc_id" class="form-select" required>
+                                <option value="">Pilih S Loc</option>
+
+                                @foreach ($location as $loc)
+                                    <option value="{{ $loc->id }}">
+                                        {{ $loc->plant }} - {{ $loc->s_loc }}
+                                    </option>
+                                @endforeach
+
+                            </select>
                         </div>
                     </div>
 
@@ -134,7 +144,7 @@
                                 <td>${v.mid}</td>
                                 <td>${v.nama_barang}</td>
                                 <td>${v.uom}</td>
-                                <td>${v.s_loc}</td>
+                                <td>${v.location.plant} - ${v.location.s_loc}</td>
                                 <td class="text-center">
                                     <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>
                                     <button class="btn btn-danger btn-sm btnHapus" data-id="${v.id}">Hapus</button>
@@ -186,7 +196,7 @@
                         mid: $('#mid').val(),
                         nama_barang: $('#nama_barang').val(),
                         uom: $('#uom').val(),
-                        s_loc: $('#s_loc').val(),
+                        loc_id: $('#loc_id').val(),
                     },
                     success: function(res) {
                         $('#modalBarang').modal('hide');

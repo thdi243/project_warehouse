@@ -1,33 +1,34 @@
 <?php
 
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Request;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\Wrm\P2HController;
-use App\Http\Controllers\Wsp\TkbmController;
-use App\Http\Controllers\TokenAuthController;
-use App\Http\Controllers\Wsp\WspRakController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\Api\WspManRakController;
-use App\Http\Controllers\Wsp\WspBarangController;
-use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Api\P2hDashboardController;
 use App\Http\Controllers\Api\RakDashboardController;
-use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Api\TkbmDashboardController;
 use App\Http\Controllers\Api\UserDashboardController;
 use App\Http\Controllers\Api\WrmInboundDashboardController;
+use App\Http\Controllers\Api\WspManRakController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
-use App\Http\Controllers\Wsp\stock\StockOnHandController;
+use App\Http\Controllers\TokenAuthController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
-use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
-use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+use App\Http\Controllers\Wrm\P2HController;
+use App\Http\Controllers\Wrm\stock_gula\StockGulaController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
+use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
+use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
+use App\Http\Controllers\Wsp\stock\StockOnHandController;
+use App\Http\Controllers\Wsp\StockOpnameController;
+use App\Http\Controllers\Wsp\TkbmController;
+use App\Http\Controllers\Wsp\TransaksiWspController;
+use App\Http\Controllers\Wsp\WspBarangController;
+use App\Http\Controllers\Wsp\WspRakController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
@@ -144,6 +145,10 @@ Route::prefix('wfg')->group(function () {
     Route::get('/sop/report/export', [StockOpnameWfgController::class, 'getDataReport']);
     Route::get('/sop/users/approval', [StockOpnameWfgController::class, 'getDataApproval']);
     Route::get('/sop/detail/edit/{id}', [StockOpnameWfgController::class, 'getDataDetailEdit']);
+});
+
+Route::prefix('wrm')->group(function () {
+    Route::get('/data', [StockGulaController::class, 'getData'])->name('wrm.stock_gula.getData');
 });
 
 Route::prefix('notifications')->group(function () {

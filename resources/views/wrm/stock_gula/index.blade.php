@@ -22,9 +22,9 @@
                         </div>
 
                         <div class="col-md-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" id="filterStatus">
-                                <option value="">Semua Status</option>
+                            <label class="form-label">Jenis Bahan</label>
+                            <select class="form-select" id="filterJenisBahan">
+                                <option value="">Semua Jenis Bahan</option>
                             </select>
                         </div>
 
@@ -34,12 +34,8 @@
                         </div>
 
                         <div class="col-md-3 d-flex align-items-end gap-2 text-nowrap">
-                            <button class="btn btn-primary w-100" id="btnFilter">
-                                <i class="mdi mdi-magnify"></i> Filter
-                            </button>
-
                             <button class="btn btn-secondary w-100" id="btnReset">
-                                Reset
+                                <i class="mdi mdi-refresh me-2"></i>Reset
                             </button>
                         </div>
                     </div>
@@ -50,12 +46,15 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Raw Material Stock Gula</h5>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary" id="btnUpload">
+                        <a href="{{ route('wrm.stock_gula.index-upload') }}" class="btn btn-outline-primary" id="btnUpload">
                             <i class="mdi mdi-upload"></i> Upload
-                        </button>
-                        <button class="btn btn-primary" id="btnTambah">
+                        </a>
+                        <a href="{{ route('wrm.stock_gula.index-transfer') }}" class="btn btn-primary" id="btnUpload">
+                            <i class="mdi mdi-upload"></i> Transfer
+                        </a>
+                        {{-- <button class="btn btn-primary" id="btnTambah">
                             <i class="mdi mdi-plus"></i> Tambah
-                        </button>
+                        </button> --}}
                     </div>
                 </div>
 
@@ -72,6 +71,7 @@
                                     <th>Group</th>
                                     <th>Qty</th>
                                     <th>Status</th>
+                                    <th>Location</th>
                                     <th>Incoming Date</th>
                                     @can('permission', 'stock-gula-plus')
                                         <th class="text-center">Aksi</th>
@@ -81,6 +81,7 @@
                             <tbody></tbody>
                         </table>
                     </div>
+                    <div class="mt-3 d-flex justify-content-end" id="pagination"></div>
                 </div>
             </div>
 
@@ -113,6 +114,16 @@
                         <div class="col-md-6">
                             <label class="form-label">Group <span class="text-danger">*</span></label>
                             <select class="form-select" name="group" id="group" required>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jenis Bahan <span class="text-danger">*</span></label>
+                            <select class="form-select" name="jenis_bahan" required>
+                                <option value="" selected>Pilih Jenis</option>
+                                <option value="gula_kelapa">Gula Kelapa</option>
+                                <option value="gula_kelapa_b">Gula Kelapa B</option>
+                                <option value="gula_tebu">Gula Tebu</option>
+                                <option value="gula_tebu_malang">Gula Tebu Malang</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -176,33 +187,101 @@
         </div>
     </div>
 
-    {{-- MODAL UPLOAD --}}
-    <div class="modal fade" id="modalUpload">
-        <div class="modal-dialog">
-            <form id="formUpload" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5>Upload Stock Gula</h5>
-                        <button class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="d-grid gap-2 mb-2">
-                            <small class="fst-italic">Belum punya template?</small>
-                            <a href="{{ route('wrm.stock_gula.template') }}" class="btn btn-outline-success mb-3">
-                                <i class="mdi mdi-download"></i>Download Template
-                            </a>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Pilih file</label>
-                            <input type="file" name="file" class="form-control" accept=".xls,.xlsx">
-                        </div>
-                    </div>
-                    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button class="btn btn-primary">Upload</button>
-                    </div>
+    {{-- Modal Edit --}}
+    <div class="modal fade" id="modalFormEdit">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="titleForm">Edit Stock Gula</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-            </form>
+
+                <form id="formStockEdit">
+
+                    <div class="modal-body">
+
+                        <input type="hidden" id="id" name="id">
+
+                        <div class="mb-2">
+                            <label>Mid</label>
+                            {{-- <select id="midEdit" name="barang_id" class="form-select"></select> --}}
+                            <select class="form-select" id="midEdit" name="barang_id">
+                                <option value="">Pilih Barang</option>
+
+                                @foreach ($barang as $b)
+                                    <option value="{{ $b->id }}">
+                                        {{ $b->mid }} - {{ $b->nama_barang }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-2">
+                            <label>No SPB</label>
+                            <input type="number" class="form-control" name="no_spb" id="noSpbEdit">
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Qty</label>
+                            <input type="number" class="form-control" name="qty" id="qtyEdit">
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Status</label>
+                            <select class="form-select" name="status" id="statusEdit">
+                                <option value="UNREST">UNREST</option>
+                                <option value="QI">QI</option>
+                                <option value="TRANSFER">TRANSFER</option>
+                                <option value="BLOCKED">BLOCKED</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Group</label>
+                            <input type="text" class="form-control" name="group" id="groupEdit">
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Supplier</label>
+                            <input type="text" class="form-control" name="supplier" id="supplierEdit">
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Location</label>
+                            {{-- <select class="form-select" name="loc_id" id="locEdit"></select> --}}
+                            <select class="form-select" id="locEdit" name="loc_id">
+                                <option value="">Pilih Location</option>
+
+                                @foreach ($location as $loc)
+                                    <option value="{{ $loc->id }}">
+                                        {{ $loc->plant }} - {{ $loc->s_loc }} - {{ $loc->gudang }} -
+                                        {{ $loc->bin }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Pallet ID</label>
+                            <input type="text" class="form-control" name="pallet_id" id="palletEdit">
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Catatan</label>
+                            <textarea class="form-control" name="catatan" id="catatan"></textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" type="submit">
+                            Simpan
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
         </div>
     </div>
 @endsection
@@ -283,22 +362,24 @@
 
             loadData();
 
-            function loadData() {
+            function loadData(page = 1) {
                 let group = $('#filterGroup').val();
-                let status = $('#filterStatus').val();
+                let jenisBahan = $('#filterJenisBahan').val();
                 let mid = $('#filterMid').val();
 
                 $.get("{{ route('wrm.stock_gula.getData') }}", {
-                    group_id: group,
-                    status: status,
+                    page: page,
+                    group: group,
+                    jenis_bahan: jenisBahan,
                     mid: mid
                 }, function(res) {
                     let html = '';
+                    let data = res.data.data;
 
-                    if (res.data.length === 0) {
+                    if (data.length === 0) {
                         html = `
                             <tr>
-                                <td colspan="10" class="text-center text-muted py-4">
+                                <td colspan="11" class="text-center text-muted py-4">
                                     <div class="d-flex flex-column align-items-center">
                                         <i class="mdi mdi-database-off-outline" style="font-size:32px"></i>
                                         <span class="mt-2">Data tidak ditemukan</span>
@@ -309,7 +390,7 @@
 
                     } else {
 
-                        res.data.forEach((v, index) => {
+                        data.forEach((v, index) => {
 
                             html += `
                                 <tr>
@@ -318,9 +399,10 @@
                                     <td>${v.barang.mid}</td>
                                     <td>${v.barang.nama_barang}</td>
                                     <td>${v.barang.uom}</td>
-                                    <td>${v.group.group}</td>
+                                    <td>${v.group}</td>
                                     <td>${v.qty}</td>
                                     <td>${v.status.toUpperCase()}</td>
+                                    <td>${v.location.plant} - ${v.location.gudang} - ${v.location.bin}</td>
                                     <td>${v.incoming_date}</td>
                                     @can('permission', 'stock-gula-plus')
                                     <td class="text-center">
@@ -344,7 +426,10 @@
                     }
                     $('#tableStock tbody').html(html);
 
-                    setStatusFilter(res.data);
+                    setJenisBahanFilter(res.data);
+                    loadGroupFilter(res.data);
+
+                    renderPagination(res.data);
                 });
             }
 
@@ -355,51 +440,10 @@
                 $('#modalForm').modal('show');
             });
 
-            $(document).on('click', '.btnEdit', function() {
-
-                let data = $(this).data('data');
-
-                $('#titleForm').text('Edit Stock Gula');
-                $('#id').val(data.id);
-
-                const option = new Option(
-                    `${data.barang.mid} - ${data.barang.nama_barang}`,
-                    data.barang.id,
-                    true,
-                    true
-                );
-
-                $('#barang_id')
-                    .append(option)
-                    .trigger('change');
-
-                // ===== INPUT LAIN =====
-                $('#no_spb').val(data.no_spb);
-                $('#qty').val(data.qty);
-                $('input[name="incoming_date"]').val(data.incoming_date);
-                $('select[name="status"]').val(data.status);
-                $('#gudang').val(data.gudang);
-                $('input[name="supplier"]').val(data.supplier);
-                $('input[name="location"]').val(data.location);
-                $('input[name="pallet"]').val(data.pallet);
-                $('input[name="expired_date"]').val(data.expired_date);
-                $('textarea[name="catatan"]').val(data.catatan);
-
-                $('#modalForm').modal('show');
-            });
-
             $('#formStock').submit(function(e) {
                 e.preventDefault();
-                let id = $('#id').val();
-                let url = '/stock-gula';
+                let url = '/wrm/stock-gula/store';
                 let method = 'POST';
-
-                if (id) {
-                    url += '/update/' + id;
-                    method = 'PUT';
-                } else {
-                    url += '/store';
-                }
 
                 $.ajax({
                     url: url,
@@ -428,7 +472,89 @@
                 });
             });
 
+            $(document).on('click', '.btnEdit', function() {
+
+                let data = $(this).data('data');
+                console.log(data);
+
+                $('#titleForm').text('Edit Stock Gula');
+
+                $('#id').val(data.id);
+
+                // FIELD
+                $('#noSpbEdit').val(data.no_spb);
+                $('#midEdit').val(data.barang.id);
+                $('#qtyEdit').val(data.qty);
+                $('#statusEdit').val(data.status);
+                $('#groupEdit').val(data.group);
+                $('#supplierEdit').val(data.supplier ?? '');
+                $('#palletEdit').val(data.pallet_id ?? '');
+                $('#catatan').val(data.catatan ?? '');
+                $('#locEdit').val(data.loc_id);
+
+                $('#modalFormEdit').modal('show');
+            });
+
+            $('#formStockEdit').on('submit', function(e) {
+
+                e.preventDefault();
+
+                let id = $('#id').val();
+
+                $.ajax({
+                    url: `/wrm/stock-gula/update/${id}`,
+                    method: 'POST',
+                    data: $(this).serialize() + '&_method=PUT',
+                    beforeSend() {
+                        Swal.fire({
+                            title: 'Menyimpan...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+                    },
+
+                    success(res) {
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: res.message
+                        });
+
+                        $('#modalFormEdit').modal('hide');
+
+                        loadData();
+
+                    },
+
+                    error(xhr) {
+
+                        let message = 'Terjadi kesalahan';
+
+                        if (xhr.status === 422) {
+
+                            let errors = xhr.responseJSON.errors;
+
+                            message = Object.values(errors)
+                                .map(v => v[0])
+                                .join('<br>');
+
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            html: message
+                        });
+
+                    }
+
+                });
+
+            });
+
             $(document).on('click', '.btnDelete', function() {
+
                 let id = $(this).data('id');
 
                 Swal.fire({
@@ -438,13 +564,21 @@
                     showCancelButton: true,
                     confirmButtonText: 'Ya, hapus'
                 }).then((result) => {
+
                     if (!result.isConfirmed) return;
 
                     $.ajax({
-                        url: '/stock-gula/delete/' + id,
+                        url: '/wrm/stock-gula/delete/' + id,
                         type: 'DELETE',
                         data: {
                             _token: '{{ csrf_token() }}'
+                        },
+                        beforeSend() {
+                            Swal.fire({
+                                title: 'Menghapus...',
+                                allowOutsideClick: false,
+                                didOpen: () => Swal.showLoading()
+                            });
                         },
                         success: function(res) {
                             loadData();
@@ -452,62 +586,38 @@
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Terhapus',
-                                text: res.message ||
-                                    'Data berhasil dihapus',
+                                text: res.message || 'Data berhasil dihapus',
                                 timer: 1500,
                                 showConfirmButton: false
                             });
+                        },
+                        error: function(xhr) {
+                            let message = 'Terjadi kesalahan pada server';
+
+                            if (xhr.status === 404) {
+                                message = 'Data tidak ditemukan';
+                            }
+
+                            if (xhr.status === 422) {
+                                let errors = xhr.responseJSON?.errors;
+                                if (errors) {
+                                    message = Object.values(errors)
+                                        .map(v => v[0])
+                                        .join('<br>');
+                                }
+                            }
+
+                            if (xhr.responseJSON?.message) {
+                                message = xhr.responseJSON.message;
+                            }
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                html: message
+                            });
                         }
                     });
-                });
-            });
-
-            $('#btnUpload').click(() => $('#modalUpload').modal('show'));
-
-            $('#formUpload').submit(function(e) {
-                e.preventDefault();
-
-                const form = this;
-                const btn = $(form).find('.modal-footer .btn-primary');
-
-                let fd = new FormData(this);
-
-                btn.prop('disabled', true)
-                    .html('<span class="spinner-border spinner-border-sm"></span> Uploading...');
-                $.ajax({
-                    url: `/stock-gula/upload`,
-                    method: 'POST',
-                    data: fd,
-                    processData: false,
-                    contentType: false,
-                    success: function(res) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: res.message,
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-
-                        $('#modalUpload').modal('hide');
-                        loadData();
-                    },
-                    error: function(xhr) {
-                        let msg = xhr.responseJSON?.errors?.join('<br>') ??
-                            xhr.responseJSON?.message ??
-                            'Upload gagal';
-
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Validasi Gagal',
-                            html: msg
-                        });
-                    },
-                    complete: function() {
-                        // 🔓 enable lagi (selalu dipanggil)
-                        btn.prop('disabled', false)
-                            .html('Upload');
-                    }
                 });
             });
 
@@ -563,58 +673,123 @@
 
             });
 
-            $('#btnFilter').click(function() {
+            $('#filterGroup, #filterJenisBahan').on('change', function() {
                 loadData();
+            });
+
+            let typingTimer;
+
+            $('#filterMid').on('keyup', function() {
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(function() {
+                    loadData();
+                }, 500);
             });
 
             $('#btnReset').click(function() {
 
                 $('#filterGroup').val('');
-                $('#filterStatus').val('');
+                $('#filterJenisBahan').val('');
                 $('#filterMid').val('');
 
                 loadData();
 
             });
 
-            function loadGroupFilter() {
+            function loadGroupFilter(data) {
 
-                $.get('/wrm/master/group-stock/get-data', function(res) {
+                let selected = $('#filterGroup').val(); // simpan pilihan
 
-                    let html = `<option value="">Semua Group</option>`;
+                let groupSet = new Set();
 
-                    res.data.forEach(g => {
-
-                        html += `<option value="${g.id}">${g.group}</option>`;
-
-                    });
-
-                    $('#filterGroup').html(html);
-
-                });
-
-            }
-
-            function setStatusFilter(data) {
-
-                let statusSet = new Set();
-
-                data.forEach(v => {
-                    if (v.status) {
-                        statusSet.add(v.status.toUpperCase());
+                data.data.forEach(v => {
+                    if (v.group) {
+                        groupSet.add(v.group.toUpperCase());
                     }
                 });
 
-                let html = `<option value="">Semua Status</option>`;
+                let html = `<option value="">Semua Group</option>`;
 
-                statusSet.forEach(s => {
+                groupSet.forEach(s => {
                     html += `<option value="${s}">${s}</option>`;
                 });
 
-                $('#filterStatus').html(html);
+                $('#filterGroup').html(html);
+
+                $('#filterGroup').val(selected); // kembalikan pilihan
             }
 
-            loadGroupFilter();
+            function setJenisBahanFilter(data) {
+
+                let selected = $('#filterJenisBahan').val(); // simpan pilihan
+
+                let jenisBahanSet = new Set();
+
+                data.data.forEach(v => {
+                    if (v.barang.nama_barang) {
+                        jenisBahanSet.add(v.barang.nama_barang.toUpperCase());
+                    }
+                });
+
+                let html = `<option value="">Semua Jenis Bahan</option>`;
+
+                jenisBahanSet.forEach(s => {
+                    html += `<option value="${s}">${s}</option>`;
+                });
+
+                $('#filterJenisBahan').html(html);
+
+                $('#filterJenisBahan').val(selected); // restore pilihan
+            }
+
+            function renderPagination(data) {
+
+                let html = '';
+
+                let current = data.current_page;
+                let last = data.last_page;
+
+                html +=
+                    `<button class="btn btn-sm btn-light page-btn" data-page="${current-1}" ${current==1?'disabled':''}>Prev</button>`;
+
+                let start = Math.max(1, current - 2);
+                let end = Math.min(last, current + 2);
+
+                if (start > 1) {
+                    html += `<button class="btn btn-sm btn-light page-btn" data-page="1">1</button>`;
+                    if (start > 2) html += `<span class="mx-1">...</span>`;
+                }
+
+                for (let i = start; i <= end; i++) {
+
+                    html += `
+                        <button class="btn btn-sm ${i==current?'btn-primary':'btn-light'} page-btn"
+                        data-page="${i}">
+                        ${i}
+                        </button>
+                    `;
+                }
+
+                if (end < last) {
+
+                    if (end < last - 1) html += `<span class="mx-1">...</span>`;
+
+                    html += `<button class="btn btn-sm btn-light page-btn" data-page="${last}">${last}</button>`;
+                }
+
+                html +=
+                    `<button class="btn btn-sm btn-light page-btn" data-page="${current+1}" ${current==last?'disabled':''}>Next</button>`;
+
+                $('#pagination').html(html);
+            }
+
+            $(document).on('click', '.page-btn', function() {
+
+                let page = $(this).data('page');
+
+                loadData(page);
+
+            });
         })
     </script>
 @endsection

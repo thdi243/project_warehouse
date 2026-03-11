@@ -11,20 +11,24 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use App\Http\Requests\Wrm\MasterBarangRequest;
+use App\Models\Wrm\MasterLocationModel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MasterBarangController extends Controller
 {
     public function index()
     {
-        return view('master.wrm.master_barang');
+        $location = MasterLocationModel::select('s_loc', 'plant')
+            ->distinct()
+            ->get();
+
+        return view('master.wrm.master_barang', compact('location'));
     }
 
     public function store(MasterBarangRequest $request)
     {
         $barang = MasterBarangModel::create([
             ...$request->validated(),
-            'plant' => $request->plant ?? 1006,
             'created_by' => Auth::id(),
         ]);
 
@@ -37,7 +41,7 @@ class MasterBarangController extends Controller
 
     public function getData()
     {
-        $barang = MasterBarangModel::all();
+        $barang = MasterBarangModel::with('location:id,s_loc,plant')->get();
 
         return response()->json([
             'status' => true,

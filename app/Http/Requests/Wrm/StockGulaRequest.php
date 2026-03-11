@@ -22,21 +22,15 @@ class StockGulaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'barang_id'     => 'required|exists:wrm_master_barang,id',
-            'loc'           => 'nullable|string|max:100',
-            'no_spb'        => 'required|integer',
-            'group'         => 'nullable|string|max:255',
-            'supplier'      => 'required|string|max:255',
-            'status'        => 'required|string|max:50',
-            'gudang'        => 'required|string|max:50',
-            'catatan'       => 'nullable|string',
-            'expired_date'  => 'nullable|date',
-
-            'pallet_id'     => 'required|array',
-            'pallet_id.*'   => 'nullable|string|max:50',
-
-            'qty'           => 'required|array',
-            'qty.*'         => 'required|integer|min:1',
+            'barang_id' => 'required|exists:wrm_master_barang,id',
+            'no_spb'    => 'required|integer',
+            'qty'       => 'required|integer|min:1',
+            'group'     => 'nullable|string|max:255',
+            'supplier'  => 'required|string|max:255',
+            'status'    => 'required|string|max:50',
+            'loc_id'    => 'required|exists:wrm_master_location,id',
+            'catatan'   => 'nullable|string',
+            'incoming_date' => 'nullable|date'
         ];
     }
 }

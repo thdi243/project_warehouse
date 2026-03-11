@@ -14,6 +14,7 @@ use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wrm\GroupStockController;
 use App\Http\Controllers\Wrm\MasterBarangController;
+use App\Http\Controllers\Wrm\MasterLocationController;
 use App\Http\Controllers\Wrm\P2HController;
 use App\Http\Controllers\Wrm\stock_gula\StockGulaController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
@@ -211,16 +212,26 @@ Route::middleware('auth')->group(function () {
             Route::post('/update/multi-pallet', [P2HController::class, 'updateMultiShiftPalletMover']);
         });
 
-        // Stock Gula
-        Route::prefix('stock-gula')->middleware(['permission:stock-gula,stock-gula-plus'])->group(function () {
-            Route::get('/index', [StockGulaController::class, 'index'])->name('wrm.stock_gula.index');
-            Route::post('/store', [StockGulaController::class, 'store'])->name('wrm.stock_gula.store');
-            Route::get('/data', [StockGulaController::class, 'getData'])->name('wrm.stock_gula.getData');
-            Route::get('/get-barang', [StockGulaController::class, 'getBarang'])->name('wrm.stock_gula.getBarang');
-            Route::put('/update/{id}', [StockGulaController::class, 'update'])->name('wrm.stock_gula.update');
-            Route::delete('/delete/{id}', [StockGulaController::class, 'destroy'])->name('wrm.stock_gula.delete');
-            Route::get('/template', [StockGulaController::class, 'downloadTemplate'])->name('wrm.stock_gula.template');
-            Route::post('/upload', [StockGulaController::class, 'upload'])->name('wrm.stock_gula.upload');
+
+        Route::prefix('wrm')->middleware(['permission:wrm'])->group(function () {
+            // Stock Gula
+            Route::prefix('stock-gula')->middleware(['permission:stock-gula,stock-gula-plus'])->group(function () {
+                Route::get('/index', [StockGulaController::class, 'index'])->name('wrm.stock_gula.index');
+                Route::get('/index-upload', [StockGulaController::class, 'indexUpload'])->name('wrm.stock_gula.index-upload');
+                Route::get('/index-transfer', [StockGulaController::class, 'indexTransfer'])->name('wrm.stock_gula.index-transfer');
+                Route::post('/store', [StockGulaController::class, 'store'])->name('wrm.stock_gula.store');
+                Route::post('/store-upload', [StockGulaController::class, 'storeUpload'])->name('wrm.stock_gula.store-upload');
+                Route::get('/data', [StockGulaController::class, 'getData'])->name('wrm.stock_gula.getData');
+                Route::get('/get-barang', [StockGulaController::class, 'getBarang'])->name('wrm.stock_gula.getBarang');
+                Route::get('/get-spb', [StockGulaController::class, 'getSpb'])->name('wrm.stock_gula.getSpb');
+                Route::get('/by-spb', [StockGulaController::class, 'bySpb'])->name('wrm.stock_gula.bySpb');
+                Route::post('/transfer', [StockGulaController::class, 'transfer'])->name('wrm.stock_gula.transfer');
+                Route::put('/update/{id}', [StockGulaController::class, 'update'])->name('wrm.stock_gula.update');
+                Route::delete('/delete/{id}', [StockGulaController::class, 'destroy'])->name('wrm.stock_gula.delete');
+                Route::get('/template', [StockGulaController::class, 'downloadTemplate'])->name('wrm.stock_gula.template');
+                Route::post('/upload', [StockGulaController::class, 'upload'])->name('wrm.stock_gula.upload');
+                Route::get('/select-location', [StockGulaController::class, 'selectLocationView'])->name('wrm.stock_gula.select-location');
+            });
         });
     });
 
@@ -351,6 +362,13 @@ Route::middleware('auth')->group(function () {
                     Route::get('/produk-aktif', [MasterIkatTerpalController::class, 'getProdukAktif']);
                 });
 
+                Route::prefix('location')->group(function () {
+                    Route::get('/index', [MasterLocationController::class, 'index'])->name('wrm.master.location.index');
+                    Route::get('/get-data', [MasterLocationController::class, 'getData'])->name('wrm.location.get-data');
+                    Route::post('/store', [MasterLocationController::class, 'store'])->name('wrm.location.store');
+                    Route::put('/update/{id}', [MasterLocationController::class, 'update'])->name('wrm.location.update');
+                    Route::delete('/delete/{id}', [MasterLocationController::class, 'destroy'])->name('wrm.location.delete');
+                });
                 Route::prefix('group-stock')->group(function () {
                     Route::get('/index', [GroupStockController::class, 'index'])->name('wrm.master.group-stock.index');
                     Route::get('/get-data', [GroupStockController::class, 'getData'])->name('wrm.group-stock.get-data');

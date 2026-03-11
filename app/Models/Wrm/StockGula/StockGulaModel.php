@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Models\Wrm;
+namespace App\Models\Wrm\StockGula;
 
 use App\Models\User;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Wrm\MasterBarangModel;
+use App\Models\Wrm\MasterLocationModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class StockGulaModel extends Model
 {
@@ -21,40 +23,33 @@ class StockGulaModel extends Model
         'incoming_date',
         'supplier',
         'status',
-        'gudang',
-        'loc',
+        'loc_id',
         'catatan',
-        'expired_date',
-        'transaksi',
+        'issued_date',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
-        'incoming_date' => 'date:Y-m-d',
-        'expired_date'  => 'date:Y-m-d',
+        'incoming_date' => 'date:d-m-Y',
     ];
 
     // Relationships
-
-    // relasi ke master barang
     public function barang()
     {
         return $this->belongsTo(MasterBarangModel::class, 'barang_id');
     }
 
-    public function group()
+    public function location()
     {
-        return $this->belongsTo(GroupStockModel::class, 'group');
+        return $this->belongsTo(MasterLocationModel::class, 'loc_id');
     }
 
-    // user pembuat
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    // user pengupdate
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');

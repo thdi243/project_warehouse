@@ -2,24 +2,60 @@
 
 namespace App\Http\Controllers\Wrm\stock_gula;
 
-use Illuminate\Http\Request;
-use App\Models\Wrm\StockGulaModel;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\Wrm\StockGulaRequest;
+use App\Http\Requests\Wrm\StockGulaUploadRequest;
 use App\Models\Wrm\MasterBarangModel;
+use App\Models\Wrm\MasterLocationModel;
+use App\Models\Wrm\StockGula\StockGulaModel;
+use App\Models\Wrm\StockGula\TempUploadModel;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use App\Http\Requests\Wrm\StockGulaRequest;
 
 class StockGulaController extends Controller
 {
     public function index()
     {
+        $today = Carbon::today();
+
+        $barang = MasterBarangModel::select('id', 'mid', 'nama_barang')
+            ->whereRaw('LOWER(nama_barang) LIKE ?', ['%gula%'])
+            ->get();
+
+        $location = MasterLocationModel::get();
+
+        return view('wrm.stock_gula.index', compact('barang', 'location'));
+    }
+
+    public function indexUpload()
+    {
         $barang = MasterBarangModel::select('id', 'mid', 'nama_barang')->get();
 
-        return view('wrm.stock_gula.index', compact('barang'));
+        return view('wrm.stock_gula.upload', compact('barang'));
+    }
+
+    public function indexTransfer()
+    {
+        return view('wrm.stock_gula.transfer');
+    }
+
+    public function selectLocationView()
+    {
+        $today = Carbon::now();
+
+        $data = TempUploadModel::whereDate('incoming_date', $today)->get();
+
+        $usedLocation = StockGulaModel::pluck('loc_id')->toArray();
+
+        $locations = MasterLocationModel::whereNotIn('id', $usedLocation)->get();
+
+        return view('wrm.stock_gula.after_upload', compact('data', 'locations'));
     }
 
     public function getBarang(Request $request)
@@ -52,6 +88,29 @@ class StockGulaController extends Controller
         ]);
     }
 
+    public function getSpb()
+    {
+        $data = StockGulaModel::select('no_spb')
+            ->distinct()
+            ->pluck('no_spb');
+
+        return response()->json([
+            'data' => $data
+        ]);
+    }
+
+    public function bySpb(Request $request)
+    {
+        $data = StockGulaModel::with('barang')
+            ->where('no_spb', $request->spb)
+            ->where('status', 'UNREST')
+            ->get();
+
+        return response()->json([
+            'data' => $data
+        ]);
+    }
+
     public function store(StockGulaRequest $request)
     {
         $data = $request->validated();
@@ -64,6 +123,7 @@ class StockGulaController extends Controller
                 'barang_id'     => $data['barang_id'],
                 'no_spb'        => $data['no_spb'],
                 'pallet_id'     => $pallet,
+                'jenis_bahan'   => $data['jenis_bahan'],
                 'group'         => $data['group'],
                 'qty'           => $data['qty'][$i],
                 'incoming_date' => now(),
@@ -85,19 +145,94 @@ class StockGulaController extends Controller
         ]);
     }
 
+    public function storeUpload(StockGulaUploadRequest $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            $temps = TempUploadModel::whereIn('id', array_keys($request->loc_id))->get();
+            $barangs = MasterBarangModel::whereIn('mid', $temps->pluck('mid'))
+                ->get()
+                ->keyBy('mid');
+
+            foreach ($request->loc_id as $tempId => $locId) {
+
+                $temp = $temps->firstWhere('id', $tempId);
+
+                $barang = $barangs[$temp->mid] ?? null;
+
+                if (!$barang) {
+                    throw new \Exception("MID {$temp->mid} tidak ditemukan");
+                }
+
+                StockGulaModel::create([
+                    'barang_id'     => $barang->id,
+                    'no_spb'        => $temp->no_spb,
+                    'pallet_id'     => $temp->pallet_id,
+                    'group'         => $temp->group,
+                    'qty'           => $temp->qty,
+                    'incoming_date' => now(),
+                    'supplier'      => $temp->supplier ?? null,
+                    'status'        => $temp->status,
+                    'loc_id'        => $locId,
+                    'catatan'       => $temp->catatan ?? null,
+                    'created_by'    => Auth::id(),
+                ]);
+            }
+
+            $tempIds = array_keys($request->loc_id);
+
+            TempUploadModel::whereIn('id', $tempIds)->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Stock gula berhasil disimpan'
+            ]);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function transfer(Request $request)
+    {
+        $ids = $request->ids;
+
+        StockGulaModel::whereIn('id', $ids)
+            ->update([
+                'status' => 'TRANSFER',
+                'issued_date' => now(),
+                'updated_by' => Auth::id()
+            ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Stock berhasil ditransfer'
+        ]);
+    }
+
     public function getData(Request $request)
     {
         $query = StockGulaModel::with(
-            'barang:id,mid,nama_barang,uom,s_loc',
-            'group:id,group'
+            'barang:id,mid,nama_barang,uom',
+            'location:id,gudang,bin,s_loc,plant'
         );
 
-        if ($request->group_id) {
-            $query->where('group', $request->group_id);
+        if ($request->group) {
+            $query->where('group', $request->group);
         }
 
         if ($request->status) {
-            $query->where('status', $request->status);
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->where('nama_barang', 'like', '%' . $request->jenis_bahan . '%');
+            });
         }
 
         if ($request->mid) {
@@ -106,12 +241,13 @@ class StockGulaController extends Controller
             });
         }
 
-        $barang = $query->get();
+
+        $data = $query->paginate(15);
 
         return response()->json([
             'status' => true,
             'message' => 'Data stock gula berhasil diambil',
-            'data' => $barang
+            'data' => $data
         ]);
     }
 
@@ -161,47 +297,69 @@ class StockGulaController extends Controller
             $errors = [];
             $mappedRows = [];
 
+            $today = now()->toDateString();
+            $prefixTracker = [];
+
             foreach ($rows as $i => $row) {
 
                 $line = $i + 2;
 
-                $mid = trim($row[0] ?? '');
+                $barcode    = trim($row[0] ?? '');
+                $mid        = trim($row[1] ?? '');
+                $qty        = $row[2] ?? 0;
+                $group      = $row[3] ?? null;
+                $supplier   = $row[4] ?? null;
+                $status     = strtoupper(trim($row[5] ?? ''));
+                $pallet     = $row[6] ?? null;
+                $catatan    = $row[7] ?? null;
 
                 if ($mid === '') {
                     $errors[] = "Baris {$line}: MID kosong";
                     continue;
                 }
 
-                $barang = MasterBarangModel::where('mid', $mid)->first();
-
-                if (!$barang) {
-                    $errors[] = "Baris {$line}: MID {$mid} tidak ditemukan";
+                if ($qty <= 0) {
+                    $errors[] = "Baris {$line}: Qty harus lebih dari 0";
                     continue;
                 }
 
-                if (($row[4] ?? 0) <= 0) {
-                    $errors[] = "Baris {$line}: Qty harus lebih dari 0";
+                $barcodePrefix = substr($barcode, 0, 10);
+
+                // CEK DUPLICATE DI DATABASE
+                $exist = TempUploadModel::where('mid', $mid)
+                    ->whereDate('incoming_date', $today)
+                    ->whereRaw('LEFT(barcode,10) = ?', [$barcodePrefix])
+                    ->exists();
+
+                if ($exist) {
+                    $errors[] = "Baris {$line}: Barcode (No SPB) {$barcodePrefix}, MID {$mid} sudah ada di database hari ini";
+                    continue;
                 }
 
+                // GENERATE PALLET_ID
+                if (!isset($prefixTracker[$barcodePrefix])) {
+                    $prefixTracker[$barcodePrefix] = 1;
+                } else {
+                    $prefixTracker[$barcodePrefix]++;
+                }
+
+                $pallet_id = $prefixTracker[$barcodePrefix];
+
                 $mappedRows[] = [
-                    'barang_id'     => $barang->id,
-                    'tanggal'       => now()->format('Y-m-d'),
+                    'barcode'     => $barcode,
+                    'no_spb'      => $barcodePrefix,
+                    'mid'         => $mid,
+                    'pallet_id'   => $pallet_id,
+                    'qty'         => $qty,
+                    'group'       => $group,
+                    'incoming_date' => now(),
+                    'supplier'    => $supplier ?? null,
+                    'status'      => $status,
+                    'pallet'      => $pallet ?? null,
+                    'catatan'     => $catatan ?? null,
 
-                    'location'      => $row[1] ?? null,
-                    'no_spb'        => $row[2] ?? null,
-                    'pallet_id'     => $row[3] ?? null,
-                    'qty'           => $row[4] ?? 0,
-                    'group'         => $row[5] ?? null,
-                    'incoming_date' => $this->parseDate($row[6] ?? null),
-                    'supplier'      => $row[7] ?? null,
-                    'status'        => strtoupper($row[8] ?? ''),
-                    'gudang'        => $row[9] ?? null,
-                    'pallet'        => $row[10] ?? null,
-                    'catatan'       => $row[11] ?? null,
-                    'expired_date'  => $this->parseDate($row[12] ?? null),
-                    'transaksi'     => 'inbound',
-
-                    'created_by'    => Auth::id(),
+                    'created_by'  => Auth::id(),
+                    'updated_by'  => Auth::id(),
                 ];
             }
 
@@ -209,9 +367,10 @@ class StockGulaController extends Controller
                 throw new \Exception(implode("\n", $errors));
             }
 
-            foreach ($mappedRows as $data) {
-                StockGulaModel::create($data);
-            }
+            // foreach ($mappedRows as $data) {
+            //     TempUploadModel::create($data);
+            // }
+            TempUploadModel::insert($mappedRows);
 
             DB::commit();
 
@@ -229,44 +388,6 @@ class StockGulaController extends Controller
                 'message' => 'Upload dibatalkan',
                 'errors' => explode("\n", $e->getMessage())
             ], 422);
-        }
-    }
-
-    public function downloadTemplate()
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-
-        $sheet->fromArray([
-            ['MID', 'LOC', 'NO_SPB', 'PALLET_ID', 'QTY', 'GROUP', 'INCOMING_DATE', 'SUPPLIER', 'STATUS', 'GUDANG', 'PALLET', 'CATATAN', 'EXPIRED_DATE'],
-            ['MID001', 'F26', 12345, 1, 100, 'A', '30/12/2026', 'Supplier A', 'UNREST', 'WRM 6', 'HOLLO GULA', '', ''],
-            ['MID002', 'F26', 12345, 2, 100, 'A', '30/12/2026', 'Supplier B', 'UNREST', 'WRM 6', 'HOLLO GULA', '', ''],
-        ]);
-
-        $writer = new Xlsx($spreadsheet);
-        $filename = 'template_stock_gula_wrm.xlsx';
-
-        return response()->streamDownload(
-            fn() => $writer->save('php://output'),
-            $filename
-        );
-    }
-
-    private function parseDate($value)
-    {
-        if (!$value) return null;
-
-        try {
-
-            if (is_numeric($value)) {
-                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)
-                    ->format('Y-m-d');
-            }
-
-            return \Carbon\Carbon::parse($value)->format('Y-m-d');
-        } catch (\Exception $e) {
-
-            return null;
         }
     }
 }

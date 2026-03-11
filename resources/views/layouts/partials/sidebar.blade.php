@@ -54,7 +54,7 @@
                             <a href="{{ route('dashboard.tkbm') }}"
                                 class="nav-link menu-link {{ request()->routeIs('dashboard.tkbm') ? 'active' : '' }}">
                                 <i class="mdi mdi-chart-box"></i>
-                                <span data-key="tkbm-dashboard">TKBM Dashboard</span>
+                                <span data-key="tkbm-dashboard">TKBM BPS Dashboard</span>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -207,7 +207,7 @@
                                 href="#sideBarRak" data-bs-toggle="collapse" role="button"
                                 aria-expanded="{{ request()->routeIs('stock.*') ? 'true' : 'false' }}"
                                 aria-controls="sideBarRak">
-                                <i class="mdi mdi-package-variant"></i><span data-key="t-stock">WSP Stock</span>
+                                <i class="mdi mdi-package-variant"></i><span data-key="t-stock">WSP</span>
                             </a>
                             <div class="collapse menu-dropdown {{ request()->routeIs('stock.*') ? 'show' : '' }}"
                                 id="sideBarRak">
@@ -222,12 +222,22 @@
                                         </li>
                                     @endcan
                                     @can('permission', 'wsp-stock-pr')
-                                        <li class="nav-item">
-                                            <a href="{{ route('stock.pr.index') }}"
-                                                class="nav-link {{ request()->is('purchase-requesition/*') ? 'active' : '' }}"
-                                                data-key="t-input-mst_brg_wfg">
-                                                <i class="mdi mdi-note-plus"></i>Purchase Requesition</a>
-                                        </li>
+                                        @if ($jabatan === 'operator')
+                                            <li class="nav-item">
+                                                <a href="{{ url('/app/purchase-requesition/form') }}" target="_blank"
+                                                    class="nav-link menu-link {{ request()->Is('/app/purchase-requesition/form') ? 'active' : '' }}">
+                                                    <i class="mdi mdi-text-box-plus"></i> <span data-key="t-stock-gula">Form
+                                                        PR</span>
+                                                </a>
+                                            </li>
+                                        @else
+                                            <li class="nav-item">
+                                                <a href="{{ route('stock.pr.index') }}"
+                                                    class="nav-link {{ request()->is('purchase-requesition/*') ? 'active' : '' }}"
+                                                    data-key="t-input-mst_brg_wfg">
+                                                    <i class="mdi mdi-note-plus"></i>Purchase Requesition</a>
+                                            </li>
+                                        @endif
                                     @endcan
                                     @can('permission', 'wsp-stock-move')
                                         <li class="nav-item">
@@ -374,23 +384,48 @@
                         {{-- @endif --}}
                     @endcan
 
-                    @can('permission', 'stock-gula')
+                    @can('permission', 'wrm-stock')
                         <li class="nav-item">
-                            <a href="{{ route('wrm.stock_gula.index') }}"
-                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}">
-                                <i class="mdi mdi-cube-outline"></i> <span data-key="t-stock-gula">Stock Gula</span>
+                            <a class="nav-link menu-link {{ request()->is('wrm/*') ? '' : 'collapsed' }}"
+                                href="#sideBarWrmStock" data-bs-toggle="collapse" role="button"
+                                aria-expanded="{{ request()->is('wrm/*') ? 'true' : 'false' }}"
+                                aria-controls="sideBarWrmStock">
+                                <i class="mdi mdi-cube-outline"></i><span data-key="t-wrm/">WRM</span>
                             </a>
+                            <div class="collapse menu-dropdown {{ request()->is('wrm/*') ? 'show' : '' }}"
+                                id="sideBarWrmStock">
+                                <ul class="nav nav-sm flex-column">
+                                    @can('permission', 'stock-gula')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.stock_gula.index-upload') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index-upload') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Upload Stock
+                                                    Gula</span>
+                                            </a>
+                                        </li>
+                                    @endcan
+                                    @can('permission', 'stock-gula-data')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.stock_gula.index') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Data Stock
+                                                    Gula</span>
+                                            </a>
+                                        </li>
+                                    @endcan
+                                </ul>
+                            </div>
                         </li>
                     @endcan
 
-                    @can('permission', 'pr-form')
+                    {{-- @can('permission', 'pr-form')
                         <li class="nav-item">
                             <a href="{{ url('/app/purchase-requesition/form') }}" target="_blank"
                                 class="nav-link menu-link {{ request()->Is('/app/purchase-requesition/form') ? 'active' : '' }}">
                                 <i class="mdi mdi-text-box-plus"></i> <span data-key="t-stock-gula">Form PR</span>
                             </a>
                         </li>
-                    @endcan
+                    @endcan --}}
                     {{-- @endif --}}
 
                     {{-- Data Master --}}
@@ -404,7 +439,7 @@
                                 href="#sidebarMasterWfg" data-bs-toggle="collapse" role="button"
                                 aria-expanded="{{ request()->routeIs('wfg.master.*') ? 'true' : 'false' }}"
                                 aria-controls="sidebarMasterWfg">
-                                <i class="mdi mdi-warehouse"></i> <span data-key="t-stock_op_wfg">WFG</span>
+                                <i class="mdi mdi-warehouse"></i> <span data-key="t-stock_op_wfg">Master WFG</span>
                             </a>
                             <div class="collapse menu-dropdown {{ request()->routeIs('wfg.master.*') ? 'show' : '' }}"
                                 id="sidebarMasterWfg">
@@ -432,7 +467,7 @@
                                 aria-expanded="{{ request()->routeIs('wsp.master.*') ? 'true' : 'false' }}"
                                 aria-controls="sidebarMasterWsp">
                                 <i class="mdi mdi-tools"></i>
-                                <span data-key="t-stock_op_wfg">WSP</span>
+                                <span data-key="t-stock_op_wfg">Master WSP</span>
                             </a>
 
                             <div class="collapse menu-dropdown {{ request()->routeIs('wsp.master.*') ? 'show' : '' }}"
@@ -480,7 +515,7 @@
                                 aria-expanded="{{ request()->routeIs('wrm.master.*') ? 'true' : 'false' }}"
                                 aria-controls="sidebarMasterWrm">
                                 <i class="mdi mdi-store-settings"></i>
-                                <span data-key="t-stock_op_wfg">WRM</span>
+                                <span data-key="t-stock_op_wfg">Master WRM</span>
                             </a>
 
                             <div class="collapse menu-dropdown {{ request()->routeIs('wrm.master.*') ? 'show' : '' }}"
@@ -491,17 +526,17 @@
                                             <a href="{{ route('wrm.master.barang.index') }}"
                                                 class="nav-link {{ request()->routeIs('wrm.master.barang.index') ? 'active' : '' }}"
                                                 data-key="t-input-tkbm">
-                                                <i class="mdi mdi-view-grid"></i>Master Barang WRM
+                                                <i class="mdi mdi-view-grid"></i>Master Barang
                                             </a>
                                         </li>
                                     @endcan
 
-                                    @can('permission', 'master-group-stock')
+                                    @can('permission', 'master-location-wrm')
                                         <li class="nav-item">
-                                            <a href="{{ route('wrm.master.group-stock.index') }}"
-                                                class="nav-link {{ request()->routeIs('wrm.master.group-stock.index') ? 'active' : '' }}"
+                                            <a href="{{ route('wrm.master.location.index') }}"
+                                                class="nav-link {{ request()->routeIs('wrm.master.location.index') ? 'active' : '' }}"
                                                 data-key="t-input-tkbm">
-                                                <i class="mdi mdi-view-grid"></i>Master Group Stock
+                                                <i class="mdi mdi-view-grid"></i>Master Lokasi
                                             </a>
                                         </li>
                                     @endcan
