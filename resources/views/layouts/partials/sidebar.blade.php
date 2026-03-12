@@ -409,8 +409,8 @@
                                         <li class="nav-item">
                                             <a href="{{ route('wrm.stock_gula.index') }}"
                                                 class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}">
-                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Data Stock
-                                                    Gula</span>
+                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Data Stock On
+                                                    Hand</span>
                                             </a>
                                         </li>
                                     @endcan

@@ -44,7 +44,7 @@
 
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Raw Material Stock Gula</h5>
+                    <h5 class="mb-0">Raw Material Stock On Hand</h5>
                     <div class="d-flex gap-2">
                         <a href="{{ route('wrm.stock_gula.index-upload') }}" class="btn btn-outline-primary" id="btnUpload">
                             <i class="mdi mdi-upload"></i> Upload
@@ -378,7 +378,7 @@
 
                     let html = '';
                     let data = res.data.data;
-                    let no = 1;
+                    let startNo = res.data.from;
 
                     if (data.length === 0) {
 
@@ -395,11 +395,11 @@
 
                     } else {
 
-                        data.forEach((d) => {
+                        data.forEach((d, index) => {
 
                             html += `
                                 <tr>
-                                    <td class="text-center">${no++}</td>
+                                    <td class="text-center">${startNo + index}</td>
                                     <td>${d.inbound.no_spb}</td>
                                     <td>${d.barang.mid}</td>
                                     <td>${d.barang.nama_barang}</td>

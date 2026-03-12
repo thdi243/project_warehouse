@@ -377,7 +377,8 @@ class StockGulaController extends Controller
             'barang:id,mid,nama_barang,uom',
             'location:id,gudang,bin,s_loc,plant',
             'inbound:id,no_spb,incoming_date,supplier'
-        ]);
+        ])
+            ->whereIn('status', ['UNREST', 'QI', 'BLOCKED']);
 
         if ($request->group) {
             $query->where('group', $request->group);
