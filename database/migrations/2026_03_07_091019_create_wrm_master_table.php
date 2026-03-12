@@ -27,7 +27,7 @@ return new class extends Migration
             $table->integer('mid');
             $table->string('nama_barang');
             $table->string('uom');
-            $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
+            // $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
             $table->string('qty_kg')->nullable(); // Kg/Pallet
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');

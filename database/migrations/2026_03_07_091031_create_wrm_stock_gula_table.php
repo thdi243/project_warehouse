@@ -11,38 +11,85 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('wrm_stock_gula', function (Blueprint $table) {
+        Schema::create('wrm_stock_inbound', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
             $table->bigInteger('no_spb');
-            $table->integer('pallet_id');
             $table->date('incoming_date');
+            $table->string('supplier')->nullable();
+            $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
+            $table->timestamps();
+        });
+
+        Schema::create('wrm_stock_inbound_details', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('inbound_id')->constrained('wrm_stock_inbound')->onDelete('cascade');
+            $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
+            $table->integer('pallet_id');
             $table->string('group');
             $table->integer('qty');
-            $table->string('supplier')->nullable();
             $table->string('status');
             $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
             $table->text('catatan')->nullable();
             $table->string('pallet')->nullable();
+            $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
+            $table->timestamps();
+        });
+
+        Schema::create('wrm_stock_outbound', function (Blueprint $table) {
+            $table->id();
+            $table->bigInteger('no_spb');
+            $table->date('incoming_date');
+            $table->string('supplier')->nullable();
             $table->date('issued_date')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
         });
 
-        // Schema::create('wrm_stock_gula_transaksi', function (Blueprint $table) {
-        //     $table->id();
-        //     $table->foreignId('stock_gula_id')->constrained('wrm_stock_gula')->onDelete('cascade');
-        //     $table->enum('jenis', ['inbound', 'outbound', 'adjustment']); // inbound atau outbound
-        //     $table->integer('qty');
-        //     $table->date('tanggal');
-        //     $table->text('catatan')->nullable();
-        //     $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
-        //     $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('cascade');
-        //     $table->timestamps();
-        // });
+        Schema::create('wrm_stock_outbound_details', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('outbound_id')->constrained('wrm_stock_outbound')->onDelete('cascade');
+            $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
+            $table->integer('pallet_id');
+            $table->string('group');
+            $table->integer('qty');
+            $table->string('status');
+            $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
+            $table->text('catatan')->nullable();
+            $table->string('pallet')->nullable();
+            $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
+            $table->timestamps();
+        });
 
-        Schema::create('wrm_stock_gula_temp_upload', function (Blueprint $table) {
+        Schema::create('wrm_stock_movements', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
+            $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
+            $table->date('tanggal');
+            $table->decimal('qty', 15, 2);
+            $table->enum('jenis', ['in', 'out', 'transfer']);
+            $table->string('ref_type');
+            $table->unsignedBigInteger('ref_id');
+            $table->text('catatan')->nullable();
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
+            $table->timestamps();
+        });
+
+        Schema::create('wrm_stock_balance', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
+            $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
+            $table->decimal('qty', 15, 2);
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
+            $table->timestamps();
+        });
+
+        Schema::create('wrm_stock_inbound_temp_upload', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('barcode');
             $table->bigInteger('no_spb');
@@ -67,7 +114,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('wrm_stock_gula_temp_upload');
-        Schema::dropIfExists('wrm_stock_gula');
+        Schema::dropIfExists('wrm_stock_inbound_temp_upload');
+        Schema::dropIfExists('wrm_stock_balance');
+        Schema::dropIfExists('wrm_stock_movements');
+        Schema::dropIfExists('wrm_stock_outbound_details');
+        Schema::dropIfExists('wrm_stock_outbound');
+        Schema::dropIfExists('wrm_stock_inbound_details');
+        Schema::dropIfExists('wrm_stock_inbound');
     }
 };

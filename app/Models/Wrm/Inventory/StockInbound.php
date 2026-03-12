@@ -1,41 +1,37 @@
 <?php
 
-namespace App\Models\Wrm\StockGula;
+namespace App\Models\Wrm\Inventory;
 
 use App\Models\User;
+use App\Models\Wrm\MasterBarangModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class TempUploadModel extends Model
+class StockInbound extends Model
 {
     use HasFactory;
 
-    protected $table = 'wrm_stock_inbound_temp_upload';
+    protected $table = 'wrm_stock_inbound';
 
     protected $fillable = [
-        'barcode',
         'no_spb',
-        'mid',
-        'pallet_id',
-        'qty',
-        'group',
-        'status',
         'incoming_date',
         'supplier',
-        'pallet',
-        'gudang',
-        'bin',
-        'catatan',
         'created_by',
         'updated_by',
     ];
 
-    public function createdBy()
+    public function details()
+    {
+        return $this->hasMany(StockInboundDetail::class, 'inbound_id');
+    }
+
+    public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function updatedBy()
+    public function updater()
     {
         return $this->belongsTo(User::class, 'updated_by');
     }

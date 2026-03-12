@@ -30,7 +30,8 @@ class MasterBarangRequest extends FormRequest
             ],
             'nama_barang'  => 'required|string|max:255',
             'uom'          => 'required|string|max:50',
-            'loc_id'        => 'required',
+            // 'loc_id'        => 'required',
+            'qty_kg'        => 'required',
         ];
     }
 

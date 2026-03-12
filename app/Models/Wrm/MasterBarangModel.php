@@ -17,7 +17,8 @@ class MasterBarangModel extends Model
         'mid',
         'nama_barang',
         'uom',
-        'loc_id',
+        // 'loc_id',
+        'qty_kg',
         'created_by',
         'updated_by',
     ];

@@ -10,9 +10,9 @@
                 <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                     <h5 class="mb-0">Master Barang Raw Material</h5>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary" id="btnUpload">
+                        {{-- <button class="btn btn-outline-primary" id="btnUpload">
                             <i class="mdi mdi-upload"></i> Upload
-                        </button>
+                        </button> --}}
                         <button class="btn btn-primary" id="btnTambah">
                             <i class="mdi mdi-plus"></i> Tambah
                         </button>
@@ -29,7 +29,8 @@
                                     <th>MID</th>
                                     <th>Nama Barang</th>
                                     <th>UOM</th>
-                                    <th>S Loc</th>
+                                    {{-- <th>Loc</th> --}}
+                                    <th>Qty KG/Pallet</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -70,11 +71,11 @@
                             <input type="text" class="form-control" id="uom" required>
                         </div>
 
-                        <div class="mb-2">
-                            <label>S Loc <span class="text-danger">*</span></label>
+                        {{-- <div class="mb-2">
+                            <label>Loc <span class="text-danger">*</span></label>
 
                             <select name="loc_id" id="loc_id" class="form-select" required>
-                                <option value="">Pilih S Loc</option>
+                                <option value="">Pilih Loc</option>
 
                                 @foreach ($location as $loc)
                                     <option value="{{ $loc->id }}">
@@ -83,6 +84,11 @@
                                 @endforeach
 
                             </select>
+                        </div> --}}
+
+                        <div class="mb-2">
+                            <label>Qty KG/Pallet <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="qty_kg" required>
                         </div>
                     </div>
 
@@ -144,7 +150,7 @@
                                 <td>${v.mid}</td>
                                 <td>${v.nama_barang}</td>
                                 <td>${v.uom}</td>
-                                <td>${v.location.plant} - ${v.location.s_loc}</td>
+                                <td>${v.qty_kg ?? '-'}</td>
                                 <td class="text-center">
                                     <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>
                                     <button class="btn btn-danger btn-sm btnHapus" data-id="${v.id}">Hapus</button>
@@ -169,7 +175,8 @@
                 $('#mid').val(data.mid);
                 $('#nama_barang').val(data.nama_barang);
                 $('#uom').val(data.uom);
-                $('#s_loc').val(data.s_loc);
+                // $('#loc_id').val(data.loc_id);
+                $('#qty_kg').val(data.qty_kg);
 
                 $('#modalBarang').modal('show');
             });
@@ -196,7 +203,8 @@
                         mid: $('#mid').val(),
                         nama_barang: $('#nama_barang').val(),
                         uom: $('#uom').val(),
-                        loc_id: $('#loc_id').val(),
+                        // loc_id: $('#loc_id').val(),
+                        qty_kg: $('#qty_kg').val(),
                     },
                     success: function(res) {
                         $('#modalBarang').modal('hide');

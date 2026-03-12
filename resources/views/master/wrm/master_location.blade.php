@@ -26,10 +26,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center">No</th>
+                                    <th>Plant</th>
+                                    <th>S Loc</th>
                                     <th>Gudang</th>
                                     <th>Bin</th>
-                                    <th>S Loc</th>
-                                    <th>Plant</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -54,7 +54,14 @@
 
                     <div class="modal-body">
                         <input type="hidden" id="id">
-
+                        <div class="mb-2">
+                            <label>Plant <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="plant" required>
+                        </div>
+                        <div class="mb-2">
+                            <label>S Loc <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="s_loc" required>
+                        </div>
                         <div class="mb-2">
                             <label>Gudang <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="gudang" required>
@@ -62,14 +69,6 @@
                         <div class="mb-2">
                             <label>Bin <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="bin" required>
-                        </div>
-                        <div class="mb-2">
-                            <label>S Loc <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="s_loc" required>
-                        </div>
-                        <div class="mb-2">
-                            <label>Plant <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="plant" required>
                         </div>
                     </div>
 
@@ -97,10 +96,10 @@
                         html += `
                             <tr>
                                 <td class="text-center">${i + 1}</td>
+                                <td>${v.plant}</td>
+                                <td>${v.s_loc}</td>
                                 <td>${v.gudang}</td>
                                 <td>${v.bin}</td>
-                                <td>${v.s_loc}</td>
-                                <td>${v.plant}</td>
                                 <td class="text-center">
                                     <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>
                                     <button class="btn btn-danger btn-sm btnHapus" data-id="${v.id}">Hapus</button>

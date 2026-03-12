@@ -5,6 +5,13 @@ namespace App\Http\Controllers\Wrm\stock_gula;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Wrm\StockGulaRequest;
 use App\Http\Requests\Wrm\StockGulaUploadRequest;
+use App\Http\Requests\Wrm\SubmitOutboundRequest;
+use App\Models\Wrm\Inventory\StockBalance;
+use App\Models\Wrm\Inventory\StockInbound;
+use App\Models\Wrm\Inventory\StockInboundDetail;
+use App\Models\Wrm\Inventory\StockMovement;
+use App\Models\Wrm\Inventory\StockOutbound;
+use App\Models\Wrm\Inventory\StockOutboundDetail;
 use App\Models\Wrm\MasterBarangModel;
 use App\Models\Wrm\MasterLocationModel;
 use App\Models\Wrm\StockGula\StockGulaModel;
@@ -35,6 +42,12 @@ class StockGulaController extends Controller
 
     public function indexUpload()
     {
+        $hasTemp = TempUploadModel::whereDate('incoming_date', now())->exists();
+
+        if ($hasTemp) {
+            return redirect()->route('wrm.stock_gula.select-location');
+        }
+
         $barang = MasterBarangModel::select('id', 'mid', 'nama_barang')->get();
 
         return view('wrm.stock_gula.upload', compact('barang'));
@@ -42,7 +55,7 @@ class StockGulaController extends Controller
 
     public function indexTransfer()
     {
-        return view('wrm.stock_gula.transfer');
+        return view('wrm.stock_gula.outbound');
     }
 
     public function selectLocationView()
@@ -51,7 +64,7 @@ class StockGulaController extends Controller
 
         $data = TempUploadModel::whereDate('incoming_date', $today)->get();
 
-        $usedLocation = StockGulaModel::pluck('loc_id')->toArray();
+        $usedLocation = StockInboundDetail::pluck('loc_id')->toArray();
 
         $locations = MasterLocationModel::whereNotIn('id', $usedLocation)->get();
 
@@ -88,25 +101,44 @@ class StockGulaController extends Controller
         ]);
     }
 
-    public function getSpb()
+    public function searchOutbound(Request $request)
     {
-        $data = StockGulaModel::select('no_spb')
-            ->distinct()
-            ->pluck('no_spb');
+        $query = StockInboundDetail::select('wrm_stock_inbound_details.*')
+            ->join('wrm_stock_inbound', 'wrm_stock_inbound.id', '=', 'wrm_stock_inbound_details.inbound_id')
+            ->with([
+                'inbound:id,no_spb,incoming_date',
+                'barang:id,mid,nama_barang,uom',
+                'location:id,gudang,bin,s_loc,plant',
+            ])
+            ->where('wrm_stock_inbound_details.status', 'UNREST');
+
+        // filter MID
+        if ($request->mid) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', 'like', '%' . $request->mid . '%');
+            });
+        }
+
+        // filter nama barang
+        if ($request->nama_barang) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->where('nama_barang', 'like', '%' . $request->nama_barang . '%');
+            });
+        }
+
+        // filter group
+        if ($request->group) {
+            $query->where('group', $request->group);
+        }
+
+        // urutkan FIFO (incoming paling lama)
+        $query->orderBy('wrm_stock_inbound.incoming_date', 'asc');
+
+        $data = $query->paginate(15);
 
         return response()->json([
-            'data' => $data
-        ]);
-    }
-
-    public function bySpb(Request $request)
-    {
-        $data = StockGulaModel::with('barang')
-            ->where('no_spb', $request->spb)
-            ->where('status', 'UNREST')
-            ->get();
-
-        return response()->json([
+            'status' => true,
+            'message' => 'Stock outbound berhasil diambil',
             'data' => $data
         ]);
     }
@@ -150,10 +182,14 @@ class StockGulaController extends Controller
         DB::beginTransaction();
 
         try {
+
             $temps = TempUploadModel::whereIn('id', array_keys($request->loc_id))->get();
+
             $barangs = MasterBarangModel::whereIn('mid', $temps->pluck('mid'))
                 ->get()
                 ->keyBy('mid');
+
+            $headers = [];
 
             foreach ($request->loc_id as $tempId => $locId) {
 
@@ -165,24 +201,61 @@ class StockGulaController extends Controller
                     throw new \Exception("MID {$temp->mid} tidak ditemukan");
                 }
 
-                StockGulaModel::create([
-                    'barang_id'     => $barang->id,
-                    'no_spb'        => $temp->no_spb,
-                    'pallet_id'     => $temp->pallet_id,
-                    'group'         => $temp->group,
-                    'qty'           => $temp->qty,
-                    'incoming_date' => now(),
-                    'supplier'      => $temp->supplier ?? null,
-                    'status'        => $temp->status,
-                    'loc_id'        => $locId,
-                    'catatan'       => $temp->catatan ?? null,
-                    'created_by'    => Auth::id(),
+                if (!isset($headers[$temp->no_spb])) {
+                    $headers[$temp->no_spb] = StockInbound::create([
+                        'no_spb'        => $temp->no_spb,
+                        'incoming_date' => now(),
+                        'supplier'      => $temp->supplier ?? null,
+                        'created_by'    => Auth::id(),
+                    ]);
+                }
+
+                $header = $headers[$temp->no_spb];
+
+                $detail = StockInboundDetail::create([
+                    'inbound_id' => $header->id,
+                    'barang_id'  => $barang->id,
+                    'pallet_id'  => $temp->pallet_id,
+                    'group'      => $temp->group,
+                    'qty'        => $temp->qty,
+                    'status'     => $temp->status,
+                    'loc_id'     => $locId,
+                    'pallet'     => $temp->pallet,
+                    'catatan'    => $temp->catatan,
+                    'created_by' => Auth::id(),
                 ]);
+
+                StockMovement::create([
+                    'barang_id'  => $barang->id,
+                    'loc_id'     => $locId,
+                    'tanggal'    => now(),
+                    'qty'        => $temp->qty,
+                    'jenis'      => 'in',
+                    'ref_type'   => 'inbound',
+                    'ref_id'     => $detail->id,
+                    'catatan'    => $temp->catatan,
+                    'created_by' => Auth::id(),
+                ]);
+
+                $balance = StockBalance::where('barang_id', $barang->id)
+                    ->where('loc_id', $locId)
+                    ->first();
+
+                if ($balance) {
+
+                    $balance->increment('qty', $temp->qty);
+                } else {
+
+                    StockBalance::create([
+                        'barang_id'  => $barang->id,
+                        'loc_id'     => $locId,
+                        'qty'        => $temp->qty,
+                        'created_by' => Auth::id(),
+                    ]);
+                }
             }
 
-            $tempIds = array_keys($request->loc_id);
-
-            TempUploadModel::whereIn('id', $tempIds)->delete();
+            TempUploadModel::whereIn('id', array_keys($request->loc_id))->delete();
 
             DB::commit();
 
@@ -201,35 +274,116 @@ class StockGulaController extends Controller
         }
     }
 
-    public function transfer(Request $request)
+    public function submitOutbound(SubmitOutboundRequest $request)
     {
-        $ids = $request->ids;
+        DB::beginTransaction();
 
-        StockGulaModel::whereIn('id', $ids)
-            ->update([
-                'status' => 'TRANSFER',
-                'issued_date' => now(),
-                'updated_by' => Auth::id()
+        try {
+
+            $details = StockInboundDetail::with([
+                'inbound',
+                'barang'
+            ])
+                ->whereIn('id', collect($request->items)->pluck('id'))
+                ->get();
+
+            $headers = [];
+
+            foreach ($details as $detail) {
+
+                $inbound = $detail->inbound;
+                $barang  = $detail->barang;
+
+                // header outbound berdasarkan no_spb inbound
+                if (!isset($headers[$inbound->no_spb])) {
+
+                    $headers[$inbound->no_spb] = StockOutbound::create([
+                        'no_spb'       => $inbound->no_spb,
+                        'incoming_date' => $inbound->incoming_date,
+                        'supplier'     => $inbound->supplier,
+                        'issued_date'  => now(),
+                        'created_by'   => Auth::id(),
+                    ]);
+                }
+
+                $header = $headers[$inbound->no_spb];
+
+                // simpan outbound detail
+                StockOutboundDetail::create([
+                    'outbound_id' => $header->id,
+                    'barang_id'   => $detail->barang_id,
+                    'pallet_id'   => $detail->pallet_id,
+                    'group'       => $detail->group,
+                    'qty'         => $detail->qty,
+                    'loc_id'      => $detail->loc_id,
+                    'status'      => 'ISSUED',
+                    'pallet'      => $detail->pallet,
+                    'created_by'  => Auth::id(),
+                ]);
+
+                // update status inbound detail
+                $detail->update([
+                    'status' => 'ISSUED'
+                ]);
+
+                // stock movement
+                StockMovement::create([
+                    'barang_id'  => $detail->barang_id,
+                    'loc_id'     => $detail->loc_id,
+                    'tanggal'    => now(),
+                    'qty'        => $detail->qty,
+                    'jenis'      => 'out',
+                    'ref_type'   => 'outbound',
+                    'ref_id'     => $detail->id,
+                    'created_by' => Auth::id(),
+                ]);
+
+                // update stock balance
+                $balance = StockBalance::where('barang_id', $detail->barang_id)
+                    ->where('loc_id', $detail->loc_id)
+                    ->first();
+
+                if (!$balance) {
+                    throw new \Exception("Stock balance tidak ditemukan");
+                }
+
+                if ($balance->qty < $detail->qty) {
+                    throw new \Exception("Stock tidak cukup");
+                }
+
+                $balance->decrement('qty', $detail->qty);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Outbound berhasil disimpan'
             ]);
+        } catch (\Throwable $e) {
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Stock berhasil ditransfer'
-        ]);
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getData(Request $request)
     {
-        $query = StockGulaModel::with(
+        $query = StockInboundDetail::with([
             'barang:id,mid,nama_barang,uom',
-            'location:id,gudang,bin,s_loc,plant'
-        );
+            'location:id,gudang,bin,s_loc,plant',
+            'inbound:id,no_spb,incoming_date,supplier'
+        ]);
 
         if ($request->group) {
             $query->where('group', $request->group);
         }
 
-        if ($request->status) {
+        if ($request->jenis_bahan) {
             $query->whereHas('barang', function ($q) use ($request) {
                 $q->where('nama_barang', 'like', '%' . $request->jenis_bahan . '%');
             });
@@ -240,7 +394,6 @@ class StockGulaController extends Controller
                 $q->where('mid', 'like', '%' . $request->mid . '%');
             });
         }
-
 
         $data = $query->paginate(15);
 
@@ -253,23 +406,70 @@ class StockGulaController extends Controller
 
     public function update(StockGulaRequest $request, $id)
     {
-        $stock = StockGulaModel::findOrFail($id);
+        DB::beginTransaction();
 
-        $stock->update([
-            ...$request->validated(),
-            'updated_by' => Auth::id(),
-        ]);
+        try {
 
-        return response()->json([
-            'status'  => true,
-            'message' => 'Stock gula berhasil diperbarui',
-            'data'    => $stock,
-        ]);
+            $detail = StockInboundDetail::findOrFail($id);
+
+            $oldQty = $detail->qty;
+            $oldLoc = $detail->loc_id;
+            $barangId = $detail->barang_id;
+
+            $detail->update([
+                'pallet_id' => $request->pallet_id,
+                'group'     => $request->group,
+                'qty'       => $request->qty,
+                'status'    => $request->status,
+                'loc_id'    => $request->loc_id,
+                'catatan'   => $request->catatan,
+                'updated_by' => Auth::id(),
+            ]);
+
+            $movement = StockMovement::where('ref_type', 'inbound')
+                ->where('ref_id', $detail->id)
+                ->first();
+
+            if ($movement) {
+
+                $movement->update([
+                    'qty'    => $request->qty,
+                    'loc_id' => $request->loc_id,
+                    'catatan' => $request->catatan
+                ]);
+            }
+
+            $qtyDiff = $request->qty - $oldQty;
+
+            $balance = StockBalance::where('barang_id', $barangId)
+                ->where('loc_id', $oldLoc)
+                ->first();
+
+            if ($balance) {
+                $balance->increment('qty', $qtyDiff);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Stock gula berhasil diperbarui',
+                'data'    => $detail
+            ]);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function destroy($id)
     {
-        $barang = StockGulaModel::findOrFail($id);
+        $barang = StockInboundDetail::findOrFail($id);
 
         $barang->delete();
 
@@ -306,12 +506,12 @@ class StockGulaController extends Controller
 
                 $barcode    = trim($row[0] ?? '');
                 $mid        = trim($row[1] ?? '');
-                $qty        = $row[2] ?? 0;
                 $group      = $row[3] ?? null;
-                $supplier   = $row[4] ?? null;
-                $status     = strtoupper(trim($row[5] ?? ''));
-                $pallet     = $row[6] ?? null;
-                $catatan    = $row[7] ?? null;
+                $qty        = $row[6] ?? 0;
+                $status     = strtoupper(trim($row[8] ?? ''));
+                $supplier   = $row[9] ?? null;
+                $pallet     = $row[10] ?? null;
+                $catatan    = $row[11] ?? null;
 
                 if ($mid === '') {
                     $errors[] = "Baris {$line}: MID kosong";
@@ -359,7 +559,8 @@ class StockGulaController extends Controller
                     'catatan'     => $catatan ?? null,
 
                     'created_by'  => Auth::id(),
-                    'updated_by'  => Auth::id(),
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
                 ];
             }
 

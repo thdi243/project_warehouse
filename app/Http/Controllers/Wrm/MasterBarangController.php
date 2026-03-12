@@ -18,8 +18,12 @@ class MasterBarangController extends Controller
 {
     public function index()
     {
-        $location = MasterLocationModel::select('s_loc', 'plant')
-            ->distinct()
+        $location = MasterLocationModel::select(
+            DB::raw('MIN(id) as id'),
+            's_loc',
+            'plant'
+        )
+            ->groupBy('s_loc', 'plant')
             ->get();
 
         return view('master.wrm.master_barang', compact('location'));
@@ -157,10 +161,11 @@ class MasterBarangController extends Controller
 
         // Header
         $sheet->setCellValue('A1', 'mid');
-        $sheet->setCellValue('B1', 'nama_barang');
+        $sheet->setCellValue('B1', 'nama barang');
         $sheet->setCellValue('C1', 'uom');
-        $sheet->setCellValue('D1', 's_loc');
-        $sheet->setCellValue('E1', 'plant');
+        $sheet->setCellValue('E1', 'Plant');
+        $sheet->setCellValue('D1', 'S.Loc');
+        $sheet->setCellValue('F1', 'Qty Kg/Pallet');
 
         // Style header (opsional tapi cakep)
         $sheet->getStyle('A1:E1')->getFont()->setBold(true);

@@ -384,7 +384,7 @@
                         {{-- @endif --}}
                     @endcan
 
-                    @can('permission', 'wrm-stock')
+                    @can('permission', 'wrm-inventory')
                         <li class="nav-item">
                             <a class="nav-link menu-link {{ request()->is('wrm/*') ? '' : 'collapsed' }}"
                                 href="#sideBarWrmStock" data-bs-toggle="collapse" role="button"
@@ -395,21 +395,32 @@
                             <div class="collapse menu-dropdown {{ request()->is('wrm/*') ? 'show' : '' }}"
                                 id="sideBarWrmStock">
                                 <ul class="nav nav-sm flex-column">
-                                    @can('permission', 'stock-gula')
+                                    @can('permission', 'wrm-inventory-inbound')
                                         <li class="nav-item">
                                             <a href="{{ route('wrm.stock_gula.index-upload') }}"
                                                 class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index-upload') ? 'active' : '' }}">
-                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Upload Stock
-                                                    Gula</span>
+                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Stock
+                                                    Gula Inbound</span>
                                             </a>
                                         </li>
                                     @endcan
-                                    @can('permission', 'stock-gula-data')
+
+                                    @can('permission', 'wrm-inventory-data')
                                         <li class="nav-item">
                                             <a href="{{ route('wrm.stock_gula.index') }}"
                                                 class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}">
                                                 <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Data Stock
                                                     Gula</span>
+                                            </a>
+                                        </li>
+                                    @endcan
+
+                                    @can('permission', 'wrm-inventory-outbound')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.stock_gula.index-transfer') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index-transfer') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Stock
+                                                    Gula Outbound</span>
                                             </a>
                                         </li>
                                     @endcan

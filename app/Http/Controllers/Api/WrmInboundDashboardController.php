@@ -49,13 +49,15 @@ class WrmInboundDashboardController extends Controller
     {
         $filter = $this->getFilter($request);
 
-        $query = DB::table('wrm_stock_gula');
+        $query = DB::table('wrm_stock_inbound_details as d')
+            ->join('wrm_stock_inbound as h', 'h.id', '=', 'd.inbound_id');
+
         $this->applyDateFilter($query, $filter);
 
-        $totalQty    = (clone $query)->sum('qty');
+        $totalQty    = (clone $query)->sum('d.qty');
         $totalPallet = (clone $query)->count();
-        $totalBatch  = (clone $query)->distinct('no_spb')->count('no_spb');
-        $totalAlert  = (clone $query)->whereIn('status', ['QI', 'LELEH'])->count();
+        $totalBatch  = (clone $query)->distinct('h.no_spb')->count('h.no_spb');
+        $totalAlert  = (clone $query)->whereIn('d.status', ['QI', 'LELEH'])->count();
 
         return response()->json([
             'total_qty'    => $totalQty,
@@ -70,15 +72,16 @@ class WrmInboundDashboardController extends Controller
         $filter  = $this->getFilter($request);
         $groupBy = $this->getGroupByPeriode($filter['periode']);
 
-        $query = DB::table('wrm_stock_gula')
+        $query = DB::table('wrm_stock_inbound_details as d')
+            ->join('wrm_stock_inbound as h', 'h.id', '=', 'd.inbound_id')
             ->select(
                 DB::raw("{$groupBy} as periode_key"),
-                DB::raw('MIN(incoming_date) as sample_date'),
-                DB::raw('SUM(qty) as total_qty'),
+                DB::raw('MIN(h.incoming_date) as sample_date'),
+                DB::raw('SUM(d.qty) as total_qty'),
                 DB::raw('COUNT(*) as total_pallet'),
-                DB::raw('COUNT(DISTINCT no_spb) as total_batch')
+                DB::raw('COUNT(DISTINCT h.no_spb) as total_batch')
             )
-            ->whereNotNull('incoming_date')
+            ->whereNotNull('h.incoming_date')
             ->groupBy(DB::raw($groupBy))
             ->orderBy(DB::raw($groupBy));
 
@@ -100,15 +103,16 @@ class WrmInboundDashboardController extends Controller
     {
         $filter = $this->getFilter($request);
 
-        $query = DB::table('wrm_stock_gula')
-            ->join('wrm_master_barang', 'wrm_stock_gula.barang_id', '=', 'wrm_master_barang.id')
+        $query = DB::table('wrm_stock_inbound_details as d')
+            ->join('wrm_stock_inbound as h', 'h.id', '=', 'd.inbound_id')
+            ->join('wrm_master_barang as b', 'b.id', '=', 'd.barang_id')
             ->select(
-                'wrm_master_barang.nama_barang',
-                DB::raw('SUM(wrm_stock_gula.qty) as total_qty'),
+                'b.nama_barang',
+                DB::raw('SUM(d.qty) as total_qty'),
                 DB::raw('COUNT(*) as total_pallet'),
-                DB::raw('COUNT(DISTINCT wrm_stock_gula.no_spb) as total_batch')
+                DB::raw('COUNT(DISTINCT h.no_spb) as total_batch')
             )
-            ->groupBy('wrm_master_barang.id', 'wrm_master_barang.nama_barang')
+            ->groupBy('b.id', 'b.nama_barang')
             ->orderByDesc('total_qty');
 
         $this->applyDateFilter($query, $filter);
@@ -120,14 +124,15 @@ class WrmInboundDashboardController extends Controller
     {
         $filter = $this->getFilter($request);
 
-        $query = DB::table('wrm_stock_gula')
+        $query = DB::table('wrm_stock_inbound_details as d')
+            ->join('wrm_stock_inbound as h', 'h.id', '=', 'd.inbound_id')
             ->select(
-                'status',
+                'd.status',
                 DB::raw('COUNT(*) as total_pallet'),
-                DB::raw('SUM(qty) as total_qty')
+                DB::raw('SUM(d.qty) as total_qty')
             )
-            ->groupBy('status')
-            ->orderBy('status');
+            ->groupBy('d.status')
+            ->orderBy('d.status');
 
         $this->applyDateFilter($query, $filter);
 
@@ -138,16 +143,18 @@ class WrmInboundDashboardController extends Controller
     {
         $filter = $this->getFilter($request);
 
-        $query = DB::table('wrm_stock_gula')
+        $query = DB::table('wrm_stock_inbound_details as d')
+            ->join('wrm_stock_inbound as h', 'h.id', '=', 'd.inbound_id')
+            ->join('wrm_master_location as l', 'l.id', '=', 'd.loc_id')
             ->select(
-                'gudang',
-                DB::raw('SUM(qty) as total_qty'),
+                'l.gudang',
+                DB::raw('SUM(d.qty) as total_qty'),
                 DB::raw('COUNT(*) as total_pallet'),
-                DB::raw('COUNT(DISTINCT no_spb) as total_batch')
+                DB::raw('COUNT(DISTINCT h.no_spb) as total_batch')
             )
-            ->whereNotNull('gudang')
-            ->groupBy('gudang')
-            ->orderBy('gudang');
+            ->whereNotNull('l.gudang')
+            ->groupBy('l.gudang')
+            ->orderBy('l.gudang');
 
         $this->applyDateFilter($query, $filter);
 

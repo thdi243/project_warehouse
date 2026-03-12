@@ -233,6 +233,7 @@
                                 <option value="QI">QI</option>
                                 <option value="TRANSFER">TRANSFER</option>
                                 <option value="BLOCKED">BLOCKED</option>
+                                <option value="ISSUED">ISSUED</option>
                             </select>
                         </div>
 
@@ -363,6 +364,7 @@
             loadData();
 
             function loadData(page = 1) {
+
                 let group = $('#filterGroup').val();
                 let jenisBahan = $('#filterJenisBahan').val();
                 let mid = $('#filterMid').val();
@@ -373,10 +375,13 @@
                     jenis_bahan: jenisBahan,
                     mid: mid
                 }, function(res) {
+
                     let html = '';
                     let data = res.data.data;
+                    let no = 1;
 
                     if (data.length === 0) {
+
                         html = `
                             <tr>
                                 <td colspan="11" class="text-center text-muted py-4">
@@ -390,46 +395,49 @@
 
                     } else {
 
-                        data.forEach((v, index) => {
+                        data.forEach((d) => {
 
                             html += `
                                 <tr>
-                                    <td class="text-center">${index + 1}</td>
-                                    <td>${v.no_spb}</td>
-                                    <td>${v.barang.mid}</td>
-                                    <td>${v.barang.nama_barang}</td>
-                                    <td>${v.barang.uom}</td>
-                                    <td>${v.group}</td>
-                                    <td>${v.qty}</td>
-                                    <td>${v.status.toUpperCase()}</td>
-                                    <td>${v.location.plant} - ${v.location.gudang} - ${v.location.bin}</td>
-                                    <td>${v.incoming_date}</td>
+                                    <td class="text-center">${no++}</td>
+                                    <td>${d.inbound.no_spb}</td>
+                                    <td>${d.barang.mid}</td>
+                                    <td>${d.barang.nama_barang}</td>
+                                    <td>${d.barang.uom}</td>
+                                    <td>${d.group}</td>
+                                    <td>${d.qty}</td>
+                                    <td>${d.status.toUpperCase()}</td>
+                                    <td>${d.location.plant} - ${d.location.gudang} - ${d.location.bin}</td>
+                                    <td>${d.inbound.incoming_date}</td>
+
                                     @can('permission', 'stock-gula-plus')
                                     <td class="text-center">
+
                                         <button class="btn btn-sm btn-warning btnEdit"
-                                            data-id="${v.id}"
-                                            data-data='${JSON.stringify(v)}'>
+                                            data-data="${encodeURIComponent(JSON.stringify(d))}">
                                             Edit
                                         </button>
 
                                         <button class="btn btn-sm btn-danger btnDelete"
-                                            data-id="${v.id}">
+                                            data-id="${d.id}">
                                             Hapus
                                         </button>
+
                                     </td>
                                     @endcan
                                 </tr>
                             `;
-
                         });
 
                     }
+
                     $('#tableStock tbody').html(html);
 
                     setJenisBahanFilter(res.data);
                     loadGroupFilter(res.data);
 
                     renderPagination(res.data);
+
                 });
             }
 
@@ -474,23 +482,23 @@
 
             $(document).on('click', '.btnEdit', function() {
 
-                let data = $(this).data('data');
-                console.log(data);
+                let detail = JSON.parse(decodeURIComponent($(this).data('data')));
+                let header = detail.inbound;
 
                 $('#titleForm').text('Edit Stock Gula');
 
-                $('#id').val(data.id);
+                $('#id').val(detail.id);
 
-                // FIELD
-                $('#noSpbEdit').val(data.no_spb);
-                $('#midEdit').val(data.barang.id);
-                $('#qtyEdit').val(data.qty);
-                $('#statusEdit').val(data.status);
-                $('#groupEdit').val(data.group);
-                $('#supplierEdit').val(data.supplier ?? '');
-                $('#palletEdit').val(data.pallet_id ?? '');
-                $('#catatan').val(data.catatan ?? '');
-                $('#locEdit').val(data.loc_id);
+                $('#noSpbEdit').val(header.no_spb);
+                $('#supplierEdit').val(header.supplier ?? '');
+
+                $('#midEdit').val(detail.barang.id);
+                $('#qtyEdit').val(detail.qty);
+                $('#statusEdit').val(detail.status);
+                $('#groupEdit').val(detail.group);
+                $('#palletEdit').val(detail.pallet_id ?? '');
+                $('#catatan').val(detail.catatan ?? '');
+                $('#locEdit').val(detail.loc_id);
 
                 $('#modalFormEdit').modal('show');
             });
@@ -699,24 +707,23 @@
             function loadGroupFilter(data) {
 
                 let selected = $('#filterGroup').val(); // simpan pilihan
-
                 let groupSet = new Set();
 
-                data.data.forEach(v => {
-                    if (v.group) {
-                        groupSet.add(v.group.toUpperCase());
+                data.data.forEach(d => {
+                    if (d.group) {
+                        groupSet.add(d.group.toUpperCase());
                     }
                 });
 
                 let html = `<option value="">Semua Group</option>`;
 
-                groupSet.forEach(s => {
-                    html += `<option value="${s}">${s}</option>`;
+                groupSet.forEach(g => {
+                    html += `<option value="${g}">${g}</option>`;
                 });
 
                 $('#filterGroup').html(html);
 
-                $('#filterGroup').val(selected); // kembalikan pilihan
+                $('#filterGroup').val(selected); // restore pilihan
             }
 
             function setJenisBahanFilter(data) {
@@ -725,9 +732,9 @@
 
                 let jenisBahanSet = new Set();
 
-                data.data.forEach(v => {
-                    if (v.barang.nama_barang) {
-                        jenisBahanSet.add(v.barang.nama_barang.toUpperCase());
+                data.data.forEach(d => {
+                    if (d.barang && d.barang.nama_barang) {
+                        jenisBahanSet.add(d.barang.nama_barang.toUpperCase());
                     }
                 });
 

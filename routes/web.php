@@ -223,9 +223,9 @@ Route::middleware('auth')->group(function () {
                 Route::post('/store-upload', [StockGulaController::class, 'storeUpload'])->name('wrm.stock_gula.store-upload');
                 Route::get('/data', [StockGulaController::class, 'getData'])->name('wrm.stock_gula.getData');
                 Route::get('/get-barang', [StockGulaController::class, 'getBarang'])->name('wrm.stock_gula.getBarang');
-                Route::get('/get-spb', [StockGulaController::class, 'getSpb'])->name('wrm.stock_gula.getSpb');
+                Route::get('/search-outbound', [StockGulaController::class, 'searchOutbound'])->name('wrm.stock_gula.search-outbound');
                 Route::get('/by-spb', [StockGulaController::class, 'bySpb'])->name('wrm.stock_gula.bySpb');
-                Route::post('/transfer', [StockGulaController::class, 'transfer'])->name('wrm.stock_gula.transfer');
+                Route::post('/store-outbound', [StockGulaController::class, 'submitOutbound'])->name('wrm.stock_gula.submit-outbound');
                 Route::put('/update/{id}', [StockGulaController::class, 'update'])->name('wrm.stock_gula.update');
                 Route::delete('/delete/{id}', [StockGulaController::class, 'destroy'])->name('wrm.stock_gula.delete');
                 Route::get('/template', [StockGulaController::class, 'downloadTemplate'])->name('wrm.stock_gula.template');
