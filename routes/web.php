@@ -223,6 +223,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/store-upload', [StockGulaController::class, 'storeUpload'])->name('wrm.stock_gula.store-upload');
                 Route::get('/data', [StockGulaController::class, 'getData'])->name('wrm.stock_gula.getData');
                 Route::get('/get-barang', [StockGulaController::class, 'getBarang'])->name('wrm.stock_gula.getBarang');
+                Route::get('/get-filter', [StockGulaController::class, 'getFilter'])->name('wrm.stock_gula.getFilter');
                 Route::get('/search-outbound', [StockGulaController::class, 'searchOutbound'])->name('wrm.stock_gula.search-outbound');
                 Route::get('/by-spb', [StockGulaController::class, 'bySpb'])->name('wrm.stock_gula.bySpb');
                 Route::post('/store-outbound', [StockGulaController::class, 'submitOutbound'])->name('wrm.stock_gula.submit-outbound');

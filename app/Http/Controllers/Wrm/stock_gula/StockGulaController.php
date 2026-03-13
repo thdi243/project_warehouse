@@ -69,10 +69,9 @@ class StockGulaController extends Controller
             return redirect()->route('wrm.stock_gula.index-upload');
         }
 
-        // $usedLocation = StockInboundDetail::pluck('loc_id')->toArray();
+        $usedLocation = StockInboundDetail::pluck('loc_id')->toArray();
 
-        // $locations = MasterLocationModel::whereNotIn('id', $usedLocation)->get();
-        $locations = MasterLocationModel::get();
+        $locations = MasterLocationModel::whereNotIn('id', $usedLocation)->get();
 
         return view('wrm.stock_gula.after_upload', compact('data', 'locations'));
     }
@@ -408,6 +407,22 @@ class StockGulaController extends Controller
             'status' => true,
             'message' => 'Data stock inventory berhasil diambil',
             'data' => $data
+        ]);
+    }
+
+    public function getFilter()
+    {
+        $groups = StockInboundDetail::select('group')
+            ->distinct()
+            ->pluck('group');
+
+        $jenisBahan = MasterBarangModel::select('nama_barang')
+            ->distinct()
+            ->pluck('nama_barang');
+
+        return response()->json([
+            'groups' => $groups,
+            'jenis_bahan' => $jenisBahan
         ]);
     }
 

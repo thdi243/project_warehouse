@@ -54,7 +54,7 @@
                                             <td>{{ $row->pallet }}</td>
 
                                             <td>
-                                                <select name="loc_id[{{ $row->id }}]" class="form-select">
+                                                <select name="loc_id[{{ $row->id }}]" class="form-select" required>
                                                     <option value="">Pilih Location</option>
 
                                                     @foreach ($locations as $loc)
@@ -99,17 +99,15 @@
 
                 e.preventDefault();
 
-                $('select[name^="loc_id"]').each(function() {
-                    if (!$(this).val()) {
-                        $(this).val('1');
-                    }
-                });
+                // $('select[name^="loc_id"]').each(function() {
+                //     if (!$(this).val()) {
+                //         $(this).val('1');
+                //     }
+                // });
 
                 let form = $(this);
                 let url = form.attr('action');
                 let formData = form.serialize();
-
-                // console.log(formData);
 
                 Swal.fire({
                     title: 'Menyimpan...',

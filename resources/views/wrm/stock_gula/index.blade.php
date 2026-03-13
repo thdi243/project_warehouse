@@ -362,6 +362,7 @@
             }
 
             loadData();
+            loadFilter();
 
             function loadData(page = 1) {
 
@@ -432,9 +433,6 @@
                     }
 
                     $('#tableStock tbody').html(html);
-
-                    setJenisBahanFilter(res.data);
-                    loadGroupFilter(res.data);
 
                     renderPagination(res.data);
 
@@ -704,49 +702,26 @@
 
             });
 
-            function loadGroupFilter(data) {
+            function loadFilter() {
 
-                let selected = $('#filterGroup').val(); // simpan pilihan
-                let groupSet = new Set();
+                $.get("{{ route('wrm.stock_gula.getFilter') }}", function(res) {
 
-                data.data.forEach(d => {
-                    if (d.group) {
-                        groupSet.add(d.group.toUpperCase());
-                    }
+                    let groupHtml = `<option value="">Semua Group</option>`;
+                    res.groups.forEach(g => {
+                        groupHtml += `<option value="${g}">${g}</option>`;
+                    });
+
+                    $('#filterGroup').html(groupHtml);
+
+                    let jenisHtml = `<option value="">Semua Jenis Bahan</option>`;
+                    res.jenis_bahan.forEach(j => {
+                        jenisHtml += `<option value="${j}">${j}</option>`;
+                    });
+
+                    $('#filterJenisBahan').html(jenisHtml);
+
                 });
 
-                let html = `<option value="">Semua Group</option>`;
-
-                groupSet.forEach(g => {
-                    html += `<option value="${g}">${g}</option>`;
-                });
-
-                $('#filterGroup').html(html);
-
-                $('#filterGroup').val(selected); // restore pilihan
-            }
-
-            function setJenisBahanFilter(data) {
-
-                let selected = $('#filterJenisBahan').val(); // simpan pilihan
-
-                let jenisBahanSet = new Set();
-
-                data.data.forEach(d => {
-                    if (d.barang && d.barang.nama_barang) {
-                        jenisBahanSet.add(d.barang.nama_barang.toUpperCase());
-                    }
-                });
-
-                let html = `<option value="">Semua Jenis Bahan</option>`;
-
-                jenisBahanSet.forEach(s => {
-                    html += `<option value="${s}">${s}</option>`;
-                });
-
-                $('#filterJenisBahan').html(html);
-
-                $('#filterJenisBahan').val(selected); // restore pilihan
             }
 
             function renderPagination(data) {
