@@ -140,20 +140,20 @@
                 loadData();
             });
 
-            function loadData(page = 1) {
+            function loadData() {
                 let mid = $('#filterMid').val();
                 let nama_barang = $('#filterNamaBarang').val();
                 let group = $('#filterGroup').val();
 
                 $.get("{{ route('wrm.stock_gula.search-outbound') }}", {
-                    page: page,
+                    // page: page,
                     mid: mid,
                     nama_barang: nama_barang,
                     group: group,
                 }, function(res) {
 
                     let html = '';
-                    let data = res.data.data;
+                    let data = res.data;
                     let no = 1;
 
                     if (data.length === 0) {

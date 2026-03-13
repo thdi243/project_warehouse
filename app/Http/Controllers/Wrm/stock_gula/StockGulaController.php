@@ -115,7 +115,7 @@ class StockGulaController extends Controller
                 'barang:id,mid,nama_barang,uom',
                 'location:id,gudang,bin,s_loc,plant',
             ])
-            ->where('wrm_stock_inbound_details.status', 'UNREST');
+            ->where('wrm_stock_inbound_details.status', '!=', 'ISSUED');
 
         // filter MID
         if ($request->mid) {
@@ -139,7 +139,9 @@ class StockGulaController extends Controller
         // urutkan FIFO (incoming paling lama)
         $query->orderBy('wrm_stock_inbound.incoming_date', 'asc');
 
-        $data = $query->paginate(15);
+        // $data = $query->paginate(15);
+
+        $data = $query->get();
 
         return response()->json([
             'status' => true,
