@@ -54,7 +54,7 @@
                                             <td>{{ $row->pallet }}</td>
 
                                             <td>
-                                                <select name="loc_id[{{ $row->id }}]" class="form-select" required>
+                                                <select name="loc_id[{{ $row->id }}]" class="form-select">
                                                     <option value="">Pilih Location</option>
 
                                                     @foreach ($locations as $loc)

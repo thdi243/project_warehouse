@@ -224,7 +224,7 @@ class StockGulaController extends Controller
                     'group'      => $temp->group,
                     'qty'        => $temp->qty,
                     'status'     => $temp->status,
-                    'loc_id'     => $locId,
+                    'loc_id'     => $locId ?? null,
                     'pallet'     => $temp->pallet,
                     'catatan'    => $temp->catatan,
                     'created_by' => Auth::id(),

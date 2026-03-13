@@ -22,8 +22,10 @@ class StockGulaUploadRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'loc_id' => 'required|array',
-            'loc_id.*' => 'required|exists:wrm_master_location,id'
+            // 'loc_id' => 'required|array',
+            // 'loc_id.*' => 'required|exists:wrm_master_location,id'
+            'loc_id' => 'array',
+            // 'loc_id.*' => 'exists:wrm_master_location,id'
         ];
     }
 }
