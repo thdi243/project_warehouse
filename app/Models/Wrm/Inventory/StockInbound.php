@@ -16,6 +16,7 @@ class StockInbound extends Model
     protected $fillable = [
         'no_spb',
         'incoming_date',
+        'expired_date',
         'supplier',
         'created_by',
         'updated_by',

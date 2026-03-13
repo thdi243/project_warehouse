@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ' | Inventory Stock On Hand')
+@section('title', ' | Stock On Hand RM')
 
 @section('content')
     <div class="page-content">
@@ -34,10 +34,31 @@
                         </div>
 
                         <div class="col-md-3 d-flex align-items-end gap-2 text-nowrap">
-                            <button class="btn btn-secondary w-100" id="btnReset">
+                            <button class="btn btn-outline-primary w-100" data-bs-toggle="collapse"
+                                data-bs-target="#advancedFilter">
+                                <i class="mdi mdi-filter-plus"></i>
+                            </button>
+                            <button class="btn btn-primary w-100" id="btnReset">
                                 <i class="mdi mdi-refresh me-2"></i>Reset
                             </button>
                         </div>
+                    </div>
+
+                    <div class="collapse mt-3" id="advancedFilter">
+                        <div class="row g-3">
+
+                            <div class="col-md-3">
+                                <label class="form-label">Incoming Date</label>
+                                <input type="date" class="form-control" id="filterDate" placeholder="Cari MID">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Supplier</label>
+                                <input type="text" class="form-control" id="filterSupplier">
+                            </div>
+
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -46,10 +67,10 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Raw Material Stock On Hand</h5>
                     <div class="d-flex gap-2">
-                        <a href="{{ route('wrm.stock_gula.index-upload') }}" class="btn btn-outline-primary" id="btnUpload">
+                        <a href="{{ route('wrm.inventory.index-upload') }}" class="btn btn-outline-primary" id="btnUpload">
                             <i class="mdi mdi-upload"></i> Upload
                         </a>
-                        <a href="{{ route('wrm.stock_gula.index-transfer') }}" class="btn btn-primary" id="btnUpload">
+                        <a href="{{ route('wrm.inventory.form-outbound') }}" class="btn btn-primary" id="btnUpload">
                             <i class="mdi mdi-upload"></i> Transfer
                         </a>
                         {{-- <button class="btn btn-primary" id="btnTambah">
@@ -73,7 +94,7 @@
                                     <th>Status</th>
                                     <th>Location</th>
                                     <th>Incoming Date</th>
-                                    @can('permission', 'stock-gula-plus')
+                                    @can('permission', 'wrm-inventory-plus')
                                         <th class="text-center">Aksi</th>
                                     @endcan
                                 </tr>
@@ -337,30 +358,6 @@
                 }
             });
 
-            function loadGroup() {
-
-                $.ajax({
-                    url: '/wrm/master/group-stock/get-data',
-                    type: 'GET',
-                    success: function(res) {
-
-                        $('#group').html('<option value="">Pilih Group</option>');
-
-                        res.data.forEach(function(item) {
-
-                            $('#group').append(`
-                                <option value="${item.id}">
-                                    ${item.group}
-                                </option>
-                            `);
-
-                        });
-
-                    }
-                });
-
-            }
-
             loadData();
             loadFilter();
 
@@ -369,12 +366,16 @@
                 let group = $('#filterGroup').val();
                 let jenisBahan = $('#filterJenisBahan').val();
                 let mid = $('#filterMid').val();
+                let date = $('#filterDate').val();
+                let supplier = $('#filterSupplier').val();
 
-                $.get("{{ route('wrm.stock_gula.getData') }}", {
+                $.get("{{ route('wrm.inventory.getData') }}", {
                     page: page,
                     group: group,
                     jenis_bahan: jenisBahan,
-                    mid: mid
+                    mid: mid,
+                    date: date,
+                    supplier: supplier,
                 }, function(res) {
 
                     let html = '';
@@ -411,7 +412,7 @@
                                     <td>${d.location.plant} - ${d.location.gudang} - ${d.location.bin}</td>
                                     <td>${d.inbound.incoming_date}</td>
 
-                                    @can('permission', 'stock-gula-plus')
+                                    @can('permission', 'wrm-inventory-plus')
                                     <td class="text-center">
 
                                         <button class="btn btn-sm btn-warning btnEdit"
@@ -442,7 +443,6 @@
             $('#btnTambah').click(() => {
                 $('#formStock')[0].reset();
                 $('#id').val('');
-                loadGroup();
                 $('#modalForm').modal('show');
             });
 
@@ -704,7 +704,7 @@
 
             function loadFilter() {
 
-                $.get("{{ route('wrm.stock_gula.getFilter') }}", function(res) {
+                $.get("{{ route('wrm.inventory.getFilter') }}", function(res) {
 
                     let groupHtml = `<option value="">Semua Group</option>`;
                     res.groups.forEach(g => {

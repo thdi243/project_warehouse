@@ -34,20 +34,14 @@
                             <label class="form-label">MID</label>
                             <input type="text" class="form-control" id="filterMid">
                         </div>
-
-                        <div class="col-md-2">
-                            <label class="form-label">Nama Barang</label>
-                            <input type="text" class="form-control" id="filterNamaBarang">
-                        </div>
-
                         <div class="col-md-2">
                             <label class="form-label">Group</label>
                             <input type="text" class="form-control" id="filterGroup">
-                            {{-- <select class="form-select" id="filterGroup">
-                                <option value="">Semua</option>
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                            </select> --}}
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <input type="text" class="form-control" id="filterStatus">
                         </div>
 
                         <div class="col-md-2">
@@ -104,7 +98,7 @@
                         </table>
                         <div class="mt-3 text-end">
                             <button class="btn btn-success" id="btnSubmitOutbound">
-                                Submit Outbound
+                                <i class="mdi mdi-send me-2"></i> Submit Outbound
                             </button>
                         </div>
                     </div>
@@ -123,10 +117,10 @@
             function runSearch() {
 
                 let mid = $('#filterMid').val();
-                let namaBarang = $('#filterNamaBarang').val();
+                let status = $('#filterStatus').val();
                 let group = $('#filterGroup').val();
 
-                if (!mid && !namaBarang && !group) {
+                if (!mid && !status && !group) {
 
                     Swal.fire({
                         icon: 'warning',
@@ -144,7 +138,7 @@
 
             let searchTimer;
 
-            $('#filterMid, #filterNamaBarang, #filterGroup').on('keyup', function() {
+            $('#filterMid, #filterStatus, #filterGroup').on('keyup', function() {
 
                 clearTimeout(searchTimer);
 
@@ -154,13 +148,13 @@
 
             function loadData() {
                 let mid = $('#filterMid').val();
-                let nama_barang = $('#filterNamaBarang').val();
+                let status = $('#filterStatus').val();
                 let group = $('#filterGroup').val();
 
-                $.get("{{ route('wrm.stock_gula.search-outbound') }}", {
+                $.get("{{ route('wrm.inventory.search-outbound') }}", {
                     // page: page,
                     mid: mid,
-                    nama_barang: nama_barang,
+                    status: status,
                     group: group,
                 }, function(res) {
 
@@ -303,7 +297,7 @@
                     if (result.isConfirmed) {
 
                         $.ajax({
-                            url: "{{ route('wrm.stock_gula.submit-outbound') }}",
+                            url: "{{ route('wrm.inventory.submit-outbound') }}",
                             method: "POST",
                             data: {
                                 _token: "{{ csrf_token() }}",
@@ -312,7 +306,11 @@
                             success: function(res) {
                                 Swal.fire({
                                     icon: 'success',
-                                    title: 'Outbound berhasil'
+                                    title: 'Berhasil',
+                                    text: res.message ??
+                                        'Outbound berhasil disimpan',
+                                    timer: 2000,
+                                    showConfirmButton: false
                                 }).then(() => {
                                     resetForm();
                                 });
@@ -330,7 +328,7 @@
 
                 // reset filter
                 $('#filterMid').val('');
-                $('#filterNamaBarang').val('');
+                $('#filterStatus').val('');
                 $('#filterGroup').val('');
                 $('#qty').val('');
 
@@ -344,7 +342,7 @@
                 // reset table
                 $('#tableStock tbody').html(`
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-4">
+                        <td colspan="11" class="text-center text-muted py-4">
                             Silahkan lakukan pencarian
                         </td>
                     </tr>

@@ -18,6 +18,7 @@ class StockOutbound extends Model
         'incoming_date',
         'supplier',
         'issued_date',
+        'expired_date',
         'created_by',
         'updated_by',
     ];

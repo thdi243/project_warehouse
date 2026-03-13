@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->bigInteger('no_spb');
             $table->date('incoming_date');
+            $table->date('expired_date')->nullable();
             $table->string('supplier')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
@@ -43,6 +44,7 @@ return new class extends Migration
             $table->date('incoming_date');
             $table->string('supplier')->nullable();
             $table->date('issued_date')->nullable();
+            $table->date('expired_date')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
@@ -99,6 +101,7 @@ return new class extends Migration
             $table->string('group');
             $table->string('status');
             $table->date('incoming_date');
+            $table->date('expired_date')->nullable();
             $table->string('supplier')->nullable();
             $table->string('pallet')->nullable();
             $table->string('catatan')->nullable();

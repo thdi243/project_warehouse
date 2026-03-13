@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ' | Upload Stock Inventory')
+@section('title', ' | Inventory Stock Upload')
 
 @section('styles')
     <style>
@@ -29,10 +29,10 @@
 
                             <h4 class="mb-4">
                                 <i class="mdi mdi-database-upload-outline me-2"></i>
-                                Upload Stock Gula
+                                Inventory Stock Upload
                             </h4>
 
-                            <form id="uploadForm" action="{{ route('wrm.stock_gula.upload') }}" method="POST"
+                            <form id="uploadForm" action="{{ route('wrm.inventory.upload') }}" method="POST"
                                 enctype="multipart/form-data">
                                 @csrf
 
@@ -52,7 +52,7 @@
                                 </label>
 
                                 <div class="d-flex justify-content-center gap-3">
-                                    <a href="{{ asset('assets/templates/excel/template_stock_gula_wrm.xlsx') }}"
+                                    <a href="{{ asset('assets/templates/excel/template_inventory_wrm_upload.xlsx') }}"
                                         class="btn btn-success">
                                         <i class="mdi mdi-download me-1"></i>
                                         Download Template
@@ -162,7 +162,7 @@
                             showConfirmButton: false
                         }).then(() => {
                             window.location.href =
-                                "{{ route('wrm.stock_gula.select-location') }}";
+                                "{{ route('wrm.inventory.select-location') }}";
                         });
 
                         $('#uploadForm')[0].reset();

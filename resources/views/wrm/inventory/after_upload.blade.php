@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ' | Inventory Location')
+@section('title', ' | Inventory Stock Location')
 
 @section('content')
     <div class="page-content">
@@ -15,7 +15,7 @@
 
                 <div class="card-body">
 
-                    <form id="locationForm" method="POST" action="{{ route('wrm.stock_gula.store-upload') }}">
+                    <form id="locationForm" method="POST" action="{{ route('wrm.inventory.store-upload') }}">
                         @csrf
 
                         <div class="table-responsive">
@@ -54,7 +54,8 @@
                                             <td>{{ $row->pallet }}</td>
 
                                             <td>
-                                                <select name="loc_id[{{ $row->id }}]" class="form-select" required>
+                                                {{-- <select name="loc_id[{{ $row->id }}]" class="form-select" required> --}}
+                                                <select name="loc_id[{{ $row->id }}]" class="form-select">
                                                     <option value="">Pilih Location</option>
 
                                                     @foreach ($locations as $loc)
@@ -99,11 +100,11 @@
 
                 e.preventDefault();
 
-                // $('select[name^="loc_id"]').each(function() {
-                //     if (!$(this).val()) {
-                //         $(this).val('1');
-                //     }
-                // });
+                $('select[name^="loc_id"]').each(function() {
+                    if (!$(this).val()) {
+                        $(this).val('1');
+                    }
+                });
 
                 let form = $(this);
                 let url = form.attr('action');
@@ -128,10 +129,12 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
-                            text: res.message ?? 'Lokasi berhasil disimpan'
+                            text: res.message ?? 'Lokasi berhasil disimpan',
+                            timer: 2000,
+                            showConfirmButton: false
                         }).then(() => {
                             window.location.href =
-                                "{{ route('wrm.stock_gula.index') }}";
+                                "{{ route('wrm.inventory.index') }}";
                         });
 
                     },

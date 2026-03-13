@@ -384,60 +384,69 @@
                         {{-- @endif --}}
                     @endcan
 
-                    @can('permission', 'wrm-inventory')
+                    @can('permission', 'wrm-menu')
                         <li class="nav-item">
-                            <a class="nav-link menu-link {{ request()->is('wrm/*') ? '' : 'collapsed' }}"
+                            <a class="nav-link menu-link {{ request()->routeIs('wrm.*') ? '' : 'collapsed' }}"
                                 href="#sideBarWrmStock" data-bs-toggle="collapse" role="button"
-                                aria-expanded="{{ request()->is('wrm/*') ? 'true' : 'false' }}"
+                                aria-expanded="{{ request()->routeIs('wrm.*') ? 'true' : 'false' }}"
                                 aria-controls="sideBarWrmStock">
-                                <i class="mdi mdi-cube-outline"></i><span data-key="t-wrm/">WRM</span>
+                                <i class="mdi mdi-cube-outline"></i><span data-key="t-wrm">WRM</span>
                             </a>
-                            <div class="collapse menu-dropdown {{ request()->is('wrm/*') ? 'show' : '' }}"
+                            <div class="collapse menu-dropdown {{ request()->routeIs('wrm.*') ? 'show' : '' }}"
                                 id="sideBarWrmStock">
                                 <ul class="nav nav-sm flex-column">
+                                    {{-- <li class="nav-item">
+                                        <a href="#" data-bs-target="#sideBarInventory" data-bs-toggle="collapse"
+                                            role="button"
+                                            aria-expanded="{{ request()->routeIs('wrm.inventory.*') ? 'true' : 'false' }}"
+                                            aria-controls="sideBarInventory" class="nav-link" data-key="t-m-tkbm">
+                                            <i class="mdi mdi-view-grid"></i>Inventory
+                                        </a> --}}
+                                    {{-- <div class="collapse menu-dropdown {{ request()->routeIs('wrm.inventory.*') ? 'show' : '' }}"
+                                        id="sideBarInventory"> --}}
+                                    {{-- <ul class="nav nav-sm flex-column"> --}}
                                     @can('permission', 'wrm-inventory-inbound')
                                         <li class="nav-item">
-                                            <a href="{{ route('wrm.stock_gula.index-upload') }}"
-                                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index-upload') ? 'active' : '' }}">
-                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Stock
-                                                    Gula Inbound</span>
+                                            <a href="{{ route('wrm.inventory.index-upload') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('wrm.inventory.index-upload') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i>Upload Inbound
                                             </a>
                                         </li>
                                     @endcan
 
-                                    @can('permission', 'wrm-inventory-data')
+                                    @can('permission', 'wrm-inventory-soh')
                                         <li class="nav-item">
-                                            <a href="{{ route('wrm.stock_gula.index') }}"
-                                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index') ? 'active' : '' }}">
-                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Data Stock On
-                                                    Hand</span>
+                                            <a href="{{ route('wrm.inventory.index') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('wrm.inventory.index') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i>Stock On Hand
                                             </a>
                                         </li>
                                     @endcan
 
                                     @can('permission', 'wrm-inventory-outbound')
                                         <li class="nav-item">
-                                            <a href="{{ route('wrm.stock_gula.index-transfer') }}"
-                                                class="nav-link menu-link {{ request()->routeIs('wrm.stock_gula.index-transfer') ? 'active' : '' }}">
-                                                <i class="mdi mdi-view-grid"></i> <span data-key="t-stock-gula">Stock
-                                                    Gula Outbound</span>
+                                            <a href="{{ route('wrm.inventory.form-outbound') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('wrm.inventory.form-outbound') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i>Form Outbound
                                             </a>
                                         </li>
                                     @endcan
+
+                                    @can('permission', 'wrm-inventory-data-outbound')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.inventory.data-outbound') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('wrm.inventory.data-outbound') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i>Data Outbound
+                                            </a>
+                                        </li>
+                                    @endcan
+                                    {{-- </ul> --}}
+                                    {{-- </div> --}}
+                                    {{-- </li> --}}
                                 </ul>
                             </div>
                         </li>
                     @endcan
-
-                    {{-- @can('permission', 'pr-form')
-                        <li class="nav-item">
-                            <a href="{{ url('/app/purchase-requesition/form') }}" target="_blank"
-                                class="nav-link menu-link {{ request()->Is('/app/purchase-requesition/form') ? 'active' : '' }}">
-                                <i class="mdi mdi-text-box-plus"></i> <span data-key="t-stock-gula">Form PR</span>
-                            </a>
-                        </li>
-                    @endcan --}}
-                    {{-- @endif --}}
 
                     {{-- Data Master --}}
                     {{-- @if ($jabatan !== 'operator') --}}
