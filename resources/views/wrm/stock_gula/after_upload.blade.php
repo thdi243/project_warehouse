@@ -1,11 +1,10 @@
 @extends('layouts.app')
 
-@section('title', ' | Penentuan Lokasi RM')
+@section('title', ' | Inventory Location')
 
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
-
             <div class="card">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">

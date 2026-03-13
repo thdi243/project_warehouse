@@ -64,6 +64,11 @@ class StockGulaController extends Controller
 
         $data = TempUploadModel::whereDate('incoming_date', $today)->get();
 
+        // jika tidak ada data
+        if ($data->isEmpty()) {
+            return redirect()->route('wrm.stock_gula.index-upload');
+        }
+
         $usedLocation = StockInboundDetail::pluck('loc_id')->toArray();
 
         $locations = MasterLocationModel::whereNotIn('id', $usedLocation)->get();
@@ -400,7 +405,7 @@ class StockGulaController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Data stock gula berhasil diambil',
+            'message' => 'Data stock inventory berhasil diambil',
             'data' => $data
         ]);
     }
@@ -508,11 +513,15 @@ class StockGulaController extends Controller
                 $barcode    = trim($row[0] ?? '');
                 $mid        = trim($row[1] ?? '');
                 $group      = $row[3] ?? null;
-                $qty        = $row[6] ?? 0;
                 $status     = strtoupper(trim($row[8] ?? ''));
                 $supplier   = $row[9] ?? null;
                 $pallet     = $row[10] ?? null;
                 $catatan    = $row[11] ?? null;
+
+                $qty = $row[6] ?? 0;
+                $qty = str_replace('.', '', $qty);
+                $qty = str_replace(',', '', $qty);
+                $qty = (int) $qty;
 
                 if ($mid === '') {
                     $errors[] = "Baris {$line}: MID kosong";

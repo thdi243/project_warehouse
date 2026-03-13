@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ' | Upload Stock Gula')
+@section('title', ' | Upload Stock Inventory')
 
 @section('styles')
     <style>

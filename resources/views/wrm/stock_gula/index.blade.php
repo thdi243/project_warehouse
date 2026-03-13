@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Stock Gula')
+@section('title', ' | Inventory Stock On Hand')
 
 @section('content')
     <div class="page-content">
