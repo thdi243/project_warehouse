@@ -86,6 +86,7 @@
                                     <th>MID</th>
                                     <th>Nama Barang</th>
                                     <th>Group</th>
+                                    <th>Status</th>
                                     <th>Qty</th>
                                     <th>Location</th>
                                     <th>Incoming Date</th>
@@ -95,7 +96,7 @@
 
                             <tbody>
                                 <tr>
-                                    <td colspan="10" class="text-center text-muted py-4">
+                                    <td colspan="11" class="text-center text-muted py-4">
                                         Silahkan lakukan pencarian
                                     </td>
                                 </tr>
@@ -118,26 +119,28 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            $('#btnSearch').click(function() {
+
+            function runSearch() {
+
                 let mid = $('#filterMid').val();
                 let namaBarang = $('#filterNamaBarang').val();
                 let group = $('#filterGroup').val();
 
-                // cek jika semua kosong
                 if (!mid && !namaBarang && !group) {
 
                     Swal.fire({
                         icon: 'warning',
                         title: 'Peringatan',
-                        text: 'Minimal isi salah satu filter untuk melakukan pencarian.',
-                        confirmButtonText: 'OK'
+                        text: 'Minimal isi salah satu filter untuk melakukan pencarian.'
                     });
 
                     return;
                 }
 
                 loadData();
-            });
+            }
+
+            $('#btnSearch').click(runSearch);
 
             let searchTimer;
 
@@ -145,19 +148,8 @@
 
                 clearTimeout(searchTimer);
 
-                searchTimer = setTimeout(function() {
+                searchTimer = setTimeout(runSearch, 500);
 
-                    let mid = $('#filterMid').val();
-                    let namaBarang = $('#filterNamaBarang').val();
-                    let group = $('#filterGroup').val();
-
-                    if (!mid && !namaBarang && !group) {
-                        return;
-                    }
-
-                    loadData();
-
-                }, 500); // delay 0.5 detik
             });
 
             function loadData() {
@@ -180,7 +172,7 @@
 
                         html = `
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-4">
+                            <td colspan="11" class="text-center text-muted py-4">
                                 <div class="d-flex flex-column align-items-center">
                                     <i class="mdi mdi-database-off-outline" style="font-size:32px"></i>
                                     <span class="mt-2">Data tidak ditemukan</span>
@@ -202,6 +194,7 @@
                                 <td>${v.barang.mid}</td>
                                 <td>${v.barang.nama_barang}</td>
                                 <td>${v.group}</td>
+                                <td>${v.status}</td>
                                 <td>${v.qty}</td>
                                 <td>${v.location.plant} - ${v.location.gudang} - ${v.location.bin}</td>
                                 <td>${v.inbound.incoming_date}</td>
@@ -358,6 +351,10 @@
                 `);
 
             }
+
+            $('#btnReset').click(function() {
+                resetForm();
+            });
         });
     </script>
 @endsection
