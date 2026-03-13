@@ -57,13 +57,12 @@
 
                         <div class="col-md-4 d-flex align-items-end gap-2">
                             <button class="btn btn-outline-primary w-100" id="btnSearch">
-                                Search
+                                <i class="mdi mdi-magnify me-2"></i> Search
                             </button>
-                            <button class="btn btn-primary w-100" id="btnReset">
-                                Reset
+                            <button class="btn btn-danger w-100" id="btnReset">
+                                <i class="mdi mdi-refresh me-2"></i> Reset
                             </button>
                         </div>
-
                     </div>
 
                     <div class="table-responsive">
@@ -138,6 +137,27 @@
                 }
 
                 loadData();
+            });
+
+            let searchTimer;
+
+            $('#filterMid, #filterNamaBarang, #filterGroup').on('keyup', function() {
+
+                clearTimeout(searchTimer);
+
+                searchTimer = setTimeout(function() {
+
+                    let mid = $('#filterMid').val();
+                    let namaBarang = $('#filterNamaBarang').val();
+                    let group = $('#filterGroup').val();
+
+                    if (!mid && !namaBarang && !group) {
+                        return;
+                    }
+
+                    loadData();
+
+                }, 500); // delay 0.5 detik
             });
 
             function loadData() {
