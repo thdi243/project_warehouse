@@ -69,9 +69,10 @@ class StockGulaController extends Controller
             return redirect()->route('wrm.stock_gula.index-upload');
         }
 
-        $usedLocation = StockInboundDetail::pluck('loc_id')->toArray();
+        // $usedLocation = StockInboundDetail::pluck('loc_id')->toArray();
 
-        $locations = MasterLocationModel::whereNotIn('id', $usedLocation)->get();
+        // $locations = MasterLocationModel::whereNotIn('id', $usedLocation)->get();
+        $locations = MasterLocationModel::get();
 
         return view('wrm.stock_gula.after_upload', compact('data', 'locations'));
     }
@@ -224,7 +225,7 @@ class StockGulaController extends Controller
                     'group'      => $temp->group,
                     'qty'        => $temp->qty,
                     'status'     => $temp->status,
-                    'loc_id'     => $locId ?? null,
+                    'loc_id'     => $locId ?? 1,
                     'pallet'     => $temp->pallet,
                     'catatan'    => $temp->catatan,
                     'created_by' => Auth::id(),

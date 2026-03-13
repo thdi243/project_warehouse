@@ -94,13 +94,22 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+
             $('#locationForm').on('submit', function(e) {
 
                 e.preventDefault();
 
+                $('select[name^="loc_id"]').each(function() {
+                    if (!$(this).val()) {
+                        $(this).val('1');
+                    }
+                });
+
                 let form = $(this);
                 let url = form.attr('action');
                 let formData = form.serialize();
+
+                // console.log(formData);
 
                 Swal.fire({
                     title: 'Menyimpan...',
