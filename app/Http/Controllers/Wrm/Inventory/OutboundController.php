@@ -305,4 +305,17 @@ class OutboundController extends Controller
             ], 500);
         }
     }
+
+    public function printMagicNumber($id)
+    {
+        $outbound = StockOutbound::with([
+            'details.barang:id,mid,nama_barang,uom',
+            'details.bin:id,loc_id,bin,kolom,level',
+            'details.bin.location:id,plant,s_loc,gudang,zona'
+        ])->findOrFail($id);
+
+        return view('wrm.inventory.magic_number', [
+            'outbound' => $outbound
+        ]);
+    }
 }

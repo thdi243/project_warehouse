@@ -200,7 +200,11 @@
                                     <td>${d.issued_date}</td>
                                     <td>${d.qty_request}</td>
                                     <td>${d.catatan}</td>
-                                    <td class="text-center">
+                                    <td class="text-center">                                        <button class="btn btn-sm btn-success btnMagicNumber"
+                                            data-id="${d.id}"
+                                            title="Print Magic Number untuk Forklift">
+                                            <i class="mdi mdi-printer"></i> Magic
+                                        </button>
                                         <button class="btn btn-sm btn-info btnDetail"
                                             data-id="${d.id}">
                                             <i class="mdi mdi-eye"></i> Detail
@@ -346,6 +350,15 @@
                 $('#filterMid').val('');
 
                 loadData();
+
+            });
+
+            $(document).on('click', '.btnMagicNumber', function() {
+
+                let id = $(this).data('id');
+
+                // Buka magic number di tab baru
+                window.open(`/wrm/inventory/magic-number/${id}`, '_blank');
 
             });
 

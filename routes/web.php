@@ -238,6 +238,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/get-data-outbound', [OutboundController::class, 'getData'])->name('wrm.inventory.get-data-outbound');
                 Route::get('/detail-data-outbound/{id}', [OutboundController::class, 'getOutboundDetail'])->name('wrm.inventory.get-detail-outbound');
                 Route::post('/cancel-outbound/{id}', [OutboundController::class, 'cancelOutbound'])->name('wrm.inventory.cancel-outbound');
+                Route::get('/magic-number/{id}', [OutboundController::class, 'printMagicNumber'])->name('wrm.inventory.magic-number');
             });
         });
     });
