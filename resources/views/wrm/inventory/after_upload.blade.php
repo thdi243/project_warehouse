@@ -6,11 +6,21 @@
     <div class="page-content">
         <div class="container-fluid">
             <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">
-                        <i class="mdi mdi-warehouse"></i>
-                        Penentuan Lokasi Gudang
-                    </h5>
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="mdi mdi-warehouse"></i>
+                            Penentuan Lokasi Gudang
+                        </h5>
+                        <small class="text-muted d-block mt-2">
+                            No SPB: <strong>{{ $currentNoSpb }}</strong>
+                            @if ($remainingCount > 0)
+                                | <span class="badge bg-info">Masih ada {{ $remainingCount }} no_spb lain</span>
+                            @else
+                                | <span class="badge bg-success">Ini adalah no_spb terakhir</span>
+                            @endif
+                        </small>
+                    </div>
                 </div>
 
                 <div class="card-body">
@@ -99,7 +109,12 @@
                             </button>
                             <button type="submit" class="btn btn-primary"
                                 @if ($locationError) disabled @endif>
-                                Simpan Lokasi
+                                <i class="mdi mdi-content-save"></i>
+                                @if ($remainingCount > 0)
+                                    Simpan & Lanjut ke No SPB Berikutnya
+                                @else
+                                    Simpan Lokasi (Selesai)
+                                @endif
                             </button>
                         </div>
 
@@ -154,7 +169,7 @@
 
                 Swal.fire({
                     title: 'Menyimpan...',
-                    text: 'Sedang memproses data',
+                    text: 'Sedang memproses data no_spb {{ $currentNoSpb }}',
                     allowOutsideClick: false,
                     didOpen: () => {
                         Swal.showLoading();
@@ -167,16 +182,32 @@
                     data: formData,
 
                     success: function(res) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: res.message ?? 'Lokasi berhasil disimpan',
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.href =
-                                "{{ route('wrm.inventory.index') }}";
-                        });
+                        // Cek apakah ada no_spb berikutnya
+                        if (res.hasNext) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: res.message ?? 'Data berhasil disimpan',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                // Reload untuk ambil no_spb berikutnya
+                                window.location.href =
+                                    "{{ route('wrm.inventory.select-location') }}";
+                            });
+                        } else {
+                            // Semua no_spb sudah selesai
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: res.message ?? 'Semua data berhasil disimpan',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.href =
+                                    "{{ route('wrm.inventory.index') }}";
+                            });
+                        }
                     },
 
                     error: function(xhr) {
@@ -205,7 +236,7 @@
 
                 Swal.fire({
                     title: 'Konfirmasi',
-                    text: 'Apakah Anda yakin ingin membatalkan upload? Data akan dihapus.',
+                    text: 'Apakah Anda yakin ingin membatalkan upload? Semua data yang tersimpan akan dihapus.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#dc3545',

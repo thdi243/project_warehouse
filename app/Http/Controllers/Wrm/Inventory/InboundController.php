@@ -53,14 +53,29 @@ class InboundController extends Controller
     {
         $today = Carbon::now();
 
-        $data = TempUploadModel::whereDate('incoming_date', $today)->get();
+        // Get the first/oldest unique no_spb per incoming_date
+        $firstNoSpb = TempUploadModel::whereDate('incoming_date', $today)
+            ->orderBy('id')
+            ->value('no_spb');
+
+        if (!$firstNoSpb) {
+            return redirect()->route('wrm.inventory.index-upload');
+        }
+
+        // Get ONLY data with this no_spb
+        $data = TempUploadModel::whereDate('incoming_date', $today)
+            ->where('no_spb', $firstNoSpb)
+            ->get();
 
         if ($data->isEmpty()) {
             return redirect()->route('wrm.inventory.index-upload');
         }
 
-        // Group data by no_spb untuk cek space per no_spb
-        $dataByNoSpb = $data->groupBy('no_spb');
+        // Count remaining no_spb (excluding current one)
+        $remainingCount = TempUploadModel::whereDate('incoming_date', $today)
+            ->where('no_spb', '!=', $firstNoSpb)
+            ->distinct('no_spb')
+            ->count('no_spb');
 
         $usedBinIds = StockInboundDetail::pluck('loc_id')->toArray();
 
@@ -72,10 +87,6 @@ class InboundController extends Controller
             ->orderBy('level')
             ->get();
 
-        $zonesByLocation = $availableBins->groupBy(function ($item) {
-            return $item->location->id;
-        });
-
         $zonesGrouped = $availableBins->groupBy(function ($item) {
             return $item->location->zona;
         });
@@ -84,18 +95,12 @@ class InboundController extends Controller
         $locationError = null;
         $errorDetails = [];
 
-        // Check each zona apakah bisa accommodate semua no_spb+pallet
+        // Check each zona apakah bisa accommodate pallet untuk no_spb ini saja
         foreach ($zonesGrouped as $zona => $bins) {
 
             $zonaHasSpace = true;
             $zonaErrorMsg = "Zona {$zona} - ";
-            $totalBinsNeeded = 0;
-
-            // Count total bins needed untuk semua no_spb di zona ini
-            foreach ($dataByNoSpb as $noSpb => $itemsForNoSpb) {
-                $palletCountForNoSpb = $itemsForNoSpb->count();
-                $totalBinsNeeded += $palletCountForNoSpb;
-            }
+            $totalBinsNeeded = $data->count(); // Hanya untuk no_spb ini
 
             // Check apakah bins tersedia cukup
             if ($bins->count() < $totalBinsNeeded) {
@@ -120,7 +125,7 @@ class InboundController extends Controller
         }
 
         if (empty($availableZones)) {
-            $locationError = 'Tidak ada zona yang cukup untuk semua pallet.';
+            $locationError = 'Tidak ada zona yang cukup untuk pallet no_spb ' . $firstNoSpb . '.';
             if (!empty($errorDetails)) {
                 $locationError .= ' Detail: ' . implode(', ', $errorDetails);
             }
@@ -130,6 +135,8 @@ class InboundController extends Controller
 
         return view('wrm.inventory.after_upload', [
             'data' => $data,
+            'currentNoSpb' => $firstNoSpb,
+            'remainingCount' => $remainingCount,
             'zones' => $availableZones,
             'pallet' => $pallet,
             'locationError' => $locationError
@@ -207,6 +214,13 @@ class InboundController extends Controller
         try {
 
             $temps = TempUploadModel::whereIn('id', array_keys($request->loc_id))->get();
+
+            if ($temps->isEmpty()) {
+                throw new \Exception("Data tidak ditemukan");
+            }
+
+            // Get the no_spb dari data yang akan disimpan
+            $currentNoSpb = $temps->first()->no_spb;
 
             // Validasi apakah semua temp_id punya loc_id dan loc_id tidak kosong
             foreach ($request->loc_id as $tempId => $locId) {
@@ -301,13 +315,22 @@ class InboundController extends Controller
                 }
             }
 
+            // Delete ONLY temp data untuk no_spb ini
             TempUploadModel::whereIn('id', array_keys($request->loc_id))->delete();
+
+            // Check apakah ada no_spb lain yang belum diproses (untuk today)
+            $today = Carbon::now();
+            $nextNoSpb = TempUploadModel::whereDate('incoming_date', $today)
+                ->orderBy('id')
+                ->value('no_spb');
 
             DB::commit();
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Inventory stock berhasil disimpan'
+                'message' => "Inventory stock no_spb {$currentNoSpb} berhasil disimpan",
+                'hasNext' => !is_null($nextNoSpb),
+                'nextNoSpb' => $nextNoSpb
             ]);
         } catch (\Throwable $e) {
 
