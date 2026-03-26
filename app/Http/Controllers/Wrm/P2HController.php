@@ -385,7 +385,7 @@ class P2HController extends Controller
         $validator = Validator::make($request->all(), [
             'nomor_unit' => 'required|string|max:10|unique:forklifts,nomor_unit',
             'departemen' => 'required|in:warehouse,produksi',
-            'section' => 'required|in:warehouse_raw_material,warehouse_finish_goods', // Match form options
+            'section' => 'required|in:warehouse_raw_material,warehouse_finish_goods,warehouse_co_product', // Match form options
             'status' => 'required|in:active,maintenance,inactive',
             'description' => 'nullable|string|max:255'
         ]);
@@ -523,7 +523,7 @@ class P2HController extends Controller
         $validator = Validator::make($request->all(), [
             'nomor_unit' => 'required|string|max:10|unique:pallet_movers,nomor_unit',
             'departemen' => 'required|in:warehouse,produksi',
-            'section' => 'required|in:warehouse_raw_material,warehouse_finish_goods', // Match form options
+            'section' => 'required|in:warehouse_raw_material,warehouse_finish_goods,warehouse_co_product', // Match form options
             'status' => 'required|in:active,maintenance,inactive',
             'description' => 'nullable|string|max:255'
         ]);
@@ -711,6 +711,7 @@ class P2HController extends Controller
             $sectionDisplay = match ($forklift->section) {
                 'warehouse_raw_material' => 'Warehouse Raw Material',
                 'warehouse_finish_goods' => 'Warehouse Finish Goods',
+                'warehouse_co_product' => 'Warehouse Co Product',
                 default => ucwords(str_replace('_', ' ', $forklift->section))
             };
 
@@ -828,6 +829,7 @@ class P2HController extends Controller
             $sectionDisplay = match ($pm->section) {
                 'warehouse_raw_material' => 'Warehouse Raw Material',
                 'warehouse_finish_goods' => 'Warehouse Finish Goods',
+                'warehouse_co_product' => 'Warehouse Co Product',
                 default => ucwords(str_replace('_', ' ', $pm->section))
             };
 
@@ -898,7 +900,7 @@ class P2HController extends Controller
         $validator = Validator::make($request->all(), [
             'nomor_unit'  => 'required|string|max:10|unique:forklifts,nomor_unit,' . $id . ',id',
             'departemen'  => 'required|in:warehouse,produksi',
-            'section'     => 'required|in:warehouse_raw_material,warehouse_finish_goods',
+            'section'     => 'required|in:warehouse_raw_material,warehouse_finish_goods,warehouse_co_product',
             'status'      => 'required|in:active,maintenance,inactive',
             'description' => 'nullable|string|max:255'
         ]);
@@ -1316,7 +1318,7 @@ class P2HController extends Controller
         $validator = Validator::make($request->all(), [
             'nomor_unit'  => 'required|string|max:10|unique:pallet_movers,nomor_unit,' . $id . ',id',
             'departemen'  => 'required|in:warehouse,produksi',
-            'section'     => 'required|in:warehouse_raw_material,warehouse_finish_goods',
+            'section'     => 'required|in:warehouse_raw_material,warehouse_finish_goods,warehouse_co_product',
             'status'      => 'required|in:active,maintenance,inactive',
             'description' => 'nullable|string|max:255'
         ]);

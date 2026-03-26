@@ -102,6 +102,7 @@
                                 <select name="section" class="form-select" required>
                                     <option value="warehouse_raw_material">Warehouse Raw Material</option>
                                     <option value="warehouse_finish_goods">Warehouse Finish Goods</option>
+                                    <option value="warehouse_co_product">Warehouse Co Product</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -224,6 +225,7 @@
                         <select name="section" id="editSection" class="form-select" required>
                             <option value="warehouse_raw_material">Warehouse Raw Material</option>
                             <option value="warehouse_finish_goods">Warehouse Finish Goods</option>
+                            <option value="warehouse_co_product">Warehouse Co Product</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -351,6 +353,7 @@
                             let sectionDisplay = row.section === 'warehouse_raw_material' ?
                                 'Warehouse Raw Material' :
                                 row.section === 'warehouse_finish_goods' ? 'Warehouse Finish Goods' :
+                                row.section === 'warehouse_co_product' ? 'Warehouse Co Product' :
                                 row.section;
 
                             rows += `
@@ -359,12 +362,12 @@
                                     <td class="text-center">
                                         <span class="badge ${statusBadge}">${statusText}</span>
                                     </td>
-                                    <td class="text-center">${row.departemen.charAt(0).toUpperCase() + row.departemen.slice(1)}</td>
-                                    <td class="text-center">${sectionDisplay}</td>
+                                    <td>${row.departemen.charAt(0).toUpperCase() + row.departemen.slice(1)}</td>
+                                    <td>${sectionDisplay}</td>
                                     <td>${notes}</td>
-                                    <td class="text-center">${op1}</td>
-                                    <td class="text-center">${op2}</td>
-                                    <td class="text-center">${op3}</td>
+                                    <td>${op1}</td>
+                                    <td>${op2}</td>
+                                    <td>${op3}</td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
                                             <button class="btn btn-sm btn-primary assign-btn" 
