@@ -18,22 +18,54 @@
                     <form id="locationForm" method="POST" action="{{ route('wrm.inventory.store-upload') }}">
                         @csrf
 
+                        <div class="row gy-2 mb-3">
+                            <div class="col-md-4">
+                                <label for="supplier" class="form-label fw-bold">Supplier</label>
+                                <input type="text" name="supplier" id="supplier" class="form-control"
+                                    placeholder="Masukkan Supplier" required>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="pallet" class="form-label fw-bold">Pallet</label>
+                                <select name="pallet" id="pallet" class="form-select" required>
+                                    <option value="">Pilih Pallet</option>
+                                    @foreach ($pallet as $plt)
+                                        <option value="{{ $plt->nama_pallet }}">{{ $plt->nama_pallet }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="location" class="form-label fw-bold">Lokasi</label>
+                                <select id="zoneSelect" class="form-select">
+
+                                    <option value="">Pilih Lokasi by Zona</option>
+
+                                    @foreach ($zones as $zone)
+                                        <option value="{{ $zone['zona'] }}">
+                                            {{ $zone['plant'] }} - {{ $zone['s_loc'] }} - {{ $zone['zona'] }}
+                                        </option>
+                                    @endforeach
+
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-bordered align-middle">
-
-                                <thead class="table-secondary">
+                                <thead class="table-light align-middle">
                                     <tr>
-                                        <th>No</th>
+                                        <th class="text-center">No</th>
                                         <th>Barcode</th>
                                         <th>No SPB</th>
                                         <th>MID</th>
                                         <th>Pallet ID</th>
                                         <th>Qty</th>
                                         <th>Group</th>
-                                        <th>Supplier</th>
-                                        <th>Status</th>
-                                        <th>Pallet</th>
-                                        <th>Location</th>
+                                        <th>Lokasi
+                                            <br>
+                                            <small class="text-muted">Plant - S Loc - Zona - Bin</small>
+                                        </th>
                                     </tr>
                                 </thead>
 
@@ -41,33 +73,17 @@
 
                                     @foreach ($data as $i => $row)
                                         <tr>
-                                            <td>{{ $loop->iteration }}</td>
-
+                                            <td class="text-center">{{ $loop->iteration }}</td>
                                             <td>{{ $row->barcode }}</td>
                                             <td>{{ $row->no_spb }}</td>
                                             <td>{{ $row->mid }}</td>
                                             <td>{{ $row->pallet_id }}</td>
                                             <td>{{ $row->qty }}</td>
                                             <td>{{ $row->group }}</td>
-                                            <td>{{ $row->supplier }}</td>
-                                            <td>{{ $row->status }}</td>
-                                            <td>{{ $row->pallet }}</td>
-
-                                            <td>
-                                                {{-- <select name="loc_id[{{ $row->id }}]" class="form-select" required> --}}
-                                                <select name="loc_id[{{ $row->id }}]" class="form-select">
-                                                    <option value="">Pilih Location</option>
-
-                                                    @foreach ($locations as $loc)
-                                                        <option value="{{ $loc->id }}">
-                                                            {{ $loc->plant }} - {{ $loc->s_loc }} -
-                                                            {{ $loc->gudang }} - {{ $loc->bin }}
-                                                        </option>
-                                                    @endforeach
-
-                                                </select>
+                                            <td class="bin-location">
+                                                -
+                                                <input type="hidden" name="loc_id[{{ $row->id }}]" class="loc-id">
                                             </td>
-
                                         </tr>
                                     @endforeach
 
@@ -77,8 +93,12 @@
                         </div>
 
                         <div class="text-end mt-3">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="mdi mdi-content-save"></i>
+                            <button type="button" id="btnCancel" class="btn btn-danger me-2">
+                                <i class="mdi mdi-close"></i>
+                                Batal Upload
+                            </button>
+                            <button type="submit" class="btn btn-primary"
+                                @if ($locationError) disabled @endif>
                                 Simpan Lokasi
                             </button>
                         </div>
@@ -87,24 +107,46 @@
 
                 </div>
             </div>
-
         </div>
     </div>
 @endsection
 
 @section('scripts')
+    @if ($locationError)
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Peringatan!',
+                    text: '{{ $locationError }}',
+                    confirmButtonText: 'OK'
+                });
+            });
+        </script>
+    @endif
+
     <script>
         $(document).ready(function() {
-
             $('#locationForm').on('submit', function(e) {
-
                 e.preventDefault();
 
-                $('select[name^="loc_id"]').each(function() {
+                // Check if location is selected
+                let allLocationsFilled = true;
+                $('.loc-input').each(function() {
                     if (!$(this).val()) {
-                        $(this).val('1');
+                        allLocationsFilled = false;
+                        return false;
                     }
                 });
+
+                if (!allLocationsFilled) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Lokasi Belum Dipilih',
+                        text: 'Silahkan pilih lokasi terlebih dahulu'
+                    });
+                    return;
+                }
 
                 let form = $(this);
                 let url = form.attr('action');
@@ -125,7 +167,6 @@
                     data: formData,
 
                     success: function(res) {
-
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
@@ -136,25 +177,18 @@
                             window.location.href =
                                 "{{ route('wrm.inventory.index') }}";
                         });
-
                     },
 
                     error: function(xhr) {
-
                         Swal.close();
 
                         let message = 'Terjadi kesalahan pada server';
 
                         if (xhr.status === 422) {
-
-                            // validation error
                             let errors = xhr.responseJSON.errors;
                             message = Object.values(errors).map(err => err[0]).join('<br>');
-
                         } else if (xhr.responseJSON?.message) {
-
                             message = xhr.responseJSON.message;
-
                         }
 
                         Swal.fire({
@@ -162,11 +196,98 @@
                             title: 'Gagal',
                             html: message
                         });
-
                     }
                 });
-
             });
-        })
+
+            $('#btnCancel').on('click', function(e) {
+                e.preventDefault();
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Apakah Anda yakin ingin membatalkan upload? Data akan dihapus.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Batalkan',
+                    cancelButtonText: 'Tidak'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '{{ route('wrm.inventory.cancel-upload') }}',
+                            method: 'POST',
+                            data: {
+                                '_token': $('meta[name="csrf-token"]').attr('content')
+                            },
+
+                            success: function(res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil',
+                                    text: res.message ??
+                                        'Upload berhasil dibatalkan',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    window.location.href =
+                                        "{{ route('wrm.inventory.index-upload') }}";
+                                });
+                            },
+
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal',
+                                    text: xhr.responseJSON?.message ??
+                                        'Terjadi kesalahan'
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+            $('#zoneSelect').change(function() {
+                let zona = $(this).val();
+                if (!zona) return;
+
+                $.get("{{ route('wrm.inventory.plot-location') }}", {
+                    zona: zona
+                }, function(res) {
+                    // Create a mapping by temp_id for fast lookup
+                    let locationMap = {};
+                    res.data.forEach(function(item) {
+                        locationMap[item.temp_id] = item;
+                    });
+
+                    // Update each row based on temp_id (which is $row->id from Blade)
+                    $('tbody tr').each(function() {
+                        let tempId = $(this).find('.loc-id').attr('name');
+
+                        // Extract temp_id from name="loc_id[123]" format
+                        let match = tempId.match(/\[(\d+)\]/);
+                        if (!match) return;
+
+                        tempId = parseInt(match[1]);
+
+                        if (locationMap[tempId]) {
+                            let loc = locationMap[tempId];
+                            let lokasi =
+                                `${loc.plant} - ${loc.s_loc} - ${loc.zona} - ${loc.bin}`;
+
+                            $(this).find('.bin-location').contents().first().replaceWith(
+                                lokasi);
+                            $(this).find('.loc-id').val(loc.loc_id);
+                        } else {
+                            // If no location assigned (bins ran out), show warning
+                            $(this).find('.bin-location').contents().first().replaceWith(
+                                '❌ Tidak ada bin');
+                            $(this).find('.loc-id').val('');
+                        }
+                    });
+                });
+            });
+        });
     </script>
 @endsection

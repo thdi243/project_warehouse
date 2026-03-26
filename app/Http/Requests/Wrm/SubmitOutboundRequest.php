@@ -25,6 +25,8 @@ class SubmitOutboundRequest extends FormRequest
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|exists:wrm_stock_inbound_details,id',
             'items.*.qty' => 'required|numeric|min:1',
+            'catatan' => 'nullable|string|max:500',
+            'qty_request' => 'nullable|numeric|min:1'
         ];
     }
 }

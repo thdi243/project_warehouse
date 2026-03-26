@@ -38,14 +38,26 @@ class StockInboundDetail extends Model
         return $this->belongsTo(MasterBarangModel::class, 'barang_id');
     }
 
-    public function balance()
+    public function bin()
     {
-        return $this->belongsTo(StockBalance::class, 'barang_id');
+        return $this->belongsTo(\App\Models\Wrm\MasterBinModel::class, 'loc_id');
     }
 
     public function location()
     {
-        return $this->belongsTo(MasterLocationModel::class, 'loc_id');
+        return $this->hasOneThrough(
+            MasterLocationModel::class,
+            \App\Models\Wrm\MasterBinModel::class,
+            'id',
+            'id',
+            'loc_id',
+            'loc_id'
+        );
+    }
+
+    public function balance()
+    {
+        return $this->belongsTo(StockBalance::class, 'barang_id');
     }
 
     public function creator()

@@ -321,7 +321,7 @@
                 allowClear: true,
 
                 ajax: {
-                    url: '/stock-gula/get-barang',
+                    url: '/inventory/get-barang',
                     dataType: 'json',
                     delay: 250,
 
@@ -409,7 +409,7 @@
                                     <td>${d.group}</td>
                                     <td>${d.qty}</td>
                                     <td>${d.status.toUpperCase()}</td>
-                                    <td>${d.location.plant} - ${d.location.gudang} - ${d.location.bin}</td>
+                                    <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.zona} - ${d.bin.bin}</td>
                                     <td>${d.inbound.incoming_date}</td>
 
                                     @can('permission', 'wrm-inventory-plus')
@@ -448,7 +448,7 @@
 
             $('#formStock').submit(function(e) {
                 e.preventDefault();
-                let url = '/wrm/stock-gula/store';
+                let url = '/wrm/inventory/store';
                 let method = 'POST';
 
                 $.ajax({
@@ -508,7 +508,7 @@
                 let id = $('#id').val();
 
                 $.ajax({
-                    url: `/wrm/stock-gula/update/${id}`,
+                    url: `{{ route('wrm.inventory.update', '') }}/` + id,
                     method: 'POST',
                     data: $(this).serialize() + '&_method=PUT',
                     beforeSend() {
@@ -574,7 +574,7 @@
                     if (!result.isConfirmed) return;
 
                     $.ajax({
-                        url: '/wrm/stock-gula/delete/' + id,
+                        url: '/wrm/inventory/delete/' + id,
                         type: 'DELETE',
                         data: {
                             _token: '{{ csrf_token() }}'

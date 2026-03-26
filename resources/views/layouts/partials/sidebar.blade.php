@@ -386,13 +386,13 @@
 
                     @can('permission', 'wrm-menu')
                         <li class="nav-item">
-                            <a class="nav-link menu-link {{ request()->routeIs('wrm.*') ? '' : 'collapsed' }}"
+                            <a class="nav-link menu-link {{ request()->routeIs('wrm.inventory.*') ? '' : 'collapsed' }}"
                                 href="#sideBarWrmStock" data-bs-toggle="collapse" role="button"
-                                aria-expanded="{{ request()->routeIs('wrm.*') ? 'true' : 'false' }}"
+                                aria-expanded="{{ request()->routeIs('wrm.inventory.*') ? 'true' : 'false' }}"
                                 aria-controls="sideBarWrmStock">
-                                <i class="mdi mdi-cube-outline"></i><span data-key="t-wrm">WRM</span>
+                                <i class="mdi mdi-cube-outline"></i><span data-key="t-wrm.inventory">WRM</span>
                             </a>
-                            <div class="collapse menu-dropdown {{ request()->routeIs('wrm.*') ? 'show' : '' }}"
+                            <div class="collapse menu-dropdown {{ request()->routeIs('wrm.inventory.*') ? 'show' : '' }}"
                                 id="sideBarWrmStock">
                                 <ul class="nav nav-sm flex-column">
                                     {{-- <li class="nav-item">
@@ -541,7 +541,7 @@
                             <div class="collapse menu-dropdown {{ request()->routeIs('wrm.master.*') ? 'show' : '' }}"
                                 id="sidebarMasterWrm">
                                 <ul class="nav nav-sm flex-column">
-                                    @can('permission', 'master-barang-wrm')
+                                    @can('permission', 'wrm-master-barang')
                                         <li class="nav-item">
                                             <a href="{{ route('wrm.master.barang.index') }}"
                                                 class="nav-link {{ request()->routeIs('wrm.master.barang.index') ? 'active' : '' }}"
@@ -551,12 +551,30 @@
                                         </li>
                                     @endcan
 
-                                    @can('permission', 'master-location-wrm')
+                                    @can('permission', 'wrm-master-location')
                                         <li class="nav-item">
                                             <a href="{{ route('wrm.master.location.index') }}"
                                                 class="nav-link {{ request()->routeIs('wrm.master.location.index') ? 'active' : '' }}"
                                                 data-key="t-input-tkbm">
                                                 <i class="mdi mdi-view-grid"></i>Master Lokasi
+                                            </a>
+                                        </li>
+                                    @endcan
+                                    @can('permission', 'wrm-master-bin')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.master.bin.index') }}"
+                                                class="nav-link {{ request()->routeIs('wrm.master.bin.index') ? 'active' : '' }}"
+                                                data-key="t-input-tkbm">
+                                                <i class="mdi mdi-view-grid"></i>Master Bin
+                                            </a>
+                                        </li>
+                                    @endcan
+
+                                    @can('permission', 'wrm-master-pallet')
+                                        <li class="nav-item">
+                                            <a href="{{ route('wrm.master.pallet.index') }}"
+                                                class="nav-link menu-link {{ request()->routeIs('wrm.master.pallet.*') ? 'active' : '' }}">
+                                                <i class="mdi mdi-view-grid"></i>Master Pallet
                                             </a>
                                         </li>
                                     @endcan

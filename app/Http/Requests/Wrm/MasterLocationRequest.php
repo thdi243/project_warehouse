@@ -24,16 +24,16 @@ class MasterLocationRequest extends FormRequest
     {
         return [
             'gudang'    => 'required|string',
-            'bin'       => 'required|string',
             's_loc'     => 'required|string',
+            'zona'     => 'required|string',
             'plant' => [
                 'required',
                 Rule::unique('wrm_master_location')
                     ->where(function ($query) {
                         return $query
+                            ->where('s_loc', $this->s_loc)
                             ->where('gudang', $this->gudang)
-                            ->where('bin', $this->bin)
-                            ->where('s_loc', $this->s_loc);
+                            ->where('zona', $this->zona);
                     })
             ],
         ];
@@ -42,7 +42,7 @@ class MasterLocationRequest extends FormRequest
     public function messages()
     {
         return [
-            'plant.unique' => 'Kombinasi Gudang, Bin, S_Loc dan Plant sudah ada.'
+            'plant.unique' => 'Kombinasi Plant, Gudang, S_Loc, Zona, dan Bin sudah ada.'
         ];
     }
 }

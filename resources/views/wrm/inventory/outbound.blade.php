@@ -190,7 +190,7 @@
                                 <td>${v.group}</td>
                                 <td>${v.status}</td>
                                 <td>${v.qty}</td>
-                                <td>${v.location.plant} - ${v.location.gudang} - ${v.location.bin}</td>
+                                <td>${v.bin.location.plant} - ${v.bin.location.gudang} - ${v.bin.bin}</td>
                                 <td>${v.inbound.incoming_date}</td>
                                 <td class="text-center">
                                     <input type="checkbox"
@@ -287,9 +287,16 @@
                     return;
                 }
 
+                let qtyRequest = $('#qty').val();
+
                 Swal.fire({
-                    title: 'Submit Outbound?',
-                    icon: 'question',
+                    title: 'Submit Outbound',
+                    input: 'textarea',
+                    inputLabel: 'Catatan',
+                    inputPlaceholder: 'Masukkan catatan outbound...',
+                    inputAttributes: {
+                        'aria-label': 'Catatan outbound'
+                    },
                     showCancelButton: true,
                     confirmButtonText: 'Submit'
                 }).then((result) => {
@@ -301,9 +308,12 @@
                             method: "POST",
                             data: {
                                 _token: "{{ csrf_token() }}",
-                                items: selected
+                                items: selected,
+                                catatan: result.value,
+                                qty_request: qtyRequest,
                             },
                             success: function(res) {
+
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Berhasil',
@@ -314,6 +324,7 @@
                                 }).then(() => {
                                     resetForm();
                                 });
+
                                 loadData();
                             }
                         });

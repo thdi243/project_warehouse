@@ -28,7 +28,7 @@ class StockGulaRequest extends FormRequest
             'group'     => 'nullable|string|max:255',
             'supplier'  => 'required|string|max:255',
             'status'    => 'required|string|max:50',
-            'loc_id'    => 'required|exists:wrm_master_location,id',
+            'loc_id'    => 'required|exists:wrm_master_bin,id',
             'catatan'   => 'nullable|string',
             'incoming_date' => 'nullable|date'
         ];

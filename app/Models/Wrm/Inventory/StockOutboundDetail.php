@@ -4,6 +4,7 @@ namespace App\Models\Wrm\Inventory;
 
 use App\Models\User;
 use App\Models\Wrm\MasterBarangModel;
+use App\Models\Wrm\MasterBinModel;
 use App\Models\Wrm\MasterLocationModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -38,9 +39,21 @@ class StockOutboundDetail extends Model
         return $this->belongsTo(MasterBarangModel::class, 'barang_id');
     }
 
+    public function bin()
+    {
+        return $this->belongsTo(MasterBinModel::class, 'loc_id');
+    }
+
     public function location()
     {
-        return $this->belongsTo(MasterLocationModel::class, 'loc_id');
+        return $this->hasOneThrough(
+            MasterLocationModel::class,
+            MasterBinModel::class,
+            'id',
+            'id',
+            'loc_id',
+            'loc_id'
+        );
     }
 
     public function creator()

@@ -1,39 +1,37 @@
 <?php
 
-namespace App\Models\Wrm\Inventory;
+namespace App\Models\Wrm;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class TempUploadModel extends Model
+class MasterPalletModel extends Model
 {
     use HasFactory;
 
-    protected $table = 'wrm_stock_inbound_temp_upload';
+    protected $table = 'wrm_master_pallet';
 
     protected $fillable = [
-        'barcode',
-        'no_spb',
-        'mid',
-        'pallet_id',
-        'qty',
-        'group',
-        // 'status',
-        'incoming_date',
-        // 'supplier',
-        // 'pallet',
-        'expired_date',
-        'catatan',
+        'jenis_bahan',
+        'nama_pallet',
         'created_by',
         'updated_by',
     ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    // user pembuat
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    // user pengupdate
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');

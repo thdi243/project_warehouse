@@ -80,15 +80,14 @@
                                 <tr>
                                     <th class="text-center">No</th>
                                     <th>No SPB</th>
-                                    <th>Mid</th>
-                                    <th>Nama Barang</th>
-                                    <th>Uom</th>
-                                    <th>Group</th>
-                                    <th>Qty</th>
-                                    <th>Status</th>
-                                    <th>Location</th>
+                                    <th>Supplier</th>
+                                    {{-- <th>Mid</th>
+                                    <th>UoM</th> --}}
                                     <th>Incoming Date</th>
                                     <th>Issued Date</th>
+                                    <th>Qty Request</th>
+                                    <th>Catatan</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -96,6 +95,53 @@
                     </div>
                     <div class="mt-3 d-flex justify-content-end" id="pagination"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal detail --}}
+    <div class="modal fade" id="modalDetail" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Detail Outbound
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>No</th>
+                                    <th>Pallet ID</th>
+                                    <th>MID</th>
+                                    <th>Nama Barang</th>
+                                    <th>Group</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                    <th>Lokasi</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <!-- isi dari ajax -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+                        Tutup
+                    </button>
+                </div>
+
             </div>
         </div>
     </div>
@@ -148,20 +194,26 @@
                             html += `
                                 <tr>
                                     <td class="text-center">${startNo + index}</td>
-                                    <td>${d.outbound.no_spb}</td>
-                                    <td>${d.barang.mid}</td>
-                                    <td>${d.barang.nama_barang}</td>
-                                    <td>${d.barang.uom}</td>
-                                    <td>${d.group}</td>
-                                    <td>${d.qty}</td>
-                                    <td>${d.status.toUpperCase()}</td>
-                                    <td>${d.location.plant} - ${d.location.gudang} - ${d.location.bin}</td>
-                                    <td>${d.outbound.incoming_date}</td>
-                                    <td>${d.outbound.issued_date}</td>
+                                    <td>${d.no_spb}</td>
+                                    <td>${d.supplier}</td>
+                                    <td>${d.incoming_date}</td>
+                                    <td>${d.issued_date}</td>
+                                    <td>${d.qty_request}</td>
+                                    <td>${d.catatan}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-info btnDetail"
+                                            data-id="${d.id}">
+                                            <i class="mdi mdi-eye"></i> Detail
+                                        </button>
+
+                                        <button class="btn btn-sm btn-danger btnCancel"
+                                            data-id="${d.id}">
+                                            <i class="mdi mdi-close"></i> Cancel Trans
+                                        </button>
+                                    </td>
                                 </tr>
                             `;
                         });
-
                     }
 
                     $('#tableStock tbody').html(html);
@@ -255,6 +307,38 @@
 
             }
 
+            $(document).on('click', '.btnDetail', function() {
+
+                let id = $(this).data('id');
+
+                $.get(`/wrm/inventory/detail-data-outbound/${id}`, function(res) {
+
+                    let html = '';
+
+                    res.data.forEach((d, i) => {
+
+                        html += `
+                            <tr>
+                                <td>${i+1}</td>
+                                <td>${d.pallet_id}</td>
+                                <td>${d.barang.mid}</td>
+                                <td>${d.barang.nama_barang}</td>
+                                <td>${d.group}</td>
+                                <td>${d.qty}</td>
+                                <td>${d.status}</td>
+                                <td>${d.bin.location.plant} - ${d.bin.location.gudang} - ${d.bin.bin}</td>
+                            </tr>
+                        `;
+                    });
+
+                    $('#modalDetail tbody').html(html);
+
+                    $('#modalDetail').modal('show');
+
+                });
+
+            });
+
             $('#btnReset').click(function() {
 
                 $('#filterGroup').val('');
@@ -262,6 +346,34 @@
                 $('#filterMid').val('');
 
                 loadData();
+
+            });
+
+            $(document).on('click', '.btnCancel', function() {
+
+                let id = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Cancel Transfer?',
+                    icon: 'warning',
+                    showCancelButton: true
+                }).then((r) => {
+
+                    if (r.isConfirmed) {
+
+                        $.post(`/wrm/inventory/cancel-outbound/${id}`, {
+                            _token: "{{ csrf_token() }}"
+                        }, function(res) {
+
+                            Swal.fire('Berhasil', res.message, 'success');
+
+                            loadData();
+
+                        });
+
+                    }
+
+                });
 
             });
         })

@@ -15,7 +15,9 @@ use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
 use App\Http\Controllers\Wrm\MasterBarangController;
+use App\Http\Controllers\Wrm\MasterBinController;
 use App\Http\Controllers\Wrm\MasterLocationController;
+use App\Http\Controllers\Wrm\MasterPalletController;
 use App\Http\Controllers\Wrm\P2HController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
@@ -226,12 +228,16 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/delete/{id}', [InboundController::class, 'destroy'])->name('wrm.inventory.delete');
                 Route::get('/template', [InboundController::class, 'downloadTemplate'])->name('wrm.inventory.template');
                 Route::post('/upload', [InboundController::class, 'upload'])->name('wrm.inventory.upload');
+                Route::post('/cancel-upload', [InboundController::class, 'cancelUpload'])->name('wrm.inventory.cancel-upload');
                 Route::get('/select-location', [InboundController::class, 'selectLocationView'])->name('wrm.inventory.select-location');
+                Route::get('/plot-location', [InboundController::class, 'plotLocation'])->name('wrm.inventory.plot-location');
                 Route::get('/form-outbound', [OutboundController::class, 'formOutbound'])->name('wrm.inventory.form-outbound');
                 Route::get('/data-outbound', [OutboundController::class, 'dataOutbound'])->name('wrm.inventory.data-outbound');
                 Route::get('/search-outbound', [OutboundController::class, 'searchOutbound'])->name('wrm.inventory.search-outbound');
                 Route::post('/store-outbound', [OutboundController::class, 'submitOutbound'])->name('wrm.inventory.submit-outbound');
                 Route::get('/get-data-outbound', [OutboundController::class, 'getData'])->name('wrm.inventory.get-data-outbound');
+                Route::get('/detail-data-outbound/{id}', [OutboundController::class, 'getOutboundDetail'])->name('wrm.inventory.get-detail-outbound');
+                Route::post('/cancel-outbound/{id}', [OutboundController::class, 'cancelOutbound'])->name('wrm.inventory.cancel-outbound');
             });
         });
     });
@@ -365,10 +371,26 @@ Route::middleware('auth')->group(function () {
 
                 Route::prefix('location')->group(function () {
                     Route::get('/index', [MasterLocationController::class, 'index'])->name('wrm.master.location.index');
-                    Route::get('/get-data', [MasterLocationController::class, 'getData'])->name('wrm.location.get-data');
-                    Route::post('/store', [MasterLocationController::class, 'store'])->name('wrm.location.store');
-                    Route::put('/update/{id}', [MasterLocationController::class, 'update'])->name('wrm.location.update');
-                    Route::delete('/delete/{id}', [MasterLocationController::class, 'destroy'])->name('wrm.location.delete');
+                    Route::get('/get-data', [MasterLocationController::class, 'getData'])->name('wrm.master.location.get-data');
+                    Route::post('/store', [MasterLocationController::class, 'store'])->name('wrm.master.location.store');
+                    Route::put('/update/{id}', [MasterLocationController::class, 'update'])->name('wrm.master.location.update');
+                    Route::delete('/delete/{id}', [MasterLocationController::class, 'destroy'])->name('wrm.master.location.delete');
+                    Route::post('/upload', [MasterLocationController::class, 'upload'])->name('wrm.master.location.upload');
+                });
+
+                Route::prefix('bin')->group(function () {
+                    Route::get('/index', [MasterBinController::class, 'index'])->name('wrm.master.bin.index');
+                    Route::get('/get-data', [MasterBinController::class, 'getData'])->name('wrm.master.bin.get-data');
+                    Route::post('/store', [MasterBinController::class, 'store'])->name('wrm.master.bin.store');
+                    Route::delete('/delete/{id}', [MasterBinController::class, 'destroy'])->name('wrm.master.bin.delete');
+                });
+
+                Route::prefix('pallet')->group(function () {
+                    Route::get('/index', [MasterPalletController::class, 'index'])->name('wrm.master.pallet.index');
+                    Route::post('/store', [MasterPalletController::class, 'store'])->name('wrm.master.pallet.store');
+                    Route::put('/update/{id}', [MasterPalletController::class, 'update'])->name('wrm.master.pallet.update');
+                    Route::delete('/destroy/{id}', [MasterPalletController::class, 'destroy'])->name('wrm.master.pallet.destroy');
+                    Route::get('/data', [MasterPalletController::class, 'getData'])->name('wrm.master.pallet.getData');
                 });
             });
         });

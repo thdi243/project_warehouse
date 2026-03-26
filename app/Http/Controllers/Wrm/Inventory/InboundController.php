@@ -9,10 +9,12 @@ use App\Models\Wrm\Inventory\StockBalance;
 use App\Models\Wrm\Inventory\StockInbound;
 use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockMovement;
-use App\Models\Wrm\MasterBarangModel;
-use App\Models\Wrm\MasterLocationModel;
-use App\Models\Wrm\StockGula\StockGulaModel;
 use App\Models\Wrm\Inventory\TempUploadModel;
+use App\Models\Wrm\MasterBarangModel;
+use App\Models\Wrm\MasterBinModel;
+use App\Models\Wrm\MasterLocationModel;
+use App\Models\Wrm\MasterPalletModel;
+use App\Models\Wrm\StockGula\StockGulaModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,16 +55,85 @@ class InboundController extends Controller
 
         $data = TempUploadModel::whereDate('incoming_date', $today)->get();
 
-        // jika tidak ada data
         if ($data->isEmpty()) {
             return redirect()->route('wrm.inventory.index-upload');
         }
 
-        $usedLocation = StockInboundDetail::pluck('loc_id')->toArray();
+        // Group data by no_spb untuk cek space per no_spb
+        $dataByNoSpb = $data->groupBy('no_spb');
 
-        $locations = MasterLocationModel::whereNotIn('id', $usedLocation)->get();
+        $usedBinIds = StockInboundDetail::pluck('loc_id')->toArray();
 
-        return view('wrm.inventory.after_upload', compact('data', 'locations'));
+        // Get all available bins grouped by zona
+        $availableBins = MasterBinModel::with('location')
+            ->whereNotIn('id', $usedBinIds)
+            ->orderBy('loc_id')
+            ->orderBy('kolom')
+            ->orderBy('level')
+            ->get();
+
+        $zonesByLocation = $availableBins->groupBy(function ($item) {
+            return $item->location->id;
+        });
+
+        $zonesGrouped = $availableBins->groupBy(function ($item) {
+            return $item->location->zona;
+        });
+
+        $availableZones = [];
+        $locationError = null;
+        $errorDetails = [];
+
+        // Check each zona apakah bisa accommodate semua no_spb+pallet
+        foreach ($zonesGrouped as $zona => $bins) {
+
+            $zonaHasSpace = true;
+            $zonaErrorMsg = "Zona {$zona} - ";
+            $totalBinsNeeded = 0;
+
+            // Count total bins needed untuk semua no_spb di zona ini
+            foreach ($dataByNoSpb as $noSpb => $itemsForNoSpb) {
+                $palletCountForNoSpb = $itemsForNoSpb->count();
+                $totalBinsNeeded += $palletCountForNoSpb;
+            }
+
+            // Check apakah bins tersedia cukup
+            if ($bins->count() < $totalBinsNeeded) {
+                $zonaHasSpace = false;
+                $binsCount = $bins->count();
+                $missingBins = $totalBinsNeeded - $binsCount;
+                $zonaErrorMsg .= "kurang {$missingBins} bin (butuh {$totalBinsNeeded}, ada {$binsCount})";
+                $errorDetails[] = $zonaErrorMsg;
+            }
+
+            if ($zonaHasSpace) {
+                $first = $bins->first();
+                $location = $first->location;
+
+                $availableZones[] = [
+                    'zona' => $zona,
+                    'plant' => $location->plant,
+                    's_loc' => $location->s_loc,
+                    'location_id' => $location->id
+                ];
+            }
+        }
+
+        if (empty($availableZones)) {
+            $locationError = 'Tidak ada zona yang cukup untuk semua pallet.';
+            if (!empty($errorDetails)) {
+                $locationError .= ' Detail: ' . implode(', ', $errorDetails);
+            }
+        }
+
+        $pallet = MasterPalletModel::get();
+
+        return view('wrm.inventory.after_upload', [
+            'data' => $data,
+            'zones' => $availableZones,
+            'pallet' => $pallet,
+            'locationError' => $locationError
+        ]);
     }
 
     public function getBarang(Request $request)
@@ -137,13 +208,24 @@ class InboundController extends Controller
 
             $temps = TempUploadModel::whereIn('id', array_keys($request->loc_id))->get();
 
+            // Validasi apakah semua temp_id punya loc_id dan loc_id tidak kosong
+            foreach ($request->loc_id as $tempId => $locId) {
+                if (empty($locId)) {
+                    throw new \Exception("Ada pallet yang belum ditentukan lokasinya. Silahkan pilih zona terlebih dahulu.");
+                }
+            }
+
             $barangs = MasterBarangModel::whereIn('mid', $temps->pluck('mid'))
                 ->get()
                 ->keyBy('mid');
 
+            // Collect all bin IDs and fetch them once
+            $binIds = array_values($request->loc_id);
+            $bins = MasterBinModel::whereIn('id', $binIds)->get()->keyBy('id');
+
             $headers = [];
 
-            foreach ($request->loc_id as $tempId => $locId) {
+            foreach ($request->loc_id as $tempId => $binId) {
 
                 $temp = $temps->firstWhere('id', $tempId);
 
@@ -153,34 +235,44 @@ class InboundController extends Controller
                     throw new \Exception("MID {$temp->mid} tidak ditemukan");
                 }
 
+                // Get bin and location
+                $bin = $bins[$binId] ?? null;
+                if (!$bin) {
+                    throw new \Exception("Bin tidak ditemukan");
+                }
+
+                $locationId = $bin->loc_id;
+
                 if (!isset($headers[$temp->no_spb])) {
                     $headers[$temp->no_spb] = StockInbound::create([
                         'no_spb'        => $temp->no_spb,
                         'incoming_date' => now(),
                         'expired_date'  => $temp->expired_date ?? null,
-                        'supplier'      => $temp->supplier ?? null,
+                        'supplier'      => $request->supplier ?? $temp->supplier,
                         'created_by'    => Auth::id(),
                     ]);
                 }
 
                 $header = $headers[$temp->no_spb];
 
+                // Store with bin_id in loc_id field (as per new FK)
                 $detail = StockInboundDetail::create([
                     'inbound_id' => $header->id,
                     'barang_id'  => $barang->id,
                     'pallet_id'  => $temp->pallet_id,
                     'group'      => $temp->group,
                     'qty'        => $temp->qty,
-                    'status'     => $temp->status,
-                    'loc_id'     => $locId ?? 1,
-                    'pallet'     => $temp->pallet,
+                    'status'     => 'QI',
+                    'loc_id'     => $binId,
+                    'pallet'     => $request->pallet ?? $temp->pallet,
                     'catatan'    => $temp->catatan,
                     'created_by' => Auth::id(),
                 ]);
 
+                // Use location_id for StockMovement (still refers to location)
                 StockMovement::create([
                     'barang_id'  => $barang->id,
-                    'loc_id'     => $locId,
+                    'loc_id'     => $locationId,
                     'tanggal'    => now(),
                     'qty'        => $temp->qty,
                     'jenis'      => 'in',
@@ -190,8 +282,9 @@ class InboundController extends Controller
                     'created_by' => Auth::id(),
                 ]);
 
+                // Use location_id for StockBalance (still refers to location)
                 $balance = StockBalance::where('barang_id', $barang->id)
-                    ->where('loc_id', $locId)
+                    ->where('loc_id', $locationId)
                     ->first();
 
                 if ($balance) {
@@ -201,7 +294,7 @@ class InboundController extends Controller
 
                     StockBalance::create([
                         'barang_id'  => $barang->id,
-                        'loc_id'     => $locId,
+                        'loc_id'     => $locationId,
                         'qty'        => $temp->qty,
                         'created_by' => Auth::id(),
                     ]);
@@ -231,7 +324,8 @@ class InboundController extends Controller
     {
         $query = StockInboundDetail::with([
             'barang:id,mid,nama_barang,uom',
-            'location:id,gudang,bin,s_loc,plant',
+            'bin:id,loc_id,bin,kolom,level',
+            'bin.location:id,plant,s_loc,gudang,zona',
             'inbound:id,no_spb,incoming_date,supplier'
         ])
             ->whereIn('status', ['UNREST', 'QI', 'BLOCKED']);
@@ -298,8 +392,19 @@ class InboundController extends Controller
             $detail = StockInboundDetail::findOrFail($id);
 
             $oldQty = $detail->qty;
-            $oldLoc = $detail->loc_id;
+            $oldBinId = $detail->loc_id;
             $barangId = $detail->barang_id;
+
+            // Get old and new bin to extract location_ids
+            $oldBin = MasterBinModel::find($oldBinId);
+            $newBin = MasterBinModel::find($request->loc_id);
+
+            if (!$oldBin || !$newBin) {
+                throw new \Exception("Bin tidak ditemukan");
+            }
+
+            $oldLocationId = $oldBin->loc_id;
+            $newLocationId = $newBin->loc_id;
 
             $detail->update([
                 'pallet_id' => $request->pallet_id,
@@ -319,7 +424,7 @@ class InboundController extends Controller
 
                 $movement->update([
                     'qty'    => $request->qty,
-                    'loc_id' => $request->loc_id,
+                    'loc_id' => $newLocationId,
                     'catatan' => $request->catatan
                 ]);
             }
@@ -327,7 +432,7 @@ class InboundController extends Controller
             $qtyDiff = $request->qty - $oldQty;
 
             $balance = StockBalance::where('barang_id', $barangId)
-                ->where('loc_id', $oldLoc)
+                ->where('loc_id', $oldLocationId)
                 ->first();
 
             if ($balance) {
@@ -354,13 +459,21 @@ class InboundController extends Controller
 
     public function destroy($id)
     {
-        $barang = StockInboundDetail::findOrFail($id);
+        $detail = StockInboundDetail::findOrFail($id);
 
-        $barang->delete();
+        $inboundId = $detail->inbound_id;
+
+        $detail->delete();
+
+        $remainingDetail = StockInboundDetail::where('inbound_id', $inboundId)->exists();
+
+        if (!$remainingDetail) {
+            StockInbound::where('id', $inboundId)->delete();
+        }
 
         return response()->json([
             'status'  => true,
-            'message' => 'Data stock gula berhasil dihapus',
+            'message' => 'Data inventory berhasil dihapus',
         ]);
     }
 
@@ -392,11 +505,11 @@ class InboundController extends Controller
                 $barcode    = trim($row[0] ?? '');
                 $mid        = trim($row[1] ?? '');
                 $group      = $row[3] ?? null;
-                $status     = strtoupper(trim($row[8] ?? ''));
-                $supplier   = $row[9] ?? null;
-                $pallet     = $row[10] ?? null;
-                $catatan    = $row[11] ?? null;
-                $expire     = $row[12] ?? null;
+                // $status     = strtoupper(trim($row[8] ?? ''));
+                // $supplier   = $row[9] ?? null;
+                // $pallet     = $row[10] ?? null;
+                $catatan    = $row[8] ?? null;
+                $expired     = $row[9] ?? null;
 
                 $qty = $row[6] ?? 0;
                 $qty = str_replace('.', '', $qty);
@@ -415,14 +528,13 @@ class InboundController extends Controller
 
                 $barcodePrefix = substr($barcode, 0, 10);
 
-                // CEK DUPLICATE DI DATABASE
-                $exist = TempUploadModel::where('mid', $mid)
-                    ->whereDate('incoming_date', $today)
-                    ->whereRaw('LEFT(barcode,10) = ?', [$barcodePrefix])
+                // CEK DUPLICATE DI DATABASE (GLOBAL no_spb)
+                $existCombination = TempUploadModel::where('no_spb', $barcodePrefix)
+                    ->where('mid', $mid)
                     ->exists();
 
-                if ($exist) {
-                    $errors[] = "Baris {$line}: Barcode (No SPB) {$barcodePrefix}, MID {$mid} sudah ada di database hari ini";
+                if ($existCombination) {
+                    $errors[] = "Baris {$line}: Kombinasi No SPB {$barcodePrefix} dan MID {$mid} sudah ada";
                     continue;
                 }
 
@@ -443,10 +555,10 @@ class InboundController extends Controller
                     'qty'         => $qty,
                     'group'       => $group,
                     'incoming_date' => now(),
-                    'expired_date' => $expire ?? null,
-                    'supplier'    => $supplier ?? null,
-                    'status'      => $status,
-                    'pallet'      => $pallet ?? null,
+                    'expired_date' => $expired ?? null,
+                    // 'supplier'    => null,
+                    // 'status'      => null,
+                    // 'pallet'      => $pallet ?? null,
                     'catatan'     => $catatan ?? null,
 
                     'created_by'  => Auth::id(),
@@ -459,9 +571,17 @@ class InboundController extends Controller
                 throw new \Exception(implode("\n", $errors));
             }
 
-            // foreach ($mappedRows as $data) {
-            //     TempUploadModel::create($data);
-            // }
+            // VALIDASI MID BARANG DI DATABASE
+            $uniqueMids = array_unique(array_column($mappedRows, 'mid'));
+            $existingMids = MasterBarangModel::whereIn('mid', $uniqueMids)
+                ->pluck('mid')
+                ->toArray();
+
+            $missingMids = array_diff($uniqueMids, $existingMids);
+            if (!empty($missingMids)) {
+                throw new \Exception("MID tidak ditemukan di master barang: " . implode(", ", $missingMids));
+            }
+
             TempUploadModel::insert($mappedRows);
 
             DB::commit();
@@ -481,5 +601,83 @@ class InboundController extends Controller
                 'errors' => explode("\n", $e->getMessage())
             ], 422);
         }
+    }
+
+    public function cancelUpload()
+    {
+        try {
+            $today = Carbon::now();
+
+            TempUploadModel::whereDate('incoming_date', $today)->delete();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Upload berhasil dibatalkan, data dihapus'
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function plotLocation(Request $request)
+    {
+        $zona = $request->zona;
+
+        $today = Carbon::now();
+
+        $data = TempUploadModel::whereDate('incoming_date', $today)->get();
+
+        // Group by no_spb untuk maintain order per no_spb
+        $dataByNoSpb = $data->groupBy('no_spb');
+
+        $usedBinIds = StockInboundDetail::pluck('loc_id')->toArray();
+
+        $bins = MasterBinModel::with('location')
+            ->whereHas('location', function ($q) use ($zona) {
+                $q->where('zona', $zona);
+            })
+            ->whereNotIn('id', $usedBinIds)
+            ->orderBy('loc_id')
+            ->orderBy('kolom')
+            ->orderBy('level')
+            ->get();
+
+        $result = [];
+        $binIndex = 0;
+
+        // Iterate by no_spb dan pallet untuk maintain order
+        foreach ($dataByNoSpb as $noSpb => $itemsForNoSpb) {
+
+            // For each pallet in this no_spb
+            foreach ($itemsForNoSpb as $item) {
+
+                if ($binIndex >= $bins->count()) {
+                    break 2; // Break both loops jika bins habis
+                }
+
+                $bin = $bins[$binIndex];
+                $location = $bin->location;
+
+                $result[] = [
+                    'temp_id' => $item->id,
+                    'no_spb' => $noSpb,
+                    'pallet_id' => $item->pallet_id,
+                    'loc_id' => $bin->id,
+                    'plant' => $location->plant,
+                    's_loc' => $location->s_loc,
+                    'zona' => $location->zona,
+                    'bin' => $bin->bin,
+                ];
+
+                $binIndex++;
+            }
+        }
+
+        return response()->json([
+            'data' => $result
+        ]);
     }
 }

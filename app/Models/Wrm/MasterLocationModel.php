@@ -12,13 +12,18 @@ class MasterLocationModel extends Model
     protected $table = 'wrm_master_location';
 
     protected $fillable = [
-        'gudang',
-        'bin',
-        's_loc',
         'plant',
+        's_loc',
+        'gudang',
+        'zona',
         'created_by',
         'updated_by',
     ];
+
+    public function bins()
+    {
+        return $this->hasMany(MasterBinModel::class, 'loc_id', 'id');
+    }
 
     public function barangs()
     {

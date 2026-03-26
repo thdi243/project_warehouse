@@ -19,6 +19,8 @@ class StockOutbound extends Model
         'supplier',
         'issued_date',
         'expired_date',
+        'qty_request',
+        'catatan',
         'created_by',
         'updated_by',
     ];

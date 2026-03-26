@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('wrm_master_location', function (Blueprint $table) {
             $table->id();
-            $table->string('gudang');
-            $table->string('bin');
-            $table->string('s_loc');
             $table->string('plant');
+            $table->string('s_loc');
+            $table->string('gudang');
+            $table->string('zona');
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
@@ -33,6 +33,25 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
         });
+
+        Schema::create('wrm_master_pallet', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama_pallet');
+            $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
+            $table->timestamps();
+        });
+
+        Schema::create('wrm_master_bin', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
+            $table->string('bin')->nullable();
+            $table->integer('kolom');
+            $table->integer('level');
+            $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
+            $table->timestamps();
+        });
     }
 
     /**
@@ -40,6 +59,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('wrm_master_bin');
+        Schema::dropIfExists('wrm_master_pallet');
         Schema::dropIfExists('wrm_master_barang');
         Schema::dropIfExists('wrm_master_location');
     }

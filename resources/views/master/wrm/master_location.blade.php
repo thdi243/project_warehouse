@@ -10,9 +10,10 @@
                 <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                     <h5 class="mb-0">Master Lokasi Raw Material</h5>
                     <div class="d-flex gap-2">
-                        {{-- <button class="btn btn-outline-primary" id="btnUpload">
+                        <button class="btn btn-outline-primary" id="btnUpload" data-bs-toggle="modal"
+                            data-bs-target="#uploadModal">
                             <i class="mdi mdi-upload"></i> Upload
-                        </button> --}}
+                        </button>
                         <button class="btn btn-primary" id="btnTambah">
                             <i class="mdi mdi-plus"></i> Tambah
                         </button>
@@ -29,7 +30,7 @@
                                     <th>Plant</th>
                                     <th>S Loc</th>
                                     <th>Gudang</th>
-                                    <th>Bin</th>
+                                    <th>Zona</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -67,8 +68,8 @@
                             <input type="text" class="form-control" id="gudang" required>
                         </div>
                         <div class="mb-2">
-                            <label>Bin <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="bin" required>
+                            <label>Zona <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="zona" required>
                         </div>
                     </div>
 
@@ -81,6 +82,45 @@
         </div>
     </div>
 
+    {{-- Modal Upload --}}
+    <div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadModalLabel">
+                        <i class="mdi mdi-cloud-upload me-1"></i> Upload File Master Lokasi
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form id="formUploadBarang" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-info" role="alert">
+                            Hanya izinkan file <b>.xlsx, .xls.</b> Ukuran maksimal <b>5MB</b>.
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="file" class="form-label fw-bold">Pilih File Master Lokasi</label>
+                            <input class="form-control" type="file" id="file" name="file" required
+                                accept=".xlsx, .xls, .csv">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer p-2 d-flex justify-content-between">
+                        <a href="{{ asset('assets/templates/excel/template_location_inventory_wrm.xlsx') }}" target="_blank"
+                            class="btn btn-info flex-fill ms-0 me-1">
+                            <i class="mdi mdi-download me-1"></i> Unduh Template
+                        </a>
+
+                        <button type="submit" class="btn btn-success flex-fill me-0 ms-1">
+                            <i class="mdi mdi-check-bold me-1"></i> Unggah Sekarang
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -99,7 +139,7 @@
                                 <td>${v.plant}</td>
                                 <td>${v.s_loc}</td>
                                 <td>${v.gudang}</td>
-                                <td>${v.bin}</td>
+                                <td>${v.zona}</td>
                                 <td class="text-center">
                                     <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>
                                     <button class="btn btn-danger btn-sm btnHapus" data-id="${v.id}">Hapus</button>
@@ -122,9 +162,9 @@
 
                 $('#id').val(data.id);
                 $('#gudang').val(data.gudang);
-                $('#bin').val(data.bin);
                 $('#s_loc').val(data.s_loc);
                 $('#plant').val(data.plant);
+                $('#zona').val(data.zona);
 
                 $('#modalLoc').modal('show');
             });
@@ -149,9 +189,9 @@
                     data: {
                         _token: '{{ csrf_token() }}',
                         gudang: $('#gudang').val(),
-                        bin: $('#bin').val(),
                         s_loc: $('#s_loc').val(),
                         plant: $('#plant').val(),
+                        zona: $('#zona').val(),
                     },
                     success: function(res) {
                         $('#modalLoc').modal('hide');
@@ -208,6 +248,65 @@
                         }
                     });
                 });
+            });
+
+            $('#formUploadBarang').on('submit', function(e) {
+
+                e.preventDefault();
+
+                let formData = new FormData(this);
+
+                $.ajax({
+                    url: "{{ route('wrm.master.location.upload') }}",
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    beforeSend: function() {
+
+                        Swal.fire({
+                            title: 'Uploading...',
+                            text: 'Sedang memproses file',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading()
+                            }
+                        });
+
+                    },
+                    success: function(res) {
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: res.message
+                        });
+
+                        $('#formUploadBarang')[0].reset();
+                        $('#uploadModal').modal('hide');
+                        loadData();
+                    },
+                    error: function(xhr) {
+                        let message = 'Terjadi kesalahan';
+
+                        if (xhr.status === 422) {
+                            let res = xhr.responseJSON;
+                            if (res.errors && res.errors.length > 0) {
+                                message = res.errors.join('<br>');
+                            } else if (res.message) {
+                                message = res.message;
+                            }
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Upload Gagal',
+                            html: message
+                        });
+
+                    }
+                });
+
             });
 
         });

@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('wrm_stock_inbound', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('no_spb');
-            $table->date('incoming_date');
-            $table->date('expired_date')->nullable();
+            $table->dateTime('incoming_date');
+            $table->dateTime('expired_date')->nullable();
             $table->string('supplier')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('group');
             $table->integer('qty');
             $table->string('status');
-            $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
+            $table->foreignId('loc_id')->constrained('wrm_master_bin')->onDelete('restrict');
             $table->text('catatan')->nullable();
             $table->string('pallet')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
@@ -41,10 +41,12 @@ return new class extends Migration
         Schema::create('wrm_stock_outbound', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('no_spb');
-            $table->date('incoming_date');
+            $table->dateTime('incoming_date');
             $table->string('supplier')->nullable();
-            $table->date('issued_date')->nullable();
-            $table->date('expired_date')->nullable();
+            $table->dateTime('issued_date')->nullable();
+            $table->dateTime('expired_date')->nullable();
+            $table->bigInteger('qty_request')->nullable();
+            $table->text('catatan')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
@@ -58,7 +60,7 @@ return new class extends Migration
             $table->string('group');
             $table->integer('qty');
             $table->string('status');
-            $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
+            $table->foreignId('loc_id')->constrained('wrm_master_bin')->onDelete('restrict');
             $table->text('catatan')->nullable();
             $table->string('pallet')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
@@ -70,7 +72,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
             $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
-            $table->date('tanggal');
+            $table->dateTime('tanggal');
             $table->decimal('qty', 15, 2);
             $table->enum('jenis', ['in', 'out', 'transfer']);
             $table->string('ref_type');
@@ -99,11 +101,11 @@ return new class extends Migration
             $table->integer('pallet_id');
             $table->integer('qty');
             $table->string('group');
-            $table->string('status');
-            $table->date('incoming_date');
-            $table->date('expired_date')->nullable();
-            $table->string('supplier')->nullable();
-            $table->string('pallet')->nullable();
+            // $table->string('status');
+            $table->dateTime('incoming_date');
+            $table->dateTime('expired_date')->nullable();
+            // $table->string('supplier')->nullable();
+            // $table->string('pallet')->nullable();
             $table->string('catatan')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
