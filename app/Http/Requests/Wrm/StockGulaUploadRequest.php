@@ -25,7 +25,9 @@ class StockGulaUploadRequest extends FormRequest
             'supplier' => 'required|string|max:255',
             'pallet' => 'required|string|max:255',
             'loc_id' => 'required|array',
-            'loc_id.*' => 'required|exists:wrm_master_bin,id'
+            'loc_id.*' => 'required|exists:wrm_master_bin,id',
+            'status' => 'required|array',
+            'status.*' => 'required|in:UNREST,QI,BLOCKED'
         ];
     }
 }

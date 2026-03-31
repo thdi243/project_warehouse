@@ -17,6 +17,7 @@ class StockInboundDetail extends Model
     protected $fillable = [
         'inbound_id',
         'barang_id',
+        'barcode',
         'pallet_id',
         'group',
         'qty',

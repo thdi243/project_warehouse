@@ -26,6 +26,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('inbound_id')->constrained('wrm_stock_inbound')->onDelete('cascade');
             $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
+            $table->bigInteger('barcode');
             $table->integer('pallet_id');
             $table->string('group');
             $table->integer('qty');
@@ -38,28 +39,32 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('wrm_stock_outbound', function (Blueprint $table) {
+        Schema::create('wrm_stock_draft_outbound', function (Blueprint $table) {
             $table->id();
-            $table->bigInteger('no_spb');
-            $table->dateTime('incoming_date');
-            $table->string('supplier')->nullable();
-            $table->dateTime('issued_date')->nullable();
-            $table->dateTime('expired_date')->nullable();
+            $table->string('no_reservasi')->nullable();
+            $table->string('shift')->nullable();
+            $table->dateTime('reservasi_date')->nullable();
             $table->bigInteger('qty_request')->nullable();
+            $table->text('checklist_kondisi')->nullable();
             $table->text('catatan')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
         });
 
-        Schema::create('wrm_stock_outbound_details', function (Blueprint $table) {
+        Schema::create('wrm_stock_draft_outbound_details', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('outbound_id')->constrained('wrm_stock_outbound')->onDelete('cascade');
+            $table->foreignId('outbound_id')->constrained('wrm_stock_draft_outbound')->onDelete('cascade');
             $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
+            $table->bigInteger('barcode');
+            $table->bigInteger('no_spb');
+            $table->string('supplier')->nullable();
+            $table->dateTime('incoming_date');
             $table->integer('pallet_id');
             $table->string('group');
             $table->integer('qty');
             $table->string('status');
+            $table->dateTime('expired_date')->nullable();
             $table->foreignId('loc_id')->constrained('wrm_master_bin')->onDelete('restrict');
             $table->text('catatan')->nullable();
             $table->string('pallet')->nullable();
@@ -122,8 +127,8 @@ return new class extends Migration
         Schema::dropIfExists('wrm_stock_inbound_temp_upload');
         Schema::dropIfExists('wrm_stock_balance');
         Schema::dropIfExists('wrm_stock_movements');
-        Schema::dropIfExists('wrm_stock_outbound_details');
-        Schema::dropIfExists('wrm_stock_outbound');
+        Schema::dropIfExists('wrm_stock_draft_outbound_details');
+        Schema::dropIfExists('wrm_stock_draft_outbound');
         Schema::dropIfExists('wrm_stock_inbound_details');
         Schema::dropIfExists('wrm_stock_inbound');
     }

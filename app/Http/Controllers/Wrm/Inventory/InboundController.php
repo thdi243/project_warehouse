@@ -14,6 +14,7 @@ use App\Models\Wrm\MasterBarangModel;
 use App\Models\Wrm\MasterBinModel;
 use App\Models\Wrm\MasterLocationModel;
 use App\Models\Wrm\MasterPalletModel;
+use App\Models\Wrm\MasterSupplierModel;
 use App\Models\Wrm\StockGula\StockGulaModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -23,6 +24,64 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class InboundController extends Controller
 {
+    private function allocateBins($data, $availableBinsGrouped, $dbColumnOwners)
+    {
+        // First sort data by no_spb then mid, to minimize column switches
+        $sortedData = $data->sortBy([
+            ['no_spb', 'asc'],
+            ['mid', 'asc'],
+        ])->values();
+
+        $allocated = [];
+        $colKeys = array_keys($availableBinsGrouped);
+        $currentColIndex = 0;
+
+        $activeOwner = null;
+        $currentColKey = null;
+        $currentColBins = [];
+        $binPointer = 0;
+
+        foreach ($sortedData as $item) {
+            $itemOwner = $item->no_spb . '-' . $item->mid;
+
+            if ($activeOwner !== $itemOwner) {
+                $activeOwner = $itemOwner;
+                $currentColKey = null;
+                $currentColBins = [];
+                $binPointer = 0;
+            }
+
+            while ($currentColKey === null || $binPointer >= count($currentColBins)) {
+                if ($currentColIndex >= count($colKeys)) {
+                    // Out of space!
+                    return false;
+                }
+
+                $colKey = $colKeys[$currentColIndex];
+                $currentColIndex++;
+
+                // If column is partially owned in DB, check if owner matches
+                if (isset($dbColumnOwners[$colKey]) && $dbColumnOwners[$colKey] !== $itemOwner) {
+                    continue; // Skip column
+                }
+
+                $currentColKey = $colKey;
+                $currentColBins = $availableBinsGrouped[$colKey];
+                $binPointer = 0;
+            }
+
+            $bin = $currentColBins[$binPointer];
+            $binPointer++;
+
+            $allocated[] = [
+                'item' => $item,
+                'bin' => $bin
+            ];
+        }
+
+        return $allocated;
+    }
+
     public function index()
     {
         $today = Carbon::today();
@@ -31,9 +90,18 @@ class InboundController extends Controller
             ->whereRaw('LOWER(nama_barang) LIKE ?', ['%gula%'])
             ->get();
 
-        $location = MasterLocationModel::get();
+        $usedBinIds = StockInboundDetail::where('status', '!=', 'ISSUED')->pluck('loc_id')->toArray();
 
-        return view('wrm.inventory.index', compact('barang', 'location'));
+        $location = MasterBinModel::with('location')
+            ->whereNotIn('id', $usedBinIds)
+            ->get()
+            ->sortBy(function ($bin) {
+                return ($bin->location->plant ?? '') . ($bin->location->s_loc ?? '') . ($bin->location->zona ?? '') . ($bin->location->bin ?? '') . $bin->kolom . $bin->level;
+            });
+
+        $suppliers = MasterSupplierModel::orderBy('nama')->get();
+
+        return view('wrm.inventory.stock-on-hand', compact('barang', 'location', 'suppliers'));
     }
 
     public function indexUpload()
@@ -79,6 +147,17 @@ class InboundController extends Controller
 
         $usedBinIds = StockInboundDetail::pluck('loc_id')->toArray();
 
+        // 1. Get database column owners to prevent mixing
+        $usedDetails = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid', 'bin:id,loc_id,kolom'])->get();
+        $dbColumnOwners = [];
+        foreach ($usedDetails as $d) {
+            if ($d->bin && $d->inbound && $d->barang) {
+                $colKey = $d->bin->loc_id . '-' . $d->bin->kolom;
+                $ownerKey = $d->inbound->no_spb . '-' . $d->barang->mid;
+                $dbColumnOwners[$colKey] = $ownerKey;
+            }
+        }
+
         // Get all available bins grouped by zona
         $availableBins = MasterBinModel::with('location')
             ->whereNotIn('id', $usedBinIds)
@@ -87,58 +166,64 @@ class InboundController extends Controller
             ->orderBy('level')
             ->get();
 
-        $zonesGrouped = $availableBins->groupBy(function ($item) {
-            return $item->location->zona;
-        });
+        $locationsGrouped = $availableBins->groupBy('loc_id');
 
-        $availableZones = [];
+        $availableLocations = [];
         $locationError = null;
         $errorDetails = [];
 
-        // Check each zona apakah bisa accommodate pallet untuk no_spb ini saja
-        foreach ($zonesGrouped as $zona => $bins) {
+        // Check each location (physical rack) whether it can accommodate the SPB pallet
+        foreach ($locationsGrouped as $locId => $bins) {
 
-            $zonaHasSpace = true;
-            $zonaErrorMsg = "Zona {$zona} - ";
-            $totalBinsNeeded = $data->count(); // Hanya untuk no_spb ini
-
-            // Check apakah bins tersedia cukup
-            if ($bins->count() < $totalBinsNeeded) {
-                $zonaHasSpace = false;
-                $binsCount = $bins->count();
-                $missingBins = $totalBinsNeeded - $binsCount;
-                $zonaErrorMsg .= "kurang {$missingBins} bin (butuh {$totalBinsNeeded}, ada {$binsCount})";
-                $errorDetails[] = $zonaErrorMsg;
+            // Group available bins in this location by column
+            $availableBinsGrouped = [];
+            foreach ($bins as $bin) {
+                $colKey = $bin->loc_id . '-' . $bin->kolom;
+                if (!isset($availableBinsGrouped[$colKey])) {
+                    $availableBinsGrouped[$colKey] = [];
+                }
+                $availableBinsGrouped[$colKey][] = $bin;
             }
 
-            if ($zonaHasSpace) {
+            // Simulate allocation
+            $allocationResult = $this->allocateBins($data, $availableBinsGrouped, $dbColumnOwners);
+
+            if ($allocationResult !== false) {
                 $first = $bins->first();
                 $location = $first->location;
 
-                $availableZones[] = [
-                    'zona' => $zona,
+                $availableLocations[] = [
+                    'location_id' => $location->id,
                     'plant' => $location->plant,
                     's_loc' => $location->s_loc,
-                    'location_id' => $location->id
+                    'zona' => $location->zona,
+                    'bin' => $location->bin, // This is the Rack ID / Bin name
                 ];
+            } else {
+                $first = $bins->first();
+                $location = $first->location;
+                $locName = "{$location->plant}-{$location->s_loc}-{$location->zona}-{$location->bin}";
+                $errorDetails[] = "Lokasi {$locName} - ruang tidak cukup";
             }
         }
 
-        if (empty($availableZones)) {
-            $locationError = 'Tidak ada zona yang cukup untuk pallet no_spb ' . $firstNoSpb . '.';
+        if (empty($availableLocations)) {
+            $locationError = 'Tidak ada zona/bin yang cukup untuk pallet no_spb ' . $firstNoSpb . '.';
             if (!empty($errorDetails)) {
                 $locationError .= ' Detail: ' . implode(', ', $errorDetails);
             }
         }
 
         $pallet = MasterPalletModel::get();
+        $suppliers = MasterSupplierModel::orderBy('nama')->get();
 
         return view('wrm.inventory.after_upload', [
             'data' => $data,
             'currentNoSpb' => $firstNoSpb,
             'remainingCount' => $remainingCount,
-            'zones' => $availableZones,
+            'zones' => $availableLocations, // Keep variable name 'zones' to minimize blade changes or rename to locations
             'pallet' => $pallet,
+            'suppliers' => $suppliers,
             'locationError' => $locationError
         ]);
     }
@@ -170,40 +255,6 @@ class InboundController extends Controller
         return response()->json([
             'status' => true,
             'data' => $barang
-        ]);
-    }
-
-    public function store(StockGulaRequest $request)
-    {
-        $data = $request->validated();
-
-        $stocks = [];
-
-        foreach ($data['pallet_id'] as $i => $pallet) {
-
-            $stocks[] = StockGulaModel::create([
-                'barang_id'     => $data['barang_id'],
-                'no_spb'        => $data['no_spb'],
-                'pallet_id'     => $pallet,
-                'jenis_bahan'   => $data['jenis_bahan'],
-                'group'         => $data['group'],
-                'qty'           => $data['qty'][$i],
-                'incoming_date' => now(),
-                'supplier'      => $data['supplier'],
-                'status'        => $data['status'],
-                'gudang'        => $data['gudang'],
-                'loc'           => $data['loc'] ?? 'D01',
-                'catatan'       => $data['catatan'] ?? null,
-                'expired_date'  => $data['expired_date'] ?? null,
-                'transaksi'     => 'inbound',
-                'created_by'    => Auth::id(),
-            ]);
-        }
-
-        return response()->json([
-            'status'  => true,
-            'message' => 'Stock gula berhasil disimpan',
-            'data'    => $stocks
         ]);
     }
 
@@ -273,10 +324,11 @@ class InboundController extends Controller
                 $detail = StockInboundDetail::create([
                     'inbound_id' => $header->id,
                     'barang_id'  => $barang->id,
+                    'barcode'    => $temp->barcode,
                     'pallet_id'  => $temp->pallet_id,
                     'group'      => $temp->group,
                     'qty'        => $temp->qty,
-                    'status'     => 'QI',
+                    'status'     => $request->status[$tempId] ?? 'UNREST',
                     'loc_id'     => $binId,
                     'pallet'     => $request->pallet ?? $temp->pallet,
                     'catatan'    => $temp->catatan,
@@ -347,11 +399,11 @@ class InboundController extends Controller
     {
         $query = StockInboundDetail::with([
             'barang:id,mid,nama_barang,uom',
-            'bin:id,loc_id,bin,kolom,level',
-            'bin.location:id,plant,s_loc,gudang,zona',
+            'bin:id,loc_id,kolom,level',
+            'bin.location:id,plant,s_loc,gudang,zona,bin',
             'inbound:id,no_spb,incoming_date,supplier'
         ])
-            ->whereIn('status', ['UNREST', 'QI', 'BLOCKED']);
+            ->where('status', '!=', 'ISSUED');
 
         if ($request->group) {
             $query->where('group', $request->group);
@@ -394,10 +446,12 @@ class InboundController extends Controller
     {
         $groups = StockInboundDetail::select('group')
             ->distinct()
+            ->orderBy('group', 'asc')
             ->pluck('group');
 
         $jenisBahan = MasterBarangModel::select('nama_barang')
             ->distinct()
+            ->orderBy('nama_barang', 'asc')
             ->pluck('nama_barang');
 
         return response()->json([
@@ -466,7 +520,7 @@ class InboundController extends Controller
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Stock gula berhasil diperbarui',
+                'message' => 'Stock berhasil diperbarui',
                 'data'    => $detail
             ]);
         } catch (\Throwable $e) {
@@ -523,7 +577,7 @@ class InboundController extends Controller
 
             foreach ($rows as $i => $row) {
 
-                $line = $i + 2;
+                $line = $i + 1;
 
                 $barcode    = trim($row[0] ?? '');
                 $mid        = trim($row[1] ?? '');
@@ -551,13 +605,30 @@ class InboundController extends Controller
 
                 $barcodePrefix = substr($barcode, 0, 10);
 
-                // CEK DUPLICATE DI DATABASE (GLOBAL no_spb)
-                $existCombination = TempUploadModel::where('no_spb', $barcodePrefix)
+                // Find Material ID
+                $barang = MasterBarangModel::where('mid', $mid)->first();
+                if (!$barang) {
+                    $errors[] = "Baris {$line}: Material ID {$mid} tidak ditemukan dalam Master Barang";
+                    continue;
+                }
+
+                // CEK DUPLICATE DI TEMPUPLOAD
+                $existCombination = TempUploadModel::where('barcode', $barcode)
                     ->where('mid', $mid)
                     ->exists();
 
                 if ($existCombination) {
-                    $errors[] = "Baris {$line}: Kombinasi No SPB {$barcodePrefix} dan MID {$mid} sudah ada";
+                    $errors[] = "Baris {$line}: Kombinasi Barcode {$barcode} dan MID {$mid} sudah ada di antrian upload";
+                    continue;
+                }
+
+                // CEK DUPLICATE DI INBOUND (barcode, barang_id)
+                $existInbound = StockInboundDetail::where('barcode', $barcode)
+                    ->where('barang_id', $barang->id)
+                    ->exists();
+
+                if ($existInbound) {
+                    $errors[] = "Baris {$line}: Barcode {$barcode} dengan MID {$mid} sudah ada di data SOH";
                     continue;
                 }
 
@@ -647,55 +718,62 @@ class InboundController extends Controller
 
     public function plotLocation(Request $request)
     {
-        $zona = $request->zona;
+        $locIdInput = $request->loc_id;
 
         $today = Carbon::now();
 
         $data = TempUploadModel::whereDate('incoming_date', $today)->get();
 
-        // Group by no_spb untuk maintain order per no_spb
-        $dataByNoSpb = $data->groupBy('no_spb');
-
         $usedBinIds = StockInboundDetail::pluck('loc_id')->toArray();
 
+        $usedDetails = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid', 'bin:id,loc_id,kolom'])->get();
+        $dbColumnOwners = [];
+        foreach ($usedDetails as $d) {
+            if ($d->bin && $d->inbound && $d->barang) {
+                $colKey = $d->bin->loc_id . '-' . $d->bin->kolom;
+                $ownerKey = $d->inbound->no_spb . '-' . $d->barang->mid;
+                $dbColumnOwners[$colKey] = $ownerKey;
+            }
+        }
+
         $bins = MasterBinModel::with('location')
-            ->whereHas('location', function ($q) use ($zona) {
-                $q->where('zona', $zona);
-            })
+            ->where('loc_id', $locIdInput)
             ->whereNotIn('id', $usedBinIds)
             ->orderBy('loc_id')
             ->orderBy('kolom')
             ->orderBy('level')
             ->get();
 
+        $availableBinsGrouped = [];
+        foreach ($bins as $bin) {
+            $colKey = $bin->loc_id . '-' . $bin->kolom;
+            if (!isset($availableBinsGrouped[$colKey])) {
+                $availableBinsGrouped[$colKey] = [];
+            }
+            $availableBinsGrouped[$colKey][] = $bin;
+        }
+
+        $allocated = $this->allocateBins($data, $availableBinsGrouped, $dbColumnOwners);
+
         $result = [];
-        $binIndex = 0;
 
-        // Iterate by no_spb dan pallet untuk maintain order
-        foreach ($dataByNoSpb as $noSpb => $itemsForNoSpb) {
-
-            // For each pallet in this no_spb
-            foreach ($itemsForNoSpb as $item) {
-
-                if ($binIndex >= $bins->count()) {
-                    break 2; // Break both loops jika bins habis
-                }
-
-                $bin = $bins[$binIndex];
+        if ($allocated !== false) {
+            foreach ($allocated as $alloc) {
+                $item = $alloc['item'];
+                $bin = $alloc['bin'];
                 $location = $bin->location;
 
                 $result[] = [
                     'temp_id' => $item->id,
-                    'no_spb' => $noSpb,
+                    'no_spb' => $item->no_spb,
                     'pallet_id' => $item->pallet_id,
                     'loc_id' => $bin->id,
                     'plant' => $location->plant,
                     's_loc' => $location->s_loc,
                     'zona' => $location->zona,
-                    'bin' => $bin->bin,
+                    'bin_id' => $location->bin,
+                    'bin_coordinate' => "$bin->kolom.$bin->level",
                 ];
-
-                $binIndex++;
             }
         }
 

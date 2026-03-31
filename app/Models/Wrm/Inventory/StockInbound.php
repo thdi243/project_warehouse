@@ -14,6 +14,7 @@ class StockInbound extends Model
     protected $table = 'wrm_stock_inbound';
 
     protected $fillable = [
+        // 'barcode',
         'no_spb',
         'incoming_date',
         'expired_date',
