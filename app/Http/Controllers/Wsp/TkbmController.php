@@ -250,7 +250,7 @@ class TkbmController extends Controller
 
         $latestFee = TkbmFeeModel::orderBy('created_at', 'desc')->first();
 
-        $data = $query->orderBy('date', 'asc')->get();
+        $data = $query->orderBy('date', 'desc')->get();
 
         $data->transform(function ($item) use ($latestFee) {
             $item->fee_value = $latestFee?->fee ?? 0;

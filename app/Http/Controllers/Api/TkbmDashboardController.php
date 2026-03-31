@@ -93,7 +93,7 @@ class TkbmDashboardController extends Controller
     public function tkbmAllProduk(Request $request)
     {
         // Ambil tahun dari request, default: tahun sekarang
-        $year = $request->get('year', Carbon::now()->year);
+        $year = $request->get('year', now()->format('Y'));
 
         // Query data hanya untuk tahun yang dipilih
         $produk = TkbmModel::selectRaw('
@@ -209,7 +209,7 @@ class TkbmDashboardController extends Controller
     public function tkbmDashboardGrandTotal(Request $request)
     {
         // Tahun dari request, default: tahun sekarang
-        $year = $request->get('year', Carbon::now()->year);
+        $year = $request->get('year', now()->format('Y'));
 
         // Ambil data hanya untuk tahun tersebut
         $grandTotals = TotalsTkbmModel::select(

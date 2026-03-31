@@ -147,8 +147,36 @@
                 <div class="col-xl-12">
                     <div data-aos="fade-up" data-aos-delay="800">
                         <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
-                            <div class="card-header">
-                                <h4 class="card-title mb-0">Total Qty Produk Per Month</h4>
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Total Qty Produk Per Month<span id="tahunQtyProdukLabel"></span>
+                                </h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #F2C36B">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span id="labelFilter">Filter</span>
+                                    </a>
+
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="tahunQtyProduk" class="form-label">Pilih Tahun</label>
+                                            <input type="number" id="tahunQtyProduk" class="form-control shadow-sm"
+                                                min="2020" max="2030" step="1" placeholder="Tahun">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm"
+                                            id="filterTahunQtyProduk">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="card-body">
@@ -161,8 +189,36 @@
                 <div class="col-xl-12">
                     <div class="" data-aos="fade-up" data-aos-delay="1000">
                         <div class="card card-animate shadow-sm rounded-4 overflow-hidden">
-                            <div class="card-header">
-                                <h4 class="card-title mb-0">Grand Total Per Month</h4>
+                            <div class="card-header d-flex justify-content-between">
+                                <h4 class="card-title mb-0">Grand Total Per Month<span id="tahunGrandTotalLabel"></span>
+                                </h4>
+                                <div class="dropdown">
+                                    <a href="#"
+                                        class="dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 rounded text-white shadow-sm"
+                                        id="dropdownFilter" data-bs-toggle="dropdown" aria-expanded="false"
+                                        style="background-color: #F2C36B">
+                                        <i class="bx bx-filter-alt fs-5"></i>
+                                        <span id="labelFilter">Filter</span>
+                                    </a>
+
+
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3 rounded-3"
+                                        style="min-width: 280px;" aria-labelledby="dropdownFilter">
+
+                                        <h6 class="fw-bold mb-3">Filter Data</h6>
+
+                                        <div class="mb-3">
+                                            <label for="tahunGrandTotal" class="form-label">Pilih Tahun</label>
+                                            <input type="number" id="tahunGrandTotal" class="form-control shadow-sm"
+                                                min="2020" max="2030" step="1" placeholder="Tahun">
+                                        </div>
+
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm"
+                                            id="filterTahunGrandTotal">
+                                            <i class="bx bx-check-circle me-1"></i> Terapkan
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="card-body">
@@ -197,7 +253,7 @@
                                             <input type="month" id="bulanTerpal" class="form-control shadow-sm">
                                         </div>
 
-                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filteBulanTerpal">
+                                        <button class="btn btn-primary w-100 rounded-3 shadow-sm" id="filterBulanTerpal">
                                             <i class="bx bx-check-circle me-1"></i> Terapkan
                                         </button>
                                     </div>
@@ -310,7 +366,13 @@
                 year: 'numeric'
             });
 
+            let selectedYear = today.toLocaleString('id-ID', {
+                year: 'numeric'
+            });
+
             // Set default span
+            $("#tahunQtyProdukLabel").text(`(${selectedYear})`);
+            $("#tahunGrandTotalLabel").text(`(${selectedYear})`);
             $("#bulanQtyProduk").text(`(${bulanNama})`);
             $("#bulanQtyTerpal").text(`(${bulanNama})`);
             $("#bulanQtySlipsheet").text(`(${bulanNama})`);
@@ -595,10 +657,13 @@
                 });
             }
 
-            function tkbmGrandTotalChart() {
+            function tkbmGrandTotalChart(tahun = new Date().getFullYear()) {
                 $.ajax({
                     url: "{{ url('api/dashboard/tkbm/grand-total') }}",
                     type: 'GET',
+                    data: {
+                        year: tahun
+                    },
                     dataType: 'json',
                     success: function(response) { // langsung response.length
                         const data = response.data || [];
@@ -716,12 +781,12 @@
                 });
             }
 
-            function barProdukTkbm(bulan = null) {
+            function barProdukTkbm(tahun = new Date().getFullYear()) {
                 $.ajax({
                     url: "{{ url('api/dashboard/tkbm/all_qty_produk') }}",
                     type: 'GET',
                     data: {
-                        bulan: bulan
+                        year: tahun
                     },
                     dataType: 'json',
                     success: function(response) {
@@ -830,7 +895,6 @@
                 });
             }
 
-
             // Widget
             function animateCounter($el, target) {
                 let current = 0;
@@ -884,7 +948,7 @@
                 pieProdukTkbm(bulan);
             });
 
-            $('#filteBulanTerpal').click(function() {
+            $('#filterBulanTerpal').click(function() {
                 let bulan = $("#bulanTerpal").val();
                 if (!bulan) {
                     Swal.fire({
@@ -949,6 +1013,48 @@
                 // Panggil fungsi chart
                 tkbmQtyPallet(bulan);
             });
+
+            $('#filterTahunQtyProduk').click(function() {
+                const tahun = parseInt($('#tahunQtyProduk').val(), 10);
+
+                if (isNaN(tahun) || tahun < 2020 || tahun > 2030) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Masukkan tahun antara 2020–2030',
+                    });
+                    return;
+                }
+
+                $('#tahunQtyProdukLabel').text(`${tahun}`);
+
+                bootstrap.Dropdown
+                    .getInstance(document.getElementById('dropdownFilter'))
+                    ?.hide();
+
+                barProdukTkbm(tahun);
+            });
+
+            $('#filterTahunGrandTotal').click(function() {
+                const tahun = parseInt($('#tahunGrandTotal').val(), 10);
+
+                if (isNaN(tahun) || tahun < 2020 || tahun > 2030) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Masukkan tahun antara 2020–2030',
+                    });
+                    return;
+                }
+
+                $('#tahunGrandTotalLabel').text(`${tahun}`);
+
+                bootstrap.Dropdown
+                    .getInstance(document.getElementById('dropdownFilter'))
+                    ?.hide();
+
+                tkbmGrandTotalChart(tahun);
+            });
+
+
         });
     </script>
 @endsection

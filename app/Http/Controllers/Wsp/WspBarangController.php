@@ -97,6 +97,7 @@ class WspBarangController extends Controller
             'mid_barang' => $barang->mid_barang,
             'uom' => $barang->uom,
             's_loc' => $barang->s_loc,
+            'plant' => $barang->plant,
             'image' => $barang->image,
             'username' => $barang->user->username ?? null,
         ];

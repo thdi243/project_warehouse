@@ -142,7 +142,7 @@ class IkatTerpalController extends Controller
             $query->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
         }
 
-        $data = $query->orderBy('tanggal', 'asc')->get();
+        $data = $query->orderBy('tanggal', 'desc')->get();
 
         return response()->json([
             'status' => 'success',
