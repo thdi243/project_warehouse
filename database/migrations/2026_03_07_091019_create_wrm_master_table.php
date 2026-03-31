@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('s_loc');
             $table->string('gudang');
             $table->string('zona');
+            $table->string('bin');
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
@@ -45,12 +46,20 @@ return new class extends Migration
         Schema::create('wrm_master_bin', function (Blueprint $table) {
             $table->id();
             $table->foreignId('loc_id')->constrained('wrm_master_location')->onDelete('restrict');
-            $table->string('bin')->nullable();
             $table->integer('kolom');
             $table->integer('level');
             $table->foreignId('created_by')->constrained('users')->onDelete('restrict');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('restrict');
             $table->timestamps();
+        });
+
+        Schema::create('wrm_master_suppliers', function (Blueprint $row) {
+            $row->id();
+            $row->string('nama');
+            $row->string('lokasi');
+            $row->unsignedBigInteger('created_by')->nullable();
+            $row->unsignedBigInteger('updated_by')->nullable();
+            $row->timestamps();
         });
     }
 
@@ -59,6 +68,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('wrm_master_suppliers');
         Schema::dropIfExists('wrm_master_bin');
         Schema::dropIfExists('wrm_master_pallet');
         Schema::dropIfExists('wrm_master_barang');

@@ -26,6 +26,7 @@ class MasterLocationRequest extends FormRequest
             'gudang'    => 'required|string',
             's_loc'     => 'required|string',
             'zona'     => 'required|string',
+            'bin'     => 'required|string',
             'plant' => [
                 'required',
                 Rule::unique('wrm_master_location')
@@ -33,7 +34,8 @@ class MasterLocationRequest extends FormRequest
                         return $query
                             ->where('s_loc', $this->s_loc)
                             ->where('gudang', $this->gudang)
-                            ->where('zona', $this->zona);
+                            ->where('zona', $this->zona)
+                            ->where('bin', $this->bin);
                     })
             ],
         ];

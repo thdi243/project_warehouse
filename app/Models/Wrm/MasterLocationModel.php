@@ -16,6 +16,7 @@ class MasterLocationModel extends Model
         's_loc',
         'gudang',
         'zona',
+        'bin',
         'created_by',
         'updated_by',
     ];

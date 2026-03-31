@@ -13,7 +13,6 @@ class MasterBinModel extends Model
 
     protected $fillable = [
         'loc_id',
-        'bin',
         'kolom',
         'level',
         'created_by',

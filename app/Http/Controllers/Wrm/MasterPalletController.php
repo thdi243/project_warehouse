@@ -48,7 +48,7 @@ class MasterPalletController extends Controller
         $pallet = MasterPalletModel::findOrFail($id);
 
         $validated = $request->validate([
-            'jenis_bahan' => 'required|string|max:255',
+            // 'jenis_bahan' => 'required|string|max:255',
             'nama_pallet' => 'required|string|max:255'
         ]);
 
@@ -82,8 +82,7 @@ class MasterPalletController extends Controller
         $query = MasterPalletModel::query();
 
         if ($search) {
-            $query->where('jenis_bahan', 'like', "%{$search}%")
-                ->orWhere('nama_pallet', 'like', "%{$search}%");
+            $query->where('nama_pallet', 'like', "%{$search}%");
         }
 
         $data = $query->paginate(25);

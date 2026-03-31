@@ -8,6 +8,7 @@ use App\Models\Wrm\MasterLocationModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class MasterLocationController extends Controller
@@ -59,14 +60,29 @@ class MasterLocationController extends Controller
 
     public function destroy($id)
     {
-        $location = MasterLocationModel::findOrFail($id);
+        try {
+            $location = MasterLocationModel::findOrFail($id);
+            $location->delete();
 
-        $location->delete();
+            return response()->json([
+                'status'  => true,
+                'message' => 'Location berhasil dihapus',
+            ]);
+        } catch (QueryException $e) {
 
-        return response()->json([
-            'status'  => true,
-            'message' => 'Location berhasil dihapus',
-        ]);
+            // Cek error code MySQL (1451 = FK constraint)
+            if ($e->errorInfo[1] == 1451) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Location tidak bisa dihapus karena masih digunakan di data Bin',
+                ], 422);
+            }
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Terjadi kesalahan saat menghapus data',
+            ], 500);
+        }
     }
 
     public function upload(Request $request)
@@ -93,8 +109,9 @@ class MasterLocationController extends Controller
             $sLoc   = $row[1] ?? '';
             $gudang = $row[2] ?? '';
             $zona   = $row[3] ?? '';
+            $bin    = $row[4] ?? '';
 
-            $key = "{$plant}|{$sLoc}|{$gudang}|{$zona}";
+            $key = "{$plant}|{$sLoc}|{$gudang}|{$zona}|{$bin}";
 
             // cek duplikat dalam file
             if (isset($uniqueCheck[$key])) {
@@ -105,15 +122,15 @@ class MasterLocationController extends Controller
             $uniqueCheck[$key] = $line;
 
             // cek duplikat di database
-            $existing = MasterLocationModel::select('plant', 's_loc', 'gudang', 'zona')
+            $existing = MasterLocationModel::select('plant', 's_loc', 'gudang', 'zona', 'bin')
                 ->get()
                 ->map(function ($item) {
-                    return "{$item->plant}|{$item->s_loc}|{$item->gudang}|{$item->zona}";
+                    return "{$item->plant}|{$item->s_loc}|{$item->gudang}|{$item->zona}|{$item->bin}";
                 })
                 ->toArray();
 
             if ($existing) {
-                $errors[] = "Baris {$line} sudah tersimpan ({$plant}-{$sLoc}-{$gudang}-{$zona})";
+                $errors[] = "Baris {$line} sudah tersimpan ({$plant}-{$sLoc}-{$gudang}-{$zona}-{$bin})";
                 continue;
             }
 
@@ -122,6 +139,7 @@ class MasterLocationController extends Controller
                 's_loc' => $sLoc,
                 'gudang' => $gudang,
                 'zona' => $zona,
+                'bin' => $bin,
                 'created_by' => Auth::id(),
                 'created_at' => now(),
                 'updated_at' => now(),
