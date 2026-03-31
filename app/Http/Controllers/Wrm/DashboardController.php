@@ -237,7 +237,7 @@ class DashboardController extends Controller
         $recentActivities = StockMovement::with(['barang', 'location'])
             ->latest('tanggal')
             ->latest('id')
-            ->limit(100)
+            ->limit(50)
             ->get()
             ->map(function ($mov) {
                 return [
