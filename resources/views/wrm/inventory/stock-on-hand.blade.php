@@ -92,11 +92,13 @@
                         <thead class="table-light">
                             <tr>
                                 <th class="text-center">No</th>
+                                <th>Barcode</th>
                                 <th>No SPB</th>
                                 <th>Mid</th>
                                 <th>Nama Barang</th>
                                 <th>Uom</th>
                                 <th>Group</th>
+                                <th>Pallet ID</th>
                                 <th>Qty</th>
                                 <th>Status</th>
                                 <th>Location</th>
@@ -418,11 +420,13 @@
                         html += `
                                 <tr>
                                     <td class="text-center">${startNo + index}</td>
+                                    <td>${d.barcode}</td>
                                     <td>${d.inbound.no_spb}</td>
                                     <td>${d.barang.mid}</td>
                                     <td>${d.barang.nama_barang}</td>
                                     <td>${d.barang.uom}</td>
                                     <td>${d.group}</td>
+                                    <td>${d.pallet_id}</td>
                                     <td>${numberFormat(d.qty)}</td>
                                     <td>${d.status.toUpperCase()}</td>
                                     <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>

@@ -100,7 +100,7 @@
             <div class="modal-body p-4">
                 <div class="alert alert-primary border-0 shadow-none mb-4">
                     <i class="mdi mdi-information-outline me-2"></i>
-                    Gunakan file Excel sesuai template untuk mendaftarkan stok baru.
+                    Gunakan file Excel sesuai template untuk mengunggah stok masuk.
                 </div>
 
                 <form id="uploadForm" action="{{ route('wrm.inventory.upload') }}" method="POST"
@@ -145,6 +145,8 @@
             <div class="modal-body p-4">
                 <div class="alert alert-info border-0 shadow-none mb-4">
                     <i class="mdi mdi-information-outline me-2"></i>
+                    Ambil data stock transfer ini dari <b>WEBSAP</b> pada menu report susut reservasi.
+                    <br><i class="mdi mdi-information-outline me-2"></i>
                     Pastikan data Material ID dan No Barcode sesuai dengan template baru (17 kolom).
                 </div>
 

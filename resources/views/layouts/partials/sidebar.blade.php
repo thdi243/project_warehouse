@@ -445,7 +445,7 @@
                             <li class="nav-item">
                                 <a href="{{ route('wrm.inventory.index-transfer') }}"
                                     class="nav-link menu-link {{ request()->routeIs('wrm.inventory.index-transfer') ? 'active' : '' }}">
-                                    <i class="mdi mdi-view-grid"></i>Riwayat Transfer/Susut
+                                    <i class="mdi mdi-view-grid"></i>History Transfer/Susut
                                 </a>
                             </li>
                             @endcan
