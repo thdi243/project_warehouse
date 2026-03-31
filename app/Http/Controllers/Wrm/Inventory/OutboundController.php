@@ -63,9 +63,9 @@ class OutboundController extends Controller
         //     });
         // }
 
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
+        // if ($request->status) {
+        //     $query->where('status', $request->status);
+        // }
 
         // filter group
         if ($request->group) {
@@ -73,7 +73,8 @@ class OutboundController extends Controller
         }
 
         // urutkan FIFO (incoming paling lama)
-        $query->orderBy('wrm_stock_inbound.incoming_date', 'asc');
+        $query->orderBy('wrm_stock_inbound.incoming_date', 'asc')
+            ->orderBy('wrm_stock_inbound_details.pallet_id', 'asc');
 
         // $data = $query->paginate(15);
 
@@ -291,5 +292,4 @@ class OutboundController extends Controller
             'outbound' => $outbound
         ]);
     }
-
 }

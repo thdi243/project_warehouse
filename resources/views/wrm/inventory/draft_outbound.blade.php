@@ -237,6 +237,21 @@
 
         $(document).on('change', '.pickItem', function() {
 
+            // ambil qty request dari input
+            let reqQtyInput = $('#qty').val();
+            let reqQty = parseFloat(reqQtyInput) || 0;
+
+            // Validasi jika Qty Request masih kosong
+            if (!reqQtyInput || reqQty <= 0) {
+                $(this).prop('checked', false);
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Peringatan',
+                    text: 'Silahkan isi Qty Request terlebih dahulu sebelum memilih pallet.'
+                });
+                return;
+            }
+
             let total = 0;
 
             $('.pickItem:checked').each(function() {
@@ -245,18 +260,15 @@
 
             $('#totalPick').text(numberFormat(total));
 
-            // ambil qty request dari input
-            let reqQty = parseFloat($('#qty').val()) || 0;
-
             // tampilkan di summary
             $('#reqQty').text(numberFormat(reqQty));
 
-            if (reqQty && total > reqQty) {
+            if (total > reqQty) {
 
                 Swal.fire({
                     icon: 'warning',
                     title: 'Qty Melebihi',
-                    text: 'Total pick melebihi qty yang diminta'
+                    text: 'Total pick melebihi qty yang diminta. Silahkan batalkan beberapa pilihan.'
                 });
 
                 $(this).prop('checked', false);
