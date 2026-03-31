@@ -30,7 +30,7 @@
 
                     <div class="row gy-2 mb-3">
                         <div class="col-md-4">
-                            <label for="supplier" class="form-label fw-bold">Supplier</label>
+                            <label for="supplier" class="form-label fw-bold">Supplier <span class="text-danger">*</span></label>
                             <select name="supplier" id="supplier" class="form-select" required>
                                 <option value="">Pilih Supplier</option>
                                 @foreach ($suppliers as $sup)
@@ -40,7 +40,7 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label for="pallet" class="form-label fw-bold">Pallet</label>
+                            <label for="pallet" class="form-label fw-bold">Pallet <span class="text-danger">*</span></label>
                             <select name="pallet" id="pallet" class="form-select" required>
                                 <option value="">Pilih Pallet</option>
                                 @foreach ($pallet as $plt)
@@ -50,7 +50,7 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label for="location" class="form-label fw-bold">Lokasi</label>
+                            <label for="location" class="form-label fw-bold">Lokasi <span class="text-danger">*</span></label>
                             <select id="locationSelect" class="form-select">
 
                                 <option value="">Pilih Lokasi per Bin</option>
@@ -170,7 +170,7 @@
 
             // Check if location is selected
             let allLocationsFilled = true;
-            $('.loc-input').each(function() {
+            $('.loc-id').each(function() {
                 if (!$(this).val()) {
                     allLocationsFilled = false;
                     return false;

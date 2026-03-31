@@ -185,7 +185,8 @@ class InboundController extends Controller
                 $availableBinsGrouped[$colKey][] = $bin;
             }
 
-            // Simulate allocation
+            // ATURAN LAMA: CEK PER 1 ZONA (COMMENTED OUT)
+            /*
             $allocationResult = $this->allocateBins($data, $availableBinsGrouped, $dbColumnOwners);
 
             if ($allocationResult !== false) {
@@ -205,13 +206,35 @@ class InboundController extends Controller
                 $locName = "{$location->plant}-{$location->s_loc}-{$location->zona}-{$location->bin}";
                 $errorDetails[] = "Lokasi {$locName} - ruang tidak cukup";
             }
+            */
+            
+            // ATURAN BARU: TAMPILKAN SEMUA ZONA YANG MEMILIKI BIN KOSONG
+            $first = $bins->first();
+            $location = $first->location;
+
+            $availableLocations[] = [
+                'location_id' => $location->id,
+                'plant' => $location->plant,
+                's_loc' => $location->s_loc,
+                'zona' => $location->zona,
+                'bin' => $location->bin, // This is the Rack ID / Bin name
+            ];
         }
 
-        if (empty($availableLocations)) {
-            $locationError = 'Tidak ada zona/bin yang cukup untuk pallet no_spb ' . $firstNoSpb . '.';
-            if (!empty($errorDetails)) {
-                $locationError .= ' Detail: ' . implode(', ', $errorDetails);
+        // Global check: do we have enough bins OVERALL across all zones?
+        $allAvailableBinsGrouped = [];
+        foreach ($availableBins as $bin) {
+            $colKey = $bin->loc_id . '-' . $bin->kolom;
+            if (!isset($allAvailableBinsGrouped[$colKey])) {
+                $allAvailableBinsGrouped[$colKey] = [];
             }
+            $allAvailableBinsGrouped[$colKey][] = $bin;
+        }
+
+        $globalAllocationResult = $this->allocateBins($data, $allAvailableBinsGrouped, $dbColumnOwners);
+
+        if ($globalAllocationResult === false) {
+            $locationError = 'Kapasitas gudang (semua zona) tidak mencukupi untuk menampung ' . count($data) . ' pallet no_spb ' . $firstNoSpb . '.';
         }
 
         $pallet = MasterPalletModel::get();
@@ -736,9 +759,21 @@ class InboundController extends Controller
             }
         }
 
+        // ATURAN LAMA: HANYA MENCARI DI SATU ZONA
+        /*
         $bins = MasterBinModel::with('location')
             ->where('loc_id', $locIdInput)
             ->whereNotIn('id', $usedBinIds)
+            ->orderBy('loc_id')
+            ->orderBy('kolom')
+            ->orderBy('level')
+            ->get();
+        */
+
+        // ATURAN BARU: CARI DI SEMUA ZONA YG KOSONG, TAPI PRIORITASKAN ZONA YANG DIPILIH
+        $bins = MasterBinModel::with('location')
+            ->whereNotIn('id', $usedBinIds)
+            ->orderByRaw("CASE WHEN loc_id = ? THEN 1 ELSE 2 END", [$locIdInput])
             ->orderBy('loc_id')
             ->orderBy('kolom')
             ->orderBy('level')
