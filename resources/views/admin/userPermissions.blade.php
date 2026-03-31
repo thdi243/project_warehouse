@@ -69,7 +69,7 @@
                                     <th>Nama</th>
                                     <th>NIK</th>
                                     <th>Jabatan</th>
-                                    <th>Permission Saat Ini</th>
+                                    <th class="text-center">Permission Saat Ini</th>
                                     <th style="width: 140px;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -83,7 +83,7 @@
                 </div>
 
                 <!-- Pagination -->
-                <div class="card-footer bg-white border-top-0 pt-3">
+                <div class="card-footer border-top-0 pt-3">
                     <nav aria-label="User pagination" id="pagination-container">
                         <!-- Pagination dimuat via AJAX -->
                     </nav>
@@ -136,6 +136,40 @@
             </div>
         </div>
     </div>
+    <!-- Modal View Permissions -->
+    <div class="modal fade" id="viewPermissionsModal" tabindex="-1" aria-labelledby="viewPermissionsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title" id="viewPermissionsModalLabel">Daftar Permission</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <h6 class="text-muted fw-normal" id="view-perm-user-name">User Name</h6>
+                    </div>
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-sm table-striped table-hover align-middle mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">No</th>
+                                    <th>Nama Permission</th>
+                                </tr>
+                            </thead>
+                            <tbody id="view-permissions-tbody">
+                                <!-- Data dimuat via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -163,9 +197,14 @@
                                 let globalIndex = index + 1 + (res.current_page - 1) * res
                                     .per_page;
 
+                                let permsData = JSON.stringify(user.permissions || []);
                                 let permissionsBadge = user.permissions && user.permissions
                                     .length > 0 ?
-                                    `<span class="badge badge-soft-info">${user.permissions.join(', ')}</span>` :
+                                    `<button class="btn btn-sm btn-soft-info btn-view-permissions" 
+                                        data-permissions='${permsData}' 
+                                        data-name="${user.nama_lengkap || user.username}">
+                                        <i class="mdi mdi-eye me-1"></i> Lihat (${user.permissions.length})
+                                    </button>` :
                                     `<span class="badge badge-soft-danger">Nothing</span>`;
 
                                 // Cek apakah user ini adalah admin
@@ -187,7 +226,7 @@
                             <td>${user.nama_lengkap || user.username}</td>
                             <td>${user.nik || '-'}</td>
                             <td>${user.jabatan || '-'}</td>
-                            <td class="text-wrap" id="permissions-${user.id}">${permissionsBadge}</td>
+                            <td class="text-center" id="permissions-${user.id}">${permissionsBadge}</td>
                             <td class="text-center">
                                 <button class="btn btn-sm btn-primary btn-atur-permission ${btnClassDisabled}" 
                                     data-id="${user.id}" ${btnDisabled}>
@@ -199,7 +238,7 @@
                             });
                         } else {
                             tbodyHtml =
-                                '<tr><td colspan="5" class="text-center py-4 text-muted">Tidak ada user ditemukan.</td></tr>';
+                                '<tr><td colspan="6" class="text-center py-4 text-muted">Tidak ada user ditemukan.</td></tr>';
                         }
 
                         $('#user-tbody').html(tbodyHtml);
@@ -209,12 +248,46 @@
                     },
                     error: function() {
                         $('#user-tbody').html(
-                            '<tr><td colspan="5" class="text-center py-4 text-danger">Gagal memuat data.</td></tr>'
+                            '<tr><td colspan="6" class="text-center py-4 text-danger">Gagal memuat data.</td></tr>'
                         );
                         $('#table-loading').addClass('d-none');
                     }
                 });
             }
+
+            // Fungsi View Permissions
+            $(document).on('click', '.btn-view-permissions', function(e) {
+                e.preventDefault();
+                const perms = $(this).data('permissions');
+                const name = $(this).data('name');
+                let html = '';
+
+                $('#view-perm-user-name').text(name);
+
+                if (Array.isArray(perms) && perms.length > 0) {
+                    perms.forEach((p, i) => {
+                        html += `<tr>
+                            <td class="text-center text-muted small">${i+1}</td>
+                            <td class="fw-medium">${p}</td>
+                        </tr>`;
+                    });
+                } else {
+                    html =
+                        '<tr><td colspan="2" class="text-center py-3 text-muted text-italic">Tidak ada permission yang diberikan.</td></tr>';
+                }
+
+                $('#view-permissions-tbody').html(html);
+
+                // Coba buka modal dengan bootstrap instance jika jQuery plugin gagal
+                try {
+                    let modalEl = document.getElementById('viewPermissionsModal');
+                    let modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                } catch (err) {
+                    console.error("Bootstrap Modal Error:", err);
+                    $('#viewPermissionsModal').modal('show');
+                }
+            });
 
             // Search real-time (debounce)
             let searchTimeout;
