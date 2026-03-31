@@ -12,12 +12,15 @@ use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+use App\Http\Controllers\Wrm\DashboardController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
+use App\Http\Controllers\Wrm\Inventory\StockTransferController;
 use App\Http\Controllers\Wrm\MasterBarangController;
 use App\Http\Controllers\Wrm\MasterBinController;
 use App\Http\Controllers\Wrm\MasterLocationController;
 use App\Http\Controllers\Wrm\MasterPalletController;
+use App\Http\Controllers\Wrm\MasterSupplierController;
 use App\Http\Controllers\Wrm\P2HController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
@@ -85,8 +88,15 @@ Route::middleware('auth')->group(function () {
             Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak')
                 ->middleware(['permission:dashboard-rak']);
             // WRM
-            Route::view('/wrm', 'dashboard.wrm_dashboard')->name('dashboard.wrm')
-                ->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/index', [DashboardController::class, 'index'])->name('dashboard.wrm.index')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/api/data/kpi', [DashboardController::class, 'getKpi'])->name('dashboard.wrm.data.kpi')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/api/data/chart-movement', [DashboardController::class, 'getChartMovement'])->name('dashboard.wrm.data.chart-movement')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/api/data/chart-pie', [DashboardController::class, 'getChartPie'])->name('dashboard.wrm.data.chart-pie')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/api/data/chart-bar', [DashboardController::class, 'getChartBar'])->name('dashboard.wrm.data.chart-bar')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/api/data/chart-capacity', [DashboardController::class, 'getChartCapacity'])->name('dashboard.wrm.data.chart-capacity')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/api/data/table-expiring', [DashboardController::class, 'getTableExpiring'])->name('dashboard.wrm.data.table-expiring')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/api/data/table-recent', [DashboardController::class, 'getTableRecent'])->name('dashboard.wrm.data.table-recent')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/api/data/location-layout', [DashboardController::class, 'getLocationLayout'])->name('dashboard.wrm.data.location-layout')->middleware(['permission:dashboard-wrm']);
         });
     });
 
@@ -216,9 +226,9 @@ Route::middleware('auth')->group(function () {
 
         Route::prefix('wrm')->middleware(['permission:wrm-menu'])->group(function () {
             // Inventory Raw Material
-            Route::prefix('inventory')->middleware(['permission:wrm-inventory-inbound,wrm-inventory-soh,wrm-inventory-outbound,wrm-inventory-data-outbound'])->group(function () {
-                Route::get('/index', [InboundController::class, 'index'])->name('wrm.inventory.index');
-                Route::get('/index-upload', [InboundController::class, 'indexUpload'])->name('wrm.inventory.index-upload');
+            Route::prefix('inventory')->middleware(['permission:wrm-inventory-upload,wrm-inventory-soh,wrm-inventory-draft-outbound,wrm-inventory-data-draft-outbound,wrm-inventory-transfer-history'])->group(function () {
+                Route::get('/stock-on-hand', [InboundController::class, 'index'])->name('wrm.inventory.index');
+                Route::get('/data-upload', [InboundController::class, 'indexUpload'])->name('wrm.inventory.index-upload');
                 Route::post('/store', [InboundController::class, 'store'])->name('wrm.inventory.store');
                 Route::post('/store-upload', [InboundController::class, 'storeUpload'])->name('wrm.inventory.store-upload');
                 Route::get('/data', [InboundController::class, 'getData'])->name('wrm.inventory.getData');
@@ -228,11 +238,16 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/delete/{id}', [InboundController::class, 'destroy'])->name('wrm.inventory.delete');
                 Route::get('/template', [InboundController::class, 'downloadTemplate'])->name('wrm.inventory.template');
                 Route::post('/upload', [InboundController::class, 'upload'])->name('wrm.inventory.upload');
+                Route::get('/transfer-history', [StockTransferController::class, 'index'])->name('wrm.inventory.index-transfer');
+                Route::get('/transfer-data', [StockTransferController::class, 'getData'])->name('wrm.inventory.get-transfer-data');
+                Route::delete('/transfer-detail/delete/{id}', [StockTransferController::class, 'destroyDetail'])->name('wrm.inventory.delete-transfer-detail');
+                Route::get('/outbound-template', [StockTransferController::class, 'downloadTemplate'])->name('wrm.inventory.outbound-template');
+                Route::post('/outbound-upload', [StockTransferController::class, 'upload'])->name('wrm.inventory.outbound-upload');
                 Route::post('/cancel-upload', [InboundController::class, 'cancelUpload'])->name('wrm.inventory.cancel-upload');
                 Route::get('/select-location', [InboundController::class, 'selectLocationView'])->name('wrm.inventory.select-location');
                 Route::get('/plot-location', [InboundController::class, 'plotLocation'])->name('wrm.inventory.plot-location');
-                Route::get('/form-outbound', [OutboundController::class, 'formOutbound'])->name('wrm.inventory.form-outbound');
-                Route::get('/data-outbound', [OutboundController::class, 'dataOutbound'])->name('wrm.inventory.data-outbound');
+                Route::get('/draft-outbound', [OutboundController::class, 'formOutbound'])->name('wrm.inventory.draft-outbound');
+                Route::get('/draft-outbound/data', [OutboundController::class, 'dataOutbound'])->name('wrm.inventory.data-outbound');
                 Route::get('/search-outbound', [OutboundController::class, 'searchOutbound'])->name('wrm.inventory.search-outbound');
                 Route::post('/store-outbound', [OutboundController::class, 'submitOutbound'])->name('wrm.inventory.submit-outbound');
                 Route::get('/get-data-outbound', [OutboundController::class, 'getData'])->name('wrm.inventory.get-data-outbound');
@@ -305,11 +320,11 @@ Route::middleware('auth')->group(function () {
     // Master Data Management
     Route::middleware(['auth'])->group(function () {
         // Master WSP
-        Route::prefix('wsp')->middleware(['permission:master-wsp'])->group(function () {
-            Route::prefix('master')->group(function () {
+        Route::prefix('master')->group(function () {
+            Route::prefix('wsp')->middleware(['permission:master-wsp'])->group(function () {
                 // TKBM
                 Route::get('/fee', [WarehouseController::class, 'feeTkbm'])->name('wsp.master.fee');
-                Route::get('/master/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
+                Route::get('/harga-produk', [WarehouseController::class, 'feeTkbm'])->name('tkbm.master.harga-produk');
                 Route::post('/fee/simpan', [TkbmController::class, 'simpanFeeTkbm'])->name('tkbm.fee.simpan');
                 Route::get('/fee/history', [TkbmController::class, 'historyFeeTkbm'])->name('tkbm.fee.history');
                 Route::post('/harga-produk/simpan', [TkbmController::class, 'simpanHargaProduk'])->name('tkbm.harga-produk.simpan');
@@ -317,42 +332,42 @@ Route::middleware('auth')->group(function () {
                 Route::get('/sync-totals', [TkbmController::class, 'syncTotalsTkbm']);
 
                 // Barang
-                Route::get('/master/barang', [WarehouseController::class, 'barangIndex'])->name('wsp.master.barang');
+                Route::get('/barang', [WarehouseController::class, 'barangIndex'])->name('wsp.master.barang');
                 Route::post('/store/barang', [WspBarangController::class, 'store'])->name('wsp.store.barang');
                 Route::put('/update/barang/{id}', [WspBarangController::class, 'update'])->name('wsp.update.barang');
                 Route::post('/barang/import', [WspBarangController::class, 'import'])->name('wsp.barang.import');
                 Route::get('/barang/download-template', [WspBarangController::class, 'downloadTemplate'])->name('wsp.barang.download.template');
 
                 // Rak
-                Route::get('/master/rak', [WarehouseController::class, 'rakIndex'])->name('wsp.master.rak');
+                Route::get('/rak', [WarehouseController::class, 'rakIndex'])->name('wsp.master.rak');
                 Route::put('/update/rak/{id}', [WspRakController::class, 'update'])->name('wsp.rak.update');
                 Route::post('/store/rak', [WspRakController::class, 'store'])->name('wsp.store.rak');
                 Route::delete('/delete/rak/{id}', [WspRakController::class, 'destroy'])->name('wsp.delete.rak');
             });
-        });
 
-        // Master WFG
-        Route::prefix('wfg')->middleware(['permission:master-wfg'])->group(function () {
-            Route::prefix('master')->group(function () {
-                Route::get('/barang/index', [BarangWfgController::class, 'index'])->name('wfg.master.barang.index');
-                Route::get('/barang/new', [BarangWfgController::class, 'getNewItems'])->name('wfg.master.barang.new');
-                Route::post('/barang/new/approve/{id}', [BarangWfgController::class, 'approve'])->name('wfg.master.barang.new.approve');
-                Route::post('/barang/new/reject/{id}', [BarangWfgController::class, 'reject'])->name('wfg.master.barang.new.reject');
-                Route::post('/barang/store', [BarangWfgController::class, 'store'])->name('wfg.master.barang.store');
-                Route::get('/barang/data', [BarangWfgController::class, 'data'])->name('wfg.master.barang.data');
-                Route::put('/barang/update/{id}', [BarangWfgController::class, 'update'])->name('wfg.master.barang.update');
-                Route::delete('/barang/delete/{id}', [BarangWfgController::class, 'destroy'])->name('wfg.master.barang.delete');
-                Route::post('/master/barang/restore/{id}', [BarangWfgController::class, 'restore'])->name('wfg.master.barang.restore');
-                Route::delete('/master/barang/force-delete/{id}', [BarangWfgController::class, 'forceDelete'])
-                    ->name('wfg.master.barang.forceDelete');
-                Route::post('/barang/import', [BarangWfgController::class, 'import'])->name('wfg.master.barang.import');
-                Route::get('/barang/template', [BarangWfgController::class, 'downloadTemplate'])->name('wfg.master.barang.template');
+            // Master WFG
+            Route::prefix('wfg')->middleware(['permission:master-wfg'])->group(function () {
+                // Route::prefix('master')->group(function () {
+                Route::prefix('barang')->group(function () {
+                    Route::get('/index', [BarangWfgController::class, 'index'])->name('wfg.barang.barang.index');
+                    Route::get('/new', [BarangWfgController::class, 'getNewItems'])->name('wfg.master.barang.new');
+                    Route::post('/new/approve/{id}', [BarangWfgController::class, 'approve'])->name('wfg.master.barang.new.approve');
+                    Route::post('/new/reject/{id}', [BarangWfgController::class, 'reject'])->name('wfg.master.barang.new.reject');
+                    Route::post('/store', [BarangWfgController::class, 'store'])->name('wfg.master.barang.store');
+                    Route::get('/data', [BarangWfgController::class, 'data'])->name('wfg.master.barang.data');
+                    Route::put('/update/{id}', [BarangWfgController::class, 'update'])->name('wfg.master.barang.update');
+                    Route::delete('/delete/{id}', [BarangWfgController::class, 'destroy'])->name('wfg.master.barang.delete');
+                    Route::post('/restore/{id}', [BarangWfgController::class, 'restore'])->name('wfg.master.barang.restore');
+                    Route::delete('/force-delete/{id}', [BarangWfgController::class, 'forceDelete'])->name('wfg.master.barang.forceDelete');
+                    Route::post('/import', [BarangWfgController::class, 'import'])->name('wfg.master.barang.import');
+                    Route::get('/template', [BarangWfgController::class, 'downloadTemplate'])->name('wfg.master.barang.template');
+                });
+                // });
             });
-        });
 
-        // Master WRM
-        Route::prefix('wrm')->middleware(['permission:master-wrm'])->group(function () {
-            Route::prefix('master')->group(function () {
+            // Master WRM
+            Route::prefix('wrm')->middleware(['permission:master-wrm'])->group(function () {
+                // Route::prefix('master')->group(function () {
                 Route::prefix('barang')->group(function () {
                     Route::get('/index', [MasterBarangController::class, 'index'])->name('wrm.master.barang.index');
                     Route::get('/get-data', [MasterBarangController::class, 'getData'])->name('wrm.master.barang.get-data');
@@ -362,6 +377,7 @@ Route::middleware('auth')->group(function () {
                     Route::get('/template', [MasterBarangController::class, 'downloadTemplate'])->name('wrm.master.barang.template');
                     Route::post('/upload', [MasterBarangController::class, 'upload'])->name('wrm.master.barang.upload');
                 });
+
                 Route::prefix('ikat-terpal')->group(function () {
                     Route::get('/index', [MasterIkatTerpalController::class, 'index'])->name('wrm.master.ikat-terpal.index');
                     Route::post('/store/fee', [MasterIkatTerpalController::class, 'storeFee']);
@@ -384,6 +400,7 @@ Route::middleware('auth')->group(function () {
                     Route::get('/get-data', [MasterBinController::class, 'getData'])->name('wrm.master.bin.get-data');
                     Route::post('/store', [MasterBinController::class, 'store'])->name('wrm.master.bin.store');
                     Route::delete('/delete/{id}', [MasterBinController::class, 'destroy'])->name('wrm.master.bin.delete');
+                    Route::delete('/delete-by-loc/{locId}', [MasterBinController::class, 'destroyByLoc'])->name('wrm.master.bin.delete-by-loc');
                 });
 
                 Route::prefix('pallet')->group(function () {
@@ -391,18 +408,28 @@ Route::middleware('auth')->group(function () {
                     Route::post('/store', [MasterPalletController::class, 'store'])->name('wrm.master.pallet.store');
                     Route::put('/update/{id}', [MasterPalletController::class, 'update'])->name('wrm.master.pallet.update');
                     Route::delete('/destroy/{id}', [MasterPalletController::class, 'destroy'])->name('wrm.master.pallet.destroy');
-                    Route::get('/data', [MasterPalletController::class, 'getData'])->name('wrm.master.pallet.getData');
+                    Route::get('/get-data', [MasterPalletController::class, 'getData'])->name('wrm.master.pallet.get-data');
                 });
-            });
-        });
 
-        // Master User
-        Route::prefix('user')->middleware(['permission:manage-users'])->group(function () {
-            Route::get('/index', [UserController::class, 'index'])->name('user.index');
-            Route::get('/get-data', [UserController::class, 'create'])->name('user.getData');
-            Route::post('/store', [UserController::class, 'store'])->name('user.store');
-            Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('user.delete');
-            Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
+                Route::prefix('supplier')->group(function () {
+                    Route::get('/index', [MasterSupplierController::class, 'index'])->name('wrm.master.supplier.index');
+                    Route::get('/get-data', [MasterSupplierController::class, 'getData'])->name('wrm.master.supplier.get-data');
+                    Route::get('/get-all', [MasterSupplierController::class, 'getAll'])->name('wrm.master.supplier.get-all');
+                    Route::post('/store', [MasterSupplierController::class, 'store'])->name('wrm.master.supplier.store');
+                    Route::put('/update/{id}', [MasterSupplierController::class, 'update'])->name('wrm.master.supplier.update');
+                    Route::delete('/delete/{id}', [MasterSupplierController::class, 'destroy'])->name('wrm.master.supplier.delete');
+                });
+                // });
+            });
+
+            // Master User
+            Route::prefix('user')->middleware(['permission:manage-users'])->group(function () {
+                Route::get('/index', [UserController::class, 'index'])->name('user.index');
+                Route::get('/get-data', [UserController::class, 'create'])->name('user.getData');
+                Route::post('/store', [UserController::class, 'store'])->name('user.store');
+                Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('user.delete');
+                Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
+            });
         });
     });
 
