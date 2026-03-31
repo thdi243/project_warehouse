@@ -13,21 +13,27 @@ class StockOutboundDetail extends Model
 {
     use HasFactory;
 
-    protected $table = 'wrm_stock_outbound_details';
+    protected $table = 'wrm_stock_draft_outbound_details';
 
     protected $fillable = [
         'outbound_id',
+        'no_spb',
+        'supplier',
         'barang_id',
+        'barcode',
         'pallet_id',
+        'incoming_date',
         'group',
         'qty',
         'status',
+        'expired_date',
         'loc_id',
         'catatan',
         'pallet',
         'created_by',
         'updated_by',
     ];
+
 
     public function outbound()
     {

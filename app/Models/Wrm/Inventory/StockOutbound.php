@@ -11,16 +11,15 @@ class StockOutbound extends Model
 {
     use HasFactory;
 
-    protected $table = 'wrm_stock_outbound';
+    protected $table = 'wrm_stock_draft_outbound';
 
     protected $fillable = [
-        'no_spb',
-        'incoming_date',
-        'supplier',
-        'issued_date',
-        'expired_date',
+        'no_reservasi',
+        'shift',
+        'reservasi_date',
         'qty_request',
         'catatan',
+        'checklist_kondisi',
         'created_by',
         'updated_by',
     ];

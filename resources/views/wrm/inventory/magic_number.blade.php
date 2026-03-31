@@ -1,389 +1,434 @@
 <!DOCTYPE html>
 <html lang="id">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Magic Number - {{ $outbound->no_spb }}</title>
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>List Draft Outbound - {{ $outbound->no_reservasi }}</title>
+    <!-- Include Google Fonts for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Include BoxIcons if needed for icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            margin: 0;
+            padding: 20px;
+            color: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-family: inherit;
+            flex: 1;
+        }
+
+        .btn-print {
+            background: #2563eb;
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-print:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-back {
+            background: #fff;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+
+        .btn-back:hover {
+            background: #f8fafc;
+        }
+
+        .ticket {
+            background: #fff;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ticket-header {
+            background: #1e293b;
+            color: #fff;
+            padding: 24px 20px;
+            text-align: center;
+            border-bottom: 4px solid #3b82f6;
+        }
+
+        .ticket-header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .ticket-header p {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .ticket-body {
+            padding: 24px 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 2px dashed #e2e8f0;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0 0 16px 0;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title i {
+            color: #3b82f6;
+            font-size: 18px;
+        }
+
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .item-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .item-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.4;
+            flex: 1;
+            padding-right: 12px;
+        }
+
+        .item-qty {
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            white-space: nowrap;
+            border: 1px solid #bfdbfe;
+        }
+
+        .item-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+
+        .item-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .item-location {
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .loc-details {
+            font-size: 12px;
+            color: #334155;
+            font-weight: 500;
+        }
+
+        .loc-bin {
+            background: #10b981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .ticket-footer {
+            text-align: center;
+            padding-top: 20px;
+            margin-top: 24px;
+            border-top: 2px dashed #e2e8f0;
+        }
+
+        .barcode {
+            margin: 0 auto 12px;
+            width: 80%;
+            height: 40px;
+            background: repeating-linear-gradient(90deg,
+                    #0f172a,
+                    #0f172a 2px,
+                    transparent 2px,
+                    transparent 4px,
+                    #0f172a 4px,
+                    #0f172a 5px,
+                    transparent 5px,
+                    transparent 8px);
+        }
+
+        .footer-text {
+            font-size: 11px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        /* --- PRINT STYLES --- */
+        @media print {
             body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background-color: #f5f5f5;
-                padding: 20px;
+                background: none;
+                padding: 0;
             }
 
-            .container {
-                max-width: 900px;
-                margin: 0 auto;
-                background: white;
-                padding: 30px;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            .actions {
+                display: none;
             }
 
-            .header {
-                text-align: center;
-                margin-bottom: 30px;
-                border-bottom: 3px solid #2c3e50;
-                padding-bottom: 20px;
+            .ticket {
+                max-width: 100%;
+                box-shadow: none;
+                border-radius: 0;
             }
 
-            .header h1 {
-                color: #2c3e50;
-                font-size: 28px;
-                margin-bottom: 10px;
+            .ticket-header {
+                background: transparent;
+                color: #000;
+                border-bottom: 2px dashed #000;
+                padding: 10px 0;
             }
 
-            .header p {
-                color: #666;
-                font-size: 14px;
+            .ticket-header h1 {
+                font-size: 18px;
             }
 
-            .info-box {
-                display: flex;
-                gap: 20px;
-                margin-bottom: 30px;
-                padding: 15px;
-                background-color: #ecf0f1;
-                border-radius: 5px;
+            .ticket-header p {
+                color: #000;
             }
 
-            .info-item {
-                flex: 1;
+            .ticket-body {
+                padding: 10px 0;
+            }
+
+            .info-grid {
+                border-bottom: 1px dashed #000;
+                margin-bottom: 15px;
+                padding-bottom: 15px;
             }
 
             .info-label {
-                font-weight: 600;
-                color: #2c3e50;
-                font-size: 12px;
-                text-transform: uppercase;
-                margin-bottom: 5px;
+                color: #555;
             }
 
-            .info-value {
-                font-size: 16px;
-                color: #34495e;
-                font-weight: 500;
-            }
-
-            .table-section {
-                margin-bottom: 30px;
-            }
-
-            .section-title {
-                font-size: 16px;
-                font-weight: 700;
-                color: #2c3e50;
-                margin-bottom: 15px;
-                padding-bottom: 10px;
-                border-bottom: 2px solid #3498db;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 20px;
-            }
-
-            thead {
-                background-color: #34495e;
-                color: white;
-            }
-
-            th {
-                padding: 12px;
-                text-align: left;
-                font-weight: 600;
-                font-size: 13px;
-                border: 1px solid #bdc3c7;
-            }
-
-            td {
-                padding: 12px;
-                border: 1px solid #bdc3c7;
-                font-size: 13px;
-            }
-
-            tbody tr:nth-child(even) {
-                background-color: #f8f9fa;
-            }
-
-            tbody tr:hover {
-                background-color: #ecf0f1;
-            }
-
-            .location-info {
-                background-color: #d5f4e6;
-                font-weight: 500;
-                color: #27ae60;
-            }
-
-            .qty-col {
-                text-align: center;
-                font-weight: 600;
-            }
-
-            .group-badge {
-                display: inline-block;
-                background-color: #3498db;
-                color: white;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: 600;
-            }
-
-            .mid-code {
-                font-family: 'Courier New', monospace;
-                font-weight: 600;
-                color: #c0392b;
-                font-size: 14px;
-            }
-
-            .footer {
-                margin-top: 40px;
-                text-align: center;
-                color: #7f8c8d;
-                font-size: 12px;
-                border-top: 1px solid #bdc3c7;
-                padding-top: 20px;
-            }
-
-            .print-controls {
-                text-align: center;
-                margin-bottom: 20px;
-                display: flex;
-                gap: 10px;
-                justify-content: center;
-                flex-wrap: wrap;
-            }
-
-            .btn {
-                padding: 10px 20px;
+            .item-card {
                 border: none;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 600;
-                transition: all 0.3s ease;
+                border-bottom: 1px dashed #ccc;
+                border-radius: 0;
+                padding: 10px 0;
+                background: transparent;
             }
 
-            .btn-print {
-                background-color: #27ae60;
-                color: white;
+            .item-qty {
+                background: transparent;
+                color: #000;
+                border: 1px solid #000;
             }
 
-            .btn-print:hover {
-                background-color: #229954;
+            .item-location {
+                border: 1px solid #000;
+                background: transparent;
             }
 
-            .btn-back {
-                background-color: #95a5a6;
-                color: white;
+            .loc-bin {
+                background: transparent;
+                color: #000;
+                border: 1px solid #000;
             }
 
-            .btn-back:hover {
-                background-color: #7f8c8d;
+            .section-title i {
+                display: none;
             }
 
-            .summary-box {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 15px;
-                margin-bottom: 30px;
+            .ticket-footer {
+                border-top: 2px dashed #000;
             }
 
-            .summary-item {
-                background-color: #ecf0f1;
-                padding: 15px;
-                border-radius: 5px;
-                text-align: center;
+            .barcode {
+                background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 4px, #000 4px, #000 5px, transparent 5px, transparent 8px);
             }
 
-            .summary-label {
-                font-size: 12px;
-                color: #666;
-                text-transform: uppercase;
-                margin-bottom: 8px;
-                font-weight: 600;
+            @page {
+                margin: 0;
             }
+        }
+    </style>
+</head>
 
-            .summary-value {
-                font-size: 24px;
-                color: #2c3e50;
-                font-weight: 700;
-            }
+<body>
+    <!-- Floating Action Buttons -->
+    <div class="actions">
+        <button class="btn btn-back" onclick="window.history.back()">
+            <i class='bx bx-arrow-back'></i> Kembali
+        </button>
+        <button class="btn btn-print" onclick="window.print()">
+            <i class='bx bx-printer'></i> Print
+        </button>
+    </div>
 
-            @media print {
-                body {
-                    background-color: white;
-                    padding: 0;
-                }
-
-                .container {
-                    box-shadow: none;
-                    padding: 0;
-                    max-width: 100%;
-                }
-
-                .print-controls {
-                    display: none;
-                }
-
-                .footer {
-                    border-top: none;
-                    margin-top: 20px;
-                }
-
-                table {
-                    page-break-inside: avoid;
-                }
-
-                tbody tr {
-                    page-break-inside: avoid;
-                }
-            }
-
-            @media (max-width: 768px) {
-                .container {
-                    padding: 15px;
-                }
-
-                .header h1 {
-                    font-size: 22px;
-                }
-
-                .info-box {
-                    flex-direction: column;
-                    gap: 10px;
-                }
-
-                th,
-                td {
-                    padding: 8px;
-                    font-size: 12px;
-                }
-
-                table {
-                    font-size: 11px;
-                }
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="container">
-            <div class="print-controls">
-                <button class="btn btn-print" onclick="window.print()">
-                    <i class="mdi mdi-printer"></i> Print Magic Number
-                </button>
-                <button class="btn btn-back" onclick="window.history.back()">
-                    <i class="mdi mdi-chevron-left"></i> Kembali
-                </button>
-            </div>
-
-            <div class="header">
-                <h1>📦 MAGIC NUMBER - OPERATOR FORKLIFT</h1>
-                <p>Data Transfer Barang - No SPB: <strong>{{ $outbound->no_spb }}</strong></p>
-            </div>
-
-            <div class="info-box">
-                <div class="info-item">
-                    <div class="info-label">No SPB</div>
-                    <div class="info-value">{{ $outbound->no_spb }}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Supplier</div>
-                    <div class="info-value">{{ $outbound->supplier }}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Incoming Date</div>
-                    <div class="info-value">{{ \Carbon\Carbon::parse($outbound->incoming_date)->format('d/m/Y') }}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Issued Date</div>
-                    <div class="info-value">{{ \Carbon\Carbon::parse($outbound->issued_date)->format('d/m/Y H:i') }}
-                    </div>
-                </div>
-            </div>
-
-            <div class="summary-box">
-                <div class="summary-item">
-                    <div class="summary-label">Total Item</div>
-                    <div class="summary-value">{{ $outbound->details->count() }}</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Total Qty</div>
-                    <div class="summary-value">{{ $outbound->details->sum('qty') }}</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Total Pallet</div>
-                    <div class="summary-value">{{ $outbound->details->unique('pallet_id')->count() }}</div>
-                </div>
-            </div>
-
-            <div class="table-section">
-                <h2 class="section-title">📋 DAFTAR BARANG UNTUK DIPINDAHKAN</h2>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 5%;">No</th>
-                            <th style="width: 12%;">MID</th>
-                            <th style="width: 30%;">Nama Barang</th>
-                            <th style="width: 10%;">UOM</th>
-                            <th style="width: 8%;">Qty</th>
-                            <th style="width: 8%;">Group</th>
-                            <th style="width: 27%;">Lokasi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($outbound->details as $index => $detail)
-                            <tr>
-                                <td class="text-center">{{ $index + 1 }}</td>
-                                <td>
-                                    <span class="mid-code">{{ $detail->barang->mid }}</span>
-                                </td>
-                                <td>{{ $detail->barang->nama_barang }}</td>
-                                <td style="text-align: center;">{{ $detail->barang->uom }}</td>
-                                <td class="qty-col">{{ $detail->qty }}</td>
-                                <td>
-                                    <span class="group-badge">{{ $detail->group }}</span>
-                                </td>
-                                <td class="location-info">
-                                    <strong>🏭 {{ $detail->bin->location->plant }}</strong><br>
-                                    📍 {{ $detail->bin->location->gudang }} - {{ $detail->bin->location->zona }}<br>
-                                    📦 Bin: <strong>{{ $detail->bin->bin }}</strong>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" style="text-align: center; color: #999;">Tidak ada data detail</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="footer">
-                <p>
-                    Generated: {{ now()->format('d/m/Y H:i:s') }} | Petunjuk: Print dokumen ini dan berikan ke operator
-                    forklift
-                    untuk proses transfer barang sesuai lokasi yang tertera.
-                </p>
-            </div>
+    <!-- Main Ticket Card -->
+    <div class="ticket">
+        <div class="ticket-header">
+            <h1>RESERVATION TRANSFER</h1>
+            <p>Operator Forklift</p>
         </div>
 
-        <script>
-            // Jika ingin auto print saat halaman terbuka, uncomment baris berikut:
-            // window.print();
-        </script>
-    </body>
+        <div class="ticket-body">
+            <!-- Order Details -->
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">No Reservasi</span>
+                    <span class="info-value">{{ $outbound->no_reservasi }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Shift</span>
+                    <span class="info-value">Shift {{ $outbound->shift }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Issued Date</span>
+                    <span class="info-value">{{ \Carbon\Carbon::parse($outbound->issued_date)->format('d M Y, H:i') }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Total Pallet</span>
+                    <span class="info-value">{{ $outbound->details->count() }} Pallet ({{ number_format($outbound->details->sum('qty'), 0, ',', '.') }} Qty)</span>
+                </div>
+            </div>
+
+            <!-- Items Section -->
+            <h3 class="section-title">
+                <i class='bx bx-list-ul'></i> Daftar Barang
+            </h3>
+
+            <div class="item-list">
+                @forelse($outbound->details as $index => $detail)
+                <div class="item-card">
+                    <div class="item-header">
+                        <div class="item-name">{{ $index + 1 }}. {{ $detail->barang->nama_barang }}</div>
+                        <div class="item-qty">{{ number_format($detail->qty, 0, ',', '.') }} {{ $detail->barang->uom }}</div>
+                    </div>
+
+                    <div class="item-meta">
+                        <span><i class='bx bx-barcode'></i> MID: {{ $detail->barang->mid }}</span>
+                        <span><i class='bx bx-layer'></i> Grp: {{ $detail->group }}</span>
+                        <span><i class='bx bx-file'></i> SPB: {{ $detail->no_spb ?? '-' }}</span>
+                    </div>
+                    <div class="item-meta" style="margin-top: -8px;">
+                        <span><i class='bx bx-buildings'></i> Sup: {{ \Illuminate\Support\Str::limit($detail->supplier, 30) }}</span>
+                    </div>
+
+                    <div class="item-location">
+                        <div class="loc-details">
+                            <i class='bx bx-map pin'></i> {{ $detail->bin->location->plant }} &bull; {{ $detail->bin->location->s_loc }} &bull; {{ $detail->bin->location->zona }}
+                        </div>
+                        <div class="loc-bin">
+                            {{ $detail->bin->location->bin }} - ({{ $detail->bin->kolom }}.{{ $detail->bin->level }})
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div style="text-align:center; padding: 20px; color: #94a3b8; font-style: italic;">
+                    Tidak ada barang untuk dipindahkan.
+                </div>
+                @endforelse
+            </div>
+
+            <!-- Ticket Footer -->
+            <div class="ticket-footer">
+                <p class="footer-text">Printed at {{ now()->format('d M Y, H:i') }}</p>
+                <p class="footer-text" style="margin-top: 4px;">-- Serahkan ke Operator Forklift --</p>
+            </div>
+        </div>
+    </div>
+</body>
 
 </html>

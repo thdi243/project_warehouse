@@ -9,22 +9,33 @@ use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockMovement;
 use App\Models\Wrm\Inventory\StockOutbound;
 use App\Models\Wrm\Inventory\StockOutboundDetail;
+use App\Models\Wrm\Inventory\StockTransfer;
 use App\Models\Wrm\MasterBinModel;
+use App\Models\Wrm\MasterSupplierModel;
+use App\Models\Wrm\MasterBarangModel;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class OutboundController extends Controller
 {
     public function formOutbound()
     {
-        return view('wrm.inventory.outbound');
+        return view('wrm.inventory.draft_outbound');
     }
 
     public function dataOutbound()
     {
-        return view('wrm.inventory.outbound_data');
+        $suppliers = MasterSupplierModel::orderBy('nama')->get();
+        return view('wrm.inventory.draft_outbound_data', compact('suppliers'));
     }
+
 
     public function searchOutbound(Request $request)
     {
@@ -33,10 +44,10 @@ class OutboundController extends Controller
             ->with([
                 'inbound:id,no_spb,incoming_date',
                 'barang:id,mid,nama_barang,uom',
-                'bin:id,loc_id,bin,kolom,level',
-                'bin.location:id,plant,s_loc,gudang,zona',
+                'bin:id,loc_id,kolom,level',
+                'bin.location:id,plant,s_loc,gudang,zona,bin',
             ])
-            ->where('wrm_stock_inbound_details.status', '!=', 'ISSUED');
+            ->where('wrm_stock_inbound_details.status', '=', 'UNREST');
 
         // filter MID
         if ($request->mid) {
@@ -80,7 +91,6 @@ class OutboundController extends Controller
         DB::beginTransaction();
 
         try {
-
             $details = StockInboundDetail::with([
                 'inbound',
                 'barang',
@@ -89,84 +99,52 @@ class OutboundController extends Controller
                 ->whereIn('id', collect($request->items)->pluck('id'))
                 ->get();
 
-            $headers = [];
+            // Create Single Header for Reservation
+            $header = StockOutbound::create([
+                'no_reservasi'      => $request->no_reservasi,
+                'shift'             => $request->shift,
+                'reservasi_date'    => now(),
+                'qty_request'       => $request->qty_request,
+                'catatan'           => $request->catatan,
+                'checklist_kondisi' => $request->checklist_kondisi ? json_encode($request->checklist_kondisi) : null,
+                'created_by'        => Auth::id(),
+            ]);
 
             foreach ($details as $detail) {
-
                 $inbound = $detail->inbound;
-                $barang  = $detail->barang;
-                $bin = $detail->bin;
 
-                // Extract location_id from bin
-                $locationId = $bin->loc_id;
-
-                // header outbound berdasarkan no_spb inbound
-                if (!isset($headers[$inbound->no_spb])) {
-
-                    $headers[$inbound->no_spb] = StockOutbound::create([
-                        'no_spb'       => $inbound->no_spb,
-                        'incoming_date' => $inbound->incoming_date,
-                        'supplier'     => $inbound->supplier,
-                        'issued_date'  => now(),
-                        'qty_request'      => $request->qty_request,
-                        'catatan'      => $request->catatan,
-                        'created_by'   => Auth::id(),
-                    ]);
-                }
-
-                $header = $headers[$inbound->no_spb];
-
-                // simpan outbound detail dengan bin_id
+                // Save outbound detail
                 StockOutboundDetail::create([
-                    'outbound_id' => $header->id,
-                    'barang_id'   => $detail->barang_id,
-                    'pallet_id'   => $detail->pallet_id,
-                    'group'       => $detail->group,
-                    'qty'         => $detail->qty,
-                    'loc_id'      => $detail->loc_id,
-                    'status'      => 'ISSUED',
-                    'pallet'      => $detail->pallet,
-                    'created_by'  => Auth::id(),
+                    'outbound_id'  => $header->id,
+                    'no_spb'       => $inbound->no_spb,
+                    'supplier'     => $inbound->supplier, // Store Supplier in detail
+                    'barang_id'    => $detail->barang_id,
+                    'barcode'      => $detail->barcode,
+                    'pallet_id'    => $detail->pallet_id,
+                    'incoming_date' => $inbound->incoming_date,
+                    'group'        => $detail->group,
+                    'qty'          => $detail->qty,
+                    'loc_id'       => $detail->loc_id,
+                    'status'       => 'RESERVED',
+                    'expired_date' => $inbound->expired_date, // Store Expired Date in detail
+                    'pallet'       => $detail->pallet,
+                    'created_by'   => Auth::id(),
                 ]);
 
-                // update status inbound detail
+
+                // Update status inbound detail to RESERVED
                 $detail->update([
-                    'status' => 'ISSUED'
+                    'status' => 'RESERVED'
                 ]);
 
-                // stock movement dengan location_id (bukan bin_id)
-                StockMovement::create([
-                    'barang_id'  => $detail->barang_id,
-                    'loc_id'     => $locationId,
-                    'tanggal'    => now(),
-                    'qty'        => $detail->qty,
-                    'jenis'      => 'out',
-                    'ref_type'   => 'outbound',
-                    'ref_id'     => $detail->id,
-                    'created_by' => Auth::id(),
-                ]);
-
-                // update stock balance dengan location_id (bukan bin_id)
-                $balance = StockBalance::where('barang_id', $detail->barang_id)
-                    ->where('loc_id', $locationId)
-                    ->first();
-
-                if (!$balance) {
-                    throw new \Exception("Stock balance tidak ditemukan");
-                }
-
-                if ($balance->qty < $detail->qty) {
-                    throw new \Exception("Stock tidak cukup");
-                }
-
-                $balance->decrement('qty', $detail->qty);
+                // NOTE: No stock movement or balance update in RESERVATION concept
             }
 
             DB::commit();
 
             return response()->json([
                 'status' => true,
-                'message' => 'Outboun inventory stock berhasil disimpan'
+                'message' => 'Draft Outbound (Reservasi) berhasil disimpan'
             ]);
         } catch (\Throwable $e) {
 
@@ -182,26 +160,36 @@ class OutboundController extends Controller
     public function getData(Request $request)
     {
         $query = StockOutbound::with([
-            'details.barang:id,mid,nama_barang,uom',
-            'details.bin:id,loc_id,bin,kolom,level',
-            'details.bin.location:id,plant,s_loc,gudang,zona'
-        ]);
+            'details' => function ($q) {
+                $q->where('status', 'RESERVED')->with([
+                    'barang:id,mid,nama_barang,uom',
+                    'bin:id,loc_id,kolom,level',
+                    'bin.location:id,plant,s_loc,gudang,zona,bin'
+                ]);
+            }
+        ])->whereHas('details', function ($q) {
+            $q->where('status', 'RESERVED');
+        });
 
         if ($request->group) {
             $query->whereHas('details', function ($q) use ($request) {
-                $q->where('group', $request->group);
+                $q->where('group', $request->group)->where('status', 'RESERVED');
             });
         }
 
         if ($request->jenis_bahan) {
             $query->whereHas('details.barang', function ($q) use ($request) {
                 $q->where('nama_barang', 'like', '%' . $request->jenis_bahan . '%');
+            })->whereHas('details', function ($q) {
+                $q->where('status', 'RESERVED');
             });
         }
 
         if ($request->mid) {
             $query->whereHas('details.barang', function ($q) use ($request) {
                 $q->where('mid', 'like', '%' . $request->mid . '%');
+            })->whereHas('details', function ($q) {
+                $q->where('status', 'RESERVED');
             });
         }
 
@@ -210,7 +198,13 @@ class OutboundController extends Controller
         }
 
         if ($request->supplier) {
-            $query->where('supplier', 'like', '%' . $request->supplier . '%');
+            $query->whereHas('details', function ($q) use ($request) {
+                $q->where('supplier', 'like', '%' . $request->supplier . '%')->where('status', 'RESERVED');
+            });
+        }
+
+        if ($request->no_reservasi) {
+            $query->where('no_reservasi', 'like', '%' . $request->no_reservasi . '%');
         }
 
         $data = $query->latest()->paginate(25);
@@ -226,14 +220,18 @@ class OutboundController extends Controller
     {
         $details = StockOutboundDetail::with([
             'barang:id,mid,nama_barang,uom',
-            'bin:id,loc_id,bin,kolom,level',
-            'bin.location:id,plant,gudang,s_loc,zona'
+            'bin:id,loc_id,kolom,level',
+            'bin.location:id,plant,gudang,s_loc,zona,bin'
         ])
             ->where('outbound_id', $id)
+            ->where('status', 'RESERVED')
             ->get();
+
+        $header = StockOutbound::find($id);
 
         return response()->json([
             'status' => true,
+            'header' => $header,
             'data' => $details
         ]);
     }
@@ -243,47 +241,18 @@ class OutboundController extends Controller
         DB::beginTransaction();
 
         try {
-
             $outbound = StockOutbound::with('details')->findOrFail($id);
 
             foreach ($outbound->details as $detail) {
-
-                // kembalikan inbound status
+                // Return inbound status to UNREST (available again)
                 StockInboundDetail::where([
                     'barang_id' => $detail->barang_id,
                     'pallet_id' => $detail->pallet_id
                 ])->update([
-                    'status' => 'QI'
+                    'status' => 'UNREST'
                 ]);
 
-                // Get bin to extract location_id
-                $bin = MasterBinModel::find($detail->loc_id);
-                if (!$bin) {
-                    throw new \Exception("Bin tidak ditemukan");
-                }
-                $locationId = $bin->loc_id;
-
-                // kembalikan stock balance dengan location_id
-                $balance = StockBalance::where([
-                    'barang_id' => $detail->barang_id,
-                    'loc_id' => $locationId
-                ])->first();
-
-                if ($balance) {
-                    $balance->increment('qty', $detail->qty);
-                }
-
-                // stock movement reverse dengan location_id
-                StockMovement::create([
-                    'barang_id' => $detail->barang_id,
-                    'loc_id' => $locationId,
-                    'tanggal' => now(),
-                    'qty' => $detail->qty,
-                    'jenis' => 'in',
-                    'ref_type' => 'cancel_outbound',
-                    'ref_id' => $detail->id,
-                    'created_by' => Auth::id(),
-                ]);
+                // NOTE: No stock balance increment or movement reverse in RESERVATION concept
             }
 
             $outbound->details()->delete();
@@ -309,13 +278,18 @@ class OutboundController extends Controller
     public function printMagicNumber($id)
     {
         $outbound = StockOutbound::with([
-            'details.barang:id,mid,nama_barang,uom',
-            'details.bin:id,loc_id,bin,kolom,level',
-            'details.bin.location:id,plant,s_loc,gudang,zona'
+            'details' => function ($q) {
+                $q->where('status', 'RESERVED')->with([
+                    'barang:id,mid,nama_barang,uom',
+                    'bin:id,loc_id,kolom,level',
+                    'bin.location:id,plant,s_loc,gudang,zona,bin'
+                ]);
+            }
         ])->findOrFail($id);
 
         return view('wrm.inventory.magic_number', [
             'outbound' => $outbound
         ]);
     }
+
 }
