@@ -69,8 +69,8 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('user')->group(function () {
         Route::get('/profile', [UserController::class, 'profileIndex'])->name('user.profile');
-        Route::get('/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
-        Route::put('/update/{id}', [UserController::class, 'update'])->name('user.update');
+        Route::get('/profile/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
+        Route::put('/profile/update/{id}', [UserController::class, 'update'])->name('user.update');
     });
 
     // Dashboard
@@ -427,9 +427,10 @@ Route::middleware('auth')->group(function () {
                 Route::get('/index', [UserController::class, 'index'])->name('user.index');
                 Route::get('/get-data', [UserController::class, 'create'])->name('user.getData');
                 Route::post('/store', [UserController::class, 'store'])->name('user.store');
-                Route::get('/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
                 Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('user.delete');
                 Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
+                Route::get('/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
+                Route::put('/update/{id}', [UserController::class, 'update'])->name('user.update');
             });
         });
     });

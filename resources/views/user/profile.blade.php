@@ -301,7 +301,7 @@
         // edit modal
         function editUser(userId) {
             $.ajax({
-                url: `/master/user/edit/${userId}`,
+                url: `/user/profile/edit/${userId}`,
                 method: 'GET',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -455,7 +455,7 @@
             }
 
             $.ajax({
-                url: `/master/user/update/${id}`,
+                url: `/user/profile/update/${id}`,
                 method: 'POST', // Gunakan POST dengan method spoofing
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
