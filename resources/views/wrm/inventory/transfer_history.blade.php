@@ -20,8 +20,8 @@
                     </div>
 
                     <div class="col-md-3">
-                        <label class="form-label">No. Reservasi</label>
-                        <input type="text" class="form-control" id="filterNoReservasi" placeholder="Cari No. Reservasi">
+                        <label class="form-label">No. Reservasi / BA</label>
+                        <input type="text" class="form-control" id="filterNoReservasi" placeholder="Cari Res / BA">
                     </div>
 
                     <div class="col-md-3">
@@ -55,10 +55,11 @@
                         <thead class="table-light">
                             <tr>
                                 <th class="text-center">No</th>
-                                <th>Tgl GR</th>
-                                <th>No. Reservasi</th>
+                                <th>No. BA / Tgl</th>
+                                <th>No. Reservasi / Tgl</th>
                                 <th>No Barcode</th>
                                 <th>No SPB</th>
+                                <th>Matdoc Scrap / Year</th>
                                 <th>Tgl GI</th>
                                 <th>Matdoc GI</th>
                                 <th>MID</th>
@@ -176,12 +177,19 @@
                         html += `
                             <tr>
                                 <td class="text-center">${startNo + index}</td>
-                                <td>${header.tgl_gr ? moment(header.tgl_gr).format('DD/MM/YYYY') : '-'}</td>
-                                <td class="fw-bold">${header.no_reservasi || '-'}</td>
+                                <td>
+                                    <span class="fw-bold">${header.no_ba || '-'}</span><br>
+                                    <small class="text-muted">${header.tgl_ba ? moment(header.tgl_ba).format('DD/MM/YYYY') : '-'}</small>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">${header.no_reservasi || '-'}</span><br>
+                                    <small class="text-muted">${header.tgl_gr ? moment(header.tgl_gr).format('DD/MM/YYYY') : '-'}</small>
+                                </td>
                                 <td>${d.no_barcode || '-'}</td>
                                 <td>${d.no_spb || '-'}</td>
-                                <td>${d.tgl_gi ? moment(d.tgl_gi).format('DD/MM/YYYY') : '-'}</td>
-                                <td>${d.matdoc_gi || '-'}</td>
+                                <td>${d.matdoc_scrup || '-'} <br><small class="text-muted">${d.matdoc_year || ''}</small></td>
+                                <td>${header.tgl_gi ? moment(header.tgl_gi).format('DD/MM/YYYY') : '-'}</td>
+                                <td>${header.matdoc_gi || '-'}</td>
                                 <td>${barang.mid || '-'}</td>
                                 <td class="text-wrap" style="min-width:150px">${barang.nama_barang || '-'}</td>
                                 <td>${numberFormat(d.qty_barcode)}</td>

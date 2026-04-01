@@ -34,7 +34,7 @@
                         <input type="text" class="form-control" id="no_reservasi" placeholder="Contoh: 204506143">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Qty Request (Reservation) <span class="text-danger">*</span></label>
+                        <label class="form-label">Qty Request (KG) <span class="text-danger">*</span></label>
                         <input type="number" class="form-control" id="qty" placeholder="Jumlah yang diminta">
                     </div>
                     <div class="col-md-3">
@@ -103,7 +103,7 @@
                                 <th>Nama Barang</th>
                                 <th>Group</th>
                                 <th>Status</th>
-                                <th>Qty</th>
+                                <th>Qty (KG)</th>
                                 <th>Location</th>
                                 <th>Incoming Date</th>
                                 <th width="120" class="text-center">Action</th>

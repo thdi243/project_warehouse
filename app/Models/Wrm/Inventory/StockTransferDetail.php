@@ -14,8 +14,8 @@ class StockTransferDetail extends Model
 
     protected $fillable = [
         'transfer_id',
-        'tgl_gi',
-        'matdoc_gi',
+        'matdoc_scrup',
+        'matdoc_year',
         'no_spb',
         'plant',
         'sloc',

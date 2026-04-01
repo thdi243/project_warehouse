@@ -13,9 +13,13 @@ class StockTransfer extends Model
     protected $table = 'wrm_stock_transfers';
 
     protected $fillable = [
+        'no_ba',
+        'tgl_ba',
         'tgl_gr',
         'no_reservasi',
         'tgl_reservasi',
+        'tgl_gi',
+        'matdoc_gi',
         'created_by',
         'updated_by',
     ];

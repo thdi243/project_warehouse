@@ -145,9 +145,11 @@
             <div class="modal-body p-4">
                 <div class="alert alert-info border-0 shadow-none mb-4">
                     <i class="mdi mdi-information-outline me-2"></i>
-                    Ambil data stock transfer ini dari <b>WEBSAP</b> pada menu report susut reservasi.
+                    Ambil data stock transfer ini dari <b>WEBSAP</b> pada menu <b>BA Report Susut Reservasi</b>.
                     <br><i class="mdi mdi-information-outline me-2"></i>
-                    Pastikan data Material ID dan No Barcode sesuai dengan template baru (17 kolom).
+                    Pilih detail per Matdoc GI nya, kemudian export excel nya, copy paste ke template.
+                    <br><i class="mdi mdi-information-outline me-2"></i>
+                    Sistem akan mengecek per no barcode apakah sudah ada di data transfer atau belum.
                 </div>
 
                 <form id="outboundUploadForm" action="{{ route('wrm.inventory.outbound-upload') }}" method="POST"

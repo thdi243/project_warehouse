@@ -92,7 +92,7 @@
                                 <th>No Reservasi</th>
                                 <th>Shift</th>
                                 <th>Draft Date</th>
-                                <th>Qty Request</th>
+                                <th>Qty Request (KG)</th>
                                 <th>Catatan</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
@@ -137,7 +137,7 @@
                                 <th>MID</th>
                                 <th>Nama Barang</th>
                                 <th>Group</th>
-                                <th>Qty</th>
+                                <th>Qty (KG)</th>
                                 <th>Status</th>
                                 <th>Lokasi</th>
                             </tr>

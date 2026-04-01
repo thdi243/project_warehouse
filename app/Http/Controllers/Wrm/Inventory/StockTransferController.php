@@ -47,35 +47,41 @@ class StockTransferController extends Controller
             foreach ($rows as $i => $row) {
                 $line = $i + 1;
 
-                // Template Mapping (17 columns, 0-indexed)
-                $tglGrRaw      = trim($row[0] ?? '');
-                $tglResRaw     = trim($row[1] ?? '');
-                $noReservasi   = trim($row[2] ?? '');
-                $tglGiRaw      = trim($row[3] ?? '');
-                $matdocGi      = trim($row[4] ?? '');
-                $plant         = trim($row[5] ?? '');
-                $sloc          = trim($row[6] ?? '');
-                $matId         = trim($row[7] ?? '');
-                // $matDesc    = trim($row[8] ?? '');
-                $noBarcode     = trim($row[9] ?? '');
-                $grade         = trim($row[10] ?? '');
-                $qtyBarcode    = $row[11];
-                $qtyActual     = $row[12];
-                $qtySusut      = $row[13];
-                $uom           = trim($row[14] ?? '');
-                $lamaSimpan    = (int) ($row[15] ?? 0);
-                $persenSusut   = $row[16];
+                // Template Mapping (22 columns)
+                $noUrut      = trim($row[0] ?? '');
+                $noBa        = trim($row[1] ?? '');
+                $tglBaRaw    = trim($row[2] ?? '');
+                $matdocScrup = trim($row[3] ?? '');
+                $matdocYear  = trim($row[4] ?? '');
+                $tglGrRaw    = trim($row[5] ?? '');
+                $tglResRaw   = trim($row[6] ?? '');
+                $noReservasi = trim($row[7] ?? '');
+                $tglGiRaw    = trim($row[8] ?? '');
+                $matdocGi    = trim($row[9] ?? '');
+                $plant       = trim($row[10] ?? '');
+                $sloc        = trim($row[11] ?? '');
+                $matId       = trim($row[12] ?? '');
+                // $matDesc  = trim($row[13] ?? '');
+                $noBarcode   = trim($row[14] ?? '');
+                $grade       = trim($row[15] ?? '');
+                $qtyBarcode  = $row[16] ?? 0;
+                $qtyActual   = $row[17] ?? 0;
+                $qtySusut    = $row[18] ?? 0;
+                $uom         = trim($row[19] ?? '');
+                $lamaSimpan  = (int) ($row[20] ?? 0);
+                $persenSusut = $row[21] ?? 0;
 
-                if (empty($noReservasi) || empty($matId)) {
+                if (empty($noBarcode) || empty($matId)) {
                     continue; // skip empty rows
                 }
 
                 // Parse Dates
+                $tglBa  = $this->parseDate($tglBaRaw);
                 $tglGr  = $this->parseDate($tglGrRaw);
                 $tglRes = $this->parseDate($tglResRaw);
                 $tglGi  = $this->parseDate($tglGiRaw);
 
-                // Parse Numbers (handle comma as decimal separator if needed)
+                // Parse Numbers
                 $qtyBarcode = $this->parseNumber($qtyBarcode);
                 $qtyActual  = $this->parseNumber($qtyActual);
                 $qtySusut   = $this->parseNumber($qtySusut);
@@ -95,47 +101,43 @@ class StockTransferController extends Controller
                     continue;
                 }
 
-                // --- INTEGRATION WITH DRAFT OUTBOUND ---
+                // --- INTEGRATION WITH SOH (INBOUND) ---
                 // 1. Find the Inbound Detail to see current status
                 $inboundDetail = StockInboundDetail::where('barcode', $noBarcode)
                     ->where('barang_id', $barang->id)
                     ->first();
 
-                // 2. Link with Draft (RESERVED)
-                $draftDetail = StockOutboundDetail::where('barcode', $noBarcode)
-                    ->where('status', 'RESERVED')
-                    ->first();
-
-                if ($draftDetail) {
-                    // Update Draft status
-                    $draftDetail->update(['status' => 'ISSUED', 'updated_by' => Auth::id()]);
-
-                    // Update Inbound status if linked
-                    if ($inboundDetail && $inboundDetail->status === 'RESERVED') {
-                        $inboundDetail->update(['status' => 'ISSUED', 'updated_by' => Auth::id()]);
-                    }
+                if (!$inboundDetail) {
+                    $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Stock On Hand (Inbound).";
+                    continue;
                 }
 
                 // --- HEADER AND DERIVATIONS ---
                 // Derive no_spb from barcode (first 10 chars)
                 $noSpbFromBarcode = substr($noBarcode, 0, 10);
 
+                $headerKey = "{$matdocGi}|{$noBa}|{$noReservasi}";
+
                 // 1. Get or Create Header
-                if (!isset($headerTracker[$noReservasi])) {
-                    $headerTracker[$noReservasi] = StockTransfer::create([
+                if (!isset($headerTracker[$headerKey])) {
+                    $headerTracker[$headerKey] = StockTransfer::create([
+                        'no_ba'         => $noBa,
+                        'tgl_ba'        => $tglBa,
                         'tgl_gr'        => $tglGr,
                         'no_reservasi'  => $noReservasi,
                         'tgl_reservasi' => $tglRes,
+                        'tgl_gi'        => $tglGi,
+                        'matdoc_gi'     => $matdocGi,
                         'created_by'    => Auth::id(),
                     ]);
                 }
-                $header = $headerTracker[$noReservasi];
+                $header = $headerTracker[$headerKey];
 
                 // 2. Create Detail
                 $detail = StockTransferDetail::create([
                     'transfer_id'      => $header->id,
-                    'tgl_gi'           => $tglGi,
-                    'matdoc_gi'        => $matdocGi,
+                    'matdoc_scrup'     => $matdocScrup,
+                    'matdoc_year'      => $matdocYear,
                     'no_spb'           => $noSpbFromBarcode,
                     'plant'            => $plant,
                     'sloc'             => $sloc,
@@ -225,7 +227,8 @@ class StockTransferController extends Controller
 
         if ($request->no_reservasi) {
             $query->whereHas('header', function ($q) use ($request) {
-                $q->where('no_reservasi', 'like', '%' . $request->no_reservasi . '%');
+                $q->where('no_reservasi', 'like', '%' . $request->no_reservasi . '%')
+                  ->orWhere('no_ba', 'like', '%' . $request->no_reservasi . '%');
             });
         }
 
@@ -282,24 +285,12 @@ class StockTransferController extends Controller
                 if ($inbound) {
                     $inbound->update([
                         'qty' => abs($movement->qty), // Restore original qty
-                        'status' => 'RESERVED',       // Usually reserved for outbound draft
+                        'status' => 'IN_STOCK',       // Return to stock
                         'updated_by' => Auth::id()
                     ]);
                 }
 
-                // 4. Restore Draft Outbound (if exists)
-                $draft = StockOutboundDetail::where('barcode', $detail->no_barcode)
-                    ->where('status', 'ISSUED')
-                    ->first();
-
-                if ($draft) {
-                    $draft->update([
-                        'status' => 'RESERVED',
-                        'updated_by' => Auth::id()
-                    ]);
-                }
-
-                // 5. Delete Movement
+                // 4. Delete Movement
                 $movement->delete();
             }
 
