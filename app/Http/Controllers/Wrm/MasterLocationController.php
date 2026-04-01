@@ -101,6 +101,17 @@ class MasterLocationController extends Controller
         $payload = [];
         $uniqueCheck = [];
 
+        // Ambil semua data existing di database SEKALI SAJA sebelum loop
+        $existingDB = MasterLocationModel::select('plant', 's_loc', 'gudang', 'zona', 'bin')
+            ->get()
+            ->map(function ($item) {
+                return "{$item->plant}|{$item->s_loc}|{$item->gudang}|{$item->zona}|{$item->bin}";
+            })
+            ->toArray();
+
+        // Jadikan boolean map untuk pencarian yang lebih cepat
+        $existingMap = array_flip($existingDB);
+
         foreach ($rows as $index => $row) {
 
             $line = $index + 1;
@@ -110,6 +121,11 @@ class MasterLocationController extends Controller
             $gudang = $row[2] ?? '';
             $zona   = $row[3] ?? '';
             $bin    = $row[4] ?? '';
+
+            // Abaikan jika baris kosong
+            if ($plant === '' && $sLoc === '' && $gudang === '' && $zona === '' && $bin === '') {
+                continue;
+            }
 
             $key = "{$plant}|{$sLoc}|{$gudang}|{$zona}|{$bin}";
 
@@ -122,14 +138,7 @@ class MasterLocationController extends Controller
             $uniqueCheck[$key] = $line;
 
             // cek duplikat di database
-            $existing = MasterLocationModel::select('plant', 's_loc', 'gudang', 'zona', 'bin')
-                ->get()
-                ->map(function ($item) {
-                    return "{$item->plant}|{$item->s_loc}|{$item->gudang}|{$item->zona}|{$item->bin}";
-                })
-                ->toArray();
-
-            if ($existing) {
+            if (isset($existingMap[$key])) {
                 $errors[] = "Baris {$line} sudah tersimpan ({$plant}-{$sLoc}-{$gudang}-{$zona}-{$bin})";
                 continue;
             }
