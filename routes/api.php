@@ -169,5 +169,4 @@ Route::prefix('purchase-requesition')->middleware('web')->group(function () {
     Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action']);
 });
 
-Route::get('user/edit/{id}', [UserController::class, 'edit']);
 Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);
