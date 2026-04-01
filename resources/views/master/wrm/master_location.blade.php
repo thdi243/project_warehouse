@@ -9,7 +9,8 @@
         <div class="card">
             <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <h5 class="mb-0">Master Lokasi Raw Material</h5>
-                <div class="d-flex gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Cari zona/bin..." style="width: 200px;">
                     <button class="btn btn-outline-primary" id="btnUpload" data-bs-toggle="modal"
                         data-bs-target="#uploadModal">
                         <i class="mdi mdi-upload"></i> Upload
@@ -38,6 +39,7 @@
                         <tbody></tbody>
                     </table>
                 </div>
+                <div id="pagination-container" class="d-flex justify-content-between align-items-center mt-3"></div>
             </div>
         </div>
 
@@ -132,15 +134,33 @@
 <script>
     $(document).ready(function() {
 
-        loadData();
+        let currentPage = 1;
 
-        function loadData() {
-            $.get(`/master/wrm/location/get-data`, function(res) {
+        loadData(currentPage);
+
+        // Pencarian dengan delay typing
+        let typingTimer;
+        $('#searchInput').on('keyup', function() {
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(function() {
+                loadData(1);
+            }, 500);
+        });
+
+        function loadData(page = 1) {
+            currentPage = page;
+            let search = $('#searchInput').val() || '';
+
+            $.get(`/master/wrm/location/get-data?page=${page}&search=${search}`, function(res) {
                 let html = '';
-                $.each(res.data, function(i, v) {
-                    html += `
+                let data = res.data.data;
+                let no = res.data.from || 1;
+
+                if (data.length > 0) {
+                    $.each(data, function(i, v) {
+                        html += `
                             <tr>
-                                <td class="text-center">${i + 1}</td>
+                                <td class="text-center">${no++}</td>
                                 <td>${v.plant}</td>
                                 <td>${v.s_loc}</td>
                                 <td>${v.gudang}</td>
@@ -152,10 +172,57 @@
                                 </td>
                             </tr>
                         `;
-                });
+                    });
+                } else {
+                    html = '<tr><td colspan="7" class="text-center">Data tidak ditemukan</td></tr>';
+                }
+
                 $('#tableGroupStock tbody').html(html);
+                renderPagination(res.data);
             });
         }
+
+        function renderPagination(meta) {
+            if (!meta.last_page || meta.last_page <= 1) {
+                $('#pagination-container').html('');
+                return;
+            }
+
+            let html = `<div>Showing ${meta.from ?? 0} to ${meta.to ?? 0} of ${meta.total} entries</div>`;
+            html += `<nav><ul class="pagination pagination-sm mb-0">`;
+
+            html += `<li class="page-item ${meta.current_page === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="loadData(${meta.current_page - 1})">Prev</a>
+                    </li>`;
+
+            let start = Math.max(1, meta.current_page - 2);
+            let end = Math.min(meta.last_page, meta.current_page + 2);
+
+            if (start > 1) {
+                html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="loadData(1)">1</a></li>`;
+                if (start > 2) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+
+            for (let i = start; i <= end; i++) {
+                html += `<li class="page-item ${i === meta.current_page ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0)" onclick="loadData(${i})">${i}</a>
+                        </li>`;
+            }
+
+            if (end < meta.last_page) {
+                if (end < meta.last_page - 1) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="loadData(${meta.last_page})">${meta.last_page}</a></li>`;
+            }
+
+            html += `<li class="page-item ${meta.current_page === meta.last_page ? 'disabled' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="loadData(${meta.current_page + 1})">Next</a>
+                    </li>`;
+
+            html += `</ul></nav>`;
+            $('#pagination-container').html(html);
+        }
+
+        window.loadData = loadData;
 
         $('#btnTambah').click(function() {
             $('#formLocation')[0].reset();
@@ -203,7 +270,7 @@
                 },
                 success: function(res) {
                     $('#modalLoc').modal('hide');
-                    loadData();
+                    loadData(id ? currentPage : 1);
 
                     Swal.fire({
                         icon: 'success',
@@ -243,7 +310,7 @@
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(res) {
-                        loadData();
+                        loadData(currentPage);
 
                         Swal.fire({
                             icon: 'success',
@@ -298,7 +365,7 @@
 
                     $('#formUploadBarang')[0].reset();
                     $('#uploadModal').modal('hide');
-                    loadData();
+                    loadData(1);
                 },
                 error: function(xhr) {
                     let message = 'Terjadi kesalahan';

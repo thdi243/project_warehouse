@@ -17,7 +17,9 @@ class MasterSupplierController extends Controller
 
     public function getData()
     {
-        $suppliers = MasterSupplierModel::orderBy('nama')->paginate(100);
+        $suppliers = MasterSupplierModel::orderBy('nama')
+            ->with('createdBy:id,nama_lengkap', 'updatedBy:id,nama_lengkap')
+            ->paginate(100);
 
         return response()->json([
             'status' => true,

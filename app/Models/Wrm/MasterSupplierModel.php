@@ -4,6 +4,7 @@ namespace App\Models\Wrm;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class MasterSupplierModel extends Model
 {
@@ -17,4 +18,16 @@ class MasterSupplierModel extends Model
         'created_by',
         'updated_by',
     ];
+
+    // user pembuat
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // user pengupdate
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 }

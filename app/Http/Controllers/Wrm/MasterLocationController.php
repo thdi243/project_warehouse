@@ -32,9 +32,18 @@ class MasterLocationController extends Controller
         ]);
     }
 
-    public function getData()
+    public function getData(Request $request)
     {
-        $location = MasterLocationModel::all();
+        $search = $request->search ?? '';
+        $query = MasterLocationModel::query();
+
+        if ($search) {
+            $query->where('bin', 'like', "%{$search}%")
+                  ->orWhere('zona', 'like', "%{$search}%")
+                  ->orWhere('gudang', 'like', "%{$search}%");
+        }
+
+        $location = $query->paginate(100);
 
         return response()->json([
             'status' => true,

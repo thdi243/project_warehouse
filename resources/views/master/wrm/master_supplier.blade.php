@@ -24,6 +24,7 @@
                                 <th class="text-center" width="50">No</th>
                                 <th>Nama Supplier</th>
                                 <th>Lokasi</th>
+                                <th>Dibuat Oleh</th>
                                 <th class="text-center" width="150">Aksi</th>
                             </tr>
                         </thead>
@@ -91,6 +92,7 @@
                             <td class="text-center">${no++}</td>
                             <td>${v.nama}</td>
                             <td>${v.lokasi}</td>
+                            <td>${v.created_by.nama_lengkap}</td>
                             <td class="text-center">
                                 <button class="btn btn-warning btn-sm btnEdit" data-id="${v.id}" data-nama="${v.nama}" data-lokasi="${v.lokasi}">
                                     <i class="mdi mdi-pencil"></i>

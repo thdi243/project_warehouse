@@ -16,8 +16,7 @@ class MasterPalletController extends Controller
         $query = MasterPalletModel::query();
 
         if ($search) {
-            $query->where('jenis_bahan', 'like', "%{$search}%")
-                ->orWhere('nama_pallet', 'like', "%{$search}%");
+            $query->where('nama_pallet', 'like', "%{$search}%");
         }
 
         $pallets = $query->paginate(25);
@@ -79,7 +78,7 @@ class MasterPalletController extends Controller
     {
         $search = $request->search ?? '';
 
-        $query = MasterPalletModel::query();
+        $query = MasterPalletModel::query()->with('createdBy:id,nama_lengkap', 'updatedBy:id,nama_lengkap');
 
         if ($search) {
             $query->where('nama_pallet', 'like', "%{$search}%");

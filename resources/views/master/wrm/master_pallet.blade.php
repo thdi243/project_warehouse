@@ -116,7 +116,7 @@
                                     <tr>
                                         <td>${no}</td>
                                         <td>${item.nama_pallet}</td>
-                                        <td>${item.created_by}</td>
+                                        <td>${item.created_by.nama_lengkap}</td>
                                         <td>${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-warning btn-sm btnEdit" data-id="${item.id}" title="Edit">
