@@ -82,6 +82,13 @@
         z-index: 10;
     }
 
+    .rack-cell.empty {
+        background: #f1f5f9;
+        color: #94a3b8;
+        border-color: #cbd5e1;
+        border-style: dashed;
+    }
+
     .rack-cell-tooltip {
         display: none;
         position: absolute;
