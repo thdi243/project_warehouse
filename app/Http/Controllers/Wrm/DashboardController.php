@@ -8,6 +8,7 @@ use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockMovement;
 use App\Models\Wrm\MasterBarangModel;
 use App\Models\Wrm\MasterLocationModel;
+use App\Models\Wrm\MasterBinModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -259,7 +260,7 @@ class DashboardController extends Controller
         $zona = $request->zona;
 
         // Get all bins with their location, grouped by location
-        $bins = \App\Models\Wrm\MasterBinModel::with('location')
+        $bins = MasterBinModel::with('location')
             ->when($zona, function ($q) use ($zona) {
                 $q->whereHas('location', function ($q2) use ($zona) {
                     $q2->where('zona', $zona);
@@ -267,12 +268,24 @@ class DashboardController extends Controller
             })
             ->get();
 
-        // Get occupied bin IDs from stock inbound details (active stock)
-        $occupiedIds = StockInboundDetail::whereIn('status', ['UNREST', 'QI', 'BLOCKED'])
+        // Get occupied bins and their barang info from active stock
+        $occupiedDetails = StockInboundDetail::with('barang')
+            ->whereIn('status', ['UNREST', 'QI', 'BLOCKED'])
             ->where('qty', '>', 0)
-            ->distinct('loc_id')
-            ->pluck('loc_id')
-            ->toArray();
+            ->get();
+
+        $occupiedMap = [];
+        foreach ($occupiedDetails as $detail) {
+            if (!isset($occupiedMap[$detail->loc_id])) {
+                $occupiedMap[$detail->loc_id] = [
+                    'mid' => $detail->barang ? $detail->barang->mid : 'UNKNOWN',
+                    'nama_barang' => $detail->barang ? $detail->barang->nama_barang : 'Unknown',
+                    'qty' => 0
+                ];
+            }
+            $occupiedMap[$detail->loc_id]['qty'] += $detail->qty;
+        }
+        $occupiedIds = array_keys($occupiedMap);
 
         $reservedIds = StockInboundDetail::where('status', 'RESERVED')
             ->where('qty', '>', 0)
@@ -299,8 +312,16 @@ class DashboardController extends Controller
             }
 
             $status = 'empty';
+            $mid = null;
+            $nama_barang = null;
+            $qty = 0;
             if (in_array($bin->id, $reservedIds)) $status = 'reserved';
-            if (in_array($bin->id, $occupiedIds)) $status = 'occupied';
+            if (in_array($bin->id, $occupiedIds)) {
+                $status = 'occupied';
+                $mid = $occupiedMap[$bin->id]['mid'];
+                $nama_barang = $occupiedMap[$bin->id]['nama_barang'];
+                $qty = $occupiedMap[$bin->id]['qty'];
+            }
 
             $locations[$locKey]['cells'][] = [
                 'id'     => $bin->id,
@@ -308,6 +329,9 @@ class DashboardController extends Controller
                 'level'  => $bin->level,
                 'label'  => $bin->kolom . '.' . $bin->level,
                 'status' => $status,
+                'mid'    => $mid,
+                'nama_barang' => $nama_barang,
+                'qty' => $qty
             ];
         }
 
