@@ -280,7 +280,8 @@ class DashboardController extends Controller
                 $occupiedMap[$detail->loc_id] = [
                     'mid' => $detail->barang ? $detail->barang->mid : 'UNKNOWN',
                     'nama_barang' => $detail->barang ? $detail->barang->nama_barang : 'Unknown',
-                    'qty' => 0
+                    'qty' => 0,
+                    'pallet_id' => $detail->pallet_id
                 ];
             }
             $occupiedMap[$detail->loc_id]['qty'] += $detail->qty;
@@ -315,12 +316,14 @@ class DashboardController extends Controller
             $mid = null;
             $nama_barang = null;
             $qty = 0;
+            $palletId = null;
             if (in_array($bin->id, $reservedIds)) $status = 'reserved';
             if (in_array($bin->id, $occupiedIds)) {
                 $status = 'occupied';
                 $mid = $occupiedMap[$bin->id]['mid'];
                 $nama_barang = $occupiedMap[$bin->id]['nama_barang'];
                 $qty = $occupiedMap[$bin->id]['qty'];
+                $palletId = $occupiedMap[$bin->id]['pallet_id'];
             }
 
             $locations[$locKey]['cells'][] = [
@@ -331,7 +334,8 @@ class DashboardController extends Controller
                 'status' => $status,
                 'mid'    => $mid,
                 'nama_barang' => $nama_barang,
-                'qty' => $qty
+                'qty' => $qty,
+                'pallet_id' => $palletId
             ];
         }
 

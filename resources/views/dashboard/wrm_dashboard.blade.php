@@ -806,7 +806,7 @@
                                                 color: bgColor
                                             };
                                             styleAttr = `style="background: ${bgColor}; border-color: ${bgColor};"`;
-                                            tooltipExtras = `<br>Barang: ${cell.nama_barang || '-'}<br>MID: ${cell.mid || '-'}<br>Qty: ${Number(cell.qty || 0).toLocaleString('id-ID')}`;
+                                            tooltipExtras = `<br>Barang: ${cell.nama_barang || '-'}<br>MID: ${cell.mid || '-'}<br>Qty: ${Number(cell.qty || 0).toLocaleString('id-ID')}<br>Pallet ID: ${cell.pallet_id || '-'}`;
                                         }
 
                                         gridHtml += `
