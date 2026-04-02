@@ -656,7 +656,7 @@
             });
         });
 
-        $('#filterGroup, #filterJenisBahan').on('change', function() {
+        $('#filterGroup, #filterJenisBahan, #filterDate, #filterSupplier').on('change', function() {
             loadData();
         });
 
@@ -674,6 +674,8 @@
             $('#filterGroup').val('');
             $('#filterJenisBahan').val('');
             $('#filterMid').val('');
+            $('#filterDate').val('');
+            $('#filterSupplier').val('');
 
             loadData();
 
