@@ -675,11 +675,15 @@ class P2HController extends Controller
                 $shiftData[$item->shift] = $item;
             }
 
+            $forklift = ForkliftModel::where('nomor_unit', $nomor_unit)->first();
+            $section = $forklift ? $this->formatSection($forklift->section) : '-';
+
             $result[] = [
                 // 'id' => $id,
                 'tanggal' => $tanggal,
                 'nomor_unit' => $nomor_unit,
                 'jenis_p2h' => $jenis_p2h,
+                'section' => $section,
                 'shifts' => $shiftData
             ];
         }
@@ -794,10 +798,14 @@ class P2HController extends Controller
                 $shiftData[$item->shift] = $item;
             }
 
+            $pm = PalletMoverModel::where('nomor_unit', $nomor_unit)->first();
+            $section = $pm ? $this->formatSection($pm->section) : '-';
+
             $result[] = [
                 'tanggal' => $tanggal,
                 'nomor_unit' => $nomor_unit,
                 'jenis_p2h' => $jenis_p2h,
+                'section' => $section,
                 'shifts' => $shiftData
             ];
         }
@@ -1701,5 +1709,15 @@ class P2HController extends Controller
             ->map(fn($u) => ['username' => $u->username, 'nik' => $u->nik]);
 
         return response()->json(['backups' => $backups]);
+    }
+
+    private function formatSection($section)
+    {
+        return match ($section) {
+            'warehouse_raw_material' => 'Warehouse Raw Material',
+            'warehouse_finish_goods' => 'Warehouse Finish Goods',
+            'warehouse_co_product'   => 'Warehouse Co Product',
+            default => ucwords(str_replace('_', ' ', (string)$section))
+        };
     }
 }
