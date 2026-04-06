@@ -523,7 +523,7 @@
             if (detail.bin) {
                 let bin = detail.bin;
                 let loc = bin.location;
-                let optionText = `${loc.plant} - ${loc.s_loc} - ${loc.zona} - ${loc.bin} - (${bin.kolom}.${bin.level})`;
+                let optionText = `${loc.plant} - ${loc.s_loc} - ${loc.gudang} - ${loc.zona} - ${loc.bin} - (${bin.kolom}.${bin.level})`;
 
                 // Append and select the option for AJAX select2
                 let newOption = new Option(optionText, detail.loc_id, true, true);
