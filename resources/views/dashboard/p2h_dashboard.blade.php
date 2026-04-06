@@ -581,16 +581,39 @@
             }
 
             units.forEach(unit => {
-                let row = `<tr><td class="fw-bold bg-light">${unit.nomor_unit}</td>`;
+                let row = `<tr><td class="fw-bold bg-light text-start ps-3">${unit.nomor_unit}</td>`;
+
                 dates.forEach(date => {
-                    const isChecked = unit.status[date];
-                    const icon = isChecked ?
-                        '<i class="ri-checkbox-circle-fill text-success fs-20"></i>' :
-                        '<i class="ri-close-circle-fill text-danger fs-20" style="opacity: 0.5;"></i>';
+                    const inspections = unit.status[date] || [];
+                    const isChecked = inspections.length > 0;
+
+                    let icon = '';
+                    if (isChecked) {
+                        const tooltipContent = inspections.map(ins => {
+                            let content = `<b>Shift ${ins.shift}</b>: ${ins.operator}`;
+                            if (ins.percentage !== undefined && ins.percentage !== null) {
+                                content += ` (${ins.percentage}%)`;
+                            }
+                            return content;
+                        }).join('<br>');
+                        icon = `<i class="ri-checkbox-circle-fill text-success fs-20" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-html="true" 
+                                   data-bs-title="${tooltipContent}"
+                                   style="cursor: help;"></i>`;
+                    } else {
+                        icon = '<i class="ri-close-circle-fill text-danger fs-20" style="opacity: 0.3;"></i>';
+                    }
                     row += `<td style="padding: 5px 0;">${icon}</td>`;
                 });
                 row += '</tr>';
                 body.append(row);
+            });
+
+            // Re-initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
             });
         }
 

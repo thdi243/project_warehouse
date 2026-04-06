@@ -481,15 +481,13 @@ class P2hDashboardController extends Controller
         // 4. Fetch P2H records for the entire month
         $forkliftRecords = P2HForklfitModel::whereYear('tanggal', $startOfMonth->year)
             ->whereMonth('tanggal', $startOfMonth->month)
-            ->select('nomor_unit', 'tanggal')
-            ->distinct()
+            ->select('nomor_unit', 'tanggal', 'operator_name', 'shift', 'persentase')
             ->get()
             ->groupBy('nomor_unit');
 
         $palletRecords = P2HPalletMoverModel::whereYear('tanggal', $startOfMonth->year)
             ->whereMonth('tanggal', $startOfMonth->month)
-            ->select('nomor_unit', 'tanggal')
-            ->distinct()
+            ->select('nomor_unit', 'tanggal', 'operator_name', 'shift')
             ->get()
             ->groupBy('nomor_unit');
 
@@ -499,7 +497,14 @@ class P2hDashboardController extends Controller
             $records = $forkliftRecords->get($unit->nomor_unit, collect());
 
             foreach ($dates as $date) {
-                $unitStatus[$date] = $records->contains('tanggal', $date);
+                // Get all inspections for this day
+                $unitStatus[$date] = $records->where('tanggal', $date)->map(function ($r) {
+                    return [
+                        'operator'   => $r->operator_name,
+                        'shift'      => $r->shift,
+                        'percentage' => $r->persentase // Use DB column directly
+                    ];
+                })->values()->all();
             }
 
             return [
@@ -513,7 +518,13 @@ class P2hDashboardController extends Controller
             $records = $palletRecords->get($unit->nomor_unit, collect());
 
             foreach ($dates as $date) {
-                $unitStatus[$date] = $records->contains('tanggal', $date);
+                $unitStatus[$date] = $records->where('tanggal', $date)->map(function ($r) {
+                    return [
+                        'operator'   => $r->operator_name,
+                        'shift'      => $r->shift,
+                        // Pallet Mover doesn't show percentage here
+                    ];
+                })->values()->all();
             }
 
             return [
