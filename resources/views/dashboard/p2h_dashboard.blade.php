@@ -441,6 +441,73 @@
                     </div>
                 </div>
             </div>
+
+            <div class="row mb-3" data-aos="fade-up">
+                <div class="col-md-4">
+                    <div class="card shadow-sm rounded-4 border-0">
+                        <div class="card-body p-2 d-flex align-items-center gap-2">
+                            <label class="form-label mb-0 ms-2 fw-bold text-nowrap">Filter Bulan Tabel:</label>
+                            <input type="month" id="filterBulanTabel" class="form-control form-control-sm shadow-sm"
+                                value="{{ date('Y-m') }}">
+                            <button class="btn btn-primary btn-sm px-3" id="btnFilterTabel">Terapkan</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm rounded-4 overflow-hidden" data-aos="fade-up">
+                        <div class="card-header bg-light">
+                            <h4 class="card-title mb-0">Forklift Daily P2H Status (Full Month)</h4>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm text-center align-middle mb-0"
+                                    id="tableDailyForklift">
+                                    <thead class="table-light">
+                                        <tr id="headerDailyForklift">
+                                            <th>Unit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bodyDailyForklift">
+                                        <tr>
+                                            <td colspan="32" class="py-4">Loading data...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm rounded-4 overflow-hidden" data-aos="fade-up">
+                        <div class="card-header bg-light">
+                            <h4 class="card-title mb-0">Pallet Mover Daily P2H Status (Full Month)</h4>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm text-center align-middle mb-0"
+                                    id="tableDailyPallet">
+                                    <thead class="table-light">
+                                        <tr id="headerDailyPallet">
+                                            <th>Unit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bodyDailyPallet">
+                                        <tr>
+                                            <td colspan="32" class="py-4">Loading data...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 @endsection
@@ -457,6 +524,65 @@
             loadTopMasalahChartPallMov();
             loadOperatorChartPallMov();
             loadUnitPallMovMasalah();
+            loadDailyStatus();
+
+            // Event listener filter tabel
+            $('#btnFilterTabel').on('click', function() {
+                const bulan = $('#filterBulanTabel').val();
+                loadDailyStatus(bulan);
+            });
+
+            // Load Daily Status Matrix
+            function loadDailyStatus(bulan = null) {
+                $.ajax({
+                    url: "{{ url('api/dashboard/p2h/daily-status') }}",
+                    method: 'GET',
+                    data: bulan ? {
+                        bulan: bulan
+                    } : {},
+                    dataType: 'json',
+                    success: function(res) {
+                        renderDailyTable('Forklift', res.dates, res.forklifts, '#headerDailyForklift',
+                            '#bodyDailyForklift');
+                        renderDailyTable('Pallet Mover', res.dates, res.pallet_movers, '#headerDailyPallet',
+                            '#bodyDailyPallet');
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal load daily status:', xhr.responseText);
+                    }
+                });
+            }
+
+            function renderDailyTable(type, dates, units, headerId, bodyId) {
+                const header = $(headerId);
+                const body = $(bodyId);
+
+                header.empty().append('<th style="min-width: 80px;">Unit</th>');
+                dates.forEach(date => {
+                    const d = new Date(date);
+                    const dayNum = d.getDate();
+                    header.append(`<th title="${date}" style="min-width: 35px; padding: 5px 2px;">${dayNum}</th>`);
+                });
+
+                body.empty();
+                if (units.length === 0) {
+                    body.append(`<tr><td colspan="${dates.length + 1}">No active units found</td></tr>`);
+                    return;
+                }
+
+                units.forEach(unit => {
+                    let row = `<tr><td class="fw-bold bg-light">${unit.nomor_unit}</td>`;
+                    dates.forEach(date => {
+                        const isChecked = unit.status[date];
+                        const icon = isChecked ?
+                            '<i class="ri-checkbox-circle-fill text-success fs-16"></i>' :
+                            '<i class="ri-close-circle-fill text-danger fs-16" style="opacity: 0.3;"></i>';
+                        row += `<td style="padding: 5px 0;">${icon}</td>`;
+                    });
+                    row += '</tr>';
+                    body.append(row);
+                });
+            }
 
             // Load summary
             function loadSummary() {

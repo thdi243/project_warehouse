@@ -152,7 +152,7 @@ class P2hDashboardController extends Controller
             ->select('operator_name', DB::raw('COUNT(*) as jumlah'))
             ->groupBy('operator_name')
             ->orderByDesc('jumlah')
-            ->limit(5)
+            ->limit(15)
             ->get();
 
         // Hitung rata-rata kelayakan per operator
@@ -367,7 +367,7 @@ class P2hDashboardController extends Controller
             ->select('operator_name', DB::raw('COUNT(*) as jumlah'))
             ->groupBy('operator_name')
             ->orderByDesc('jumlah')
-            ->limit(5)
+            ->limit(15)
             ->get();
 
         // Hitung rata-rata kelayakan per operator
@@ -458,6 +458,76 @@ class P2hDashboardController extends Controller
             'bulan' => $bulan,
             'total_unit' => $top->count(),
             'data' => $top
+        ]);
+    }
+
+    public function getDailyStatusTable(Request $request)
+    {
+        // 1. Get Month (YYYY-MM)
+        $bulan = $request->get('bulan') ?? Carbon::now()->format('Y-m');
+        $startOfMonth = Carbon::parse($bulan)->startOfMonth();
+        $daysInMonth = $startOfMonth->daysInMonth;
+
+        // 2. Generate all dates for the month
+        $dates = [];
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $dates[] = $startOfMonth->copy()->day($d)->format('Y-m-d');
+        }
+
+        // 3. Fetch all active units
+        $forklifts = ForkliftModel::where('status', 'active')->orderBy('nomor_unit')->get(['nomor_unit']);
+        $palletMovers = PalletMoverModel::where('status', 'active')->orderBy('nomor_unit')->get(['nomor_unit']);
+
+        // 4. Fetch P2H records for the entire month
+        $forkliftRecords = P2HForklfitModel::whereYear('tanggal', $startOfMonth->year)
+            ->whereMonth('tanggal', $startOfMonth->month)
+            ->select('nomor_unit', 'tanggal')
+            ->distinct()
+            ->get()
+            ->groupBy('nomor_unit');
+
+        $palletRecords = P2HPalletMoverModel::whereYear('tanggal', $startOfMonth->year)
+            ->whereMonth('tanggal', $startOfMonth->month)
+            ->select('nomor_unit', 'tanggal')
+            ->distinct()
+            ->get()
+            ->groupBy('nomor_unit');
+
+        // 5. Build status matrix
+        $forkliftData = $forklifts->map(function ($unit) use ($dates, $forkliftRecords) {
+            $unitStatus = [];
+            $records = $forkliftRecords->get($unit->nomor_unit, collect());
+
+            foreach ($dates as $date) {
+                $unitStatus[$date] = $records->contains('tanggal', $date);
+            }
+
+            return [
+                'nomor_unit' => $unit->nomor_unit,
+                'status'     => $unitStatus
+            ];
+        });
+
+        $palletData = $palletMovers->map(function ($unit) use ($dates, $palletRecords) {
+            $unitStatus = [];
+            $records = $palletRecords->get($unit->nomor_unit, collect());
+
+            foreach ($dates as $date) {
+                $unitStatus[$date] = $records->contains('tanggal', $date);
+            }
+
+            return [
+                'nomor_unit' => $unit->nomor_unit,
+                'status'     => $unitStatus
+            ];
+        });
+
+        return response()->json([
+            'bulan'         => $bulan,
+            'days_in_month' => $daysInMonth,
+            'dates'         => $dates,
+            'forklifts'     => $forkliftData,
+            'pallet_movers' => $palletData
         ]);
     }
 }

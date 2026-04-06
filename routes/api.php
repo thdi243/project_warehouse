@@ -58,6 +58,7 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/pallet-mover/part-masalah', [P2hDashboardController::class, 'topMasalahPalletMover']);
         Route::get('/pallet-mover/operator', [P2hDashboardController::class, 'operatorStatPalletMover']);
         Route::get('/masalah/unit-pallet-mover', [P2hDashboardController::class, 'unitPalletMoverMasalah']);
+        Route::get('/daily-status', [P2hDashboardController::class, 'getDailyStatusTable']);
     });
 
     // WSP
