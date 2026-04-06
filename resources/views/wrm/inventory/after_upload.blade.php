@@ -1,4 +1,24 @@
 @extends('layouts.app')
+@section('styles')
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        font-size: 0.85rem !important;
+        min-height: 38px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-dropdown .select2-results__options {
+        font-size: 0.85rem !important;
+        max-height: 250px !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+        line-height: normal !important;
+        padding-left: 0.75rem !important;
+    }
+</style>
+@endsection
 
 @section('title', ' | Inventory Stock Location')
 
@@ -57,7 +77,7 @@
 
                                 @foreach ($zones as $zone)
                                 <option value="{{ $zone['location_id'] }}">
-                                    {{ $zone['plant'] }} - {{ $zone['s_loc'] }} - {{ $zone['zona'] }} - {{ $zone['bin'] }}
+                                    {{ $zone['plant'] }} - {{ $zone['s_loc'] }} - {{ $zone['gudang'] }} - {{ $zone['zona'] }} - {{ $zone['bin'] }}
                                 </option>
                                 @endforeach
 
@@ -85,7 +105,7 @@
                                     </th>
                                     <th>Lokasi
                                         <br>
-                                        <small class="text-muted">Plant - S Loc - Zona - Bin - Bin Kordinat</small>
+                                        <small class="text-muted">Plant - S Loc - Gudang - Zona - Bin - Bin Kordinat</small>
                                     </th>
                                 </tr>
                             </thead>
@@ -160,6 +180,14 @@
 
 <script>
     $(document).ready(function() {
+        // Initialize Select2
+        $('#supplier, #pallet, #locationSelect').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Pilih...',
+            allowClear: true
+        });
+
         $('#globalStatus').on('change', function() {
             const val = $(this).val();
             $('.item-status').val(val);
@@ -328,7 +356,7 @@
                     if (locationMap[tempId]) {
                         let loc = locationMap[tempId];
                         let lokasi =
-                            `${loc.plant} - ${loc.s_loc} - ${loc.zona} - ${loc.bin_id} - (${loc.bin_coordinate})`;
+                            `${loc.plant} - ${loc.s_loc} - ${loc.gudang} - ${loc.zona} - ${loc.bin_id} - (${loc.bin_coordinate})`;
 
                         $(this).find('.bin-location').contents().first().replaceWith(
                             lokasi);

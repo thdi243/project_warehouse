@@ -233,6 +233,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/store-upload', [InboundController::class, 'storeUpload'])->name('wrm.inventory.store-upload');
                 Route::get('/data', [InboundController::class, 'getData'])->name('wrm.inventory.getData');
                 Route::get('/get-barang', [InboundController::class, 'getBarang'])->name('wrm.inventory.getBarang');
+                Route::get('/get-location-ajax', [InboundController::class, 'getLocationAjax'])->name('wrm.inventory.getLocationsAjax');
                 Route::get('/get-filter', [InboundController::class, 'getFilter'])->name('wrm.inventory.getFilter');
                 Route::put('/update/{id}', [InboundController::class, 'update'])->name('wrm.inventory.update');
                 Route::delete('/delete/{id}', [InboundController::class, 'destroy'])->name('wrm.inventory.delete');

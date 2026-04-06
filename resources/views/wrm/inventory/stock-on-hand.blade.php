@@ -1,4 +1,24 @@
 @extends('layouts.app')
+@section('styles')
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        font-size: 0.85rem !important;
+        min-height: 38px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-dropdown .select2-results__options {
+        font-size: 0.85rem !important;
+        max-height: 250px !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+        line-height: normal !important;
+        padding-left: 0.75rem !important;
+    }
+</style>
+@endsection
 
 @section('title', ' | Stock On Hand RM')
 
@@ -234,16 +254,8 @@
 
                     <div class="mb-2">
                         <label>Mid</label>
-                        {{-- <select id="midEdit" name="barang_id" class="form-select"></select> --}}
-                        <select class="form-select" id="midEdit" name="barang_id">
-                            <option value="">Pilih Barang</option>
-
-                            @foreach ($barang as $b)
-                            <option value="{{ $b->id }}">
-                                {{ $b->mid }} - {{ $b->nama_barang }}
-                            </option>
-                            @endforeach
-                        </select>
+                        <input type="hidden" name="barang_id" id="barangIdEdit">
+                        <input type="text" class="form-control bg-light" id="midEdit" readonly>
                     </div>
 
                     <div class="mb-2">
@@ -284,16 +296,8 @@
 
                     <div class="mb-2">
                         <label>Location</label>
-                        {{-- <select class="form-select" name="loc_id" id="locEdit"></select> --}}
                         <select class="form-select" id="locEdit" name="loc_id">
                             <option value="">Pilih Location</option>
-
-                            @foreach ($location as $loc)
-                            <option value="{{ $loc->id }}">
-                                {{ $loc->location->plant }} - {{ $loc->location->s_loc }} - {{ $loc->location->zona }} -
-                                {{ $loc->location->bin }} - ({{ $loc->kolom }}.{{ $loc->level }})
-                            </option>
-                            @endforeach
                         </select>
                     </div>
 
@@ -330,50 +334,46 @@
     }
 
     $(document).ready(function() {
-
-        $('#barang_id').select2({
+        // Modal edit selects
+        $('#supplierEdit').select2({
             theme: 'bootstrap-5',
             width: '100%',
-            dropdownParent: $('#modalForm'),
-            placeholder: 'Cari MID / Nama Barang...',
-            allowClear: true,
+            dropdownParent: $('#modalFormEdit'),
+            placeholder: 'Pilih...',
+            allowClear: true
+        });
 
+        // Filter selects
+        $('#filterGroup, #filterJenisBahan, #filterSupplier').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Pilih...',
+            allowClear: true
+        });
+
+        $('#locEdit').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            dropdownParent: $('#modalFormEdit'),
+            placeholder: 'Cari Location...',
+            allowClear: true,
             ajax: {
-                url: '/inventory/get-barang',
+                url: "{{ route('wrm.inventory.getLocationsAjax') }}",
                 dataType: 'json',
                 delay: 250,
-
                 data: function(params) {
                     return {
                         q: params.term
                     };
                 },
-
                 processResults: function(res) {
                     return {
                         results: res.data
                     };
                 },
-
                 cache: true
             },
-
-            templateResult: function(data) {
-                if (!data.id) return data.text;
-
-                return $(`
-                        <div>
-                            <strong>${data.mid}</strong>
-                            <small class="text-muted"> - ${data.nama_barang}</small>
-                        </div>
-                    `);
-            },
-
-            templateSelection: function(data) {
-                return data.mid ?
-                    `${data.mid} - ${data.nama_barang}` :
-                    data.text;
-            }
+            minimumInputLength: 0
         });
 
         loadData();
@@ -429,7 +429,7 @@
                                     <td>${d.pallet_id}</td>
                                     <td>${numberFormat(d.qty)}</td>
                                     <td>${d.status.toUpperCase()}</td>
-                                    <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>
+                                    <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>
                                     <td>${d.inbound.incoming_date}</td>
 
                                     @can('permission', 'wrm-inventory-soh-plus')
@@ -508,24 +508,29 @@
             $('#id').val(detail.id);
 
             $('#noSpbEdit').val(header.no_spb);
-            $('#supplierEdit').val(header.supplier ?? '');
+            $('#supplierEdit').val(header.supplier ?? '').trigger('change');
 
-            $('#midEdit').val(detail.barang.id);
+            $('#barangIdEdit').val(detail.barang.id);
+            $('#midEdit').val(`${detail.barang.mid} - ${detail.barang.nama_barang}`);
             $('#qtyEdit').val(detail.qty);
             $('#statusEdit').val(detail.status);
             $('#groupEdit').val(detail.group);
             $('#palletEdit').val(detail.pallet_id ?? '');
             $('#catatan').val(detail.catatan ?? '');
 
-            // Ensure current bin is in the dropdown (it might be filtered out if it's "used")
+            // Handle AJAX value for location
             let locSelect = $('#locEdit');
-            if (locSelect.find(`option[value="${detail.loc_id}"]`).length === 0) {
+            if (detail.bin) {
                 let bin = detail.bin;
                 let loc = bin.location;
                 let optionText = `${loc.plant} - ${loc.s_loc} - ${loc.zona} - ${loc.bin} - (${bin.kolom}.${bin.level})`;
-                locSelect.append(new Option(optionText, detail.loc_id));
+
+                // Append and select the option for AJAX select2
+                let newOption = new Option(optionText, detail.loc_id, true, true);
+                locSelect.append(newOption).trigger('change');
+            } else {
+                locSelect.val(null).trigger('change');
             }
-            locSelect.val(detail.loc_id);
 
             $('#modalFormEdit').modal('show');
         });
@@ -671,11 +676,11 @@
 
         $('#btnReset').click(function() {
 
-            $('#filterGroup').val('');
-            $('#filterJenisBahan').val('');
+            $('#filterGroup').val('').trigger('change');
+            $('#filterJenisBahan').val('').trigger('change');
             $('#filterMid').val('');
             $('#filterDate').val('');
-            $('#filterSupplier').val('');
+            $('#filterSupplier').val('').trigger('change');
 
             loadData();
 
@@ -690,14 +695,14 @@
                     groupHtml += `<option value="${g}">${g}</option>`;
                 });
 
-                $('#filterGroup').html(groupHtml);
+                $('#filterGroup').html(groupHtml).trigger('change');
 
                 let jenisHtml = `<option value="">Semua Jenis Bahan</option>`;
                 res.jenis_bahan.forEach(j => {
                     jenisHtml += `<option value="${j}">${j}</option>`;
                 });
 
-                $('#filterJenisBahan').html(jenisHtml);
+                $('#filterJenisBahan').html(jenisHtml).trigger('change');
 
             });
 

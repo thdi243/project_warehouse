@@ -90,18 +90,9 @@ class InboundController extends Controller
             ->whereRaw('LOWER(nama_barang) LIKE ?', ['%gula%'])
             ->get();
 
-        $usedBinIds = StockInboundDetail::where('status', '!=', 'ISSUED')->pluck('loc_id')->toArray();
-
-        $location = MasterBinModel::with('location')
-            ->whereNotIn('id', $usedBinIds)
-            ->get()
-            ->sortBy(function ($bin) {
-                return ($bin->location->plant ?? '') . ($bin->location->s_loc ?? '') . ($bin->location->zona ?? '') . ($bin->location->bin ?? '') . $bin->kolom . $bin->level;
-            });
-
         $suppliers = MasterSupplierModel::orderBy('nama')->get();
 
-        return view('wrm.inventory.stock-on-hand', compact('barang', 'location', 'suppliers'));
+        return view('wrm.inventory.stock-on-hand', compact('barang', 'suppliers'));
     }
 
     public function indexUpload()
@@ -207,7 +198,7 @@ class InboundController extends Controller
                 $errorDetails[] = "Lokasi {$locName} - ruang tidak cukup";
             }
             */
-            
+
             // ATURAN BARU: TAMPILKAN SEMUA ZONA YANG MEMILIKI BIN KOSONG
             $first = $bins->first();
             $location = $first->location;
@@ -216,6 +207,7 @@ class InboundController extends Controller
                 'location_id' => $location->id,
                 'plant' => $location->plant,
                 's_loc' => $location->s_loc,
+                'gudang' => $location->gudang,
                 'zona' => $location->zona,
                 'bin' => $location->bin, // This is the Rack ID / Bin name
             ];
@@ -278,6 +270,51 @@ class InboundController extends Controller
         return response()->json([
             'status' => true,
             'data' => $barang
+        ]);
+    }
+
+    public function getLocationAjax(Request $request)
+    {
+        $q = $request->q;
+
+        $query = MasterBinModel::with('location');
+
+        if ($q) {
+            $query->where(function ($sub) use ($q) {
+                $sub->whereHas('location', function ($loc) use ($q) {
+                    $loc->where('plant', 'like', "%{$q}%")
+                        ->orWhere('s_loc', 'like', "%{$q}%")
+                        ->orWhere('gudang', 'like', "%{$q}%")
+                        ->orWhere('zona', 'like', "%{$q}%")
+                        ->orWhere('bin', 'like', "%{$q}%");
+                })
+                    ->orWhere('kolom', 'like', "%{$q}%")
+                    ->orWhere('level', 'like', "%{$q}%");
+            });
+        }
+
+        $locations = $query->limit(25)->get()->map(function ($bin) {
+            $loc = $bin->location;
+            $text = "{$loc->plant} - {$loc->s_loc} - {$loc->gudang} - {$loc->zona} - {$loc->bin} - ({$bin->kolom}.{$bin->level})";
+
+            return [
+                'id' => $bin->id,
+                'text' => $text,
+                'details' => [
+                    'plant' => $loc->plant,
+                    's_loc' => $loc->s_loc,
+                    'gudang' => $loc->gudang,
+                    'zona' => $loc->zona,
+                    'bin' => $loc->bin,
+                    'kolom' => $bin->kolom,
+                    'level' => $bin->level,
+                ]
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'data' => $locations
         ]);
     }
 
@@ -805,6 +842,7 @@ class InboundController extends Controller
                     'loc_id' => $bin->id,
                     'plant' => $location->plant,
                     's_loc' => $location->s_loc,
+                    'gudang' => $location->gudang,
                     'zona' => $location->zona,
                     'bin_id' => $location->bin,
                     'bin_coordinate' => "$bin->kolom.$bin->level",
