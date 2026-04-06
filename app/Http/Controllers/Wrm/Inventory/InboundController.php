@@ -277,7 +277,10 @@ class InboundController extends Controller
     {
         $q = $request->q;
 
-        $query = MasterBinModel::with('location');
+        // Get IDs of bins that are currently occupied
+        $occupiedBinIds = StockInboundDetail::where('status', '!=', 'ISSUED')->pluck('loc_id');
+
+        $query = MasterBinModel::with('location')->whereNotIn('id', $occupiedBinIds);
 
         if ($q) {
             $query->where(function ($sub) use ($q) {
@@ -337,6 +340,17 @@ class InboundController extends Controller
             foreach ($request->loc_id as $tempId => $locId) {
                 if (empty($locId)) {
                     throw new \Exception("Ada pallet yang belum ditentukan lokasinya. Silahkan pilih zona terlebih dahulu.");
+                }
+
+                // Cek apakah lokasi ini sudah terpakai
+                $isOccupied = StockInboundDetail::where('loc_id', $locId)
+                    ->where('status', '!=', 'ISSUED')
+                    ->exists();
+
+                if ($isOccupied) {
+                    $bin = MasterBinModel::with('location')->find($locId);
+                    $locText = $bin ? "{$bin->location->plant} - {$bin->location->bin}" : "dengan ID #{$locId}";
+                    throw new \Exception("Lokasi {$locText} sudah terpakai oleh stok lain.");
                 }
             }
 
@@ -542,6 +556,16 @@ class InboundController extends Controller
 
             $oldLocationId = $oldBin->loc_id;
             $newLocationId = $newBin->loc_id;
+
+            // Cek apakah lokasi baru sudah terpakai oleh ID lain
+            $isOccupied = StockInboundDetail::where('loc_id', $request->loc_id)
+                ->where('id', '!=', $id) // Kecuali dirinya sendiri
+                ->where('status', '!=', 'ISSUED')
+                ->exists();
+
+            if ($isOccupied) {
+                throw new \Exception("Lokasi baru sudah terpakai oleh stok lain.");
+            }
 
             $detail->update([
                 'pallet_id' => $request->pallet_id,
