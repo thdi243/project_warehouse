@@ -48,8 +48,13 @@
                 <form id="locationForm" method="POST" action="{{ route('wrm.inventory.store-upload') }}">
                     @csrf
 
-                    <div class="row gy-2 mb-3">
-                        <div class="col-md-4">
+                    <div class="row gy-3 mb-3">
+                        <div class="col-md-3">
+                            <label for="incoming_date" class="form-label fw-bold">Incoming Date <span class="text-danger">*</span></label>
+                            <input type="date" name="incoming_date" id="incoming_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        </div>
+
+                        <div class="col-md-3">
                             <label for="supplier" class="form-label fw-bold">Supplier <span class="text-danger">*</span></label>
                             <select name="supplier" id="supplier" class="form-select" required>
                                 <option value="">Pilih Supplier</option>
@@ -59,7 +64,7 @@
                             </select>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="pallet" class="form-label fw-bold">Pallet <span class="text-danger">*</span></label>
                             <select name="pallet" id="pallet" class="form-select" required>
                                 <option value="">Pilih Pallet</option>
@@ -69,18 +74,15 @@
                             </select>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="location" class="form-label fw-bold">Lokasi <span class="text-danger">*</span></label>
                             <select id="locationSelect" class="form-select">
-
                                 <option value="">Pilih Lokasi per Bin</option>
-
                                 @foreach ($zones as $zone)
                                 <option value="{{ $zone['location_id'] }}">
                                     {{ $zone['plant'] }} - {{ $zone['s_loc'] }} - {{ $zone['gudang'] }} - {{ $zone['zona'] }} - {{ $zone['bin'] }}
                                 </option>
                                 @endforeach
-
                             </select>
                         </div>
                     </div>
@@ -128,9 +130,10 @@
                                             <option value="BLOCKED">BLOCKED</option>
                                         </select>
                                     </td>
-                                    <td class="bin-location">
-                                        -
-                                        <input type="hidden" name="loc_id[{{ $row->id }}]" class="loc-id">
+                                    <td class="bin-location" style="min-width: 250px;">
+                                        <select name="loc_id[{{ $row->id }}]" class="form-select form-select-sm manual-loc-select">
+                                            <option value="">- Pilih Lokasi -</option>
+                                        </select>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -193,12 +196,44 @@
             $('.item-status').val(val);
         });
 
+        // Initialize row-level Select2 for manual location selection
+        $('.manual-loc-select').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Cari Lokasi/Bin...',
+            allowClear: true,
+            ajax: {
+                url: "{{ route('wrm.inventory.getLocationsAjax') }}",
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    // Collect all currently selected loc_ids to exclude them from the search
+                    let selectedIds = [];
+                    $('.manual-loc-select').each(function() {
+                        let val = $(this).val();
+                        if (val) selectedIds.push(val);
+                    });
+
+                    return {
+                        q: params.term,
+                        exclude: selectedIds
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.data
+                    };
+                },
+                cache: true
+            }
+        });
+
         $('#locationForm').on('submit', function(e) {
             e.preventDefault();
 
             // Check if location is selected
             let allLocationsFilled = true;
-            $('.loc-id').each(function() {
+            $('.manual-loc-select').each(function() {
                 if (!$(this).val()) {
                     allLocationsFilled = false;
                     return false;
@@ -209,7 +244,7 @@
                 Swal.fire({
                     icon: 'warning',
                     title: 'Lokasi Belum Dipilih',
-                    text: 'Silahkan pilih lokasi terlebih dahulu'
+                    text: 'Silahkan tentukan lokasi untuk semua pallet terlebih dahulu'
                 });
                 return;
             }
@@ -334,8 +369,13 @@
             let locationId = $(this).val();
             if (!locationId) return;
 
+            // Clear all current selections first or we can keep them?
+            // User requested: "lebihan itu dibikin select manual saja"
+            // So we fill what we can from plot-location result.
+
             $.get("{{ route('wrm.inventory.plot-location') }}", {
-                loc_id: locationId
+                loc_id: locationId,
+                no_spb: "{{ $currentNoSpb }}"
             }, function(res) {
                 // Create a mapping by temp_id for fast lookup
                 let locationMap = {};
@@ -345,27 +385,26 @@
 
                 // Update each row based on temp_id (which is $row->id from Blade)
                 $('tbody tr').each(function() {
-                    let tempId = $(this).find('.loc-id').attr('name');
+                    let select = $(this).find('.manual-loc-select');
+                    let name = select.attr('name');
+                    if (!name) return;
 
-                    // Extract temp_id from name="loc_id[123]" format
-                    let match = tempId.match(/\[(\d+)\]/);
+                    let match = name.match(/\[(\d+)\]/);
                     if (!match) return;
 
-                    tempId = parseInt(match[1]);
+                    let tempId = parseInt(match[1]);
 
                     if (locationMap[tempId]) {
                         let loc = locationMap[tempId];
-                        let lokasi =
+                        let text =
                             `${loc.plant} - ${loc.s_loc} - ${loc.gudang} - ${loc.zona} - ${loc.bin_id} - (${loc.bin_coordinate})`;
 
-                        $(this).find('.bin-location').contents().first().replaceWith(
-                            lokasi);
-                        $(this).find('.loc-id').val(loc.loc_id);
+                        // Create the option and append to Select2
+                        let newOption = new Option(text, loc.loc_id, true, true);
+                        select.empty().append(newOption).trigger('change');
                     } else {
-                        // If no location assigned (bins ran out), show warning
-                        $(this).find('.bin-location').contents().first().replaceWith(
-                            '❌ Tidak ada bin');
-                        $(this).find('.loc-id').val('');
+                        // If no location assigned (bins ran out), leave it empty for manual selection
+                        select.val(null).trigger('change');
                     }
                 });
             });

@@ -71,7 +71,7 @@
                             <option value="">-- Pilih Zona - Bin --</option>
                             @foreach ($locations as $location)
                             <option value="{{ $location->id }}">
-                                {{ $location->plant }} | {{ $location->s_loc }} | Zona: {{ $location->zona }} | Bin: {{ $location->bin }}
+                                {{ $location->plant }} | {{ $location->s_loc }} | {{ $location->gudang }} | Zona: {{ $location->zona }} | Bin: {{ $location->bin }}
                             </option>
                             @endforeach
                         </select>

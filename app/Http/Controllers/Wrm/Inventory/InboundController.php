@@ -54,7 +54,7 @@ class InboundController extends Controller
             while ($currentColKey === null || $binPointer >= count($currentColBins)) {
                 if ($currentColIndex >= count($colKeys)) {
                     // Out of space!
-                    return false;
+                    return $allocated;
                 }
 
                 $colKey = $colKeys[$currentColIndex];
@@ -225,8 +225,8 @@ class InboundController extends Controller
 
         $globalAllocationResult = $this->allocateBins($data, $allAvailableBinsGrouped, $dbColumnOwners);
 
-        if ($globalAllocationResult === false) {
-            $locationError = 'Kapasitas gudang (semua zona) tidak mencukupi untuk menampung ' . count($data) . ' pallet no_spb ' . $firstNoSpb . '.';
+        if (count($globalAllocationResult) < count($data)) {
+            $locationError = 'Kapasitas gudang (semua zona) tidak mencukupi untuk menampung ' . count($data) . ' pallet no_spb ' . $firstNoSpb . '. (Tersedia hanya untuk ' . count($globalAllocationResult) . ' pallet)';
         }
 
         $pallet = MasterPalletModel::get();
@@ -276,27 +276,30 @@ class InboundController extends Controller
     public function getLocationAjax(Request $request)
     {
         $q = $request->q;
+        $exclude = (array) ($request->exclude ?? []);
 
         // Get IDs of bins that are currently occupied
         $occupiedBinIds = StockInboundDetail::where('status', '!=', 'ISSUED')->pluck('loc_id');
 
-        $query = MasterBinModel::with('location')->whereNotIn('id', $occupiedBinIds);
+        $query = MasterBinModel::with('location')
+            ->join('wrm_master_location', 'wrm_master_bin.loc_id', '=', 'wrm_master_location.id')
+            ->select('wrm_master_bin.*')
+            ->whereNotIn('wrm_master_bin.id', $occupiedBinIds)
+            ->when(!empty($exclude), function ($q) use ($exclude) {
+                $q->whereNotIn('wrm_master_bin.id', $exclude);
+            });
 
         if ($q) {
-            $query->where(function ($sub) use ($q) {
-                $sub->whereHas('location', function ($loc) use ($q) {
-                    $loc->where('plant', 'like', "%{$q}%")
-                        ->orWhere('s_loc', 'like', "%{$q}%")
-                        ->orWhere('gudang', 'like', "%{$q}%")
-                        ->orWhere('zona', 'like', "%{$q}%")
-                        ->orWhere('bin', 'like', "%{$q}%");
-                })
-                    ->orWhere('kolom', 'like', "%{$q}%")
-                    ->orWhere('level', 'like', "%{$q}%");
-            });
+            $parts = explode('-', $q);
+            foreach ($parts as $part) {
+                $part = trim($part);
+                if (empty($part)) continue;
+
+                $query->where(DB::raw("CONCAT_WS(' ', plant, s_loc, gudang, zona, bin, kolom, level)"), 'like', "%{$part}%");
+            }
         }
 
-        $locations = $query->limit(25)->get()->map(function ($bin) {
+        $locations = $query->limit(200)->get()->map(function ($bin) {
             $loc = $bin->location;
             $text = "{$loc->plant} - {$loc->s_loc} - {$loc->gudang} - {$loc->zona} - {$loc->bin} - ({$bin->kolom}.{$bin->level})";
 
@@ -327,6 +330,12 @@ class InboundController extends Controller
 
         try {
 
+            // Validasi duplikasi bin di dalam satu request upload
+            $locIds = array_filter($request->loc_id);
+            if (count($locIds) !== count(array_unique($locIds))) {
+                throw new \Exception("Ada bin/lokasi yang dipilih lebih dari satu kali untuk pallet berbeda. Silahkan periksa kembali.");
+            }
+
             $temps = TempUploadModel::whereIn('id', array_keys($request->loc_id))->get();
 
             if ($temps->isEmpty()) {
@@ -335,6 +344,9 @@ class InboundController extends Controller
 
             // Get the no_spb dari data yang akan disimpan
             $currentNoSpb = $temps->first()->no_spb;
+
+            // Combine selected date with current time to avoid 00:00:00
+            $incomingDateWithTime = $request->incoming_date . ' ' . date('H:i:s');
 
             // Validasi apakah semua temp_id punya loc_id dan loc_id tidak kosong
             foreach ($request->loc_id as $tempId => $locId) {
@@ -385,7 +397,7 @@ class InboundController extends Controller
                 if (!isset($headers[$temp->no_spb])) {
                     $headers[$temp->no_spb] = StockInbound::create([
                         'no_spb'        => $temp->no_spb,
-                        'incoming_date' => now(),
+                        'incoming_date' => $incomingDateWithTime,
                         'expired_date'  => $temp->expired_date ?? null,
                         'supplier'      => $request->supplier ?? $temp->supplier,
                         'created_by'    => Auth::id(),
@@ -413,8 +425,7 @@ class InboundController extends Controller
                 StockMovement::create([
                     'barang_id'  => $barang->id,
                     'loc_id'     => $locationId,
-                    'tanggal'    => now(),
-                    'qty'        => $temp->qty,
+                    'tanggal'    => $incomingDateWithTime,
                     'jenis'      => 'in',
                     'ref_type'   => 'inbound',
                     'ref_id'     => $detail->id,
@@ -507,12 +518,35 @@ class InboundController extends Controller
             });
         }
 
-        $data = $query->paginate(25);
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->no_spb) {
+            $query->whereHas('inbound', function ($q) use ($request) {
+                $q->where('no_spb', 'like', '%' . $request->no_spb . '%');
+            });
+        }
+
+        // Clone query for summary calculation (before pagination)
+        $summaryQuery = clone $query;
+
+        $summary = [
+            'total_pallet' => $summaryQuery->count(),
+            'total_qty' => $summaryQuery->sum('qty'),
+            'status_breakdown' => $summaryQuery->select('status', DB::raw('count(*) as count'), DB::raw('sum(qty) as total_qty'))
+                ->groupBy('status')
+                ->get()
+                ->keyBy('status')
+        ];
+
+        $data = $query->latest('id')->paginate(25);
 
         return response()->json([
             'status' => true,
             'message' => 'Data stock inventory berhasil diambil',
-            'data' => $data
+            'data' => $data,
+            'summary' => $summary
         ]);
     }
 
@@ -577,6 +611,17 @@ class InboundController extends Controller
                 'updated_by' => Auth::id(),
             ]);
 
+            // Update Header data (Incoming Date and Supplier)
+            if ($detail->inbound) {
+                // Combine selected date with current time
+                $incomingDateWithTime = $request->incoming_date . ' ' . date('H:i:s');
+
+                $detail->inbound->update([
+                    'incoming_date' => $incomingDateWithTime,
+                    'supplier'      => $request->supplier,
+                ]);
+            }
+
             $movement = StockMovement::where('ref_type', 'inbound')
                 ->where('ref_id', $detail->id)
                 ->first();
@@ -584,8 +629,9 @@ class InboundController extends Controller
             if ($movement) {
 
                 $movement->update([
-                    'qty'    => $request->qty,
-                    'loc_id' => $newLocationId,
+                    'qty'     => $request->qty,
+                    'loc_id'  => $newLocationId,
+                    'tanggal' => $incomingDateWithTime, // Sync the movement date with time
                     'catatan' => $request->catatan
                 ]);
             }
@@ -803,10 +849,15 @@ class InboundController extends Controller
     public function plotLocation(Request $request)
     {
         $locIdInput = $request->loc_id;
+        $noSpb = $request->no_spb;
 
         $today = Carbon::now();
 
-        $data = TempUploadModel::whereDate('incoming_date', $today)->get();
+        $data = TempUploadModel::whereDate('incoming_date', $today)
+            ->when($noSpb, function ($q) use ($noSpb) {
+                $q->where('no_spb', $noSpb);
+            })
+            ->get();
 
         $usedBinIds = StockInboundDetail::pluck('loc_id')->toArray();
 
@@ -831,11 +882,10 @@ class InboundController extends Controller
             ->get();
         */
 
-        // ATURAN BARU: CARI DI SEMUA ZONA YG KOSONG, TAPI PRIORITASKAN ZONA YANG DIPILIH
+        // ATURAN BARU: CARI HANYA DI ZONA YANG DIPILIH (Sesuai request user: manual select untuk lebihan)
         $bins = MasterBinModel::with('location')
             ->whereNotIn('id', $usedBinIds)
-            ->orderByRaw("CASE WHEN loc_id = ? THEN 1 ELSE 2 END", [$locIdInput])
-            ->orderBy('loc_id')
+            ->where('loc_id', $locIdInput)
             ->orderBy('kolom')
             ->orderBy('level')
             ->get();
@@ -853,25 +903,23 @@ class InboundController extends Controller
 
         $result = [];
 
-        if ($allocated !== false) {
-            foreach ($allocated as $alloc) {
-                $item = $alloc['item'];
-                $bin = $alloc['bin'];
-                $location = $bin->location;
+        foreach ($allocated as $alloc) {
+            $item = $alloc['item'];
+            $bin = $alloc['bin'];
+            $location = $bin->location;
 
-                $result[] = [
-                    'temp_id' => $item->id,
-                    'no_spb' => $item->no_spb,
-                    'pallet_id' => $item->pallet_id,
-                    'loc_id' => $bin->id,
-                    'plant' => $location->plant,
-                    's_loc' => $location->s_loc,
-                    'gudang' => $location->gudang,
-                    'zona' => $location->zona,
-                    'bin_id' => $location->bin,
-                    'bin_coordinate' => "$bin->kolom.$bin->level",
-                ];
-            }
+            $result[] = [
+                'temp_id' => $item->id,
+                'no_spb' => $item->no_spb,
+                'pallet_id' => $item->pallet_id,
+                'loc_id' => $bin->id,
+                'plant' => $location->plant,
+                's_loc' => $location->s_loc,
+                'gudang' => $location->gudang,
+                'zona' => $location->zona,
+                'bin_id' => $location->bin,
+                'bin_coordinate' => "$bin->kolom.$bin->level",
+            ];
         }
 
         return response()->json([

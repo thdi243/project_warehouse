@@ -26,8 +26,76 @@
 <div class="page-content">
     <div class="container-fluid">
 
+        {{-- Card Summary --}}
+        <div class="row g-3 mb-3" id="summarySection">
+            <div class="col-md-3">
+                <!-- <div class="card border-0 shadow-sm h-100 overflow-hidden" style="background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);"> -->
+                <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-primary">
+                    <div class="card-body text-white p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Total Inventory</h6>
+                                <h3 class="mb-0 fw-bold" id="totalQty">0</h3>
+                            </div>
+                            <div class="bg-soft-primary rounded-3 p-2">
+                                <i class="mdi mdi-database-outline mdi-36px"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <!-- <div class="card border-0 shadow-sm h-100 overflow-hidden" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);"> -->
+                <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-success">
+                    <div class="card-body text-white p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Unrest</h6>
+                                <h3 class="mb-0 fw-bold" id="unrestQty">0</h3>
+                            </div>
+                            <div class="bg-soft-success rounded-3 p-2">
+                                <i class="mdi mdi-check-circle-outline mdi-36px"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <!-- <div class="card border-0 shadow-sm h-100 overflow-hidden" style="background: linear-gradient(135deg, #f09819 0%, #edde5d 100%);"> -->
+                <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-info">
+                    <div class="card-body text-white p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Total Pallets</h6>
+                                <h3 class="mb-0 fw-bold" id="totalPalletsDisplay">0</h3>
+                            </div>
+                            <div class="bg-soft-info rounded-3 p-2">
+                                <i class="mdi mdi-layers-outline mdi-36px"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <!-- <div class="card border-0 shadow-sm h-100 overflow-hidden" style="background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%);"> -->
+                <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-danger">
+                    <div class="card-body text-white p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Blocked</h6>
+                                <h3 class="mb-0 fw-bold" id="blockedQty">0</h3>
+                            </div>
+                            <div class="bg-soft-danger rounded-3 p-2">
+                                <i class="mdi mdi-alert-octagon-outline mdi-36px"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- Card Filter --}}
-        <div class="card mb-3">
+        <div class="card">
             <div class="card-header">
                 <h5 class="mb-0 fw-bold">Filter Data</h5>
             </div>
@@ -55,7 +123,7 @@
 
                     <div class="col-md-3 d-flex align-items-end gap-2 text-nowrap">
                         <button class="btn btn-outline-primary w-100" data-bs-toggle="collapse"
-                            data-bs-target="#advancedFilter">
+                            data-bs-target="#advancedFilter" title="Filter lanjutan">
                             <i class="mdi mdi-filter-plus"></i>
                         </button>
                         <button class="btn btn-primary w-100" id="btnReset">
@@ -69,7 +137,18 @@
 
                         <div class="col-md-3">
                             <label class="form-label">Incoming Date</label>
-                            <input type="date" class="form-control" id="filterDate" placeholder="Cari MID">
+                            <input type="date" class="form-control" id="filterDate">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="filterStatus">
+                                <option value="">Semua Status</option>
+                                <option value="UNREST">UNREST</option>
+                                <option value="QI">QI</option>
+                                <option value="TRANSFER">TRANSFER</option>
+                                <option value="BLOCKED">BLOCKED</option>
+                            </select>
                         </div>
 
                         <div class="col-md-3">
@@ -80,6 +159,11 @@
                                 <option value="{{ $sup->nama }}">{{ $sup->nama }}</option>
                                 @endforeach
                             </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">No SPB</label>
+                            <input type="text" class="form-control" id="filterNoSpb" placeholder="Cari No SPB">
                         </div>
 
                     </div>
@@ -122,6 +206,7 @@
                                 <th>Qty</th>
                                 <th>Status</th>
                                 <th>Location</th>
+                                <th>Supplier</th>
                                 <th>Incoming Date</th>
                                 @can('permission', 'wrm-inventory-soh-plus')
                                 <th class="text-center">Aksi</th>
@@ -137,105 +222,6 @@
 
     </div>
 </div>
-
-{{-- MODAL FORM --}}
-<!-- <div class="modal fade" id="modalForm">
-    <div class="modal-dialog modal-lg">
-        <form id="formStock">
-            @csrf
-            <input type="hidden" id="id">
-
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="titleForm">Form Stock Gula</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">No SPB <span class="text-danger">*</span></label>
-                        <input type="number" name="no_spb" class="form-control" id="no_spb" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">MID / Nama Barang <span class="text-danger">*</span></label>
-                        <select class="form-select" name="barang_id" id="barang_id" required>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Group <span class="text-danger">*</span></label>
-                        <select class="form-select" name="group" id="group" required>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Jenis Bahan <span class="text-danger">*</span></label>
-                        <select class="form-select" name="jenis_bahan" required>
-                            <option value="" selected>Pilih Jenis</option>
-                            <option value="gula_kelapa">Gula Kelapa</option>
-                            <option value="gula_kelapa_b">Gula Kelapa B</option>
-                            <option value="gula_tebu">Gula Tebu</option>
-                            <option value="gula_tebu_malang">Gula Tebu Malang</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Status <span class="text-danger">*</span></label>
-                        <select class="form-select" name="status" required>
-                            <option value="" selected>Pilih Status</option>
-                            <option value="unrest">Unrest</option>
-                            <option value="qi">QI</option>
-                            <option value="leleh">Leleh</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Gudang <span class="text-danger">*</span></label>
-                        <input type="text" name="gudang" class="form-control" id="gudang" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Supplier <span class="text-danger">*</span></label>
-                        <input type="text" name="supplier" class="form-control" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Expired Date</label>
-                        <input type="date" name="expired_date" class="form-control">
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label">Catatan</label>
-                        <textarea name="catatan" class="form-control"></textarea>
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label">Jumlah Pallet</label>
-                        <input type="number" id="jumlah_pallet" class="form-control">
-                    </div>
-
-                    <div class="col-12 mt-3">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Pallet ID</th>
-                                    <th>Qty</th>
-                                    <th width="100">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="palletContainer"></tbody>
-                        </table>
-                    </div>
-
-                    <div class="col-12 d-flex justify-content-center">
-                        <button type="button" class="btn btn-sm btn-success text-center" id="addPallet">
-                            + Tambah Pallet
-                        </button>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary" id="btnSave">Simpan</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div> -->
 
 {{-- Modal Edit --}}
 <div class="modal fade" id="modalFormEdit">
@@ -266,6 +252,11 @@
                     <div class="mb-2">
                         <label>Qty</label>
                         <input type="number" class="form-control" name="qty" id="qtyEdit">
+                    </div>
+
+                    <div class="mb-2">
+                        <label>Incoming Date</label>
+                        <input type="date" class="form-control" name="incoming_date" id="incomingEdit">
                     </div>
 
                     <div class="mb-2">
@@ -344,7 +335,7 @@
         });
 
         // Filter selects
-        $('#filterGroup, #filterJenisBahan, #filterSupplier').select2({
+        $('#filterGroup, #filterJenisBahan, #filterSupplier, #filterStatus').select2({
             theme: 'bootstrap-5',
             width: '100%',
             placeholder: 'Pilih...',
@@ -386,6 +377,8 @@
             let mid = $('#filterMid').val();
             let date = $('#filterDate').val();
             let supplier = $('#filterSupplier').val();
+            let status = $('#filterStatus').val();
+            let noSpb = $('#filterNoSpb').val();
 
             $.get("{{ route('wrm.inventory.getData') }}", {
                 page: page,
@@ -394,6 +387,8 @@
                 mid: mid,
                 date: date,
                 supplier: supplier,
+                status: status,
+                no_spb: noSpb,
             }, function(res) {
 
                 let html = '';
@@ -430,6 +425,7 @@
                                     <td>${numberFormat(d.qty)}</td>
                                     <td>${d.status.toUpperCase()}</td>
                                     <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>
+                                    <td>${d.inbound.supplier}</td>
                                     <td>${d.inbound.incoming_date}</td>
 
                                     @can('permission', 'wrm-inventory-soh-plus')
@@ -456,8 +452,26 @@
                 $('#tableStock tbody').html(html);
 
                 renderPagination(res.data);
+                updateSummary(res.summary);
 
             });
+        }
+
+        function updateSummary(summary) {
+            $('#totalQty').text(numberFormat(summary.total_qty));
+            $('#totalPalletsDisplay').text(numberFormat(summary.total_pallet));
+
+            const unrest = summary.status_breakdown.UNREST || {
+                count: 0,
+                total_qty: 0
+            };
+            $('#unrestQty').text(numberFormat(unrest.total_qty));
+
+            const blocked = summary.status_breakdown.BLOCKED || {
+                count: 0,
+                total_qty: 0
+            };
+            $('#blockedQty').text(numberFormat(blocked.total_qty));
         }
 
         $('#btnTambah').click(() => {
@@ -466,37 +480,6 @@
             $('#modalForm').modal('show');
         });
 
-        // $('#formStock').submit(function(e) {
-        //     e.preventDefault();
-        //     let url = '/wrm/inventory/store';
-        //     let method = 'POST';
-
-        //     $.ajax({
-        //         url: url,
-        //         type: method,
-        //         data: $(this).serialize(),
-        //         success: function(res) {
-        //             Swal.fire({
-        //                 icon: 'success',
-        //                 title: 'Berhasil',
-        //                 text: res.message || 'Data berhasil disimpan',
-        //                 timer: 1500,
-        //                 showConfirmButton: false
-        //             });
-        //             $('#formStock')[0].reset();
-        //             $('#modalForm').modal('hide');
-        //             loadData();
-        //         },
-        //         error: function(xhr) {
-        //             Swal.fire({
-        //                 icon: 'error',
-        //                 title: 'Gagal',
-        //                 text: xhr.responseJSON?.message ??
-        //                     'Terjadi kesalahan'
-        //             });
-        //         }
-        //     });
-        // });
 
         $(document).on('click', '.btnEdit', function() {
 
@@ -509,6 +492,13 @@
 
             $('#noSpbEdit').val(header.no_spb);
             $('#supplierEdit').val(header.supplier ?? '').trigger('change');
+
+            // Format date to YYYY-MM-DD for HTML date input
+            if (header.incoming_date) {
+                $('#incomingEdit').val(header.incoming_date.substring(0, 10));
+            } else {
+                $('#incomingEdit').val('');
+            }
 
             $('#barangIdEdit').val(detail.barang.id);
             $('#midEdit').val(`${detail.barang.mid} - ${detail.barang.nama_barang}`);
@@ -661,8 +651,15 @@
             });
         });
 
-        $('#filterGroup, #filterJenisBahan, #filterDate, #filterSupplier').on('change', function() {
+        $('#filterGroup, #filterJenisBahan, #filterDate, #filterSupplier, #filterStatus').on('change', function() {
             loadData();
+        });
+
+        $('#filterNoSpb').on('keyup', function() {
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(function() {
+                loadData();
+            }, 500);
         });
 
         let typingTimer;
@@ -681,6 +678,8 @@
             $('#filterMid').val('');
             $('#filterDate').val('');
             $('#filterSupplier').val('').trigger('change');
+            $('#filterStatus').val('').trigger('change');
+            $('#filterNoSpb').val('');
 
             loadData();
 

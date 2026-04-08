@@ -24,6 +24,7 @@ class StockGulaUploadRequest extends FormRequest
         return [
             'supplier' => 'required|string|max:255',
             'pallet' => 'required|string|max:255',
+            'incoming_date' => 'required|date',
             'loc_id' => 'required|array',
             'loc_id.*' => 'required|exists:wrm_master_bin,id',
             'status' => 'required|array',
