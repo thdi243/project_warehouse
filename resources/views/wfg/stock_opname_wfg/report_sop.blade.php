@@ -429,17 +429,21 @@
                     tanggal: tanggalFilter,
                     principal: currentPrincipal
                 }, function(res) {
+                    console.log('Approval status response:', res);
                     const status = res.approval_status;
                     const statusSop = res.status_sop;
                     const note = res.approval_note || '';
                     const isApprover = res.is_approver || false;
-                    const isOperator = @json(Auth::user()->jabatan === 'operator');
+                    const isOperator = res.is_operator;
+                    // const isOperator = @json(Auth::user()->jabatan === 'operator');
 
                     if (!status) {
                         wrapper.html('');
                         if (isOperator) $('#btn_approval').hide();
                         return;
                     }
+
+                    console.log('isOperator:', isOperator);
 
                     // ===================== OPERATOR =====================
                     let trackingHtml = '';
@@ -676,7 +680,8 @@
                         </span>
                     `;
 
-                    const isOperator = @json(Auth::user()->jabatan === 'operator');
+                    const isOperator = sop.is_operator;
+                    // console.log('isOperator:', isOperator);
                     const sopStatus = sop.status;
                     const allowEdit = (!isOperator || sopStatus === 'rejected');
 
@@ -1306,9 +1311,9 @@
                         }
 
                         items.forEach(item => {
-                            const updatedAt = item.updated_at ? item.updated_at.replace(' ', 'T') :
+                            const createdAt = item.created_at ? item.created_at.replace(' ', 'T') :
                                 new Date();
-                            const dateObj = new Date(updatedAt);
+                            const dateObj = new Date(createdAt);
                             const options = {
                                 day: '2-digit',
                                 month: 'short',

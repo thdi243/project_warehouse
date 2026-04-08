@@ -881,6 +881,8 @@ class StockOpnameWfgController extends Controller
         $userId = $user->id;
         $tanggalFilter = $request->input('tanggal');
         $principalFilter = $request->input('principal');
+        $isOperator = $user->jabatan === 'operator';
+        // dd($isOperator);
 
         $sop = WfgSopModel::find($id);
         $statusSop = $sop->status ?? 'draft';
@@ -966,6 +968,7 @@ class StockOpnameWfgController extends Controller
                 'approval_status' => $approvalForUser->status,
                 'approval_note' => $approvalForUser->catatan,
                 'is_approver' => true,
+                'is_operator' => $isOperator,
                 'approver_tracking' => $approverTracking,
                 'status_sop' => $statusSop,
             ]);
@@ -976,6 +979,7 @@ class StockOpnameWfgController extends Controller
                 'approval_status' => 'draft',
                 'approval_note' => null,
                 'is_approver' => false,
+                'is_operator' => $isOperator,
                 'approver_tracking' => $approverTracking,
                 'status_sop' => $statusSop,
             ]);
@@ -990,6 +994,7 @@ class StockOpnameWfgController extends Controller
                 'approval_status' => 'rejected',
                 'approval_note' => $rejected->catatan,
                 'is_approver' => false,
+                'is_operator' => $isOperator,
                 'approver_tracking' => $approverTracking,
                 'status_sop' => $statusSop,
             ]);
@@ -1000,6 +1005,7 @@ class StockOpnameWfgController extends Controller
                 'approval_status' => 'pending',
                 'approval_note' => null,
                 'is_approver' => false,
+                'is_operator' => $isOperator,
                 'approver_tracking' => $approverTracking,
                 'status_sop' => $statusSop,
             ]);
@@ -1009,6 +1015,7 @@ class StockOpnameWfgController extends Controller
             'approval_status' => 'approved',
             'approval_note' => null,
             'is_approver' => false,
+            'is_operator' => $isOperator,
             'approver_tracking' => $approverTracking,
             'status_sop' => $statusSop,
         ]);
@@ -1392,6 +1399,7 @@ class StockOpnameWfgController extends Controller
                     'status' => $sop->status,
                     'principal' => $sop->principal,
                     'username' => $sop->user->username,
+                    'is_operator' => $user->jabatan === 'operator',
                 ],
                 'summaries' => $summaries,
                 'details' => $details,
