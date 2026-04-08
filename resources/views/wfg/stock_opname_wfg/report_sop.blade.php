@@ -840,6 +840,7 @@
                                     <th class="text-end">Full Pallet</th>
                                     <th class="text-end">Receh (Box)</th>
                                     <th class="text-end">Total (Box)</th>
+                                    <th class="text-end">Dibuat</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -904,6 +905,18 @@
                     const qtyBox = parseFloat(item.barang.qty_box);
                     const total = (qtyFull * qtyBox) + qtyReceh;
 
+                    const createdAt = item.created_at ? item.created_at.replace(' ', 'T') :
+                        new Date();
+                    const dateObj = new Date(createdAt);
+                    const options = {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    };
+                    const formattedDate = dateObj.toLocaleString('id-ID', options);
+
                     html += `
                         <tr>
                             <td><strong>${item.barang.mid_barang}</strong></td>
@@ -911,6 +924,7 @@
                             <td class="text-end">${formatNumber(item.qty_full)}</td>
                             <td class="text-end">${formatNumber(item.qty_receh)}</td> 
                             <td class="text-end"><strong>${formatNumber(total)}</strong></td>
+                            <td class="text-end"><strong>${formattedDate}</strong></td>
                         </tr>
                     `;
                 });
