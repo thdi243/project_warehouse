@@ -380,7 +380,7 @@
                 </div>
                 <div class="info-item">
                     <span class="info-label">Total Pallet</span>
-                    <span class="info-value">{{ $outbound->details->count() }} Pallet ({{ number_format($outbound->details->sum('qty'), 0, ',', '.') }} Qty)</span>
+                    <span class="info-value">{{ $outbound->details->count() }} Pallet ({{ rtrim(rtrim(number_format($outbound->details->sum('qty'), 2, ',', '.'), '0'), ',') }} Qty)</span>
                 </div>
             </div>
 
@@ -394,7 +394,7 @@
                 <div class="item-card">
                     <div class="item-header">
                         <div class="item-name">{{ $index + 1 }}. {{ $detail->barang->nama_barang }}</div>
-                        <div class="item-qty">{{ number_format($detail->qty, 0, ',', '.') }} {{ $detail->barang->uom }}</div>
+                        <div class="item-qty">{{ rtrim(rtrim(number_format($detail->qty, 2, ',', '.'), '0'), ',') }} {{ $detail->barang->uom }}</div>
                     </div>
 
                     <div class="item-meta">

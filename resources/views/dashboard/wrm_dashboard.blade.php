@@ -364,6 +364,15 @@
     <script src="https://code.highcharts.com/modules/accessibility.js"></script> -->
 
 <script>
+    function formatQty(x) {
+        if (x === null || x === undefined) return '0';
+        let val = parseFloat(x);
+        return val.toLocaleString('id-ID', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        });
+    }
+
     $(document).ready(function() {
         // Color palette for MIDs
         const palette = [
@@ -648,7 +657,7 @@
                                     <tr>
                                         <td class="fw-bold">${item.barang}</td>
                                         <td>${item.no_spb}</td>
-                                        <td>${Number(item.qty).toLocaleString('id-ID')}</td>
+                                        <td>${formatQty(item.qty)}</td>
                                         <td><span class="badge bg-info">${item.lokasi}</span></td>
                                         <td>
                                             ${item.expired_date} 
@@ -689,7 +698,7 @@
                                         <td>${item.tanggal}</td>
                                         <td><span class="badge ${typeBadge}">${item.jenis}</span></td>
                                         <td>${item.barang}</td>
-                                        <td class="fw-bold">${Number(item.qty).toLocaleString('id-ID')}</td>
+                                        <td class="fw-bold">${formatQty(item.qty)}</td>
                                         <td>${item.lokasi}</td>
                                     </tr>
                                 `;
@@ -806,7 +815,7 @@
                                                 color: bgColor
                                             };
                                             styleAttr = `style="background: ${bgColor}; border-color: ${bgColor};"`;
-                                            tooltipExtras = `<br>Incoming Date: ${cell.incoming_date || '-'}<br>No SPB: ${cell.no_spb || '-'}<br>Barang: ${cell.nama_barang || '-'}<br>MID: ${cell.mid || '-'}<br>Qty: ${Number(cell.qty || 0).toLocaleString('id-ID')}<br>Pallet ID: ${cell.pallet_id || '-'}`;
+                                            tooltipExtras = `<br>Incoming Date: ${cell.incoming_date || '-'}<br>No SPB: ${cell.no_spb || '-'}<br>Barang: ${cell.nama_barang || '-'}<br>MID: ${cell.mid || '-'}<br>Qty: ${formatQty(cell.qty)}<br>Pallet ID: ${cell.pallet_id || '-'}`;
                                         }
 
                                         gridHtml += `
@@ -881,8 +890,9 @@
                 const elapsed = time - start;
                 const progress = Math.min(elapsed / duration, 1);
                 const current = progress * num;
-                $el.text(Math.floor(current).toLocaleString('id-ID'));
+                $el.text(formatQty(current));
                 if (progress < 1) requestAnimationFrame(animate);
+                else $el.text(formatQty(num)); // ensure exact end value
             });
         }
 

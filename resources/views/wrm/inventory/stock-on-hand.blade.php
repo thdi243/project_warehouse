@@ -321,7 +321,11 @@
 <script>
     function numberFormat(x) {
         if (x === null || x === undefined) return '0';
-        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        let val = parseFloat(x);
+        return val.toLocaleString('id-ID', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        });
     }
 
     $(document).ready(function() {

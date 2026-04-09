@@ -90,7 +90,11 @@
 <script>
     function numberFormat(x) {
         if (x === null || x === undefined) return '0';
-        return parseFloat(x).toLocaleString('id-ID');
+        let val = parseFloat(x);
+        return val.toLocaleString('id-ID', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        });
     }
 
     // Move globally for access

@@ -425,6 +425,7 @@ class InboundController extends Controller
                 StockMovement::create([
                     'barang_id'  => $barang->id,
                     'loc_id'     => $locationId,
+                    'qty'        => $temp->qty,
                     'tanggal'    => $incomingDateWithTime,
                     'jenis'      => 'in',
                     'ref_type'   => 'inbound',
@@ -719,9 +720,23 @@ class InboundController extends Controller
                 $expired     = $row[9] ?? null;
 
                 $qty = $row[6] ?? 0;
-                $qty = str_replace('.', '', $qty);
-                $qty = str_replace(',', '', $qty);
-                $qty = (int) $qty;
+                if (!is_numeric($qty)) {
+                    // Handle common Indonesian/European format (dot = thousand, comma = decimal)
+                    // If both exist, or only comma exists, we treat comma as decimal.
+                    // If only dot exists and it's followed by 3 digits, it's ambiguous.
+                    // However, standardizing to stripping dot and replacing comma with dot is common.
+                    // BUT, if the user meant 1.007 as decimal, stripping dot is what caused the bug.
+                    
+                    // IMPROVED LOGIC: If it's a string like "1.007" and we want 1.007, we shouldn't strip the dot.
+                    // Most Excel importers return floats for numeric cells anyway.
+                    $qty = str_replace(',', '.', $qty); // convert comma to dot (decimal)
+                    
+                    // If we still have multiple dots, it might be thousand separators.
+                    if (substr_count($qty, '.') > 1) {
+                         $qty = str_replace('.', '', substr($qty, 0, strrpos($qty, '.'))) . substr($qty, strrpos($qty, '.'));
+                    }
+                }
+                $qty = (float) $qty;
 
                 if ($mid === '') {
                     $errors[] = "Baris {$line}: MID kosong";

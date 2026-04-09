@@ -121,7 +121,7 @@
                                     <td>{{ $row->no_spb }}</td>
                                     <td>{{ $row->mid }}</td>
                                     <td>{{ $row->pallet_id }}</td>
-                                    <td>{{ $row->qty }}</td>
+                                    <td>{{ (float)$row->qty }}</td>
                                     <td>{{ $row->group }}</td>
                                     <td>
                                         <select name="status[{{ $row->id }}]" class="form-select form-select-sm item-status">
