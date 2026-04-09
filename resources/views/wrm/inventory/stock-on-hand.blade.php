@@ -31,14 +31,17 @@
             <div class="col-md-3">
                 <!-- <div class="card border-0 shadow-sm h-100 overflow-hidden" style="background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);"> -->
                 <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-primary">
-                    <div class="card-body text-white p-3">
+                    <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Total Inventory</h6>
-                                <h3 class="mb-0 fw-bold" id="totalQty">0</h3>
+                                <h3 class="mb-1 fw-bold" id="totalQty">0</h3>
+                                <div class="small">
+                                    <i class="mdi mdi-layers-outline me-1"></i> <span id="totalPalletsDisplay">0</span> Pallets
+                                </div>
                             </div>
                             <div class="bg-soft-primary rounded-3 p-2">
-                                <i class="mdi mdi-database-outline mdi-36px"></i>
+                                <i class="mdi mdi-database-outline text-white mdi-36px"></i>
                             </div>
                         </div>
                     </div>
@@ -47,46 +50,53 @@
             <div class="col-md-3">
                 <!-- <div class="card border-0 shadow-sm h-100 overflow-hidden" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);"> -->
                 <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-success">
-                    <div class="card-body text-white p-3">
+                    <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Unrest</h6>
-                                <h3 class="mb-0 fw-bold" id="unrestQty">0</h3>
+                                <h3 class="mb-1 fw-bold" id="unrestQty">0</h3>
+                                <div class="small">
+                                    <i class="mdi mdi-layers-outline me-1"></i> <span id="unrestPallets">0</span> Pallets
+                                </div>
                             </div>
                             <div class="bg-soft-success rounded-3 p-2">
-                                <i class="mdi mdi-check-circle-outline mdi-36px"></i>
+                                <i class="mdi mdi-check-circle-outline mdi-36px text-white"></i>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <!-- <div class="card border-0 shadow-sm h-100 overflow-hidden" style="background: linear-gradient(135deg, #f09819 0%, #edde5d 100%);"> -->
                 <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-info">
-                    <div class="card-body text-white p-3">
+                    <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Total Pallets</h6>
-                                <h3 class="mb-0 fw-bold" id="totalPalletsDisplay">0</h3>
+                                <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">QI</h6>
+                                <h3 class="mb-1 fw-bold" id="qiQty">0</h3>
+                                <div class="small">
+                                    <i class="mdi mdi-layers-outline me-1"></i> <span id="qiPallets">0</span> Pallets
+                                </div>
                             </div>
                             <div class="bg-soft-info rounded-3 p-2">
-                                <i class="mdi mdi-layers-outline mdi-36px"></i>
+                                <i class="mdi mdi-flask-outline text-white mdi-36px"></i>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <!-- <div class="card border-0 shadow-sm h-100 overflow-hidden" style="background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%);"> -->
                 <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-danger">
-                    <div class="card-body text-white p-3">
+                    <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="mb-2" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Blocked</h6>
-                                <h3 class="mb-0 fw-bold" id="blockedQty">0</h3>
+                                <h3 class="mb-1 fw-bold" id="blockedQty">0</h3>
+                                <div class="small">
+                                    <i class="mdi mdi-layers-outline me-1"></i> <span id="blockedPallets">0</span> Pallets
+                                </div>
                             </div>
                             <div class="bg-soft-danger rounded-3 p-2">
-                                <i class="mdi mdi-alert-octagon-outline mdi-36px"></i>
+                                <i class="mdi mdi-alert-octagon-outline text-white mdi-36px"></i>
                             </div>
                         </div>
                     </div>
@@ -146,8 +156,8 @@
                                 <option value="">Semua Status</option>
                                 <option value="UNREST">UNREST</option>
                                 <option value="QI">QI</option>
-                                <option value="TRANSFER">TRANSFER</option>
                                 <option value="BLOCKED">BLOCKED</option>
+                                <!-- <option value="TRANSFER">TRANSFER</option> -->
                             </select>
                         </div>
 
@@ -294,7 +304,7 @@
 
                     <div class="mb-2">
                         <label>Pallet ID</label>
-                        <input type="text" class="form-control bg-light" name="pallet_id" id="palletEdit" readonly>
+                        <input type="text" class="form-control bg-light" name="pallet_id" id="palletEdit">
                     </div>
 
                     <div class="mb-2">
@@ -470,12 +480,21 @@
                 total_qty: 0
             };
             $('#unrestQty').text(numberFormat(unrest.total_qty));
+            $('#unrestPallets').text(numberFormat(unrest.count));
+
+            const qi = summary.status_breakdown.QI || {
+                count: 0,
+                total_qty: 0
+            };
+            $('#qiQty').text(numberFormat(qi.total_qty));
+            $('#qiPallets').text(numberFormat(qi.count));
 
             const blocked = summary.status_breakdown.BLOCKED || {
                 count: 0,
                 total_qty: 0
             };
             $('#blockedQty').text(numberFormat(blocked.total_qty));
+            $('#blockedPallets').text(numberFormat(blocked.count));
         }
 
         $('#btnTambah').click(() => {

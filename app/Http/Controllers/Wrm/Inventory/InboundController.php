@@ -729,7 +729,19 @@ class InboundController extends Controller
                 }
 
                 $barcodePrefix = substr($barcode, 0, 10);
-                $palletId = substr($barcode, 13, 2);
+
+                if (strlen($barcode) > 10) {
+                    // Take last 2 characters as pallet ID
+                    $palletId = substr($barcode, -2);
+                } else {
+                    // Generate sequential pallet ID if barcode is only the prefix
+                    if (!isset($prefixTracker[$barcodePrefix])) {
+                        $prefixTracker[$barcodePrefix] = 1;
+                    } else {
+                        $prefixTracker[$barcodePrefix]++;
+                    }
+                    $palletId = $prefixTracker[$barcodePrefix];
+                }
 
                 // Find Material ID
                 $barang = MasterBarangModel::where('mid', $mid)->first();
@@ -758,14 +770,7 @@ class InboundController extends Controller
                     continue;
                 }
 
-                // GENERATE PALLET_ID
-                if (!isset($prefixTracker[$barcodePrefix])) {
-                    $prefixTracker[$barcodePrefix] = 1;
-                } else {
-                    $prefixTracker[$barcodePrefix]++;
-                }
-
-                $pallet_id = $prefixTracker[$barcodePrefix];
+                // Pallet ID is already determined at the beginning of the loop
 
                 $mappedRows[] = [
                     'barcode'     => $barcode,
