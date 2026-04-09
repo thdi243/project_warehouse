@@ -110,9 +110,9 @@
                     </div>
 
                     <div class="col-md-3">
-                        <label class="form-label">Jenis Bahan</label>
-                        <select class="form-select" id="filterJenisBahan">
-                            <option value="">Semua Jenis Bahan</option>
+                        <label class="form-label">Nama Barang</label>
+                        <select class="form-select" id="filterNamaBarang">
+                            <option value="">Semua Nama Barang</option>
                         </select>
                     </div>
 
@@ -339,7 +339,7 @@
         });
 
         // Filter selects
-        $('#filterGroup, #filterJenisBahan, #filterSupplier, #filterStatus').select2({
+        $('#filterGroup, #filterNamaBarang, #filterSupplier, #filterStatus').select2({
             theme: 'bootstrap-5',
             width: '100%',
             placeholder: 'Pilih...',
@@ -377,7 +377,7 @@
         function loadData(page = 1) {
 
             let group = $('#filterGroup').val();
-            let jenisBahan = $('#filterJenisBahan').val();
+            let jenisBahan = $('#filterNamaBarang').val();
             let mid = $('#filterMid').val();
             let date = $('#filterDate').val();
             let supplier = $('#filterSupplier').val();
@@ -655,7 +655,7 @@
             });
         });
 
-        $('#filterGroup, #filterJenisBahan, #filterDate, #filterSupplier, #filterStatus').on('change', function() {
+        $('#filterGroup, #filterNamaBarang, #filterDate, #filterSupplier, #filterStatus').on('change', function() {
             loadData();
         });
 
@@ -678,7 +678,7 @@
         $('#btnReset').click(function() {
 
             $('#filterGroup').val('').trigger('change');
-            $('#filterJenisBahan').val('').trigger('change');
+            $('#filterNamaBarang').val('').trigger('change');
             $('#filterMid').val('');
             $('#filterDate').val('');
             $('#filterSupplier').val('').trigger('change');
@@ -705,7 +705,7 @@
                     jenisHtml += `<option value="${j}">${j}</option>`;
                 });
 
-                $('#filterJenisBahan').html(jenisHtml).trigger('change');
+                $('#filterNamaBarang').html(jenisHtml).trigger('change');
 
             });
 

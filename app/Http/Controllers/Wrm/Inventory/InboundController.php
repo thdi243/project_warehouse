@@ -149,13 +149,17 @@ class InboundController extends Controller
             }
         }
 
+        // FILTER: Only use pristine columns (Rule 1)
+        $occupiedColumnKeys = $this->getOccupiedColumnKeys();
+
         // Get all available bins grouped by zona
         $availableBins = MasterBinModel::with('location')
             ->whereNotIn('id', $usedBinIds)
-            ->orderBy('loc_id')
-            ->orderBy('kolom')
-            ->orderBy('level')
-            ->get();
+            ->get()
+            ->filter(function ($bin) use ($occupiedColumnKeys) {
+                $key = $bin->loc_id . '-' . $bin->kolom;
+                return !in_array($key, $occupiedColumnKeys);
+            });
 
         $locationsGrouped = $availableBins->groupBy('loc_id');
 
@@ -165,52 +169,20 @@ class InboundController extends Controller
 
         // Check each location (physical rack) whether it can accommodate the SPB pallet
         foreach ($locationsGrouped as $locId => $bins) {
+            $first = $bins->first();
+            $location = $first->location;
 
-            // Group available bins in this location by column
-            $availableBinsGrouped = [];
-            foreach ($bins as $bin) {
-                $colKey = $bin->loc_id . '-' . $bin->kolom;
-                if (!isset($availableBinsGrouped[$colKey])) {
-                    $availableBinsGrouped[$colKey] = [];
-                }
-                $availableBinsGrouped[$colKey][] = $bin;
-            }
-
-            // ATURAN LAMA: CEK PER 1 ZONA (COMMENTED OUT)
-            /*
-            $allocationResult = $this->allocateBins($data, $availableBinsGrouped, $dbColumnOwners);
-
-            if ($allocationResult !== false) {
-                $first = $bins->first();
-                $location = $first->location;
-
+            // ATURAN BARU (Rule 3): Hanya tampilkan jika kapasitas mencukupi untuk SEMUA barang dalam SPB
+            if (count($bins) >= count($data)) {
                 $availableLocations[] = [
                     'location_id' => $location->id,
                     'plant' => $location->plant,
                     's_loc' => $location->s_loc,
+                    'gudang' => $location->gudang,
                     'zona' => $location->zona,
                     'bin' => $location->bin, // This is the Rack ID / Bin name
                 ];
-            } else {
-                $first = $bins->first();
-                $location = $first->location;
-                $locName = "{$location->plant}-{$location->s_loc}-{$location->zona}-{$location->bin}";
-                $errorDetails[] = "Lokasi {$locName} - ruang tidak cukup";
             }
-            */
-
-            // ATURAN BARU: TAMPILKAN SEMUA ZONA YANG MEMILIKI BIN KOSONG
-            $first = $bins->first();
-            $location = $first->location;
-
-            $availableLocations[] = [
-                'location_id' => $location->id,
-                'plant' => $location->plant,
-                's_loc' => $location->s_loc,
-                'gudang' => $location->gudang,
-                'zona' => $location->zona,
-                'bin' => $location->bin, // This is the Rack ID / Bin name
-            ];
         }
 
         // Global check: do we have enough bins OVERALL across all zones?
@@ -226,7 +198,7 @@ class InboundController extends Controller
         $globalAllocationResult = $this->allocateBins($data, $allAvailableBinsGrouped, $dbColumnOwners);
 
         if (count($globalAllocationResult) < count($data)) {
-            $locationError = 'Kapasitas gudang (semua zona) tidak mencukupi untuk menampung ' . count($data) . ' pallet no_spb ' . $firstNoSpb . '. (Tersedia hanya untuk ' . count($globalAllocationResult) . ' pallet)';
+            $locationError = 'Kapasitas gudang (berdasarkan Aturan Pristine Column) tidak mencukupi untuk menampung ' . count($data) . ' pallet no_spb ' . $firstNoSpb . '. (Tersedia hanya untuk ' . count($globalAllocationResult) . ' pallet)';
         }
 
         $pallet = MasterPalletModel::get();
@@ -284,7 +256,15 @@ class InboundController extends Controller
         $query = MasterBinModel::with('location')
             ->join('wrm_master_location', 'wrm_master_bin.loc_id', '=', 'wrm_master_location.id')
             ->select('wrm_master_bin.*')
-            ->whereNotIn('wrm_master_bin.id', $occupiedBinIds)
+            ->whereNotIn('wrm_master_bin.id', $occupiedBinIds) // Individual check
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('wrm_stock_inbound_details')
+                    ->join('wrm_master_bin as b_occ', 'wrm_stock_inbound_details.loc_id', '=', 'b_occ.id')
+                    ->where('wrm_stock_inbound_details.status', '!=', 'ISSUED')
+                    ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
+                    ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom');
+            })
             ->when(!empty($exclude), function ($q) use ($exclude) {
                 $q->whereNotIn('wrm_master_bin.id', $exclude);
             });
@@ -466,7 +446,7 @@ class InboundController extends Controller
 
             return response()->json([
                 'status'  => true,
-                'message' => "Inventory stock no_spb {$currentNoSpb} berhasil disimpan",
+                'message' => "Inventory No SPB {$currentNoSpb} berhasil disimpan",
                 'hasNext' => !is_null($nextNoSpb),
                 'nextNoSpb' => $nextNoSpb
             ]);
@@ -726,14 +706,14 @@ class InboundController extends Controller
                     // If only dot exists and it's followed by 3 digits, it's ambiguous.
                     // However, standardizing to stripping dot and replacing comma with dot is common.
                     // BUT, if the user meant 1.007 as decimal, stripping dot is what caused the bug.
-                    
+
                     // IMPROVED LOGIC: If it's a string like "1.007" and we want 1.007, we shouldn't strip the dot.
                     // Most Excel importers return floats for numeric cells anyway.
                     $qty = str_replace(',', '.', $qty); // convert comma to dot (decimal)
-                    
+
                     // If we still have multiple dots, it might be thousand separators.
                     if (substr_count($qty, '.') > 1) {
-                         $qty = str_replace('.', '', substr($qty, 0, strrpos($qty, '.'))) . substr($qty, strrpos($qty, '.'));
+                        $qty = str_replace('.', '', substr($qty, 0, strrpos($qty, '.'))) . substr($qty, strrpos($qty, '.'));
                     }
                 }
                 $qty = (float) $qty;
@@ -749,6 +729,7 @@ class InboundController extends Controller
                 }
 
                 $barcodePrefix = substr($barcode, 0, 10);
+                $palletId = substr($barcode, 13, 2);
 
                 // Find Material ID
                 $barang = MasterBarangModel::where('mid', $mid)->first();
@@ -790,7 +771,7 @@ class InboundController extends Controller
                     'barcode'     => $barcode,
                     'no_spb'      => $barcodePrefix,
                     'mid'         => $mid,
-                    'pallet_id'   => $pallet_id,
+                    'pallet_id'   => $palletId,
                     'qty'         => $qty,
                     'group'       => $group,
                     'incoming_date' => now(),
@@ -897,10 +878,18 @@ class InboundController extends Controller
             ->get();
         */
 
-        // ATURAN BARU: CARI HANYA DI ZONA YANG DIPILIH (Sesuai request user: manual select untuk lebihan)
+        // ATURAN BARU (Rule 1 & Rule 3): Cari hanya di zona yang dipilih DAN kolom harus murni kosong
         $bins = MasterBinModel::with('location')
             ->whereNotIn('id', $usedBinIds)
             ->where('loc_id', $locIdInput)
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('wrm_stock_inbound_details')
+                    ->join('wrm_master_bin as b_occ', 'wrm_stock_inbound_details.loc_id', '=', 'b_occ.id')
+                    ->where('wrm_stock_inbound_details.status', '!=', 'ISSUED')
+                    ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
+                    ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom');
+            })
             ->orderBy('kolom')
             ->orderBy('level')
             ->get();
@@ -940,5 +929,21 @@ class InboundController extends Controller
         return response()->json([
             'data' => $result
         ]);
+    }
+
+    private function getOccupiedColumnKeys()
+    {
+        // Get all bins that are currently occupied
+        $occupiedBins = StockInboundDetail::where('status', '!=', 'ISSUED')
+            ->join('wrm_master_bin', 'wrm_stock_inbound_details.loc_id', '=', 'wrm_master_bin.id')
+            ->select('wrm_master_bin.loc_id as rack_id', 'wrm_master_bin.kolom')
+            ->distinct()
+            ->get();
+
+        $keys = [];
+        foreach ($occupiedBins as $ob) {
+            $keys[] = $ob->rack_id . '-' . $ob->kolom;
+        }
+        return $keys;
     }
 }

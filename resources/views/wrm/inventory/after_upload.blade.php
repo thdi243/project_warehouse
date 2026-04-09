@@ -148,8 +148,7 @@
                             <i class="mdi mdi-close"></i>
                             Batal Upload
                         </button>
-                        <button type="submit" class="btn btn-primary"
-                            @if ($locationError) disabled @endif>
+                        <button type="submit" class="btn btn-primary">
                             <i class="mdi mdi-content-save"></i>
                             @if ($remainingCount > 0)
                             Simpan & Lanjut ke No SPB Berikutnya
