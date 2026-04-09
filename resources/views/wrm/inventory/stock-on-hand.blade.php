@@ -17,6 +17,26 @@
         line-height: normal !important;
         padding-left: 0.75rem !important;
     }
+
+    /* Style for Multiple Select choices */
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background-color: #0d6efd !important;
+        color: #fff !important;
+        border: none !important;
+        font-size: 0.75rem !important;
+        padding: 2px 8px !important;
+        border-radius: 4px !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+        color: #fff !important;
+        margin-right: 5px !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #ffc107 !important;
+        background-color: transparent !important;
+    }
 </style>
 @endsection
 
@@ -113,71 +133,63 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <label class="form-label">Group</label>
-                        <select class="form-select" id="filterGroup">
-                            <option value="">Semua Group</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3">
                         <label class="form-label">Nama Barang</label>
-                        <select class="form-select" id="filterNamaBarang">
-                            <option value="">Semua Nama Barang</option>
+                        <select class="form-select select2-filter" id="filterNamaBarang" multiple>
                         </select>
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label">MID</label>
-                        <input type="text" class="form-control" id="filterMid" placeholder="Cari MID">
+                        <select class="form-select select2-filter" id="filterMid" multiple>
+                        </select>
                     </div>
 
-                    <div class="col-md-3 d-flex align-items-end gap-2 text-nowrap">
-                        <button class="btn btn-outline-primary w-100" data-bs-toggle="collapse"
-                            data-bs-target="#advancedFilter" title="Filter lanjutan">
-                            <i class="mdi mdi-filter-plus"></i>
-                        </button>
-                        <button class="btn btn-primary w-100" id="btnReset">
-                            <i class="mdi mdi-refresh me-2"></i>Reset
-                        </button>
+                    <div class="col-md-3">
+                        <label class="form-label">Supplier</label>
+                        <select class="form-select select2-filter" id="filterSupplier" multiple>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">No SPB</label>
+                        <select class="form-select select2-filter" id="filterNoSpb" multiple>
+                        </select>
                     </div>
                 </div>
 
-                <div class="collapse mt-3" id="advancedFilter">
-                    <div class="row g-3">
-
-                        <div class="col-md-3">
-                            <label class="form-label">Incoming Date</label>
-                            <input type="date" class="form-control" id="filterDate">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" id="filterStatus">
-                                <option value="">Semua Status</option>
-                                <option value="UNREST">UNREST</option>
-                                <option value="QI">QI</option>
-                                <option value="BLOCKED">BLOCKED</option>
-                                <!-- <option value="TRANSFER">TRANSFER</option> -->
-                            </select>
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">Supplier</label>
-                            <select class="form-select" id="filterSupplier">
-                                <option value="">Semua Supplier</option>
-                                @foreach ($suppliers as $sup)
-                                <option value="{{ $sup->nama }}">{{ $sup->nama }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">No SPB</label>
-                            <input type="text" class="form-control" id="filterNoSpb" placeholder="Cari No SPB">
-                        </div>
-
+                <div class="row g-3 mt-1">
+                    <div class="col-md-3">
+                        <label class="form-label">Group</label>
+                        <select class="form-select select2-filter" id="filterGroup" multiple>
+                        </select>
                     </div>
 
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select select2-filter" id="filterStatus" multiple>
+                            <option value="UNREST">UNREST</option>
+                            <option value="QI">QI</option>
+                            <option value="BLOCKED">BLOCKED</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Incoming Date</label>
+                        <input type="date" class="form-control" id="filterDate">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Catatan / Cari</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="filterCatatan" placeholder="Cari catatan...">
+                            <button class="btn btn-primary" id="btnFilter">
+                                <i class="mdi mdi-magnify"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" id="btnReset">
+                                <i class="mdi mdi-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -217,7 +229,10 @@
                                 <th>Status</th>
                                 <th>Location</th>
                                 <th>Supplier</th>
-                                <th>Incoming Date</th>
+                                <th class="text-nowrap cursor-pointer" id="sortDate">
+                                    Incoming Date <i class="mdi mdi-sort ms-1" id="sortIcon"></i>
+                                </th>
+                                <th>Catatan</th>
                                 @can('permission', 'wrm-inventory-soh-plus')
                                 <th class="text-center">Aksi</th>
                                 @endcan
@@ -304,7 +319,7 @@
 
                     <div class="mb-2">
                         <label>Pallet ID</label>
-                        <input type="text" class="form-control bg-light" name="pallet_id" id="palletEdit">
+                        <input type="text" class="form-control" name="pallet_id" id="palletEdit">
                     </div>
 
                     <div class="mb-2">
@@ -349,11 +364,12 @@
         });
 
         // Filter selects
-        $('#filterGroup, #filterNamaBarang, #filterSupplier, #filterStatus').select2({
+        $('.select2-filter').select2({
             theme: 'bootstrap-5',
             width: '100%',
             placeholder: 'Pilih...',
-            allowClear: true
+            allowClear: true,
+            closeOnSelect: false
         });
 
         $('#locEdit').select2({
@@ -381,29 +397,29 @@
             minimumInputLength: 0
         });
 
+        let filterTimeout;
+        let currentSortDir = 'desc';
+
         loadData();
         loadFilter();
 
+
         function loadData(page = 1) {
 
-            let group = $('#filterGroup').val();
-            let jenisBahan = $('#filterNamaBarang').val();
-            let mid = $('#filterMid').val();
-            let date = $('#filterDate').val();
-            let supplier = $('#filterSupplier').val();
-            let status = $('#filterStatus').val();
-            let noSpb = $('#filterNoSpb').val();
-
-            $.get("{{ route('wrm.inventory.getData') }}", {
+            let params = {
                 page: page,
-                group: group,
-                jenis_bahan: jenisBahan,
-                mid: mid,
-                date: date,
-                supplier: supplier,
-                status: status,
-                no_spb: noSpb,
-            }, function(res) {
+                group: $('#filterGroup').val(),
+                jenis_bahan: $('#filterNamaBarang').val(),
+                mid: $('#filterMid').val(),
+                date: $('#filterDate').val(),
+                supplier: $('#filterSupplier').val(),
+                status: $('#filterStatus').val(),
+                no_spb: $('#filterNoSpb').val(),
+                catatan: $('#filterCatatan').val(),
+                sort_dir: currentSortDir,
+            };
+
+            $.get("{{ route('wrm.inventory.getData') }}", params, function(res) {
 
                 let html = '';
                 let data = res.data.data;
@@ -413,7 +429,7 @@
 
                     html = `
                             <tr>
-                                <td colspan="11" class="text-center text-muted py-4">
+                                <td colspan="15" class="text-center text-muted py-4">
                                     <div class="d-flex flex-column align-items-center">
                                         <i class="mdi mdi-database-off-outline" style="font-size:32px"></i>
                                         <span class="mt-2">Data tidak ditemukan</span>
@@ -441,6 +457,7 @@
                                     <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>
                                     <td>${d.inbound.supplier}</td>
                                     <td>${d.inbound.incoming_date}</td>
+                                    <td>${d.catatan ?? ''}</td>
 
                                     @can('permission', 'wrm-inventory-soh-plus')
                                     <td class="text-center">
@@ -525,7 +542,7 @@
 
             $('#barangIdEdit').val(detail.barang.id);
             $('#midEdit').val(`${detail.barang.mid} - ${detail.barang.nama_barang}`);
-            $('#qtyEdit').val(detail.qty);
+            $('#qtyEdit').val(parseFloat(detail.qty));
             $('#statusEdit').val(detail.status);
             $('#groupEdit').val(detail.group);
             $('#palletEdit').val(detail.pallet_id ?? '');
@@ -592,6 +609,10 @@
                             .map(v => v[0])
                             .join('<br>');
 
+                    }
+
+                    if (xhr.responseJSON?.message) {
+                        message = xhr.responseJSON.message;
                     }
 
                     Swal.fire({
@@ -674,60 +695,100 @@
             });
         });
 
-        $('#filterGroup, #filterNamaBarang, #filterDate, #filterSupplier, #filterStatus').on('change', function() {
+        // Event listener for all filters
+        $('.select2-filter, #filterDate').on('change', function() {
+            // Check if this change was triggered manually or by select2 update
+            if ($(this).hasClass('updating')) return;
+
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => {
+                loadFilter();
+                loadData();
+            }, 300);
+        });
+
+        $('#filterCatatan').on('keyup', function(e) {
+            if (e.key === 'Enter') {
+                loadData();
+                return;
+            }
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => {
+                loadData();
+            }, 500);
+        });
+
+        $('#btnFilter').click(function() {
             loadData();
         });
 
-        $('#filterNoSpb').on('keyup', function() {
-            clearTimeout(typingTimer);
-            typingTimer = setTimeout(function() {
-                loadData();
-            }, 500);
-        });
+        $('#sortDate').click(function() {
+            currentSortDir = currentSortDir === 'desc' ? 'asc' : 'desc';
 
-        let typingTimer;
+            // Update Icon
+            if (currentSortDir === 'asc') {
+                $('#sortIcon').removeClass('mdi-sort mdi-sort-descending').addClass('mdi-sort-ascending');
+            } else {
+                $('#sortIcon').removeClass('mdi-sort mdi-sort-ascending').addClass('mdi-sort-descending');
+            }
 
-        $('#filterMid').on('keyup', function() {
-            clearTimeout(typingTimer);
-            typingTimer = setTimeout(function() {
-                loadData();
-            }, 500);
+            loadData();
         });
 
         $('#btnReset').click(function() {
-
-            $('#filterGroup').val('').trigger('change');
-            $('#filterNamaBarang').val('').trigger('change');
-            $('#filterMid').val('');
+            $('.select2-filter').val(null).trigger('change');
+            $('#filterMid').val(null).trigger('change');
             $('#filterDate').val('');
-            $('#filterSupplier').val('').trigger('change');
-            $('#filterStatus').val('').trigger('change');
-            $('#filterNoSpb').val('');
-
+            $('#filterCatatan').val('');
+            loadFilter();
             loadData();
-
         });
 
         function loadFilter() {
+            let params = {
+                group: $('#filterGroup').val(),
+                jenis_bahan: $('#filterNamaBarang').val(),
+                mid: $('#filterMid').val(),
+                supplier: $('#filterSupplier').val(),
+                status: $('#filterStatus').val(),
+                no_spb: $('#filterNoSpb').val(),
+            };
 
-            $.get("{{ route('wrm.inventory.getFilter') }}", function(res) {
+            $.get("{{ route('wrm.inventory.getFilter') }}", params, function(res) {
+                updateDropdown('#filterGroup', res.groups);
+                updateDropdown('#filterNamaBarang', res.jenis_bahan);
+                updateDropdown('#filterSupplier', res.suppliers);
+                updateDropdown('#filterNoSpb', res.no_spbs);
+                updateDropdown('#filterMid', res.mids, true);
+                // Optionally update status too, if you want it chained
+                // updateDropdown('#filterStatus', res.statuses);
+            });
+        }
 
-                let groupHtml = `<option value="">Semua Group</option>`;
-                res.groups.forEach(g => {
-                    groupHtml += `<option value="${g}">${g}</option>`;
-                });
+        function updateDropdown(selector, data, isMid = false) {
+            let $el = $(selector);
+            let currentValues = $el.val() || [];
 
-                $('#filterGroup').html(groupHtml).trigger('change');
+            $el.addClass('updating');
+            $el.empty();
 
-                let jenisHtml = `<option value="">Semua Jenis Bahan</option>`;
-                res.jenis_bahan.forEach(j => {
-                    jenisHtml += `<option value="${j}">${j}</option>`;
-                });
+            data.forEach(item => {
+                let val, text;
+                if (isMid) {
+                    val = item.mid;
+                    text = item.text;
+                } else {
+                    val = item;
+                    text = item;
+                }
 
-                $('#filterNamaBarang').html(jenisHtml).trigger('change');
-
+                let isSelected = currentValues.includes(val.toString());
+                let option = new Option(text, val, isSelected, isSelected);
+                $el.append(option);
             });
 
+            $el.trigger('change');
+            $el.removeClass('updating');
         }
 
         function renderPagination(data) {

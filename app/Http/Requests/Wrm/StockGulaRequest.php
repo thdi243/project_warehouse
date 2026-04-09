@@ -23,8 +23,9 @@ class StockGulaRequest extends FormRequest
     {
         return [
             'barang_id' => 'required|exists:wrm_master_barang,id',
-            'no_spb'    => 'required|integer',
-            'qty'       => 'required|integer|min:1',
+            'no_spb'    => 'required|string',
+            'pallet_id' => 'required|string|max:50',
+            'qty'       => 'required|numeric|min:0.001',
             'group'     => 'nullable|string|max:255',
             'supplier'  => 'required|string|max:255',
             'status'    => 'required|string|max:50',

@@ -469,59 +469,69 @@ class InboundController extends Controller
             'bin.location:id,plant,s_loc,gudang,zona,bin',
             'inbound:id,no_spb,incoming_date,supplier'
         ])
+            ->select('wrm_stock_inbound_details.*')
+            ->join('wrm_stock_inbound', 'wrm_stock_inbound_details.inbound_id', '=', 'wrm_stock_inbound.id')
             ->where('status', '!=', 'ISSUED');
 
-        if ($request->group) {
-            $query->where('group', $request->group);
+        // Mapping filters
+        $filters = [
+            'group' => $request->group,
+            'status' => $request->status,
+        ];
+
+        foreach ($filters as $field => $values) {
+            if ($values) {
+                // Prepend table name to field to avoid ambiguity if needed, but 'group' and 'status' are expected in detail table
+                $query->whereIn('wrm_stock_inbound_details.' . $field, (array)$values);
+            }
         }
 
         if ($request->jenis_bahan) {
             $query->whereHas('barang', function ($q) use ($request) {
-                $q->where('nama_barang', 'like', '%' . $request->jenis_bahan . '%');
+                $q->whereIn('nama_barang', (array)$request->jenis_bahan);
             });
         }
 
         if ($request->mid) {
             $query->whereHas('barang', function ($q) use ($request) {
-                $q->where('mid', 'like', '%' . $request->mid . '%');
+                $q->whereIn('mid', (array)$request->mid);
             });
         }
 
         if ($request->date) {
-            $query->whereHas('inbound', function ($q) use ($request) {
-                $q->whereDate('incoming_date', $request->date);
-            });
+            $query->whereDate('wrm_stock_inbound.incoming_date', $request->date);
         }
 
         if ($request->supplier) {
-            $query->whereHas('inbound', function ($q) use ($request) {
-                $q->where('supplier', 'like', '%' . $request->supplier . '%');
-            });
-        }
-
-        if ($request->status) {
-            $query->where('status', $request->status);
+            $query->whereIn('wrm_stock_inbound.supplier', (array)$request->supplier);
         }
 
         if ($request->no_spb) {
-            $query->whereHas('inbound', function ($q) use ($request) {
-                $q->where('no_spb', 'like', '%' . $request->no_spb . '%');
-            });
+            $query->whereIn('wrm_stock_inbound.no_spb', (array)$request->no_spb);
         }
 
-        // Clone query for summary calculation (before pagination)
+        if ($request->catatan) {
+            $query->where('wrm_stock_inbound_details.catatan', 'like', '%' . $request->catatan . '%');
+        }
+
+        // Clone query for summary calculation (before sorting)
         $summaryQuery = clone $query;
+
+        // Apply Sorting
+        $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
+        $query->orderBy('wrm_stock_inbound.incoming_date', $sortDir);
 
         $summary = [
             'total_pallet' => $summaryQuery->count(),
-            'total_qty' => $summaryQuery->sum('qty'),
+            'total_qty' => $summaryQuery->sum('wrm_stock_inbound_details.qty'),
             'status_breakdown' => $summaryQuery->select('status', DB::raw('count(*) as count'), DB::raw('sum(qty) as total_qty'))
                 ->groupBy('status')
+                ->reorder() // Clear any existing order for aggregation
                 ->get()
                 ->keyBy('status')
         ];
 
-        $data = $query->latest('id')->paginate(25);
+        $data = $query->paginate(25);
 
         return response()->json([
             'status' => true,
@@ -531,21 +541,68 @@ class InboundController extends Controller
         ]);
     }
 
-    public function getFilter()
+    public function getFilter(Request $request)
     {
-        $groups = StockInboundDetail::select('group')
-            ->distinct()
-            ->orderBy('group', 'asc')
-            ->pluck('group');
+        // Get all active records once to process in memory (small dataset ~75-200 records)
+        // If dataset grows large (>5000), we should switch back to individual DB queries.
+        $all = StockInboundDetail::with([
+            'barang:id,mid,nama_barang',
+            'inbound:id,no_spb,supplier'
+        ])
+            ->where('status', '!=', 'ISSUED')
+            ->get();
 
-        $jenisBahan = MasterBarangModel::select('nama_barang')
-            ->distinct()
-            ->orderBy('nama_barang', 'asc')
-            ->pluck('nama_barang');
+        // Helper to filter collection
+        $filterCollection = function ($items, $excludeField = null) use ($request) {
+            return $items->filter(function ($item) use ($request, $excludeField) {
+                $match = true;
+
+                if ($excludeField !== 'group' && $request->group) {
+                    $match = $match && in_array($item->group, (array)$request->group);
+                }
+                if ($excludeField !== 'status' && $request->status) {
+                    $match = $match && in_array($item->status, (array)$request->status);
+                }
+                if ($excludeField !== 'jenis_bahan' && $request->jenis_bahan) {
+                    $match = $match && in_array($item->barang->nama_barang, (array)$request->jenis_bahan);
+                }
+                if ($excludeField !== 'mid' && $request->mid) {
+                    $match = $match && in_array($item->barang->mid, (array)$request->mid);
+                }
+                if ($excludeField !== 'supplier' && $request->supplier) {
+                    $match = $match && in_array($item->inbound->supplier, (array)$request->supplier);
+                }
+                if ($excludeField !== 'no_spb' && $request->no_spb) {
+                    $match = $match && in_array($item->inbound->no_spb, (array)$request->no_spb);
+                }
+
+                return $match;
+            });
+        };
+
+        // Extract options for each field
+        // For each field, we apply all OTHER filters to see what values are still available
+        $groups = $filterCollection($all, 'group')->pluck('group')->unique()->sort()->values();
+        $jenisBahan = $filterCollection($all, 'jenis_bahan')->pluck('barang.nama_barang')->unique()->sort()->values();
+        $mids = $filterCollection($all, 'mid')->map(function ($item) {
+            return [
+                'mid' => $item->barang->mid,
+                'nama' => $item->barang->nama_barang,
+                'text' => "{$item->barang->mid} - {$item->barang->nama_barang}"
+            ];
+        })->unique('mid')->sortBy('mid')->values();
+
+        $noSpbs = $filterCollection($all, 'no_spb')->pluck('inbound.no_spb')->unique()->sort()->values();
+        $suppliers = $filterCollection($all, 'supplier')->pluck('inbound.supplier')->whereNotNull()->unique()->sort()->values();
+        $statuses = $filterCollection($all, 'status')->pluck('status')->unique()->sort()->values();
 
         return response()->json([
             'groups' => $groups,
-            'jenis_bahan' => $jenisBahan
+            'jenis_bahan' => $jenisBahan,
+            'mids' => $mids,
+            'no_spbs' => $noSpbs,
+            'suppliers' => $suppliers,
+            'statuses' => $statuses
         ]);
     }
 
@@ -582,6 +639,21 @@ class InboundController extends Controller
                 throw new \Exception("Lokasi baru sudah terpakai oleh stok lain.");
             }
 
+            // Cek apakah pallet_id baru bentrok dengan pallet lain di SPB yang sama
+            if ($detail->inbound) {
+                $isPalletDuplicate = StockInboundDetail::where('inbound_id', $detail->inbound_id)
+                    ->where('pallet_id', $request->pallet_id)
+                    ->where('id', '!=', $id)
+                    ->exists();
+
+                if ($isPalletDuplicate) {
+                    throw new \Exception("Pallet ID {$request->pallet_id} sudah digunakan dalam No SPB ini.");
+                }
+            }
+
+            // Combine selected date with current time
+            $incomingDateWithTime = ($request->incoming_date ?? date('Y-m-d')) . ' ' . date('H:i:s');
+
             $detail->update([
                 'pallet_id' => $request->pallet_id,
                 'group'     => $request->group,
@@ -594,9 +666,6 @@ class InboundController extends Controller
 
             // Update Header data (Incoming Date and Supplier)
             if ($detail->inbound) {
-                // Combine selected date with current time
-                $incomingDateWithTime = $request->incoming_date . ' ' . date('H:i:s');
-
                 $detail->inbound->update([
                     'incoming_date' => $incomingDateWithTime,
                     'supplier'      => $request->supplier,
@@ -608,23 +677,53 @@ class InboundController extends Controller
                 ->first();
 
             if ($movement) {
-
                 $movement->update([
                     'qty'     => $request->qty,
                     'loc_id'  => $newLocationId,
-                    'tanggal' => $incomingDateWithTime, // Sync the movement date with time
+                    'tanggal' => $incomingDateWithTime,
                     'catatan' => $request->catatan
                 ]);
             }
 
-            $qtyDiff = $request->qty - $oldQty;
+            // Sync Balances
+            if ($oldLocationId == $newLocationId) {
+                $qtyDiff = $request->qty - $oldQty;
+                $balance = StockBalance::where('barang_id', $barangId)
+                    ->where('loc_id', $oldLocationId)
+                    ->first();
 
-            $balance = StockBalance::where('barang_id', $barangId)
-                ->where('loc_id', $oldLocationId)
-                ->first();
+                if ($balance) {
+                    $balance->increment('qty', $qtyDiff);
+                } else {
+                    StockBalance::create([
+                        'barang_id'  => $barangId,
+                        'loc_id'     => $oldLocationId,
+                        'qty'        => $request->qty,
+                        'created_by' => Auth::id(),
+                    ]);
+                }
+            } else {
+                // Location changed: decrease old, increase new
+                $oldBalance = StockBalance::where('barang_id', $barangId)
+                    ->where('loc_id', $oldLocationId)
+                    ->first();
+                if ($oldBalance) {
+                    $oldBalance->decrement('qty', $oldQty);
+                }
 
-            if ($balance) {
-                $balance->increment('qty', $qtyDiff);
+                $newBalance = StockBalance::where('barang_id', $barangId)
+                    ->where('loc_id', $newLocationId)
+                    ->first();
+                if ($newBalance) {
+                    $newBalance->increment('qty', $request->qty);
+                } else {
+                    StockBalance::create([
+                        'barang_id'  => $barangId,
+                        'loc_id'     => $newLocationId,
+                        'qty'        => $request->qty,
+                        'created_by' => Auth::id(),
+                    ]);
+                }
             }
 
             DB::commit();
