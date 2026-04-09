@@ -281,7 +281,9 @@ class DashboardController extends Controller
                     'mid' => $detail->barang ? $detail->barang->mid : 'UNKNOWN',
                     'nama_barang' => $detail->barang ? $detail->barang->nama_barang : 'Unknown',
                     'qty' => 0,
-                    'pallet_id' => $detail->pallet_id
+                    'pallet_id' => $detail->pallet_id,
+                    'no_spb' => $detail->inbound->no_spb ?? '-',
+                    'incoming_date' => $detail->inbound->incoming_date ?? '-',
                 ];
             }
             $occupiedMap[$detail->loc_id]['qty'] += $detail->qty;
@@ -324,6 +326,8 @@ class DashboardController extends Controller
                 $nama_barang = $occupiedMap[$bin->id]['nama_barang'];
                 $qty = $occupiedMap[$bin->id]['qty'];
                 $palletId = $occupiedMap[$bin->id]['pallet_id'];
+                $noSpb = $occupiedMap[$bin->id]['no_spb'];
+                $incomingDate = $occupiedMap[$bin->id]['incoming_date'];
             }
 
             $locations[$locKey]['cells'][] = [
@@ -335,7 +339,9 @@ class DashboardController extends Controller
                 'mid'    => $mid,
                 'nama_barang' => $nama_barang,
                 'qty' => $qty,
-                'pallet_id' => $palletId
+                'pallet_id' => $palletId,
+                'no_spb' => $noSpb,
+                'incoming_date' => $incomingDate
             ];
         }
 
