@@ -36,7 +36,6 @@ class OutboundController extends Controller
         return view('wrm.inventory.draft_outbound_data', compact('suppliers'));
     }
 
-
     public function searchOutbound(Request $request)
     {
         $query = StockInboundDetail::select('wrm_stock_inbound_details.*')

@@ -173,7 +173,7 @@ class InboundController extends Controller
             $location = $first->location;
 
             // ATURAN BARU (Rule 3): Hanya tampilkan jika kapasitas mencukupi untuk SEMUA barang dalam SPB
-            if (count($bins) >= count($data)) {
+            if (count($bins) > 0) {
                 $availableLocations[] = [
                     'location_id' => $location->id,
                     'plant' => $location->plant,
