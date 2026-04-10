@@ -51,12 +51,13 @@
                     <div class="row gy-3 mb-3">
                         <div class="col-md-3">
                             <label for="incoming_date" class="form-label fw-bold">Incoming Date <span class="text-danger">*</span></label>
-                            @if(strtolower(Auth::user()->jabatan ?? '') == 'operator')
+                            <!-- @if(strtolower(Auth::user()->jabatan ?? '') == 'operator')
                             <input type="date" name="incoming_date" id="incoming_date" class="form-control bg-light" value="{{ date('Y-m-d') }}" readonly>
                             <small class="text-muted">Hanya dapat diubah oleh Admin/Supervisor</small>
                             @else
                             <input type="date" name="incoming_date" id="incoming_date" class="form-control" value="{{ date('Y-m-d') }}" required>
-                            @endif
+                            @endif -->
+                            <input type="date" name="incoming_date" id="incoming_date" class="form-control" value="{{ date('Y-m-d') }}" required>
                         </div>
 
                         <div class="col-md-3">
