@@ -4,14 +4,49 @@
 
 @section('styles')
 <style>
-    .dashboard-kpi-card {
-        border-radius: 12px;
-        border: none;
-        transition: transform 0.3s;
+    :root {
+        --kpi-total: #3b82f6;
+        /* blue-500 */
+        --kpi-item: #8b5cf6;
+        /* violet-500 */
+        --kpi-pallet: #06b6d4;
+        /* cyan-500 */
+        --kpi-inbound: #22c55e;
+        /* green-500 */
+        --kpi-draft: #ef4444;
+        /* red-500 */
+        --kpi-transfer: #f59e0b;
+        /* amber-500 */
     }
 
-    .dashboard-kpi-card:hover {
-        transform: translateY(-5px);
+    .dashboard-card {
+        /* background: #ffffff; */
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+    }
+
+    .kpi-icon-box {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        font-size: 24px;
+        color: #fff;
+    }
+
+    .dashboard-header-title {
+        font-weight: 700;
+        /* color: #1e293b; */
+        letter-spacing: -0.025em;
     }
 
     .table-responsive {
@@ -19,12 +54,109 @@
         overflow-y: auto;
     }
 
+    .bg-soft-blue {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--kpi-total);
+    }
+
+    .bg-soft-violet {
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--kpi-item);
+    }
+
+    .bg-soft-cyan {
+        background: rgba(6, 182, 212, 0.1);
+        color: var(--kpi-pallet);
+    }
+
+    .bg-soft-green {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--kpi-inbound);
+    }
+
+    .bg-soft-red {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--kpi-draft);
+    }
+
+    .bg-soft-amber {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--kpi-transfer);
+    }
+
     /* === Warehouse Location Map Styles === */
+    .zona-box {
+        width: 140px;
+        height: 120px;
+        border-radius: 12px;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        border: 2px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .zona-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border-color: #3b82f6;
+    }
+
+    .zona-box-colors {
+        flex-grow: 1;
+        width: 100%;
+        display: flex;
+    }
+
+    .zona-box-color-stripe {
+        height: 100%;
+        flex: 1;
+    }
+
+    .zona-box-empty {
+        background: #f8fafc;
+        flex-grow: 1;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #cbd5e1;
+        border-top: 1px dashed #e2e8f0;
+    }
+
+    .zona-box-label {
+        background: #ffffff;
+        padding: 8px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 14px;
+        color: #1e293b;
+        border-bottom: 1px solid #e2e8f0;
+        z-index: 2;
+    }
+
+    .zona-box-stats {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        color: #475569;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
     .rack-section {
         border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 16px;
         margin-bottom: 20px;
+        background: #fff;
     }
 
     .rack-section-header {
@@ -33,32 +165,26 @@
         gap: 10px;
         margin-bottom: 14px;
         padding-bottom: 10px;
-        border-bottom: 2px dashed #e2e8f0;
+        border-bottom: 1px dashed #e2e8f0;
+    }
+
+    .rack-zone-badge,
+    .rack-bin-badge {
+        font-size: 11px;
+        border-radius: 6px;
+        padding: 3px 10px;
+        font-weight: 600;
     }
 
     .rack-zone-badge {
-        background: #1e293b;
-        color: #fff;
-        font-size: 11px;
-        border-radius: 6px;
-        padding: 3px 10px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
+        background: #f1f5f9;
+        color: #475569;
     }
 
     .rack-bin-badge {
-        background: #3b82f6;
-        color: #fff;
-        font-size: 11px;
-        border-radius: 6px;
-        padding: 3px 10px;
-        font-weight: 600;
-    }
-
-    .rack-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+        background: #eff6ff;
+        color: #3b82f6;
+        border: 1px solid #bfdbfe;
     }
 
     .rack-cell {
@@ -77,15 +203,15 @@
     }
 
     .rack-cell:hover {
-        transform: scale(1.12);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: scale(1.15);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         z-index: 10;
     }
 
     .rack-cell.empty {
-        background: #f1f5f9;
-        color: #94a3b8;
-        border-color: #cbd5e1;
+        background: #f8fafc;
+        color: #cbd5e1;
+        border-color: #e2e8f0;
         border-style: dashed;
     }
 
@@ -95,15 +221,16 @@
         bottom: calc(100% + 8px);
         left: 50%;
         transform: translateX(-50%);
-        background: #0f172a;
-        color: #f1f5f9;
+        background: #1e293b;
+        color: #f8fafc;
         font-size: 11px;
-        padding: 6px 10px;
+        padding: 8px 12px;
         border-radius: 6px;
         white-space: nowrap;
         z-index: 100;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         pointer-events: none;
+        font-weight: normal;
     }
 
     .rack-cell-tooltip::after {
@@ -113,7 +240,7 @@
         left: 50%;
         transform: translateX(-50%);
         border: 5px solid transparent;
-        border-top-color: #0f172a;
+        border-top-color: #1e293b;
     }
 
     .rack-cell:hover .rack-cell-tooltip {
@@ -137,165 +264,187 @@
     <div class="container-fluid">
 
         {{-- Header & Filters --}}
-        <div class="row mb-4 align-items-end">
-            <div class="col-md-4">
-                <h4 class="mb-0 fw-bold"><i class="bx bx-bar-chart-alt-2"></i> WRM Dashboard</h4>
-                <p class="text-muted mb-0">Analytics & Stock Overview</p>
+        <div class="row mb-4 align-items-center">
+            <div class="col-xl-4 col-lg-3 mb-3 mb-lg-0">
+                <h3 class="mb-1 dashboard-header-title">Raw Material Overview</h3>
+                <p class="text-muted mb-0 small"><i class="bx bx-info-circle me-1"></i>Live enterprise inventory tracking</p>
             </div>
-            <div class="col-md-8 text-md-end mt-3 mt-md-0 d-flex gap-2 justify-content-md-end flex-wrap">
-                <div>
-                    <input type="date" id="filterStartDate" class="form-control form-control-sm"
-                        placeholder="Start Date">
-                </div>
-                <div>
-                    <input type="date" id="filterEndDate" class="form-control form-control-sm"
-                        placeholder="End Date">
-                </div>
-                <div>
-                    <select id="filterZona" class="form-select form-select-sm">
-                        <option value="">All Zones</option>
-                        @foreach ($locations as $loc)
-                        @if ($loc->zona)
-                        <option value="{{ $loc->zona }}">{{ $loc->zona }}</option>
-                        @endif
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <button id="btnFilter" class="btn btn-primary btn-sm"><i class="bx bx-filter"></i> Apply</button>
+
+            <div class="col-xl-8 col-lg-9 text-end">
+                <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
+                    <div class="input-group input-group-sm" style="width: auto;">
+                        <span class="input-group-text border-end-0 text-muted"><i class="bx bx-calendar"></i></span>
+                        <input type="date" id="filterStartDate" class="form-control border-start-0 ps-0" placeholder="Start Date">
+                    </div>
+                    <div class="input-group input-group-sm" style="width: auto;">
+                        <span class="input-group-text border-end-0 text-muted"><i class="bx bx-calendar"></i></span>
+                        <input type="date" id="filterEndDate" class="form-control border-start-0 ps-0" placeholder="End Date">
+                    </div>
+
+                    <div>
+                        <select id="filterGudang" class="form-select form-select-sm">
+                            <option value="">All Gudang</option>
+                            @foreach ($locations as $loc)
+                            @if ($loc->gudang)
+                            <option value="{{ $loc->gudang }}">{{ $loc->gudang }}</option>
+                            @endif
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <select id="filterSupplier" class="form-select form-select-sm">
+                            <option value="">All Suppliers</option>
+                            @foreach ($suppliers as $sup)
+                            @if ($sup->nama)
+                            <option value="{{ $sup->nama }}">{{ $sup->nama }}</option>
+                            @endif
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <button id="btnFilter" class="btn btn-primary btn-sm px-3 shadow-sm"><i class="bx bx-filter-alt me-1"></i>Apply</button>
                 </div>
             </div>
         </div>
 
         {{-- KPI Cards --}}
-        <div class="row mb-4">
-            <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                <div class="card dashboard-kpi-card shadow-sm"
-                    style="background: linear-gradient(135deg, #e3f2fd, #bbdefb);">
-                    <div class="card-body">
-                        <h6 class="text-muted text-uppercase fw-semibold mb-2">Total Stock (KG)</h6>
-                        <h3 class="fw-bold mb-0 text-primary" id="kpiTotalStock">0</h3>
+        <div class="row mb-4 g-3">
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="card dashboard-card kpi-card h-100 p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="kpi-icon-box bg-soft-blue me-3">
+                            <i class="bx bx-package"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0 small fw-semibold text-uppercase">Total Stock (KG)</h6>
+                        </div>
                     </div>
+                    <h3 class="fw-bold mb-0" id="kpiTotalStock">0</h3>
                 </div>
             </div>
-            <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                <div class="card dashboard-kpi-card shadow-sm"
-                    style="background: linear-gradient(135deg, #f3e5f5, #e1bee7);">
-                    <div class="card-body">
-                        <h6 class="text-muted text-uppercase fw-semibold mb-2">Total Items</h6>
-                        <h3 class="fw-bold mb-0 text-purple" style="color: #6a1b9a;" id="kpiTotalItem">0</h3>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="card dashboard-card kpi-card h-100 p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="kpi-icon-box bg-soft-violet me-3">
+                            <i class="bx bx-cube-alt"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0 small fw-semibold text-uppercase">SKU (ITEMS)</h6>
+                        </div>
                     </div>
+                    <h3 class="fw-bold mb-0" id="kpiTotalItem">0</h3>
                 </div>
             </div>
-            <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                <div class="card dashboard-kpi-card shadow-sm"
-                    style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9);">
-                    <div class="card-body">
-                        <h6 class="text-muted text-uppercase fw-semibold mb-2">Inbound Today (KG)</h6>
-                        <h3 class="fw-bold mb-0 text-success" id="kpiInboundToday">0</h3>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="card dashboard-card kpi-card h-100 p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="kpi-icon-box bg-soft-cyan me-3">
+                            <i class="bx bx-grid-horizontal"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0 small fw-semibold text-uppercase">Active Pallets</h6>
+                        </div>
                     </div>
+                    <h3 class="fw-bold mb-0" id="kpiActivePallet">0</h3>
                 </div>
             </div>
-            <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                <div class="card dashboard-kpi-card shadow-sm"
-                    style="background: linear-gradient(135deg, #ffebee, #ffcdd2);">
-                    <div class="card-body">
-                        <h6 class="text-muted text-uppercase fw-semibold mb-2">Outbound Today (KG)</h6>
-                        <h3 class="fw-bold mb-0 text-danger" id="kpiOutboundToday">0</h3>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="card dashboard-card kpi-card h-100 p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="kpi-icon-box bg-soft-green me-3">
+                            <i class="bx bx-trending-up"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0 small fw-semibold text-uppercase">Inbound Tdy (KG)</h6>
+                        </div>
                     </div>
+                    <h3 class="fw-bold mb-0" id="kpiInboundToday">0</h3>
+                </div>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="card dashboard-card kpi-card h-100 p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="kpi-icon-box bg-soft-red me-3">
+                            <i class="bx bx-arrow-from-bottom"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0 small fw-semibold text-uppercase">Draft Out Tdy (KG)</h6>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold mb-0" id="kpiDraftOutboundToday">0</h3>
+                </div>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="card dashboard-card kpi-card h-100 p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="kpi-icon-box bg-soft-amber me-3">
+                            <i class="bx bx-transfer-alt"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0 small fw-semibold text-uppercase">Transfer Tdy (KG)</h6>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold mb-0" id="kpiTransferToday">0</h3>
                 </div>
             </div>
         </div>
 
         {{-- Charts Row 1 --}}
-        <div class="row mb-4">
-            <div class="col-xl-8 mb-4 mb-xl-0">
-                <div class="card shadow-sm rounded-4 border-0 h-100">
-                    <div class="card-body">
-                        <div id="chartMovement" style="height: 350px;"></div>
-                    </div>
+        <div class="row mb-4 g-3">
+            <div class="col-xl-8">
+                <div class="card dashboard-card h-100 p-3">
+                    <h6 class="card-title fw-bold mb-0"><i class="bx bx-line-chart me-2 text-primary"></i>Stock Movement Overview</h6>
+                    <div id="chartMovement" style="height: 320px; width: 100%;"></div>
                 </div>
             </div>
             <div class="col-xl-4">
-                <div class="card shadow-sm rounded-4 border-0 h-100">
-                    <div class="card-body">
-                        <div id="chartPie" style="height: 350px;"></div>
-                    </div>
+                <div class="card dashboard-card h-100 p-3">
+                    <h6 class="card-title fw-bold mb-0"><i class="bx bx-pie-chart-alt-2 me-2 text-primary"></i>Stock by Gudang</h6>
+                    <div id="chartPie" style="height: 320px; width: 100%;"></div>
                 </div>
             </div>
         </div>
 
         {{-- Charts Row 2 --}}
-        <div class="row mb-4">
-            <!-- Left col for Bar Chart -->
+        <div class="row mb-4 g-3">
             <div class="col-xl-8">
-                <div class="card shadow-sm rounded-4 border-0 h-100">
-                    <div class="card-body">
-                        <div id="chartBar" style="height: 400px;"></div>
-                    </div>
+                <div class="card dashboard-card h-100 p-3">
+                    <h6 class="card-title fw-bold mb-0"><i class="bx bx-bar-chart-alt me-2 text-primary"></i>Top 5 Material by Qty</h6>
+                    <div id="chartBar" style="height: 300px; width: 100%;"></div>
                 </div>
             </div>
-
-            <!-- Right col for Donut (Space Utilization) -->
             <div class="col-xl-4">
-                <div class="card shadow-sm rounded-4 border-0 h-100">
-                    <div class="card-body">
-                        <div id="chartCapacity" style="height: 400px;"></div>
-                    </div>
+                <div class="card dashboard-card h-100 p-3">
+                    <h6 class="card-title fw-bold mb-0"><i class="bx bx-time-five me-2 text-primary"></i>Aging Stock</h6>
+                    <div id="chartAging" style="height: 300px; width: 100%;"></div>
                 </div>
             </div>
         </div>
 
         {{-- Tables Row --}}
-        <div class="row">
-            <div class="col-xl-6 mb-4">
-                <div class="card shadow-sm rounded-4 border-0 h-100">
-                    <div class="card-header border-bottom">
-                        <h5 class="card-title mb-0 text-danger"><i class="bx bx-time"></i> Expiring Within 30 Days</h5>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card dashboard-card h-100 p-0 overflow-hidden">
+                    <div class="card-header border-bottom p-3 d-flex align-items-center gap-2">
+                        <i class="bx bx-list-ol fs-5 text-primary"></i>
+                        <h6 class="card-title mb-0 fw-bold">Recent Activities Log</h6>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped mb-0 align-middle">
-                                <thead class="table-light">
+                        <div class="table-responsive" style="max-height: 350px;">
+                            <table class="table table-hover table-striped mb-0 align-middle border-top-0">
+                                <thead class="bg-light" style="position: sticky; top: 0; z-index: 1;">
                                     <tr>
-                                        <th>Item Name</th>
-                                        <th>No SPB</th>
-                                        <th>Qty</th>
-                                        <th>Location</th>
-                                        <th>Expires On</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tableExpiring">
-                                    <tr>
-                                        <td colspan="5" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-6 mb-4">
-                <div class="card shadow-sm rounded-4 border-0 h-100">
-                    <div class="card-header border-bottom">
-                        <h5 class="card-title mb-0"><i class="bx bx-list-ol"></i> Recent Activities</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped mb-0 align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Type</th>
-                                        <th>Item Name</th>
-                                        <th>Qty</th>
-                                        <th>Location</th>
+                                        <th class="border-top-0">Date</th>
+                                        <th class="border-top-0">Type</th>
+                                        <th class="border-top-0">Item Name</th>
+                                        <th class="border-top-0 text-end">Qty (KG)</th>
+                                        <th class="border-top-0">Location</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tableRecent">
                                     <tr>
-                                        <td colspan="5" class="text-center">Loading...</td>
+                                        <td colspan="5" class="text-center py-4 text-muted"><i class="bx bx-loader bx-spin me-2"></i>Loading...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -308,43 +457,43 @@
         {{-- Warehouse Location Map --}}
         <div class="row mt-2" id="sectionLocationMap">
             <div class="col-12">
-                <div class="card shadow-sm rounded-4 border-0">
-                    <div
-                        class="card-header border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <h5 class="card-title mb-0"><i class="bx bx-grid-alt me-1"></i> Warehouse Location Map
-                            </h5>
-                            <small class="text-muted">Visualisasi tata letak bin gudang berdasarkan stok aktif</small>
+                <div class="card dashboard-card border-0">
+                    <div class="card-header border-bottom p-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <h6 class="card-title mb-0 fw-bold"><i class="bx bx-grid-alt me-2 text-primary"></i>Warehouse Location Map</h6>
+                                <p class="text-muted small mb-0 mt-1">Real-time zone utilization visualization. Click a zone to view detailed bins.</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="card-body">
+                    <div class="card-body p-3">
                         {{-- Summary Chips --}}
-                        <div class="d-flex gap-3 mb-4 flex-wrap" id="locationSummary">
-                            <div class="px-3 py-2 rounded-3 text-white" style="background:#0f172a;font-size:13px;">
-                                Total Bins: <b id="sumTotal">-</b>
+                        <div class="d-flex gap-2 mb-4 flex-wrap" id="locationSummary">
+                            <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#1e293b;font-size:12px;">
+                                <i class="bx bx-border-all"></i> Total Bins: <b id="sumTotal">-</b>
                             </div>
-                            <div class="px-3 py-2 rounded-3 text-white" style="background:#16a34a;font-size:13px;">
-                                Occupied: <b id="sumOccupied">-</b>
+                            <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#3b82f6;font-size:12px;">
+                                <i class="bx bx-package"></i> Occupied: <b id="sumOccupied">-</b>
                             </div>
-                            <div class="px-3 py-2 rounded-3 text-white" style="background:#d97706;font-size:13px;">
-                                Reserved: <b id="sumReserved">-</b>
+                            <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#f59e0b;font-size:12px;">
+                                <i class="bx bx-lock"></i> Reserved: <b id="sumReserved">-</b>
                             </div>
-                            <div class="px-3 py-2 rounded-3" style="background:#e2e8f0;color:#475569;font-size:13px;">
-                                Empty: <b id="sumEmpty">-</b>
+                            <div class="px-3 py-1 rounded-pill shadow-sm d-flex align-items-center gap-1" style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:12px;">
+                                <i class="bx bx-grid-empty"></i> Empty: <b id="sumEmpty">-</b>
                             </div>
                         </div>
 
                         {{-- Dynamic MID Legend --}}
-                        <div id="midLegendContainer" class="d-flex flex-wrap gap-2 mb-4 p-3 rounded-3 bg-light" style="border:1px dashed #cbd5e1; display:none;">
+                        <div id="midLegendContainer" class="d-flex flex-wrap gap-2 mb-4 p-3 rounded-3 bg-light" style="border:1px solid #e2e8f0; display:none;">
                             <!-- populated by JS -->
                         </div>
 
                         {{-- Grid Container --}}
-                        <div id="locationMapContainer">
+                        <div id="locationMapContainer" class="p-2">
                             <div class="text-center text-muted py-5">
                                 <i class="bx bx-loader bx-spin" style="font-size:32px;"></i>
-                                <p class="mt-2 mb-0">Memuat peta gudang...</p>
+                                <p class="mt-2 mb-0">Rendering warehouse map...</p>
                             </div>
                         </div>
                     </div>
@@ -354,15 +503,24 @@
 
     </div>
 </div>
+
+{{-- Rack Detail Modal --}}
+<div class="modal fade" id="zonaDetailModal" tabindex="-1" aria-labelledby="zonaDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-bottom-0">
+                <h5 class="modal-title fw-bold" id="zonaDetailModalLabel"><i class="bx bx-grid me-2 text-primary"></i> Zona Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light" id="zonaDetailContainer">
+                <!-- Racks populated dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('scripts')
-{{-- Highcharts Library --}}
-<!-- <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/export-data.js"></script>
-    <script src="https://code.highcharts.com/modules/accessibility.js"></script> -->
-
 <script>
     function formatQty(x) {
         if (x === null || x === undefined) return '0';
@@ -385,7 +543,7 @@
         let colorIndex = 0;
 
         function getMidColor(mid) {
-            if (!mid) return '#16a34a'; // default green
+            if (!mid) return '#cbd5e1';
             if (midColorMap[mid]) return midColorMap[mid];
 
             const color = palette[colorIndex % palette.length];
@@ -394,42 +552,79 @@
             return color;
         }
 
-        // Default dates
+        if ($.fn.select2) {
+            $('#filterGudang, #filterSupplier').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                allowClear: true,
+                placeholder: 'Select...'
+            });
+        }
+
         const today = new Date();
         const start30 = new Date();
         start30.setDate(today.getDate() - 30);
-
         $('#filterStartDate').val(start30.toISOString().split('T')[0]);
         $('#filterEndDate').val(today.toISOString().split('T')[0]);
 
-        let movementChart, pieChart, barChart, capacityChart;
+        let movementChart, pieChart, barChart, agingChart;
+        let globalLocationData = {}; // Store raw location data for modal logic
+        let globalUsedMids = {};
 
         function initCharts() {
+            Highcharts.setOptions({
+                chart: {
+                    style: {
+                        fontFamily: "'Inter', sans-serif"
+                    }
+                },
+                credits: {
+                    enabled: false
+                }
+            });
+
             movementChart = Highcharts.chart('chartMovement', {
                 chart: {
-                    type: 'column',
-                    backgroundColor: 'transparent'
+                    type: 'spline',
+                    backgroundColor: 'transparent',
+                    marginTop: 30
                 },
                 title: {
-                    text: 'Inbound vs Outbound Movement'
+                    text: null
                 },
                 xAxis: {
                     categories: [],
-                    crosshair: true
+                    crosshair: true,
+                    tickWidth: 0,
+                    gridLineWidth: 0,
+                    lineColor: '#e2e8f0'
                 },
                 yAxis: {
                     min: 0,
                     title: {
-                        text: 'Quantity (KG)'
-                    }
+                        text: null
+                    },
+                    gridLineColor: '#f1f5f9'
                 },
                 tooltip: {
-                    shared: true
+                    shared: true,
+                    valueSuffix: ' KG'
+                },
+                legend: {
+                    verticalAlign: 'top',
+                    y: -10,
+                    itemStyle: {
+                        fontWeight: 'normal',
+                        color: '#64748b'
+                    }
                 },
                 plotOptions: {
-                    column: {
-                        pointPadding: 0.2,
-                        borderWidth: 0
+                    spline: {
+                        marker: {
+                            radius: 3,
+                            symbol: 'circle'
+                        },
+                        lineWidth: 3
                     }
                 },
                 series: []
@@ -441,7 +636,7 @@
                     backgroundColor: 'transparent'
                 },
                 title: {
-                    text: 'Stock Distribution by Zone'
+                    text: null
                 },
                 tooltip: {
                     pointFormat: '{series.name}: <b>{point.y} KG</b> ({point.percentage:.1f}%)'
@@ -452,8 +647,13 @@
                         cursor: 'pointer',
                         dataLabels: {
                             enabled: true,
-                            format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-                        }
+                            format: '<b>{point.name}</b><br>{point.percentage:.1f} %',
+                            style: {
+                                fontWeight: 'normal'
+                            }
+                        },
+                        borderWidth: 2,
+                        borderColor: '#fff'
                     }
                 },
                 series: [{
@@ -469,31 +669,37 @@
                     backgroundColor: 'transparent'
                 },
                 title: {
-                    text: 'Top 10 Fast Moving Items'
+                    text: null
                 },
                 xAxis: {
                     categories: [],
                     title: {
                         text: null
-                    }
+                    },
+                    gridLineWidth: 0,
+                    lineColor: '#e2e8f0'
                 },
                 yAxis: {
                     min: 0,
                     title: {
-                        text: 'Quantity (KG)',
-                        align: 'high'
+                        text: null
                     },
                     labels: {
                         overflow: 'justify'
-                    }
+                    },
+                    gridLineColor: '#f1f5f9'
                 },
                 tooltip: {
                     valueSuffix: ' KG'
                 },
                 plotOptions: {
                     bar: {
+                        borderRadius: 4,
                         dataLabels: {
-                            enabled: true
+                            enabled: true,
+                            style: {
+                                fontWeight: 'normal'
+                            }
                         }
                     }
                 },
@@ -501,38 +707,60 @@
                     enabled: false
                 },
                 series: [{
-                    name: 'Outbound',
+                    name: 'Quantity',
                     data: []
                 }]
             });
 
-            capacityChart = Highcharts.chart('chartCapacity', {
+            agingChart = Highcharts.chart('chartAging', {
                 chart: {
                     type: 'pie',
                     backgroundColor: 'transparent'
                 },
                 title: {
-                    text: 'Space Utilization'
+                    text: null
                 },
                 tooltip: {
-                    pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b> ({point.y} Bins)'
+                    pointFormat: '{series.name}: <b>{point.y} KG</b> ({point.percentage:.1f}%)'
                 },
                 plotOptions: {
                     pie: {
-                        innerSize: '60%',
+                        innerSize: '65%',
                         allowPointSelect: true,
                         cursor: 'pointer',
                         dataLabels: {
                             enabled: true,
-                            format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-                        }
+                            format: '<b>{point.name}</b>',
+                            style: {
+                                fontWeight: 'normal'
+                            }
+                        },
+                        borderWidth: 2,
+                        borderColor: '#fff'
                     }
                 },
                 series: [{
-                    name: 'Bins',
+                    name: 'Stock',
                     colorByPoint: true,
                     data: []
                 }]
+            });
+        }
+
+        function animCounter($el, endVal) {
+            $({
+                countNum: 0
+            }).animate({
+                countNum: endVal
+            }, {
+                duration: 1000,
+                easing: 'swing',
+                step: function() {
+                    $el.text(formatQty(this.countNum));
+                },
+                complete: function() {
+                    $el.text(formatQty(this.countNum));
+                }
             });
         }
 
@@ -546,20 +774,21 @@
                     if (res.status) {
                         animCounter($('#kpiTotalStock'), res.data.total_stock || 0);
                         animCounter($('#kpiTotalItem'), res.data.total_item || 0);
+                        animCounter($('#kpiActivePallet'), res.data.active_pallet || 0);
                         animCounter($('#kpiInboundToday'), res.data.inbound_today || 0);
-                        animCounter($('#kpiOutboundToday'), res.data.outbound_today || 0);
+                        animCounter($('#kpiDraftOutboundToday'), res.data.draft_outbound_today || 0);
+                        animCounter($('#kpiTransferToday'), res.data.transfer_today || 0);
                     }
                 }
             });
         }
 
         function fetchChartMovement(params) {
-            if (movementChart) movementChart.showLoading('Loading...');
+            if (movementChart) movementChart.showLoading('Fetching data...');
             $.ajax({
                 url: "{{ route('dashboard.wrm.data.chart-movement') }}",
                 type: 'GET',
                 data: params,
-                dataType: 'json',
                 success: function(res) {
                     if (res.status) {
                         movementChart.update({
@@ -577,16 +806,13 @@
         }
 
         function fetchChartPie(params) {
-            if (pieChart) pieChart.showLoading('Loading...');
+            if (pieChart) pieChart.showLoading('Fetching layout...');
             $.ajax({
                 url: "{{ route('dashboard.wrm.data.chart-pie') }}",
                 type: 'GET',
                 data: params,
-                dataType: 'json',
                 success: function(res) {
-                    if (res.status) {
-                        pieChart.series[0].setData(res.data, true);
-                    }
+                    if (res.status) pieChart.series[0].setData(res.data, true);
                 },
                 complete: function() {
                     if (pieChart) pieChart.hideLoading();
@@ -595,12 +821,11 @@
         }
 
         function fetchChartBar(params) {
-            if (barChart) barChart.showLoading('Loading...');
+            if (barChart) barChart.showLoading('Fetching top materials...');
             $.ajax({
                 url: "{{ route('dashboard.wrm.data.chart-bar') }}",
                 type: 'GET',
                 data: params,
-                dataType: 'json',
                 success: function(res) {
                     if (res.status) {
                         barChart.update({
@@ -617,89 +842,44 @@
             });
         }
 
-        function fetchChartCapacity(params) {
-            if (capacityChart) capacityChart.showLoading('Loading...');
+        function fetchChartAging(params) {
+            if (agingChart) agingChart.showLoading('Calculating age...');
             $.ajax({
                 url: "{{ route('dashboard.wrm.data.chart-capacity') }}",
                 type: 'GET',
                 data: params,
-                dataType: 'json',
                 success: function(res) {
-                    if (res.status) {
-                        capacityChart.series[0].setData(res.data, true);
-                    }
+                    if (res.status) agingChart.series[0].setData(res.data, true);
                 },
                 complete: function() {
-                    if (capacityChart) capacityChart.hideLoading();
-                }
-            });
-        }
-
-        function fetchTableExpiring(params) {
-            const $t = $('#tableExpiring');
-            $t.html('<tr><td colspan="5" class="text-center">Loading...</td></tr>');
-            $.ajax({
-                url: "{{ route('dashboard.wrm.data.table-expiring') }}",
-                type: 'GET',
-                data: params,
-                dataType: 'json',
-                success: function(res) {
-                    if (res.status) {
-                        $t.empty();
-                        if (res.data.length === 0) {
-                            $t.append(
-                                '<tr><td colspan="5" class="text-center text-muted">No items expiring soon.</td></tr>'
-                            );
-                        } else {
-                            let html = '';
-                            res.data.forEach(item => {
-                                html += `
-                                    <tr>
-                                        <td class="fw-bold">${item.barang}</td>
-                                        <td>${item.no_spb}</td>
-                                        <td>${formatQty(item.qty)}</td>
-                                        <td><span class="badge bg-info">${item.lokasi}</span></td>
-                                        <td>
-                                            ${item.expired_date} 
-                                            <small class="text-danger d-block">(${item.days_left} days left)</small>
-                                        </td>
-                                    </tr>
-                                `;
-                            });
-                            $t.html(html);
-                        }
-                    }
+                    if (agingChart) agingChart.hideLoading();
                 }
             });
         }
 
         function fetchTableRecent(params) {
             const $t = $('#tableRecent');
-            $t.html('<tr><td colspan="5" class="text-center">Loading...</td></tr>');
+            $t.html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="bx bx-loader bx-spin me-2"></i>Loading recent activities...</td></tr>');
             $.ajax({
                 url: "{{ route('dashboard.wrm.data.table-recent') }}",
                 type: 'GET',
                 data: params,
-                dataType: 'json',
                 success: function(res) {
                     if (res.status) {
                         $t.empty();
                         if (res.data.length === 0) {
-                            $t.append(
-                                '<tr><td colspan="5" class="text-center text-muted">No recent activities.</td></tr>'
-                            );
+                            $t.append('<tr><td colspan="5" class="text-center py-4 text-muted">No recent activities on this filter.</td></tr>');
                         } else {
                             let html = '';
                             res.data.forEach(item => {
-                                const typeBadge = item.jenis === 'IN' ? 'bg-success' :
-                                    'bg-danger';
+                                const typeBadge = item.jenis === 'IN' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' : 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25';
                                 html += `
                                     <tr>
-                                        <td>${item.tanggal}</td>
-                                        <td><span class="badge ${typeBadge}">${item.jenis}</span></td>
-                                        <td>${item.barang}</td>
-                                        <td class="fw-bold">${formatQty(item.qty)}</td>
-                                        <td>${item.lokasi}</td>
+                                        <td class="text-muted small">${item.tanggal}</td>
+                                        <td><span class="badge ${typeBadge} rounded-pill px-2 py-1">${item.jenis}</span></td>
+                                        <td class="fw-medium">${item.barang}</td>
+                                        <td class="fw-bold text-end ${item.jenis==='IN'?'text-success':'text-danger'}">${formatQty(item.qty)}</td>
+                                        <td class="text-muted small">${item.lokasi}</td>
                                     </tr>
                                 `;
                             });
@@ -710,168 +890,114 @@
             });
         }
 
-        function fetchAllData() {
-            const params = {
-                start_date: $('#filterStartDate').val(),
-                end_date: $('#filterEndDate').val(),
-                zona: $('#filterZona').val()
-            };
-
-            fetchKpi(params);
-            fetchChartMovement(params);
-            fetchChartPie(params);
-            fetchChartBar(params);
-            fetchChartCapacity(params);
-            fetchTableExpiring(params);
-            fetchTableRecent(params);
-            fetchLocationLayout(params);
-        }
-
         function fetchLocationLayout(params) {
             const $container = $('#locationMapContainer');
-            $container.html(`
-                    <div class="text-center text-muted py-5">
-                        <i class="bx bx-loader bx-spin" style="font-size:32px;"></i>
-                        <p class="mt-2 mb-0">Memuat peta gudang...</p>
-                    </div>
-                `);
+            $container.html(`<div class="text-center text-muted py-5"><i class="bx bx-loader bx-spin fs-1"></i><p class="mt-2 text-sm">Rendering warehouse visualizer...</p></div>`);
 
             $.ajax({
                 url: "{{ route('dashboard.wrm.data.location-layout') }}",
                 type: 'GET',
                 data: params,
-                dataType: 'json',
                 success: function(res) {
                     if (!res.status) return;
 
-                    // Update summary chips
                     $('#sumTotal').text(res.summary.total);
                     $('#sumOccupied').text(res.summary.occupied);
                     $('#sumReserved').text(res.summary.reserved);
                     $('#sumEmpty').text(res.summary.empty);
 
                     if (res.data.length === 0) {
-                        $container.html(
-                            `<div class="text-center text-muted py-4"><i class="bx bx-data" style="font-size:32px;"></i><p class="mt-2">Belum ada data lokasi bin.</p></div>`
-                        );
+                        $container.html(`<div class="text-center text-muted py-5"><i class="bx bx-cube fs-1 text-light"></i><p class="mt-2 text-sm">No bin visualization data found for these filters.</p></div>`);
                         return;
                     }
 
-                    // Group locations by gudang and keep track of used MIDs
+                    // Pre-process and categorize data 
                     const byGudang = {};
                     const usedMids = {};
-                    res.data.forEach(loc => {
-                        const key = loc.plant + ' - ' + loc.gudang;
-                        if (!byGudang[key]) byGudang[key] = [];
-                        byGudang[key].push(loc);
+
+                    res.data.forEach(loc => { // loc is a rack basically from the original API
+                        const gKey = loc.plant + ' - ' + loc.gudang;
+                        if (!byGudang[gKey]) byGudang[gKey] = {};
+                        if (!byGudang[gKey][loc.zona]) byGudang[gKey][loc.zona] = {
+                            racks: [],
+                            mids: new Set(),
+                            totalOccupied: 0
+                        };
+
+                        byGudang[gKey][loc.zona].racks.push(loc);
+
+                        loc.cells.forEach(c => {
+                            if (c.status === 'occupied') {
+                                byGudang[gKey][loc.zona].mids.add(c.mid);
+                                byGudang[gKey][loc.zona].totalOccupied++;
+                                usedMids[c.mid] = {
+                                    name: c.nama_barang,
+                                    color: getMidColor(c.mid)
+                                };
+                            } else if (c.status === 'reserved') {
+                                byGudang[gKey][loc.zona].totalOccupied++;
+                            }
+                        });
                     });
 
+                    // Store global for clicking into modal
+                    globalLocationData = byGudang;
+                    globalUsedMids = usedMids;
+
+                    // Render Gudang and Zonas
                     let html = '';
-                    for (const [gudangKey, locs] of Object.entries(byGudang)) {
-                        html += `<div class="mb-4">`;
-                        html += `<div class="d-flex align-items-center gap-2 mb-3">
-                            <i class="bx bx-buildings" style="font-size:20px;color:#3b82f6;"></i>
-                            <h6 class="mb-0 fw-bold">${gudangKey}</h6>
-                            <div style="flex:1;height:2px;background:linear-gradient(to right,#3b82f6,#e2e8f0);border-radius:2px;"></div>
-                        </div>`;
-                        html += `<div class="row g-3">`;
-
-                        locs.forEach(loc => {
-                            // Find max kolom and level for this rack
-                            const maxKolom = Math.max(...loc.cells.map(c => parseInt(c
-                                .kolom) || 0), 0);
-                            const maxLevel = Math.max(...loc.cells.map(c => parseInt(c
-                                .level) || 0), 0);
-
-                            // Build a cell map for easy lookup
-                            const cellMap = {};
-                            loc.cells.forEach(c => {
-                                cellMap[c.kolom + '_' + c.level] = c;
-                            });
-
-                            // Build grid HTML: rows = levels (top to bottom), cols = kolom
-                            let gridHtml =
-                                `<div style="display:flex;flex-direction:column;gap:5px;">`;
-
-                            for (let lvl = maxLevel; lvl >= 1; lvl--) {
-                                gridHtml +=
-                                    `<div style="display:flex;align-items:center;gap:5px;">`;
-                                gridHtml +=
-                                    `<span style="width:26px;font-size:10px;font-weight:700;text-align:right;flex-shrink:0;">L${lvl}</span>`;
-
-                                for (let kol = 1; kol <= maxKolom; kol++) {
-                                    const cell = cellMap[kol + '_' + lvl];
-                                    if (cell) {
-                                        const statusLabel = cell.status === 'occupied' ?
-                                            '🟢 Berisi Stok' : (cell.status === 'reserved' ?
-                                                '🟡 Reserved' : '⬜ Kosong');
-
-                                        let styleAttr = '';
-                                        let tooltipExtras = '';
-                                        if (cell.status === 'occupied') {
-                                            const bgColor = getMidColor(cell.mid);
-                                            usedMids[cell.mid] = {
-                                                nama: cell.nama_barang,
-                                                color: bgColor
-                                            };
-                                            styleAttr = `style="background: ${bgColor}; border-color: ${bgColor};"`;
-                                            tooltipExtras = `<br>Incoming Date: ${cell.incoming_date || '-'}<br>No SPB: ${cell.no_spb || '-'}<br>Barang: ${cell.nama_barang || '-'}<br>MID: ${cell.mid || '-'}<br>Qty: ${formatQty(cell.qty)}<br>Pallet ID: ${cell.pallet_id || '-'}`;
-                                        }
-
-                                        gridHtml += `
-                                        <div class="rack-cell ${cell.status}" title="" ${styleAttr}>
-                                            ${cell.label}
-                                            <div class="rack-cell-tooltip">${statusLabel}<br>Bin: ${loc.bin}<br>Kolom ${cell.kolom}, Lvl ${cell.level}${tooltipExtras}</div>
-                                        </div>`;
-                                    } else {
-                                        gridHtml +=
-                                            `<div style="width:52px;height:52px;"></div>`;
-                                    }
-                                }
-
-                                gridHtml += `</div>`; // end row
-                            }
-
-                            // Kolom labels at the bottom
-                            gridHtml +=
-                                `<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">`;
-                            gridHtml += `<span style="width:26px;"></span>`;
-                            for (let kol = 1; kol <= maxKolom; kol++) {
-                                gridHtml +=
-                                    `<div style="width:52px;text-align:center;font-size:10px;font-weight:600;">K${kol}</div>`;
-                            }
-                            gridHtml += `</div>`;
-
-                            gridHtml += `</div>`; // end grid
-
-                            html += `
-                            <div class="col-auto">
-                                <div class="rack-section bg-light">
-                                    <div class="rack-section-header">
-                                        <span class="rack-zone-badge">${loc.zona}</span>
-                                        <span class="rack-bin-badge">Bin: ${loc.bin}</span>
-                                        <span style="font-size:11px;">${loc.cells.length} posisi</span>
+                    for (const [gudangKey, zonas] of Object.entries(byGudang)) {
+                        html += `<div class="mb-5">
+                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                        <h6 class="mb-0 fw-bold"><i class="bx bx-buildings text-primary me-2"></i>${gudangKey}</h6>
+                                        <div class="flex-grow-1 border-bottom border-dashed border-secondary opacity-25"></div>
                                     </div>
-                                    ${gridHtml}
-                                </div>
-                            </div>`;
-                        });
+                                    <div class="d-flex flex-wrap gap-3">`;
 
-                        html += `</div></div>`; // end row + gudang section
+                        // Render each Zona as a box
+                        for (const [zonaName, zInfo] of Object.entries(zonas)) {
+                            // Determine item colors for stripes
+                            let stripesHtml = '';
+                            const itemsArr = Array.from(zInfo.mids);
+
+                            if (itemsArr.length > 0) {
+                                itemsArr.forEach(mid => {
+                                    stripesHtml += `<div class="zona-box-color-stripe" style="background-color: ${usedMids[mid].color};"></div>`;
+                                });
+
+                                html += `<div class="zona-box" onclick="openZonaModal('${gudangKey}', '${zonaName}')">
+                                            <div class="zona-box-label">ZONA ${zonaName}</div>
+                                            <div class="zona-box-colors">
+                                                ${stripesHtml}
+                                            </div>
+                                            <div class="zona-box-stats"><i class="bx bx-package"></i> ${zInfo.totalOccupied}</div>
+                                         </div>`;
+                            } else {
+                                html += `<div class="zona-box" onclick="openZonaModal('${gudangKey}', '${zonaName}')">
+                                            <div class="zona-box-label text-muted">ZONA ${zonaName}</div>
+                                            <div class="zona-box-empty">
+                                                <i class="bx bx-grid-empty" style="font-size:32px;"></i>
+                                            </div>
+                                         </div>`;
+                            }
+                        }
+
+                        html += `   </div>
+                                 </div>`;
                     }
 
-                    // Render Dynamic Legend
+                    // Render Legend
                     if (Object.keys(usedMids).length > 0) {
-                        let legendHtml = `<div class="fw-bold mb-1 w-100" style="font-size:12px;"><i class="bx bx-palette"></i> Panduan Warna MID:</div>`;
-                        for (const [m, info] of Object.entries(usedMids)) {
+                        let legendHtml = '<b class="small text-muted me-2 align-self-center">Item Legend:</b> ';
+                        for (const [mid, info] of Object.entries(usedMids)) {
                             legendHtml += `
-                                <div class="d-flex align-items-center gap-1" style="font-size:11px; padding:2px 6px; border:1px solid #e2e8f0; border-radius:4px;">
-                                    <span class="d-inline-block rounded-1" style="width:12px;height:12px;background:${info.color};"></span>
-                                    <span class="text-truncate" style="max-width: 150px;" title="${m} - ${info.nama}">${m} (${info.nama})</span>
+                                <div class="d-flex align-items-center px-2 py-1 rounded shadow-sm border" style="font-size:11px;">
+                                    <div style="width:12px;height:12px;background-color:${info.color};border-radius:3px;margin-right:6px;"></div>
+                                    <span class="fw-semibold">${mid}</span><span class="text-muted ms-1 d-none d-sm-inline">- ${info.name}</span>
                                 </div>
                             `;
                         }
-                        $('#midLegendContainer').html(legendHtml).show();
+                        $('#midLegendContainer').html(legendHtml).fadeIn('fast');
                     } else {
                         $('#midLegendContainer').hide();
                     }
@@ -881,26 +1007,106 @@
             });
         }
 
-        function animCounter($el, max) {
-            const duration = 1000;
-            const start = performance.now();
-            const num = parseFloat(max) || 0;
+        // --- EXPOSE to Global Context for Inline OnClick ---
+        window.openZonaModal = function(gudangKey, zonaName) {
+            $('#zonaDetailModalLabel').html(`<i class="bx bx-buildings text-primary me-2"></i> ${gudangKey} <i class="bx bx-chevron-right text-muted mx-1"></i> ZONA <b class=">${zonaName}</b> Details`);
 
-            requestAnimationFrame(function animate(time) {
-                const elapsed = time - start;
-                const progress = Math.min(elapsed / duration, 1);
-                const current = progress * num;
-                $el.text(formatQty(current));
-                if (progress < 1) requestAnimationFrame(animate);
-                else $el.text(formatQty(num)); // ensure exact end value
+            const zInfo = globalLocationData[gudangKey][zonaName];
+            if (!zInfo) return;
+
+            let html = `<div class="row g-3">`;
+
+            zInfo.racks.forEach(loc => { // loc is rack
+                const maxKolom = Math.max(...loc.cells.map(c => parseInt(c.kolom) || 0), 0);
+                const maxLevel = Math.max(...loc.cells.map(c => parseInt(c.level) || 0), 0);
+                const cellMap = {};
+                loc.cells.forEach(c => {
+                    cellMap[c.kolom + '_' + c.level] = c;
+                });
+
+                let gridHtml = `<div class="d-flex flex-column gap-1">`;
+                for (let lvl = maxLevel; lvl >= 1; lvl--) {
+                    gridHtml += `<div class="d-flex align-items-center gap-1">`;
+                    gridHtml += `<span class="rack-row-label" style="width:20px;text-align:right;">L${lvl}</span>`;
+                    for (let col = 1; col <= maxKolom; col++) {
+                        const c = cellMap[col + '_' + lvl];
+                        if (c) {
+                            let bg = '',
+                                cls = 'rack-cell',
+                                border = '';
+                            if (c.status === 'empty') {
+                                cls += ' empty';
+                            } else if (c.status === 'reserved') {
+                                bg = '#f59e0b';
+                                color = '#fff';
+                            } else if (c.status === 'occupied') {
+                                bg = globalUsedMids[c.mid].color;
+                            }
+
+                            let tooltip = `<b>Bin ${c.label}</b><br/>Status: ${c.status}`;
+                            if (c.status === 'occupied') {
+                                tooltip += `<br/>SPB: ${c.no_spb}<br/>Pallet: ${c.pallet_id}<br/>Barang: ${c.mid} - ${c.nama_barang}<br/>Qty: ${c.qty}<br/>In: ${c.incoming_date}`;
+                            }
+
+                            gridHtml += `<div class="${cls}" style="background-color:${bg};color:${c.status!=='empty'?'#fff':''}">
+                                            ${c.label}
+                                            <div class="rack-cell-tooltip text-start">${tooltip}</div>
+                                         </div>`;
+                        } else {
+                            gridHtml += `<div style="width:52px;height:52px;border:1px solid transparent;background:transparent;"></div>`;
+                        }
+                    }
+                    gridHtml += `</div>`;
+                }
+
+                gridHtml += `<div class="d-flex align-items-center gap-1 mt-1"><span style="width:20px;"></span>`;
+                for (let col = 1; col <= maxKolom; col++) {
+                    gridHtml += `<div style="width:52px;text-align:center;font-size:10px;font-weight:600;color:#94a3b8;">C${col}</div>`;
+                }
+                gridHtml += `</div></div>`; // End row grid
+
+                html += `<div class="col-auto">
+                            <div class="rack-section shadow-sm text-center">
+                                <div class="rack-section-header">
+                                    <span class="rack-zone-badge">Z: ${loc.zona}</span>
+                                    <span class="rack-bin-badge">Rack: ${loc.bin}</span>
+                                </div>
+                                ${gridHtml}
+                            </div>
+                         </div>`;
             });
+
+            html += `</div>`;
+            $('#zonaDetailContainer').html(html);
+            var myModal = new bootstrap.Modal(document.getElementById('zonaDetailModal'));
+            myModal.show();
+        };
+
+        // --- Core ---
+        function fetchAllData() {
+            const params = {
+                start_date: $('#filterStartDate').val(),
+                end_date: $('#filterEndDate').val(),
+                gudang: $('#filterGudang').val(),
+                supplier: $('#filterSupplier').val()
+            };
+
+            fetchKpi(params);
+            fetchChartMovement(params);
+            fetchChartPie(params);
+            fetchChartBar(params);
+            fetchChartAging(params);
+            fetchTableRecent(params);
+            fetchLocationLayout(params);
         }
 
-        // Init actions
-        initCharts();
-        fetchAllData();
+        $('#btnFilter').on('click', function(e) {
+            e.preventDefault();
+            fetchAllData();
+        });
 
-        $('#btnFilter').on('click', fetchAllData);
+        initCharts();
+        fetchAllData(); // Initial load
     });
 </script>
 @endsection

@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Wrm\Inventory\StockBalance;
 use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockMovement;
+use App\Models\Wrm\Inventory\StockOutbound;
+use App\Models\Wrm\Inventory\StockTransferDetail;
 use App\Models\Wrm\MasterBarangModel;
 use App\Models\Wrm\MasterLocationModel;
 use App\Models\Wrm\MasterBinModel;
+use App\Models\Wrm\MasterSupplierModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,9 +20,12 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Get locations for filter dropdown
-        $locations = MasterLocationModel::select('zona')->distinct()->get();
-        return view('dashboard.wrm_dashboard', compact('locations'));
+        // Get locations grouped by gudang for filter dropdown
+        $locations = MasterLocationModel::select('gudang')->whereNotNull('gudang')->distinct()->get();
+        // Get suppliers for filter dropdown
+        $suppliers = MasterSupplierModel::select('nama')->distinct()->get();
+
+        return view('dashboard.wrm_dashboard', compact('locations', 'suppliers'));
     }
 
     private function getFilterDates(Request $request)
@@ -31,25 +37,11 @@ class DashboardController extends Controller
 
     private function getBaseStockBalanceQuery(Request $request)
     {
-        $zona = $request->zona;
-        $query = StockBalance::query();
-        if ($zona) {
-            $query->whereHas('location', function ($q) use ($zona) {
-                $q->where('zona', $zona);
-            });
-        }
-        return $query;
-    }
-
-    private function getBaseStockMovementQuery(Request $request)
-    {
-        [$startDate, $endDate] = $this->getFilterDates($request);
-        $zona = $request->zona;
-
-        $query = StockMovement::whereBetween('tanggal', [$startDate, $endDate]);
-        if ($zona) {
-            $query->whereHas('location', function ($q) use ($zona) {
-                $q->where('zona', $zona);
+        $gudang = $request->gudang;
+        $query = clone StockBalance::query();
+        if ($gudang) {
+            $query->whereHas('location', function ($q) use ($gudang) {
+                $q->where('gudang', $gudang);
             });
         }
         return $query;
@@ -60,76 +52,120 @@ class DashboardController extends Controller
     {
         $stockBalanceQuery = $this->getBaseStockBalanceQuery($request);
 
+        // Active Pallets
+        $inboundDetailQuery = clone StockInboundDetail::query();
+        if ($request->gudang) {
+            $inboundDetailQuery->whereHas('bin.location', function ($q) use ($request) {
+                $q->where('gudang', $request->gudang);
+            });
+        }
+        if ($request->supplier) {
+            $inboundDetailQuery->whereHas('inbound', function ($q) use ($request) {
+                $q->where('supplier', $request->supplier);
+            });
+        }
+        $activePalletCount = (clone $inboundDetailQuery)->where('status', '!=', 'ISSUED')->count();
+
+        // Draft Outbound (Today)
+        $draftOutboundTodayQuery = clone StockOutbound::query();
+        $draftOutboundTodayQuery->whereDate('reservasi_date', Carbon::today());
+        $draftOutboundToday = $draftOutboundTodayQuery->sum('qty_request');
+
+        // Transfer (Today)
+        $transferQuery = clone StockTransferDetail::query();
+        if ($request->gudang) {
+            // For transfer KPI, if gudang is filtered, check plant/sloc or location.
+            // MasterLocation->gudang usually maps to 'plant - gudang' in stock_transfer_details.
+            // For simplicity, skip gudang filter for global transfer KPI unless requested.
+        }
+        $transferToday = $transferQuery->whereDate('created_at', Carbon::today())->sum('qty_actual');
+
+        // Inbound Today
+        $inboundTodayQuery = StockMovement::whereDate('tanggal', Carbon::today())->where('jenis', 'in')->where('ref_type', 'inbound');
+        if ($request->gudang) {
+            $inboundTodayQuery->whereHas('location', function ($q) use ($request) {
+                $q->where('gudang', $request->gudang);
+            });
+        }
+
         $kpi = [
             'total_stock' => (clone $stockBalanceQuery)->sum('qty'),
             'total_item' => MasterBarangModel::count(),
-            'inbound_today' => StockMovement::whereDate('tanggal', Carbon::today())->where('jenis', 'in')->sum('qty'),
-            'outbound_today' => abs(StockMovement::whereDate('tanggal', Carbon::today())->where('jenis', 'out')->sum('qty')),
+            'active_pallet' => $activePalletCount,
+            'inbound_today' => $inboundTodayQuery->sum('qty'),
+            'draft_outbound_today' => $draftOutboundToday,
+            'transfer_today' => $transferToday,
         ];
 
         return response()->json(['status' => true, 'data' => $kpi]);
     }
 
-    // --- 2. Line/Column Chart: Inbound vs Outbound per day ---
+    // --- 2. Chart Movement: Inbound, Draft Outbound, Transfer per day ---
     public function getChartMovement(Request $request)
     {
         [$startDate, $endDate] = $this->getFilterDates($request);
-        $stockMovementQuery = $this->getBaseStockMovementQuery($request);
 
-        $movementsDaily = $stockMovementQuery
-            ->selectRaw('DATE(tanggal) as date, jenis, SUM(qty) as total')
-            ->groupBy('date', 'jenis')
-            ->orderBy('date')
-            ->get();
+        // 1. Inbound (from StockMovement)
+        $inboundQuery = StockMovement::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'in')->where('ref_type', 'inbound');
+        if ($request->gudang) {
+            $inboundQuery->whereHas('location', function ($q) use ($request) {
+                $q->where('gudang', $request->gudang);
+            });
+        }
+        $inboundDaily = $inboundQuery->selectRaw('DATE(tanggal) as date, SUM(qty) as total')->groupBy('date')->get()->keyBy('date');
+
+        // 2. Draft Outbound (from StockOutbound reservasi_date)
+        $outboundDaily = StockOutbound::whereBetween('reservasi_date', [$startDate, $endDate])
+            ->selectRaw('DATE(reservasi_date) as date, SUM(qty_request) as total')
+            ->groupBy('date')->get()->keyBy('date');
+
+        // 3. Transfer (from StockTransferDetail created_at)
+        $transferDaily = StockTransferDetail::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, SUM(qty_actual) as total')
+            ->groupBy('date')->get()->keyBy('date');
 
         $categories = [];
         $inboundSeries = [];
         $outboundSeries = [];
+        $transferSeries = [];
 
         $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
         foreach ($period as $date) {
             $dateStr = $date->format('Y-m-d');
             $categories[] = $date->format('d M');
-            $inboundSeries[$dateStr] = 0;
-            $outboundSeries[$dateStr] = 0;
+            $inboundSeries[] = isset($inboundDaily[$dateStr]) ? (float)$inboundDaily[$dateStr]->total : 0;
+            $outboundSeries[] = isset($outboundDaily[$dateStr]) ? (float)$outboundDaily[$dateStr]->total : 0;
+            $transferSeries[] = isset($transferDaily[$dateStr]) ? (float)$transferDaily[$dateStr]->total : 0;
         }
-
-        foreach ($movementsDaily as $mov) {
-            $dateStr = $mov->date;
-            if (isset($inboundSeries[$dateStr])) {
-                if ($mov->jenis == 'in') $inboundSeries[$dateStr] = (int)$mov->total;
-                else if ($mov->jenis == 'out') $outboundSeries[$dateStr] = abs((int)$mov->total);
-            }
-        }
-
 
         return response()->json([
             'status' => true,
             'data' => [
                 'categories' => $categories,
                 'series' => [
-                    ['name' => 'Inbound', 'data' => array_values($inboundSeries), 'color' => '#28a745'],
-                    ['name' => 'Outbound', 'data' => array_values($outboundSeries), 'color' => '#dc3545'],
+                    ['name' => 'Inbound', 'data' => $inboundSeries, 'color' => '#22c55e', 'type' => 'spline'],
+                    ['name' => 'Draft Outbound', 'data' => $outboundSeries, 'color' => '#ef4444', 'type' => 'spline'],
+                    ['name' => 'Transfer', 'data' => $transferSeries, 'color' => '#3b82f6', 'type' => 'spline'],
                 ]
             ]
         ]);
     }
 
-    // --- 3. Pie Chart: Stock by Zone ---
+    // --- 3. Pie Chart: Stock by Gudang ---
     public function getChartPie(Request $request)
     {
-        $stockBalanceQuery = $this->getBaseStockBalanceQuery($request);
+        $stockBalanceQuery = clone $this->getBaseStockBalanceQuery($request);
 
-        $stockByZoneRaw = $stockBalanceQuery
+        $stockByGudangRaw = $stockBalanceQuery
             ->join('wrm_master_location', 'wrm_stock_balance.loc_id', '=', 'wrm_master_location.id')
-            ->select('wrm_master_location.zona', DB::raw('SUM(wrm_stock_balance.qty) as total'))
-            ->groupBy('wrm_master_location.zona')
+            ->select('wrm_master_location.gudang', DB::raw('SUM(wrm_stock_balance.qty) as total'))
+            ->groupBy('wrm_master_location.gudang')
             ->get();
 
         $chartPie = [];
-        foreach ($stockByZoneRaw as $sz) {
+        foreach ($stockByGudangRaw as $sz) {
             $chartPie[] = [
-                'name' => $sz->zona ?? 'Unknown',
+                'name' => $sz->gudang ?? 'Unknown',
                 'y' => (int)$sz->total
             ];
         }
@@ -137,105 +173,113 @@ class DashboardController extends Controller
         return response()->json(['status' => true, 'data' => $chartPie]);
     }
 
-    // --- 4. Bar Chart: Top 10 Fast Moving Items ---
+    // --- 4. Bar Chart: Top 5 Material by Qty (replacing old Fast Moving Items) ---
     public function getChartBar(Request $request)
     {
-        $stockMovementQuery = $this->getBaseStockMovementQuery($request);
+        $query = clone StockInboundDetail::query();
+        $query->where('qty', '>', 0)->where('status', '!=', 'ISSUED');
 
-        $fastMovingRaw = $stockMovementQuery
-            ->where('jenis', 'out')
-            ->join('wrm_master_barang', 'wrm_stock_movements.barang_id', '=', 'wrm_master_barang.id')
-            ->select('wrm_master_barang.nama_barang', DB::raw('SUM(wrm_stock_movements.qty) as total'))
+        if ($request->gudang) {
+            $query->whereHas('bin.location', function ($q) use ($request) {
+                $q->where('gudang', $request->gudang);
+            });
+        }
+        if ($request->supplier) {
+            $query->whereHas('inbound', function ($q) use ($request) {
+                $q->where('supplier', $request->supplier);
+            });
+        }
+
+        $topMaterials = $query
+            ->join('wrm_master_barang', 'wrm_stock_inbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->select('wrm_master_barang.nama_barang', DB::raw('SUM(wrm_stock_inbound_details.qty) as total_qty'))
             ->groupBy('wrm_master_barang.id', 'wrm_master_barang.nama_barang')
-            ->orderByDesc('total')
-            ->limit(10)
+            ->orderByDesc('total_qty')
+            ->limit(5)
             ->get();
 
         $categories = [];
         $data = [];
-        foreach ($fastMovingRaw as $fm) {
-            $categories[] = \Illuminate\Support\Str::limit($fm->nama_barang, 20);
-            $data[] = abs((int)$fm->total);
+        foreach ($topMaterials as $tm) {
+            $categories[] = \Illuminate\Support\Str::limit($tm->nama_barang, 25);
+            $data[] = (float)$tm->total_qty;
         }
-
 
         return response()->json([
             'status' => true,
             'data' => [
                 'categories' => $categories,
                 'series' => [
-                    ['name' => 'Qty Keluar', 'data' => $data, 'color' => '#17a2b8']
+                    ['name' => 'Quantity', 'data' => $data, 'color' => '#6366f1', 'type' => 'bar']
                 ]
             ]
         ]);
     }
 
-    // --- 5. Donut Chart: Space Utilization ---
+    // --- 5. Donut Chart: Aging Stock (replacing Space Utilization) ---
     public function getChartCapacity(Request $request)
     {
-        $zona = $request->zona;
+        $query = StockInboundDetail::with('inbound')->where('qty', '>', 0)->where('status', '!=', 'ISSUED');
 
-        $binQuery = \App\Models\Wrm\MasterBinModel::query();
-        if ($zona) {
-            $binQuery->whereHas('location', function ($q) use ($zona) {
-                $q->where('zona', $zona);
+        if ($request->gudang) {
+            $query->whereHas('bin.location', function ($q) use ($request) {
+                $q->where('gudang', $request->gudang);
             });
         }
-        $totalBins = $binQuery->count();
-
-        $occupiedQuery = StockInboundDetail::where('qty', '>', 0)->distinct('loc_id');
-        if ($zona) {
-            $occupiedQuery->whereHas('bin.location', function ($q) use ($zona) {
-                $q->where('zona', $zona);
+        if ($request->supplier) {
+            $query->whereHas('inbound', function ($q) use ($request) {
+                $q->where('supplier', $request->supplier);
             });
         }
-        $occupiedBinsCount = $occupiedQuery->count('loc_id');
 
-        $emptyBinsCount = max(0, $totalBins - $occupiedBinsCount);
+        $details = $query->get();
+
+        $aging = [
+            '0-30 Days' => 0,
+            '30-90 Days' => 0,
+            '> 90 Days' => 0
+        ];
+
+        $today = Carbon::today();
+        foreach ($details as $detail) {
+            if ($detail->inbound && $detail->inbound->incoming_date) {
+                $incomingDate = Carbon::parse($detail->inbound->incoming_date);
+                $days = $incomingDate->diffInDays($today);
+
+                if ($days <= 30) {
+                    $aging['0-30 Days'] += $detail->qty;
+                } else if ($days <= 90) {
+                    $aging['30-90 Days'] += $detail->qty;
+                } else {
+                    $aging['> 90 Days'] += $detail->qty;
+                }
+            } else {
+                $aging['> 90 Days'] += $detail->qty;
+            }
+        }
 
         return response()->json([
             'status' => true,
             'data' => [
-                ['name' => 'Occupied Bins', 'y' => $occupiedBinsCount, 'color' => '#ffc107'],
-                ['name' => 'Empty Bins', 'y' => $emptyBinsCount, 'color' => '#e9ecef'],
+                ['name' => '0-30 Days', 'y' => $aging['0-30 Days'], 'color' => '#22c55e'],
+                ['name' => '30-90 Days', 'y' => $aging['30-90 Days'], 'color' => '#f59e0b'],
+                ['name' => '> 90 Days', 'y' => $aging['> 90 Days'], 'color' => '#ef4444'],
             ]
         ]);
     }
 
-    // --- 5. Table Expiring ---
-    public function getTableExpiring(Request $request)
-    {
-        $expiringItems = StockInboundDetail::with(['barang', 'inbound', 'bin.location'])
-            ->whereHas('inbound', function ($q) {
-                // Expiring within next 30 days
-                $q->whereNotNull('expired_date')
-                    ->whereBetween('expired_date', [Carbon::today(), Carbon::today()->addDays(30)]);
-            })
-            ->where('qty', '>', 0)
-            ->orderBy(StockInboundDetail::select('expired_date')->from('wrm_stock_inbound')->whereColumn('wrm_stock_inbound.id', 'wrm_stock_inbound_details.inbound_id')->limit(1))
-            ->limit(10)
-            ->get()
-            ->map(function ($item) {
-                $expiredDate = $item->inbound->expired_date ? Carbon::parse($item->inbound->expired_date) : null;
-                $daysLeft = $expiredDate ? Carbon::today()->diffInDays($expiredDate, false) : 0;
-
-                return [
-                    'barang' => $item->barang->nama_barang ?? 'Unknown',
-                    'no_spb' => $item->inbound->no_spb ?? '-',
-                    'qty' => $item->qty,
-                    'lokasi' => $item->bin ? ($item->bin->location->zona . '-' . $item->bin->bin) : '-',
-                    'expired_date' => $expiredDate ? $expiredDate->format('d M Y') : '-',
-                    'days_left' => $daysLeft
-                ];
-            });
-
-        return response()->json(['status' => true, 'data' => $expiringItems]);
-    }
-
-    // --- 6. Table Recent ---
+    // --- 6. Table Recent Activities ---
     public function getTableRecent(Request $request)
     {
-        $recentActivities = StockMovement::with(['barang', 'location'])
+        $query = clone StockMovement::with(['barang', 'location', 'location.bins']);
+
+        if ($request->gudang) {
+            $query->whereHas('location', function ($q) use ($request) {
+                $q->where('gudang', $request->gudang);
+            });
+        }
+
+        $recentActivities = $query
             ->latest('tanggal')
             ->latest('id')
             ->limit(50)
@@ -246,7 +290,7 @@ class DashboardController extends Controller
                     'jenis' => strtoupper($mov->jenis),
                     'barang' => $mov->barang->nama_barang ?? 'Unknown',
                     'qty' => $mov->qty,
-                    'lokasi' => $mov->location->zona ?? '-',
+                    'lokasi' => $mov->location->gudang . ' - ' . $mov->location->zona . ' - ' . $mov->location->bin ?? 'Unknown',
                     'tipe' => $mov->ref_type
                 ];
             });
@@ -257,22 +301,29 @@ class DashboardController extends Controller
     // --- 7. Warehouse Location Layout ---
     public function getLocationLayout(Request $request)
     {
-        $zona = $request->zona;
+        $gudang = $request->gudang;
 
         // Get all bins with their location, grouped by location
         $bins = MasterBinModel::with('location')
-            ->when($zona, function ($q) use ($zona) {
-                $q->whereHas('location', function ($q2) use ($zona) {
-                    $q2->where('zona', $zona);
+            ->when($gudang, function ($q) use ($gudang) {
+                $q->whereHas('location', function ($q2) use ($gudang) {
+                    $q2->where('gudang', $gudang);
                 });
             })
             ->get();
 
         // Get occupied bins and their barang info from active stock
-        $occupiedDetails = StockInboundDetail::with('barang')
+        $occupiedDetails = clone StockInboundDetail::with(['barang', 'inbound'])
             ->whereIn('status', ['UNREST', 'QI', 'BLOCKED'])
-            ->where('qty', '>', 0)
-            ->get();
+            ->where('qty', '>', 0);
+
+        if ($request->supplier) {
+            $occupiedDetails->whereHas('inbound', function ($q) use ($request) {
+                $q->where('supplier', $request->supplier);
+            });
+        }
+
+        $occupiedDetails = $occupiedDetails->get();
 
         $occupiedMap = [];
         foreach ($occupiedDetails as $detail) {
@@ -290,11 +341,14 @@ class DashboardController extends Controller
         }
         $occupiedIds = array_keys($occupiedMap);
 
-        $reservedIds = StockInboundDetail::where('status', 'RESERVED')
-            ->where('qty', '>', 0)
-            ->distinct('loc_id')
-            ->pluck('loc_id')
-            ->toArray();
+        $reservedIdsQuery = clone StockInboundDetail::where('status', 'RESERVED')->where('qty', '>', 0);
+        if ($request->supplier) {
+            $reservedIdsQuery->whereHas('inbound', function ($q) use ($request) {
+                $q->where('supplier', $request->supplier);
+            });
+        }
+
+        $reservedIds = $reservedIdsQuery->distinct('loc_id')->pluck('loc_id')->toArray();
 
         // Group bins by location label
         $locations = [];
@@ -319,6 +373,8 @@ class DashboardController extends Controller
             $nama_barang = null;
             $qty = 0;
             $palletId = null;
+            $noSpb = '-';
+            $incomingDate = '-';
             if (in_array($bin->id, $reservedIds)) $status = 'reserved';
             if (in_array($bin->id, $occupiedIds)) {
                 $status = 'occupied';
