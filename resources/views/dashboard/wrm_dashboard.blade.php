@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('title', ' | WRM Inventory Dashboard')
+@section('sidebar-size', 'sm')
 
 @section('styles')
 <style>
