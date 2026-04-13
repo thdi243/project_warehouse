@@ -581,6 +581,9 @@
 
         function initCharts() {
             Highcharts.setOptions({
+                lang: {
+                    thousandsSep: '.'
+                },
                 chart: {
                     style: {
                         fontFamily: "'Inter', sans-serif"
@@ -647,7 +650,7 @@
                     text: null
                 },
                 tooltip: {
-                    pointFormat: '{series.name}: <b>{point.y} KG</b> ({point.percentage:.1f}%)'
+                    pointFormat: '{series.name}: <b>{point.y:,.0f} KG</b> ({point.percentage:.1f}%)'
                 },
                 plotOptions: {
                     pie: {
@@ -729,7 +732,7 @@
                     text: null
                 },
                 tooltip: {
-                    pointFormat: '{series.name}: <b>{point.y} KG</b> ({point.percentage:.1f}%)'
+                    pointFormat: '{series.name}: <b>{point.y:,.0f} KG</b> ({point.percentage:.1f}%)'
                 },
                 plotOptions: {
                     pie: {
