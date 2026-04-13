@@ -50,9 +50,7 @@ class DashboardController extends Controller
     // --- 1. KPI Cards ---
     public function getKpi(Request $request)
     {
-        $stockBalanceQuery = $this->getBaseStockBalanceQuery($request);
-
-        // Active Pallets
+        // Total Stock: ambil dari StockInboundDetail (aktif, bukan ISSUED)
         $inboundDetailQuery = clone StockInboundDetail::query();
         if ($request->gudang) {
             $inboundDetailQuery->whereHas('bin.location', function ($q) use ($request) {
@@ -64,6 +62,8 @@ class DashboardController extends Controller
                 $q->where('supplier', $request->supplier);
             });
         }
+
+        $totalStock       = (clone $inboundDetailQuery)->where('status', '!=', 'ISSUED')->sum('qty');
         $activePalletCount = (clone $inboundDetailQuery)->where('status', '!=', 'ISSUED')->count();
 
         // Draft Outbound (Today)
@@ -73,11 +73,6 @@ class DashboardController extends Controller
 
         // Transfer (Today)
         $transferQuery = clone StockTransferDetail::query();
-        if ($request->gudang) {
-            // For transfer KPI, if gudang is filtered, check plant/sloc or location.
-            // MasterLocation->gudang usually maps to 'plant - gudang' in stock_transfer_details.
-            // For simplicity, skip gudang filter for global transfer KPI unless requested.
-        }
         $transferToday = $transferQuery->whereDate('created_at', Carbon::today())->sum('qty_actual');
 
         // Inbound Today
@@ -89,12 +84,12 @@ class DashboardController extends Controller
         }
 
         $kpi = [
-            'total_stock' => (clone $stockBalanceQuery)->sum('qty'),
-            'total_item' => MasterBarangModel::count(),
-            'active_pallet' => $activePalletCount,
-            'inbound_today' => $inboundTodayQuery->sum('qty'),
+            'total_stock'          => $totalStock,
+            'total_item'           => MasterBarangModel::count(),
+            'active_pallet'        => $activePalletCount,
+            'inbound_today'        => $inboundTodayQuery->sum('qty'),
             'draft_outbound_today' => $draftOutboundToday,
-            'transfer_today' => $transferToday,
+            'transfer_today'       => $transferToday,
         ];
 
         return response()->json(['status' => true, 'data' => $kpi]);
@@ -290,7 +285,7 @@ class DashboardController extends Controller
                     'jenis' => strtoupper($mov->jenis),
                     'barang' => $mov->barang->nama_barang ?? 'Unknown',
                     'qty' => $mov->qty,
-                    'lokasi' => $mov->location->gudang . ' - ' . $mov->location->zona . ' - ' . $mov->location->bin ?? 'Unknown',
+                    'lokasi' => $mov->location ? implode(' - ', array_filter([$mov->location->gudang, $mov->location->zona, $mov->location->bin])) : 'Unknown',
                     'tipe' => $mov->ref_type
                 ];
             });

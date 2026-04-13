@@ -876,7 +876,10 @@
                                 html += `
                                     <tr>
                                         <td class="text-muted small">${item.tanggal}</td>
-                                        <td><span class="badge ${typeBadge} rounded-pill px-2 py-1">${item.jenis}</span></td>
+                                        <td>
+                                            <span class="badge ${typeBadge} rounded-pill px-2 py-1">${item.jenis}</span>
+                                            <span class="badge bg-light text-dark border rounded-pill px-2 py-1 ms-1 small">${item.tipe}</span>
+                                        </td>
                                         <td class="fw-medium">${item.barang}</td>
                                         <td class="fw-bold text-end ${item.jenis==='IN'?'text-success':'text-danger'}">${formatQty(item.qty)}</td>
                                         <td class="text-muted small">${item.lokasi}</td>
@@ -886,6 +889,9 @@
                             $t.html(html);
                         }
                     }
+                },
+                error: function() {
+                    $t.html('<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load activities.</td></tr>');
                 }
             });
         }
