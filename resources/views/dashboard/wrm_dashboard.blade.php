@@ -215,6 +215,13 @@
         border-style: dashed;
     }
 
+    .rack-cell.reserved {
+        background: #8b5cf6;
+        color: #fff;
+        border-color: #7c3aed;
+        border-style: solid;
+    }
+
     .rack-cell-tooltip {
         display: none;
         position: absolute;
@@ -476,7 +483,7 @@
                             <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#3b82f6;font-size:12px;">
                                 <i class="bx bx-package"></i> Occupied: <b id="sumOccupied">-</b>
                             </div>
-                            <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#f59e0b;font-size:12px;">
+                            <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#8b5cf6;font-size:12px;">
                                 <i class="bx bx-lock"></i> Reserved: <b id="sumReserved">-</b>
                             </div>
                             <div class="px-3 py-1 rounded-pill shadow-sm d-flex align-items-center gap-1" style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:12px;">
@@ -534,10 +541,11 @@
     $(document).ready(function() {
         // Color palette for MIDs
         const palette = [
-            '#e6194b', '#3cb44b', '#e5b217', '#4363d8', '#f58231',
-            '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
-            '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000',
-            '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080'
+            '#e6194b', '#3cb44b', '#4363d8', '#46f0f0',
+            '#f032e6', '#bcf60c', '#fabebe', '#008080',
+            '#9a6324', '#800000', '#aaffc3', '#000075',
+            '#e6beff', '#808000', '#ffd8b1', '#808080',
+            '#00a8e8', '#ff6b6b', '#06d6a0', '#c77dff'
         ];
         let midColorMap = {};
         let colorIndex = 0;
@@ -1038,15 +1046,14 @@
                         const c = cellMap[col + '_' + lvl];
                         if (c) {
                             let bg = '',
-                                cls = 'rack-cell',
-                                border = '';
+                                cls = 'rack-cell';
                             if (c.status === 'empty') {
                                 cls += ' empty';
                             } else if (c.status === 'reserved') {
-                                bg = '#f59e0b';
-                                color = '#fff';
+                                cls += ' reserved';
+                                bg = '#8b5cf6';
                             } else if (c.status === 'occupied') {
-                                bg = globalUsedMids[c.mid].color;
+                                bg = globalUsedMids[c.mid] ? globalUsedMids[c.mid].color : '#3b82f6';
                             }
 
                             let tooltip = `<b>Bin ${c.label}</b><br/>Status: ${c.status}`;
@@ -1054,7 +1061,7 @@
                                 tooltip += `<br/>SPB: ${c.no_spb}<br/>Pallet: ${c.pallet_id}<br/>Barang: ${c.mid} - ${c.nama_barang}<br/>Qty: ${c.qty}<br/>In: ${c.incoming_date}`;
                             }
 
-                            gridHtml += `<div class="${cls}" style="background-color:${bg};color:${c.status!=='empty'?'#fff':''}">
+                            gridHtml += `<div class="${cls}" style="${bg ? 'background-color:'+bg+';' : ''}color:${c.status!=='empty'?'#fff':''}">
                                             ${c.label}
                                             <div class="rack-cell-tooltip text-start">${tooltip}</div>
                                          </div>`;
@@ -1083,7 +1090,26 @@
             });
 
             html += `</div>`;
-            $('#zonaDetailContainer').html(html);
+
+            // Status legend
+            const legendStatus = `
+                <div class="d-flex gap-3 flex-wrap align-items-center mt-3 pt-3 border-top">
+                    <span class="text-muted small fw-semibold">Status:</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <div style="width:14px;height:14px;background:#f8fafc;border:2px dashed #e2e8f0;border-radius:4px;"></div>
+                        <span style="font-size:11px;">Empty</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <div style="width:14px;height:14px;background:#8b5cf6;border-radius:4px;"></div>
+                        <span style="font-size:11px;">Reserved</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <div style="width:14px;height:14px;background:#3b82f6;border-radius:4px;"></div>
+                        <span style="font-size:11px;">Occupied (warna per item)</span>
+                    </div>
+                </div>`;
+
+            $('#zonaDetailContainer').html(legendStatus + html);
             var myModal = new bootstrap.Modal(document.getElementById('zonaDetailModal'));
             myModal.show();
         };

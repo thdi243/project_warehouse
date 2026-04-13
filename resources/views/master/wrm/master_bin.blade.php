@@ -143,7 +143,7 @@
                         if (index === 0) {
                             html += `
                                 <td class="text-center align-top" rowspan="${rowspan}">${no++}</td>
-                                <td class="align-top" rowspan="${rowspan}">${loc.plant ?? '-'} - ${loc.s_loc ?? '-'}</td>
+                                <td class="align-top" rowspan="${rowspan}">${loc.plant ?? '-'} - ${loc.s_loc ?? '-'} - ${loc.gudang ?? '-'}</td>
                                 <td class="align-top" rowspan="${rowspan}">${loc.zona ?? '-'}</td>
                                 <td class="align-top" rowspan="${rowspan}">${loc.bin ?? '-'}</td>
                             `;
