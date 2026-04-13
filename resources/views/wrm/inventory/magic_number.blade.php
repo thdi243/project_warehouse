@@ -393,7 +393,7 @@
                 @forelse($outbound->details as $index => $detail)
                 <div class="item-card">
                     <div class="item-header">
-                        <div class="item-name">{{ $index + 1 }}. {{ $detail->barang->nama_barang }}</div>
+                        <div class="item-name">Pallet ID {{ $detail->pallet_id }} <br>{{ $detail->barang->nama_barang }}</div>
                         <div class="item-qty">{{ rtrim(rtrim(number_format($detail->qty, 2, ',', '.'), '0'), ',') }} {{ $detail->barang->uom }}</div>
                     </div>
 
