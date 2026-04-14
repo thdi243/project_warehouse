@@ -473,7 +473,7 @@ class InboundController extends Controller
         ])
             ->select('wrm_stock_inbound_details.*')
             ->join('wrm_stock_inbound', 'wrm_stock_inbound_details.inbound_id', '=', 'wrm_stock_inbound.id')
-            ->where('status', '!=', 'ISSUED');
+            ->whereNotIn('status', ['ISSUED', 'RESERVED']);
 
         // Mapping filters
         $filters = [
