@@ -489,13 +489,25 @@
         }
 
         function updateSummary(summary) {
-            $('#totalQty').text(numberFormat(summary.total_qty));
-            $('#totalPalletsDisplay').text(numberFormat(summary.total_pallet));
+
 
             const unrest = summary.status_breakdown.UNREST || {
                 count: 0,
                 total_qty: 0
             };
+
+            const reserved = summary.status_breakdown.RESERVED || {
+                count: 0,
+                total_qty: 0
+            };
+
+            const issued = summary.status_breakdown.ISSUED || {
+                count: 0,
+                total_qty: 0
+            };
+
+            $('#totalQty').text(numberFormat(unrest.total_qty + reserved.total_qty + issued.total_qty));
+            $('#totalPalletsDisplay').text(numberFormat(summary.total_pallet));
             $('#unrestQty').text(numberFormat(unrest.total_qty));
             $('#unrestPallets').text(numberFormat(unrest.count));
 
