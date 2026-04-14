@@ -217,10 +217,20 @@
     }
 
     .rack-cell.reserved {
-        background: #8b5cf6;
-        color: #fff;
-        border-color: #7c3aed;
-        border-style: solid;
+        background: #fdf2f2;
+        color: #ef4444;
+        border-color: #fca5a5;
+        border-style: dashed;
+        box-shadow: inset 0 0 0 1px #fee2e2;
+    }
+
+    .rack-cell.reserved::after {
+        content: 'RE';
+        position: absolute;
+        font-size: 8px;
+        top: 2px;
+        right: 4px;
+        opacity: 0.6;
     }
 
     .rack-cell-tooltip {
@@ -479,15 +489,18 @@
                         {{-- Summary Chips --}}
                         <div class="d-flex gap-2 mb-4 flex-wrap" id="locationSummary">
                             <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#1e293b;font-size:12px;">
-                                <i class="bx bx-border-all"></i> Total Bins: <b id="sumTotal">-</b>
+                                <i class="bx bx-border-all"></i> Total: <b id="sumTotal">-</b>
                             </div>
                             <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#3b82f6;font-size:12px;">
                                 <i class="bx bx-package"></i> Occupied: <b id="sumOccupied">-</b>
                             </div>
-                            <div class="px-3 py-1 rounded-pill text-white shadow-sm d-flex align-items-center gap-1" style="background:#8b5cf6;font-size:12px;">
-                                <i class="bx bx-lock"></i> Reserved: <b id="sumReserved">-</b>
+                            <div class="px-3 py-1 rounded-pill shadow-sm d-flex align-items-center gap-1" style="background:#def7ec;color:#03543f;border:1px solid #84e1bc;font-size:12px;">
+                                <i class="bx bx-check-circle"></i> Available (Reuse): <b id="sumAvailable">-</b>
                             </div>
-                            <div class="px-3 py-1 rounded-pill shadow-sm d-flex align-items-center gap-1" style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:12px;">
+                            <div class="px-3 py-1 rounded-pill shadow-sm d-flex align-items-center gap-1" style="background:#fdf2f2;color:#9b1c1c;border:1px solid #f8b4b4;font-size:12px;opacity:0.8;">
+                                <i class="bx bx-time"></i> Pending Outbound: <b id="sumReserved">-</b>
+                            </div>
+                            <div class="px-3 py-1 rounded-pill shadow-sm d-flex align-items-center gap-1" style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:12px;display:none;">
                                 <i class="bx bx-grid-empty"></i> Empty: <b id="sumEmpty">-</b>
                             </div>
                         </div>
@@ -923,6 +936,7 @@
                     $('#sumOccupied').text(res.summary.occupied);
                     $('#sumReserved').text(res.summary.reserved);
                     $('#sumEmpty').text(res.summary.empty);
+                    $('#sumAvailable').text(res.summary.available);
 
                     if (res.data.length === 0) {
                         $container.html(`<div class="text-center text-muted py-5"><i class="bx bx-cube fs-1 text-light"></i><p class="mt-2 text-sm">No bin visualization data found for these filters.</p></div>`);

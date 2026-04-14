@@ -63,8 +63,8 @@ class DashboardController extends Controller
             });
         }
 
-        $totalStock       = (clone $inboundDetailQuery)->where('status', '!=', 'ISSUED')->sum('qty');
-        $activePalletCount = (clone $inboundDetailQuery)->where('status', '!=', 'ISSUED')->count();
+        $totalStock       = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
+        $activePalletCount = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->count();
 
         // Draft Outbound (Today)
         $draftOutboundTodayQuery = clone StockOutbound::query();
@@ -172,7 +172,7 @@ class DashboardController extends Controller
     public function getChartBar(Request $request)
     {
         $query = clone StockInboundDetail::query();
-        $query->where('qty', '>', 0)->where('status', '!=', 'ISSUED');
+        $query->where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED']);
 
         if ($request->gudang) {
             $query->whereHas('bin.location', function ($q) use ($request) {
@@ -214,7 +214,7 @@ class DashboardController extends Controller
     // --- 5. Donut Chart: Aging Stock (replacing Space Utilization) ---
     public function getChartCapacity(Request $request)
     {
-        $query = StockInboundDetail::with('inbound')->where('qty', '>', 0)->where('status', '!=', 'ISSUED');
+        $query = StockInboundDetail::with('inbound')->where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED']);
 
         if ($request->gudang) {
             $query->whereHas('bin.location', function ($q) use ($request) {
@@ -417,6 +417,7 @@ class DashboardController extends Controller
                 'occupied' => $occupiedCount,
                 'reserved' => $reservedCount,
                 'empty'    => $emptyCount,
+                'available' => $emptyCount + $reservedCount,
             ],
             'data' => array_values($locations)
         ]);
