@@ -77,6 +77,7 @@ class UserPermissionController extends Controller
                 return [
                     'id' => $perm->id,
                     'name' => $perm->name,
+                    'section' => $perm->section,
                     'description' => $perm->description ?? 'no desc',
                     'checked' => $targetUser->permissions->contains($perm->id),
                 ];

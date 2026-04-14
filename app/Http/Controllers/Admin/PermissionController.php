@@ -18,10 +18,11 @@ class PermissionController extends Controller
     {
         $request->validate([
             'name'        => 'required|unique:permissions,name|max:100',
+            'section'     => 'nullable|max:100',
             'description' => 'nullable|max:255',
         ]);
 
-        Permission::create($request->only('name', 'description'));
+        Permission::create($request->only('name', 'section', 'description'));
 
         return response()->json([
             'status' => 'success',
@@ -57,10 +58,11 @@ class PermissionController extends Controller
     {
         $request->validate([
             'name'        => 'required|max:100|unique:permissions,name,' . $permission->id,
+            'section'     => 'required|max:100',
             'description' => 'nullable|max:255',
         ]);
 
-        $permission->update($request->only('name', 'description'));
+        $permission->update($request->only('name', 'section', 'description'));
 
         return response()->json([
             'status' => 'success',

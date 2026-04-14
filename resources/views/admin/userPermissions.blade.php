@@ -27,6 +27,41 @@
                 font-size: 0.85rem;
             }
         }
+
+        /* Permission Grouping Styles */
+        .permission-section-header {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-left: 4px solid #405189;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 0 4px 4px 0;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            color: #405189;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .permission-section:first-of-type .permission-section-header {
+            margin-top: 0.5rem;
+        }
+        .permission-item {
+            transition: all 0.2s;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            height: 100%;
+        }
+        .permission-item:hover {
+            background-color: #f3f6f9;
+            border-color: #e2e8f0;
+        }
+        .cursor-pointer {
+            cursor: pointer;
+        }
     </style>
 @endsection
 
@@ -121,7 +156,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="row g-3 overflow-auto" id="permission-checkboxes">
+                        <div class="row overflow-auto pe-2" id="permission-checkboxes" style="max-height: 500px;">
                             <!-- Checkbox akan di-load via AJAX -->
                         </div>
                     </form>
@@ -324,24 +359,49 @@
                     $('#permissionModalLabel').text('Set Permission untuk: ' + response.user.name +
                         ' (' + response.user.jabatan + ')');
 
-                    let checkboxes = '';
-                    response.permissions.forEach(function(perm) {
-                        let checked = perm.checked ? 'checked' : '';
-                        checkboxes += `
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="permissions[]" 
-                                           value="${perm.id}" id="perm-${perm.id}" ${checked}>
-                                    <label class="form-check-label" for="perm-${perm.id}">
-                                        ${perm.name}
-                                        <small class="text-muted">(${perm.description})</small>
-                                    </label>
+                    // Group permissions by section
+                    const grouped = {};
+                    response.permissions.forEach(perm => {
+                        const section = perm.section || 'General / Other';
+                        if (!grouped[section]) grouped[section] = [];
+                        grouped[section].push(perm);
+                    });
+
+                    let checkboxesHtml = '';
+                    // Define display names for sections if needed, or just format the string
+                    const formatSection = (str) => {
+                        return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                    };
+
+                    for (const section in grouped) {
+                        checkboxesHtml += `
+                            <div class="col-12 permission-section" data-section="${section}">
+                                <div class="permission-section-header shadow-sm">
+                                    <span><i class="ri-folder-info-line me-2"></i>${formatSection(section)}</span>
+                                    <span class="badge bg-soft-primary text-primary rounded-pill">${grouped[section].length} Perms</span>
+                                </div>
+                                <div class="row g-2 px-3">
+                                    ${grouped[section].map(perm => {
+                                        let checked = perm.checked ? 'checked' : '';
+                                        return `
+                                            <div class="col-md-6 col-lg-4 mb-2 permission-item-container">
+                                                <div class="form-check permission-item">
+                                                    <input class="form-check-input mt-2" type="checkbox" name="permissions[]" 
+                                                           value="${perm.id}" id="perm-${perm.id}" ${checked}>
+                                                    <label class="form-check-label cursor-pointer w-100 ms-1" for="perm-${perm.id}">
+                                                        <div class="fw-semibold text-dark mb-0" style="font-size: 0.85rem;">${perm.name}</div>
+                                                        <div class="text-muted small lh-sm" style="font-size: 0.75rem;">${perm.description || 'No description'}</div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
                                 </div>
                             </div>
                         `;
-                    });
+                    }
 
-                    $('#permission-checkboxes').html(checkboxes);
+                    $('#permission-checkboxes').html(checkboxesHtml);
                     $('#permission-form').data('user-id', userId); // simpan user id untuk update
                     $('#permissionModal').modal('show');
                 }).fail(function() {
@@ -351,12 +411,22 @@
 
             // Saat modal dibuka (setelah load checkboxes)
             $('#permissionModal').on('shown.bs.modal', function() {
-                // Search permission
+                // Search permission logic within groups
                 $('#search-perm').on('input', function() {
-                    let val = $(this).val().toLowerCase();
-                    $('#permission-checkboxes .col-md-4').each(function() {
-                        let label = $(this).find('label').text().toLowerCase();
-                        $(this).toggle(label.includes(val));
+                    let val = $(this).val().toLowerCase().trim();
+                    $('.permission-section').each(function() {
+                        let hasVisible = false;
+                        let sectionEl = $(this);
+                        
+                        sectionEl.find('.permission-item-container').each(function() {
+                            let itemLabel = $(this).find('label').text().toLowerCase();
+                            let isMatch = itemLabel.includes(val);
+                            $(this).toggle(isMatch);
+                            if (isMatch) hasVisible = true;
+                        });
+                        
+                        // Toggle section visibility based on whether it has matching items
+                        sectionEl.toggle(hasVisible);
                     });
                 });
 
