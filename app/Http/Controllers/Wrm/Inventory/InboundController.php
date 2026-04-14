@@ -136,10 +136,12 @@ class InboundController extends Controller
             ->distinct('no_spb')
             ->count('no_spb');
 
-        $usedBinIds = StockInboundDetail::pluck('loc_id')->toArray();
+        $usedBinIds = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id')->toArray();
 
         // 1. Get database column owners to prevent mixing
-        $usedDetails = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid', 'bin:id,loc_id,kolom'])->get();
+        $usedDetails = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid', 'bin:id,loc_id,kolom'])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->get();
         $dbColumnOwners = [];
         foreach ($usedDetails as $d) {
             if ($d->bin && $d->inbound && $d->barang) {
@@ -251,7 +253,7 @@ class InboundController extends Controller
         $exclude = (array) ($request->exclude ?? []);
 
         // Get IDs of bins that are currently occupied
-        $occupiedBinIds = StockInboundDetail::where('status', '!=', 'ISSUED')->pluck('loc_id');
+        $occupiedBinIds = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id');
 
         $query = MasterBinModel::with('location')
             ->join('wrm_master_location', 'wrm_master_bin.loc_id', '=', 'wrm_master_location.id')
@@ -261,7 +263,7 @@ class InboundController extends Controller
                 $q->select(DB::raw(1))
                     ->from('wrm_stock_inbound_details')
                     ->join('wrm_master_bin as b_occ', 'wrm_stock_inbound_details.loc_id', '=', 'b_occ.id')
-                    ->where('wrm_stock_inbound_details.status', '!=', 'ISSUED')
+                    ->whereNotIn('wrm_stock_inbound_details.status', ['ISSUED', 'RESERVED'])
                     ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
                     ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom');
             })
@@ -336,7 +338,7 @@ class InboundController extends Controller
 
                 // Cek apakah lokasi ini sudah terpakai
                 $isOccupied = StockInboundDetail::where('loc_id', $locId)
-                    ->where('status', '!=', 'ISSUED')
+                    ->whereNotIn('status', ['ISSUED', 'RESERVED'])
                     ->exists();
 
                 if ($isOccupied) {
@@ -632,7 +634,7 @@ class InboundController extends Controller
             // Cek apakah lokasi baru sudah terpakai oleh ID lain
             $isOccupied = StockInboundDetail::where('loc_id', $request->loc_id)
                 ->where('id', '!=', $id) // Kecuali dirinya sendiri
-                ->where('status', '!=', 'ISSUED')
+                ->whereNotIn('status', ['ISSUED', 'RESERVED'])
                 ->exists();
 
             if ($isOccupied) {
@@ -959,9 +961,11 @@ class InboundController extends Controller
             })
             ->get();
 
-        $usedBinIds = StockInboundDetail::pluck('loc_id')->toArray();
+        $usedBinIds = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id')->toArray();
 
-        $usedDetails = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid', 'bin:id,loc_id,kolom'])->get();
+        $usedDetails = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid', 'bin:id,loc_id,kolom'])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->get();
         $dbColumnOwners = [];
         foreach ($usedDetails as $d) {
             if ($d->bin && $d->inbound && $d->barang) {
@@ -990,7 +994,7 @@ class InboundController extends Controller
                 $q->select(DB::raw(1))
                     ->from('wrm_stock_inbound_details')
                     ->join('wrm_master_bin as b_occ', 'wrm_stock_inbound_details.loc_id', '=', 'b_occ.id')
-                    ->where('wrm_stock_inbound_details.status', '!=', 'ISSUED')
+                    ->whereNotIn('wrm_stock_inbound_details.status', ['ISSUED', 'RESERVED'])
                     ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
                     ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom');
             })
@@ -1038,7 +1042,7 @@ class InboundController extends Controller
     private function getOccupiedColumnKeys()
     {
         // Get all bins that are currently occupied
-        $occupiedBins = StockInboundDetail::where('status', '!=', 'ISSUED')
+        $occupiedBins = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])
             ->join('wrm_master_bin', 'wrm_stock_inbound_details.loc_id', '=', 'wrm_master_bin.id')
             ->select('wrm_master_bin.loc_id as rack_id', 'wrm_master_bin.kolom')
             ->distinct()
