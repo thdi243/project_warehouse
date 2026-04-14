@@ -210,10 +210,12 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            let currentPage = 1;
             loadUsers();
 
             // Fungsi load data user via AJAX
             function loadUsers(query = '', page = 1) {
+                currentPage = page;
                 $('#table-loading').removeClass('d-none');
 
                 let url = "{{ route('admin.permissions.users.data') }}?query=" + encodeURIComponent(query) +
@@ -470,7 +472,8 @@
                             });
 
                             // Update summary permission di tabel tanpa reload
-                            loadUsers('', 1);
+                            let currentQuery = $('#search-user').val().trim();
+                            loadUsers(currentQuery, currentPage);
 
                             $('#permissionModal').modal('hide');
                         }

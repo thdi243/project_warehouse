@@ -109,9 +109,12 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
+        let currentPage = 1;
+
         loadTable();
 
         function loadTable(page = 1) {
+            currentPage = page;
             $('#table-loading').removeClass('d-none');
 
             let url = "{{ route('admin.permissions.data') }}?page=" + page;
@@ -213,7 +216,7 @@
                         showConfirmButton: false
                     });
                     $('#permissionModal').modal('hide');
-                    loadTable(1); // reload tabel langsung
+                    loadTable(id ? currentPage : 1); // Stay on page if update, go to 1 if new
                 },
                 error: function(xhr) {
                     let errors = xhr.responseJSON?.errors || {};
@@ -274,7 +277,7 @@
                         success: function() {
                             Swal.fire('Terhapus!', 'Permission dihapus.',
                                 'success');
-                            loadTable(1);
+                            loadTable(currentPage);
                         },
                         error: function() {
                             Swal.fire('Gagal', 'Terjadi kesalahan', 'error');
