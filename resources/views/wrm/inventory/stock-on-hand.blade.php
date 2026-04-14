@@ -489,39 +489,19 @@
         }
 
         function updateSummary(summary) {
+            const unrest = summary.status_breakdown.UNREST || { count: 0, total_qty: 0 };
+            const qi = summary.status_breakdown.QI || { count: 0, total_qty: 0 };
+            const blocked = summary.status_breakdown.BLOCKED || { count: 0, total_qty: 0 };
 
-
-            const unrest = summary.status_breakdown.UNREST || {
-                count: 0,
-                total_qty: 0
-            };
-
-            const reserved = summary.status_breakdown.RESERVED || {
-                count: 0,
-                total_qty: 0
-            };
-
-            const issued = summary.status_breakdown.ISSUED || {
-                count: 0,
-                total_qty: 0
-            };
-
-            $('#totalQty').text(numberFormat(unrest.total_qty + reserved.total_qty + issued.total_qty));
+            $('#totalQty').text(numberFormat(summary.total_qty));
             $('#totalPalletsDisplay').text(numberFormat(summary.total_pallet));
+
             $('#unrestQty').text(numberFormat(unrest.total_qty));
             $('#unrestPallets').text(numberFormat(unrest.count));
 
-            const qi = summary.status_breakdown.QI || {
-                count: 0,
-                total_qty: 0
-            };
             $('#qiQty').text(numberFormat(qi.total_qty));
             $('#qiPallets').text(numberFormat(qi.count));
 
-            const blocked = summary.status_breakdown.BLOCKED || {
-                count: 0,
-                total_qty: 0
-            };
             $('#blockedQty').text(numberFormat(blocked.total_qty));
             $('#blockedPallets').text(numberFormat(blocked.count));
         }

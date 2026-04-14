@@ -523,14 +523,27 @@ class InboundController extends Controller
         $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
         $query->orderBy('wrm_stock_inbound.incoming_date', $sortDir);
 
+        $statusBreakdown = $summaryQuery->select('status', DB::raw('count(*) as count'), DB::raw('sum(qty) as total_qty'))
+            ->groupBy('status')
+            ->reorder() // Clear any existing order for aggregation
+            ->get()
+            ->keyBy('status');
+
+        $activeStatuses = ['UNREST', 'QI', 'BLOCKED'];
+        $totalPallet = 0;
+        $totalQty = 0;
+
+        foreach ($activeStatuses as $st) {
+            if (isset($statusBreakdown[$st])) {
+                $totalPallet += $statusBreakdown[$st]->count;
+                $totalQty += $statusBreakdown[$st]->total_qty;
+            }
+        }
+
         $summary = [
-            'total_pallet' => $summaryQuery->count(),
-            'total_qty' => $summaryQuery->sum('wrm_stock_inbound_details.qty'),
-            'status_breakdown' => $summaryQuery->select('status', DB::raw('count(*) as count'), DB::raw('sum(qty) as total_qty'))
-                ->groupBy('status')
-                ->reorder() // Clear any existing order for aggregation
-                ->get()
-                ->keyBy('status')
+            'total_pallet' => $totalPallet,
+            'total_qty' => $totalQty,
+            'status_breakdown' => $statusBreakdown
         ];
 
         $data = $query->paginate(25);
