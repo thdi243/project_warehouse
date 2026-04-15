@@ -37,6 +37,52 @@
         color: #ffc107 !important;
         background-color: transparent !important;
     }
+
+    /* Modern Checkbox Style */
+    .checkbox-xl {
+        width: 1.4rem;
+        height: 1.4rem;
+        cursor: pointer;
+        border: 2px solid #ced4da;
+    }
+
+    .checkbox-xl:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+
+    /* Bulk Action Toolbar */
+    #bulkToolbar {
+        border: 1px solid #e3e6f0;
+        border-radius: 10px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        display: none;
+        animation: slideIn 0.3s ease-out;
+        border-left: 5px solid #0d6efd;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateY(-10px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .row-selected {
+        background-color: rgba(13, 110, 253, 0.04) !important;
+        transition: background-color 0.2s;
+    }
+
+    #tableStock tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
 </style>
 @endsection
 
@@ -205,18 +251,44 @@
                     <a href="{{ route('wrm.inventory.draft-outbound') }}" class="btn btn-primary" id="btnUpload">
                         <i class="mdi mdi-upload"></i> Transfer
                     </a>
-                    {{-- <button class="btn btn-primary" id="btnTambah">
-                            <i class="mdi mdi-plus"></i> Tambah
-                        </button> --}}
                 </div>
                 @endcan
             </div>
 
             <div class="card-body">
+                {{-- Bulk Action Toolbar --}}
+                <div id="bulkToolbar" class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="fs-5 fw-semibold"><i class="mdi mdi-check-all me-1"></i> <span id="selectedCount">0</span> Items Selected</span>
+                        <p class="text-muted small mb-0">Choose an action to apply to all selected records</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <div class="dropdown">
+                            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="mdi mdi-square-edit-outline me-1"></i> Mass Update Status
+                            </button>
+                            <ul class="dropdown-menu shadow">
+                                <li>
+                                    <h6 class="dropdown-header">Select New Status</h6>
+                                </li>
+                                <li><a class="dropdown-item bulk-status" href="#" data-status="UNREST">Set to <span class="badge bg-success">UNREST</span></a></li>
+                                <li><a class="dropdown-item bulk-status" href="#" data-status="QI">Set to <span class="badge bg-info">QI</span></a></li>
+                                <li><a class="dropdown-item bulk-status" href="#" data-status="BLOCKED">Set to <span class="badge bg-danger">BLOCKED</span></a></li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-outline-secondary" id="clearSelection">
+                            <i class="mdi mdi-close"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped text-nowrap" id="tableStock">
                         <thead class="table-light">
                             <tr>
+                                <th class="text-center align-middle" style="width: 50px;">
+                                    <input type="checkbox" id="checkAll" class="form-check-input checkbox-xl">
+                                </th>
                                 <th class="text-center">No</th>
                                 <th>Barcode</th>
                                 <th>No SPB</th>
@@ -289,9 +361,9 @@
                         <select class="form-select" name="status" id="statusEdit">
                             <option value="UNREST">UNREST</option>
                             <option value="QI">QI</option>
-                            <option value="TRANSFER">TRANSFER</option>
                             <option value="BLOCKED">BLOCKED</option>
-                            <option value="ISSUED">ISSUED</option>
+                            <!-- <option value="TRANSFER">TRANSFER</option> -->
+                            <!-- <option value="ISSUED">ISSUED</option> -->
                         </select>
                     </div>
 
@@ -432,7 +504,7 @@
 
                     html = `
                             <tr>
-                                <td colspan="15" class="text-center text-muted py-4">
+                                <td colspan="16" class="text-center text-muted py-4">
                                     <div class="d-flex flex-column align-items-center">
                                         <i class="mdi mdi-database-off-outline" style="font-size:32px"></i>
                                         <span class="mt-2">Data tidak ditemukan</span>
@@ -447,6 +519,9 @@
 
                         html += `
                                 <tr>
+                                    <td class="text-center align-middle">
+                                        <input type="checkbox" class="form-check-input checkItem checkbox-xl" value="${d.id}">
+                                    </td>
                                     <td class="text-center">${startNo + index}</td>
                                     <td>${d.barcode}</td>
                                     <td>${d.inbound.no_spb}</td>
@@ -485,16 +560,118 @@
 
                 $('#tableStock tbody').html(html);
 
+                // Reset selection on load
+                $('#checkAll').prop('checked', false);
+                toggleBulkButton();
+
                 renderPagination(res.data);
                 updateSummary(res.summary);
 
             });
         }
 
+        // --- Bulk Action Logic ---
+        $(document).on('change', '#checkAll', function() {
+            $('.checkItem').prop('checked', $(this).prop('checked'));
+            toggleBulkButton();
+        });
+
+        $(document).on('change', '.checkItem', function() {
+            if ($('.checkItem:checked').length === $('.checkItem').length) {
+                $('#checkAll').prop('checked', true);
+            } else {
+                $('#checkAll').prop('checked', false);
+            }
+            toggleBulkButton();
+        });
+
+        function toggleBulkButton() {
+            const checkedCount = $('.checkItem:checked').length;
+            $('#selectedCount').text(checkedCount);
+
+            if (checkedCount > 0) {
+                $('#bulkToolbar').show();
+            } else {
+                $('#bulkToolbar').hide();
+            }
+
+            // Highlighting rows
+            $('.checkItem').each(function() {
+                if ($(this).prop('checked')) {
+                    $(this).closest('tr').addClass('row-selected');
+                } else {
+                    $(this).closest('tr').removeClass('row-selected');
+                }
+            });
+        }
+
+        $(document).on('click', '#clearSelection', function() {
+            $('.checkItem, #checkAll').prop('checked', false);
+            toggleBulkButton();
+        });
+
+        $(document).on('click', '.bulk-status', function(e) {
+            e.preventDefault();
+            const status = $(this).data('status');
+            const selectedIds = [];
+            $('.checkItem:checked').each(function() {
+                selectedIds.push($(this).val());
+            });
+
+            if (selectedIds.length === 0) return;
+
+            Swal.fire({
+                title: 'Konfirmasi Massal',
+                text: `Apakah Anda yakin ingin mengubah status ${selectedIds.length} item menjadi ${status}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Update!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Memproses...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    $.ajax({
+                        url: "{{ route('wrm.inventory.mass-update-status') }}",
+                        method: 'POST',
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            ids: selectedIds,
+                            status: status
+                        },
+                        success: function(res) {
+                            Swal.fire('Berhasil', res.message, 'success');
+                            loadData();
+                            $('#checkAll').prop('checked', false);
+                            $('#bulkActionRow').hide();
+                        },
+                        error: function(xhr) {
+                            Swal.fire('Gagal', xhr.responseJSON?.message ?? 'Terjadi kesalahan', 'error');
+                        }
+                    });
+                }
+            });
+        });
+
         function updateSummary(summary) {
-            const unrest = summary.status_breakdown.UNREST || { count: 0, total_qty: 0 };
-            const qi = summary.status_breakdown.QI || { count: 0, total_qty: 0 };
-            const blocked = summary.status_breakdown.BLOCKED || { count: 0, total_qty: 0 };
+            const unrest = summary.status_breakdown.UNREST || {
+                count: 0,
+                total_qty: 0
+            };
+            const qi = summary.status_breakdown.QI || {
+                count: 0,
+                total_qty: 0
+            };
+            const blocked = summary.status_breakdown.BLOCKED || {
+                count: 0,
+                total_qty: 0
+            };
 
             $('#totalQty').text(numberFormat(summary.total_qty));
             $('#totalPalletsDisplay').text(numberFormat(summary.total_pallet));

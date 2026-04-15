@@ -783,6 +783,39 @@ class InboundController extends Controller
         }
     }
 
+    public function massUpdateStatus(Request $request)
+    {
+        $request->validate([
+            'ids'    => 'required|array',
+            'ids.*'  => 'exists:wrm_stock_inbound_details,id',
+            'status' => 'required|string|in:UNREST,QI,BLOCKED,TRANSFER,ISSUED'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Update only if not ISSUED or RESERVED
+            StockInboundDetail::whereIn('id', $request->ids)
+                ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+                ->update([
+                    'status' => $request->status,
+                    'updated_by' => Auth::id()
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Status berhasil diperbarui secara massal'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function destroy($id)
     {
         $detail = StockInboundDetail::findOrFail($id);

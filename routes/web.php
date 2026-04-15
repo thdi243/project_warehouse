@@ -236,6 +236,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/get-location-ajax', [InboundController::class, 'getLocationAjax'])->name('wrm.inventory.getLocationsAjax');
                 Route::get('/get-filter', [InboundController::class, 'getFilter'])->name('wrm.inventory.getFilter');
                 Route::put('/update/{id}', [InboundController::class, 'update'])->name('wrm.inventory.update');
+                Route::post('/mass-update-status', [InboundController::class, 'massUpdateStatus'])->name('wrm.inventory.mass-update-status');
                 Route::delete('/delete/{id}', [InboundController::class, 'destroy'])->name('wrm.inventory.delete');
                 Route::get('/template', [InboundController::class, 'downloadTemplate'])->name('wrm.inventory.template');
                 Route::post('/upload', [InboundController::class, 'upload'])->name('wrm.inventory.upload');
