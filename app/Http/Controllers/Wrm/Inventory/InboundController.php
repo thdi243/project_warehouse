@@ -816,6 +816,49 @@ class InboundController extends Controller
         }
     }
 
+    public function massDelete(Request $request)
+    {
+        $request->validate([
+            'ids'    => 'required|array',
+            'ids.*'  => 'exists:wrm_stock_inbound_details,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Get unique inbound_ids of items that ARE NOT protected
+            $affectedInboundIds = StockInboundDetail::whereIn('id', $request->ids)
+                ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+                ->pluck('inbound_id')
+                ->unique();
+
+            // Delete non-protected items
+            $deletedCount = StockInboundDetail::whereIn('id', $request->ids)
+                ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+                ->delete();
+
+            // Cleanup empty headers
+            foreach ($affectedInboundIds as $inboundId) {
+                $hasDetails = StockInboundDetail::where('inbound_id', $inboundId)->exists();
+                if (!$hasDetails) {
+                    StockInbound::where('id', $inboundId)->delete();
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => $deletedCount . ' item berhasil dihapus.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function destroy($id)
     {
         $detail = StockInboundDetail::findOrFail($id);

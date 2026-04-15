@@ -254,7 +254,7 @@
                 </div>
                 @endcan
             </div>
-
+            @can('permission', 'wrm-inventory-soh-plus')
             <div class="card-body">
                 {{-- Bulk Action Toolbar --}}
                 <div id="bulkToolbar" class="d-flex justify-content-between align-items-center">
@@ -276,19 +276,25 @@
                                 <li><a class="dropdown-item bulk-status" href="#" data-status="BLOCKED">Set to <span class="badge bg-danger">BLOCKED</span></a></li>
                             </ul>
                         </div>
+                        <button class="btn btn-outline-danger" id="bulkDelete">
+                            <i class="mdi mdi-delete-outline me-1"></i> Delete Selected
+                        </button>
                         <button class="btn btn-outline-secondary" id="clearSelection">
                             <i class="mdi mdi-close"></i> Clear
                         </button>
                     </div>
                 </div>
+                @endcan
 
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped text-nowrap" id="tableStock">
                         <thead class="table-light">
                             <tr>
+                                @can('permission', 'wrm-inventory-soh-plus')
                                 <th class="text-center align-middle" style="width: 50px;">
                                     <input type="checkbox" id="checkAll" class="form-check-input checkbox-xl">
                                 </th>
+                                @endcan
                                 <th class="text-center">No</th>
                                 <th>Barcode</th>
                                 <th>No SPB</th>
@@ -519,9 +525,11 @@
 
                         html += `
                                 <tr>
+                                    @can('permission', 'wrm-inventory-soh-plus')
                                     <td class="text-center align-middle">
                                         <input type="checkbox" class="form-check-input checkItem checkbox-xl" value="${d.id}">
                                     </td>
+                                    @endcan
                                     <td class="text-center">${startNo + index}</td>
                                     <td>${d.barcode}</td>
                                     <td>${d.inbound.no_spb}</td>
@@ -650,6 +658,55 @@
                             loadData();
                             $('#checkAll').prop('checked', false);
                             $('#bulkActionRow').hide();
+                        },
+                        error: function(xhr) {
+                            Swal.fire('Gagal', xhr.responseJSON?.message ?? 'Terjadi kesalahan', 'error');
+                        }
+                    });
+                }
+            });
+        });
+
+        $(document).on('click', '#bulkDelete', function(e) {
+            e.preventDefault();
+            const selectedIds = [];
+            $('.checkItem:checked').each(function() {
+                selectedIds.push($(this).val());
+            });
+
+            if (selectedIds.length === 0) return;
+
+            Swal.fire({
+                title: 'Hapus Massal',
+                text: `Apakah Anda yakin ingin menghapus ${selectedIds.length} item terpilih? Tindakan ini tidak dapat dibatalkan!`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Menghapus...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    $.ajax({
+                        url: "{{ route('wrm.inventory.mass-delete') }}",
+                        method: 'POST',
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            ids: selectedIds
+                        },
+                        success: function(res) {
+                            Swal.fire('Berhasil', res.message, 'success');
+                            loadData();
+                            $('#checkAll').prop('checked', false);
+                            toggleBulkButton();
                         },
                         error: function(xhr) {
                             Swal.fire('Gagal', xhr.responseJSON?.message ?? 'Terjadi kesalahan', 'error');
