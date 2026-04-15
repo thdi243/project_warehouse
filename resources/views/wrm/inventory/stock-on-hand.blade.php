@@ -384,7 +384,10 @@
                 delay: 250,
                 data: function(params) {
                     return {
-                        q: params.term
+                        q: params.term,
+                        no_spb: $('#noSpbEdit').val(),
+                        mid_id: $('#barangIdEdit').val(),
+                        id: $('#id').val()
                     };
                 },
                 processResults: function(res) {

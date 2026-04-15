@@ -97,7 +97,7 @@ class InboundController extends Controller
 
     public function indexUpload()
     {
-        $hasTemp = TempUploadModel::whereDate('incoming_date', now())->exists();
+        $hasTemp = TempUploadModel::where('created_by', Auth::id())->exists();
 
         if ($hasTemp) {
             return redirect()->route('wrm.inventory.select-location');
@@ -110,10 +110,8 @@ class InboundController extends Controller
 
     public function selectLocationView()
     {
-        $today = Carbon::now();
-
-        // Get the first/oldest unique no_spb per incoming_date
-        $firstNoSpb = TempUploadModel::whereDate('incoming_date', $today)
+        // Get the first/oldest unique no_spb for current user
+        $firstNoSpb = TempUploadModel::where('created_by', Auth::id())
             ->orderBy('id')
             ->value('no_spb');
 
@@ -121,8 +119,8 @@ class InboundController extends Controller
             return redirect()->route('wrm.inventory.index-upload');
         }
 
-        // Get ONLY data with this no_spb
-        $data = TempUploadModel::whereDate('incoming_date', $today)
+        // Get ONLY data with this no_spb for current user
+        $data = TempUploadModel::where('created_by', Auth::id())
             ->where('no_spb', $firstNoSpb)
             ->get();
 
@@ -130,8 +128,8 @@ class InboundController extends Controller
             return redirect()->route('wrm.inventory.index-upload');
         }
 
-        // Count remaining no_spb (excluding current one)
-        $remainingCount = TempUploadModel::whereDate('incoming_date', $today)
+        // Count remaining no_spb (excluding current one) for current user
+        $remainingCount = TempUploadModel::where('created_by', Auth::id())
             ->where('no_spb', '!=', $firstNoSpb)
             ->distinct('no_spb')
             ->count('no_spb');
@@ -251,21 +249,38 @@ class InboundController extends Controller
     {
         $q = $request->q;
         $exclude = (array) ($request->exclude ?? []);
+        $currentId = $request->id;
+        $currentNoSpb = $request->no_spb;
+        $currentMidId = $request->mid_id;
 
         // Get IDs of bins that are currently occupied
-        $occupiedBinIds = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id');
+        $occupiedBinIds = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->when($currentId, function ($q) use ($currentId) {
+                $q->where('id', '!=', $currentId);
+            })
+            ->pluck('loc_id');
 
         $query = MasterBinModel::with('location')
             ->join('wrm_master_location', 'wrm_master_bin.loc_id', '=', 'wrm_master_location.id')
             ->select('wrm_master_bin.*')
             ->whereNotIn('wrm_master_bin.id', $occupiedBinIds) // Individual check
-            ->whereNotExists(function ($q) {
+            ->whereNotExists(function ($q) use ($currentId, $currentNoSpb, $currentMidId) {
                 $q->select(DB::raw(1))
                     ->from('wrm_stock_inbound_details')
                     ->join('wrm_master_bin as b_occ', 'wrm_stock_inbound_details.loc_id', '=', 'b_occ.id')
+                    ->join('wrm_stock_inbound as h_occ', 'wrm_stock_inbound_details.inbound_id', '=', 'h_occ.id')
                     ->whereNotIn('wrm_stock_inbound_details.status', ['ISSUED', 'RESERVED'])
                     ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
-                    ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom');
+                    ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom')
+                    ->when($currentId, function ($q) use ($currentId) {
+                        $q->where('wrm_stock_inbound_details.id', '!=', $currentId);
+                    })
+                    ->when($currentNoSpb && $currentMidId, function ($q) use ($currentNoSpb, $currentMidId) {
+                        $q->where(function ($sub) use ($currentNoSpb, $currentMidId) {
+                            $sub->where('h_occ.no_spb', '!=', $currentNoSpb)
+                                ->orWhere('wrm_stock_inbound_details.barang_id', '!=', $currentMidId);
+                        });
+                    });
             })
             ->when(!empty($exclude), function ($q) use ($exclude) {
                 $q->whereNotIn('wrm_master_bin.id', $exclude);
@@ -438,9 +453,8 @@ class InboundController extends Controller
             // Delete ONLY temp data untuk no_spb ini
             TempUploadModel::whereIn('id', array_keys($request->loc_id))->delete();
 
-            // Check apakah ada no_spb lain yang belum diproses (untuk today)
-            $today = Carbon::now();
-            $nextNoSpb = TempUploadModel::whereDate('incoming_date', $today)
+            // Check apakah ada no_spb lain yang belum diproses
+            $nextNoSpb = TempUploadModel::where('created_by', Auth::id())
                 ->orderBy('id')
                 ->value('no_spb');
 
@@ -945,9 +959,7 @@ class InboundController extends Controller
     public function cancelUpload()
     {
         try {
-            $today = Carbon::now();
-
-            TempUploadModel::whereDate('incoming_date', $today)->delete();
+            TempUploadModel::where('created_by', Auth::id())->delete();
 
             return response()->json([
                 'status'  => true,
@@ -966,9 +978,7 @@ class InboundController extends Controller
         $locIdInput = $request->loc_id;
         $noSpb = $request->no_spb;
 
-        $today = Carbon::now();
-
-        $data = TempUploadModel::whereDate('incoming_date', $today)
+        $data = TempUploadModel::where('created_by', Auth::id())
             ->when($noSpb, function ($q) use ($noSpb) {
                 $q->where('no_spb', $noSpb);
             })
