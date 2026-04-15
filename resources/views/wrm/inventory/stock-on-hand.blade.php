@@ -265,7 +265,7 @@
                     <div class="d-flex gap-2">
                         <div class="dropdown">
                             <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                <i class="mdi mdi-square-edit-outline me-1"></i> Mass Update Status
+                                <i class="mdi mdi-square-edit-outline me-1"></i> Update Status
                             </button>
                             <ul class="dropdown-menu shadow">
                                 <li>
