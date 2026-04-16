@@ -624,12 +624,12 @@
                             <td>${startIndex + index + 1}</td>
                             <td><strong>${soh.mid_barang}</strong></td>
                             <td><strong>${soh.nama_barang}</strong></td>
-                            <td>${soh.qty_soh}</td>
-                            <td>${soh.unrest}</td>
-                            <td>${soh.qual_insp}</td>
-                            <td>${soh.blocked}</td>
-                            <td>${soh.transf}</td>
-                            <td>${soh.last_update}</td>
+                            <td>${soh.qty_soh ?? 0}</td>
+                            <td>${soh.unrest ?? 0}</td>
+                            <td>${soh.qual_insp ?? 0}</td>
+                            <td>${soh.blocked ?? 0}</td>
+                            <td>${soh.transf ?? 0}</td>
+                            <td>${soh.last_update ?? '-'}</td>
                             <td>
                                 <div class="action-btns">
                                     <button class="btn btn-sm-action btn-edit" onclick="editSOH(${soh.id})" title="Edit">
