@@ -397,7 +397,7 @@
                                 <th>Unrest</th>
                                 <th>Qual Insp</th>
                                 <th>Blocked</th>
-                                <th>Trasnf</th>
+                                <th>Transf</th>
                                 <th>Last Updated</th>
                                 <th>Aksi</th>
                             </tr>
@@ -711,9 +711,8 @@
                 filteredSoh = allSoh; // reset
             } else {
                 filteredSoh = allSoh.filter(item =>
-                    item.barang &&
-                    item.barang.mid_barang &&
-                    item.barang.mid_barang.toLowerCase().includes(keyword)
+                    item.mid_barang &&
+                    item.mid_barang.toLowerCase().includes(keyword)
                 );
             }
 

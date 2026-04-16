@@ -38,6 +38,10 @@ class StockOnHandController extends Controller
                     'wsp_barang.nama_barang',
                     'wsp_barang.uom',
                     DB::raw('COALESCE(soh.qty_soh, 0) as qty_soh'),
+                    DB::raw('COALESCE(soh.unrest, 0) as unrest'),
+                    DB::raw('COALESCE(soh.qual_insp, 0) as qual_insp'),
+                    DB::raw('COALESCE(soh.blocked, 0) as blocked'),
+                    DB::raw('COALESCE(soh.transf, 0) as transf'),
                     'soh.last_update',
                 ])
                 ->orderBy('soh.last_update', 'desc')
