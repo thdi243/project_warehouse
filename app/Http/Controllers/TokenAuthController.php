@@ -7,112 +7,97 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class TokenAuthController extends Controller
 {
     /**
-     * Menerima token dari Portal Utama
+     * SSO Callback: Menerima redirect dari Main-BAS dengan ?token=xxx
      */
-    public function receiveToken(Request $request)
+    public function callback(Request $request)
     {
-        $request->validate([
-            'token' => 'required|string',
-            'user_data' => 'required|array',
-            'user_data.id' => 'required',
-            'user_data.username' => 'required',
-            'user_data.email' => 'required|email',
-            'expires_at' => 'required|date',
-        ]);
+        $token = $request->query('token');
 
-        $token = $request->input('token');
-        $userData = $request->input('user_data');
-        $expiresAt = $request->input('expires_at');
-
-        // Cek apakah token sudah expired
-        if (now()->isAfter($expiresAt)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token sudah kadaluarsa',
-            ], 401);
+        if (!$token) {
+            Log::warning('SSO: Callback tanpa token');
+            return redirect()->route('login')->with('error', 'Token tidak ditemukan');
         }
 
-        $sessionToken = Str::random(32);
+        // 1. Verifikasi token ke Main-BAS (PULL VALIDATION)
+        // $mainBasUrl = env('MAIN_BAS_URL', 'http://localhost:8000');
+        $mainBasUrl = env('MAIN_BAS_URL', 'http://10.11.10.130:8097');
+        $secret = env('SSO_SECRET_KEY', 'BAS_SSO_SECRET_2025');
 
-        cache()->put(
-            "portal_token:{$sessionToken}",
-            [
-                'original_token' => $token,
-                'user_data' => $userData,
-            ],
-            now()->addMinutes(5)
-        );
-
-        // Generate URL redirect dengan session token
-        $redirectUrl = route('auth.token-login', ['session_token' => $sessionToken]);
-
-        return response()->json([
-            'success' => true,
-            'redirect_url' => $redirectUrl,
-            'session_token' => $sessionToken,
-        ]);
-    }
-
-    /**
-     * Login user menggunakan session token
-     */
-    public function loginWithToken(Request $request)
-    {
-        $sessionToken = $request->query('session_token');
-
-        if (!$sessionToken) {
-            return redirect()->route('login')
-                ->with('error', 'Token tidak valid');
-        }
-
-        // Ambil data dari cache
-        $tokenData = cache()->get("portal_token:{$sessionToken}");
-
-        if (!$tokenData) {
-            return redirect()->route('login')
-                ->with('error', 'Token sudah kadaluarsa atau tidak valid');
-        }
-
-        $userData = $tokenData['user_data'];
-
-        // Cari atau buat user berdasarkan data dari portal utama
-        $user = User::where('email', $userData['email'])->first();
-
-        if (!$user) {
-            $user = User::create([
-                'username' => $userData['username'],
-                'email' => $userData['email'],
-                'nama_lengkap' => $userData['name'] ?? $userData['username'],
-                'nik' => $userData['nik'] ?? null,
-                'jabatan' => $userData['jabatan'] ?? null,
-                'departemen' => $userData['departemen'] ?? null,
-                'bagian' => $userData['bagian'] ?? null,
-                'password' => Hash::make(Str::random(32)),
-                'image' => null,
+        try {
+            $response = Http::withHeaders([
+                'X-SSO-Secret' => $secret,
+            ])->post(rtrim($mainBasUrl, '/') . '/api/sso/verify', [
+                'token' => $token,
             ]);
-        } else {
-            $user->update([
-                'nama_lengkap' => $userData['name'] ?? $user->nama_lengkap,
-                'nik' => $userData['nik'] ?? $user->nik,
-                'jabatan' => $userData['jabatan'] ?? $user->jabatan,
-                'departemen' => $userData['departemen'] ?? $user->departemen,
-                'bagian' => $userData['bagian'] ?? $user->bagian,
+
+            if (!$response->successful()) {
+                Log::error('SSO: Verifikasi token gagal', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                return redirect()->route('login')->with('error', 'Validasi SSO gagal');
+            }
+
+            $data = $response->json();
+
+            if (!isset($data['success']) || !$data['success']) {
+                return redirect()->route('login')->with('error', 'Token SSO tidak valid');
+            }
+
+            $userData = $data['user_data'];
+
+            // 2. Cari atau buat user berdasarkan data dari Main-BAS
+            // Cari berdasarkan username atau email untuk menghindari duplikasi (karena email bersifat unique di Warehouse)
+            $user = User::where('username', $userData['username'])
+                ->orWhere('email', $userData['email'])
+                ->first();
+
+            if (!$user) {
+                // Auto-create user jika belum ada sama sekali
+                $user = User::create([
+                    'username' => $userData['username'],
+                    'email' => $userData['email'] ?? null,
+                    'nama_lengkap' => $userData['name'] ?? $userData['username'],
+                    'nik' => $userData['nik'] ?? null,
+                    'jabatan' => $userData['jabatan'] ?? null,
+                    'departemen' => $userData['departemen'] ?? null,
+                    'bagian' => $userData['bagian'] ?? null,
+                    'password' => Hash::make(Str::random(32)),
+                ]);
+            } else {
+                // Update data user dari portal utama agar sinkron
+                // Jika user ditemukan via email tapi username berbeda, update username-nya juga
+                $user->update([
+                    'username' => $userData['username'],
+                    'email' => $userData['email'] ?? $user->email,
+                    'nama_lengkap' => $userData['name'] ?? $user->nama_lengkap,
+                    'nik' => $userData['nik'] ?? $user->nik,
+                    'jabatan' => $userData['jabatan'] ?? $user->jabatan,
+                    'departemen' => $userData['departemen'] ?? $user->departemen,
+                    'bagian' => $userData['bagian'] ?? $user->bagian,
+                ]);
+            }
+
+            // 3. Login user
+            Auth::login($user);
+            $request->session()->regenerate();
+
+            Log::info("SSO: Login sukses untuk user [{$user->username}] via SSO");
+
+            return redirect()->route('dashboard')
+                ->with('success', 'Login berhasil melalui SSO');
+        } catch (\Exception $e) {
+            Log::error('SSO: Error koneksi ke Main-BAS', [
+                'error' => $e->getMessage(),
             ]);
+            return redirect()->route('login')->with('error', 'Komunikasi SSO bermasalah');
         }
-
-        // Login user
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        // Hapus token dari cache
-        cache()->forget("portal_token:{$sessionToken}");
-
-        return redirect()->route('dashboard')
-            ->with('success', 'Login berhasil dari Portal Utama');
     }
 }

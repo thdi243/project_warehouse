@@ -148,10 +148,6 @@ Route::prefix('wfg')->group(function () {
     Route::get('/sop/detail/edit/{id}', [StockOpnameWfgController::class, 'getDataDetailEdit']);
 });
 
-Route::prefix('wrm')->group(function () {
-    Route::get('/data', [StockGulaController::class, 'getData'])->name('wrm.stock_gula.getData');
-});
-
 Route::prefix('notifications')->group(function () {
     Route::get('/index', [NotificationController::class, 'index']);
     Route::post('/read/{id}', [NotificationController::class, 'markAsRead']);
@@ -170,4 +166,5 @@ Route::prefix('purchase-requesition')->middleware('web')->group(function () {
     Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action']);
 });
 
-Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);
+// SSO callback is now in web.php as a GET request
+// Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);

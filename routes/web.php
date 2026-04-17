@@ -31,6 +31,7 @@ use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
+use App\Http\Controllers\TokenAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +46,7 @@ Route::get('/', function () {
 // Auth
 Route::middleware('web')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::get('/auth/sso/callback', [TokenAuthController::class, 'callback'])->name('auth.sso.callback');
     Route::post('/signin', [AuthController::class, 'login'])->name('signin');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
