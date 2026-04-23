@@ -497,19 +497,15 @@ class InboundController extends Controller
         ])
             ->select('wrm_stock_inbound_details.*')
             ->join('wrm_stock_inbound', 'wrm_stock_inbound_details.inbound_id', '=', 'wrm_stock_inbound.id')
-            ->whereNotIn('status', ['ISSUED', 'RESERVED']);
+            ->whereNotIn('wrm_stock_inbound_details.status', ['ISSUED', 'RESERVED']);
 
         // Mapping filters
-        $filters = [
-            'group' => $request->group,
-            'status' => $request->status,
-        ];
+        if ($request->group) {
+            $query->whereIn('wrm_stock_inbound_details.group', (array)$request->group);
+        }
 
-        foreach ($filters as $field => $values) {
-            if ($values) {
-                // Prepend table name to field to avoid ambiguity if needed, but 'group' and 'status' are expected in detail table
-                $query->whereIn('wrm_stock_inbound_details.' . $field, (array)$values);
-            }
+        if ($request->status) {
+            $query->whereIn('wrm_stock_inbound_details.status', (array)$request->status);
         }
 
         if ($request->jenis_bahan) {
@@ -540,6 +536,12 @@ class InboundController extends Controller
             $query->where('wrm_stock_inbound_details.catatan', 'like', '%' . $request->catatan . '%');
         }
 
+        if ($request->location) {
+            $query->whereHas('bin', function ($q) use ($request) {
+                $q->whereIn('loc_id', (array)$request->location);
+            });
+        }
+
         // Clone query for summary calculation (before sorting)
         $summaryQuery = clone $query;
 
@@ -547,22 +549,15 @@ class InboundController extends Controller
         $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
         $query->orderBy('wrm_stock_inbound.incoming_date', $sortDir);
 
-        $statusBreakdown = $summaryQuery->select('status', DB::raw('count(*) as count'), DB::raw('sum(qty) as total_qty'))
-            ->groupBy('status')
+        $statusBreakdown = $summaryQuery->setEagerLoads([])
+            ->select('wrm_stock_inbound_details.status', DB::raw('count(*) as count'), DB::raw('sum(wrm_stock_inbound_details.qty) as total_qty'))
+            ->groupBy('wrm_stock_inbound_details.status')
             ->reorder() // Clear any existing order for aggregation
             ->get()
             ->keyBy('status');
 
-        $activeStatuses = ['UNREST', 'QI', 'BLOCKED'];
-        $totalPallet = 0;
-        $totalQty = 0;
-
-        foreach ($activeStatuses as $st) {
-            if (isset($statusBreakdown[$st])) {
-                $totalPallet += $statusBreakdown[$st]->count;
-                $totalQty += $statusBreakdown[$st]->total_qty;
-            }
-        }
+        $totalPallet = $statusBreakdown->sum('count');
+        $totalQty = $statusBreakdown->sum('total_qty');
 
         $summary = [
             'total_pallet' => $totalPallet,
@@ -582,13 +577,13 @@ class InboundController extends Controller
 
     public function getFilter(Request $request)
     {
-        // Get all active records once to process in memory (small dataset ~75-200 records)
-        // If dataset grows large (>5000), we should switch back to individual DB queries.
+        // Get all active records once to process in memory
         $all = StockInboundDetail::with([
             'barang:id,mid,nama_barang',
-            'inbound:id,no_spb,supplier'
+            'inbound:id,no_spb,supplier',
+            'bin.location'
         ])
-            ->where('status', '!=', 'ISSUED')
+            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
             ->get();
 
         // Helper to filter collection
@@ -614,13 +609,15 @@ class InboundController extends Controller
                 if ($excludeField !== 'no_spb' && $request->no_spb) {
                     $match = $match && in_array($item->inbound->no_spb, (array)$request->no_spb);
                 }
+                if ($excludeField !== 'location' && $request->location) {
+                    $match = $match && in_array($item->bin->loc_id, (array)$request->location);
+                }
 
                 return $match;
             });
         };
 
         // Extract options for each field
-        // For each field, we apply all OTHER filters to see what values are still available
         $groups = $filterCollection($all, 'group')->pluck('group')->unique()->sort()->values();
         $jenisBahan = $filterCollection($all, 'jenis_bahan')->pluck('barang.nama_barang')->unique()->sort()->values();
         $mids = $filterCollection($all, 'mid')->map(function ($item) {
@@ -635,13 +632,22 @@ class InboundController extends Controller
         $suppliers = $filterCollection($all, 'supplier')->pluck('inbound.supplier')->whereNotNull()->unique()->sort()->values();
         $statuses = $filterCollection($all, 'status')->pluck('status')->unique()->sort()->values();
 
+        $locations = $filterCollection($all, 'location')->map(function ($item) {
+            $loc = $item->bin->location;
+            return [
+                'id' => $loc->id,
+                'text' => "{$loc->plant} - {$loc->s_loc} - {$loc->gudang} - {$loc->bin}"
+            ];
+        })->unique('id')->sortBy('text')->values();
+
         return response()->json([
             'groups' => $groups,
             'jenis_bahan' => $jenisBahan,
             'mids' => $mids,
             'no_spbs' => $noSpbs,
             'suppliers' => $suppliers,
-            'statuses' => $statuses
+            'statuses' => $statuses,
+            'locations' => $locations
         ]);
     }
 

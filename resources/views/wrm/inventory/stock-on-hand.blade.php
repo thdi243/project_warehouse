@@ -83,6 +83,29 @@
     #tableStock tbody tr:hover {
         background-color: rgba(0, 0, 0, 0.02);
     }
+
+    /* Soft Buttons */
+    .btn-soft-info {
+        background-color: rgba(53, 185, 230, 0.1);
+        color: #35b9e6;
+        border: none;
+    }
+
+    .btn-soft-info:hover {
+        background-color: #35b9e6;
+        color: #fff;
+    }
+
+    .btn-soft-danger {
+        background-color: rgba(240, 101, 72, 0.1);
+        color: #f06548;
+        border: none;
+    }
+
+    .btn-soft-danger:hover {
+        background-color: #f06548;
+        color: #fff;
+    }
 </style>
 @endsection
 
@@ -171,69 +194,84 @@
         </div>
 
         {{-- Card Filter --}}
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0 fw-bold">Filter Data</h5>
-            </div>
-
-            <div class="card-body">
-                <div class="row g-3">
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-body p-4">
+                <div class="row g-3 align-items-end">
                     <div class="col-md-3">
-                        <label class="form-label">Nama Barang</label>
-                        <select class="form-select select2-filter" id="filterNamaBarang" multiple>
-                        </select>
+                        <label class="form-label fw-semibold text-muted mb-2">Pencarian Cepat</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="mdi mdi-magnify text-primary"></i></span>
+                            <input type="text" class="form-control bg-light border-start-0" id="filterCatatan" placeholder="Cari barcode, MID, atau catatan...">
+                        </div>
                     </div>
 
                     <div class="col-md-3">
-                        <label class="form-label">MID</label>
-                        <select class="form-select select2-filter" id="filterMid" multiple>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Supplier</label>
-                        <select class="form-select select2-filter" id="filterSupplier" multiple>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">No SPB</label>
+                        <label class="form-label fw-semibold text-muted mb-2">No SPB</label>
                         <select class="form-select select2-filter" id="filterNoSpb" multiple>
                         </select>
                     </div>
-                </div>
 
-                <div class="row g-3 mt-1">
                     <div class="col-md-3">
-                        <label class="form-label">Group</label>
-                        <select class="form-select select2-filter" id="filterGroup" multiple>
+                        <label class="form-label fw-semibold text-muted mb-2">Nama Barang</label>
+                        <select class="form-select select2-filter" id="filterNamaBarang" multiple>
                         </select>
                     </div>
-
                     <div class="col-md-3">
-                        <label class="form-label">Status</label>
-                        <select class="form-select select2-filter" id="filterStatus" multiple>
-                            <option value="UNREST">UNREST</option>
-                            <option value="QI">QI</option>
-                            <option value="BLOCKED">BLOCKED</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Incoming Date</label>
-                        <input type="date" class="form-control" id="filterDate">
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Catatan / Cari</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="filterCatatan" placeholder="Cari catatan...">
-                            <button class="btn btn-primary" id="btnFilter">
-                                <i class="mdi mdi-magnify"></i>
+                        <div class="d-flex gap-2">
+                            <!-- <button class="btn btn-primary flex-grow-1" id="btnFilter">
+                                <i class="mdi mdi-filter-check-outline me-1"></i> Terapkan Filter
+                            </button> -->
+                            <button class="btn btn-soft-info w-100" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdvancedFilter" aria-expanded="false" aria-controls="collapseAdvancedFilter">
+                                <i class="mdi mdi-tune-vertical me-1"></i> Filter Lanjutan
                             </button>
-                            <button class="btn btn-outline-danger" id="btnReset">
+                            <button class="btn btn-soft-danger w-100" id="btnReset" title="Reset Filter">
                                 <i class="mdi mdi-refresh"></i>
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Collapsible Advanced Filters --}}
+                <div class="collapse" id="collapseAdvancedFilter">
+                    <div class="pt-4 mt-4 border-top">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted mb-2">MID</label>
+                                <select class="form-select select2-filter" id="filterMid" multiple>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted mb-2">Supplier</label>
+                                <select class="form-select select2-filter" id="filterSupplier" multiple>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted mb-2">Group</label>
+                                <select class="form-select select2-filter" id="filterGroup" multiple>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted mb-2">Status</label>
+                                <select class="form-select select2-filter" id="filterStatus" multiple>
+                                    <option value="UNREST">UNREST</option>
+                                    <option value="QI">QI</option>
+                                    <option value="BLOCKED">BLOCKED</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted mb-2">Lokasi</label>
+                                <select class="form-select select2-filter" id="filterLocation" multiple>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted mb-2">Incoming Date</label>
+                                <input type="date" class="form-control" id="filterDate">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -496,6 +534,7 @@
                 supplier: $('#filterSupplier').val(),
                 status: $('#filterStatus').val(),
                 no_spb: $('#filterNoSpb').val(),
+                location: $('#filterLocation').val(),
                 catatan: $('#filterCatatan').val(),
                 sort_dir: currentSortDir,
             };
@@ -967,6 +1006,7 @@
         $('#btnReset').click(function() {
             $('.select2-filter').val(null).trigger('change');
             $('#filterMid').val(null).trigger('change');
+            $('#filterLocation').val(null).trigger('change');
             $('#filterDate').val('');
             $('#filterCatatan').val('');
             loadFilter();
@@ -981,6 +1021,7 @@
                 supplier: $('#filterSupplier').val(),
                 status: $('#filterStatus').val(),
                 no_spb: $('#filterNoSpb').val(),
+                location: $('#filterLocation').val(),
             };
 
             $.get("{{ route('wrm.inventory.getFilter') }}", params, function(res) {
@@ -989,12 +1030,11 @@
                 updateDropdown('#filterSupplier', res.suppliers);
                 updateDropdown('#filterNoSpb', res.no_spbs);
                 updateDropdown('#filterMid', res.mids, true);
-                // Optionally update status too, if you want it chained
-                // updateDropdown('#filterStatus', res.statuses);
+                updateDropdown('#filterLocation', res.locations, false, true);
             });
         }
 
-        function updateDropdown(selector, data, isMid = false) {
+        function updateDropdown(selector, data, isMid = false, isLocation = false) {
             let $el = $(selector);
             let currentValues = $el.val() || [];
 
@@ -1003,8 +1043,8 @@
 
             data.forEach(item => {
                 let val, text;
-                if (isMid) {
-                    val = item.mid;
+                if (isMid || isLocation) {
+                    val = item.id ?? item.mid;
                     text = item.text;
                 } else {
                     val = item;
