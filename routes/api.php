@@ -1,11 +1,11 @@
 <?php
 
-use App\Http\Controllers\Api\P2hDashboardController;
-use App\Http\Controllers\Api\RakDashboardController;
-use App\Http\Controllers\Api\TkbmDashboardController;
-use App\Http\Controllers\Api\UserDashboardController;
-use App\Http\Controllers\Api\WrmInboundDashboardController;
-use App\Http\Controllers\Api\WspManRakController;
+use App\Http\Controllers\Dashboard\P2hDashboardController;
+use App\Http\Controllers\Dashboard\RakDashboardController;
+use App\Http\Controllers\Dashboard\BpsDashboardController;
+use App\Http\Controllers\Dashboard\UserDashboardController;
+use App\Http\Controllers\Dashboard\WrmInboundDashboardController;
+use App\Http\Controllers\Dashboard\WspManRakController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
@@ -26,24 +26,21 @@ use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
+use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('dashboard')->group(function () {
-    Route::get('/user', [TkbmDashboardController::class, 'userDashboard']);
+    Route::get('/user', [BpsDashboardController::class, 'userDashboard']);
 
     // TKBM
     Route::prefix('tkbm')->group(function () {
-        Route::get('/data/per-month', [TkbmDashboardController::class, 'tkbmDashboard']);
-        Route::get('/produk', [TkbmDashboardController::class, 'tkbmDashboardProduk']);
-        Route::get('/qty-terpal', [TkbmDashboardController::class, 'qtyTerpalDay']);
-        Route::get('/qty-slipsheet', [TkbmDashboardController::class, 'qtySlipsheetDay']);
-        Route::get('/qty-pallet', [TkbmDashboardController::class, 'qtyPalletDay']);
-        Route::get('/total-qty', [TkbmDashboardController::class, 'tkbmTotalPerhari']);
-        Route::get('/grand-total', [TkbmDashboardController::class, 'tkbmDashboardGrandTotal']);
-        Route::get('/widget', [TkbmDashboardController::class, 'dataWidget']);
-        Route::get('/all_qty_produk', [TkbmDashboardController::class, 'tkbmAllProduk']);
+
+        Route::get('/bps/get-stats', [BpsDashboardController::class, 'getStats']);
+
+        // ikat terpal
+        Route::get('/ikat-terpal/get-stats', [IkatTerpalDashboardController::class, 'getStats']);
     });
 
     // p2h

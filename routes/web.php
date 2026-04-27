@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\UserPermissionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
+use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
+use App\Http\Controllers\Dashboard\BpsDashboardController;
 use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WarehouseController;
@@ -81,7 +83,7 @@ Route::middleware('auth')->group(function () {
             // Main
             Route::view('/main', 'dashboard.foreman_spv_home')->name('dashboard.main');
             // TKBM
-            Route::view('/tkbm', 'dashboard.tkbm_dashboard')->name('dashboard.tkbm')
+            Route::get('/bps', [BpsDashboardController::class, 'index'])->name('dashboard.tkbm')
                 ->middleware(['permission:dashboard-bps']);
             // Route::get('/tkbm/get-data', [TkbmDashboardController::class, 'tkbmDashboard'])->name('dashboard.tkbm.data');
             Route::view('/p2h', 'dashboard.p2h_dashboard')->name('dashboard.p2h')
@@ -89,6 +91,8 @@ Route::middleware('auth')->group(function () {
             // Rak Management
             Route::view('/rak', 'dashboard.rak_dashboard')->name('dashboard.rak')
                 ->middleware(['permission:dashboard-rak']);
+
+            Route::get('/ikat-terpal', [IkatTerpalDashboardController::class, 'index'])->name('dashboard.ikat-terpal');
             // WRM
             Route::get('/wrm/index', [DashboardController::class, 'index'])->name('dashboard.wrm.index')->middleware(['permission:dashboard-wrm']);
             Route::get('/wrm/api/data/kpi', [DashboardController::class, 'getKpi'])->name('dashboard.wrm.data.kpi')->middleware(['permission:dashboard-wrm']);

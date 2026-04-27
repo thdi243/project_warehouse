@@ -98,7 +98,14 @@
                             <li class="nav-item">
                                 <a href="{{ route('dashboard.tkbm') }}"
                                     class="nav-link {{ request()->routeIs('dashboard.tkbm') ? 'active' : '' }}">
-                                    <i class="mdi mdi-chart-box"></i> TKBM BPS Dashboard</a>
+                                    <i class="mdi mdi-chart-box"></i> TKBM BPS</a>
+                            </li>
+                            @endcan
+                            @can('permission', 'dashboard-ikat-terpal')
+                            <li class="nav-item">
+                                <a href="{{ route('dashboard.ikat-terpal') }}"
+                                    class="nav-link {{ request()->routeIs('dashboard.ikat-terpal') ? 'active' : '' }}">
+                                    <i class="mdi mdi-chart-box"></i> Ikat Terpal</a>
                             </li>
                             @endcan
                             @can('permission', 'dashboard-rak')
