@@ -103,9 +103,9 @@ class AuthController extends Controller
         $bagian = strtolower(trim($user->departemen));
 
         // Jika bukan dari departemen warehouse
-        if ($bagian !== 'warehouse') {
-            return url('/app/stock-on-hand');
-        }
+        // if ($bagian !== 'warehouse') {
+        //     return url('/app/stock-on-hand');
+        // }
 
         // Jika warehouse, gunakan redirect berdasarkan jabatan
         $path = $this->redirects[$jabatan] ?? '/';

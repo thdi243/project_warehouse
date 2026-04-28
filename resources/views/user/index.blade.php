@@ -230,6 +230,8 @@
                                         <option value="engineering">Engineering</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="produksi">Produksi</option>
+                                        <option value="ppic">PPIC</option>
+                                        <option value="purchasing">Purchasing</option>
                                     </select>
                                     {{-- <div class="invalid-feedback">Please select a Departemen.</div> --}}
                                 </div>
@@ -247,6 +249,8 @@
                                         <option value="engineering">Engineering</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="produksi">Produksi</option>
+                                        <option value="ppic">PPIC</option>
+                                        <option value="purchasing">Purchasing</option>
                                     </select>
                                 </div>
 
@@ -356,6 +360,8 @@
                                         <option value="engineering">Engineering</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="produksi">Produksi</option>
+                                        <option value="ppic">PPIC</option>
+                                        <option value="purchasing">Purchasing</option>
                                     </select>
                                 </div>
                             </div>
@@ -373,6 +379,8 @@
                                         <option value="engineering">Engineering</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="produksi">Produksi</option>
+                                        <option value="ppic">PPIC</option>
+                                        <option value="purchasing">Purchasing</option>
                                     </select>
                                 </div>
                             </div>
