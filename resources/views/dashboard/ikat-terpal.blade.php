@@ -53,7 +53,7 @@
                     <a href="{{ route('tkbm.ikat-terpal.index') }}" class="btn btn-soft-primary">
                         <i class="bx bx-plus me-1"></i> Input Data
                     </a>
-                    <a href="{{ route('tkbm.ikat-terpal.index') }}" class="btn btn-soft-info">
+                    <a href="{{ route('tkbm.ikat-terpal.report') }}" class="btn btn-soft-info">
                         <i class="bx bx-file me-1"></i> Lihat Report
                     </a>
                     <input type="month" id="filter-month" class="form-control" value="{{ now()->format('Y-m') }}" style="width: 150px;">
