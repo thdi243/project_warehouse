@@ -21,19 +21,14 @@ class AuthController extends Controller
 
     public function showLoginForm()
     {
+        if (Auth::check()) {
+            return redirect($this->redirectUser(Auth::user()));
+        }
         return view('auth.login');
     }
 
     public function login(Request $request)
     {
-        if (Auth::check()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Anda sudah login.',
-                'redirect' => $this->redirectUser(Auth::user()),
-            ]);
-        }
-
         $request->validate([
             'username' => 'required|string',
             'password' => 'required|string',
