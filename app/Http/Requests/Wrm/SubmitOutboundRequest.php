@@ -22,6 +22,7 @@ class SubmitOutboundRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'tgl_reservasi' => 'required|date',
             'no_reservasi' => 'required|string|max:100',
             'shift' => 'required|string|max:50',
             'items' => 'required|array|min:1',

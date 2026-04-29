@@ -30,6 +30,10 @@
             <div class="card-body">
                 <div class="row g-3 mb-3">
                     <div class="col-md-3">
+                        <label class="form-label">Tgl Reservasi <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="tgl_reservasi" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">No Reservasi <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="no_reservasi" placeholder="Contoh: 204506143">
                     </div>
@@ -324,6 +328,7 @@
             }
 
             let no_reservasi = $('#no_reservasi').val();
+            let tgl_reservasi = $('#tgl_reservasi').val();
             let shift = $('#shift').val();
             let qtyRequest = $('#qty').val();
 
@@ -359,6 +364,7 @@
                         data: {
                             _token: "{{ csrf_token() }}",
                             no_reservasi: no_reservasi,
+                            tgl_reservasi: tgl_reservasi,
                             shift: shift,
                             items: selected,
                             catatan: result.value,
@@ -406,6 +412,7 @@
             $('#filterGroup').val('');
             $('#qty').val('');
             $('#no_reservasi').val('');
+            $('#shift').val('1');
 
             // reset summary
             $('#reqQty').text('0');

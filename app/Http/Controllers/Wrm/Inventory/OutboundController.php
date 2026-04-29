@@ -103,7 +103,7 @@ class OutboundController extends Controller
             $header = StockOutbound::create([
                 'no_reservasi'      => $request->no_reservasi,
                 'shift'             => $request->shift,
-                'reservasi_date'    => now(),
+                'reservasi_date'    => Carbon::parse($request->tgl_reservasi)->setTimeFrom(now()),
                 'qty_request'       => $request->qty_request,
                 'catatan'           => $request->catatan,
                 'checklist_kondisi' => $request->checklist_kondisi ? json_encode($request->checklist_kondisi) : null,
