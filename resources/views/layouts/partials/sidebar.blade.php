@@ -119,7 +119,7 @@
                             <li class="nav-item">
                                 <a href="{{ route('dashboard.wrm.index') }}"
                                     class="nav-link {{ request()->routeIs('dashboard.wrm.index') ? 'active' : '' }}">
-                                    <i class="mdi mdi-warehouse"></i>Inventory Dashboard </a>
+                                    <i class="mdi mdi-warehouse"></i>Inventory WRM </a>
                             </li>
                             @endcan
                         </ul>
