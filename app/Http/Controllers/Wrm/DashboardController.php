@@ -64,10 +64,11 @@ class DashboardController extends Controller
         $totalStock       = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
         $activePalletCount = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->count();
 
-        // Draft Outbound (Today)
-        $draftOutboundTodayQuery = clone StockOutbound::query();
-        $draftOutboundTodayQuery->whereDate('reservasi_date', Carbon::today());
-        $draftOutboundToday = $draftOutboundTodayQuery->sum('qty_request');
+        // Draft Outbound (Today) - Only count items still in RESERVED status
+        $draftOutboundToday = StockOutbound::join('wrm_stock_draft_outbound_details', 'wrm_stock_draft_outbound.id', '=', 'wrm_stock_draft_outbound_details.outbound_id')
+            ->whereDate('wrm_stock_draft_outbound.reservasi_date', Carbon::today())
+            ->where('wrm_stock_draft_outbound_details.status', 'RESERVED')
+            ->sum('wrm_stock_draft_outbound_details.qty');
 
         // Transfer (Today)
         $transferQuery = clone StockTransferDetail::query();
@@ -107,9 +108,11 @@ class DashboardController extends Controller
         }
         $inboundDaily = $inboundQuery->selectRaw('DATE(tanggal) as date, SUM(qty) as total')->groupBy('date')->get()->keyBy('date');
 
-        // 2. Draft Outbound (from StockOutbound reservasi_date)
-        $outboundDaily = StockOutbound::whereBetween('reservasi_date', [$startDate, $endDate])
-            ->selectRaw('DATE(reservasi_date) as date, SUM(qty_request) as total')
+        // 2. Draft Outbound (from StockOutboundDetail status RESERVED)
+        $outboundDaily = StockOutbound::join('wrm_stock_draft_outbound_details', 'wrm_stock_draft_outbound.id', '=', 'wrm_stock_draft_outbound_details.outbound_id')
+            ->whereBetween('wrm_stock_draft_outbound.reservasi_date', [$startDate, $endDate])
+            ->where('wrm_stock_draft_outbound_details.status', 'RESERVED')
+            ->selectRaw('DATE(wrm_stock_draft_outbound.reservasi_date) as date, SUM(wrm_stock_draft_outbound_details.qty) as total')
             ->groupBy('date')->get()->keyBy('date');
 
         // 3. Transfer (from StockTransferDetail created_at)
