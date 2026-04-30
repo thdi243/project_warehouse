@@ -233,6 +233,9 @@ Route::middleware('auth')->group(function () {
         Route::prefix('wrm')->middleware(['permission:wrm-menu'])->group(function () {
             // Inventory Raw Material
             Route::prefix('inventory')->middleware(['permission:wrm-inventory-upload,wrm-inventory-soh,wrm-inventory-draft-outbound,wrm-inventory-data-draft-outbound,wrm-inventory-transfer-history'])->group(function () {
+                Route::get('/inbound', [InboundController::class, 'viewInbound'])->name('wrm.inventory.viewInbound');
+                Route::get('/data-inbound', [InboundController::class, 'dataInbound'])->name('wrm.inventory.dataInbound');
+                Route::get('/get-filter-inbound', [InboundController::class, 'getFilterInbound'])->name('wrm.inventory.getFilterInbound');
                 Route::get('/stock-on-hand', [InboundController::class, 'index'])->name('wrm.inventory.index');
                 Route::get('/data-upload', [InboundController::class, 'indexUpload'])->name('wrm.inventory.index-upload');
                 Route::post('/store', [InboundController::class, 'store'])->name('wrm.inventory.store');

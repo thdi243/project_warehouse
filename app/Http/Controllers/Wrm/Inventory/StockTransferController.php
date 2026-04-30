@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Wrm\Inventory;
 
 use App\Http\Controllers\Controller;
 use App\Models\Wrm\Inventory\StockBalance;
-use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockMovement;
+use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wrm\Inventory\StockOutboundDetail;
 use App\Models\Wrm\Inventory\StockTransfer;
 use App\Models\Wrm\Inventory\StockTransferDetail;
@@ -103,12 +103,12 @@ class StockTransferController extends Controller
 
                 // --- INTEGRATION WITH SOH (INBOUND) ---
                 // 1. Find the Inbound Detail to see current status
-                $inboundDetail = StockInboundDetail::where('barcode', $noBarcode)
+                $stockOnHand = StockOnHand::where('barcode', $noBarcode)
                     ->where('barang_id', $barang->id)
                     ->first();
 
-                if (!$inboundDetail) {
-                    $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Stock On Hand (Inbound).";
+                if (!$stockOnHand) {
+                    $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Stock On Hand.";
                     continue;
                 }
 
@@ -154,8 +154,8 @@ class StockTransferController extends Controller
                 ]);
 
                 // --- INVENTORY UPDATES (MOVEMENT & BALANCE) ---
-                if ($inboundDetail) {
-                    $bin = $inboundDetail->bin;
+                if ($stockOnHand) {
+                    $bin = $stockOnHand->bin;
                     if ($bin) {
                         $locId = $bin->loc_id;
 
@@ -182,12 +182,31 @@ class StockTransferController extends Controller
                         ]);
 
                         // Update Inbound Status and Qty
-                        $inboundDetail->update([
+                        $stockOnHand->update([
                             'status' => 'ISSUED',
-                            'qty'    => 0, // Mark as empty for capacity charts
                             'updated_by' => Auth::id()
                         ]);
                     }
+                }
+                // ----------------------------------------------
+
+                // --- INTEGRATION WITH DRAFT OUTBOUND ---
+                // Find matching draft outbound detail
+                $draftDetail = StockOutboundDetail::where('barcode', $noBarcode)
+                    ->where('barang_id', $barang->id)
+                    ->whereHas('outbound', function ($q) use ($noReservasi, $tglRes) {
+                        $q->where('no_reservasi', $noReservasi);
+                        if ($tglRes) {
+                            $q->whereDate('reservasi_date', $tglRes);
+                        }
+                    })
+                    ->first();
+
+                if ($draftDetail) {
+                    $draftDetail->update([
+                        'status' => 'ISSUED',
+                        'updated_by' => Auth::id()
+                    ]);
                 }
                 // ----------------------------------------------
 
@@ -228,7 +247,7 @@ class StockTransferController extends Controller
         if ($request->no_reservasi) {
             $query->whereHas('header', function ($q) use ($request) {
                 $q->where('no_reservasi', 'like', '%' . $request->no_reservasi . '%')
-                  ->orWhere('no_ba', 'like', '%' . $request->no_reservasi . '%');
+                    ->orWhere('no_ba', 'like', '%' . $request->no_reservasi . '%');
             });
         }
 
@@ -278,7 +297,7 @@ class StockTransferController extends Controller
                 }
 
                 // 3. Restore Stock Inbound Detail
-                $inbound = StockInboundDetail::where('barcode', $detail->no_barcode)
+                $inbound = StockOnHand::where('barcode', $detail->no_barcode)
                     ->where('barang_id', $detail->barang_id)
                     ->first();
 
@@ -317,7 +336,6 @@ class StockTransferController extends Controller
             ], 500);
         }
     }
-
 
     private function parseDate($value)
     {

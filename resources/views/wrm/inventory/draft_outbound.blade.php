@@ -73,10 +73,14 @@
                                 <input type="text" class="form-control" id="filterGroup" placeholder="Cari Group ...">
                             </div>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end gap-2">
-                            <button class="btn btn-primary w-100" id="btnSearch">
-                                <i class="mdi mdi-magnify me-2"></i> Tampilkan Data
-                            </button>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="mdi mdi-map-marker-outline"></i></span>
+                                <input type="text" class="form-control" id="filterLocation" placeholder="Cari Location ...">
+                            </div>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end gap-2">
                             <button class="btn btn-light w-100 border" id="btnReset">
                                 <i class="mdi mdi-refresh me-2"></i> Reset
                             </button>
@@ -152,8 +156,9 @@
 
             let mid = $('#filterMid').val();
             let group = $('#filterGroup').val();
+            let location = $('#filterLocation').val();
 
-            if (!mid && !group) {
+            if (!mid && !group && !location) {
 
                 Swal.fire({
                     icon: 'warning',
@@ -167,11 +172,9 @@
             loadData();
         }
 
-        $('#btnSearch').click(runSearch);
-
         let searchTimer;
 
-        $('#filterMid, #filterStatus, #filterGroup').on('keyup', function() {
+        $('#filterMid, #filterGroup, #filterLocation').on('keyup', function() {
 
             clearTimeout(searchTimer);
 
@@ -182,11 +185,13 @@
         function loadData() {
             let mid = $('#filterMid').val();
             let group = $('#filterGroup').val();
+            let location = $('#filterLocation').val();
 
             $.get("{{ route('wrm.inventory.search-outbound') }}", {
                 // page: page,
                 mid: mid,
                 group: group,
+                location: location,
             }, function(res) {
 
                 let html = '';
@@ -214,7 +219,7 @@
                             <tr>
 
                                 <td class="text-center">${no++}</td>
-                                <td>${v.inbound.no_spb}</td>
+                                <td>${v.no_spb}</td>
                                 <td>${v.pallet_id}</td>
                                 <td>${v.barang.mid}</td>
                                 <td>${v.barang.nama_barang}</td>
@@ -222,7 +227,7 @@
                                 <td>${v.status}</td>
                                 <td>${numberFormat(v.qty)}</td>
                                 <td class="text-primary fw-bold">${v.bin.location.plant} - ${v.bin.location.gudang} - ${v.bin.location.bin} - ${v.bin.kolom}.${v.bin.level}</td>
-                                <td>${v.inbound.incoming_date}</td>
+                                <td>${v.incoming_date}</td>
                                 <td class="text-center">
                                     <input type="checkbox"
                                         class="form-check-input pickItem"
@@ -410,6 +415,7 @@
             // reset filter
             $('#filterMid').val('');
             $('#filterGroup').val('');
+            $('#filterLocation').val('');
             $('#qty').val('');
             $('#no_reservasi').val('');
             $('#shift').val('1');

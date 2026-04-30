@@ -7,6 +7,7 @@ use App\Http\Requests\Wrm\SubmitOutboundRequest;
 use App\Models\Wrm\Inventory\StockBalance;
 use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockMovement;
+use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wrm\Inventory\StockOutbound;
 use App\Models\Wrm\Inventory\StockOutboundDetail;
 use App\Models\Wrm\Inventory\StockTransfer;
@@ -38,15 +39,13 @@ class OutboundController extends Controller
 
     public function searchOutbound(Request $request)
     {
-        $query = StockInboundDetail::select('wrm_stock_inbound_details.*')
-            ->join('wrm_stock_inbound', 'wrm_stock_inbound.id', '=', 'wrm_stock_inbound_details.inbound_id')
+        $query = StockOnHand::select('wrm_stock_on_hand.*')
             ->with([
-                'inbound:id,no_spb,incoming_date',
                 'barang:id,mid,nama_barang,uom',
                 'bin:id,loc_id,kolom,level',
                 'bin.location:id,plant,s_loc,gudang,zona,bin',
             ])
-            ->where('wrm_stock_inbound_details.status', '=', 'UNREST');
+            ->where('wrm_stock_on_hand.status', '=', 'UNREST');
 
         // filter MID
         if ($request->mid) {
@@ -71,9 +70,18 @@ class OutboundController extends Controller
             $query->where('group', $request->group);
         }
 
+        // filter location
+        if ($request->location) {
+            $query->whereHas('bin.location', function ($q) use ($request) {
+                $q->where('plant', 'like', '%' . $request->location . '%')
+                  ->orWhere('gudang', 'like', '%' . $request->location . '%')
+                  ->orWhere('bin', 'like', '%' . $request->location . '%');
+            });
+        }
+
         // urutkan FIFO (incoming paling lama)
-        $query->orderBy('wrm_stock_inbound.incoming_date', 'asc')
-            ->orderBy('wrm_stock_inbound_details.pallet_id', 'asc');
+        $query->orderBy('wrm_stock_on_hand.incoming_date', 'asc')
+            ->orderBy('wrm_stock_on_hand.pallet_id', 'asc');
 
         // $data = $query->paginate(15);
 
@@ -91,8 +99,7 @@ class OutboundController extends Controller
         DB::beginTransaction();
 
         try {
-            $details = StockInboundDetail::with([
-                'inbound',
+            $details = StockOnHand::with([
                 'barang',
                 'bin'
             ])
@@ -111,22 +118,20 @@ class OutboundController extends Controller
             ]);
 
             foreach ($details as $detail) {
-                $inbound = $detail->inbound;
-
                 // Save outbound detail
                 StockOutboundDetail::create([
                     'outbound_id'  => $header->id,
-                    'no_spb'       => $inbound->no_spb,
-                    'supplier'     => $inbound->supplier, // Store Supplier in detail
+                    'no_spb'       => $detail->no_spb,
+                    'supplier'     => $detail->supplier, // Store Supplier in detail
                     'barang_id'    => $detail->barang_id,
                     'barcode'      => $detail->barcode,
                     'pallet_id'    => $detail->pallet_id,
-                    'incoming_date' => $inbound->incoming_date,
+                    'incoming_date' => $detail->incoming_date,
                     'group'        => $detail->group,
                     'qty'          => $detail->qty,
                     'loc_id'       => $detail->loc_id,
                     'status'       => 'RESERVED',
-                    'expired_date' => $inbound->expired_date, // Store Expired Date in detail
+                    'expired_date' => $detail->expired_date, // Store Expired Date in detail
                     'pallet'       => $detail->pallet,
                     'created_by'   => Auth::id(),
                 ]);
@@ -245,7 +250,7 @@ class OutboundController extends Controller
 
             foreach ($outbound->details as $detail) {
                 // Return inbound status to UNREST (available again)
-                StockInboundDetail::where([
+                StockOnHand::where([
                     'barang_id' => $detail->barang_id,
                     'pallet_id' => $detail->pallet_id
                 ])->update([

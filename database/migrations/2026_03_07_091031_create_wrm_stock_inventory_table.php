@@ -26,9 +26,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('inbound_id')->constrained('wrm_stock_inbound')->onDelete('cascade');
             $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
-            $table->bigInteger('barcode');
+            $table->bigInteger('barcode')->nullable();
             $table->integer('pallet_id');
-            $table->string('group');
+            $table->string('group')->nullable();
             $table->integer('qty');
             $table->string('status');
             $table->foreignId('loc_id')->constrained('wrm_master_bin')->onDelete('restrict');

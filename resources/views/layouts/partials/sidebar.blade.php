@@ -421,6 +421,14 @@
                             </li>
                             @endcan
 
+                            @can('permission', 'wrm-inventory-inbound')
+                            <li class="nav-item">
+                                <a href="{{ route('wrm.inventory.viewInbound') }}"
+                                    class="nav-link menu-link {{ request()->routeIs('wrm.inventory.viewInbound') ? 'active' : '' }}">
+                                    <i class="mdi mdi-view-grid"></i>Data Inbound
+                                </a>
+                            </li>
+                            @endcan
                             @can('permission', 'wrm-inventory-soh')
                             <li class="nav-item">
                                 <a href="{{ route('wrm.inventory.index') }}"

@@ -9,6 +9,7 @@ use App\Models\Wrm\Inventory\StockBalance;
 use App\Models\Wrm\Inventory\StockInbound;
 use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockMovement;
+use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wrm\Inventory\TempUploadModel;
 use App\Models\Wrm\MasterBarangModel;
 use App\Models\Wrm\MasterBinModel;
@@ -82,6 +83,11 @@ class InboundController extends Controller
         return $allocated;
     }
 
+    public function viewInbound()
+    {
+        return view('wrm.inventory.data_inbound');
+    }
+
     public function index()
     {
         $today = Carbon::today();
@@ -142,17 +148,17 @@ class InboundController extends Controller
             ->distinct('no_spb')
             ->count('no_spb');
 
-        $usedBinIds = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id')->toArray();
+        $usedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id')->toArray();
 
         // 1. Get database column owners to prevent mixing
-        $usedDetails = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid', 'bin:id,loc_id,kolom'])
+        $usedDetails = StockOnHand::with(['barang:id,mid', 'bin:id,loc_id,kolom'])
             ->whereNotIn('status', ['ISSUED', 'RESERVED'])
             ->get();
         $dbColumnOwners = [];
         foreach ($usedDetails as $d) {
-            if ($d->bin && $d->inbound && $d->barang) {
+            if ($d->bin && $d->no_spb && $d->barang) {
                 $colKey = $d->bin->loc_id . '-' . $d->bin->kolom;
-                $ownerKey = $d->inbound->no_spb . '-' . $d->barang->mid;
+                $ownerKey = $d->no_spb . '-' . $d->barang->mid;
                 $dbColumnOwners[$colKey] = $ownerKey;
             }
         }
@@ -262,7 +268,7 @@ class InboundController extends Controller
         $currentMidId = $request->mid_id;
 
         // Get IDs of bins that are currently occupied
-        $occupiedBinIds = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])
+        $occupiedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])
             ->when($currentId, function ($q) use ($currentId) {
                 $q->where('id', '!=', $currentId);
             })
@@ -274,19 +280,18 @@ class InboundController extends Controller
             ->whereNotIn('wrm_master_bin.id', $occupiedBinIds) // Individual check
             ->whereNotExists(function ($q) use ($currentId, $currentNoSpb, $currentMidId) {
                 $q->select(DB::raw(1))
-                    ->from('wrm_stock_inbound_details')
-                    ->join('wrm_master_bin as b_occ', 'wrm_stock_inbound_details.loc_id', '=', 'b_occ.id')
-                    ->join('wrm_stock_inbound as h_occ', 'wrm_stock_inbound_details.inbound_id', '=', 'h_occ.id')
-                    ->whereNotIn('wrm_stock_inbound_details.status', ['ISSUED', 'RESERVED'])
+                    ->from('wrm_stock_on_hand')
+                    ->join('wrm_master_bin as b_occ', 'wrm_stock_on_hand.loc_id', '=', 'b_occ.id')
+                    ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED'])
                     ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
                     ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom')
                     ->when($currentId, function ($q) use ($currentId) {
-                        $q->where('wrm_stock_inbound_details.id', '!=', $currentId);
+                        $q->where('wrm_stock_on_hand.id', '!=', $currentId);
                     })
                     ->when($currentNoSpb && $currentMidId, function ($q) use ($currentNoSpb, $currentMidId) {
                         $q->where(function ($sub) use ($currentNoSpb, $currentMidId) {
-                            $sub->where('h_occ.no_spb', '!=', $currentNoSpb)
-                                ->orWhere('wrm_stock_inbound_details.barang_id', '!=', $currentMidId);
+                            $sub->where('wrm_stock_on_hand.no_spb', '!=', $currentNoSpb)
+                                ->orWhere('wrm_stock_on_hand.barang_id', '!=', $currentMidId);
                         });
                     });
             })
@@ -426,6 +431,23 @@ class InboundController extends Controller
                     'created_by' => Auth::id(),
                 ]);
 
+                $stockOnHand = StockOnHand::create([
+                    'no_spb'        => $temp->no_spb,
+                    'incoming_date' => $incomingDateWithTime,
+                    'expired_date'  => $temp->expired_date ?? null,
+                    'supplier'      => $request->supplier ?? $temp->supplier,
+                    'barang_id'  => $barang->id,
+                    'barcode'    => $temp->barcode,
+                    'pallet_id'  => $temp->pallet_id,
+                    'group'      => $temp->group,
+                    'qty'        => $temp->qty,
+                    'status'     => $request->status[$tempId] ?? 'UNREST',
+                    'loc_id'     => $binId,
+                    'pallet'     => $request->pallet ?? $temp->pallet,
+                    'catatan'    => $temp->catatan,
+                    'created_by' => Auth::id(),
+                ]);
+
                 // Use location_id for StockMovement (still refers to location)
                 StockMovement::create([
                     'barang_id'  => $barang->id,
@@ -434,7 +456,7 @@ class InboundController extends Controller
                     'tanggal'    => $incomingDateWithTime,
                     'jenis'      => 'in',
                     'ref_type'   => 'inbound',
-                    'ref_id'     => $detail->id,
+                    'ref_id'     => $stockOnHand->id,
                     'catatan'    => $temp->catatan,
                     'created_by' => Auth::id(),
                 ]);
@@ -489,23 +511,21 @@ class InboundController extends Controller
 
     public function getData(Request $request)
     {
-        $query = StockInboundDetail::with([
+        $query = StockOnHand::with([
             'barang:id,mid,nama_barang,uom',
             'bin:id,loc_id,kolom,level',
             'bin.location:id,plant,s_loc,gudang,zona,bin',
-            'inbound:id,no_spb,incoming_date,supplier'
         ])
-            ->select('wrm_stock_inbound_details.*')
-            ->join('wrm_stock_inbound', 'wrm_stock_inbound_details.inbound_id', '=', 'wrm_stock_inbound.id')
-            ->whereNotIn('wrm_stock_inbound_details.status', ['ISSUED', 'RESERVED']);
+            ->select('wrm_stock_on_hand.*')
+            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED']);
 
         // Mapping filters
         if ($request->group) {
-            $query->whereIn('wrm_stock_inbound_details.group', (array)$request->group);
+            $query->whereIn('wrm_stock_on_hand.group', (array)$request->group);
         }
 
         if ($request->status) {
-            $query->whereIn('wrm_stock_inbound_details.status', (array)$request->status);
+            $query->whereIn('wrm_stock_on_hand.status', (array)$request->status);
         }
 
         if ($request->jenis_bahan) {
@@ -521,19 +541,19 @@ class InboundController extends Controller
         }
 
         if ($request->date) {
-            $query->whereDate('wrm_stock_inbound.incoming_date', $request->date);
+            $query->whereDate('wrm_stock_on_hand.incoming_date', $request->date);
         }
 
         if ($request->supplier) {
-            $query->whereIn('wrm_stock_inbound.supplier', (array)$request->supplier);
+            $query->whereIn('wrm_stock_on_hand.supplier', (array)$request->supplier);
         }
 
         if ($request->no_spb) {
-            $query->whereIn('wrm_stock_inbound.no_spb', (array)$request->no_spb);
+            $query->whereIn('wrm_stock_on_hand.no_spb', (array)$request->no_spb);
         }
 
         if ($request->catatan) {
-            $query->where('wrm_stock_inbound_details.catatan', 'like', '%' . $request->catatan . '%');
+            $query->where('wrm_stock_on_hand.catatan', 'like', '%' . $request->catatan . '%');
         }
 
         if ($request->location) {
@@ -547,11 +567,11 @@ class InboundController extends Controller
 
         // Apply Sorting
         $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
-        $query->orderBy('wrm_stock_inbound.incoming_date', $sortDir);
+        $query->orderBy('wrm_stock_on_hand.incoming_date', $sortDir);
 
         $statusBreakdown = $summaryQuery->setEagerLoads([])
-            ->select('wrm_stock_inbound_details.status', DB::raw('count(*) as count'), DB::raw('sum(wrm_stock_inbound_details.qty) as total_qty'))
-            ->groupBy('wrm_stock_inbound_details.status')
+            ->select('wrm_stock_on_hand.status', DB::raw('count(*) as count'), DB::raw('sum(wrm_stock_on_hand.qty) as total_qty'))
+            ->groupBy('wrm_stock_on_hand.status')
             ->reorder() // Clear any existing order for aggregation
             ->get()
             ->keyBy('status');
@@ -578,9 +598,8 @@ class InboundController extends Controller
     public function getFilter(Request $request)
     {
         // Get all active records once to process in memory
-        $all = StockInboundDetail::with([
+        $all = StockOnHand::with([
             'barang:id,mid,nama_barang',
-            'inbound:id,no_spb,supplier',
             'bin.location'
         ])
             ->whereNotIn('status', ['ISSUED', 'RESERVED'])
@@ -604,10 +623,10 @@ class InboundController extends Controller
                     $match = $match && in_array($item->barang->mid, (array)$request->mid);
                 }
                 if ($excludeField !== 'supplier' && $request->supplier) {
-                    $match = $match && in_array($item->inbound->supplier, (array)$request->supplier);
+                    $match = $match && in_array($item->supplier, (array)$request->supplier);
                 }
                 if ($excludeField !== 'no_spb' && $request->no_spb) {
-                    $match = $match && in_array($item->inbound->no_spb, (array)$request->no_spb);
+                    $match = $match && in_array($item->no_spb, (array)$request->no_spb);
                 }
                 if ($excludeField !== 'location' && $request->location) {
                     $match = $match && in_array($item->bin->loc_id, (array)$request->location);
@@ -628,8 +647,8 @@ class InboundController extends Controller
             ];
         })->unique('mid')->sortBy('mid')->values();
 
-        $noSpbs = $filterCollection($all, 'no_spb')->pluck('inbound.no_spb')->unique()->sort()->values();
-        $suppliers = $filterCollection($all, 'supplier')->pluck('inbound.supplier')->whereNotNull()->unique()->sort()->values();
+        $noSpbs = $filterCollection($all, 'no_spb')->pluck('no_spb')->unique()->sort()->values();
+        $suppliers = $filterCollection($all, 'supplier')->pluck('supplier')->whereNotNull()->unique()->sort()->values();
         $statuses = $filterCollection($all, 'status')->pluck('status')->unique()->sort()->values();
 
         $locations = $filterCollection($all, 'location')->map(function ($item) {
@@ -657,7 +676,7 @@ class InboundController extends Controller
 
         try {
 
-            $detail = StockInboundDetail::findOrFail($id);
+            $detail = StockOnHand::findOrFail($id);
 
             $oldQty = $detail->qty;
             $oldBinId = $detail->loc_id;
@@ -675,7 +694,7 @@ class InboundController extends Controller
             $newLocationId = $newBin->loc_id;
 
             // Cek apakah lokasi baru sudah terpakai oleh ID lain
-            $isOccupied = StockInboundDetail::where('loc_id', $request->loc_id)
+            $isOccupied = StockOnHand::where('loc_id', $request->loc_id)
                 ->where('id', '!=', $id) // Kecuali dirinya sendiri
                 ->whereNotIn('status', ['ISSUED', 'RESERVED'])
                 ->exists();
@@ -685,8 +704,8 @@ class InboundController extends Controller
             }
 
             // Cek apakah pallet_id baru bentrok dengan pallet lain di SPB yang sama
-            if ($detail->inbound) {
-                $isPalletDuplicate = StockInboundDetail::where('inbound_id', $detail->inbound_id)
+            if ($detail->no_spb) {
+                $isPalletDuplicate = StockOnHand::where('no_spb', $detail->no_spb)
                     ->where('pallet_id', $request->pallet_id)
                     ->where('id', '!=', $id)
                     ->exists();
@@ -710,8 +729,8 @@ class InboundController extends Controller
             ]);
 
             // Update Header data (Incoming Date and Supplier)
-            if ($detail->inbound) {
-                $detail->inbound->update([
+            if ($detail->no_spb) {
+                $detail->update([
                     'incoming_date' => $incomingDateWithTime,
                     'supplier'      => $request->supplier,
                 ]);
@@ -793,14 +812,14 @@ class InboundController extends Controller
     {
         $request->validate([
             'ids'    => 'required|array',
-            'ids.*'  => 'exists:wrm_stock_inbound_details,id',
+            'ids.*'  => 'exists:wrm_stock_on_hand,id',
             'status' => 'required|string|in:UNREST,QI,BLOCKED,TRANSFER,ISSUED'
         ]);
 
         DB::beginTransaction();
         try {
             // Update only if not ISSUED or RESERVED
-            StockInboundDetail::whereIn('id', $request->ids)
+            StockOnHand::whereIn('id', $request->ids)
                 ->whereNotIn('status', ['ISSUED', 'RESERVED'])
                 ->update([
                     'status' => $request->status,
@@ -826,27 +845,27 @@ class InboundController extends Controller
     {
         $request->validate([
             'ids'    => 'required|array',
-            'ids.*'  => 'exists:wrm_stock_inbound_details,id',
+            'ids.*'  => 'exists:wrm_stock_on_hand,id',
         ]);
 
         DB::beginTransaction();
         try {
-            // Get unique inbound_ids of items that ARE NOT protected
-            $affectedInboundIds = StockInboundDetail::whereIn('id', $request->ids)
+            // Get unique no_spbs of items that ARE NOT protected
+            $affectedNoSpbs = StockOnHand::whereIn('id', $request->ids)
                 ->whereNotIn('status', ['ISSUED', 'RESERVED'])
-                ->pluck('inbound_id')
+                ->pluck('no_spb')
                 ->unique();
 
             // Delete non-protected items
-            $deletedCount = StockInboundDetail::whereIn('id', $request->ids)
+            $deletedCount = StockOnHand::whereIn('id', $request->ids)
                 ->whereNotIn('status', ['ISSUED', 'RESERVED'])
                 ->delete();
 
             // Cleanup empty headers
-            foreach ($affectedInboundIds as $inboundId) {
-                $hasDetails = StockInboundDetail::where('inbound_id', $inboundId)->exists();
+            foreach ($affectedNoSpbs as $noSpb) {
+                $hasDetails = StockOnHand::where('no_spb', $noSpb)->exists();
                 if (!$hasDetails) {
-                    StockInbound::where('id', $inboundId)->delete();
+                    StockInbound::where('no_spb', $noSpb)->delete();
                 }
             }
 
@@ -867,16 +886,16 @@ class InboundController extends Controller
 
     public function destroy($id)
     {
-        $detail = StockInboundDetail::findOrFail($id);
+        $detail = StockOnHand::findOrFail($id);
 
-        $inboundId = $detail->inbound_id;
+        $noSpb = $detail->no_spb;
 
         $detail->delete();
 
-        $remainingDetail = StockInboundDetail::where('inbound_id', $inboundId)->exists();
+        $remainingDetail = StockOnHand::where('no_spb', $noSpb)->exists();
 
         if (!$remainingDetail) {
-            StockInbound::where('id', $inboundId)->delete();
+            StockInbound::where('no_spb', $noSpb)->delete();
         }
 
         return response()->json([
@@ -980,8 +999,8 @@ class InboundController extends Controller
                     continue;
                 }
 
-                // CEK DUPLICATE DI INBOUND (barcode, barang_id)
-                $existInbound = StockInboundDetail::where('barcode', $barcode)
+                // CEK DUPLICATE DI SOH (barcode, barang_id)
+                $existInbound = StockOnHand::where('barcode', $barcode)
                     ->where('barang_id', $barang->id)
                     ->exists();
 
@@ -1080,16 +1099,17 @@ class InboundController extends Controller
             })
             ->get();
 
-        $usedBinIds = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id')->toArray();
+        $usedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id')->toArray();
 
-        $usedDetails = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid', 'bin:id,loc_id,kolom'])
+        $usedDetails = StockOnHand::with(['barang:id,mid', 'bin:id,loc_id,kolom'])
             ->whereNotIn('status', ['ISSUED', 'RESERVED'])
             ->get();
+
         $dbColumnOwners = [];
         foreach ($usedDetails as $d) {
-            if ($d->bin && $d->inbound && $d->barang) {
+            if ($d->bin && $d->barang) {
                 $colKey = $d->bin->loc_id . '-' . $d->bin->kolom;
-                $ownerKey = $d->inbound->no_spb . '-' . $d->barang->mid;
+                $ownerKey = $d->no_spb . '-' . $d->barang->mid;
                 $dbColumnOwners[$colKey] = $ownerKey;
             }
         }
@@ -1111,9 +1131,9 @@ class InboundController extends Controller
             ->where('loc_id', $locIdInput)
             ->whereNotExists(function ($q) {
                 $q->select(DB::raw(1))
-                    ->from('wrm_stock_inbound_details')
-                    ->join('wrm_master_bin as b_occ', 'wrm_stock_inbound_details.loc_id', '=', 'b_occ.id')
-                    ->whereNotIn('wrm_stock_inbound_details.status', ['ISSUED', 'RESERVED'])
+                    ->from('wrm_stock_on_hand')
+                    ->join('wrm_master_bin as b_occ', 'wrm_stock_on_hand.loc_id', '=', 'b_occ.id')
+                    ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED'])
                     ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
                     ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom');
             })
@@ -1161,8 +1181,8 @@ class InboundController extends Controller
     private function getOccupiedColumnKeys()
     {
         // Get all bins that are currently occupied
-        $occupiedBins = StockInboundDetail::whereNotIn('status', ['ISSUED', 'RESERVED'])
-            ->join('wrm_master_bin', 'wrm_stock_inbound_details.loc_id', '=', 'wrm_master_bin.id')
+        $occupiedBins = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->join('wrm_master_bin', 'wrm_stock_on_hand.loc_id', '=', 'wrm_master_bin.id')
             ->select('wrm_master_bin.loc_id as rack_id', 'wrm_master_bin.kolom')
             ->distinct()
             ->get();
@@ -1172,5 +1192,153 @@ class InboundController extends Controller
             $keys[] = $ob->rack_id . '-' . $ob->kolom;
         }
         return $keys;
+    }
+
+    public function dataInbound(Request $request)
+    {
+        $query = StockInboundDetail::with([
+            'inbound',
+            'barang:id,mid,nama_barang,uom',
+            'bin:id,loc_id,kolom,level',
+            'bin.location:id,plant,s_loc,gudang,zona,bin',
+        ])
+            ->select('wrm_stock_inbound_details.*');
+
+        // Mapping filters
+        if ($request->group) {
+            $query->whereIn('wrm_stock_inbound_details.group', (array)$request->group);
+        }
+
+        if ($request->status) {
+            $query->whereIn('wrm_stock_inbound_details.status', (array)$request->status);
+        }
+
+        if ($request->jenis_bahan) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->whereIn('nama_barang', (array)$request->jenis_bahan);
+            });
+        }
+
+        if ($request->mid) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->whereIn('mid', (array)$request->mid);
+            });
+        }
+
+        if ($request->date) {
+            $query->whereHas('inbound', function ($q) use ($request) {
+                $q->whereDate('incoming_date', $request->date);
+            });
+        }
+
+        if ($request->supplier) {
+            $query->whereHas('inbound', function ($q) use ($request) {
+                $q->whereIn('supplier', (array)$request->supplier);
+            });
+        }
+
+        if ($request->no_spb) {
+            $query->whereHas('inbound', function ($q) use ($request) {
+                $q->whereIn('no_spb', (array)$request->no_spb);
+            });
+        }
+
+        if ($request->catatan) {
+            $query->where('wrm_stock_inbound_details.catatan', 'like', '%' . $request->catatan . '%');
+        }
+
+        if ($request->location) {
+            $query->whereHas('bin', function ($q) use ($request) {
+                $q->whereIn('loc_id', (array)$request->location);
+            });
+        }
+
+        // Apply Sorting
+        $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
+        $query->join('wrm_stock_inbound', 'wrm_stock_inbound_details.inbound_id', '=', 'wrm_stock_inbound.id')
+            ->orderBy('wrm_stock_inbound.incoming_date', $sortDir);
+
+        $data = $query->paginate(25);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data inbound berhasil diambil',
+            'data' => $data
+        ]);
+    }
+
+    public function getFilterInbound(Request $request)
+    {
+        // Get all inbound detail records
+        $all = StockInboundDetail::with([
+            'inbound',
+            'barang:id,mid,nama_barang',
+            'bin.location'
+        ])->get();
+
+        // Helper to filter collection (optional for now, but good for UX consistency)
+        $filterCollection = function ($items, $excludeField = null) use ($request) {
+            return $items->filter(function ($item) use ($request, $excludeField) {
+                $match = true;
+                if (!$item->inbound || !$item->barang || !$item->bin || !$item->bin->location) return false;
+
+                if ($excludeField !== 'group' && $request->group) {
+                    $match = $match && in_array($item->group, (array)$request->group);
+                }
+                if ($excludeField !== 'status' && $request->status) {
+                    $match = $match && in_array($item->status, (array)$request->status);
+                }
+                if ($excludeField !== 'jenis_bahan' && $request->jenis_bahan) {
+                    $match = $match && in_array($item->barang->nama_barang, (array)$request->jenis_bahan);
+                }
+                if ($excludeField !== 'mid' && $request->mid) {
+                    $match = $match && in_array($item->barang->mid, (array)$request->mid);
+                }
+                if ($excludeField !== 'supplier' && $request->supplier) {
+                    $match = $match && in_array($item->inbound->supplier, (array)$request->supplier);
+                }
+                if ($excludeField !== 'no_spb' && $request->no_spb) {
+                    $match = $match && in_array($item->inbound->no_spb, (array)$request->no_spb);
+                }
+                if ($excludeField !== 'location' && $request->location) {
+                    $match = $match && in_array($item->bin->loc_id, (array)$request->location);
+                }
+
+                return $match;
+            });
+        };
+
+        // Extract options
+        $groups = $filterCollection($all, 'group')->pluck('group')->unique()->sort()->values();
+        $jenisBahan = $filterCollection($all, 'jenis_bahan')->pluck('barang.nama_barang')->unique()->sort()->values();
+        $mids = $filterCollection($all, 'mid')->map(function ($item) {
+            return [
+                'mid' => $item->barang->mid,
+                'nama' => $item->barang->nama_barang,
+                'text' => "{$item->barang->mid} - {$item->barang->nama_barang}"
+            ];
+        })->unique('mid')->sortBy('mid')->values();
+
+        $noSpbs = $filterCollection($all, 'no_spb')->pluck('inbound.no_spb')->unique()->sort()->values();
+        $suppliers = $filterCollection($all, 'supplier')->pluck('inbound.supplier')->whereNotNull()->unique()->sort()->values();
+        $statuses = $filterCollection($all, 'status')->pluck('status')->unique()->sort()->values();
+
+        $locations = $filterCollection($all, 'location')->map(function ($item) {
+            $loc = $item->bin->location;
+            return [
+                'id' => $loc->id,
+                'text' => "{$loc->plant} - {$loc->s_loc} - {$loc->gudang} - {$loc->bin}"
+            ];
+        })->unique('id')->sortBy('text')->values();
+
+        return response()->json([
+            'groups' => $groups,
+            'jenis_bahan' => $jenisBahan,
+            'mids' => $mids,
+            'no_spbs' => $noSpbs,
+            'suppliers' => $suppliers,
+            'statuses' => $statuses,
+            'locations' => $locations
+        ]);
     }
 }

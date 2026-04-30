@@ -571,7 +571,7 @@
                                     @endcan
                                     <td class="text-center">${startNo + index}</td>
                                     <td>${d.barcode}</td>
-                                    <td>${d.inbound.no_spb}</td>
+                                    <td>${d.no_spb}</td>
                                     <td>${d.barang.mid}</td>
                                     <td>${d.barang.nama_barang}</td>
                                     <td>${d.barang.uom}</td>
@@ -580,8 +580,8 @@
                                     <td>${numberFormat(d.qty)}</td>
                                     <td>${d.status.toUpperCase()}</td>
                                     <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>
-                                    <td>${d.inbound.supplier}</td>
-                                    <td>${d.inbound.incoming_date}</td>
+                                    <td>${d.supplier}</td>
+                                    <td>${d.incoming_date}</td>
                                     <td>${d.catatan ?? ''}</td>
 
                                     @can('permission', 'wrm-inventory-soh-plus')
@@ -792,18 +792,17 @@
         $(document).on('click', '.btnEdit', function() {
 
             let detail = JSON.parse(decodeURIComponent($(this).data('data')));
-            let header = detail.inbound;
 
             $('#titleForm').text('Edit Stock Gula');
 
             $('#id').val(detail.id);
 
-            $('#noSpbEdit').val(header.no_spb);
-            $('#supplierEdit').val(header.supplier ?? '').trigger('change');
+            $('#noSpbEdit').val(detail.no_spb);
+            $('#supplierEdit').val(detail.supplier ?? '').trigger('change');
 
             // Format date to YYYY-MM-DD for HTML date input
-            if (header.incoming_date) {
-                $('#incomingEdit').val(header.incoming_date.substring(0, 10));
+            if (detail.incoming_date) {
+                $('#incomingEdit').val(detail.incoming_date.substring(0, 10));
             } else {
                 $('#incomingEdit').val('');
             }

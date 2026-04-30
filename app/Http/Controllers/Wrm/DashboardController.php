@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Wrm;
 
 use App\Http\Controllers\Controller;
 use App\Models\Wrm\Inventory\StockBalance;
-use App\Models\Wrm\Inventory\StockInboundDetail;
+use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wrm\Inventory\StockMovement;
 use App\Models\Wrm\Inventory\StockOutbound;
 use App\Models\Wrm\Inventory\StockTransferDetail;
@@ -50,17 +50,15 @@ class DashboardController extends Controller
     // --- 1. KPI Cards ---
     public function getKpi(Request $request)
     {
-        // Total Stock: ambil dari StockInboundDetail (aktif, bukan ISSUED)
-        $inboundDetailQuery = clone StockInboundDetail::query();
+        // Total Stock: ambil dari StockOnHand (aktif, bukan ISSUED)
+        $inboundDetailQuery = clone StockOnHand::query();
         if ($request->gudang) {
             $inboundDetailQuery->whereHas('bin.location', function ($q) use ($request) {
                 $q->where('gudang', $request->gudang);
             });
         }
         if ($request->supplier) {
-            $inboundDetailQuery->whereHas('inbound', function ($q) use ($request) {
-                $q->where('supplier', $request->supplier);
-            });
+            $inboundDetailQuery->where('supplier', $request->supplier);
         }
 
         $totalStock       = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
@@ -171,7 +169,7 @@ class DashboardController extends Controller
     // --- 4. Bar Chart: Top 5 Material by Qty (replacing old Fast Moving Items) ---
     public function getChartBar(Request $request)
     {
-        $query = clone StockInboundDetail::query();
+        $query = clone StockOnHand::query();
         $query->where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED']);
 
         if ($request->gudang) {
@@ -180,14 +178,12 @@ class DashboardController extends Controller
             });
         }
         if ($request->supplier) {
-            $query->whereHas('inbound', function ($q) use ($request) {
-                $q->where('supplier', $request->supplier);
-            });
+            $query->where('supplier', $request->supplier);
         }
 
         $topMaterials = $query
-            ->join('wrm_master_barang', 'wrm_stock_inbound_details.barang_id', '=', 'wrm_master_barang.id')
-            ->select('wrm_master_barang.nama_barang', DB::raw('SUM(wrm_stock_inbound_details.qty) as total_qty'))
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->select('wrm_master_barang.nama_barang', DB::raw('SUM(wrm_stock_on_hand.qty) as total_qty'))
             ->groupBy('wrm_master_barang.id', 'wrm_master_barang.nama_barang')
             ->orderByDesc('total_qty')
             ->limit(5)
@@ -214,7 +210,7 @@ class DashboardController extends Controller
     // --- 5. Donut Chart: Aging Stock (replacing Space Utilization) ---
     public function getChartCapacity(Request $request)
     {
-        $query = StockInboundDetail::with('inbound')->where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED']);
+        $query = StockOnHand::where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED']);
 
         if ($request->gudang) {
             $query->whereHas('bin.location', function ($q) use ($request) {
@@ -222,9 +218,7 @@ class DashboardController extends Controller
             });
         }
         if ($request->supplier) {
-            $query->whereHas('inbound', function ($q) use ($request) {
-                $q->where('supplier', $request->supplier);
-            });
+            $query->where('supplier', $request->supplier);
         }
 
         $details = $query->get();
@@ -237,8 +231,8 @@ class DashboardController extends Controller
 
         $today = Carbon::today();
         foreach ($details as $detail) {
-            if ($detail->inbound && $detail->inbound->incoming_date) {
-                $incomingDate = Carbon::parse($detail->inbound->incoming_date);
+            if ($detail->incoming_date) {
+                $incomingDate = Carbon::parse($detail->incoming_date);
                 $days = $incomingDate->diffInDays($today);
 
                 if ($days <= 30) {
@@ -308,14 +302,12 @@ class DashboardController extends Controller
             ->get();
 
         // Get occupied bins and their barang info from active stock
-        $occupiedDetails = clone StockInboundDetail::with(['barang', 'inbound'])
+        $occupiedDetails = clone StockOnHand::with(['barang'])
             ->whereIn('status', ['UNREST', 'QI', 'BLOCKED'])
             ->where('qty', '>', 0);
 
         if ($request->supplier) {
-            $occupiedDetails->whereHas('inbound', function ($q) use ($request) {
-                $q->where('supplier', $request->supplier);
-            });
+            $occupiedDetails->where('supplier', $request->supplier);
         }
 
         $occupiedDetails = $occupiedDetails->get();
@@ -328,19 +320,17 @@ class DashboardController extends Controller
                     'nama_barang' => $detail->barang ? $detail->barang->nama_barang : 'Unknown',
                     'qty' => 0,
                     'pallet_id' => $detail->pallet_id,
-                    'no_spb' => $detail->inbound->no_spb ?? '-',
-                    'incoming_date' => $detail->inbound->incoming_date ?? '-',
+                    'no_spb' => $detail->no_spb ?? '-',
+                    'incoming_date' => $detail->incoming_date ?? '-',
                 ];
             }
             $occupiedMap[$detail->loc_id]['qty'] += $detail->qty;
         }
         $occupiedIds = array_keys($occupiedMap);
 
-        $reservedIdsQuery = clone StockInboundDetail::where('status', 'RESERVED')->where('qty', '>', 0);
+        $reservedIdsQuery = clone StockOnHand::where('status', 'RESERVED')->where('qty', '>', 0);
         if ($request->supplier) {
-            $reservedIdsQuery->whereHas('inbound', function ($q) use ($request) {
-                $q->where('supplier', $request->supplier);
-            });
+            $reservedIdsQuery->where('supplier', $request->supplier);
         }
 
         $reservedIds = $reservedIdsQuery->distinct('loc_id')->pluck('loc_id')->toArray();

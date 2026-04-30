@@ -225,7 +225,8 @@
                                     <td>${d.reservasi_date}</td>
                                     <td>${numberFormat(d.qty_request)}</td>
                                     <td>${d.catatan ?? '-'}</td>
-                                    <td class="text-center">                                        <button class="btn btn-sm btn-success btnMagicNumber"
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-success btnMagicNumber"
                                             data-id="${d.id}"
                                             title="Print List Draft untuk Forklift">
                                             <i class="mdi mdi-printer"></i> Draft
@@ -234,7 +235,6 @@
                                             data-id="${d.id}">
                                             <i class="mdi mdi-eye"></i> Detail
                                         </button>
-
                                         <button class="btn btn-sm btn-danger btnCancel"
                                             data-id="${d.id}">
                                             <i class="mdi mdi-close"></i> Cancel Trans

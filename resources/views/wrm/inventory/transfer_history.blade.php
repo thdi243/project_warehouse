@@ -60,6 +60,7 @@
                                 <th>No Barcode</th>
                                 <th>No SPB</th>
                                 <th>Matdoc Scrap / Year</th>
+                                <th>Tgl GR</th>
                                 <th>Tgl GI</th>
                                 <th>Matdoc GI</th>
                                 <th>MID</th>
@@ -187,11 +188,12 @@
                                 </td>
                                 <td>
                                     <span class="fw-bold">${header.no_reservasi || '-'}</span><br>
-                                    <small class="text-muted">${header.tgl_gr ? moment(header.tgl_gr).format('DD/MM/YYYY') : '-'}</small>
+                                    <small class="text-muted">${header.tgl_reservasi ? moment(header.tgl_reservasi).format('DD/MM/YYYY') : '-'}</small>
                                 </td>
                                 <td>${d.no_barcode || '-'}</td>
                                 <td>${d.no_spb || '-'}</td>
                                 <td>${d.matdoc_scrup || '-'} <br><small class="text-muted">${d.matdoc_year || ''}</small></td>
+                                <td>${header.tgl_gr ? moment(header.tgl_gr).format('DD/MM/YYYY') : '-'}</td>
                                 <td>${header.tgl_gi ? moment(header.tgl_gi).format('DD/MM/YYYY') : '-'}</td>
                                 <td>${header.matdoc_gi || '-'}</td>
                                 <td>${barang.mid || '-'}</td>
