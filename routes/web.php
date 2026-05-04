@@ -250,6 +250,8 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/delete/{id}', [InboundController::class, 'destroy'])->name('wrm.inventory.delete');
                 Route::get('/template', [InboundController::class, 'downloadTemplate'])->name('wrm.inventory.template');
                 Route::post('/upload', [InboundController::class, 'upload'])->name('wrm.inventory.upload');
+                Route::post('/non-gula-upload', [InboundController::class, 'uploadNonGula'])->name('wrm.inventory.non-gula-upload');
+                Route::post('/non-gula-upload-excel', [InboundController::class, 'uploadNonGulaExcel'])->name('wrm.inventory.non-gula-upload-excel');
                 Route::get('/transfer-history', [StockTransferController::class, 'index'])->name('wrm.inventory.index-transfer');
                 Route::get('/transfer-data', [StockTransferController::class, 'getData'])->name('wrm.inventory.get-transfer-data');
                 Route::delete('/transfer-detail/delete/{id}', [StockTransferController::class, 'destroyDetail'])->name('wrm.inventory.delete-transfer-detail');

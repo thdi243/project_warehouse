@@ -56,12 +56,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('outbound_id')->constrained('wrm_stock_draft_outbound')->onDelete('cascade');
             $table->foreignId('barang_id')->constrained('wrm_master_barang')->onDelete('cascade');
-            $table->bigInteger('barcode');
+            $table->bigInteger('barcode')->nullable();
             $table->bigInteger('no_spb');
             $table->string('supplier')->nullable();
             $table->dateTime('incoming_date');
             $table->integer('pallet_id');
-            $table->string('group');
+            $table->string('group')->nullable();
             $table->integer('qty');
             $table->string('status');
             $table->dateTime('expired_date')->nullable();

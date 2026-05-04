@@ -365,7 +365,7 @@ class InboundController extends Controller
                 }
 
                 // Cek apakah lokasi ini sudah terpakai
-                $isOccupied = StockInboundDetail::where('loc_id', $locId)
+                $isOccupied = StockOnHand::where('loc_id', $locId)
                     ->whereNotIn('status', ['ISSUED', 'RESERVED'])
                     ->exists();
 
@@ -420,9 +420,9 @@ class InboundController extends Controller
                 $detail = StockInboundDetail::create([
                     'inbound_id' => $header->id,
                     'barang_id'  => $barang->id,
-                    'barcode'    => $temp->barcode,
+                    'barcode'    => $temp->barcode ?? null,
                     'pallet_id'  => $temp->pallet_id,
-                    'group'      => $temp->group,
+                    'group'      => $temp->group ?? null,
                     'qty'        => $temp->qty,
                     'status'     => $request->status[$tempId] ?? 'UNREST',
                     'loc_id'     => $binId,
@@ -437,9 +437,9 @@ class InboundController extends Controller
                     'expired_date'  => $temp->expired_date ?? null,
                     'supplier'      => $request->supplier ?? $temp->supplier,
                     'barang_id'  => $barang->id,
-                    'barcode'    => $temp->barcode,
+                    'barcode'    => $temp->barcode ?? null,
                     'pallet_id'  => $temp->pallet_id,
-                    'group'      => $temp->group,
+                    'group'      => $temp->group ?? null,
                     'qty'        => $temp->qty,
                     'status'     => $request->status[$tempId] ?? 'UNREST',
                     'loc_id'     => $binId,
@@ -1059,6 +1059,187 @@ class InboundController extends Controller
 
             DB::rollBack();
 
+            return response()->json([
+                'status' => false,
+                'message' => 'Upload dibatalkan',
+                'errors' => explode("\n", $e->getMessage())
+            ], 422);
+        }
+    }
+
+    public function uploadNonGula(Request $request)
+    {
+        $request->validate([
+            'no_spb'    => 'required|string',
+            'mid_id'    => 'required|exists:wrm_master_barang,id',
+            'total_qty' => 'required|numeric|min:0.01'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $barang = MasterBarangModel::findOrFail($request->mid_id);
+            $qtyKg = (float) ($barang->qty_kg ?? 1); // fallback to 1 if not set
+
+            if ($qtyKg <= 0) {
+                throw new \Exception("Master Barang {$barang->mid} memiliki qty_kg tidak valid (0 atau kurang)");
+            }
+
+            // CEK DUPLICATE DI TEMPUPLOAD
+            $existTemp = TempUploadModel::where('no_spb', $request->no_spb)
+                ->where('mid', $barang->mid)
+                ->exists();
+
+            if ($existTemp) {
+                throw new \Exception("No SPB {$request->no_spb} dengan MID {$barang->mid} sudah ada di antrian upload");
+            }
+
+            // CEK DUPLICATE DI SOH
+            $existSOH = StockOnHand::where('no_spb', $request->no_spb)
+                ->where('barang_id', $barang->id)
+                ->exists();
+
+            if ($existSOH) {
+                throw new \Exception("No SPB {$request->no_spb} dengan MID {$barang->mid} sudah ada di data SOH");
+            }
+
+            $totalQty = (float) $request->total_qty;
+            $numPallets = ceil($totalQty / $qtyKg);
+
+            $mappedRows = [];
+            $remainingQty = $totalQty;
+
+            for ($i = 1; $i <= $numPallets; $i++) {
+                $currentQty = min($remainingQty, $qtyKg);
+
+                $mappedRows[] = [
+                    'barcode'       => null, // Non gula gada barcode
+                    'no_spb'        => $request->no_spb,
+                    'mid'           => $barang->mid,
+                    'pallet_id'     => str_pad($i, 2, '0', STR_PAD_LEFT),
+                    'qty'           => $currentQty,
+                    'group'         => null, // Non gula gada group
+                    'incoming_date' => now(),
+                    'created_by'    => Auth::id(),
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ];
+
+                $remainingQty -= $currentQty;
+            }
+
+            TempUploadModel::insert($mappedRows);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Data Non Gula berhasil dimasukkan ke antrian',
+                'total'   => count($mappedRows),
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function uploadNonGulaExcel(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xls,xlsx|max:2048'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $sheet = IOFactory::load($request->file('file'))->getActiveSheet();
+            $rows = $sheet->toArray();
+            unset($rows[0]); // hapus header
+
+            $errors = [];
+            $mappedRows = [];
+
+            foreach ($rows as $i => $row) {
+                $line = $i + 1;
+                $noSpb   = trim($row[0] ?? '');
+                $palletId = trim($row[1] ?? '');
+                $mid     = trim($row[2] ?? '');
+                $qty     = $row[7] ?? 0;
+                $expired  = $row[10] ?? null;
+                $catatan  = $row[9] ?? null;
+
+                if ($noSpb === '' || $mid === '') {
+                    if ($noSpb === '' && $mid === '' && $qty == 0) continue; // skip empty lines
+                    $errors[] = "Baris {$line}: No SPB atau MID kosong";
+                    continue;
+                }
+
+                if (!is_numeric($qty) || $qty <= 0) {
+                    $errors[] = "Baris {$line}: Qty tidak valid";
+                    continue;
+                }
+
+                $barang = MasterBarangModel::where('mid', $mid)->first();
+                if (!$barang) {
+                    $errors[] = "Baris {$line}: Material ID {$mid} tidak ditemukan dalam Master Barang";
+                    continue;
+                }
+
+                // CEK DUPLICATE DI TEMPUPLOAD
+                $existInTemp = TempUploadModel::where('no_spb', $noSpb)
+                    ->where('mid', $mid)
+                    ->where('pallet_id', $palletId)
+                    ->exists();
+
+                if ($existInTemp) {
+                    $errors[] = "Baris {$line}: Kombinasi No SPB {$noSpb}, MID {$mid}, dan Pallet {$palletId} sudah ada di antrian upload";
+                    continue;
+                }
+
+                // CEK DUPLICATE DI SOH
+                $existInSOH = StockOnHand::where('no_spb', $noSpb)
+                    ->where('barang_id', $barang->id)
+                    ->where('pallet_id', $palletId)
+                    ->exists();
+
+                if ($existInSOH) {
+                    $errors[] = "Baris {$line}: Kombinasi No SPB {$noSpb}, MID {$mid}, dan Pallet {$palletId} sudah ada di data SOH";
+                    continue;
+                }
+
+                $mappedRows[] = [
+                    'barcode'       => null,
+                    'no_spb'        => $noSpb,
+                    'mid'           => $mid,
+                    'pallet_id'     => $palletId,
+                    'qty'           => (float) $qty,
+                    'group'         => null,
+                    'incoming_date' => now(),
+                    'expired_date'  => $expired ?? null,
+                    'catatan'       => $catatan ?? null,
+                    'created_by'    => Auth::id(),
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ];
+            }
+
+            if ($errors) {
+                throw new \Exception(implode("\n", $errors));
+            }
+
+            TempUploadModel::insert($mappedRows);
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Upload data migrasi non-gula berhasil',
+                'total'   => count($mappedRows),
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
             return response()->json([
                 'status' => false,
                 'message' => 'Upload dibatalkan',

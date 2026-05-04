@@ -349,6 +349,9 @@
                                     Incoming Date <i class="mdi mdi-sort ms-1" id="sortIcon"></i>
                                 </th>
                                 <th>Catatan</th>
+                                <th class="text-nowrap cursor-pointer" id="sortDate">
+                                    Expired Date <i class="mdi mdi-sort ms-1" id="sortIcon"></i>
+                                </th>
                                 @can('permission', 'wrm-inventory-soh-plus')
                                 <th class="text-center">Aksi</th>
                                 @endcan
@@ -570,12 +573,12 @@
                                     </td>
                                     @endcan
                                     <td class="text-center">${startNo + index}</td>
-                                    <td>${d.barcode}</td>
+                                    <td>${d.barcode ?? '-'}</td>
                                     <td>${d.no_spb}</td>
                                     <td>${d.barang.mid}</td>
                                     <td>${d.barang.nama_barang}</td>
                                     <td>${d.barang.uom}</td>
-                                    <td>${d.group}</td>
+                                    <td>${d.group ?? '-'}</td>
                                     <td>${d.pallet_id}</td>
                                     <td>${numberFormat(d.qty)}</td>
                                     <td>${d.status.toUpperCase()}</td>
@@ -583,6 +586,7 @@
                                     <td>${d.supplier}</td>
                                     <td>${d.incoming_date}</td>
                                     <td>${d.catatan ?? ''}</td>
+                                    <td>${d.expired_date ?? ''}</td>
 
                                     @can('permission', 'wrm-inventory-soh-plus')
                                     <td class="text-center">

@@ -29,12 +29,6 @@ class MasterBarangModel extends Model
     |--------------------------------------------------------------------------
     */
 
-    // relasi ke stock gula
-    public function stockGula()
-    {
-        return $this->hasMany(StockGulaModel::class, 'barang_id');
-    }
-
     public function location()
     {
         return $this->belongsTo(MasterLocationModel::class, 'loc_id', 'id');

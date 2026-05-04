@@ -379,7 +379,7 @@
                                 <td>${d.pallet_id}</td>
                                 <td>${d.barang.mid}</td>
                                 <td style="font-size: 11px;">${d.barang.nama_barang}</td>
-                                <td>${d.group}</td>
+                                <td>${d.group ?? '-'}</td>
                                 <td>${numberFormat(d.qty)}</td>
                                 <td>${d.status}</td>
                                 <td style="font-size: 11px;">${d.bin.location.plant} - ${d.bin.location.gudang} - ${d.bin.location.bin} - (${d.bin.kolom}.${d.bin.level})</td>

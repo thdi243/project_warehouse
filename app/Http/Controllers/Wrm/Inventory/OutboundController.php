@@ -74,8 +74,8 @@ class OutboundController extends Controller
         if ($request->location) {
             $query->whereHas('bin.location', function ($q) use ($request) {
                 $q->where('plant', 'like', '%' . $request->location . '%')
-                  ->orWhere('gudang', 'like', '%' . $request->location . '%')
-                  ->orWhere('bin', 'like', '%' . $request->location . '%');
+                    ->orWhere('gudang', 'like', '%' . $request->location . '%')
+                    ->orWhere('bin', 'like', '%' . $request->location . '%');
             });
         }
 
@@ -124,10 +124,10 @@ class OutboundController extends Controller
                     'no_spb'       => $detail->no_spb,
                     'supplier'     => $detail->supplier, // Store Supplier in detail
                     'barang_id'    => $detail->barang_id,
-                    'barcode'      => $detail->barcode,
+                    'barcode'      => $detail->barcode ?? null,
                     'pallet_id'    => $detail->pallet_id,
                     'incoming_date' => $detail->incoming_date,
-                    'group'        => $detail->group,
+                    'group'        => $detail->group ?? null,
                     'qty'          => $detail->qty,
                     'loc_id'       => $detail->loc_id,
                     'status'       => 'RESERVED',
