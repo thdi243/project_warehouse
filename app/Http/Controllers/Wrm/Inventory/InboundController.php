@@ -1070,9 +1070,10 @@ class InboundController extends Controller
     public function uploadNonGula(Request $request)
     {
         $request->validate([
-            'no_spb'    => 'required|string',
-            'mid_id'    => 'required|exists:wrm_master_barang,id',
-            'total_qty' => 'required|numeric|min:0.01'
+            'no_spb'       => 'required|string',
+            'mid_id'       => 'required|exists:wrm_master_barang,id',
+            'total_qty'    => 'required|numeric|min:0.01',
+            'expired_date' => 'nullable|date'
         ]);
 
         DB::beginTransaction();
@@ -1113,13 +1114,14 @@ class InboundController extends Controller
                 $currentQty = min($remainingQty, $qtyKg);
 
                 $mappedRows[] = [
-                    'barcode'       => null, // Non gula gada barcode
+                    'barcode'       => null,
                     'no_spb'        => $request->no_spb,
                     'mid'           => $barang->mid,
                     'pallet_id'     => str_pad($i, 2, '0', STR_PAD_LEFT),
                     'qty'           => $currentQty,
-                    'group'         => null, // Non gula gada group
+                    'group'         => null,
                     'incoming_date' => now(),
+                    'expired_date'  => $request->expired_date ?? null,
                     'created_by'    => Auth::id(),
                     'created_at'    => now(),
                     'updated_at'    => now(),

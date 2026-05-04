@@ -182,14 +182,14 @@
             </div>
             <div class="modal-body p-0">
                 <!-- Nav tabs -->
-                <ul class="nav nav-tabs nav-justified bg-light-subtle" role="tablist">
+                <ul class="nav nav-tabs-custom nav-justified" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active py-3 fw-bold border-0 border-bottom border-3" data-bs-toggle="tab" href="#manualInput" role="tab">
+                        <a class="nav-link active py-3 fw-bold" data-bs-toggle="tab" href="#manualInput" role="tab">
                             <i class="mdi mdi-form-select me-1"></i> Input Manual
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link py-3 fw-bold border-0 border-bottom border-3" data-bs-toggle="tab" href="#excelUpload" role="tab">
+                        <a class="nav-link py-3 fw-bold" data-bs-toggle="tab" href="#excelUpload" role="tab">
                             <i class="mdi mdi-file-excel me-1"></i> Upload Excel
                         </a>
                     </li>
@@ -201,16 +201,20 @@
                         <form id="nonGulaForm" action="{{ route('wrm.inventory.non-gula-upload') }}" method="POST">
                             @csrf
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Material / Barang</label>
+                                <label class="form-label fw-bold">Material / Barang <span class="text-danger">*</span></label>
                                 <select name="mid_id" id="selectMidNonGula" class="form-control select2" required></select>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Nomor SPB</label>
+                                <label class="form-label fw-bold">Nomor SPB <span class="text-danger">*</span></label>
                                 <input type="text" name="no_spb" class="form-control" placeholder="Contoh: 9000008999901" required>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-bold">Total Qty (KG)</label>
+                                <label class="form-label fw-bold">Total Qty (KG) <span class="text-danger">*</span></label>
                                 <input type="number" step="any" name="total_qty" class="form-control" placeholder="Masukkan total qty dalam KG" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Expired Date <span class="text-muted small font-size-10">(Opsional)</span></label>
+                                <input type="date" step="any" name="expired_date" class="form-control">
                             </div>
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-info text-white py-2">
