@@ -333,7 +333,7 @@
                     data: formData,
                     processData: false,
                     contentType: false,
-                    timeout: 45000, // 45 detik
+                    timeout: 180000, // 180 detik (3 menit)
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     },

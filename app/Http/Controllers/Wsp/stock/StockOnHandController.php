@@ -250,6 +250,10 @@ class StockOnHandController extends Controller
 
     public function upload(Request $request)
     {
+        // Increase limits for large file processing
+        ini_set('max_execution_time', 300); // 5 minutes
+        ini_set('memory_limit', '512M');
+
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
@@ -260,14 +264,18 @@ class StockOnHandController extends Controller
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, true);
 
-            $notFound = [];
-            $userId = Auth::id() ?? null;
+            if (empty($rows)) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'File Excel kosong atau tidak terbaca.',
+                ], 422);
+            }
+
+            $userId = Auth::id() ?? 1;
+            $headerRow1 = $rows[1] ?? [];
+            $headerRow2 = $rows[2] ?? [];
 
             $template = null;
-
-            $headerRow1 = $rows[1] ?? [];
-            $headerRow2 = $rows[2] ?? []; // lebih aman pakai row 2 untuk template kedua
-
             if (isset($headerRow1['A']) && stripos($headerRow1['A'], 'MID_BARANG') !== false) {
                 $template = 1;
             } elseif (isset($headerRow2['E']) && stripos($headerRow2['E'], 'Material') !== false) {
@@ -279,64 +287,89 @@ class StockOnHandController extends Controller
                 ], 422);
             }
 
-            // Kumpulkan dulu semua data + validasi existence
-            $validData = [];
-
+            // Step 1: Collect all unique MID_BARANG values from the file
+            $midsInFile = [];
             foreach ($rows as $index => $row) {
-                if ($template == 1) {
-                    if ($index == 1) continue; // skip header
+                if ($template == 1 && $index == 1) continue;
+                if ($template == 2 && $index <= 2) continue;
 
-                    $mid_barang = trim($row['A'] ?? '');
-                    $unrest     = (int) ($row['B'] ?? 0);
-                    $qual_insp  = (int) ($row['C'] ?? 0);
-                    $blocked    = (int) ($row['D'] ?? 0);
-                    $transf     = (int) ($row['E'] ?? 0);
-                } else {
-                    if ($index <= 2) continue; // skip header 1 & 2
-
-                    $mid_barang = trim($row['E'] ?? '');
-                    $unrest     = (int) ($row['F'] ?? 0);
-                    $qual_insp  = (int) ($row['G'] ?? 0);
-                    $blocked    = (int) ($row['H'] ?? 0);
-                    $transf     = (int) ($row['I'] ?? 0);
+                $mid = trim($row[$template == 1 ? 'A' : 'E'] ?? '');
+                if ($mid) {
+                    $midsInFile[] = $mid;
                 }
+            }
+            $midsInFile = array_unique($midsInFile);
 
+            if (empty($midsInFile)) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Tidak ada data MID Barang yang ditemukan dalam file.',
+                ], 422);
+            }
+
+            // Step 2: Fetch all matching barang in ONE query for O(1) lookup
+            $barangLookup = BarangModel::whereIn('mid_barang', $midsInFile)
+                ->get(['id', 'mid_barang'])
+                ->keyBy('mid_barang');
+
+            $validData = [];
+            $notFound = [];
+            $now = now();
+
+            // Step 3: Map data and validate existence
+            foreach ($rows as $index => $row) {
+                if ($template == 1 && $index == 1) continue;
+                if ($template == 2 && $index <= 2) continue;
+
+                $mid_barang = trim($row[$template == 1 ? 'A' : 'E'] ?? '');
                 if (!$mid_barang) continue;
 
-                $barang = BarangModel::where('mid_barang', $mid_barang)->first();
+                $barang = $barangLookup->get($mid_barang);
 
                 if (!$barang) {
                     $notFound[] = $mid_barang;
                     continue;
                 }
 
+                $unrest     = (int) ($row[$template == 1 ? 'B' : 'F'] ?? 0);
+                $qual_insp  = (int) ($row[$template == 1 ? 'C' : 'G'] ?? 0);
+                $blocked    = (int) ($row[$template == 1 ? 'D' : 'H'] ?? 0);
+                $transf     = (int) ($row[$template == 1 ? 'E' : 'I'] ?? 0);
+
                 $validData[] = [
-                    'barang_id'  => $barang->id,
-                    'qty_soh'    => $unrest + $qual_insp + $blocked + $transf,
-                    'unrest'     => $unrest,
-                    'qual_insp'  => $qual_insp,
-                    'blocked'    => $blocked,
-                    'transf'     => $transf,
-                    'last_update' => now(),
+                    'barang_id'   => $barang->id,
+                    'qty_soh'     => $unrest + $qual_insp + $blocked + $transf,
+                    'unrest'      => $unrest,
+                    'qual_insp'   => $qual_insp,
+                    'blocked'     => $blocked,
+                    'transf'      => $transf,
+                    'last_update' => $now,
                     'created_by'  => $userId,
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
                 ];
             }
 
-            // Jika ada yang tidak ditemukan → langsung reject
+            // If there are any missing MIDs, reject the entire batch (current policy)
             if (!empty($notFound)) {
                 return response()->json([
-                    'status'   => 'error',
-                    'message'  => 'Beberapa MID tidak ditemukan di master barang.',
-                    'not_found' => $notFound,
-                    'total_checked' => count($rows) - ($template == 1 ? 1 : 2),
+                    'status'        => 'error',
+                    'message'       => 'Beberapa MID tidak ditemukan di master barang.',
+                    'not_found'     => array_values(array_unique($notFound)),
+                    'total_checked' => count($midsInFile),
                 ], 422);
             }
 
+            // Step 4: Bulk insert using transactions and chunks
             $saved = 0;
-            foreach ($validData as $data) {
-                StockOnHandWspModel::create($data);
-                $saved++;
-            }
+            DB::transaction(function () use ($validData, &$saved) {
+                // Chunk the data to avoid database placeholder/size limits (standard is around 1000)
+                $chunks = array_chunk($validData, 1000);
+                foreach ($chunks as $chunk) {
+                    StockOnHandWspModel::insert($chunk);
+                    $saved += count($chunk);
+                }
+            });
 
             return response()->json([
                 'status'  => 'success',
@@ -344,6 +377,7 @@ class StockOnHandController extends Controller
                 'saved'   => $saved,
                 'total'   => count($validData),
             ]);
+
         } catch (\Throwable $e) {
             return response()->json([
                 'status'  => 'error',
