@@ -30,41 +30,54 @@ class MonitoringController extends Controller
 
     public function getSummaryPpic()
     {
-        $totalSoh = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
-        $todayInbound = StockMovement::whereDate('tanggal', Carbon::today())
-            ->where('jenis', 'in')
-            ->where('ref_type', 'inbound')
+        // On Hand (Physical)
+        $totalSoh = StockOnHand::whereNotIn('status', ['ISSUED'])->sum('qty');
+
+        // Reserved (Allocated for orders)
+        $totalReserved = StockOnHand::where('status', 'RESERVED')->sum('qty');
+
+        // Available
+        $totalAvailable = $totalSoh - $totalReserved;
+
+        // Today's Consumption (Outgoing Movements)
+        $todayOutgoing = StockMovement::whereDate('tanggal', Carbon::today())
+            ->where('jenis', 'out')
             ->sum('qty');
-        $draftOutbound = StockOutboundDetail::where('status', 'RESERVED')->count();
 
         return response()->json([
             'status' => true,
             'data' => [
-                'total_soh' => number_format($totalSoh, 0, ',', '.'),
-                'today_inbound' => number_format($todayInbound, 0, ',', '.'),
-                'draft_outbound' => $draftOutbound,
+                'total_available' => number_format($totalAvailable, 0, ',', '.'),
+                'total_onhand' => number_format($totalSoh, 0, ',', '.'),
+                'total_reserved' => number_format($totalReserved, 0, ',', '.'),
+                'today_usage' => number_format($todayOutgoing, 0, ',', '.'),
             ]
         ]);
     }
 
     public function getSummaryPurchasing()
     {
-        $totalSoh = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
-
-        // Aging > 30 days
-        $agingLimit = Carbon::now()->subDays(30);
-        $agingStock = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])
-            ->where('incoming_date', '<=', $agingLimit)
+        // 1. Stock below a threshold (mock min stock as 100 for now)
+        $reorderCount = StockOnHand::select('barang_id', DB::raw('SUM(qty) as total'))
+            ->groupBy('barang_id')
+            ->having('total', '<', 100)
+            ->get()
             ->count();
 
-        $totalSuppliers = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])->distinct('supplier')->count('supplier');
+        // 2. Outstanding Inbound (Not yet ISSUED/COMPLETED)
+        $outstandingPo = StockInboundDetail::whereNotIn('status', ['COMPLETED'])->sum('qty');
+
+        // 3. Overdue POs (Incoming date passed but status not completed)
+        $overduePo = StockInboundDetail::whereHas('inbound', function ($q) {
+            $q->where('incoming_date', '<', Carbon::today());
+        })->whereNotIn('status', ['COMPLETED'])->count();
 
         return response()->json([
             'status' => true,
             'data' => [
-                'total_soh' => number_format($totalSoh, 0, ',', '.'),
-                'aging_stock' => $agingStock,
-                'total_suppliers' => $totalSuppliers,
+                'reorder_count' => $reorderCount,
+                'outstanding_po' => number_format($outstandingPo, 0, ',', '.'),
+                'overdue_po' => $overduePo,
             ]
         ]);
     }
@@ -164,7 +177,7 @@ class MonitoringController extends Controller
         if ($request->search['value']) {
             $search = $request->search['value'];
             $query->whereHas('outbound', function ($q) use ($search) {
-                $q->where('no_outbound', 'like', "%$search%");
+                $q->where('no_reservasi', 'like', "%$search%");
             });
         }
 
@@ -230,6 +243,120 @@ class MonitoringController extends Controller
             'recordsTotal' => $recordsTotal,
             'recordsFiltered' => $recordsFiltered,
             'data' => $formattedData
+        ]);
+    }
+
+    public function getPpicStockData(Request $request)
+    {
+        $materials = MasterBarangModel::select('id', 'mid', 'nama_barang', 'uom')->get();
+
+        $sohSummary = StockOnHand::select(
+            'barang_id',
+            DB::raw("SUM(CASE WHEN status != 'ISSUED' THEN qty ELSE 0 END) as on_hand"),
+            DB::raw("SUM(CASE WHEN status = 'RESERVED' THEN qty ELSE 0 END) as reserved")
+        )
+            ->groupBy('barang_id')
+            ->get()
+            ->keyBy('barang_id');
+
+        $thirtyDaysAgo = Carbon::now()->subDays(30);
+        $consumption = StockMovement::where('jenis', 'out')
+            ->where('tanggal', '>=', $thirtyDaysAgo)
+            ->select('barang_id', DB::raw("SUM(qty) / 30 as avg_daily"))
+            ->groupBy('barang_id')
+            ->get()
+            ->keyBy('barang_id');
+
+        $data = $materials->map(function ($m) use ($sohSummary, $consumption) {
+            $soh = $sohSummary[$m->id] ?? (object)['on_hand' => 0, 'reserved' => 0];
+            $cons = $consumption[$m->id] ?? (object)['avg_daily' => 0];
+
+            $onHand = (float)$soh->on_hand;
+            $reserved = (float)$soh->reserved;
+            $available = $onHand - $reserved;
+            $avgDaily = (float)$cons->avg_daily;
+
+            $cover = ($avgDaily > 0) ? floor($available / $avgDaily) : 999;
+
+            return [
+                'mid' => $m->mid,
+                'nama_barang' => $m->nama_barang,
+                'uom' => $m->uom,
+                'on_hand' => $onHand,
+                'reserved' => $reserved,
+                'available' => $available,
+                'avg_daily' => round($avgDaily, 2),
+                'cover_days' => $cover . ' Hari',
+                'status_label' => $this->getCoverStatus($cover)
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $data->count(),
+            'recordsFiltered' => $data->count(),
+            'data' => $data
+        ]);
+    }
+
+    private function getCoverStatus($days)
+    {
+        if ($days <= 3) return '<span class="badge bg-danger">Critical</span>';
+        if ($days <= 7) return '<span class="badge bg-warning">Warning</span>';
+        return '<span class="badge bg-success">Safe</span>';
+    }
+    public function getPurchasingStockData(Request $request)
+    {
+        $materials = MasterBarangModel::select('id', 'mid', 'nama_barang', 'uom')->get();
+
+        $sohSummary = StockOnHand::select(
+            'barang_id',
+            DB::raw("SUM(CASE WHEN status != 'ISSUED' THEN qty ELSE 0 END) as on_hand"),
+            DB::raw("SUM(CASE WHEN status = 'RESERVED' THEN qty ELSE 0 END) as reserved")
+        )
+            ->groupBy('barang_id')
+            ->get()
+            ->keyBy('barang_id');
+
+        $outstandingSummary = StockInboundDetail::whereNotIn('status', ['COMPLETED'])
+            ->select('barang_id', DB::raw("SUM(qty) as qty"))
+            ->groupBy('barang_id')
+            ->get()
+            ->keyBy('barang_id');
+
+        $data = $materials->map(function ($m) use ($sohSummary, $outstandingSummary) {
+            $soh = $sohSummary[$m->id] ?? (object)['on_hand' => 0, 'reserved' => 0];
+            $os = $outstandingSummary[$m->id] ?? (object)['qty' => 0];
+
+            $onHand = (float)$soh->on_hand;
+            $reserved = (float)$soh->reserved;
+            $available = $onHand - $reserved;
+            $incoming = (float)$os->qty;
+
+            // Mock data for Purchasing logic
+            $minStock = 15000; // Placeholder
+            $reorderPoint = 20000; // Placeholder
+
+            return [
+                'mid' => $m->mid,
+                'nama_barang' => $m->nama_barang,
+                'uom' => $m->uom,
+                'available' => $available,
+                'outstanding_po' => $incoming,
+                'total_expected' => $available + $incoming,
+                'min_stock' => $minStock,
+                'reorder_point' => $reorderPoint,
+                'status_label' => ($available + $incoming < $reorderPoint)
+                    ? '<span class="badge bg-danger">REORDER NOW</span>'
+                    : '<span class="badge bg-success">STOK CUKUP</span>'
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $data->count(),
+            'recordsFiltered' => $data->count(),
+            'data' => $data
         ]);
     }
 }

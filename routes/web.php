@@ -281,6 +281,8 @@ Route::middleware('auth')->group(function () {
                     Route::get('/data/inbound', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getInboundData'])->name('wrm.inventory.monitoring.inbound');
                     Route::get('/data/outbound', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getOutboundData'])->name('wrm.inventory.monitoring.outbound');
                     Route::get('/data/transfer', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getTransferData'])->name('wrm.inventory.monitoring.transfer');
+                    Route::get('/data/ppic-stock', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getPpicStockData'])->name('wrm.inventory.monitoring.ppic.stock-data');
+                    Route::get('/data/purchasing-stock', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getPurchasingStockData'])->name('wrm.inventory.monitoring.purchasing.stock-data');
                 });
             });
         });
