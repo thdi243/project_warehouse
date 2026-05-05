@@ -30,7 +30,7 @@ import { getTheme, setTheme } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
-    // { label: "Home", href: "/app/dashboard" },
+    { label: "Home", href: "/dashboard" },
     { label: "Purchase Requesition", href: "/app/purchase-requesition/form" },
     { label: "Stock On Hand", href: "/app/stock-on-hand" },
 ];
@@ -80,7 +80,7 @@ export default function Topbar() {
                 {/* LEFT */}
                 <div className="flex items-center gap-6">
                     {/* LOGO */}
-                    <a to="/dashboard" className="flex items-center gap-2">
+                    <a href="/dashboard" className="flex items-center gap-2">
                         <img
                             src="/assets/images/logo/kecap.png"
                             alt="Logo"
@@ -94,21 +94,36 @@ export default function Topbar() {
                         <NavigationMenuList>
                             {navItems.map((item) => {
                                 const active = isActive(item.href);
+                                const isExternal = !item.href.startsWith("/app/");
 
                                 return (
                                     <NavigationMenuItem key={item.href}>
                                         <NavigationMenuLink asChild>
-                                            <Link
-                                                to={item.href}
-                                                className={cn(
-                                                    "px-3 py-2 text-sm rounded-md transition",
-                                                    active
-                                                        ? "bg-accent text-foreground font-semibold"
-                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                                                )}
-                                            >
-                                                {item.label}
-                                            </Link>
+                                            {isExternal ? (
+                                                <a
+                                                    href={item.href}
+                                                    className={cn(
+                                                        "px-3 py-2 text-sm rounded-md transition",
+                                                        active
+                                                            ? "bg-accent text-foreground font-semibold"
+                                                            : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                                                    )}
+                                                >
+                                                    {item.label}
+                                                </a>
+                                            ) : (
+                                                <Link
+                                                    to={item.href}
+                                                    className={cn(
+                                                        "px-3 py-2 text-sm rounded-md transition",
+                                                        active
+                                                            ? "bg-accent text-foreground font-semibold"
+                                                            : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                                                    )}
+                                                >
+                                                    {item.label}
+                                                </Link>
+                                            )}
                                         </NavigationMenuLink>
                                     </NavigationMenuItem>
                                 );
@@ -167,15 +182,6 @@ export default function Topbar() {
                                     Riwayat PR
                                 </Link>
                             </DropdownMenuItem>
-                            {/* <DropdownMenuItem asChild>
-                                <Link
-                                    to="/app/approval-pr/:1"
-                                    className="flex items-center cursor-pointer"
-                                >
-                                    <History className="mr-2 h-4 w-4" />
-                                    Approval PR
-                                </Link>
-                            </DropdownMenuItem> */}
 
                             <DropdownMenuItem
                                 className="text-red-600 cursor-pointer flex items-center"
@@ -203,20 +209,35 @@ export default function Topbar() {
                             <nav className="mt-6 flex flex-col gap-1">
                                 {navItems.map((item) => {
                                     const active = isActive(item.href);
+                                    const isExternal = !item.href.startsWith("/app/");
 
                                     return (
                                         <SheetClose asChild key={item.href}>
-                                            <Link
-                                                to={item.href}
-                                                className={cn(
-                                                    "px-3 py-2 text-sm rounded-md transition",
-                                                    active
-                                                        ? "bg-accent text-foreground font-semibold"
-                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                                                )}
-                                            >
-                                                {item.label}
-                                            </Link>
+                                            {isExternal ? (
+                                                <a
+                                                    href={item.href}
+                                                    className={cn(
+                                                        "px-3 py-2 text-sm rounded-md transition",
+                                                        active
+                                                            ? "bg-accent text-foreground font-semibold"
+                                                            : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                                                    )}
+                                                >
+                                                    {item.label}
+                                                </a>
+                                            ) : (
+                                                <Link
+                                                    to={item.href}
+                                                    className={cn(
+                                                        "px-3 py-2 text-sm rounded-md transition",
+                                                        active
+                                                            ? "bg-accent text-foreground font-semibold"
+                                                            : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                                                    )}
+                                                >
+                                                    {item.label}
+                                                </Link>
+                                            )}
                                         </SheetClose>
                                     );
                                 })}

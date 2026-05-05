@@ -14,7 +14,7 @@ export default function App() {
             <Route path="/app/stock-on-hand" element={<Stock />} />
             <Route path="/app/riwayat-pr" element={<RiwayatPR />} />
             <Route path="/app/approval-pr/:id" element={<ApprovalPR />} />
-            <Route path="*" element={<Navigate to="/app/stock-on-hand" />} />
+            <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
     );
 }
