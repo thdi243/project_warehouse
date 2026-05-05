@@ -268,6 +268,20 @@ Route::middleware('auth')->group(function () {
                 Route::get('/detail-data-outbound/{id}', [OutboundController::class, 'getOutboundDetail'])->name('wrm.inventory.get-detail-outbound');
                 Route::post('/cancel-outbound/{id}', [OutboundController::class, 'cancelOutbound'])->name('wrm.inventory.cancel-outbound');
                 Route::get('/magic-number/{id}', [OutboundController::class, 'printMagicNumber'])->name('wrm.inventory.magic-number');
+
+                // Monitoring PPIC & Purchasing
+                Route::prefix('monitoring')->group(function () {
+                    Route::get('/ppic', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'indexPpic'])->name('wrm.inventory.monitoring.ppic.index');
+                    Route::get('/purchasing', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'indexPurchasing'])->name('wrm.inventory.monitoring.purchasing.index');
+                    
+                    Route::get('/summary/ppic', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSummaryPpic'])->name('wrm.inventory.monitoring.summary.ppic');
+                    Route::get('/summary/purchasing', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSummaryPurchasing'])->name('wrm.inventory.monitoring.summary.purchasing');
+                    
+                    Route::get('/data/soh', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSohData'])->name('wrm.inventory.monitoring.soh');
+                    Route::get('/data/inbound', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getInboundData'])->name('wrm.inventory.monitoring.inbound');
+                    Route::get('/data/outbound', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getOutboundData'])->name('wrm.inventory.monitoring.outbound');
+                    Route::get('/data/transfer', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getTransferData'])->name('wrm.inventory.monitoring.transfer');
+                });
             });
         });
     });

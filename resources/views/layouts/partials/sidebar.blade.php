@@ -416,7 +416,7 @@
                             <li class="nav-item">
                                 <a href="{{ route('wrm.inventory.index-upload') }}"
                                     class="nav-link menu-link {{ request()->routeIs('wrm.inventory.index-upload') ? 'active' : '' }}">
-                                    <i class="mdi mdi-view-grid"></i>Upload Data
+                                    <i class="bx bx-git-commit fs-12"></i>Upload Data
                                 </a>
                             </li>
                             @endcan
@@ -425,15 +425,15 @@
                             <li class="nav-item">
                                 <a href="{{ route('wrm.inventory.viewInbound') }}"
                                     class="nav-link menu-link {{ request()->routeIs('wrm.inventory.viewInbound') ? 'active' : '' }}">
-                                    <i class="mdi mdi-view-grid"></i>Data Inbound
+                                    <i class="bx bx-git-commit fs-12"></i>Data Inbound
                                 </a>
                             </li>
                             @endcan
                             @can('permission', 'wrm-inventory-soh')
                             <li class="nav-item">
                                 <a href="{{ route('wrm.inventory.index') }}"
-                                    class="nav-link menu-link {{ request()->routeIs('wrm.inventory.index') ? 'active' : '' }}">
-                                    <i class="mdi mdi-view-grid"></i>Stock On Hand
+                                    class="nav-link menu-link sub-menu {{ request()->routeIs('wrm.inventory.index') ? 'active' : '' }}">
+                                    <i class="bx bx-git-commit fs-12"></i>Stock On Hand
                                 </a>
                             </li>
                             @endcan
@@ -442,7 +442,7 @@
                             <li class="nav-item">
                                 <a href="{{ route('wrm.inventory.draft-outbound') }}"
                                     class="nav-link menu-link {{ request()->routeIs('wrm.inventory.draft-outbound') ? 'active' : '' }}">
-                                    <i class="mdi mdi-view-grid"></i>Form Draft Outbound
+                                    <i class="bx bx-git-commit fs-12"></i>Form Draft Outbound
                                 </a>
                             </li>
                             @endcan
@@ -451,7 +451,7 @@
                             <li class="nav-item">
                                 <a href="{{ route('wrm.inventory.data-outbound') }}"
                                     class="nav-link menu-link {{ request()->routeIs('wrm.inventory.data-outbound') ? 'active' : '' }}">
-                                    <i class="mdi mdi-view-grid"></i>Data Draft Outbound
+                                    <i class="bx bx-git-commit fs-12"></i>Data Draft Outbound
                                 </a>
                             </li>
                             @endcan
@@ -460,7 +460,24 @@
                             <li class="nav-item">
                                 <a href="{{ route('wrm.inventory.index-transfer') }}"
                                     class="nav-link menu-link {{ request()->routeIs('wrm.inventory.index-transfer') ? 'active' : '' }}">
-                                    <i class="mdi mdi-view-grid"></i>History Transfer/Susut
+                                    <i class="bx bx-git-commit fs-12"></i>Data Transfer/Susut
+                                </a>
+                            </li>
+                            @endcan
+                            @can('permission', 'wrm-inventory-monitoring-ppic')
+                            <li class="nav-item">
+                                <a href="{{ route('wrm.inventory.monitoring.ppic.index') }}"
+                                    class="nav-link menu-link {{ request()->routeIs('wrm.inventory.monitoring.ppic.index') ? 'active' : '' }}">
+                                    <i class="bx bx-git-commit fs-12"></i>Monitoring PPIC
+                                </a>
+                            </li>
+                            @endcan
+
+                            @can('permission', 'wrm-inventory-monitoring-purchasing')
+                            <li class="nav-item">
+                                <a href="{{ route('wrm.inventory.monitoring.purchasing.index') }}"
+                                    class="nav-link menu-link {{ request()->routeIs('wrm.inventory.monitoring.purchasing.index') ? 'active' : '' }}">
+                                    <i class="bx bx-git-commit fs-12"></i>Monitoring Purchasing
                                 </a>
                             </li>
                             @endcan
