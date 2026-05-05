@@ -291,11 +291,15 @@ class MonitoringController extends Controller
             ];
         });
 
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 10;
+        $paginatedData = $data->slice($start, $length)->values();
+
         return response()->json([
             'draw' => intval($request->draw),
             'recordsTotal' => $data->count(),
             'recordsFiltered' => $data->count(),
-            'data' => $data
+            'data' => $paginatedData
         ]);
     }
 
@@ -352,11 +356,15 @@ class MonitoringController extends Controller
             ];
         });
 
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 10;
+        $paginatedData = $data->slice($start, $length)->values();
+
         return response()->json([
             'draw' => intval($request->draw),
             'recordsTotal' => $data->count(),
             'recordsFiltered' => $data->count(),
-            'data' => $data
+            'data' => $paginatedData
         ]);
     }
 }
