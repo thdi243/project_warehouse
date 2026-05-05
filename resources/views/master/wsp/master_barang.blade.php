@@ -20,6 +20,11 @@
                         <i class="mdi mdi-database-import-outline me-1"></i> Import
                     </button>
 
+                    <a href="{{ route('wsp.barang.export') }}"
+                        class="btn btn-info flex-fill d-flex justify-content-center align-items-center">
+                        <i class="mdi mdi-database-export-outline me-1"></i> Export
+                    </a>
+
                     <button class="btn btn-primary flex-fill d-flex justify-content-center align-items-center"
                         data-bs-toggle="modal" data-bs-target="#modalRegistrasi">
                         <i class="mdi mdi-plus me-1"></i> Tambah

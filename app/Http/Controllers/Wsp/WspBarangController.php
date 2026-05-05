@@ -423,4 +423,51 @@ class WspBarangController extends Controller
             $writer->save('php://output');
         }, $filename);
     }
+
+    public function export()
+    {
+        // Increase limits for potential large data
+        ini_set('max_execution_time', 300);
+        ini_set('memory_limit', '512M');
+
+        $data = BarangModel::orderBy('mid_barang', 'asc')->get();
+        
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Set headers (sesuai dengan format import)
+        $headers = ['MID Barang', 'Nama Barang', 'Uom', 'SLoc', 'Plant'];
+        $columnIndex = 'A';
+        foreach ($headers as $header) {
+            $sheet->setCellValue($columnIndex . '1', $header);
+            $sheet->getStyle($columnIndex . '1')->getFont()->setBold(true);
+            $sheet->getStyle($columnIndex . '1')->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setARGB('FFCCCCCC');
+            $columnIndex++;
+        }
+
+        // Fill data
+        $row = 2;
+        foreach ($data as $item) {
+            $sheet->setCellValue('A' . $row, $item->mid_barang);
+            $sheet->setCellValue('B' . $row, $item->nama_barang);
+            $sheet->setCellValue('C' . $row, $item->uom);
+            $sheet->setCellValue('D' . $row, $item->s_loc);
+            $sheet->setCellValue('E' . $row, $item->plant);
+            $row++;
+        }
+
+        // Auto width columns
+        foreach (range('A', 'E') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $filename = 'export_master_barang_wsp_' . date('Y-m-d') . '.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename);
+    }
 }

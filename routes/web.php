@@ -351,6 +351,7 @@ Route::middleware('auth')->group(function () {
                 Route::put('/update/barang/{id}', [WspBarangController::class, 'update'])->name('wsp.update.barang');
                 Route::post('/barang/import', [WspBarangController::class, 'import'])->name('wsp.barang.import');
                 Route::get('/barang/download-template', [WspBarangController::class, 'downloadTemplate'])->name('wsp.barang.download.template');
+                Route::get('/barang/export', [WspBarangController::class, 'export'])->name('wsp.barang.export');
 
                 // Rak
                 Route::get('/rak', [WarehouseController::class, 'rakIndex'])->name('wsp.master.rak');
