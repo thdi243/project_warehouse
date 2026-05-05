@@ -2515,6 +2515,7 @@ class StockOpnameWfgController extends Controller
                 // 🔥 HAPUS NOTIFIKASI TERKAIT
                 NotificationsModel::where('notifiable_type', WfgSopApprovalModel::class)
                     ->where('notifiable_id', $otherApproval->id)
+                    ->where('user_id', $otherApproval->approver_id)
                     ->delete();
 
                 // 🔥 HAPUS APPROVAL FOREMAN LAIN
@@ -2528,6 +2529,12 @@ class StockOpnameWfgController extends Controller
             'action_at' => now(),
             'action_by' => $user->id,
         ]);
+
+        // HAPUS NOTIFIKASI TERKAIT
+        NotificationsModel::where('notifiable_type', WfgSopApprovalModel::class)
+            ->where('notifiable_id', $approval->id)
+            ->where('user_id', Auth::id())
+            ->delete();
 
         $approvals = WfgSopApprovalModel::where('sop_id', $request->sop_id)->get();
 
