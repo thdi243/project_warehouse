@@ -716,6 +716,7 @@
 
             const deptMap = {
                 engineering: 'BAS-ENG',
+                warehouse: 'BAS-WRH',
                 ite: 'BAS-ITE',
                 produksi: 'BAS-PRD',
                 quality_control: 'BAS-QC'
