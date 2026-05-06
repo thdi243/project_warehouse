@@ -12,6 +12,12 @@
             margin: 30px;
         }
 
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: 'Calibri', Arial, sans-serif;
             font-size: 12px;
@@ -22,7 +28,7 @@
             width: 100%;
             border-collapse: collapse;
             line-height: 1;
-            page-break-inside: auto;
+            page-break-inside: avoid !important;
         }
 
         th,
@@ -90,6 +96,10 @@
             border-top: none !important;
             border-bottom: none !important;
             text-transform: capitalize;
+        }
+
+        .signature-table {
+            page-break-inside: avoid;
         }
     </style>
 </head>
@@ -242,7 +252,7 @@
 
     {{-- Table ttd --}}
     <table class="text-center" cellspacing="0" cellpadding="4"
-        style="white-space: nowrap; border: 1px solid #000; border-top: 0; width: 100%; border-collapse: collapse;">
+        style="white-space: nowrap; border: 1px solid #000; border-top: 0; width: 100%; border-collapse: collapse; page-break-inside: avoid;">
         <tr>
             <td colspan="4" style="height: 10px; border: none; border-bottom: 1px solid #000;"></td>
         </tr>
@@ -263,16 +273,24 @@
 
         <tr>
             <td class="approver-ttd-cell">
-                <img src="{{ $approvers[0]['ttd'] ?? '' }}" width="100" alt="TTD">
+                @if(!empty($approvers[0]['ttd']))
+                <img src="{{ $approvers[0]['ttd'] }}" style="max-width: 120px; max-height: 60px;" alt="TTD">
+                @endif
             </td>
             <td class="approver-ttd-cell">
-                <img src="{{ $approvers[1]['ttd'] ?? '' }}" width="100" alt="TTD ">
+                @if(!empty($approvers[1]['ttd']))
+                <img src="{{ $approvers[1]['ttd'] }}" style="max-width: 120px; max-height: 60px;" alt="TTD">
+                @endif
             </td>
             <td class="approver-ttd-cell">
-                <img src="{{ $approvers[2]['ttd'] ?? '' }}" width="100" alt="TTD ">
+                @if(!empty($approvers[2]['ttd']))
+                <img src="{{ $approvers[2]['ttd'] }}" style="max-width: 120px; max-height: 60px;" alt="TTD">
+                @endif
             </td>
             <td class="approver-ttd-cell">
-                <img src="{{ $approvers[3]['ttd'] ?? '' }}" width="100" alt="TTD ">
+                @if(!empty($approvers[3]['ttd']))
+                <img src="{{ $approvers[3]['ttd'] }}" style="max-width: 120px; max-height: 60px;" alt="TTD">
+                @endif
             </td>
         </tr>
 
