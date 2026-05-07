@@ -1054,8 +1054,14 @@
                     text = item;
                 }
 
-                let isSelected = currentValues.includes(val.toString());
-                let option = new Option(text, val, isSelected, isSelected);
+                let safeVal = val ?? '';
+                let safeText = text ?? '';
+                if (safeText === '') {
+                    safeText = safeVal === '' ? '-' : safeVal;
+                }
+
+                let isSelected = currentValues.includes(safeVal.toString());
+                let option = new Option(safeText, safeVal, isSelected, isSelected);
                 $el.append(option);
             });
 
