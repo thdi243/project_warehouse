@@ -384,8 +384,14 @@
                     </div>
                 </div>
             </div>
-
             <div class="table-body">
+                <div class="alert alert-info py-2 px-3 w-100" role="alert">
+                    <small>
+                        <i class="ri-information-line me-1"></i>
+                        <strong>QTY BOOK</strong> Merupakan Qty Reservasi yang belum di konfirmasi karena sedang
+                        dalam proses PR
+                    </small>
+                </div>
                 <div class="table-responsive">
                     <table class="table custom-table" id="sohTable">
                         <thead>
@@ -394,6 +400,7 @@
                                 <th>Mid</th>
                                 <th>DESC</th>
                                 <th>Total Qty SOH</th>
+                                <th>Qty Book</th>
                                 <th>Unrest</th>
                                 <th>Qual Insp</th>
                                 <th>Blocked</th>
@@ -405,7 +412,7 @@
                         <tbody id="tableBody">
                             <!-- Data will be loaded here -->
                             <tr class="empty-state-row">
-                                <td colspan="9">
+                                <td colspan="11">
                                     <div class="empty-state">
                                         <i class="mdi mdi-package-variant-closed"></i>
                                         <h6>Belum Ada Data</h6>
@@ -560,7 +567,7 @@
                 beforeSend: function() {
                     $('#tableBody').html(`
                             <tr>
-                                <td colspan="9" class="text-center py-4">
+                                <td colspan="11" class="text-center py-4">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -576,7 +583,7 @@
                         renderTable();
                     } else {
                         $('#tableBody').html(
-                            '<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
+                            '<tr><td colspan="11" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
                         );
                     }
                 },
@@ -584,7 +591,7 @@
                     console.error(xhr);
                     $('#tableBody').html(`
                             <tr>
-                                <td colspan="9" class="text-center text-danger py-3">
+                                <td colspan="11" class="text-center text-danger py-3">
                                     <i class="mdi mdi-alert-circle-outline me-1"></i> Gagal memuat data dari server.
                                 </td>
                             </tr>
@@ -601,7 +608,7 @@
             if (filteredSoh.length === 0) {
                 tbody.html(`
                         <tr class="empty-state-row">
-                            <td colspan="9">
+                            <td colspan="11">
                                 <div class="empty-state">
                                     <i class="mdi mdi-package-variant-closed"></i>
                                     <h6>Tidak Ada Data</h6>
@@ -625,6 +632,11 @@
                             <td><strong>${soh.mid_barang}</strong></td>
                             <td><strong>${soh.nama_barang}</strong></td>
                             <td>${soh.qty_soh ?? 0}</td>
+                            <td>
+                                <span class="badge rounded-pill bg-info text-dark">
+                                    ${soh.total_book_soh ?? 0}
+                                </span>
+                            </td>
                             <td>${soh.unrest ?? 0}</td>
                             <td>${soh.qual_insp ?? 0}</td>
                             <td>${soh.blocked ?? 0}</td>

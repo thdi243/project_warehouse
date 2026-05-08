@@ -141,6 +141,12 @@ export default function MidSearch({ value, onChange }) {
                                         <div className="text-xs text-muted-foreground mt-1">
                                             {item.availability_info}
                                         </div>
+                                        {item.total_book_soh > 0 && (
+                                            <div className="text-xs text-blue-600 font-semibold mt-1 flex items-center gap-1">
+                                                <AlertCircle className="h-3 w-3" />
+                                                Booked PR: {item.total_book_soh} {item.barang.uom}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex-shrink-0">

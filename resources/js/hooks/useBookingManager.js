@@ -18,7 +18,7 @@ export function useBookingManager() {
     };
 
     // Add item dengan booking
-    const addItem = async (currentItem) => {
+    const addItem = async (currentItem, type = "pr") => {
         if (!currentItem.mid || !currentItem.qty || !currentItem.keterangan) {
             Swal.fire({
                 icon: "error",
@@ -42,6 +42,7 @@ export function useBookingManager() {
                 body: JSON.stringify({
                     mid: currentItem.mid,
                     qty: currentItem.qty,
+                    type: type,
                     session_id: getOrCreateSessionId(),
                 }),
             });

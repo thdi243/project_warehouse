@@ -162,7 +162,7 @@
             <div class="content">
                 <p class="greeting">Yth. Bapak/Ibu {{ $approval->approver->nama_lengkap }},</p>
 
-                <p>Ada Purchase Requesition baru yang membutuhkan persetujuan Anda:</p>
+                <p>Ada Purchase Requesition baru yang membutuhkan persetujuan Anda sebagai <strong>{{ $approval->role }}</strong>:</p>
 
                 <!-- Info Card -->
                 <div class="info-card">

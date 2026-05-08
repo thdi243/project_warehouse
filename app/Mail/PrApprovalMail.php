@@ -22,13 +22,13 @@ class PrApprovalMail extends Mailable
         $this->pr = $pr;
         $this->approval = $approval;
 
-        $this->url = url("/app/approval-pr/{$pr->id}");
+        $this->url = url("/purchase-requesition/approval");
         // $this->url = url("/login");
     }
 
     public function build()
     {
-        return $this->subject('Approval Purchase Requesition')
+        return $this->subject("Approval Purchase Requesition - {$this->pr->no_doc}")
             ->view('emails.pr_approval');
     }
 }

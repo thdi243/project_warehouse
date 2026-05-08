@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('mid_barang');
             $table->integer('qty');
+            $table->enum('type', ['pr', 'reservation'])->default('pr')->nullable();
             $table->string('session_id');
             $table->unsignedBigInteger('user_id');
             $table->enum('status', ['booked', 'confirmed', 'released', 'cancelled'])->default('booked');

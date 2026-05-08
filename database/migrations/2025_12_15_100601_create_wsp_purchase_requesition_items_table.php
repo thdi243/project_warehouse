@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('pr_id')->constrained('wsp_purchase_requesition')->onDelete('cascade');
             $table->foreignId('barang_id')->constrained('wsp_barang')->onDelete('restrict');
             $table->integer('qty');
+            $table->integer('qty_book_soh')->nullable();
             $table->string('keterangan')->nullable();
             $table->timestamps();
         });

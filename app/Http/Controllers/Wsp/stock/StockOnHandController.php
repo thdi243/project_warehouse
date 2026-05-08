@@ -23,6 +23,12 @@ class StockOnHandController extends Controller
                 ->selectRaw('MAX(last_update) as last_update')
                 ->groupBy('barang_id');
 
+            // subquery: ambil total qty_book_soh per barang dari PR items
+            $bookedSoh = DB::table('wsp_purchase_requesition_items')
+                ->select('barang_id')
+                ->selectRaw('SUM(qty_book_soh) as total_book_soh')
+                ->groupBy('barang_id');
+
             $data = BarangModel::query()
                 ->leftJoinSub($latestPerBarang, 'latest', function ($join) {
                     $join->on('wsp_barang.id', '=', 'latest.barang_id');
@@ -30,6 +36,9 @@ class StockOnHandController extends Controller
                 ->leftJoin('wsp_stock_on_hand as soh', function ($join) {
                     $join->on('wsp_barang.id', '=', 'soh.barang_id')
                         ->on('soh.last_update', '=', 'latest.last_update');
+                })
+                ->leftJoinSub($bookedSoh, 'booked', function ($join) {
+                    $join->on('wsp_barang.id', '=', 'booked.barang_id');
                 })
                 ->select([
                     'soh.id',
@@ -42,6 +51,7 @@ class StockOnHandController extends Controller
                     DB::raw('COALESCE(soh.qual_insp, 0) as qual_insp'),
                     DB::raw('COALESCE(soh.blocked, 0) as blocked'),
                     DB::raw('COALESCE(soh.transf, 0) as transf'),
+                    DB::raw('COALESCE(booked.total_book_soh, 0) as total_book_soh'),
                     'soh.last_update',
                 ])
                 ->orderBy('soh.last_update', 'desc')
@@ -120,8 +130,22 @@ class StockOnHandController extends Controller
                 ], 422);
             }
 
+            // Hitung total book qty dari PR items
+            $totalBookSoh = DB::table('wsp_purchase_requesition_items')
+                ->where('barang_id', $barang->id)
+                ->sum('qty_book_soh') ?? 0;
+
+            $inputUnrest = $request->unrest ?? 0;
+            $finalUnrest = 0;
+
+            if ($inputUnrest <= $totalBookSoh) {
+                $finalUnrest = 0;
+            } else {
+                $finalUnrest = $inputUnrest - $totalBookSoh;
+            }
+
             $qty_soh =
-                ($request->unrest ?? 0) +
+                $finalUnrest +
                 ($request->qual_insp ?? 0) +
                 ($request->blocked ?? 0) +
                 ($request->transf ?? 0);
@@ -130,7 +154,7 @@ class StockOnHandController extends Controller
             $soh = StockOnHandWspModel::create([
                 'barang_id'   => $barang->id,
                 'qty_soh'     => $qty_soh,
-                'unrest'      => $request->unrest ?? 0,
+                'unrest'      => $finalUnrest,
                 'qual_insp'   => $request->qual_insp ?? 0,
                 'blocked'     => $request->blocked ?? 0,
                 'transf'      => $request->transf ?? 0,
@@ -206,8 +230,22 @@ class StockOnHandController extends Controller
                 ], 404);
             }
 
+            // Hitung total book qty dari PR items
+            $totalBookSoh = DB::table('wsp_purchase_requesition_items')
+                ->where('barang_id', $barang->id)
+                ->sum('qty_book_soh') ?? 0;
+
+            $inputUnrest = $request->unrest ?? 0;
+            $finalUnrest = 0;
+
+            if ($inputUnrest <= $totalBookSoh) {
+                $finalUnrest = 0;
+            } else {
+                $finalUnrest = $inputUnrest - $totalBookSoh;
+            }
+
             $qty_soh =
-                ($request->unrest ?? 0) +
+                $finalUnrest +
                 ($request->qual_insp ?? 0) +
                 ($request->blocked ?? 0) +
                 ($request->transf ?? 0);
@@ -216,7 +254,7 @@ class StockOnHandController extends Controller
             $soh->update([
                 'barang_id'   => $barang->id,
                 'qty_soh'     => $qty_soh,
-                'unrest'      => $request->unrest ?? 0,
+                'unrest'      => $finalUnrest,
                 'qual_insp'   => $request->qual_insp ?? 0,
                 'blocked'     => $request->blocked ?? 0,
                 'transf'      => $request->transf ?? 0,
@@ -312,6 +350,15 @@ class StockOnHandController extends Controller
                 ->get(['id', 'mid_barang'])
                 ->keyBy('mid_barang');
 
+            // Fetch book qty for all matching barang
+            $bookLookup = DB::table('wsp_purchase_requesition_items')
+                ->whereIn('barang_id', $barangLookup->pluck('id'))
+                ->select('barang_id')
+                ->selectRaw('SUM(qty_book_soh) as total_book_soh')
+                ->groupBy('barang_id')
+                ->get()
+                ->keyBy('barang_id');
+
             $validData = [];
             $notFound = [];
             $now = now();
@@ -331,7 +378,10 @@ class StockOnHandController extends Controller
                     continue;
                 }
 
-                $unrest     = (int) ($row[$template == 1 ? 'B' : 'F'] ?? 0);
+                $rawUnrest = (int) ($row[$template == 1 ? 'B' : 'F'] ?? 0);
+                $bookQty   = (int) ($bookLookup->get($barang->id)->total_book_soh ?? 0);
+                $unrest    = ($rawUnrest <= $bookQty) ? 0 : ($rawUnrest - $bookQty);
+
                 $qual_insp  = (int) ($row[$template == 1 ? 'C' : 'G'] ?? 0);
                 $blocked    = (int) ($row[$template == 1 ? 'D' : 'H'] ?? 0);
                 $transf     = (int) ($row[$template == 1 ? 'E' : 'I'] ?? 0);

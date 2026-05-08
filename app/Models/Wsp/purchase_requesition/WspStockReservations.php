@@ -12,6 +12,7 @@ class WspStockReservations extends Model
     protected $fillable = [
         'mid_barang',
         'qty',
+        'type',
         'session_id',
         'user_id',
         'status',

@@ -68,13 +68,48 @@ export default function PurchaseRequisitionForm() {
     ];
 
     const handleAddItem = async () => {
-        const success = await addItem(currentItem);
+        if (!currentItem.mid || !currentItem.qty || !currentItem.keterangan) {
+            Swal.fire({
+                icon: "error",
+                title: "Error!",
+                text: "Harap lengkapi semua field barang sebelum menambahkan.",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#ef4444",
+            });
+            return;
+        }
+
+        let type = "pr";
+        if (currentItem.available_qty > 0) {
+            const result = await Swal.fire({
+                title: "Stok Tersedia!",
+                text: `Barang ini memiliki stok ${currentItem.available_qty}. Apakah Anda ingin melanjutkan PR (stok lama akan dibooking dan menaikkan PR) atau hanya Reservasi (memotong stok)?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Lanjut PR",
+                cancelButtonText: "Hanya Reservasi",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#10b981",
+                allowOutsideClick: false,
+            });
+
+            if (result.isConfirmed) {
+                type = "pr";
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                type = "reservation";
+            } else {
+                return; // User clicked outside or closed (though allowOutsideClick: false)
+            }
+        }
+
+        const success = await addItem(currentItem, type);
         if (success) {
             setCurrentItem({
                 mid: "",
                 nama_barang: "",
                 qty: "",
                 keterangan: "",
+                available_qty: 0,
             });
         }
     };

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendPrApprovalEmail;
 use App\Models\NotificationsModel;
 use App\Models\User;
+use App\Models\UserSignatureModel;
 use App\Models\Wsp\BarangModel;
 use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionApprovalModel;
 use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionItemApprovalModel;
@@ -25,7 +26,14 @@ class WspPurchaseRequesitionController extends Controller
 {
     public function index()
     {
-        return view('wsp.purchase_requesition.index');
+        $signature = Auth::user()->signature;
+        return view('wsp.purchase_requesition.index', compact('signature'));
+    }
+
+    public function approvalIndex()
+    {
+        $signature = Auth::user()->signature;
+        return view('wsp.purchase_requesition.approval', compact('signature'));
     }
 
     public function store(Request $request)
@@ -137,27 +145,7 @@ class WspPurchaseRequesitionController extends Controller
                     ], 422);
                 }
 
-                $prItem = $pr->items()->create([
-                    'pr_id'      => $pr->id,
-                    'barang_id'  => $barang->id,
-                    'qty'        => $item['qty'],
-                    'keterangan' => $item['keterangan'] ?? null,
-                ]);
-
-                $createdItems[] = $prItem;
-
-                $stock = StockOnHandWspModel::where('barang_id', $barang->id)
-                    ->orderByDesc('last_update')
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$stock) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status'  => false,
-                        'message' => "Stock tidak ditemukan untuk MID {$item['mid']}"
-                    ], 422);
-                }
+                $reservation = WspStockReservations::find($item['reservation_id']);
 
                 $stock = StockOnHandWspModel::where('barang_id', $barang->id)
                     ->orderBy('last_update', 'desc')
@@ -172,17 +160,38 @@ class WspPurchaseRequesitionController extends Controller
                     ], 422);
                 }
 
-                // UPDATE LANGSUNG (tanpa hitung2 lagi)
+                $qtyBookSoh = null;
+                $newQtySoh = 0;
+
+                if ($reservation->type === 'reservation') {
+                    // Hanya reservasi: kurangi stok SOH
+                    $newQtySoh = max(0, $stock->qty_soh - $item['qty']);
+                    $qtyBookSoh = 0;
+                } else {
+                    // Lanjut PR: SOH jadi 0, SOH lama masuk ke qty_book_soh
+                    $qtyBookSoh = $stock->qty_soh;
+                    $newQtySoh = 0;
+                }
+
+                $prItem = $pr->items()->create([
+                    'pr_id'        => $pr->id,
+                    'barang_id'    => $barang->id,
+                    'qty'          => $item['qty'],
+                    'qty_book_soh' => $qtyBookSoh,
+                    'keterangan'   => $item['keterangan'] ?? null,
+                ]);
+
+                $createdItems[] = $prItem;
+
+                // UPDATE STOCK
                 $stock->update([
-                    'unrest'      => 0,
+                    'unrest'      => $newQtySoh, // assuming unrest is the main SOH column being used
                     'qual_insp'   => 0,
                     'blocked'     => 0,
                     'transf'      => 0,
-                    'qty_soh'     => 0,
+                    'qty_soh'     => $newQtySoh,
                     'last_update' => now(),
                 ]);
-
-                $reservation = WspStockReservations::find($item['reservation_id']);
 
                 $reservation->update([
                     'status' => 'confirmed',
@@ -216,29 +225,14 @@ class WspPurchaseRequesitionController extends Controller
 
             WspPurchaseRequesitionItemApprovalModel::insert($bulkInsert);
 
-            // Notification
-            $pendingApprovals = $pr->approval()
+            // Notification: Send only to level 2 initially
+            $firstPending = $pr->approval()
                 ->where('status', 'pending')
-                ->get();
+                ->where('level', 2)
+                ->first();
 
-            foreach ($pendingApprovals as $approval) {
-                if (!$approval->approver_id) continue;
-
-                $user = User::find($approval->approver_id);
-
-                if ($user && $user->jabatan == 'foreman') {
-                    $url = "/purchase-requesition/index";
-                } else {
-                    $url = "/app/approval-pr/{$pr->id}";
-                }
-
-                NotificationsModel::create([
-                    'user_id' => $approval->approver_id,
-                    'title'   => 'Approval PR',
-                    'message' => "PR dari {$pr->requested_by} dept. {$pr->department} menunggu persetujuan Anda",
-                    'url'     => $url,
-                    'is_read' => false,
-                ]);
+            if ($firstPending) {
+                $this->sendNotification($pr, $firstPending);
             }
 
             DB::commit();
@@ -297,6 +291,12 @@ class WspPurchaseRequesitionController extends Controller
             ->selectRaw('MAX(last_update) as last_update')
             ->groupBy('barang_id');
 
+        // subquery: total qty_book_soh per barang
+        $bookedSohSub = DB::table('wsp_purchase_requesition_items')
+            ->select('barang_id')
+            ->selectRaw('SUM(qty_book_soh) as total_book_soh')
+            ->groupBy('barang_id');
+
         // START DARI MASTER BARANG
         $query = BarangModel::query()
             ->leftJoinSub($latestSOH, 'latest', function ($join) {
@@ -305,6 +305,9 @@ class WspPurchaseRequesitionController extends Controller
             ->leftJoin('wsp_stock_on_hand as soh', function ($join) {
                 $join->on('wsp_barang.id', '=', 'soh.barang_id')
                     ->on('soh.last_update', '=', 'latest.last_update');
+            })
+            ->leftJoinSub($bookedSohSub, 'booked', function ($join) {
+                $join->on('wsp_barang.id', '=', 'booked.barang_id');
             })
             ->where(function ($q) use ($keyword) {
                 $q->where('wsp_barang.mid_barang', 'LIKE', "%{$keyword}%")
@@ -317,6 +320,7 @@ class WspPurchaseRequesitionController extends Controller
                 'wsp_barang.nama_barang',
                 'wsp_barang.uom',
                 DB::raw('COALESCE(soh.qty_soh, 0) as qty_soh'),
+                DB::raw('COALESCE(booked.total_book_soh, 0) as total_book_soh'),
                 'soh.last_update',
             ])
             ->orderBy('soh.last_update', 'desc')
@@ -356,6 +360,7 @@ class WspPurchaseRequesitionController extends Controller
                 ],
 
                 'qty_soh' => (int) $item->qty_soh,
+                'total_book_soh' => (int) $item->total_book_soh,
                 'reserved_by_others' => $reservedByOthers,
                 'reserved_by_me' => $reservedByMe,
                 'total_reserved' => $totalReserved,
@@ -370,7 +375,8 @@ class WspPurchaseRequesitionController extends Controller
                     $reservedByOthers,
                     $reservedByMe,
                     $availableQty,
-                    $item->qty_soh
+                    $item->qty_soh,
+                    (int) $item->total_book_soh
                 ),
             ];
         });
@@ -381,20 +387,24 @@ class WspPurchaseRequesitionController extends Controller
         ]);
     }
 
-    private function getBookingInfo($isBeingBooked, $reservedByOthers, $reservedByMe, $available, $soh)
+    private function getBookingInfo($isBeingBooked, $reservedByOthers, $reservedByMe, $available, $soh, $totalBookSoh = 0)
     {
+        $info = "";
         if ($reservedByMe > 0) {
-            return "Anda sedang booking {$reservedByMe} qty dari total {$soh}";
+            $info = "Anda sedang booking {$reservedByMe} qty dari total {$soh}";
         } else if ($isBeingBooked) {
             $info = "Sedang dibooking orang lain ({$reservedByOthers} qty)";
-            return $info;
+        } else if ($available <= 0) {
+            $info = "Stok habis";
+        } else {
+            $info = "✓ Tersedia {$available} dari {$soh} qty";
         }
 
-        if ($available <= 0) {
-            return "Stok habis";
+        if ($totalBookSoh > 0) {
+            $info .= " | 📌 Booked PR: {$totalBookSoh}";
         }
 
-        return "✓ Tersedia {$available} dari {$soh} qty";
+        return $info;
     }
 
     public function destroy($id)
@@ -583,6 +593,7 @@ class WspPurchaseRequesitionController extends Controller
             $reservation = WspStockReservations::create([
                 'mid_barang' => $mid,
                 'qty' => $requestedQty,
+                'type' => $request->type ?? 'pr',
                 'session_id' => $sessionId,
                 'user_id' => Auth::id(),
                 'status' => 'booked',
@@ -750,18 +761,6 @@ class WspPurchaseRequesitionController extends Controller
             ]);
 
             $createdApprovals[] = $approval;
-
-            if ($approval->status === 'pending') {
-                $approver = User::find($approval->approver_id);
-
-                if ($approver && $approver->email) {
-                    SendPrApprovalEmail::dispatch(
-                        $pr,
-                        $approval,
-                        $approver->email
-                    );
-                }
-            }
         }
 
         return $createdApprovals;
@@ -812,114 +811,20 @@ class WspPurchaseRequesitionController extends Controller
         try {
             DB::beginTransaction();
 
-            $pr = WspPurchaseRequesitionModel::with('approval')->findOrFail($id);
-            $currentUserId = Auth::id();
+            $res = $this->processApproval(
+                $id,
+                Auth::id(),
+                $request->status,
+                $request->comment,
+                $request->ttd,
+                $request->no_pr,
+                $request->items,
+                $request->boolean('use_stored_signature')
+            );
 
-            $approval = $pr->approval()
-                ->where('approver_id', $currentUserId)
-                ->where('status', 'pending')
-                ->first();
-
-            if (!$approval) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Anda tidak memiliki hak untuk melakukan approval PR ini.'
-                ], 403);
-            }
-
-            // update item yang dipilih
-            if (!empty($request->items)) {
-
-                WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)
-                    ->whereIn('pr_item_id', $request->items)
-                    ->update([
-                        'status' => $request->status,
-                        'catatan' => $request->comment
-                    ]);
-            }
-
-            $approval = $pr->approval()
-                ->where('approver_id', $currentUserId)
-                ->where('status', 'pending')
-                ->firstOrFail();
-
-            $currentLevel = $approval->level;
-            $previousApprovals = $pr->approval()
-                ->where('level', '<', $currentLevel)
-                ->get();
-
-            $pendingPrevious = $previousApprovals->where('status', 'pending');
-            if ($pendingPrevious->isNotEmpty()) {
-                $pendingRole = $pendingPrevious->first()->role;
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Belum di approve oleh ' . $pendingRole . '. Harap tunggu urutan.',
-                ], 422);
-            }
-
-            // Jika ada level sebelumnya yang sudah rejected → langsung tolak PR
-            $rejectedPrevious = $previousApprovals->where('status', 'rejected');
-            if ($rejectedPrevious->isNotEmpty()) {
-                $pr->update(['status' => 'rejected']);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'PR sudah ditolak oleh approver sebelumnya.',
-                ], 422);
-            }
-
-            // Simpan TTD jika status approved
-            if ($request->status === 'approved' && $request->filled('ttd')) {
-                $base64 = $request->ttd;
-                $base64 = preg_replace('/^data:image\/\w+;base64,/', '', $base64);
-                $image = base64_decode($base64);
-
-                if ($image === false) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Format TTD tidak valid.',
-                    ], 422);
-                }
-
-                $fileName = "approval_{$approval->id}_" . Auth::user()->username . '_' . time() . '.png';
-                $path = 'uploads/signatures_approval_pr/' . $fileName;
-
-                Storage::disk('public')->put($path, $image);
-
-                $approval->ttd = $path;
-            }
-
-            $approval->update([
-                'status'  => $request->status,
-                'catatan' => $request->comment,
-                'action_at' => now(),
-                'action_by' => Auth::id(),
-            ]);
-
-            if ($request->filled('no_pr')) {
-                $pr->update([
-                    'pr_number' => $request->no_pr
-                ]);
-            }
-
-            // Refresh approvals
-            $currentLevel = $approval->level;
-
-            // jika ada yang reject
-            $rejected = $pr->approval()->where('status', 'rejected')->exists();
-            if ($rejected) {
-                $pr->update(['status' => 'rejected']);
-            }
-
-            // jika level 3 approve → PR approved
-            elseif ($request->status === 'approved' && $currentLevel == 3) {
-                $pr->update(['status' => 'approved']);
-            }
-
-            // jika level 4 approve → PR finished
-            elseif ($request->status === 'approved' && $currentLevel == 4) {
-                $pr->update(['status' => 'finished']);
+            if (!$res['status']) {
+                DB::rollBack();
+                return response()->json($res, 422);
             }
 
             DB::commit();
@@ -927,7 +832,7 @@ class WspPurchaseRequesitionController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Aksi berhasil diproses',
-                'data' => $pr->fresh(['items.barang'])
+                'data' => WspPurchaseRequesitionModel::with(['items.barang'])->find($id)
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -935,6 +840,227 @@ class WspPurchaseRequesitionController extends Controller
                 'status' => false,
                 'message' => $e->getMessage()
             ], 422);
+        }
+    }
+
+    private function processApproval($prId, $userId, $status, $comment = null, $ttd = null, $noPr = null, $itemIds = [], $useStoredSignature = false)
+    {
+        $pr = WspPurchaseRequesitionModel::with('approval')->findOrFail($prId);
+
+        $approval = $pr->approval()
+            ->where('approver_id', $userId)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$approval) {
+            return [
+                'status' => false,
+                'message' => 'Anda tidak memiliki hak untuk melakukan approval PR ini atau sudah diproses.'
+            ];
+        }
+
+        // Hapus notifikasi untuk user ini terkait PR ini (Role spesifik)
+        NotificationsModel::where('user_id', $userId)
+            ->where('notifiable_id', $prId)
+            ->where('notifiable_type', WspPurchaseRequesitionModel::class)
+            ->where('message', 'like', '%' . $approval->role . '%')
+            ->delete();
+
+        $currentLevel = $approval->level;
+
+        // Check sequence
+        $previousPending = $pr->approval()
+            ->where('level', '<', $currentLevel)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($previousPending) {
+            return [
+                'status' => false,
+                'message' => 'Harap tunggu urutan approval sebelumnya.'
+            ];
+        }
+
+        // Update items if provided
+        if (!empty($itemIds)) {
+            WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)
+                ->whereIn('pr_item_id', $itemIds)
+                ->update([
+                    'status' => $status,
+                    'catatan' => $comment
+                ]);
+        } else {
+            // Default: update all items for this approval
+            WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)
+                ->update([
+                    'status' => $status,
+                    'catatan' => $comment
+                ]);
+        }
+
+        // Simpan TTD jika status approved
+        if ($status === 'approved') {
+            if ($useStoredSignature) {
+                $userSig = UserSignatureModel::where('user_id', $userId)->first();
+                if ($userSig) {
+                    $approval->ttd = $userSig->signature;
+                }
+            } elseif ($ttd) {
+                $base64 = preg_replace('/^data:image\/\w+;base64,/', '', $ttd);
+                $image = base64_decode($base64);
+
+                if ($image !== false) {
+                    $fileName = "approval_{$approval->id}_" . Auth::user()->username . '_' . time() . '.png';
+                    $path = 'uploads/signatures_approval_pr/' . $fileName;
+                    Storage::disk('public')->put($path, $image);
+                    $approval->ttd = $path;
+
+                    // Jika user belum punya signature tersimpan, simpan ttd ini sebagai default
+                    UserSignatureModel::firstOrCreate(
+                        ['user_id' => $userId],
+                        ['signature' => $path]
+                    );
+                }
+            }
+        }
+
+        $approval->update([
+            'status'  => $status,
+            'catatan' => $comment,
+            'action_at' => now(),
+            'action_by' => $userId,
+        ]);
+
+        if ($noPr) {
+            $pr->update(['pr_number' => $noPr]);
+        }
+
+        // Refresh status PR
+        if ($status === 'rejected') {
+            $pr->update(['status' => 'rejected']);
+        } else if ($status === 'approved') {
+            if ($currentLevel == 3) {
+                $pr->update(['status' => 'approved']);
+            } else if ($currentLevel == 4) {
+                $pr->update(['status' => 'finished']);
+            }
+
+            // Notify next level
+            $nextApproval = $pr->approval()
+                ->where('status', 'pending')
+                ->where('level', $currentLevel + 1)
+                ->first();
+
+            if ($nextApproval) {
+                $this->sendNotification($pr, $nextApproval);
+            }
+        }
+
+        return ['status' => true];
+    }
+
+    public function getPendingApprovals()
+    {
+        $userId = Auth::id();
+
+        // Ambil PR yang user terlibat sebagai approver pending
+        $prs = WspPurchaseRequesitionModel::whereHas('approval', function ($q) use ($userId) {
+            $q->where('approver_id', $userId)
+                ->where('status', 'pending');
+        })
+            ->with(['approval', 'items.barang', 'user'])
+            ->latest()
+            ->get();
+
+        // Filter: hanya yang level sebelumnya sudah approved
+        $filtered = $prs->filter(function ($pr) use ($userId) {
+            $myApproval = $pr->approval->where('approver_id', $userId)->where('status', 'pending')->first();
+            if (!$myApproval) return false;
+
+            $currentLevel = $myApproval->level;
+            $previousPending = $pr->approval->where('level', '<', $currentLevel)->where('status', '!=', 'approved');
+
+            return $previousPending->isEmpty();
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => array_values($filtered->toArray())
+        ]);
+    }
+
+    public function bulkAction(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:wsp_purchase_requesition,id',
+            'status' => 'required|in:approved,rejected',
+            'comment' => 'nullable|string|max:500',
+            'ttd' => 'nullable|string' // bulk approval might share one signature
+        ]);
+
+        $userId = Auth::id();
+        $successCount = 0;
+        $errors = [];
+
+        foreach ($request->ids as $id) {
+            try {
+                DB::beginTransaction();
+                $res = $this->processApproval(
+                    $id,
+                    $userId,
+                    $request->status,
+                    $request->comment,
+                    $request->ttd,
+                    null,
+                    [],
+                    $request->boolean('use_stored_signature')
+                );
+                if ($res['status']) {
+                    DB::commit();
+                    $successCount++;
+                } else {
+                    DB::rollBack();
+                    $errors[] = "PR ID $id: " . $res['message'];
+                }
+            } catch (\Exception $e) {
+                DB::rollBack();
+                $errors[] = "PR ID $id: " . $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil memproses $successCount data." . (count($errors) > 0 ? " Terjadi " . count($errors) . " kesalahan." : ""),
+            'errors' => $errors
+        ]);
+    }
+
+    private function sendNotification($pr, $approval)
+    {
+        if (!$approval->approver_id) return;
+
+        $user = User::find($approval->approver_id);
+        if (!$user) return;
+
+        if ($user && $user->jabatan == 'foreman') {
+            $url = "/purchase-requesition/index";
+        } else {
+            $url = "/purchase-requesition/approval";
+        }
+
+        NotificationsModel::create([
+            'user_id' => $approval->approver_id,
+            'notifiable_type' => WspPurchaseRequesitionModel::class,
+            'notifiable_id' => $pr->id,
+            'title'   => "Approval PR - {$pr->no_doc}",
+            'message' => "Anda approve sebagai {$approval->role}. PR dari {$pr->requested_by} dept. {$pr->department} menunggu persetujuan Anda",
+            'url'     => $url,
+            'is_read' => false,
+        ]);
+
+        if ($user->email) {
+            SendPrApprovalEmail::dispatch($pr, $approval, $user->email);
         }
     }
 }

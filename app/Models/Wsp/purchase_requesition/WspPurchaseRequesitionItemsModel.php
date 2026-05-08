@@ -14,6 +14,7 @@ class WspPurchaseRequesitionItemsModel extends Model
         'pr_id',
         'barang_id',
         'qty',
+        'qty_book_soh',
         'keterangan',
         'status'
     ];
