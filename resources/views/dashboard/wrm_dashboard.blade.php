@@ -792,7 +792,7 @@
 
         function fetchKpi(params) {
             $.ajax({
-                url: "{{ route('dashboard.wrm.data.kpi') }}",
+                url: '/api/dashboard/wrm/inventory/kpi',
                 type: 'GET',
                 data: params,
                 dataType: 'json',
@@ -812,7 +812,7 @@
         function fetchChartMovement(params) {
             if (movementChart) movementChart.showLoading('Fetching data...');
             $.ajax({
-                url: "{{ route('dashboard.wrm.data.chart-movement') }}",
+                url: '/api/dashboard/wrm/inventory/chart-movement',
                 type: 'GET',
                 data: params,
                 success: function(res) {
@@ -834,7 +834,7 @@
         function fetchChartPie(params) {
             if (pieChart) pieChart.showLoading('Fetching layout...');
             $.ajax({
-                url: "{{ route('dashboard.wrm.data.chart-pie') }}",
+                url: '/api/dashboard/wrm/inventory/chart-pie',
                 type: 'GET',
                 data: params,
                 success: function(res) {
@@ -849,7 +849,7 @@
         function fetchChartBar(params) {
             if (barChart) barChart.showLoading('Fetching top materials...');
             $.ajax({
-                url: "{{ route('dashboard.wrm.data.chart-bar') }}",
+                url: '/api/dashboard/wrm/inventory/chart-bar',
                 type: 'GET',
                 data: params,
                 success: function(res) {
@@ -871,7 +871,7 @@
         function fetchChartAging(params) {
             if (agingChart) agingChart.showLoading('Calculating age...');
             $.ajax({
-                url: "{{ route('dashboard.wrm.data.chart-capacity') }}",
+                url: '/api/dashboard/wrm/inventory/chart-capacity',
                 type: 'GET',
                 data: params,
                 success: function(res) {
@@ -887,7 +887,7 @@
             const $t = $('#tableRecent');
             $t.html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="bx bx-loader bx-spin me-2"></i>Loading recent activities...</td></tr>');
             $.ajax({
-                url: "{{ route('dashboard.wrm.data.table-recent') }}",
+                url: '/api/dashboard/wrm/inventory/table-recent',
                 type: 'GET',
                 data: params,
                 success: function(res) {
@@ -927,7 +927,7 @@
             $container.html(`<div class="text-center text-muted py-5"><i class="bx bx-loader bx-spin fs-1"></i><p class="mt-2 text-sm">Rendering warehouse visualizer...</p></div>`);
 
             $.ajax({
-                url: "{{ route('dashboard.wrm.data.location-layout') }}",
+                url: '/api/dashboard/wrm/inventory/location-layout',
                 type: 'GET',
                 data: params,
                 success: function(res) {

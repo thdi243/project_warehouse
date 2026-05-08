@@ -4,26 +4,19 @@ use App\Http\Controllers\Dashboard\P2hDashboardController;
 use App\Http\Controllers\Dashboard\RakDashboardController;
 use App\Http\Controllers\Dashboard\BpsDashboardController;
 use App\Http\Controllers\Dashboard\UserDashboardController;
-use App\Http\Controllers\Dashboard\WrmInboundDashboardController;
 use App\Http\Controllers\Dashboard\WspManRakController;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
-use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
-use App\Http\Controllers\TokenAuthController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wrm\P2HController;
-use App\Http\Controllers\Wrm\stock_gula\StockGulaController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
 use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wsp\stock\StockOnHandController;
-use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Wsp\TkbmController;
-use App\Http\Controllers\Wsp\TransaksiWspController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
@@ -58,6 +51,18 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/daily-status', [P2hDashboardController::class, 'getDailyStatusTable']);
     });
 
+    // WRM
+    Route::prefix('wrm')->group(function () {
+        Route::get('/inventory/kpi', [WrmInventoryController::class, 'getKpi']);
+        Route::get('/inventory/chart-movement', [WrmInventoryController::class, 'getChartMovement']);
+        Route::get('/inventory/chart-pie', [WrmInventoryController::class, 'getChartPie']);
+        Route::get('/inventory/chart-bar', [WrmInventoryController::class, 'getChartBar']);
+        Route::get('/inventory/chart-capacity', [WrmInventoryController::class, 'getChartCapacity']);
+        Route::get('/inventory/table-expiring', [WrmInventoryController::class, 'getTableExpiring']);
+        Route::get('/inventory/table-recent', [WrmInventoryController::class, 'getTableRecent']);
+        Route::get('/inventory/location-layout', [WrmInventoryController::class, 'getLocationLayout']);
+    });
+
     // WSP
     Route::get('/wsp/rak', [RakDashboardController::class, 'getDataRack']);
 
@@ -65,15 +70,6 @@ Route::prefix('dashboard')->group(function () {
     Route::prefix('user')->group(function () {
         Route::get('/data', [UserDashboardController::class, 'create']);
         Route::get('/statistik', [UserDashboardController::class, 'statistik']);
-    });
-
-    // WRM
-    Route::prefix('wrm')->group(function () {
-        Route::get('/inbound/widget',            [WrmInboundDashboardController::class, 'widget']);
-        Route::get('/inbound/per-periode',       [WrmInboundDashboardController::class, 'perPeriode']);
-        Route::get('/inbound/stok-per-barang',   [WrmInboundDashboardController::class, 'stokPerBarang']);
-        Route::get('/inbound/distribusi-status', [WrmInboundDashboardController::class, 'distribusiStatus']);
-        Route::get('/inbound/stok-per-gudang',   [WrmInboundDashboardController::class, 'stokPerGudang']);
     });
 });
 
@@ -160,6 +156,8 @@ Route::prefix('purchase-requesition')->middleware('web')->group(function () {
     // Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved']);
     Route::post('/release-item', [WspPurchaseRequesitionController::class, 'releaseItem']);
     Route::get('/pr-data/approval/{id}', [WspPurchaseRequesitionController::class, 'getDataApproval']);
+    Route::get('/pending-approvals', [WspPurchaseRequesitionController::class, 'getPendingApprovals']);
+    Route::post('/bulk-action', [WspPurchaseRequesitionController::class, 'bulkAction']);
     Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action']);
 });
 

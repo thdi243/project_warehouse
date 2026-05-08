@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Wrm;
+namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Wrm\Inventory\StockBalance;
@@ -16,7 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class DashboardController extends Controller
+class WrmInventoryController extends Controller
 {
     public function index()
     {
