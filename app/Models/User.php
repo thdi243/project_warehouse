@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Role;
 use App\Models\Wsp\TransaksiModel;
 use App\Models\Permission\Permission;
 use Illuminate\Support\Facades\Storage;
@@ -78,20 +79,52 @@ class User extends Authenticatable
         return $this->hasOne(UserSignatureModel::class);
     }
 
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class)->withTimestamps();
+    }
+
+    public function hasRole(string $roleName): bool
+    {
+        return $this->roles()->where('name', $roleName)->exists();
+    }
+
     public function permissions()
     {
-        return $this->belongsToMany(Permission::class)
-            ->withTimestamps();
+        return $this->belongsToMany(Permission::class)->withTimestamps();
     }
 
     public function hasPermission(string $permissionName): bool
     {
-        return $this->permissions()->where('name', $permissionName)->exists();
+        // Check direct permissions
+        if ($this->permissions()->where('name', $permissionName)->exists()) {
+            return true;
+        }
+
+        // Check role permissions
+        foreach ($this->roles as $role) {
+            if ($role->hasPermission($permissionName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    // Bonus: check multiple
     public function hasAnyPermission(array $permissions): bool
     {
-        return $this->permissions()->whereIn('name', $permissions)->exists();
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function scopeRole($query, $roleName)
+    {
+        return $query->whereHas('roles', function($q) use ($roleName) {
+            $q->where('name', $roleName);
+        });
     }
 }

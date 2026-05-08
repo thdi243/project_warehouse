@@ -18,7 +18,8 @@ class UserController extends Controller
      */
     public function index()
     {
-        return view('user.index');
+        $roles = \App\Models\Role::all();
+        return view('user.index', compact('roles'));
     }
 
     public function profileIndex()
