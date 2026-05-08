@@ -3,6 +3,7 @@
 use App\Events\ShowPortalNotification;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\UserPermissionController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
@@ -14,7 +15,8 @@ use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
-use App\Http\Controllers\Wrm\DashboardController;
+use App\Http\Controllers\Wfg\MasterDestinasiController;
+use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
 use App\Http\Controllers\Wrm\Inventory\StockTransferController;
@@ -29,7 +31,6 @@ use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
 use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wsp\stock\StockLocationController;
 use App\Http\Controllers\Wsp\stock\StockOnHandController;
-use App\Http\Controllers\Wsp\StockOpnameController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
@@ -37,7 +38,6 @@ use App\Http\Controllers\TokenAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Wrm\stock;
 
 // use App\Http\Controllers\Api\TkbmDashboardController;
 
@@ -93,16 +93,7 @@ Route::middleware('auth')->group(function () {
                 ->middleware(['permission:dashboard-rak']);
 
             Route::get('/ikat-terpal', [IkatTerpalDashboardController::class, 'index'])->name('dashboard.ikat-terpal');
-            // WRM
-            Route::get('/wrm/index', [DashboardController::class, 'index'])->name('dashboard.wrm.index')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wrm/api/data/kpi', [DashboardController::class, 'getKpi'])->name('dashboard.wrm.data.kpi')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wrm/api/data/chart-movement', [DashboardController::class, 'getChartMovement'])->name('dashboard.wrm.data.chart-movement')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wrm/api/data/chart-pie', [DashboardController::class, 'getChartPie'])->name('dashboard.wrm.data.chart-pie')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wrm/api/data/chart-bar', [DashboardController::class, 'getChartBar'])->name('dashboard.wrm.data.chart-bar')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wrm/api/data/chart-capacity', [DashboardController::class, 'getChartCapacity'])->name('dashboard.wrm.data.chart-capacity')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wrm/api/data/table-expiring', [DashboardController::class, 'getTableExpiring'])->name('dashboard.wrm.data.table-expiring')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wrm/api/data/table-recent', [DashboardController::class, 'getTableRecent'])->name('dashboard.wrm.data.table-recent')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wrm/api/data/location-layout', [DashboardController::class, 'getLocationLayout'])->name('dashboard.wrm.data.location-layout')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wrm/index', [WrmInventoryController::class, 'index'])->name('dashboard.wrm.index')->middleware(['permission:dashboard-wrm']);
         });
     });
 
@@ -195,8 +186,9 @@ Route::middleware('auth')->group(function () {
         });
 
         // Purchase Requesition
-        Route::prefix('purchase-requesition')->middleware(['permission:wsp-stock-pr'])->group(function () {
+        Route::prefix('purchase-requesition')->middleware(['permission:wsp-stock-pr,wsp-approval-pr'])->group(function () {
             Route::get('/index', [WspPurchaseRequesitionController::class, 'index'])->name('stock.pr.index');
+            Route::get('/approval', [WspPurchaseRequesitionController::class, 'approvalIndex'])->name('stock.pr.approval');
             Route::post('/store', [WspPurchaseRequesitionController::class, 'store'])->name('stock.pr.store');
             Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved'])->name('stock.pr.reserved');
             Route::get('/my-reservations', [WspPurchaseRequesitionController::class, 'myReservations']);
@@ -273,10 +265,10 @@ Route::middleware('auth')->group(function () {
                 Route::prefix('monitoring')->group(function () {
                     Route::get('/ppic', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'indexPpic'])->name('wrm.inventory.monitoring.ppic.index');
                     Route::get('/purchasing', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'indexPurchasing'])->name('wrm.inventory.monitoring.purchasing.index');
-                    
+
                     Route::get('/summary/ppic', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSummaryPpic'])->name('wrm.inventory.monitoring.summary.ppic');
                     Route::get('/summary/purchasing', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSummaryPurchasing'])->name('wrm.inventory.monitoring.summary.purchasing');
-                    
+
                     Route::get('/data/soh', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSohData'])->name('wrm.inventory.monitoring.soh');
                     Route::get('/data/inbound', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getInboundData'])->name('wrm.inventory.monitoring.inbound');
                     Route::get('/data/outbound', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getOutboundData'])->name('wrm.inventory.monitoring.outbound');
@@ -291,6 +283,23 @@ Route::middleware('auth')->group(function () {
     // Warehouse Finish Goods
     Route::middleware(['auth'])->group(function () {
         Route::prefix('wfg')->group(function () {
+
+            // Loading Order
+            Route::prefix('loading-order')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'index'])->name('wfg.loading_order.index');
+                Route::get('/data', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'data'])->name('wfg.loading_order.data');
+                Route::get('/approval', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'approval'])->name('wfg.loading_order.approval');
+                Route::get('/approval-data', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'approvalData'])->name('wfg.loading_order.approval_data');
+                Route::get('/form', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'create'])->name('wfg.loading_order.form');
+                Route::post('/store', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'store'])->name('wfg.loading_order.store');
+                Route::delete('/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'destroy'])->name('wfg.loading_order.destroy');
+                Route::get('/show/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'show'])->name('wfg.loading_order.show');
+                Route::post('/approve-checker/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'approveChecker'])->name('wfg.loading_order.approve_checker');
+                Route::post('/approve-driver/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'approveDriver'])->name('wfg.loading_order.approve_driver');
+                Route::post('/validate/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'validateOrder'])->name('wfg.loading_order.validate');
+                Route::get('/scan', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'scanBarcode'])->name('wfg.loading_order.scan');
+                Route::get('/search-materials', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'searchMaterials'])->name('wfg.loading_order.search_materials');
+            });
 
             // Maste Barang SO WFG
             Route::prefix('master')->middleware(['permission:master-wfg'])->group(function () {
@@ -393,7 +402,14 @@ Route::middleware('auth')->group(function () {
                     Route::post('/import', [BarangWfgController::class, 'import'])->name('wfg.master.barang.import');
                     Route::get('/template', [BarangWfgController::class, 'downloadTemplate'])->name('wfg.master.barang.template');
                 });
-                // });
+
+                Route::prefix('destinasi')->group(function () {
+                    Route::get('/index', [MasterDestinasiController::class, 'index'])->name('wfg.master.destinasi.index');
+                    Route::get('/data', [MasterDestinasiController::class, 'data'])->name('wfg.master.destinasi.data');
+                    Route::post('/store', [MasterDestinasiController::class, 'store'])->name('wfg.master.destinasi.store');
+                    Route::put('/update/{id}', [MasterDestinasiController::class, 'update'])->name('wfg.master.destinasi.update');
+                    Route::delete('/delete/{id}', [MasterDestinasiController::class, 'destroy'])->name('wfg.master.destinasi.delete');
+                });
             });
 
             // Master WRM
@@ -490,5 +506,19 @@ Route::middleware('auth')->group(function () {
         Route::get('users/permissions/search', [UserPermissionController::class, 'searchUsers'])->name('permissions.users.search');
         Route::get('users/permissions/{id}', [UserPermissionController::class, 'getUserPermissions'])->name('permissions.users.get');
         Route::put('users/permissions/{user}', [UserPermissionController::class, 'update'])->name('permissions.users.update');
+
+        // Permission & Role Management
+
+        Route::get('/roles', [RoleController::class, 'index'])->name('role.index');
+        Route::post('/roles/store', [RoleController::class, 'store'])->name('role.store');
+        Route::post('/roles/update/{id}', [RoleController::class, 'update'])->name('role.update');
+        Route::delete('/roles/destroy/{id}', [RoleController::class, 'destroy'])->name('role.destroy');
+        Route::get('/roles/permissions/{id}', [RoleController::class, 'getRolePermissions'])->name('role.permissions');
+        Route::post('/roles/assign-permissions/{id}', [RoleController::class, 'assignPermissions'])->name('role.assign_permissions');
+
+        Route::get('/users-roles', [RoleController::class, 'userRolesIndex'])->name('user.roles_index');
+        Route::get('/users-roles/data', [RoleController::class, 'getUsersData'])->name('user.data');
+        Route::get('/user-roles/{userId}', [RoleController::class, 'getUserRoles'])->name('user.roles');
+        Route::post('/user-roles/assign/{userId}', [RoleController::class, 'assignUserRoles'])->name('user.assign_roles');
     });
 });

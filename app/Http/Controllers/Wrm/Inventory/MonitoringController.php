@@ -3,13 +3,10 @@
 namespace App\Http\Controllers\Wrm\Inventory;
 
 use App\Http\Controllers\Controller;
-use App\Models\Wrm\Inventory\StockInbound;
 use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockOnHand;
-use App\Models\Wrm\Inventory\StockOutbound;
 use App\Models\Wrm\Inventory\StockMovement;
 use App\Models\Wrm\Inventory\StockOutboundDetail;
-use App\Models\Wrm\Inventory\StockTransfer;
 use App\Models\Wrm\Inventory\StockTransferDetail;
 use App\Models\Wrm\MasterBarangModel;
 use Carbon\Carbon;
@@ -170,7 +167,8 @@ class MonitoringController extends Controller
 
     public function getOutboundData(Request $request)
     {
-        $query = StockOutboundDetail::with(['outbound', 'barang', 'bin.location']);
+        $query = StockOutboundDetail::with(['outbound', 'barang', 'bin.location'])
+            ->where('status', 'RESERVED');
 
         $recordsTotal = $query->count();
 
@@ -309,6 +307,7 @@ class MonitoringController extends Controller
         if ($days <= 7) return '<span class="badge bg-warning">Warning</span>';
         return '<span class="badge bg-success">Safe</span>';
     }
+
     public function getPurchasingStockData(Request $request)
     {
         $materials = MasterBarangModel::select('id', 'mid', 'nama_barang', 'uom')->get();
