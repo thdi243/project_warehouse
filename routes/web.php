@@ -16,6 +16,7 @@ use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wfg\MasterDestinasiController;
+use App\Http\Controllers\Wfg\LoadingOrderController;
 use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
@@ -132,56 +133,53 @@ Route::middleware('auth')->group(function () {
         });
 
         // Stock WSP
-        Route::prefix('stock')->middleware(['permission:wsp-stock'])->group(function () {
-            Route::prefix('stock_manage')->middleware(['permission:wsp-stock-manage'])->group(function () {
-                Route::get('/dashboard', [WarehouseController::class, 'dashboardStockWsp'])->name('stock.dashboard');
-                Route::get('/stock-on-hand', [WarehouseController::class, 'stockOnHandView'])->name('stock.stock-on-hand');
-                Route::get('/location', [WarehouseController::class, 'stockLocView'])->name('stock.stock-location');
-                Route::post('/loc/store', [StockLocationController::class, 'store'])->name('stock.loc_store');
-                Route::get('/loc/show/{id}', [StockLocationController::class, 'show'])->name('stock.loc_show');
-                Route::put('/loc/update/{id}', [StockLocationController::class, 'update'])->name('stock.loc_update');
-                Route::delete('/loc/delete/{id}', [StockLocationController::class, 'destroy'])->name('stock.loc_delete');
-                Route::get('/loc/data', [StockLocationController::class, 'getDataStockLocation'])->name('stock.loc_data');
-                Route::get('/loc/download', [StockLocationController::class, 'downloadTemplate'])->name('stock.loc_download');
-                Route::post('/loc/upload', [StockLocationController::class, 'upload'])->name('stock.loc_upload');
-                Route::get('/loc/data-barang', [StockLocationController::class, 'getBarang'])->name('stock.loc_data_barang');
+        Route::prefix('wsp')->middleware(['permission:wsp-menu'])->group(function () {
+            Route::prefix('stock-location')->middleware(['permission:wsp-stock-location'])->group(function () {
+                Route::get('/', [WarehouseController::class, 'stockLocView'])->name('stock.stock-location');
+                Route::post('/store', [StockLocationController::class, 'store'])->name('stock.loc_store');
+                Route::get('/show/{id}', [StockLocationController::class, 'show'])->name('stock.loc_show');
+                Route::put('/update/{id}', [StockLocationController::class, 'update'])->name('stock.loc_update');
+                Route::delete('/delete/{id}', [StockLocationController::class, 'destroy'])->name('stock.loc_delete');
+                Route::get('/data', [StockLocationController::class, 'getDataStockLocation'])->name('stock.loc_data');
+                Route::get('/download', [StockLocationController::class, 'downloadTemplate'])->name('stock.loc_download');
+                Route::post('/upload', [StockLocationController::class, 'upload'])->name('stock.loc_upload');
+                Route::get('/data-barang', [StockLocationController::class, 'getBarang'])->name('stock.loc_data_barang');
+            });
 
-                Route::get('/stock-on-hand/index', [WarehouseController::class, 'sohView'])->name('stock.soh.index');
-                Route::get('/soh/data', [StockOnHandController::class, 'getDataSOH'])->name('stock.soh_data');
-                Route::get('/soh/data-barang', [StockOnHandController::class, 'getBarang'])->name('stock.data_barang');
-                Route::get('/soh/show/{id}', [StockOnHandController::class, 'show'])->name('stock.soh_show');
-                Route::post('/soh/store', [StockOnHandController::class, 'store'])->name('stock.soh_store');
-                Route::put('/soh/update/{id}', [StockOnHandController::class, 'update'])->name('stock.soh_update');
-                Route::delete('/soh/delete/{id}', [StockOnHandController::class, 'destroy'])->name('stock.soh_delete');
-                Route::get('/soh/download', [StockOnHandController::class, 'downloadTemplate'])->name('stock.soh_download');
-                Route::post('/soh/upload', [StockOnHandController::class, 'upload'])->name('stock.soh_upload');
+            Route::prefix('soh')->middleware(['permission:wsp-soh'])->group(function () {
+                Route::get('/', [WarehouseController::class, 'stockOnHandView'])->name('stock.stock-on-hand');
+                Route::get('/data', [WarehouseController::class, 'sohView'])->name('stock.soh.index');
+                Route::get('/get-data', [StockOnHandController::class, 'getDataSOH'])->name('stock.soh_data');
+                Route::get('/data-barang', [StockOnHandController::class, 'getBarang'])->name('stock.data_barang');
+                Route::get('/show/{id}', [StockOnHandController::class, 'show'])->name('stock.soh_show');
+                Route::post('/store', [StockOnHandController::class, 'store'])->name('stock.soh_store');
+                Route::put('/update/{id}', [StockOnHandController::class, 'update'])->name('stock.soh_update');
+                Route::delete('/delete/{id}', [StockOnHandController::class, 'destroy'])->name('stock.soh_delete');
+                Route::get('/download', [StockOnHandController::class, 'downloadTemplate'])->name('stock.soh_download');
+                Route::post('/upload', [StockOnHandController::class, 'upload'])->name('stock.soh_upload');
                 Route::get('/opname', [WarehouseController::class, 'opnameIndex'])->name('stock.opname');
                 // Route::get('/rak/list', [WarehouseController::class, 'rakList'])->name('wsp.rak.list');
                 Route::get('/inventory', [WarehouseController::class, 'rakInventory'])->name('stock.inventory');
             });
 
-            Route::prefix('stock_move')->middleware(['permission:wsp-stock-move'])->group(function () {
-                Route::get('/index', [WarehouseController::class, 'viewStockMove'])->name('stock.move.index');
+            Route::prefix('incoming')->middleware(['permission:wsp-incoming'])->group(function () {
+                Route::get('/', [WspIncomingController::class, 'viewIncoming'])->name('stock.move.incoming.index');
+                Route::get('/download', [WspIncomingController::class, 'downloadTemplate'])->name('stock.move.incoming.download');
+                Route::post('/upload', [WspIncomingController::class, 'upload'])->name('stock.move.incoming.upload');
+                Route::get('/show/{id}', [WspIncomingController::class, 'show'])->name('stock.move.incoming.show');
+                Route::post('/store', [WspIncomingController::class, 'store'])->name('stock.move.incoming.store');
+                Route::put('/update/{id}', [WspIncomingController::class, 'update'])->name('stock.move.incoming.update');
+                Route::delete('/delete/{id}', [WspIncomingController::class, 'destroy'])->name('stock.move.incoming.delete');
+            });
 
-                Route::prefix('incoming')->group(function () {
-                    Route::get('/index', [WspIncomingController::class, 'viewIncoming'])->name('stock.move.incoming.index');
-                    Route::get('/download', [WspIncomingController::class, 'downloadTemplate'])->name('stock.move.incoming.download');
-                    Route::post('/upload', [WspIncomingController::class, 'upload'])->name('stock.move.incoming.upload');
-                    Route::get('/show/{id}', [WspIncomingController::class, 'show'])->name('stock.move.incoming.show');
-                    Route::post('/store', [WspIncomingController::class, 'store'])->name('stock.move.incoming.store');
-                    Route::put('/update/{id}', [WspIncomingController::class, 'update'])->name('stock.move.incoming.update');
-                    Route::delete('/delete/{id}', [WspIncomingController::class, 'destroy'])->name('stock.move.incoming.delete');
-                });
-
-                Route::prefix('outgoing')->group(function () {
-                    Route::get('/index', [WspOutgoingController::class, 'viewOutgoing'])->name('stock.move.outgoing.index');
-                    Route::get('/download', [WspOutgoingController::class, 'downloadTemplate'])->name('stock.move.outgoing.download');
-                    Route::post('/upload', [WspOutgoingController::class, 'upload'])->name('stock.move.outgoing.upload');
-                    Route::get('/show/{id}', [WspOutgoingController::class, 'show'])->name('stock.move.outgoing.show');
-                    Route::post('/store', [WspOutgoingController::class, 'store'])->name('stock.move.outgoing.store');
-                    Route::put('/update/{id}', [WspOutgoingController::class, 'update'])->name('stock.move.outgoing.update');
-                    Route::delete('/delete/{id}', [WspOutgoingController::class, 'destroy'])->name('stock.move.outgoing.delete');
-                });
+            Route::prefix('outgoing')->middleware(['permission:wsp-outgoing'])->group(function () {
+                Route::get('/', [WspOutgoingController::class, 'viewOutgoing'])->name('stock.move.outgoing.index');
+                Route::get('/download', [WspOutgoingController::class, 'downloadTemplate'])->name('stock.move.outgoing.download');
+                Route::post('/upload', [WspOutgoingController::class, 'upload'])->name('stock.move.outgoing.upload');
+                Route::get('/show/{id}', [WspOutgoingController::class, 'show'])->name('stock.move.outgoing.show');
+                Route::post('/store', [WspOutgoingController::class, 'store'])->name('stock.move.outgoing.store');
+                Route::put('/update/{id}', [WspOutgoingController::class, 'update'])->name('stock.move.outgoing.update');
+                Route::delete('/delete/{id}', [WspOutgoingController::class, 'destroy'])->name('stock.move.outgoing.delete');
             });
         });
 
@@ -286,19 +284,20 @@ Route::middleware('auth')->group(function () {
 
             // Loading Order
             Route::prefix('loading-order')->group(function () {
-                Route::get('/', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'index'])->name('wfg.loading_order.index');
-                Route::get('/data', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'data'])->name('wfg.loading_order.data');
-                Route::get('/approval', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'approval'])->name('wfg.loading_order.approval');
-                Route::get('/approval-data', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'approvalData'])->name('wfg.loading_order.approval_data');
-                Route::get('/form', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'create'])->name('wfg.loading_order.form');
-                Route::post('/store', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'store'])->name('wfg.loading_order.store');
-                Route::delete('/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'destroy'])->name('wfg.loading_order.destroy');
-                Route::get('/show/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'show'])->name('wfg.loading_order.show');
-                Route::post('/approve-checker/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'approveChecker'])->name('wfg.loading_order.approve_checker');
-                Route::post('/approve-driver/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'approveDriver'])->name('wfg.loading_order.approve_driver');
-                Route::post('/validate/{id}', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'validateOrder'])->name('wfg.loading_order.validate');
-                Route::get('/scan', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'scanBarcode'])->name('wfg.loading_order.scan');
-                Route::get('/search-materials', [\App\Http\Controllers\Wfg\LoadingOrderController::class, 'searchMaterials'])->name('wfg.loading_order.search_materials');
+                Route::get('/', [LoadingOrderController::class, 'index'])->name('wfg.loading_order.index');
+                Route::get('/data', [LoadingOrderController::class, 'data'])->name('wfg.loading_order.data');
+                Route::get('/approval', [LoadingOrderController::class, 'approval'])->name('wfg.loading_order.approval');
+                Route::get('/approval-data', [LoadingOrderController::class, 'approvalData'])->name('wfg.loading_order.approval_data');
+                Route::get('/form', [LoadingOrderController::class, 'create'])->name('wfg.loading_order.form');
+                Route::post('/store', [LoadingOrderController::class, 'store'])->name('wfg.loading_order.store');
+                Route::post('/save-draft', [LoadingOrderController::class, 'saveDraft'])->name('wfg.loading_order.save_draft');
+                Route::delete('/{id}', [LoadingOrderController::class, 'destroy'])->name('wfg.loading_order.destroy');
+                Route::get('/show/{id}', [LoadingOrderController::class, 'show'])->name('wfg.loading_order.show');
+                Route::post('/approve-checker/{id}', [LoadingOrderController::class, 'approveChecker'])->name('wfg.loading_order.approve_checker');
+                Route::post('/approve-driver/{id}', [LoadingOrderController::class, 'approveDriver'])->name('wfg.loading_order.approve_driver');
+                Route::post('/validate/{id}', [LoadingOrderController::class, 'validateOrder'])->name('wfg.loading_order.validate');
+                Route::get('/scan', [LoadingOrderController::class, 'scanBarcode'])->name('wfg.loading_order.scan');
+                Route::get('/search-materials', [LoadingOrderController::class, 'searchMaterials'])->name('wfg.loading_order.search_materials');
             });
 
             // Maste Barang SO WFG

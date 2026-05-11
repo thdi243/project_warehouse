@@ -133,7 +133,19 @@ class WspBarangController extends Controller
 
         return response()->json([
             'status'  => true,
-            'message' => 'Data barang beserta lokasi berhasil ditemukan.',
+            'message' => 'Data barang berhasil ditemukan.',
+            'data'    => $data,
+        ]);
+    }
+
+    public function getDataBarangWsp()
+    {
+        $data = BarangModel::select('id', 'mid_barang', 'nama_barang', 'uom')
+            ->get();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Data barang berhasil diambil.',
             'data'    => $data,
         ]);
     }
@@ -431,7 +443,7 @@ class WspBarangController extends Controller
         ini_set('memory_limit', '512M');
 
         $data = BarangModel::orderBy('mid_barang', 'asc')->get();
-        
+
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
