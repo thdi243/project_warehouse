@@ -138,9 +138,18 @@ class WspBarangController extends Controller
         ]);
     }
 
-    public function getDataBarangWsp()
+    public function getDataBarangWsp(Request $request)
     {
+        $search = $request->q;
+
         $data = BarangModel::select('id', 'mid_barang', 'nama_barang', 'uom')
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('mid_barang', 'like', '%' . $search . '%')
+                        ->orWhere('nama_barang', 'like', '%' . $search . '%');
+                });
+            })
+            ->limit(20)
             ->get();
 
         return response()->json([
