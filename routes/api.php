@@ -105,6 +105,7 @@ Route::prefix('p2h')->group(function () {
 
 Route::prefix('wsp')->group(function () {
     Route::get('/data/barang', [WspBarangController::class, 'getDataBarang']);
+    Route::get('/barang', [WspBarangController::class, 'getDataBarangWsp']);
     Route::get('/data/rak', [WspBarangController::class, 'getDataRak']);
     Route::get('/rak/filters', [WspRakController::class, 'getFilters']);
     Route::delete('/delete/barang/{id}', [WspBarangController::class, 'destroy']);
