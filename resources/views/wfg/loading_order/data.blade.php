@@ -28,7 +28,7 @@
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle" id="loadingOrderTable">
-                            <thead class="table-light">
+                            <thead class="table-light text-nowrap">
                                 <tr>
                                     <th class="text-center">No</th>
                                     <th>Tanggal</th>
