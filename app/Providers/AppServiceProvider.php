@@ -25,12 +25,29 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasPermission($permissionName);
         });
 
-        // Optional: super admin bypass semua permission
+        Gate::define('role', function (User $user, string $roleName) {
+            return $user->hasRole($roleName);
+        });
+
+        // Super Admin / Admin bypass semua gate
         Gate::before(function (User $user, string $ability) {
-            // Misal kalau ada kolom is_super_admin atau permission khusus
-            if ($user->hasPermission('super-admin') || $user->is_admin ?? false) {
+
+            // bypass via permission
+            if ($user->hasPermission('super-admin')) {
                 return true;
             }
+
+            // bypass via role
+            if ($user->hasRole('super-admin')) {
+                return true;
+            }
+
+            // bypass via flag database
+            if ($user->is_admin ?? false) {
+                return true;
+            }
+
+            return null;
         });
     }
 }
