@@ -60,7 +60,7 @@ class LoadingOrderController extends Controller
         $perPage = 10;
         $search = $request->input('search');
 
-        if (!auth()->user()->hasRole('verificator')) {
+        if (!auth()->user()->can('role', 'verificator')) {
             return response()->json([
                 'status' => true,
                 'data' => [
@@ -412,7 +412,7 @@ class LoadingOrderController extends Controller
 
     public function validateOrder(Request $request, $id)
     {
-        if (!auth()->user()->hasRole('verificator')) {
+        if (!auth()->user()->can('role', 'verificator')) {
             return back()->with('error', 'Unauthorized. Anda tidak memiliki role verificator.');
         }
 
