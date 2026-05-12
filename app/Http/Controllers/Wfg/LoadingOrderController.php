@@ -344,7 +344,7 @@ class LoadingOrderController extends Controller
         $order->update([
             'checker_id' => $request->checker_id,
             'checker_signature' => $signaturePath,
-            'checker_approved_at' => Carbon::now(),
+            'approved_at' => Carbon::now(),
             'status' => 'approved' // Moves to next step: Driver Approval
         ]);
 
