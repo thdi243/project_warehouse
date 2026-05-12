@@ -126,6 +126,7 @@ class WfgLoadingOrderDashboardController extends Controller
             'checker:id,nama_lengkap',
             'destinasi:id,destinasi',
         ])
+            ->whereNotIn('status', ['verified', 'rejected'])
             ->withCount('details')
             ->withSum(['details as total_qty_full' => function ($q) {
                 $q->where('jenis', 'P');
@@ -159,9 +160,6 @@ class WfgLoadingOrderDashboardController extends Controller
                 'no_mobil'        => $o->no_mobil ?? '-',
                 'status'          => $o->status,
                 'details_count'   => $o->details_count,
-                'total_qty_full'  => (int) $o->total_qty_full,
-                'total_qty_receh' => (int) $o->total_qty_receh,
-                'total_qty_box'   => (int) ($o->total_qty_full + $o->total_qty_receh),
                 'jam_muat'        => $o->jam_muat ?? '-',
                 'approved_at'     => $o->approved_at ? Carbon::parse($o->approved_at)->format('d M Y H:i') : '-',
             ];
@@ -231,7 +229,6 @@ class WfgLoadingOrderDashboardController extends Controller
         }
 
         $data = $query->select('status', DB::raw('count(*) as total'))
-            ->whereNotIn('status', ['verified', 'rejected'])
             ->groupBy('status')
             ->get();
 
