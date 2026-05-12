@@ -31,7 +31,7 @@ class LoadingOrderController extends Controller
         $search = $request->input('search');
 
         // Log data semuanya di index
-        $query = LoadingOrder::with(['forkliftDriver', 'checker', 'destinasi', 'details.material']);
+        $query = LoadingOrder::with(['forkliftDriver', 'checker', 'destinasi', 'details.material', 'verificator']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {

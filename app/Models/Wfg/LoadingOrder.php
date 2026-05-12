@@ -33,8 +33,8 @@ class LoadingOrder extends Model
         'approved_at',
         'driver_name',
         'driver_approved_at',
-        'validated_by',
-        'validated_at',
+        'verified_by',
+        'verified_at',
         'rejection_note',
         'checker_signature',
         'driver_signature',
@@ -46,7 +46,7 @@ class LoadingOrder extends Model
         'tanggal' => 'date:Y-m-d',
         'approved_at' => 'datetime',
         'driver_approved_at' => 'datetime',
-        'validated_at' => 'datetime',
+        'verified_at' => 'datetime',
     ];
 
     public function details()
@@ -64,9 +64,9 @@ class LoadingOrder extends Model
         return $this->belongsTo(User::class, 'checker_id');
     }
 
-    public function validator()
+    public function verificator()
     {
-        return $this->belongsTo(User::class, 'validated_by');
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     public function creator()
