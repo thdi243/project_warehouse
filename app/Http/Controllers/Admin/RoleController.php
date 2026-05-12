@@ -71,7 +71,13 @@ class RoleController extends Controller
     // New: Dedicated User Roles Index
     public function userRolesIndex()
     {
-        $roles = Role::all();
+        $rolesQuery = Role::query();
+        
+        if (auth()->user()->jabatan !== 'admin') {
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+        
+        $roles = $rolesQuery->get();
         return view('admin.user_roles', compact('roles'));
     }
 
@@ -115,16 +121,45 @@ class RoleController extends Controller
     public function getUserRoles($userId)
     {
         $user = User::with('roles')->findOrFail($userId);
+        
+        $roleIds = $user->roles->pluck('id');
+        
+        // If not admin, remove super-admin from the returned list so it doesn't try to prepopulate the hidden option
+        if (auth()->user()->jabatan !== 'admin') {
+            $superAdminRole = Role::where('name', 'super-admin')->first();
+            if ($superAdminRole) {
+                $roleIds = $roleIds->reject(function ($id) use ($superAdminRole) {
+                    return $id === $superAdminRole->id;
+                })->values();
+            }
+        }
+        
         return response()->json([
             'status' => true,
-            'roles' => $user->roles->pluck('id')
+            'roles' => $roleIds
         ]);
     }
 
     public function assignUserRoles(Request $request, $userId)
     {
         $user = User::findOrFail($userId);
-        $user->roles()->sync($request->roles);
+        $roleIds = $request->roles ?? [];
+
+        $superAdminRole = Role::where('name', 'super-admin')->first();
+
+        if (auth()->user()->jabatan !== 'admin' && $superAdminRole) {
+            // Check if trying to add super-admin
+            if (in_array($superAdminRole->id, $roleIds)) {
+                return response()->json(['status' => false, 'message' => 'Unauthorized to assign super-admin role.'], 403);
+            }
+
+            // Keep super-admin if the user already had it, since it wasn't in the form
+            if ($user->roles->contains('id', $superAdminRole->id)) {
+                $roleIds[] = $superAdminRole->id;
+            }
+        }
+
+        $user->roles()->sync($roleIds);
 
         return response()->json(['status' => true, 'message' => 'Roles assigned successfully.']);
     }
