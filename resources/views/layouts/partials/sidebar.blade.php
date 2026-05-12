@@ -40,8 +40,7 @@
             @if (in_array($jabatan, ['dept_head', 'foreman', 'operator', 'supervisor', 'admin']))
                 <ul class="navbar-nav" id="navbar-nav">
 
-                    @can('permission', 'dashboard-manager')
-                        {{-- @if ($jabatan === 'dept_head') --}}
+                    {{-- @can('permission', 'dashboard-manager')
                         <li class="menu-title"><span data-key="t-menu">Dashboard</span></li>
                         <li class="nav-item">
                             <a href="{{ route('dashboard.p2h') }}"
@@ -71,7 +70,7 @@
                                 <span data-key="wrm-dashboard">Inventory Dashboard</span>
                             </a>
                         </li>
-                    @endcan
+                    @endcan --}}
                     {{-- Semua dashboard --}}
                     @can('permission', 'dashboard')
                         {{-- @elseif (in_array($jabatan, ['supervisor', 'foreman'])) --}}
@@ -122,7 +121,7 @@
                                                 <i class="mdi mdi-warehouse"></i>Inventory WRM </a>
                                         </li>
                                     @endcan
-                                    @can('permission', 'dashboard-wfg-loading-order')
+                                    @can('permission', 'dashboard-loading-order')
                                         <li class="nav-item">
                                             <a href="{{ route('dashboard.wfg.loading-order') }}"
                                                 class="nav-link {{ request()->routeIs('dashboard.wfg.loading-order') ? 'active' : '' }}">
