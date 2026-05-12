@@ -262,7 +262,9 @@
                         <td class="text-center">{{ $detail->material->mid_barang ?? '-' }}</td>
                         <td class="text-center">{{ $detail->batch_number ?? '-' }}</td>
                         <td class="text-center">{{ $detail->jenis ?? '-' }}</td>
-                        <td class="text-center">{{ $detail->qty ?? '-' }}</td>
+                        <td class="text-center">
+                            {{ number_format($detail->qty ?? 0, 0, ',', '.') }}
+                        </td>
                         <td class="text-center">{{ $detail->to_dummy ?? '-' }}</td>
                         <td class="text-center">{{ $detail->to_sap ?? '-' }}</td>
                         <td class="text-center">
@@ -322,7 +324,7 @@
 
                     <strong>SMU</strong><br>
                     @forelse ($summarySMU as $item)
-                        {{ $item['mid'] }} : {{ $item['qty'] }} Box<br>
+                        {{ $item['mid'] }} : {{ number_format($item['qty'] ?? 0, 0, ',', '.') }} Box<br>
                     @empty
                         -
                     @endforelse
@@ -331,7 +333,7 @@
 
                     <strong>BAS</strong><br>
                     @forelse ($summaryBAS as $item)
-                        {{ $item['mid'] }} : {{ $item['qty'] }} Box<br>
+                        {{ $item['mid'] }} : {{ number_format($item['qty'] ?? 0, 0, ',', '.') }} Box<br>
                     @empty
                         -
                     @endforelse
