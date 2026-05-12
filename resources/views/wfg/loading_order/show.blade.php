@@ -271,7 +271,7 @@
                                         <div class="mb-3">
                                             <label class="form-label">Signature Driver <span
                                                     class="text-danger">*</span></label>
-                                            <div class="signature-container border rounded bg-white"
+                                            <div class="signature-container border rounded"
                                                 style="width: 100%; height: 200px; position: relative;">
                                                 <canvas id="driver-signature-pad" class="signature-pad"
                                                     style="width: 100%; height: 100%; cursor: crosshair;"></canvas>
@@ -320,7 +320,8 @@
                                         <div class="row mt-4 mb-4">
                                             <div class="col-md-6 text-center border-end">
                                                 <p class="mb-1 text-muted small">Checker:
-                                                    <b>{{ $order->checker->username ?? '-' }}</b></p>
+                                                    <b>{{ $order->checker->username ?? '-' }}</b>
+                                                </p>
                                                 @if ($order->checker_signature)
                                                     <img src="{{ asset($order->checker_signature) }}" alt="Checker Sig"
                                                         style="max-height: 80px; filter: grayscale(1) contrast(2);">
@@ -330,7 +331,8 @@
                                             </div>
                                             <div class="col-md-6 text-center">
                                                 <p class="mb-1 text-muted small">Driver:
-                                                    <b>{{ $order->driver_name ?? '-' }}</b></p>
+                                                    <b>{{ $order->driver_name ?? '-' }}</b>
+                                                </p>
                                                 @if ($order->driver_signature)
                                                     <img src="{{ asset($order->driver_signature) }}" alt="Driver Sig"
                                                         style="max-height: 80px; filter: grayscale(1) contrast(2);">
@@ -429,7 +431,7 @@
                 });
             @elseif ($order->status == 'approved')
                 const driverPad = initSignature('driver-signature-pad', 'driver-signature-data',
-                'clear-driver-sig');
+                    'clear-driver-sig');
                 $('#driver-approval-form').on('submit', function(e) {
                     if (driverPad.isEmpty()) {
                         e.preventDefault();

@@ -319,7 +319,7 @@ class LoadingOrderController extends Controller
 
     public function show($id)
     {
-        $order = LoadingOrder::with(['details.material', 'forkliftDriver', 'checker', 'validator', 'destinasi'])->findOrFail($id);
+        $order = LoadingOrder::with(['details.material', 'forkliftDriver', 'checker', 'verificator', 'destinasi'])->findOrFail($id);
         $checkers = User::role('checker')->get();
         return view('wfg.loading_order.show', compact('order', 'checkers'));
     }
@@ -512,7 +512,7 @@ class LoadingOrderController extends Controller
             'details.material',
             'forkliftDriver',
             'checker',
-            'validator',
+            'verificator',
             'destinasi'
         ])->findOrFail($id);
 

@@ -58,7 +58,8 @@
                                     <div class="col-md-12 mb-3">
                                         <label class="form-label">Tanggal <span class="text-danger">*</span></label>
                                         <input type="date" name="tanggal" class="form-control"
-                                            value="{{ isset($draft->tanggal) ? (is_string($draft->tanggal) ? $draft->tanggal : $draft->tanggal->format('Y-m-d')) : date('Y-m-d') }}" required>
+                                            value="{{ isset($draft->tanggal) ? (is_string($draft->tanggal) ? $draft->tanggal : $draft->tanggal->format('Y-m-d')) : date('Y-m-d') }}"
+                                            required>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -253,7 +254,7 @@
                                     </h5>
                                 </div>
                                 <button type="submit" class="btn btn-success px-5 shadow">
-                                    <i class="ri-save-line me-1"></i> SUBMIT LOADING ORDER
+                                    <i class="ri-save-line me-1"></i> SUBMIT
                                 </button>
                             </div>
                         </div>
@@ -490,7 +491,7 @@
 
         window.addManualItem = function() {
             let materialData = $('#manual-material-select').select2('data')[0];
-            let batch = $('#manual-batch').val().trim() || '';
+            let batch = $('#manual-batch').val();
             let jenis = $('#manual-jenis').val();
             let qty = $('#manual-qty').val();
             let to_dummy = $('#manual-to-dummy').val();

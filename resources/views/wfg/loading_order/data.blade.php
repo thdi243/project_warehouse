@@ -94,8 +94,8 @@
                                     <td class="fw-bold">: <span id="detail-status" class="badge bg-primary"></span></td>
                                 </tr>
                                 <tr>
-                                    <td width="120" class="text-muted">Driver</td>
-                                    <td class="fw-bold">: <span id="detail-driver"></span></td>
+                                    <td width="120" class="text-muted">Forklift Driver</td>
+                                    <td class="fw-bold">: <span id="detail-forklift-driver"></span></td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Checker</td>
@@ -105,7 +105,10 @@
                         </div>
                         <div class="col-md-6">
                             <table class="table table-sm table-borderless">
-
+                                <tr>
+                                    <td class="text-muted">Driver</td>
+                                    <td class="fw-bold">: <span id="detail-driver"></span></td>
+                                </tr>
                                 <tr>
                                     <td class="text-muted">Tujuan</td>
                                     <td class="fw-bold">: <span id="detail-destinasi"></span></td>
@@ -348,7 +351,9 @@
                 $('#detail-wavepick_bas').text(order.wavepick_bas || '-');
                 $('#detail-shipment_bas').text(order.shipment_bas || '-');
                 $('#detail-status').text(order.status ? order.status.toUpperCase() : '-');
-                $('#detail-driver').text(order.forklift_driver ? order.forklift_driver.username : '-');
+                $('#detail-forklift-driver').text(order.forklift_driver ? order.forklift_driver.username :
+                    '-');
+                $('#detail-driver').text(order.driver_name ? order.driver_name : '-');
                 $('#detail-checker').text(order.checker ? order.checker.username : '-');
                 $('#detail-destinasi').text(order.destinasi ? order.destinasi.destinasi : '-');
                 $('#detail-no_mobil').text(order.no_mobil || '-');
