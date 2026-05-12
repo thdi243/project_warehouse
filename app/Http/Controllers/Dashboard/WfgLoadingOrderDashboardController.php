@@ -18,7 +18,6 @@ class WfgLoadingOrderDashboardController extends Controller
     }
 
     // --- 1. KPI Cards ---
-    // Total QTY Box (qty_full + qty_receh), Total QTY Full Palet, Total QTY Receh
     public function getKpi(Request $request)
     {
         $query = LoadingOrderDetail::join('wfg_loading_orders', 'wfg_loading_order_details.loading_order_id', '=', 'wfg_loading_orders.id');
@@ -67,6 +66,37 @@ class WfgLoadingOrderDashboardController extends Controller
             ->where('wfg_loading_order_details.jenis', 'P')
             ->sum('wfg_loading_order_details.qty');
 
+        // Outbound BAS & SMU calculation
+        $outboundQuery = LoadingOrderDetail::join('wfg_loading_orders', 'wfg_loading_order_details.loading_order_id', '=', 'wfg_loading_orders.id')
+            ->join('wfg_barang', 'wfg_loading_order_details.material_id', '=', 'wfg_barang.id')
+            ->whereNotIn('wfg_loading_orders.status', ['draft']);
+
+        if ($request->start_date) {
+            $outboundQuery->whereDate('wfg_loading_orders.tanggal', '>=', $request->start_date);
+        }
+        if ($request->end_date) {
+            $outboundQuery->whereDate('wfg_loading_orders.tanggal', '<=', $request->end_date);
+        }
+
+        $outboundBAS = (clone $outboundQuery)->where('wfg_barang.principal', 'BAS')->count();
+        $outboundSMU = (clone $outboundQuery)->where('wfg_barang.principal', '!=', 'BAS')->count();
+        $totalOutbound = $outboundBAS + $outboundSMU;
+
+        // Truck logic
+        $truckQuery = LoadingOrder::whereNotIn('status', ['draft', 'rejected']);
+        if ($request->start_date) {
+            $truckQuery->whereDate('tanggal', '>=', $request->start_date);
+        }
+        if ($request->end_date) {
+            $truckQuery->whereDate('tanggal', '<=', $request->end_date);
+        }
+
+        $truckSlipsheet = (clone $truckQuery)->where('jumlah_slipsheet', '>', 0)->count();
+        $truckCurah = (clone $truckQuery)->where(function ($q) {
+            $q->whereNull('jumlah_slipsheet')->orWhere('jumlah_slipsheet', 0);
+        })->count();
+        $truckFinish = $truckSlipsheet + $truckCurah;
+
         return response()->json([
             'status' => true,
             'data' => [
@@ -76,6 +106,12 @@ class WfgLoadingOrderDashboardController extends Controller
                 'status_counts'   => $statusCounts,
                 'today_count'     => $todayCount,
                 'today_qty_full'  => (int) $todayQtyFull,
+                'truck_finish'    => $truckFinish,
+                'truck_slipsheet' => $truckSlipsheet,
+                'truck_curah'     => $truckCurah,
+                'outbound_bas'    => $outboundBAS,
+                'outbound_smu'    => $outboundSMU,
+                'total_outbound'  => $totalOutbound,
             ]
         ]);
     }

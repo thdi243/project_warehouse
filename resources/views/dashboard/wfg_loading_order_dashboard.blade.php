@@ -128,41 +128,61 @@
         <div class="col-xl-2 col-md-4 col-6">
             <div class="card dashboard-card kpi-card h-100 p-3">
                 <div class="d-flex align-items-center mb-3">
-                    <div class="kpi-icon-box bg-soft-indigo me-3"><i class="bx bx-box"></i></div>
+                    <div class="kpi-icon-box bg-soft-indigo me-3"><i class="mdi mdi-truck"></i></div>
                     <h6 class="text-muted mb-0 small fw-semibold text-uppercase" style="font-size:10.5px">Truck Finish</h6>
                 </div>
-                <h3 class="fw-bold mb-0 fs-4" id="kpiTotalBox">0</h3>
-                <small class="text-muted">Truck Sipsheet + Curah</small>
+                <h3 class="fw-bold mb-0 fs-4" id="kpiTruckFinish">0</h3>
+                <small class="text-muted">Truck Slipsheet + Curah</small>
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
             <div class="card dashboard-card kpi-card h-100 p-3">
                 <div class="d-flex align-items-center mb-3">
-                    <div class="kpi-icon-box bg-soft-indigo me-3"><i class="bx bx-box"></i></div>
+                    <div class="kpi-icon-box bg-soft-cyan me-3"><i class="bx bx-receipt"></i></div>
                     <h6 class="text-muted mb-0 small fw-semibold text-uppercase" style="font-size:10.5px">Truck Slipsheet</h6>
                 </div>
-                <h3 class="fw-bold mb-0 fs-4" id="kpiTotalBox">0</h3>
-                <small class="text-muted">Loading Order</small>
+                <h3 class="fw-bold mb-0 fs-4" id="kpiTruckSlipsheet">0</h3>
+                <small class="text-muted">Jml Slipsheet > 0</small>
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
             <div class="card dashboard-card kpi-card h-100 p-3">
                 <div class="d-flex align-items-center mb-3">
-                    <div class="kpi-icon-box bg-soft-indigo me-3"><i class="bx bx-box"></i></div>
+                    <div class="kpi-icon-box bg-soft-amber me-3"><i class="bx bx-box"></i></div>
                     <h6 class="text-muted mb-0 small fw-semibold text-uppercase" style="font-size:10.5px">Truck Curah</h6>
                 </div>
-                <h3 class="fw-bold mb-0 fs-4" id="kpiTotalBox">0</h3>
-                <small class="text-muted">Loading Order</small>
+                <h3 class="fw-bold mb-0 fs-4" id="kpiTruckCurah">0</h3>
+                <small class="text-muted">Tanpa Slipsheet</small>
             </div>
         </div>
         <div class="col-xl-2 col-md-4 col-6">
             <div class="card dashboard-card kpi-card h-100 p-3">
                 <div class="d-flex align-items-center mb-3">
-                    <div class="kpi-icon-box bg-soft-indigo me-3"><i class="bx bx-box"></i></div>
+                    <div class="kpi-icon-box bg-soft-violet me-3"><i class="bx bx-package"></i></div>
                     <h6 class="text-muted mb-0 small fw-semibold text-uppercase" style="font-size:10.5px">Outbound BAS</h6>
                 </div>
-                <h3 class="fw-bold mb-0 fs-4" id="kpiTotalBox">0</h3>
-                <small class="text-muted">Receh + Full</small>
+                <h3 class="fw-bold mb-0 fs-4" id="kpiOutboundBAS">0</h3>
+                <small class="text-muted">Pallet (Principal BAS)</small>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="card dashboard-card kpi-card h-100 p-3">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="kpi-icon-box bg-soft-red me-3"><i class="bx bx-package"></i></div>
+                    <h6 class="text-muted mb-0 small fw-semibold text-uppercase" style="font-size:10.5px">Outbound SMU</h6>
+                </div>
+                <h3 class="fw-bold mb-0 fs-4" id="kpiOutboundSMU">0</h3>
+                <small class="text-muted">Pallet (Non-BAS)</small>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="card dashboard-card kpi-card h-100 p-3">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="kpi-icon-box bg-soft-green me-3"><i class="bx bx-layer"></i></div>
+                    <h6 class="text-muted mb-0 small fw-semibold text-uppercase" style="font-size:10.5px">Total Outbound</h6>
+                </div>
+                <h3 class="fw-bold mb-0 fs-4" id="kpiTotalOutbound">0</h3>
+                <small class="text-muted">Total Pallet BAS + SMU</small>
             </div>
         </div>
     </div>
@@ -303,6 +323,13 @@ $(function () {
             animCount($('#kpiVerified'),  d.status_counts.verified || 0);
             const pending = (d.status_counts.submitted || 0) + (d.status_counts.approved || 0);
             animCount($('#kpiPending'),   pending);
+
+            animCount($('#kpiTruckFinish'),    d.truck_finish);
+            animCount($('#kpiTruckSlipsheet'), d.truck_slipsheet);
+            animCount($('#kpiTruckCurah'),     d.truck_curah);
+            animCount($('#kpiOutboundBAS'),    d.outbound_bas);
+            animCount($('#kpiOutboundSMU'),    d.outbound_smu);
+            animCount($('#kpiTotalOutbound'),  d.total_outbound);
 
             // Status pills
             let pills = '';
