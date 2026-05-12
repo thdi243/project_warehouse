@@ -237,6 +237,8 @@ class WfgLoadingOrderDashboardController extends Controller
             'submitted' => '#3b82f6',
             'approved'  => '#a855f7',
             'loaded'    => '#f59e0b',
+            'verified'  => '#16a34a',
+            'rejected'  => '#dc2626',
         ];
 
         $chartData = $data->map(fn($d) => [

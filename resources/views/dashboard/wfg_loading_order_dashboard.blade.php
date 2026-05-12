@@ -411,14 +411,18 @@
             draft: '#94a3b8',
             submitted: '#3b82f6',
             approved: '#a855f7',
-            loaded: '#f59e0b'
+            loaded: '#f59e0b',
+            verified: '#16a34a',
+            rejected: '#dc2626'
         };
 
         const STATUS_LABEL = {
             draft: 'Draft',
             submitted: 'Submitted',
             approved: 'Approved',
-            loaded: 'Loaded'
+            loaded: 'Loaded',
+            verified: 'Verified',
+            rejected: 'Rejected'
         };
 
         function fmt(n) {
