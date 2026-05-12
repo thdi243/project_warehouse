@@ -38,6 +38,7 @@
                                     <th>Shipment BAS</th>
                                     <th>Forklift Driver</th>
                                     <th>Checker</th>
+                                    <th>Driver</th>
                                     <th>Status</th>
                                     <th>Jam Muat</th>
                                     <th>Verified By</th>
@@ -227,9 +228,11 @@
                                         break;
                                 }
 
-                                const driverName = order.forklift_driver ? order
+                                const forkliftDriverName = order.forklift_driver ? order
                                     .forklift_driver.username : '-';
                                 const checkerName = order.checker ? order.checker.username :
+                                    '-';
+                                const driverName = order.driver_name ? order.driver_name :
                                     '-';
                                 const verificatorName = order.verificator ? order
                                     .verificator.username :
@@ -265,8 +268,9 @@
                                         <td>${order.shipment_smu ?? '-'}</td>
                                         <td>${order.wavepick_bas ?? '-'}</td>
                                         <td>${order.shipment_bas ?? '-'}</td>
-                                        <td>${driverName}</td>
+                                        <td>${forkliftDriverName}</td>
                                         <td>${checkerName}</td>
+                                        <td>${driverName}</td>
                                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                                         <td>${order.jam_muat || '-'}</td>
                                         <td>${verificatorName}</td>
