@@ -60,6 +60,19 @@ class LoadingOrderController extends Controller
         $perPage = 10;
         $search = $request->input('search');
 
+        if (!auth()->user()->hasRole('verificator')) {
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'current_page' => 1,
+                    'data' => [],
+                    'last_page' => 1,
+                    'per_page' => $perPage,
+                    'total' => 0
+                ]
+            ]);
+        }
+
         $query = LoadingOrder::with(['forkliftDriver:id,username,nama_lengkap', 'checker:id,username,nama_lengkap', 'destinasi:id,destinasi', 'details.material'])
             ->where('status', 'loaded');
 

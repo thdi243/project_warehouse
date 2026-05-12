@@ -245,9 +245,24 @@
                             });
                             renderPagination(paginatedData);
                         } else {
-                            tbody.append(
-                                '<tr><td colspan="9" class="text-center py-4">No orders currently waiting for verification.</td></tr>'
-                            );
+                           tbody.append(`
+                                <tr>
+                                    <td colspan="12" class="text-center py-5">
+                                        <div class="d-flex flex-column align-items-center justify-content-center text-muted">
+                                            
+                                            <i class="ti ti-package-off fs-1 mb-2"></i>
+
+                                            <span class="fw-semibold fs-6">
+                                                No orders waiting for verification
+                                            </span>
+
+                                            <small class="text-secondary">
+                                                Incoming orders will appear here automatically.
+                                            </small>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `);
                         }
                     },
                     error: function(xhr) {
