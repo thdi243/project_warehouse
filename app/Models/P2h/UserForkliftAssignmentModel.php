@@ -53,12 +53,12 @@ class UserForkliftAssignmentModel extends Model
 
     public function scopePrimary($query)
     {
-        return $query->where('operator', 1);
+        return $query->where('operator_type', 1);
     }
 
     public function scopeBackup($query)
     {
-        return $query->where('operator', '>', 1);
+        return $query->where('operator_type', '>', 1);
     }
 
     public function scopeByForklift($query, $forkliftId)
@@ -70,12 +70,12 @@ class UserForkliftAssignmentModel extends Model
 
     public function isPrimary(): bool
     {
-        return $this->operator === 1;
+        return $this->operator_type === 1;
     }
 
     public function isBackup(): bool
     {
-        return $this->operator > 1;
+        return $this->operator_type > 1;
     }
 
     public function promoteToPrimary()
@@ -83,9 +83,9 @@ class UserForkliftAssignmentModel extends Model
         // geser operator lain
         self::where('forklift_id', $this->forklift_id)
             ->where('id', '!=', $this->id)
-            ->increment('operator');
+            ->increment('operator_type');
 
-        $this->update(['operator' => 1]);
+        $this->update(['operator_type' => 1]);
     }
 
     /* ================= BOOT ================= */

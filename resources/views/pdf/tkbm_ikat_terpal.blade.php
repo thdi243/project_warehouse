@@ -116,7 +116,7 @@
             style="white-space: nowrap; border: 1px solid #000; border-bottom: none !important;">
             <tr>
                 <td rowspan="4" class="text-center" style="width: 25%;">
-                    <img src="{{ public_path('assets/images//logo/logo.png') }}" width="120">
+                    <img src="{{ public_path('assets/images/logo/logo.png') }}" width="120">
                 </td>
                 <td rowspan="3" class="text-center" style="font-size: 14px; font-weight: bold; width: 40%;">
                     PT. BUMI ALAM SEGAR

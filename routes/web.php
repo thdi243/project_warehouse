@@ -18,6 +18,7 @@ use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wfg\MasterDestinasiController;
 use App\Http\Controllers\Wfg\LoadingOrderController;
 use App\Http\Controllers\Dashboard\WrmInventoryController;
+use App\Http\Controllers\Dashboard\WfgLoadingOrderDashboardController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
 use App\Http\Controllers\Wrm\Inventory\StockTransferController;
@@ -95,6 +96,7 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/ikat-terpal', [IkatTerpalDashboardController::class, 'index'])->name('dashboard.ikat-terpal');
             Route::get('/wrm/index', [WrmInventoryController::class, 'index'])->name('dashboard.wrm.index')->middleware(['permission:dashboard-wrm']);
+            Route::get('/wfg/loading-order', [WfgLoadingOrderDashboardController::class, 'index'])->name('dashboard.wfg.loading-order');
         });
     });
 
@@ -298,6 +300,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/validate/{id}', [LoadingOrderController::class, 'validateOrder'])->name('wfg.loading_order.validate');
                 Route::get('/scan', [LoadingOrderController::class, 'scanBarcode'])->name('wfg.loading_order.scan');
                 Route::get('/search-materials', [LoadingOrderController::class, 'searchMaterials'])->name('wfg.loading_order.search_materials');
+                Route::get('/download/{id}', [LoadingOrderController::class, 'download'])->name('wfg.loading_order.download');
             });
 
             // Maste Barang SO WFG

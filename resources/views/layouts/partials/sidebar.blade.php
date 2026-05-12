@@ -122,6 +122,13 @@
                                                 <i class="mdi mdi-warehouse"></i>Inventory WRM </a>
                                         </li>
                                     @endcan
+                                    @can('permission', 'dashboard-wfg-loading-order')
+                                        <li class="nav-item">
+                                            <a href="{{ route('dashboard.wfg.loading-order') }}"
+                                                class="nav-link {{ request()->routeIs('dashboard.wfg.loading-order') ? 'active' : '' }}">
+                                                <i class="mdi mdi-truck-cargo-container"></i>Loading Order WFG </a>
+                                        </li>
+                                    @endcan
                                 </ul>
                             </div>
                         </li>
