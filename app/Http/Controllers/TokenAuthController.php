@@ -91,6 +91,20 @@ class TokenAuthController extends Controller
 
             Log::info("SSO: Login sukses untuk user [{$user->username}] via SSO");
 
+            // Cek apakah ada redirect path tujuan
+            $next = $request->query('next');
+            if ($next) {
+                // Jika $next adalah URL lengkap, langsung redirect
+                if (filter_var($next, FILTER_VALIDATE_URL)) {
+                    return redirect()->away($next)->with('success', 'Login berhasil melalui SSO');
+                }
+                
+                // Jika $next adalah path (misal: purchase-requesition/approval), 
+                // pastikan ada slash di depan agar dianggap absolute path dari root
+                $targetPath = '/' . ltrim($next, '/');
+                return redirect($targetPath)->with('success', 'Login berhasil melalui SSO');
+            }
+
             return redirect()->route('dashboard')
                 ->with('success', 'Login berhasil melalui SSO');
         } catch (\Exception $e) {
