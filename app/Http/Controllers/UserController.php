@@ -104,6 +104,7 @@ class UserController extends Controller
             'email' => 'required|email',
             'jabatan' => 'required',
             'nik' => 'required',
+            'departemen' => 'required',
             'bagian' => 'required',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'principal' => 'nullable|string|max:255',
@@ -139,7 +140,7 @@ class UserController extends Controller
             'email' => $request->email,
             'nik' => $request->nik,
             'jabatan' => $request->jabatan,
-            'departemen' => 'warehouse',
+            'departemen' => $request->departemen,
             'bagian' => $request->bagian,
             'image' => $imagePath,
         ]);

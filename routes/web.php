@@ -186,8 +186,10 @@ Route::middleware('auth')->group(function () {
         });
 
         // Purchase Requesition
-        Route::prefix('purchase-requesition')->middleware(['permission:wsp-stock-pr,wsp-approval-pr'])->group(function () {
+        // Route::prefix('purchase-requesition')->middleware(['permission:wsp-form-pr,wsp-approval-pr'])->group(function () {
+        Route::prefix('purchase-requesition')->group(function () {
             Route::get('/index', [WspPurchaseRequesitionController::class, 'index'])->name('stock.pr.index');
+            Route::get('/history', [WspPurchaseRequesitionController::class, 'history'])->name('stock.pr.history');
             Route::get('/approval', [WspPurchaseRequesitionController::class, 'approvalIndex'])->name('stock.pr.approval');
             Route::post('/store', [WspPurchaseRequesitionController::class, 'store'])->name('stock.pr.store');
             Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved'])->name('stock.pr.reserved');

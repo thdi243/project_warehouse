@@ -160,7 +160,7 @@ Route::prefix('notifications')->group(function () {
 
 Route::prefix('purchase-requesition')->middleware('web')->group(function () {
     Route::get('/getData', [WspPurchaseRequesitionController::class, 'getDataPR']);
-    // Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR']);
+    Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR']);
     // Route::post('/store', [WspPurchaseRequesitionController::class, 'store']);
     Route::get('/print-riwayat/{id}', [WspPurchaseRequesitionController::class, 'printRiwayat']);
     Route::get('/getBarang/search', [WspPurchaseRequesitionController::class, 'searchSOH']);
