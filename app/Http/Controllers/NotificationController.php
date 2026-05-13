@@ -233,6 +233,67 @@ class NotificationController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Notifikasi berhasil dihapus']);
     }
 
+    public function getNotificationsByExternalUser(Request $request)
+    {
+        // Validasi internal key jika diperlukan
+        // if ($request->header('X-Internal-Key') !== env('INTERNAL_PORTAL_KEY')) {
+        //     return response()->json(['error' => 'Unauthorized'], 401);
+        // }
+
+        $username = $request->query('username');
+        $departemen = $request->query('departemen');
+
+        if (!$username || !$departemen) {
+            return response()->json(['error' => 'Username and Departemen are required'], 400);
+        }
+
+        // Cari user berdasarkan username dan departemen (case-insensitive)
+        $user = User::whereRaw('LOWER(trim(username)) = ?', [strtolower(trim($username))])
+            ->whereRaw('LOWER(trim(departemen)) = ?', [strtolower(trim($departemen))])
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'error' => 'User not found in Warehouse system'
+            ], 404);
+        }
+
+        $userId = $user->id;
+
+        // Trigger pencarian/pembuatan notifikasi dinamis (SOP & Barang Baru)
+        // Agar data tersimpan di database sebelum ditarik oleh API
+        $this->getSopApprovalNotification($userId);
+        $this->getBarangBaruNotifications($user);
+
+        // Ambil notifikasi dari database
+        $notifications = NotificationsModel::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($n) {
+                return [
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'url' => $n->url,
+                    'type' => $n->type,
+                    'created_at' => $n->created_at->format('d F Y, H:i'),
+                    'created_at_human' => $n->created_at->diffForHumans(),
+                    'is_read' => $n->is_read
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'departemen' => $user->departemen
+            ],
+            'data' => $notifications
+        ]);
+    }
+
     public function destroyAll()
     {
         NotificationsModel::truncate();

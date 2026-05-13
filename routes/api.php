@@ -156,6 +156,7 @@ Route::prefix('notifications')->group(function () {
     Route::get('/index', [NotificationController::class, 'index']);
     Route::post('/read/{id}', [NotificationController::class, 'markAsRead']);
     Route::post('/show/kalibrasi', [NotificationController::class, 'showNotification'])->name('notifications.kalibrasi');
+    Route::get('/external/get-data', [NotificationController::class, 'getNotificationsByExternalUser']);
 });
 
 Route::prefix('purchase-requesition')->middleware('web')->group(function () {
