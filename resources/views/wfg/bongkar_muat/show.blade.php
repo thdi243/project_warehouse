@@ -299,7 +299,7 @@
                                                 method="POST">
                                                 @csrf
                                                 <button type="submit" class="btn btn-success px-5 fs-5 shadow-sm">
-                                                    <i class="ri-check-double-line"></i> Validasi Order
+                                                    <i class="ri-check-double-line"></i> Verifikasi Data
                                                 </button>
                                             </form>
                                         @else

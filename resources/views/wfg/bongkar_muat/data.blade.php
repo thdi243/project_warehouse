@@ -57,9 +57,154 @@
         </div>
     </div>
 
+    {{-- Edit Item Modal --}}
+    <div class="modal fade" id="editItemModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Item Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-edit-item">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" id="edit-item-id">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Material</label>
+                            <input type="text" class="form-control bg-light" id="edit-item-material" readonly>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Batch Number</label>
+                                <input type="text" name="batch_number" id="edit-item-batch" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Jenis</label>
+                                <select name="jenis" id="edit-item-jenis" class="form-select">
+                                    <option value="P">Full Pallet (P)</option>
+                                    <option value="R">Receh (R)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" name="qty" id="edit-item-qty" class="form-control" step="any">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">TO Dummy</label>
+                                <input type="text" name="to_dummy" id="edit-item-to-dummy" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">TO SAP</label>
+                                <input type="text" name="to_sap" id="edit-item-to-sap" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <div class="form-check form-switch form-switch-warning">
+                                    <input class="form-check-input" type="checkbox" name="double_po" id="edit-item-double-po" value="1">
+                                    <label class="form-check-label" for="edit-item-double-po">Double PO</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check form-switch form-switch-danger">
+                                    <input class="form-check-input" type="checkbox" name="cancel_to" id="edit-item-cancel-to" value="1">
+                                    <label class="form-check-label" for="edit-item-cancel-to">Cancel TO</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Edit Header Modal --}}
+    <div class="modal fade" id="editHeaderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Bongkar Muat Header</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-edit-header">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" id="edit-header-id">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tanggal</label>
+                                <input type="date" name="tanggal" id="edit-header-tanggal" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Wavepick SMU</label>
+                                <input type="text" name="wavepick_smu" id="edit-header-wavepick_smu" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Shipment SMU</label>
+                                <input type="text" name="shipment_smu" id="edit-header-shipment_smu" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Wavepick BAS</label>
+                                <input type="text" name="wavepick_bas" id="edit-header-wavepick_bas" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Shipment BAS</label>
+                                <input type="text" name="shipment_bas" id="edit-header-shipment_bas" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">No. Mobil</label>
+                                <input type="text" name="no_mobil" id="edit-header-no_mobil" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">No. Kontainer</label>
+                                <input type="text" name="no_kontainer" id="edit-header-no_kontainer" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">No. Segel BAS</label>
+                                <input type="text" name="no_segel_bas" id="edit-header-no_segel_bas" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">No. Segel Vendor</label>
+                                <input type="text" name="no_segel_vendor" id="edit-header-no_segel_vendor" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Slipsheet</label>
+                                <input type="number" name="jumlah_slipsheet" id="edit-header-slipsheet" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- Detail Modal --}}
     <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header bg-light">
                     <h5 class="modal-title">Bongkar Muat Details</h5>
@@ -153,6 +298,7 @@
                                     <th>TO Dummy</th>
                                     <th>TO SAP</th>
                                     <th>Flags</th>
+                                    <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -252,9 +398,9 @@
                                     <button type="button" class="btn btn-soft-info btn-sm btn-detail" data-order="${orderJson}" title="Quick View Items">
                                         <i class="ri-eye-line"></i>
                                     </button>
-                                    <a href="${showUrl}" class="btn btn-soft-primary btn-sm" title="Approval & Verification Page">
-                                        <i class="ri-file-list-3-line"></i>
-                                    </a>
+                                    <button id type="button" class="btn btn-soft-primary btn-sm btn-edit" data-order="${orderJson}" title="Edit Items">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
                                     <button type="button" class="btn btn-soft-danger btn-sm btn-delete" data-id="${order.id}" title="Delete">
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
@@ -289,7 +435,7 @@
                             renderPagination(paginatedData);
                         } else {
                             tbody.append(
-                                '<tr><td colspan="9" class="text-center py-4">No bongkar muat records found.</td></tr>'
+                                '<tr><td colspan="13" class="text-center py-4">No bongkar muat records found.</td></tr>'
                             );
                         }
                     },
@@ -344,6 +490,9 @@
 
             $(document).on('click', '.btn-detail', function() {
                 const order = JSON.parse(decodeURIComponent($(this).data('order')));
+                
+                // Store order in window for header edit
+                window.currentOrder = order;
 
                 $('#detail-no-dok').text(order.no_dokumen || '-');
                 $('#detail-wavepick_smu').text(order.wavepick_smu || '-');
@@ -376,12 +525,22 @@
                             <td class="text-center">${detail.qty || 0}</td>
                             <td class="text-center small">${detail.to_dummy || '-'}</td>
                             <td class="text-center small">${detail.to_sap || '-'}</td>
-                            <td class="text-center">
-                                ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
-                                ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel</span>' : ''}
-                            </td>
-                        </tr>
-                    `;
+                                <td class="text-center">
+                                    ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
+                                    ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel</span>' : ''}
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-soft-info btn-edit-item" 
+                                        data-item='${encodeURIComponent(JSON.stringify(detail))}'>
+                                        <i class="ri-edit-2-line"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-soft-danger btn-delete-item" 
+                                        data-id="${detail.id}">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
                     });
                 } else {
                     detailsHtml = '<tr><td colspan="4" class="text-center">No items found</td></tr>';
@@ -426,6 +585,135 @@
                 const id = $(this).data('id');
 
                 window.open("{{ url('wfg/bongkar-muat/download') }}/" + id, '_blank');
+            });
+
+            // Edit Item Logic
+            $(document).on('click', '.btn-edit-item', function() {
+                const detail = JSON.parse(decodeURIComponent($(this).data('item')));
+                
+                $('#edit-item-id').val(detail.id);
+                $('#edit-item-material').val(`[${detail.material.mid_barang}] ${detail.material.nama_barang}`);
+                $('#edit-item-batch').val(detail.batch_number);
+                $('#edit-item-jenis').val(detail.jenis);
+                $('#edit-item-qty').val(detail.qty);
+                $('#edit-item-to-dummy').val(detail.to_dummy);
+                $('#edit-item-to-sap').val(detail.to_sap);
+                $('#edit-item-double-po').prop('checked', detail.double_po == 1);
+                $('#edit-item-cancel-to').prop('checked', detail.cancel_to == 1);
+
+                $('#detailModal').modal('hide');
+                $('#editItemModal').modal('show');
+            });
+
+            // Optional: Restore detail modal when edit modal is closed
+            $('#editItemModal').on('hidden.bs.modal', function () {
+                // If the detail modal was hidden to show this one, we might want to bring it back
+                // We check if we are not currently showing a success message or similar
+                if (!$('.swal2-container').is(':visible')) {
+                    $('#detailModal').modal('show');
+                }
+            });
+
+            $('#form-edit-item').on('submit', function(e) {
+                e.preventDefault();
+                const id = $('#edit-item-id').val();
+                const formData = $(this).serialize();
+
+                $.ajax({
+                    url: "{{ url('wfg/bongkar-muat/update-item') }}/" + id,
+                    type: 'PUT',
+                    data: formData,
+                    success: function(response) {
+                        if (response.status) {
+                            $('#editItemModal').modal('hide');
+                            Swal.fire('Success', response.message, 'success');
+                            loadData(); // Refresh main list
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to update item', 'error');
+                    }
+                });
+            });
+
+            // Delete Item Logic
+            $(document).on('click', '.btn-delete-item', function() {
+                const id = $(this).data('id');
+                Swal.fire({
+                    title: 'Hapus Item?',
+                    text: "Item ini akan dihapus dari Bongkar Muat!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, hapus!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ url('wfg/bongkar-muat/delete-item') }}/" + id,
+                            type: 'DELETE',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                if (response.status) {
+                                    $('#detailModal').modal('hide');
+                                    Swal.fire('Deleted!', response.message, 'success');
+                                    loadData();
+                                }
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to delete item', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Edit Header Logic
+            $(document).on('click', '.btn-edit', function() {
+                const order = JSON.parse(decodeURIComponent($(this).data('order')));
+                if (!order) return;
+
+                $('#edit-header-id').val(order.id);
+                $('#edit-header-tanggal').val(order.tanggal);
+                $('#edit-header-wavepick_smu').val(order.wavepick_smu);
+                $('#edit-header-shipment_smu').val(order.shipment_smu);
+                $('#edit-header-wavepick_bas').val(order.wavepick_bas);
+                $('#edit-header-shipment_bas').val(order.shipment_bas);
+                $('#edit-header-no_mobil').val(order.no_mobil);
+                $('#edit-header-no_kontainer').val(order.no_kontainer);
+                $('#edit-header-no_segel_bas').val(order.no_segel_bas);
+                $('#edit-header-no_segel_vendor').val(order.no_segel_vendor);
+                $('#edit-header-slipsheet').val(order.jumlah_slipsheet);
+
+                $('#editHeaderModal').modal('show');
+            });
+
+            $('#editHeaderModal').on('hidden.bs.modal', function () {
+                // No need to restore detail modal anymore as we open from main table
+            });
+
+            $('#form-edit-header').on('submit', function(e) {
+                e.preventDefault();
+                const id = $('#edit-header-id').val();
+                const formData = $(this).serialize();
+
+                $.ajax({
+                    url: "{{ url('wfg/bongkar-muat/update') }}/" + id,
+                    type: 'PUT',
+                    data: formData,
+                    success: function(response) {
+                        if (response.status) {
+                            $('#editHeaderModal').modal('hide');
+                            Swal.fire('Success', response.message, 'success');
+                            loadData(); // Refresh list
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to update header', 'error');
+                    }
+                });
             });
         });
     </script>

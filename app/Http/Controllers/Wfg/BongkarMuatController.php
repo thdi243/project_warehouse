@@ -590,4 +590,79 @@ class BongkarMuatController extends Controller
 
         return $pdf->stream($filename);
     }
+
+    public function updateItem(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'batch_number' => 'nullable|string',
+            'jenis' => 'required|in:P,R',
+            'qty' => 'required|numeric|min:0',
+            'to_dummy' => 'nullable|string',
+            'to_sap' => 'nullable|string',
+            'double_po' => 'boolean',
+            'cancel_to' => 'boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        try {
+            $item = BongkarMuatDetail::findOrFail($id);
+            $item->update([
+                'batch_number' => $request->batch_number,
+                'jenis' => $request->jenis,
+                'qty' => $request->qty,
+                'to_dummy' => $request->to_dummy,
+                'to_sap' => $request->to_sap,
+                'double_po' => $request->double_po ?? false,
+                'cancel_to' => $request->cancel_to ?? false,
+            ]);
+
+            return response()->json(['status' => true, 'message' => 'Item updated successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function deleteItem($id)
+    {
+        try {
+            $item = BongkarMuatDetail::findOrFail($id);
+            $item->delete();
+
+            return response()->json(['status' => true, 'message' => 'Item deleted successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'tanggal' => 'required|date',
+            'shipment_smu' => 'nullable|string',
+            'wavepick_smu' => 'nullable|string',
+            'shipment_bas' => 'nullable|string',
+            'wavepick_bas' => 'nullable|string',
+            'no_mobil' => 'nullable|string',
+            'no_kontainer' => 'nullable|string',
+            'no_segel_bas' => 'nullable|string',
+            'no_segel_vendor' => 'nullable|string',
+            'jumlah_slipsheet' => 'nullable|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        try {
+            $order = BongkarMuat::findOrFail($id);
+            $order->update($request->all());
+
+            return response()->json(['status' => true, 'message' => 'Bongkar Muat updated successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
 }

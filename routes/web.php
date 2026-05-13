@@ -301,6 +301,9 @@ Route::middleware('auth')->group(function () {
                 Route::get('/scan', [BongkarMuatController::class, 'scanBarcode'])->name('wfg.bongkar_muat.scan');
                 Route::get('/search-materials', [BongkarMuatController::class, 'searchMaterials'])->name('wfg.bongkar_muat.search_materials');
                 Route::get('/download/{id}', [BongkarMuatController::class, 'download'])->name('wfg.bongkar_muat.download');
+                Route::put('/update-item/{id}', [BongkarMuatController::class, 'updateItem'])->name('wfg.bongkar_muat.update_item');
+                Route::delete('/delete-item/{id}', [BongkarMuatController::class, 'deleteItem'])->name('wfg.bongkar_muat.delete_item');
+                Route::put('/update/{id}', [BongkarMuatController::class, 'update'])->name('wfg.bongkar_muat.update');
             });
 
             // Maste Barang SO WFG
