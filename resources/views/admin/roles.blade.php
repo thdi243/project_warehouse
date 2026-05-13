@@ -158,7 +158,7 @@
 
     function editRole(id, name, display, desc) {
         $('#role-id').val(id);
-        $('#role-name').val(name).prop('readonly', true);
+        $('#role-name').val(name);
         $('#role-display-name').val(display);
         $('#role-description').val(desc);
         $('#roleModalLabel').text('Edit Role');

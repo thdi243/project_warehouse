@@ -10,6 +10,7 @@ use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\P2h\UserForkliftAssignmentModel;
 use App\Models\Wfg\MasterDestinasi;
+use App\Models\NotificationsModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +61,7 @@ class BongkarMuatController extends Controller
         $perPage = 10;
         $search = $request->input('search');
 
-        if (!auth()->user()->can('role', 'verificator')) {
+        if (!auth()->user()->can('role', 'verificator-bongkar-muat-wfg')) {
             return response()->json([
                 'status' => true,
                 'data' => [
@@ -375,6 +376,20 @@ class BongkarMuatController extends Controller
             'status' => 'loaded' // Final status before verification
         ]);
 
+        // Kirim notifikasi ke semua verificator
+        $verificators = User::role('verificator-bongkar-muat-wfg')->get();
+        foreach ($verificators as $verificator) {
+            NotificationsModel::create([
+                'user_id' => $verificator->id,
+                'notifiable_type' => BongkarMuat::class,
+                'notifiable_id' => $order->id,
+                'title' => 'Bongkar Muat Menunggu Verifikasi',
+                'message' => "Bongkar Muat {$order->no_dokumen} telah diselesaikan oleh driver dan menunggu verifikasi Anda.",
+                'url' => route('wfg.bongkar_muat.show', $order->id),
+                'is_read' => false,
+            ]);
+        }
+
         return back()->with('success', 'Driver approved successfully.');
     }
 
@@ -412,7 +427,7 @@ class BongkarMuatController extends Controller
 
     public function validateOrder(Request $request, $id)
     {
-        if (!auth()->user()->can('role', 'verificator')) {
+        if (!auth()->user()->can('role', 'verificator-bongkar-muat-wfg')) {
             return back()->with('error', 'Unauthorized. Anda tidak memiliki role verificator.');
         }
 
@@ -421,6 +436,11 @@ class BongkarMuatController extends Controller
         if ($order->status !== 'loaded') {
             return back()->with('error', 'Order belum siap untuk diverifikasi.');
         }
+
+        // Hapus semua notifikasi terkait order ini untuk semua verificator
+        NotificationsModel::where('notifiable_type', BongkarMuat::class)
+            ->where('notifiable_id', $order->id)
+            ->delete();
 
         // Mock Validation Logic: 
         // Check if all items belong to the wavepick.
@@ -499,6 +519,11 @@ class BongkarMuatController extends Controller
 
         // Only allow deletion if not yet verified or heavily processed
         if (in_array($order->status, ['draft', 'submitted', 'rejected'])) {
+            // Hapus notifikasi jika ada
+            NotificationsModel::where('notifiable_type', BongkarMuat::class)
+                ->where('notifiable_id', $order->id)
+                ->delete();
+
             $order->delete();
             return response()->json(['status' => true, 'message' => 'Bongkar Muat successfully deleted.']);
         }
