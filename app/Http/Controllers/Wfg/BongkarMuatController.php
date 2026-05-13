@@ -384,7 +384,7 @@ class BongkarMuatController extends Controller
                 'notifiable_type' => BongkarMuat::class,
                 'notifiable_id' => $order->id,
                 'title' => 'Bongkar Muat Menunggu Verifikasi',
-                'message' => "Bongkar Muat {$order->no_dokumen} telah diselesaikan oleh driver dan menunggu verifikasi Anda.",
+                'message' => "Bongkar Muat {$order->no_dokumen} telah diselesaikan oleh checker dan menunggu verifikasi Anda.",
                 'url' => route('wfg.bongkar_muat.show', $order->id),
                 'is_read' => false,
             ]);

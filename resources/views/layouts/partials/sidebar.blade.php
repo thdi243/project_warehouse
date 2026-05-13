@@ -432,7 +432,7 @@
                                                             <i class="bx bx-git-commit fs-12"></i>Data Monitoring
                                                         </a>
                                                     </li>
-                                                    @can('permission', 'approval-loading-order')
+                                                    @can('permission', 'approval-bongkar-muat')
                                                         <li class="nav-item">
                                                             <a href="{{ route('wfg.bongkar_muat.approval') }}"
                                                                 class="nav-link {{ request()->routeIs('wfg.bongkar_muat.approval') ? 'active' : '' }}">
