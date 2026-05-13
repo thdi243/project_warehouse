@@ -298,7 +298,9 @@
                                     <th>TO Dummy</th>
                                     <th>TO SAP</th>
                                     <th>Flags</th>
-                                    <th class="text-center">Actions</th>
+                                    @can('permission', 'approval-bongkar-muat')
+                                        <th class="text-center">Actions</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -398,9 +400,11 @@
                                     <button type="button" class="btn btn-soft-info btn-sm btn-detail" data-order="${orderJson}" title="Quick View Items">
                                         <i class="ri-eye-line"></i>
                                     </button>
-                                    <button id type="button" class="btn btn-soft-primary btn-sm btn-edit" data-order="${orderJson}" title="Edit Items">
-                                        <i class="ri-edit-line"></i>
-                                    </button>
+                                    @can('permission', 'approval-bongkar-muat')
+                                        <button type="button" class="btn btn-soft-primary btn-sm btn-edit" data-order="${orderJson}" title="Edit Items">
+                                            <i class="ri-edit-line"></i>
+                                        </button>
+                                    @endcan 
                                     <button type="button" class="btn btn-soft-danger btn-sm btn-delete" data-id="${order.id}" title="Delete">
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
@@ -525,10 +529,11 @@
                             <td class="text-center">${detail.qty || 0}</td>
                             <td class="text-center small">${detail.to_dummy || '-'}</td>
                             <td class="text-center small">${detail.to_sap || '-'}</td>
-                                <td class="text-center">
-                                    ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
-                                    ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel</span>' : ''}
-                                </td>
+                            <td class="text-center">
+                                ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
+                                ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel</span>' : ''}
+                            </td>
+                            @can('permission', 'approval-bongkar-muat')
                                 <td class="text-center">
                                     <button type="button" class="btn btn-sm btn-soft-info btn-edit-item" 
                                         data-item='${encodeURIComponent(JSON.stringify(detail))}'>
@@ -539,7 +544,8 @@
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
                                 </td>
-                            </tr>
+                            @endcan
+                        </tr>
                         `;
                     });
                 } else {
