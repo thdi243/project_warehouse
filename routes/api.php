@@ -6,7 +6,7 @@ use App\Http\Controllers\Dashboard\BpsDashboardController;
 use App\Http\Controllers\Dashboard\UserDashboardController;
 use App\Http\Controllers\Dashboard\WspManRakController;
 use App\Http\Controllers\Dashboard\WrmInventoryController;
-use App\Http\Controllers\Dashboard\WfgLoadingOrderDashboardController;
+use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
@@ -64,13 +64,13 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/inventory/location-layout', [WrmInventoryController::class, 'getLocationLayout']);
     });
 
-    // WFG Loading Order Dashboard
+    // WFG Bongkar Muat Dashboard
     Route::prefix('wfg')->group(function () {
-        Route::get('/loading-order/kpi',          [WfgLoadingOrderDashboardController::class, 'getKpi']);
-        Route::get('/loading-order/wavepick-status', [WfgLoadingOrderDashboardController::class, 'getWavepickByStatus']);
-        Route::get('/loading-order/chart-trend',  [WfgLoadingOrderDashboardController::class, 'getChartTrend']);
-        Route::get('/loading-order/chart-status', [WfgLoadingOrderDashboardController::class, 'getChartStatus']);
-        Route::get('/loading-order/chart-destination', [WfgLoadingOrderDashboardController::class, 'getChartDestination']);
+        Route::get('/bongkar-muat/kpi',          [WfgBongkarMuatDashboardController::class, 'getKpi']);
+        Route::get('/bongkar-muat/wavepick-status', [WfgBongkarMuatDashboardController::class, 'getWavepickByStatus']);
+        Route::get('/bongkar-muat/chart-trend',  [WfgBongkarMuatDashboardController::class, 'getChartTrend']);
+        Route::get('/bongkar-muat/chart-status', [WfgBongkarMuatDashboardController::class, 'getChartStatus']);
+        Route::get('/bongkar-muat/chart-destination', [WfgBongkarMuatDashboardController::class, 'getChartDestination']);
     });
 
     // WSP

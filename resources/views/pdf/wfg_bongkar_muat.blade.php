@@ -5,7 +5,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <title>Loading Order</title>
+        <title>Bongkar Muat</title>
 
         <style>
             @page {
@@ -161,7 +161,7 @@
 
             <tr>
                 <td class="text-center" rowspan="2" style="font-size: 12px; font-weight: bold;">
-                    FORM PERINTAH MUAT BARANG
+                    FORM BONGKAR MUAT BARANG
                 </td>
                 <td class="text-left">Tanggal</td>
                 <td class="text-left">: {{ \Carbon\Carbon::parse($order->tanggal)->format('d/m/Y') }}</td>

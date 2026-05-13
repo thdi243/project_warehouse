@@ -8,9 +8,9 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('wfg_loading_order_details', function (Blueprint $table) {
+        Schema::create('wfg_bongkar_muat_details', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('loading_order_id')->constrained('wfg_loading_orders')->cascadeOnDelete();
+            $table->foreignId('bongkar_muat_id')->constrained('wfg_bongkar_muats')->cascadeOnDelete();
             $table->foreignId('material_id')->constrained('wfg_barang')->cascadeOnDelete();
             $table->string('batch_number')->nullable();
             $table->enum('jenis', ['P', 'R'])->default('P')->comment('P = Pallet, R = Receh');
@@ -28,6 +28,6 @@ return new class extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('wfg_loading_order_details');
+        Schema::dropIfExists('wfg_bongkar_muat_details');
     }
 };

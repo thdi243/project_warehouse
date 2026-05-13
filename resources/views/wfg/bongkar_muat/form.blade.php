@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '| Create Loading Order')
+@section('title', '| Create Bongkar Muat')
 
 @section('styles')
     <style>
@@ -32,18 +32,18 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0">Create Loading Order</h4>
+                        <h4 class="mb-sm-0">Create Bongkar Muat</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript: void(0);">WFG</a></li>
-                                <li class="breadcrumb-item active">Create Loading Order</li>
+                                <li class="breadcrumb-item active">Create Bongkar Muat</li>
                             </ol>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <form id="form-loading-order">
+            <form id="form-bongkar-muat">
                 @csrf
                 <div class="row">
                     {{-- Header Section --}}
@@ -364,7 +364,7 @@
         }
 
         function saveProgress() {
-            let formData = $('#form-loading-order').serializeArray();
+            let formData = $('#form-bongkar-muat').serializeArray();
             items.forEach((item, index) => {
                 formData.push({
                     name: `details[${index}][material_id]`,
@@ -400,7 +400,7 @@
                 });
             });
 
-            $.post("{{ route('wfg.loading_order.save_draft') }}", formData, function(res) {
+            $.post("{{ route('wfg.bongkar_muat.save_draft') }}", formData, function(res) {
                 if (res.status && res.jam_muat) {
                     $('#jam').val(res.jam_muat);
                     console.log('Progress saved automatically');
@@ -526,7 +526,7 @@
                 width: '100%'
             });
 
-            $('#form-loading-order input, #form-loading-order select').on('change', function() {
+            $('#form-bongkar-muat input, #form-bongkar-muat select').on('change', function() {
                 if (items.length > 0) {
                     saveProgress();
                 }
@@ -538,7 +538,7 @@
                 width: '100%',
                 minimumInputLength: 2,
                 ajax: {
-                    url: "{{ route('wfg.loading_order.search_materials') }}",
+                    url: "{{ route('wfg.bongkar_muat.search_materials') }}",
                     dataType: 'json',
                     data: params => ({
                         q: params.term
@@ -570,7 +570,7 @@
                 }
             });
 
-            $('#form-loading-order').on('submit', function(e) {
+            $('#form-bongkar-muat').on('submit', function(e) {
                 e.preventDefault();
                 if (items.length === 0) {
                     Swal.fire('Empty!', 'Please scan at least one item.', 'warning');
@@ -580,13 +580,13 @@
                 let formData = $(this).serialize();
                 Swal.fire({
                     title: 'Confirm Submission?',
-                    text: "This will create a new Loading Order.",
+                    text: "This will create a new Bongkar Muat records.",
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Yes, Submit!'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        $.post("{{ route('wfg.loading_order.store') }}", formData, function(res) {
+                        $.post("{{ route('wfg.bongkar_muat.store') }}", formData, function(res) {
                             if (res.status) {
                                 Swal.fire('Success', res.message, 'success').then(() => {
                                     window.location.href = res.redirect;

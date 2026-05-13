@@ -6,14 +6,14 @@ use App\Models\Wfg\stock_opname\BarangWfgModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class LoadingOrderDetail extends Model
+class BongkarMuatDetail extends Model
 {
     use HasFactory;
 
-    protected $table = 'wfg_loading_order_details';
+    protected $table = 'wfg_bongkar_muat_details';
 
     protected $fillable = [
-        'loading_order_id',
+        'bongkar_muat_id',
         'material_id',
         'batch_number',
         'jenis',
@@ -31,7 +31,7 @@ class LoadingOrderDetail extends Model
 
     public function header()
     {
-        return $this->belongsTo(LoadingOrder::class, 'loading_order_id');
+        return $this->belongsTo(BongkarMuat::class, 'bongkar_muat_id');
     }
 
     public function material()

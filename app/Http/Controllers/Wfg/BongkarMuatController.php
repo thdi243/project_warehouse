@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Wfg;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Wfg\LoadingOrder;
-use App\Models\Wfg\LoadingOrderDetail;
+use App\Models\Wfg\BongkarMuat;
+use App\Models\Wfg\BongkarMuatDetail;
 use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\P2h\UserForkliftAssignmentModel;
@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class LoadingOrderController extends Controller
+class BongkarMuatController extends Controller
 {
     public function index()
     {
-        return view('wfg.loading_order.data');
+        return view('wfg.bongkar_muat.data');
     }
 
     public function data(Request $request)
@@ -31,7 +31,7 @@ class LoadingOrderController extends Controller
         $search = $request->input('search');
 
         // Log data semuanya di index
-        $query = LoadingOrder::with(['forkliftDriver', 'checker', 'destinasi', 'details.material', 'verificator']);
+        $query = BongkarMuat::with(['forkliftDriver', 'checker', 'destinasi', 'details.material', 'verificator']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -52,7 +52,7 @@ class LoadingOrderController extends Controller
 
     public function approval()
     {
-        return view('wfg.loading_order.approval');
+        return view('wfg.bongkar_muat.approval');
     }
 
     public function approvalData(Request $request)
@@ -73,7 +73,7 @@ class LoadingOrderController extends Controller
             ]);
         }
 
-        $query = LoadingOrder::with(['forkliftDriver:id,username,nama_lengkap', 'checker:id,username,nama_lengkap', 'destinasi:id,destinasi', 'details.material'])
+        $query = BongkarMuat::with(['forkliftDriver:id,username,nama_lengkap', 'checker:id,username,nama_lengkap', 'destinasi:id,destinasi', 'details.material'])
             ->where('status', 'loaded');
 
         if ($search) {
@@ -96,19 +96,19 @@ class LoadingOrderController extends Controller
     public function create()
     {
         // Check for draft
-        $draft = LoadingOrder::with('details.material')
+        $draft = BongkarMuat::with('details.material')
             ->where('created_by', auth()->id())
             ->where('status', 'draft')
             ->first();
 
         // Check if user has incomplete loading order (submitted/approved)
-        $incompleteOrder = LoadingOrder::where('created_by', auth()->id())
+        $incompleteOrder = BongkarMuat::where('created_by', auth()->id())
             ->whereIn('status', ['submitted', 'approved'])
             ->first();
 
         if ($incompleteOrder) {
-            return redirect()->route('wfg.loading_order.show', $incompleteOrder->id)
-                ->with('info', 'Anda memiliki Loading Order yang belum diselesaikan (Approval Checker/Driver). Silahkan selesaikan terlebih dahulu.');
+            return redirect()->route('wfg.bongkar_muat.show', $incompleteOrder->id)
+                ->with('info', 'Anda memiliki Bongkar Muat yang belum diselesaikan (Approval Checker/Driver). Silahkan selesaikan terlebih dahulu.');
         }
 
         $forkliftDrivers = UserForkliftAssignmentModel::with('user')
@@ -121,12 +121,12 @@ class LoadingOrderController extends Controller
         $destinations = MasterDestinasi::select('id', 'destinasi')->get();
 
         // Gates currently in use (released when status is loaded, verified, or rejected)
-        $bookedGates = LoadingOrder::whereIn('status', ['draft', 'submitted', 'approved'])
+        $bookedGates = BongkarMuat::whereIn('status', ['draft', 'submitted', 'approved'])
             ->whereNotNull('gate')
             ->pluck('gate')
             ->toArray();
 
-        return view('wfg.loading_order.form', compact('forkliftDrivers', 'checkers', 'destinations', 'draft', 'bookedGates'));
+        return view('wfg.bongkar_muat.form', compact('forkliftDrivers', 'checkers', 'destinations', 'draft', 'bookedGates'));
     }
 
     private function generateNoDokumen()
@@ -148,7 +148,7 @@ class LoadingOrderController extends Controller
 
         $now = now();
 
-        $lastOrder = LoadingOrder::whereYear('created_at', $now->year)
+        $lastOrder = BongkarMuat::whereYear('created_at', $now->year)
             ->whereMonth('created_at', $now->month)
             ->orderBy('id', 'desc')
             ->first();
@@ -170,13 +170,13 @@ class LoadingOrderController extends Controller
         try {
             DB::beginTransaction();
 
-            $existingDraft = LoadingOrder::where('created_by', auth()->id())
+            $existingDraft = BongkarMuat::where('created_by', auth()->id())
                 ->where('status', 'draft')
                 ->first();
 
             $noDok = $existingDraft?->no_dokumen ?? $this->generateNoDokumen();
 
-            $order = LoadingOrder::updateOrCreate([
+            $order = BongkarMuat::updateOrCreate([
                 'created_by' => auth()->id(),
                 'status' => 'draft',
             ], [
@@ -207,8 +207,8 @@ class LoadingOrderController extends Controller
             $order->details()->delete();
             if ($request->has('details')) {
                 foreach ($request->details as $detail) {
-                    LoadingOrderDetail::create([
-                        'loading_order_id' => $order->id,
+                    BongkarMuatDetail::create([
+                        'bongkar_muat_id' => $order->id,
                         'barcode' => $detail['barcode'] ?? null,
                         'material_id' => $detail['material_id'],
                         'batch_number' => $detail['batch_number'] ?? null,
@@ -266,7 +266,7 @@ class LoadingOrderController extends Controller
             DB::beginTransaction();
 
             // Find existing draft or create new
-            $order = LoadingOrder::where('created_by', auth()->id())->where('status', 'draft')->first();
+            $order = BongkarMuat::where('created_by', auth()->id())->where('status', 'draft')->first();
 
             $orderData = [
                 'tanggal' => $request->tanggal,
@@ -291,13 +291,13 @@ class LoadingOrderController extends Controller
             if ($order) {
                 $order->update($orderData);
             } else {
-                $order = LoadingOrder::create($orderData);
+                $order = BongkarMuat::create($orderData);
             }
 
             $order->details()->delete();
             foreach ($request->details as $detail) {
-                LoadingOrderDetail::create([
-                    'loading_order_id' => $order->id,
+                BongkarMuatDetail::create([
+                    'bongkar_muat_id' => $order->id,
                     'material_id' => $detail['material_id'],
                     'batch_number' => $detail['batch_number'],
                     'jenis' => $detail['jenis'] ?? 'P',
@@ -310,7 +310,7 @@ class LoadingOrderController extends Controller
             }
 
             DB::commit();
-            return response()->json(['status' => true, 'message' => 'Loading Order submitted successfully.', 'redirect' => route('wfg.loading_order.show', $order->id)]);
+            return response()->json(['status' => true, 'message' => 'Bongkar Muat submitted successfully.', 'redirect' => route('wfg.bongkar_muat.show', $order->id)]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
@@ -319,9 +319,9 @@ class LoadingOrderController extends Controller
 
     public function show($id)
     {
-        $order = LoadingOrder::with(['details.material', 'forkliftDriver', 'checker', 'verificator', 'destinasi'])->findOrFail($id);
+        $order = BongkarMuat::with(['details.material', 'forkliftDriver', 'checker', 'verificator', 'destinasi'])->findOrFail($id);
         $checkers = User::role('checker')->get();
-        return view('wfg.loading_order.show', compact('order', 'checkers'));
+        return view('wfg.bongkar_muat.show', compact('order', 'checkers'));
     }
 
     public function approveChecker(Request $request, $id)
@@ -331,7 +331,7 @@ class LoadingOrderController extends Controller
             'signature' => 'required|string', // Base64 signature
         ]);
 
-        $order = LoadingOrder::findOrFail($id);
+        $order = BongkarMuat::findOrFail($id);
 
         if ($order->status !== 'submitted') {
             return back()->with('error', 'Order is not in submitted status.');
@@ -358,7 +358,7 @@ class LoadingOrderController extends Controller
             'signature' => 'required|string', // Base64 signature
         ]);
 
-        $order = LoadingOrder::findOrFail($id);
+        $order = BongkarMuat::findOrFail($id);
 
         if ($order->status !== 'approved') {
             return back()->with('error', 'Order is not in approved status.');
@@ -399,7 +399,7 @@ class LoadingOrderController extends Controller
             }
 
             $fileName = $prefix . '_' . time() . '_' . Str::random(10) . '.' . $type;
-            $path = 'signatures/loading_order/' . $fileName;
+            $path = 'signatures/bongkar_muat/' . $fileName;
 
             Storage::disk('public')->put($path, $base64Data);
 
@@ -416,7 +416,7 @@ class LoadingOrderController extends Controller
             return back()->with('error', 'Unauthorized. Anda tidak memiliki role verificator.');
         }
 
-        $order = LoadingOrder::with('details')->findOrFail($id);
+        $order = BongkarMuat::with('details')->findOrFail($id);
 
         if ($order->status !== 'loaded') {
             return back()->with('error', 'Order belum siap untuk diverifikasi.');
@@ -495,20 +495,20 @@ class LoadingOrderController extends Controller
 
     public function destroy($id)
     {
-        $order = LoadingOrder::findOrFail($id);
+        $order = BongkarMuat::findOrFail($id);
 
         // Only allow deletion if not yet verified or heavily processed
         if (in_array($order->status, ['draft', 'submitted', 'rejected'])) {
             $order->delete();
-            return response()->json(['status' => true, 'message' => 'Loading Order successfully deleted.']);
+            return response()->json(['status' => true, 'message' => 'Bongkar Muat successfully deleted.']);
         }
 
-        return response()->json(['status' => false, 'message' => 'Cannot delete Loading Order with status ' . $order->status], 403);
+        return response()->json(['status' => false, 'message' => 'Cannot delete Bongkar Muat with status ' . $order->status], 403);
     }
 
     public function download($id)
     {
-        $order = LoadingOrder::with([
+        $order = BongkarMuat::with([
             'details.material',
             'forkliftDriver',
             'checker',
@@ -553,7 +553,7 @@ class LoadingOrderController extends Controller
             }
         }
 
-        $pdf = PDF::loadView('pdf.wfg_loading_order', compact(
+        $pdf = PDF::loadView('pdf.wfg_bongkar_muat', compact(
             'order',
             'totalFullPallet',
             'totalReceh',

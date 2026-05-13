@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '| Loading Order Approval')
+@section('title', '| Approval Bongkar Muat')
 
 @section('content')
     <div class="page-content">
@@ -8,7 +8,7 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0">Loading Order Approval & Verification</h4>
+                        <h4 class="mb-sm-0">Bongkar Muat Approval & Verification</h4>
                     </div>
                 </div>
             </div>
@@ -25,7 +25,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle" id="approvalTable">
+                        <table class="table table-hover align-middle" id="bongkarMuatApprovalTable">
                             <thead class="table-light">
                                 <tr>
                                     <th>No</th>
@@ -61,7 +61,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-light">
-                    <h5 class="modal-title">Loading Order Details</h5>
+                    <h5 class="modal-title">Bongkar Muat Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -166,12 +166,12 @@
 
             window.loadData = function(page = 1) {
                 const search = $('#searchInput').val();
-                const tbody = $('#approvalTable tbody');
+                const tbody = $('#bongkarMuatApprovalTable tbody');
                 tbody.empty();
                 $('#paginationContainer').empty();
 
                 $.ajax({
-                    url: "{{ route('wfg.loading_order.approval_data') }}",
+                    url: "{{ route('wfg.bongkar_muat.approval_data') }}",
                     type: "GET",
                     data: {
                         page: page,
@@ -206,7 +206,7 @@
                                     '-';
                                 const driverName = order.driver_name || '-';
                                 const viewUrl =
-                                    "{{ route('wfg.loading_order.show', ':id') }}".replace(
+                                    "{{ route('wfg.bongkar_muat.show', ':id') }}".replace(
                                         ':id', order.id);
 
                                 // Store order data for modal

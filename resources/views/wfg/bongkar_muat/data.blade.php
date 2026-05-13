@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '| Loading Orders')
+@section('title', '| Bongkar Muat')
 
 @section('content')
     <div class="page-content">
@@ -8,10 +8,10 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0">WFG Loading Orders</h4>
+                        <h4 class="mb-sm-0">WFG Bongkar Muat</h4>
                         <div class="page-title-right">
-                            <a href="{{ route('wfg.loading_order.form') }}" class="btn btn-primary">
-                                <i class="ri-add-line me-1"></i> New Loading Order
+                            <a href="{{ route('wfg.bongkar_muat.form') }}" class="btn btn-primary">
+                                <i class="ri-add-line me-1"></i> Tambah Bongkar Muat
                             </a>
                         </div>
                     </div>
@@ -27,7 +27,7 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle" id="loadingOrderTable">
+                        <table class="table table-hover align-middle" id="bongkarMuatTable">
                             <thead class="table-light text-nowrap">
                                 <tr>
                                     <th class="text-center">No</th>
@@ -62,7 +62,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-light">
-                    <h5 class="modal-title">Loading Order Details</h5>
+                    <h5 class="modal-title">Bongkar Muat Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -182,12 +182,12 @@
 
             window.loadData = function(page = 1) {
                 const search = $('#searchInput').val();
-                const tbody = $('#loadingOrderTable tbody');
+                const tbody = $('#bongkarMuatTable tbody');
                 tbody.empty();
                 $('#paginationContainer').empty();
 
                 $.ajax({
-                    url: "{{ route('wfg.loading_order.data') }}",
+                    url: "{{ route('wfg.bongkar_muat.data') }}",
                     type: "GET",
                     data: {
                         page: page,
@@ -245,7 +245,7 @@
                                 // Store order data for modal
                                 const orderJson = encodeURIComponent(JSON.stringify(order));
 
-                                const showUrl = "{{ url('wfg/loading-order/show') }}/" +
+                                const showUrl = "{{ url('wfg/bongkar-muat/show') }}/" +
                                     order.id;
 
                                 let actions = `
@@ -289,7 +289,7 @@
                             renderPagination(paginatedData);
                         } else {
                             tbody.append(
-                                '<tr><td colspan="9" class="text-center py-4">No loading orders found.</td></tr>'
+                                '<tr><td colspan="9" class="text-center py-4">No bongkar muat records found.</td></tr>'
                             );
                         }
                     },
@@ -395,7 +395,7 @@
                 const id = $(this).data('id');
                 Swal.fire({
                     title: 'Apakah anda yakin?',
-                    text: "Data Loading Order ini akan dihapus!",
+                    text: "Data Bongkar Muat ini akan dihapus!",
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#d33',
@@ -404,7 +404,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: "{{ url('wfg/loading-order') }}/" + id,
+                            url: "{{ url('wfg/bongkar-muat') }}/" + id,
                             type: 'DELETE',
                             data: {
                                 _token: "{{ csrf_token() }}"
@@ -425,7 +425,7 @@
             $(document).on('click', '.btn-download', function() {
                 const id = $(this).data('id');
 
-                window.open("{{ url('wfg/loading-order/download') }}/" + id, '_blank');
+                window.open("{{ url('wfg/bongkar-muat/download') }}/" + id, '_blank');
             });
         });
     </script>

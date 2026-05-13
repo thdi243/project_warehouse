@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ' | WFG Loading Order Dashboard')
+@section('title', ' | WFG Dashboard Bongkar Muat')
 
 @section('sidebar-size', 'sm')
 
@@ -154,9 +154,9 @@
             {{-- Header --}}
             <div class="row mb-4 align-items-center">
                 <div class="col-md-5 mb-3 mb-md-0">
-                    <h3 class="mb-1 fw-bold" style="letter-spacing:-.02em">WFG Loading Order Dashboard</h3>
+                    <h3 class="mb-1 fw-bold" style="letter-spacing:-.02em">WFG Dashboard Bongkar Muat</h3>
                     <p class="text-muted mb-0 small"><i class="bx bx-loader-circle me-1"></i>Monitoring real-time aktivitas
-                        loading & wavepick</p>
+                        bongkar muat & wavepick</p>
                 </div>
                 <div class="col-md-7">
                     <div class="d-flex gap-2 justify-content-md-end flex-wrap">
@@ -319,8 +319,7 @@
             <div class="row g-3 mb-4">
                 <div class="col-xl-8">
                     <div class="card dashboard-card h-100 p-3">
-                        <h6 class="fw-bold mb-0"><i class="bx bx-bar-chart-alt-2 me-2 text-primary"></i>Trend Loading
-                            Order & QTY Harian</h6>
+                        <h6 class="fw-bold mb-0"><i class="bx bx-bar-chart-alt-2 me-2 text-primary"></i>Trend Bongkar Muat & QTY Harian</h6>
                         <div id="chartTrend" style="height:310px; width:100%"></div>
                     </div>
                 </div>
@@ -400,11 +399,11 @@
 @section('scripts')
     <script>
         const API = {
-            kpi: '/api/dashboard/wfg/loading-order/kpi',
-            wavepick: '/api/dashboard/wfg/loading-order/wavepick-status',
-            trend: '/api/dashboard/wfg/loading-order/chart-trend',
-            status: '/api/dashboard/wfg/loading-order/chart-status',
-            destination: '/api/dashboard/wfg/loading-order/chart-destination',
+            kpi: '/api/dashboard/wfg/bongkar-muat/kpi',
+            wavepick: '/api/dashboard/wfg/bongkar-muat/wavepick-status',
+            trend: '/api/dashboard/wfg/bongkar-muat/chart-trend',
+            status: '/api/dashboard/wfg/bongkar-muat/chart-status',
+            destination: '/api/dashboard/wfg/bongkar-muat/chart-destination',
         };
 
         const STATUS_COLOR = {
@@ -538,7 +537,7 @@
                     <td class="text-center fw-bold">${fmt(o.total_qty_box)}</td>
                     <td class="text-center"><span class="status-badge badge-${o.status}">${STATUS_LABEL[o.status] || o.status}</span></td>
                     <td class="text-center">
-                        <a href="/wfg/loading-order/show/${o.id}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:11px">
+                        <a href="/wfg/bongkar-muat/show/${o.id}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:11px">
                             <i class="bx bx-show-alt"></i>
                         </a>
                     </td>

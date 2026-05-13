@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '| Checker & Driver Approval')
+@section('title', '| Verifikasi & Approval Bongkar Muat')
 
 @section('content')
     <div class="page-content">
@@ -8,9 +8,9 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0">Loading Order Approval & Verification</h4>
+                        <h4 class="mb-sm-0">Bongkar Muat Approval & Verification</h4>
                         <div class="page-title-right">
-                            <a href="{{ route('wfg.loading_order.index') }}" class="btn btn-soft-secondary btn-sm">Back to
+                            <a href="{{ route('wfg.bongkar_muat.index') }}" class="btn btn-soft-secondary btn-sm">Back to
                                 List</a>
                         </div>
                     </div>
@@ -22,7 +22,7 @@
                     <div class="card shadow-sm border-0">
                         <div class="card-body p-4">
                             <div class="text-center mb-4">
-                                <h5>Loading Order: {{ $order->no_dokumen }}</h5>
+                                <h5>Bongkar Muat: {{ $order->no_dokumen }}</h5>
                                 <p class="text-muted mb-0">
                                     @if ($order->wavepick_smu)
                                         <span class="badge bg-soft-primary text-primary">SMU:
@@ -130,7 +130,7 @@
 
                             <!-- Material Summary Table (Grouped by MID) -->
                             <div class="mb-5">
-                                <h6 class="text-uppercase fw-bold mb-3"><i class="ri-pie-chart-line me-1"></i> Loading
+                                <h6 class="text-uppercase fw-bold mb-3"><i class="ri-pie-chart-line me-1"></i> Bongkar Muat
                                     Summary (Per Material)</h6>
                                 <div class="table-responsive">
                                     <table class="table table-bordered align-middle">
@@ -224,7 +224,7 @@
                                         <p class="text-muted">Pilih checker yang melakukan proses loading.</p>
                                     </div>
                                     <form id="checker-approval-form"
-                                        action="{{ route('wfg.loading_order.approve_checker', $order->id) }}"
+                                        action="{{ route('wfg.bongkar_muat.approve_checker', $order->id) }}"
                                         method="POST" class="w-75 mx-auto">
                                         @csrf
                                         <div class="mb-3">
@@ -259,7 +259,7 @@
                                         <p class="text-muted">Masukkan nama driver yang akan membawa muatan.</p>
                                     </div>
                                     <form id="driver-approval-form"
-                                        action="{{ route('wfg.loading_order.approve_driver', $order->id) }}"
+                                        action="{{ route('wfg.bongkar_muat.approve_driver', $order->id) }}"
                                         method="POST" class="w-75 mx-auto">
                                         @csrf
                                         <div class="mb-3">
@@ -295,7 +295,7 @@
                                     </div>
                                     <div class="text-center mt-4">
                                         @if (auth()->user()->hasRole('verificator'))
-                                            <form action="{{ route('wfg.loading_order.validate', $order->id) }}"
+                                            <form action="{{ route('wfg.bongkar_muat.validate', $order->id) }}"
                                                 method="POST">
                                                 @csrf
                                                 <button type="submit" class="btn btn-success px-5 fs-5 shadow-sm">
@@ -341,7 +341,7 @@
                                                 @endif
                                             </div>
                                         </div>
-                                        <a href="{{ route('wfg.loading_order.index') }}"
+                                        <a href="{{ route('wfg.bongkar_muat.index') }}"
                                             class="btn btn-light mt-2">Kembali
                                             ke Data</a>
                                     </div>

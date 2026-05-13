@@ -3,42 +3,42 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Wfg\LoadingOrder;
-use App\Models\Wfg\LoadingOrderDetail;
+use App\Models\Wfg\BongkarMuat;
+use App\Models\Wfg\BongkarMuatDetail;
 use App\Models\Wfg\MasterDestinasi;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class WfgLoadingOrderDashboardController extends Controller
+class WfgBongkarMuatDashboardController extends Controller
 {
     public function index()
     {
-        return view('dashboard.wfg_loading_order_dashboard');
+        return view('dashboard.wfg_bongkar_muat_dashboard');
     }
 
     // --- 1. KPI Cards ---
     public function getKpi(Request $request)
     {
-        $query = LoadingOrderDetail::join('wfg_loading_orders', 'wfg_loading_order_details.loading_order_id', '=', 'wfg_loading_orders.id');
+        $query = BongkarMuatDetail::join('wfg_bongkar_muats', 'wfg_bongkar_muat_details.bongkar_muat_id', '=', 'wfg_bongkar_muats.id');
 
         // Date filter
         if ($request->start_date) {
-            $query->whereDate('wfg_loading_orders.tanggal', '>=', $request->start_date);
+            $query->whereDate('wfg_bongkar_muats.tanggal', '>=', $request->start_date);
         }
         if ($request->end_date) {
-            $query->whereDate('wfg_loading_orders.tanggal', '<=', $request->end_date);
+            $query->whereDate('wfg_bongkar_muats.tanggal', '<=', $request->end_date);
         }
 
         // Exclude draft orders from qty summary (only count submitted+)
-        $qtyQuery = (clone $query)->whereNotIn('wfg_loading_orders.status', ['draft']);
+        $qtyQuery = (clone $query)->whereNotIn('wfg_bongkar_muats.status', ['draft']);
 
-        $totalQtyFull  = (clone $qtyQuery)->where('wfg_loading_order_details.jenis', 'P')->sum('wfg_loading_order_details.qty');
-        $totalQtyReceh = (clone $qtyQuery)->where('wfg_loading_order_details.jenis', 'R')->sum('wfg_loading_order_details.qty');
+        $totalQtyFull  = (clone $qtyQuery)->where('wfg_bongkar_muat_details.jenis', 'P')->sum('wfg_bongkar_muat_details.qty');
+        $totalQtyReceh = (clone $qtyQuery)->where('wfg_bongkar_muat_details.jenis', 'R')->sum('wfg_bongkar_muat_details.qty');
         $totalQtyBox   = $totalQtyFull + $totalQtyReceh;
 
         // Count of orders per status (all dates if no filter)
-        $orderQuery = LoadingOrder::query();
+        $orderQuery = BongkarMuat::query();
         if ($request->start_date) {
             $orderQuery->whereDate('tanggal', '>=', $request->start_date);
         }
@@ -59,23 +59,23 @@ class WfgLoadingOrderDashboardController extends Controller
         }
 
         // Today's loading orders
-        $todayCount = LoadingOrder::whereDate('tanggal', Carbon::today())->count();
-        $todayQtyFull  = LoadingOrderDetail::join('wfg_loading_orders', 'wfg_loading_order_details.loading_order_id', '=', 'wfg_loading_orders.id')
-            ->whereDate('wfg_loading_orders.tanggal', Carbon::today())
-            ->whereNotIn('wfg_loading_orders.status', ['draft'])
-            ->where('wfg_loading_order_details.jenis', 'P')
-            ->sum('wfg_loading_order_details.qty');
+        $todayCount = BongkarMuat::whereDate('tanggal', Carbon::today())->count();
+        $todayQtyFull  = BongkarMuatDetail::join('wfg_bongkar_muats', 'wfg_bongkar_muat_details.bongkar_muat_id', '=', 'wfg_bongkar_muats.id')
+            ->whereDate('wfg_bongkar_muats.tanggal', Carbon::today())
+            ->whereNotIn('wfg_bongkar_muats.status', ['draft'])
+            ->where('wfg_bongkar_muat_details.jenis', 'P')
+            ->sum('wfg_bongkar_muat_details.qty');
 
         // Outbound BAS & SMU calculation
-        $outboundQuery = LoadingOrderDetail::join('wfg_loading_orders', 'wfg_loading_order_details.loading_order_id', '=', 'wfg_loading_orders.id')
-            ->join('wfg_barang', 'wfg_loading_order_details.material_id', '=', 'wfg_barang.id')
-            ->whereNotIn('wfg_loading_orders.status', ['draft']);
+        $outboundQuery = BongkarMuatDetail::join('wfg_bongkar_muats', 'wfg_bongkar_muat_details.bongkar_muat_id', '=', 'wfg_bongkar_muats.id')
+            ->join('wfg_barang', 'wfg_bongkar_muat_details.material_id', '=', 'wfg_barang.id')
+            ->whereNotIn('wfg_bongkar_muats.status', ['draft']);
 
         if ($request->start_date) {
-            $outboundQuery->whereDate('wfg_loading_orders.tanggal', '>=', $request->start_date);
+            $outboundQuery->whereDate('wfg_bongkar_muats.tanggal', '>=', $request->start_date);
         }
         if ($request->end_date) {
-            $outboundQuery->whereDate('wfg_loading_orders.tanggal', '<=', $request->end_date);
+            $outboundQuery->whereDate('wfg_bongkar_muats.tanggal', '<=', $request->end_date);
         }
 
         $outboundBAS = (clone $outboundQuery)->where('wfg_barang.principal', 'BAS')->count();
@@ -83,7 +83,7 @@ class WfgLoadingOrderDashboardController extends Controller
         $totalOutbound = $outboundBAS + $outboundSMU;
 
         // Truck logic
-        $truckQuery = LoadingOrder::whereNotIn('status', ['draft', 'rejected']);
+        $truckQuery = BongkarMuat::whereNotIn('status', ['draft', 'rejected']);
         if ($request->start_date) {
             $truckQuery->whereDate('tanggal', '>=', $request->start_date);
         }
@@ -121,7 +121,7 @@ class WfgLoadingOrderDashboardController extends Controller
     {
         $status = $request->status ?? null; // null = all
 
-        $query = LoadingOrder::with([
+        $query = BongkarMuat::with([
             'forkliftDriver:id,nama_lengkap',
             'checker:id,nama_lengkap',
             'destinasi:id,destinasi',
@@ -174,17 +174,17 @@ class WfgLoadingOrderDashboardController extends Controller
         $startDate = $request->start_date ? Carbon::parse($request->start_date)->startOfDay() : Carbon::now()->subDays(29)->startOfDay();
         $endDate   = $request->end_date   ? Carbon::parse($request->end_date)->endOfDay()     : Carbon::now()->endOfDay();
 
-        $dailyData = LoadingOrder::whereBetween('tanggal', [$startDate, $endDate])
+        $dailyData = BongkarMuat::whereBetween('tanggal', [$startDate, $endDate])
             ->whereNotIn('status', ['draft'])
             ->selectRaw('DATE(tanggal) as date, SUM(1) as order_count')
             ->groupBy('date')
             ->get()
             ->keyBy('date');
 
-        $qtyDaily = LoadingOrderDetail::join('wfg_loading_orders', 'wfg_loading_order_details.loading_order_id', '=', 'wfg_loading_orders.id')
-            ->whereBetween('wfg_loading_orders.tanggal', [$startDate, $endDate])
-            ->whereNotIn('wfg_loading_orders.status', ['draft'])
-            ->selectRaw("DATE(wfg_loading_orders.tanggal) as date, SUM(CASE WHEN wfg_loading_order_details.jenis = 'P' THEN wfg_loading_order_details.qty ELSE 0 END) as total_full, SUM(CASE WHEN wfg_loading_order_details.jenis = 'R' THEN wfg_loading_order_details.qty ELSE 0 END) as total_receh")
+        $qtyDaily = BongkarMuatDetail::join('wfg_bongkar_muats', 'wfg_bongkar_muat_details.bongkar_muat_id', '=', 'wfg_bongkar_muats.id')
+            ->whereBetween('wfg_bongkar_muats.tanggal', [$startDate, $endDate])
+            ->whereNotIn('wfg_bongkar_muats.status', ['draft'])
+            ->selectRaw("DATE(wfg_bongkar_muats.tanggal) as date, SUM(CASE WHEN wfg_bongkar_muat_details.jenis = 'P' THEN wfg_bongkar_muat_details.qty ELSE 0 END) as total_full, SUM(CASE WHEN wfg_bongkar_muat_details.jenis = 'R' THEN wfg_bongkar_muat_details.qty ELSE 0 END) as total_receh")
             ->groupBy('date')
             ->get()
             ->keyBy('date');
@@ -208,7 +208,7 @@ class WfgLoadingOrderDashboardController extends Controller
             'data' => [
                 'categories' => $categories,
                 'series' => [
-                    ['name' => 'Loading Orders', 'data' => $seriesOrder, 'color' => '#6366f1', 'type' => 'spline', 'yAxis' => 1],
+                    ['name' => 'Bongkar Muat', 'data' => $seriesOrder, 'color' => '#6366f1', 'type' => 'spline', 'yAxis' => 1],
                     ['name' => 'QTY Full (Box)',  'data' => $seriesFull,  'color' => '#22c55e', 'type' => 'column', 'yAxis' => 0],
                     ['name' => 'QTY Receh (Pcs)', 'data' => $seriesReceh, 'color' => '#f59e0b', 'type' => 'column', 'yAxis' => 0],
                 ]
@@ -219,7 +219,7 @@ class WfgLoadingOrderDashboardController extends Controller
     // --- 4. Donut Chart: Status Distribution ---
     public function getChartStatus(Request $request)
     {
-        $query = LoadingOrder::query();
+        $query = BongkarMuat::query();
 
         if ($request->start_date) {
             $query->whereDate('tanggal', '>=', $request->start_date);
@@ -253,14 +253,14 @@ class WfgLoadingOrderDashboardController extends Controller
     // --- 5. Bar Chart: Top Destinations ---
     public function getChartDestination(Request $request)
     {
-        $query = LoadingOrder::join('wfg_master_destinasi', 'wfg_loading_orders.destinasi_id', '=', 'wfg_master_destinasi.id')
-            ->whereNotIn('wfg_loading_orders.status', ['draft', 'rejected']);
+        $query = BongkarMuat::join('wfg_master_destinasi', 'wfg_bongkar_muats.destinasi_id', '=', 'wfg_master_destinasi.id')
+            ->whereNotIn('wfg_bongkar_muats.status', ['draft', 'rejected']);
 
         if ($request->start_date) {
-            $query->whereDate('wfg_loading_orders.tanggal', '>=', $request->start_date);
+            $query->whereDate('wfg_bongkar_muats.tanggal', '>=', $request->start_date);
         }
         if ($request->end_date) {
-            $query->whereDate('wfg_loading_orders.tanggal', '<=', $request->end_date);
+            $query->whereDate('wfg_bongkar_muats.tanggal', '<=', $request->end_date);
         }
 
         $results = $query->select('wfg_master_destinasi.destinasi', DB::raw('count(*) as total'))
@@ -277,7 +277,7 @@ class WfgLoadingOrderDashboardController extends Controller
             'data' => [
                 'categories' => $categories,
                 'series' => [
-                    ['name' => 'Loading Orders', 'data' => $data, 'color' => '#06b6d4', 'type' => 'bar']
+                    ['name' => 'Bongkar Muat', 'data' => $data, 'color' => '#06b6d4', 'type' => 'bar']
                 ]
             ]
         ]);

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('wfg_loading_orders', function (Blueprint $table) {
+        Schema::create('wfg_bongkar_muats', function (Blueprint $table) {
             $table->id();
             $table->date('tanggal');
             $table->string('no_dokumen')->unique();
@@ -50,6 +50,6 @@ return new class extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('wfg_loading_orders');
+        Schema::dropIfExists('wfg_bongkar_muats');
     }
 };

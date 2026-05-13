@@ -16,9 +16,9 @@ use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wfg\MasterDestinasiController;
-use App\Http\Controllers\Wfg\LoadingOrderController;
+use App\Http\Controllers\Wfg\BongkarMuatController;
 use App\Http\Controllers\Dashboard\WrmInventoryController;
-use App\Http\Controllers\Dashboard\WfgLoadingOrderDashboardController;
+use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
 use App\Http\Controllers\Wrm\Inventory\StockTransferController;
@@ -96,7 +96,7 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/ikat-terpal', [IkatTerpalDashboardController::class, 'index'])->name('dashboard.ikat-terpal');
             Route::get('/wrm/index', [WrmInventoryController::class, 'index'])->name('dashboard.wrm.index')->middleware(['permission:dashboard-wrm']);
-            Route::get('/wfg/loading-order', [WfgLoadingOrderDashboardController::class, 'index'])->name('dashboard.wfg.loading-order');
+            Route::get('/wfg/bongkar-muat', [WfgBongkarMuatDashboardController::class, 'index'])->name('dashboard.wfg.bongkar-muat');
         });
     });
 
@@ -284,23 +284,23 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['auth'])->group(function () {
         Route::prefix('wfg')->group(function () {
 
-            // Loading Order
-            Route::prefix('loading-order')->group(function () {
-                Route::get('/', [LoadingOrderController::class, 'index'])->name('wfg.loading_order.index');
-                Route::get('/data', [LoadingOrderController::class, 'data'])->name('wfg.loading_order.data');
-                Route::get('/approval', [LoadingOrderController::class, 'approval'])->name('wfg.loading_order.approval');
-                Route::get('/approval-data', [LoadingOrderController::class, 'approvalData'])->name('wfg.loading_order.approval_data');
-                Route::get('/form', [LoadingOrderController::class, 'create'])->name('wfg.loading_order.form');
-                Route::post('/store', [LoadingOrderController::class, 'store'])->name('wfg.loading_order.store');
-                Route::post('/save-draft', [LoadingOrderController::class, 'saveDraft'])->name('wfg.loading_order.save_draft');
-                Route::delete('/{id}', [LoadingOrderController::class, 'destroy'])->name('wfg.loading_order.destroy');
-                Route::get('/show/{id}', [LoadingOrderController::class, 'show'])->name('wfg.loading_order.show');
-                Route::post('/approve-checker/{id}', [LoadingOrderController::class, 'approveChecker'])->name('wfg.loading_order.approve_checker');
-                Route::post('/approve-driver/{id}', [LoadingOrderController::class, 'approveDriver'])->name('wfg.loading_order.approve_driver');
-                Route::post('/validate/{id}', [LoadingOrderController::class, 'validateOrder'])->name('wfg.loading_order.validate');
-                Route::get('/scan', [LoadingOrderController::class, 'scanBarcode'])->name('wfg.loading_order.scan');
-                Route::get('/search-materials', [LoadingOrderController::class, 'searchMaterials'])->name('wfg.loading_order.search_materials');
-                Route::get('/download/{id}', [LoadingOrderController::class, 'download'])->name('wfg.loading_order.download');
+            // Bongkar Muat
+            Route::prefix('bongkar-muat')->group(function () {
+                Route::get('/', [BongkarMuatController::class, 'index'])->name('wfg.bongkar_muat.index');
+                Route::get('/data', [BongkarMuatController::class, 'data'])->name('wfg.bongkar_muat.data');
+                Route::get('/approval', [BongkarMuatController::class, 'approval'])->name('wfg.bongkar_muat.approval');
+                Route::get('/approval-data', [BongkarMuatController::class, 'approvalData'])->name('wfg.bongkar_muat.approval_data');
+                Route::get('/form', [BongkarMuatController::class, 'create'])->name('wfg.bongkar_muat.form');
+                Route::post('/store', [BongkarMuatController::class, 'store'])->name('wfg.bongkar_muat.store');
+                Route::post('/save-draft', [BongkarMuatController::class, 'saveDraft'])->name('wfg.bongkar_muat.save_draft');
+                Route::delete('/{id}', [BongkarMuatController::class, 'destroy'])->name('wfg.bongkar_muat.destroy');
+                Route::get('/show/{id}', [BongkarMuatController::class, 'show'])->name('wfg.bongkar_muat.show');
+                Route::post('/approve-checker/{id}', [BongkarMuatController::class, 'approveChecker'])->name('wfg.bongkar_muat.approve_checker');
+                Route::post('/approve-driver/{id}', [BongkarMuatController::class, 'approveDriver'])->name('wfg.bongkar_muat.approve_driver');
+                Route::post('/validate/{id}', [BongkarMuatController::class, 'validateOrder'])->name('wfg.bongkar_muat.validate');
+                Route::get('/scan', [BongkarMuatController::class, 'scanBarcode'])->name('wfg.bongkar_muat.scan');
+                Route::get('/search-materials', [BongkarMuatController::class, 'searchMaterials'])->name('wfg.bongkar_muat.search_materials');
+                Route::get('/download/{id}', [BongkarMuatController::class, 'download'])->name('wfg.bongkar_muat.download');
             });
 
             // Maste Barang SO WFG

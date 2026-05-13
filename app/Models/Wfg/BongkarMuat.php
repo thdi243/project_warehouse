@@ -6,11 +6,11 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class LoadingOrder extends Model
+class BongkarMuat extends Model
 {
     use HasFactory;
 
-    protected $table = 'wfg_loading_orders';
+    protected $table = 'wfg_bongkar_muats';
 
     protected $fillable = [
         'tanggal',
@@ -51,7 +51,7 @@ class LoadingOrder extends Model
 
     public function details()
     {
-        return $this->hasMany(LoadingOrderDetail::class, 'loading_order_id');
+        return $this->hasMany(BongkarMuatDetail::class, 'bongkar_muat_id');
     }
 
     public function forkliftDriver()
