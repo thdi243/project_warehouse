@@ -65,14 +65,19 @@
                                     placeholder="Cari User Peminta / No Doc...">
                             </div>
                         </div>
-                        <div class="bulk-actions d-none">
-                            <span class="me-2 text-muted small selected-count">0 terpilih</span>
-                            <button class="btn btn-success" id="btnBulkApprove">
-                                <i class="mdi mdi-check-all me-1"></i> Approve Masal
+                        <div class="bulk-actions-wrapper d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-secondary" id="btnSelectAll">
+                                <i class="mdi mdi-checkbox-multiple-marked-outline me-1"></i> Pilih Semua
                             </button>
-                            <button class="btn btn-danger" id="btnBulkReject">
-                                <i class="mdi mdi-close-circle me-1"></i> Reject Masal
-                            </button>
+                            <div class="bulk-actions d-none">
+                                <span class="mx-2 text-muted small selected-count">0 terpilih</span>
+                                <button class="btn btn-success" id="btnBulkApprove">
+                                    <i class="mdi mdi-check-all me-1"></i> Approve Masal
+                                </button>
+                                <button class="btn btn-danger" id="btnBulkReject">
+                                    <i class="mdi mdi-close-circle me-1"></i> Reject Masal
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -139,9 +144,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 40px;" class="ps-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="checkAll">
-                                        </div>
+                                        #
                                     </th>
                                     <th>PR Date</th>
                                     <th>No Doc</th>
@@ -276,6 +279,22 @@
                 const canvas = document.getElementById('signaturePad');
                 if (canvas) {
                     signaturePad = new SignaturePad(canvas);
+                    
+                    function resizeCanvas() {
+                        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                        canvas.width = canvas.offsetWidth * ratio;
+                        canvas.height = canvas.offsetHeight * ratio;
+                        canvas.getContext("2d").scale(ratio, ratio);
+                        signaturePad.clear();
+                    }
+
+                    window.onresize = resizeCanvas;
+                    
+                    $('#modalAction').on('shown.bs.modal', function() {
+                        if (currentAction === 'approved') {
+                            resizeCanvas();
+                        }
+                    });
                 }
             }
 
@@ -385,8 +404,17 @@
             }
 
             // Checkbox Logic
-            $('#checkAll').on('change', function() {
-                $('.check-item').prop('checked', $(this).is(':checked'));
+            $('#btnSelectAll').on('click', function() {
+                const anyUnchecked = $('.check-item:not(:checked)').length > 0;
+                if (anyUnchecked) {
+                    $('.check-item').prop('checked', true);
+                    $(this).html('<i class="mdi mdi-checkbox-multiple-blank-outline me-1"></i> Batal Pilih');
+                    $(this).removeClass('btn-outline-secondary').addClass('btn-outline-danger');
+                } else {
+                    $('.check-item').prop('checked', false);
+                    $(this).html('<i class="mdi mdi-checkbox-multiple-marked-outline me-1"></i> Pilih Semua');
+                    $(this).removeClass('btn-outline-danger').addClass('btn-outline-secondary');
+                }
                 updateSelectedIds();
             });
 
@@ -408,7 +436,8 @@
                     $('.selected-count').text(`${selectedIds.length} terpilih`);
                 } else {
                     $('.bulk-actions').addClass('d-none');
-                    $('#checkAll').prop('checked', false);
+                    $('#btnSelectAll').html('<i class="mdi mdi-checkbox-multiple-marked-outline me-1"></i> Pilih Semua');
+                    $('#btnSelectAll').removeClass('btn-outline-danger').addClass('btn-outline-secondary');
                 }
             }
 

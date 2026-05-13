@@ -36,6 +36,11 @@ class WspPurchaseRequesitionController extends Controller
         return view('wsp.purchase_requesition.approval', compact('signature'));
     }
 
+    public function history()
+    {
+        return view('wsp.purchase_requesition.history');
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -426,11 +431,15 @@ class WspPurchaseRequesitionController extends Controller
 
     public function getRiwayatPR(Request $request)
     {
-        $user = $request->user(); // pasti ada karena auth middleware
+        $user = Auth::user();
+        $dept = strtolower(trim($user->departemen));
 
-        $pr = WspPurchaseRequesitionModel::with('items.barang')
-            ->where('user_id', $user->id)
-            ->latest()
+        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang', 'approval')
+            ->where(function ($q) use ($user, $dept) {
+                $q->where('user_id', $user->id)
+                    ->orWhere('department', $dept);
+            })
+            ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([

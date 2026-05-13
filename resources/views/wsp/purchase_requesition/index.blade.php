@@ -77,7 +77,9 @@
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>STATUS</th>
-                                    <th class="text-center">AKSI</th>
+                                    @can('wsp-data-pr-plus')
+                                        <th class="text-center">AKSI</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -452,31 +454,33 @@
                                     ${pr.status}
                                 </span>
                             </td>
-                            <td>
-                                <div class="d-flex gap-2 justify-content-center">
-                                    <button 
-                                        class="btn ${isFinished ? 'btn-light' : (canConfirm ? 'btn-success' : 'btn-outline-secondary')} btn-confirm btn-sm"
-                                        data-id="${pr.id}"
-                                        title="${isFinished ? 'Already Finished' : (canConfirm ? 'Confirm' : 'Waiting for Approval')}"
-                                        ${!canConfirm ? 'disabled' : ''}
-                                    >
-                                        <i class="mdi ${isFinished ? 'mdi-check-all' : 'mdi-check'}"></i>
-                                        ${isFinished ? 'Confirmed' : 'Confirm'}
-                                    </button>
-                                    <button class="btn btn-primary btn-copy btn-sm" onclick="copyFormatted(${pr.id})" title="Copy Formatted">
-                                        <i class="mdi mdi-content-copy"></i> Copy
-                                    </button>
-                                    <button class="btn btn-info btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
-                                        <i class="mdi mdi-eye"></i>
-                                    </button>
-                                    <button class="btn btn-danger btn-delete btn-sm" onclick="deletePR(${pr.id})" title="Delete">
-                                        <i class="mdi mdi-delete"></i>
-                                    </button>
-                                    <button class="btn btn-warning btn-print btn-sm" onclick="printPR(${pr.id})" title="Print">
-                                        <i class="mdi mdi-printer"></i>
-                                    </button>
-                                </div>
-                            </td>
+                            @can('wsp-data-pr-plus')
+                                <td>
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <button 
+                                            class="btn ${isFinished ? 'btn-light' : (canConfirm ? 'btn-success' : 'btn-outline-secondary')} btn-confirm btn-sm"
+                                            data-id="${pr.id}"
+                                            title="${isFinished ? 'Already Finished' : (canConfirm ? 'Confirm' : 'Waiting for Approval')}"
+                                            ${!canConfirm ? 'disabled' : ''}
+                                        >
+                                            <i class="mdi ${isFinished ? 'mdi-check-all' : 'mdi-check'}"></i>
+                                            ${isFinished ? 'Confirmed' : 'Confirm'}
+                                        </button>
+                                        <button class="btn btn-primary btn-copy btn-sm" onclick="copyFormatted(${pr.id})" title="Copy Formatted">
+                                            <i class="mdi mdi-content-copy"></i> Copy
+                                        </button>
+                                        <button class="btn btn-info btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
+                                            <i class="mdi mdi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-danger btn-delete btn-sm" onclick="deletePR(${pr.id})" title="Delete">
+                                            <i class="mdi mdi-delete"></i>
+                                        </button>
+                                        <button class="btn btn-warning btn-print btn-sm" onclick="printPR(${pr.id})" title="Print">
+                                            <i class="mdi mdi-printer"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            @endcan
                         </tr>
                     `);
                 });
