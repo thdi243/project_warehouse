@@ -291,10 +291,10 @@
                                         <h5 class="text-primary"><i class="ri-shield-check-line me-2"></i>Step 3: Final
                                             Verification</h5>
                                         <p class="text-muted">Order ini sudah di-approve oleh Checker dan Driver, dan siap
-                                            untuk diverifikasi akhir oleh Verificator.</p>
+                                            untuk diverifikasi akhir oleh Verificator Bongkar Muat WFG.</p>
                                     </div>
                                     <div class="text-center mt-4">
-                                        @if (auth()->user()->hasRole('verificator'))
+                                        @if (auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
                                             <form action="{{ route('wfg.bongkar_muat.validate', $order->id) }}"
                                                 method="POST">
                                                 @csrf
@@ -305,7 +305,7 @@
                                         @else
                                             <div class="alert alert-warning d-inline-block px-4">
                                                 <i class="ri-lock-line me-2"></i> Menunggu proses verifikasi akhir. Anda
-                                                tidak memiliki akses (role: <b>verificator</b>) untuk melakukan proses ini.
+                                                tidak memiliki akses (role: <b>verificator-bongkar-muat-wfg</b>) untuk melakukan proses ini.
                                             </div>
                                         @endif
                                     </div>
