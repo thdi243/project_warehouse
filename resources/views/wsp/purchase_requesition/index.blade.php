@@ -454,7 +454,7 @@
                                     ${pr.status}
                                 </span>
                             </td>
-                            
+                            @can('permission', 'wsp-pr-data-plus')
                                 <td>
                                     <div class="d-flex gap-2 justify-content-center">
                                         <button 
@@ -480,7 +480,7 @@
                                         </button>
                                     </div>
                                 </td>
-                            
+                            @endcan
                         </tr>
                     `);
                 });
@@ -707,10 +707,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                        <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                            Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
                             </div>
 
                         </div>
