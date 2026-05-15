@@ -509,58 +509,66 @@ class InboundController extends Controller
         }
     }
 
-    public function getData(Request $request)
+    private function applyFilters(Request $request)
     {
-        $query = StockOnHand::with([
-            'barang:id,mid,nama_barang,uom',
-            'bin:id,loc_id,kolom,level',
-            'bin.location:id,plant,s_loc,gudang,zona,bin',
-        ])
-            ->select('wrm_stock_on_hand.*')
-            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED']);
+        $query = StockOnHand::query();
 
         // Mapping filters
-        if ($request->group) {
-            $query->whereIn('wrm_stock_on_hand.group', (array)$request->group);
-        }
+        $query->when($request->filled('group'), function ($q) use ($request) {
+            $q->whereIn('wrm_stock_on_hand.group', (array)$request->group);
+        });
 
-        if ($request->status) {
-            $query->whereIn('wrm_stock_on_hand.status', (array)$request->status);
-        }
+        $query->when($request->filled('status'), function ($q) use ($request) {
+            $q->whereIn('wrm_stock_on_hand.status', (array)$request->status);
+        });
 
-        if ($request->jenis_bahan) {
-            $query->whereHas('barang', function ($q) use ($request) {
-                $q->whereIn('nama_barang', (array)$request->jenis_bahan);
+        $query->when($request->filled('jenis_bahan'), function ($q) use ($request) {
+            $q->whereHas('barang', function ($q2) use ($request) {
+                $q2->whereIn('nama_barang', (array)$request->jenis_bahan);
             });
-        }
+        });
 
-        if ($request->mid) {
-            $query->whereHas('barang', function ($q) use ($request) {
-                $q->whereIn('mid', (array)$request->mid);
+        $query->when($request->filled('mid'), function ($q) use ($request) {
+            $q->whereHas('barang', function ($q2) use ($request) {
+                $q2->whereIn('mid', (array)$request->mid);
             });
-        }
+        });
 
-        if ($request->date) {
-            $query->whereDate('wrm_stock_on_hand.incoming_date', $request->date);
-        }
+        $query->when($request->filled('date'), function ($q) use ($request) {
+            $q->whereDate('wrm_stock_on_hand.incoming_date', $request->date);
+        });
 
-        if ($request->supplier) {
-            $query->whereIn('wrm_stock_on_hand.supplier', (array)$request->supplier);
-        }
+        $query->when($request->filled('supplier'), function ($q) use ($request) {
+            $q->whereIn('wrm_stock_on_hand.supplier', (array)$request->supplier);
+        });
 
-        if ($request->no_spb) {
-            $query->whereIn('wrm_stock_on_hand.no_spb', (array)$request->no_spb);
-        }
+        $query->when($request->filled('no_spb'), function ($q) use ($request) {
+            $q->whereIn('wrm_stock_on_hand.no_spb', (array)$request->no_spb);
+        });
 
-        if ($request->catatan) {
-            $query->where('wrm_stock_on_hand.catatan', 'like', '%' . $request->catatan . '%');
-        }
+        $query->when($request->filled('catatan'), function ($q) use ($request) {
+            $q->where('wrm_stock_on_hand.catatan', 'like', '%' . $request->catatan . '%');
+        });
 
-        if ($request->location) {
-            $query->whereHas('bin', function ($q) use ($request) {
-                $q->whereIn('loc_id', (array)$request->location);
+        $query->when($request->filled('location'), function ($q) use ($request) {
+            $q->whereHas('bin', function ($q2) use ($request) {
+                $q2->whereIn('loc_id', (array)$request->location);
             });
-        }
+        });
+
+        return $query;
+    }
+
+    public function getData(Request $request)
+    {
+        $query = $this->applyFilters($request)
+            ->with([
+                'barang:id,mid,nama_barang,uom',
+                'bin:id,loc_id,kolom,level',
+                'bin.location:id,plant,s_loc,gudang,zona,bin',
+            ])
+            ->select('wrm_stock_on_hand.*')
+            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED']);
 
         // Clone query for summary calculation (before sorting)
         $summaryQuery = clone $query;
@@ -585,7 +593,7 @@ class InboundController extends Controller
             'status_breakdown' => $statusBreakdown
         ];
 
-        $data = $query->paginate(25);
+        $data = $query->paginate($request->per_page ?? 25);
 
         return response()->json([
             'status' => true,
@@ -811,16 +819,20 @@ class InboundController extends Controller
     public function massUpdateStatus(Request $request)
     {
         $request->validate([
-            'ids'    => 'required|array',
-            'ids.*'  => 'exists:wrm_stock_on_hand,id',
+            'ids'    => 'required_without:select_all|array',
             'status' => 'required|string|in:UNREST,QI,BLOCKED,TRANSFER,ISSUED'
         ]);
 
         DB::beginTransaction();
         try {
+            if ($request->select_all) {
+                $query = $this->applyFilters($request);
+            } else {
+                $query = StockOnHand::whereIn('id', $request->ids);
+            }
+
             // Update only if not ISSUED or RESERVED
-            StockOnHand::whereIn('id', $request->ids)
-                ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            $query->whereNotIn('status', ['ISSUED', 'RESERVED'])
                 ->update([
                     'status' => $request->status,
                     'updated_by' => Auth::id()
@@ -841,24 +853,64 @@ class InboundController extends Controller
         }
     }
 
-    public function massDelete(Request $request)
+    public function massUpdateGroup(Request $request)
     {
         $request->validate([
-            'ids'    => 'required|array',
-            'ids.*'  => 'exists:wrm_stock_on_hand,id',
+            'ids'    => 'required_without:select_all|array',
+            'group'  => 'required|string'
         ]);
 
         DB::beginTransaction();
         try {
+            if ($request->select_all) {
+                $query = $this->applyFilters($request);
+            } else {
+                $query = StockOnHand::whereIn('id', $request->ids);
+            }
+
+            // Update only if not ISSUED or RESERVED
+            $query->whereNotIn('status', ['ISSUED', 'RESERVED'])
+                ->update([
+                    'group' => $request->group,
+                    'updated_by' => Auth::id()
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Group berhasil diperbarui secara massal'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function massDelete(Request $request)
+    {
+        $request->validate([
+            'ids'    => 'required_without:select_all|array',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            if ($request->select_all) {
+                $query = $this->applyFilters($request);
+            } else {
+                $query = StockOnHand::whereIn('id', $request->ids);
+            }
+
             // Get unique no_spbs of items that ARE NOT protected
-            $affectedNoSpbs = StockOnHand::whereIn('id', $request->ids)
-                ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            $affectedNoSpbs = (clone $query)->whereNotIn('status', ['ISSUED', 'RESERVED'])
                 ->pluck('no_spb')
                 ->unique();
 
             // Delete non-protected items
-            $deletedCount = StockOnHand::whereIn('id', $request->ids)
-                ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            $deletedCount = $query->whereNotIn('status', ['ISSUED', 'RESERVED'])
                 ->delete();
 
             // Cleanup empty headers

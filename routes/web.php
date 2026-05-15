@@ -240,6 +240,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/get-filter', [InboundController::class, 'getFilter'])->name('wrm.inventory.getFilter');
                 Route::put('/update/{id}', [InboundController::class, 'update'])->name('wrm.inventory.update');
                 Route::post('/mass-update-status', [InboundController::class, 'massUpdateStatus'])->name('wrm.inventory.mass-update-status');
+                Route::post('/mass-update-group', [InboundController::class, 'massUpdateGroup'])->name('wrm.inventory.mass-update-group');
                 Route::post('/mass-delete', [InboundController::class, 'massDelete'])->name('wrm.inventory.mass-delete');
                 Route::delete('/delete/{id}', [InboundController::class, 'destroy'])->name('wrm.inventory.delete');
                 Route::get('/template', [InboundController::class, 'downloadTemplate'])->name('wrm.inventory.template');
