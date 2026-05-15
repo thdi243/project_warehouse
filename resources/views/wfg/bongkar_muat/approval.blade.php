@@ -12,20 +12,46 @@
                     </div>
                 </div>
             </div>
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Search</label>
+                                    <div class="search-box">
+                                        <input type="text" id="searchInput" class="form-control"
+                                            placeholder="Search Document, Wavepick, Shipment...">
+                                        <i class="ri-search-line search-icon"></i>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Start Date</label>
+                                    <input type="date" id="startDate" class="form-control">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">End Date</label>
+                                    <input type="date" id="endDate" class="form-control">
+                                </div>
+                                <div class="col-md-4 mt-md-4 d-flex gap-2">
+                                    <button type="button" class="btn btn-soft-danger flex-fill" id="btnReset">
+                                        <i class="ri-refresh-line"></i> Reset
+                                    </button>
 
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-soft-info border-0 d-flex justify-content-between align-items-center">
-                    <p class="mb-0 text-info"><i class="ri-information-line me-1"></i> List of orders waiting for Final
-                        Verification.</p>
-                    <div class="search-box" style="width: 250px;">
-                        <input type="text" class="form-control" id="searchInput"
-                            placeholder="Search Wavepick / Shipment...">
-                        <i class="ri-search-line search-icon"></i>
+                                    <button type="button" class="btn btn-primary flex-fill" id="btnFilter">
+                                        <i class="ri-filter-3-line"></i> Filter
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle" id="bongkarMuatApprovalTable">
+                        <table class="table table-hover align-middle text-nowrap" id="bongkarMuatApprovalTable">
                             <thead class="table-light">
                                 <tr>
                                     <th>No</th>
@@ -166,8 +192,13 @@
 
             window.loadData = function(page = 1) {
                 const search = $('#searchInput').val();
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
                 const tbody = $('#bongkarMuatApprovalTable tbody');
-                tbody.empty();
+
+                tbody.html(
+                    '<tr><td colspan="12" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>'
+                );
                 $('#paginationContainer').empty();
 
                 $.ajax({
@@ -175,11 +206,15 @@
                     type: "GET",
                     data: {
                         page: page,
-                        search: search
+                        search: search,
+                        start_date: startDate,
+                        end_date: endDate
                     },
                     success: function(res) {
                         const paginatedData = res.data;
                         const items = paginatedData.data;
+
+                        tbody.empty();
 
                         if (res.status && items.length > 0) {
                             $.each(items, function(index, order) {
@@ -245,7 +280,7 @@
                             });
                             renderPagination(paginatedData);
                         } else {
-                           tbody.append(`
+                            tbody.append(`
                                 <tr>
                                     <td colspan="12" class="text-center py-5">
                                         <div class="d-flex flex-column align-items-center justify-content-center text-muted">
@@ -312,7 +347,22 @@
 
             $('#searchInput').keyup(debounce(function() {
                 loadData(1);
-            }, 300));
+            }, 500));
+
+            $('#btnFilter').click(function() {
+                loadData(1);
+            });
+
+            $('#btnReset').click(function() {
+                $('#searchInput').val('');
+                $('#startDate').val('');
+                $('#endDate').val('');
+                loadData(1);
+            });
+
+            $('#startDate, #endDate').change(function() {
+                loadData(1);
+            });
 
             // Event listener for detail button
             $(document).on('click', '.btn-detail', function() {

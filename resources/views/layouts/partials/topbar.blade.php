@@ -12,7 +12,8 @@
                     </span>
                 </button>
                 <div class="title flex-grow-1">
-                    <h5 class="mb-0 fw-bold">Warehouse Management System</h5>
+                    <h5 class="mb-0 fw-bold d-none d-md-block">Digitalization Warehouse Management</h5>
+                    <h5 class="mb-0 fw-bold d-block d-md-none fst-italic">DWM</h5>
                 </div>
 
                 <!-- Spacer biar kanan & kiri balance -->
@@ -20,28 +21,6 @@
             </div>
 
             <div class="d-flex align-items-center">
-                <div class="dropdown d-md-none topbar-head-dropdown header-item">
-                    <button type="button"
-                        class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle shadow-none"
-                        id="page-header-search-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
-                        aria-expanded="false">
-                        <i class="bx bx-search fs-22"></i>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
-                        aria-labelledby="page-header-search-dropdown">
-                        <form class="p-3">
-                            <div class="form-group m-0">
-                                <div class="input-group">
-                                    <input type="text" class="form-control" placeholder="Search ..."
-                                        aria-label="Recipient's username" />
-                                    <button class="btn btn-primary" type="submit">
-                                        <i class="mdi mdi-magnify"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
 
                 <!-- Notifikasi -->
                 <div class="dropdown ms-1 header-item topbar-notification">
@@ -107,7 +86,7 @@
                 </div>
 
                 <!-- Tombol toggle dark mode -->
-                <div class="ms-1 header-item d-none d-sm-flex">
+                <div class="ms-1 header-item d-flex">
                     <button type="button"
                         class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle light-dark-mode shadow-none"
                         id="btn-darkmode">
