@@ -125,49 +125,12 @@
                                         <label class="form-label">Gate</label>
                                         <select name="gate" class="form-select select2">
                                             <option value="">-- Select Gate --</option>
-                                            @php
-                                                $gates = [
-                                                    '1',
-                                                    '2',
-                                                    '3',
-                                                    '4',
-                                                    '5',
-                                                    '6',
-                                                    '7',
-                                                    '8',
-                                                    '9',
-                                                    '10',
-                                                    '11',
-                                                    '12',
-                                                    '13',
-                                                    '14',
-                                                    '15',
-                                                    '16',
-                                                    '17',
-                                                    '18',
-                                                    '19',
-                                                    '20',
-                                                    '21',
-                                                    '22',
-                                                    '23',
-                                                    '24',
-                                                    '25',
-                                                    '26',
-                                                    '27',
-                                                    '28',
-                                                    '29',
-                                                    '30',
-                                                ];
-                                            @endphp
-                                            @foreach ($gates as $g)
-                                                @php
-                                                    $isBooked = in_array($g, $bookedGates);
-                                                    $isMine = isset($draft) && $draft->gate == $g;
-                                                @endphp
-                                                @if (!$isBooked || $isMine)
-                                                    <option value="{{ $g }}" {{ $isMine ? 'selected' : '' }}>
-                                                        {{ $g }}</option>
-                                                @endif
+
+                                            @foreach (range(1, 30) as $g)
+                                                <option value="{{ $g }}" @selected(isset($draft) && $draft->gate == $g)
+                                                    @disabled(in_array($g, $bookedGates) && (!isset($draft) || $draft->gate != $g))>
+                                                    {{ $g }}
+                                                </option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -247,15 +210,52 @@
                                     <i class="ri-barcode-box-line fs-1 text-muted"></i>
                                     <p class="text-muted mt-2">No items scanned yet. Start scanning to add materials.</p>
                                 </div>
+
+                                <div class="row mt-3 px-3 d-none" id="summary-section">
+                                    <div class="col-md-6 mb-2">
+                                        <div class="card bg-light border shadow-none h-100 mb-0">
+                                            <div class="card-body py-2 px-3">
+                                                <h6 class="text-info fw-bold mb-2"><i
+                                                        class="ri-checkbox-circle-fill me-1 text-info"></i> Summary SMU
+                                                </h6>
+                                                <div id="summary-smu-list" class="small text-muted"
+                                                    style="line-height: 1.6;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <div class="card bg-light border shadow-none h-100 mb-0">
+                                            <div class="card-body py-2 px-3">
+                                                <h6 class="text-success fw-bold mb-2"><i
+                                                        class="ri-checkbox-circle-fill me-1 text-success"></i> Summary BAS
+                                                </h6>
+                                                <div id="summary-bas-list" class="small text-muted"
+                                                    style="line-height: 1.6;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="card-footer d-flex justify-content-between align-items-center bg-light p-3">
-                                <div>
-                                    <h5 class="mb-0">Total Items: <span id="total-items" class="text-primary">0</span>
-                                    </h5>
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <h6 class="mb-0">Total Items: <span id="total-items"
+                                            class="text-primary fw-bold">0</span></h6>
+                                    <h6 class="mb-0">Total Full Pallet: <span id="total-full-pallet"
+                                            class="text-info fw-bold">0</span></h6>
+                                    <h6 class="mb-0">Total Pallet Receh: <span id="total-pallet-receh"
+                                            class="text-warning fw-bold">0</span></h6>
                                 </div>
-                                <button type="submit" class="btn btn-success px-5 shadow">
-                                    <i class="ri-save-line me-1"></i> SUBMIT
-                                </button>
+                                <div class="d-flex gap-2">
+                                    @if (isset($draft))
+                                        <button type="button" class="btn btn-outline-danger px-4 shadow"
+                                            id="btnCancelDraft">
+                                            <i class="ri-delete-bin-line me-1"></i> CANCEL DRAFT
+                                        </button>
+                                    @endif
+                                    <button type="submit" class="btn btn-success px-5 shadow">
+                                        <i class="ri-save-line me-1"></i> SUBMIT
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -333,13 +333,15 @@
                 material_id: i.material_id,
                 mid: i.material ? i.material.mid_barang : '',
                 nama_barang: i.material ? i.material.nama_barang : '',
-                batch: i.batch_number,
+                batch: i.batch_number || '',
                 jenis: i.jenis,
                 qty: i.qty,
-                to_dummy: i.to_dummy,
-                to_sap: i.to_sap,
+                to_dummy: i.to_dummy || '',
+                to_sap: i.to_sap || '',
                 double_po: i.double_po,
-                cancel_to: i.cancel_to
+                cancel_to: i.cancel_to,
+                manual_picking: i.manual_picking,
+                principal: i.material ? i.material.principal : ''
             }));
         }
 
@@ -349,13 +351,15 @@
                 material_id: data.material_id,
                 mid: data.mid,
                 nama_barang: data.nama_barang,
-                batch: data.batch,
+                batch: data.batch || '',
                 jenis: data.jenis,
                 qty: data.qty || 0,
                 to_dummy: data.to_dummy || '',
                 to_sap: data.to_sap || '',
                 double_po: data.double_po || false,
-                cancel_to: data.cancel_to || false
+                cancel_to: data.cancel_to || false,
+                manual_picking: data.manual_picking || false,
+                principal: data.principal || ''
             };
 
             items.push(item);
@@ -396,6 +400,10 @@
                 });
                 if (item.cancel_to) formData.push({
                     name: `details[${index}][cancel_to]`,
+                    value: 1
+                });
+                if (item.manual_picking) formData.push({
+                    name: `details[${index}][manual_picking]`,
                     value: 1
                 });
             });
@@ -444,6 +452,10 @@
                                 <input class="form-check-input" type="checkbox" name="details[${index}][cancel_to]" value="1" ${item.cancel_to ? 'checked' : ''} onchange="updateItemFlag(${index}, 'cancel_to', this.checked)">
                                 <label class="form-label mb-0 small">Cancel TO</label>
                             </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="details[${index}][manual_picking]" value="1" ${item.manual_picking ? 'checked' : ''} onchange="updateItemFlag(${index}, 'manual_picking', this.checked)">
+                                <label class="form-label mb-0 small">Manual</label>
+                            </div>
                         </div>
                     </td>
                     <td class="text-end">
@@ -456,7 +468,60 @@
             });
 
             $('#table-items tbody').html(html);
+
+            const totalFullPallet = items.filter(item => item.jenis === 'P').length;
+            const totalPalletReceh = items.filter(item => item.jenis === 'R').length;
+
             $('#total-items').text(items.length);
+            $('#total-full-pallet').text(totalFullPallet);
+            $('#total-pallet-receh').text(totalPalletReceh);
+
+            // Dynamic Principal Summary calculation
+            let summarySMU = {};
+            let summaryBAS = {};
+
+            items.forEach(item => {
+                let mid = item.mid || '-';
+                let qty = parseInt(item.qty) || 0;
+                let principal = item.principal ? item.principal.toUpperCase() : '';
+
+                if (principal === 'BAS') {
+                    summaryBAS[mid] = (summaryBAS[mid] || 0) + qty;
+                } else {
+                    summarySMU[mid] = (summarySMU[mid] || 0) + qty;
+                }
+            });
+
+            let hasSMU = Object.keys(summarySMU).length > 0;
+            let hasBAS = Object.keys(summaryBAS).length > 0;
+
+            if (hasSMU || hasBAS) {
+                $('#summary-section').removeClass('d-none');
+            } else {
+                $('#summary-section').addClass('d-none');
+            }
+
+            let htmlSMU = '';
+            if (hasSMU) {
+                Object.keys(summarySMU).forEach(mid => {
+                    htmlSMU +=
+                        `<div><strong>${mid}</strong> : ${summarySMU[mid].toLocaleString('id-ID')} Box</div>`;
+                });
+            } else {
+                htmlSMU = '<div class="text-center text-muted py-2">-</div>';
+            }
+            $('#summary-smu-list').html(htmlSMU);
+
+            let htmlBAS = '';
+            if (hasBAS) {
+                Object.keys(summaryBAS).forEach(mid => {
+                    htmlBAS +=
+                        `<div><strong>${mid}</strong> : ${summaryBAS[mid].toLocaleString('id-ID')} Box</div>`;
+                });
+            } else {
+                htmlBAS = '<div class="text-center text-muted py-2">-</div>';
+            }
+            $('#summary-bas-list').html(htmlBAS);
 
             if (items.length > 0) {
                 $('#empty-state').addClass('d-none');
@@ -474,7 +539,17 @@
 
         window.updateItemFlag = function(index, flag, value) {
             if (items[index]) {
-                items[index][flag] = value;
+                if (flag === 'cancel_to' && value === true) {
+                    items[index]['double_po'] = false;
+                    items[index]['manual_picking'] = false;
+                    items[index]['cancel_to'] = true;
+                } else if ((flag === 'double_po' || flag === 'manual_picking') && value === true) {
+                    items[index]['cancel_to'] = false;
+                    items[index][flag] = true;
+                } else {
+                    items[index][flag] = value;
+                }
+                renderTable();
                 saveProgress();
             }
         };
@@ -502,6 +577,14 @@
                 return;
             }
 
+            // Validasi: jika jenis yg dipilih R, maka qty yg diinput tidak boleh melebihi master qty_box
+            let qtyBox = materialData.qty_box ? parseInt(materialData.qty_box) : 0;
+            if (jenis === 'R' && parseInt(qty) > qtyBox) {
+                Swal.fire('Invalid Quantity!', 'Quantity untuk Receh (R) tidak boleh melebihi Qty Box Master (' +
+                    qtyBox + ').', 'warning');
+                return;
+            }
+
             let data = {
                 material_id: materialData.id,
                 mid: materialData.mid || materialData.mid_barang,
@@ -510,7 +593,8 @@
                 jenis: jenis,
                 qty: qty,
                 to_dummy: to_dummy,
-                to_sap: to_sap
+                to_sap: to_sap,
+                principal: materialData.principal || ''
             };
 
             addItem(data);
@@ -518,18 +602,14 @@
         };
 
         $(document).ready(function() {
-            if (items.length > 0) {
-                renderTable();
-            }
+            renderTable();
 
             $('.select2').select2({
                 width: '100%'
             });
 
-            $('#form-bongkar-muat input, #form-bongkar-muat select').on('change', function() {
-                if (items.length > 0) {
-                    saveProgress();
-                }
+            $('#form-bongkar-muat input, #form-bongkar-muat select').on('change input', function() {
+                saveProgress();
             });
 
             $('#manual-material-select').select2({
@@ -602,6 +682,32 @@
                     }
                 });
             });
+        });
+        $('#btnCancelDraft').click(function() {
+            Swal.fire({
+                title: 'Batalkan Draft?',
+                text: "Semua data yang sudah diisi akan dihapus dan form akan direset.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Batalkan!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post("{{ route('wfg.bongkar_muat.cancel_draft') }}", {
+                        _token: "{{ csrf_token() }}"
+                    }, function(res) {
+                        if (res.status) {
+                            Swal.fire('Berhasil', res.message, 'success').then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    });
+                }
+            })
         });
     </script>
 @endsection

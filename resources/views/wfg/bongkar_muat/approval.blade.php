@@ -163,6 +163,7 @@
                                     <th>To SAP</th>
                                     <th>Double PO</th>
                                     <th>Cancel To</th>
+                                    <th>Manual</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -395,8 +396,9 @@
                             <td>${detail.qty || 0}</td>
                             <td>${detail.to_dummy || '-'}</td>
                             <td>${detail.to_sap || '-'}</td>
-                            <td>${detail.double_po || '-'}</td>
-                            <td>${detail.cancel_to || '-'}</td>
+                            <td>${detail.double_po ? 'Yes' : '-'}</td>
+                            <td>${detail.cancel_to ? 'Yes' : '-'}</td>
+                            <td>${detail.manual_picking ? 'Yes' : '-'}</td>
                         </tr>
                     `;
                     });

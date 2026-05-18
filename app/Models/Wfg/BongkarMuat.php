@@ -35,9 +35,10 @@ class BongkarMuat extends Model
         'driver_approved_at',
         'verified_by',
         'verified_at',
-        'rejection_note',
+        'verified_note',
         'checker_signature',
         'driver_signature',
+        'verified_signature',
         'created_by',
         'updated_by',
     ];

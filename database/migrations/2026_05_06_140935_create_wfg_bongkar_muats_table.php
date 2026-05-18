@@ -16,14 +16,14 @@ return new class extends Migration
             $table->string('wavepick_smu')->nullable();
             $table->string('shipment_bas')->nullable();
             $table->string('wavepick_bas')->nullable();
-            $table->foreignId('forklift_driver_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('destinasi_id')->constrained('wfg_master_destinasi')->cascadeOnDelete();
+            $table->foreignId('forklift_driver_id')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('destinasi_id')->nullable()->constrained('wfg_master_destinasi')->cascadeOnDelete();
             $table->string('no_mobil')->nullable();
             $table->string('gate')->nullable();
             $table->string('no_kontainer')->nullable();
             $table->string('no_segel_bas')->nullable();
             $table->string('no_segel_vendor')->nullable();
-            $table->integer('jumlah_slipsheet')->default(0);
+            $table->integer('jumlah_slipsheet')->nullable()->default(0);
             $table->time('jam_muat')->nullable();
 
             // Workflow fields

@@ -22,11 +22,15 @@ class BongkarMuatDetail extends Model
         'to_sap',
         'double_po',
         'cancel_to',
+        'manual_picking',
+        'no_to',
+        'qty_to',
     ];
 
     protected $casts = [
         'double_po' => 'boolean',
         'cancel_to' => 'boolean',
+        'manual_picking' => 'boolean'
     ];
 
     public function header()

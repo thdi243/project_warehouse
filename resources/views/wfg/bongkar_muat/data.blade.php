@@ -18,17 +18,60 @@
                 </div>
             </div>
 
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <input type="text" id="searchInput" class="form-control" placeholder="Search Wavepick / Shipment...">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Search</label>
+                                    <div class="search-box">
+                                        <input type="text" id="searchInput" class="form-control"
+                                            placeholder="Search Document, Wavepick, Shipment...">
+                                        <i class="ri-search-line search-icon"></i>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Start Date</label>
+                                    <input type="date" id="startDate" class="form-control">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">End Date</label>
+                                    <input type="date" id="endDate" class="form-control">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Status</label>
+                                    <select id="statusFilter" class="form-select">
+                                        <option value="">All Status</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="submitted">Submitted</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="loading">Loading</option>
+                                        <option value="loaded">Loaded</option>
+                                        <option value="verified">Verified</option>
+                                        <option value="rejected">Rejected</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mt-md-4 d-flex gap-2">
+                                    <button type="button" class="btn btn-soft-danger flex-fill" id="btnReset">
+                                        <i class="ri-refresh-line"></i> Reset
+                                    </button>
+
+                                    <button type="button" class="btn btn-primary flex-fill" id="btnFilter">
+                                        <i class="ri-filter-3-line"></i> Filter
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle" id="bongkarMuatTable">
-                            <thead class="table-light text-nowrap">
+                        <table class="table table-hover align-middle text-nowrap" id="bongkarMuatTable">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="text-center">No</th>
                                     <th>Tanggal</th>
@@ -90,7 +133,8 @@
                         <div class="row">
                             <div class="col-md-12 mb-3">
                                 <label class="form-label">Quantity</label>
-                                <input type="number" name="qty" id="edit-item-qty" class="form-control" step="any">
+                                <input type="number" name="qty" id="edit-item-qty" class="form-control"
+                                    step="any">
                             </div>
                         </div>
                         <div class="row">
@@ -104,16 +148,25 @@
                             </div>
                         </div>
                         <div class="row mt-2">
-                            <div class="col-6">
+                            <div class="col-4">
                                 <div class="form-check form-switch form-switch-warning">
-                                    <input class="form-check-input" type="checkbox" name="double_po" id="edit-item-double-po" value="1">
+                                    <input class="form-check-input" type="checkbox" name="double_po"
+                                        id="edit-item-double-po" value="1">
                                     <label class="form-check-label" for="edit-item-double-po">Double PO</label>
                                 </div>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <div class="form-check form-switch form-switch-danger">
-                                    <input class="form-check-input" type="checkbox" name="cancel_to" id="edit-item-cancel-to" value="1">
+                                    <input class="form-check-input" type="checkbox" name="cancel_to"
+                                        id="edit-item-cancel-to" value="1">
                                     <label class="form-check-label" for="edit-item-cancel-to">Cancel TO</label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-check form-switch form-switch-success">
+                                    <input class="form-check-input" type="checkbox" name="manual_picking"
+                                        id="edit-item-manual-picking" value="1">
+                                    <label class="form-check-label" for="edit-item-manual-picking">Manual</label>
                                 </div>
                             </div>
                         </div>
@@ -149,21 +202,25 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Wavepick SMU</label>
-                                <input type="text" name="wavepick_smu" id="edit-header-wavepick_smu" class="form-control">
+                                <input type="text" name="wavepick_smu" id="edit-header-wavepick_smu"
+                                    class="form-control">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Shipment SMU</label>
-                                <input type="text" name="shipment_smu" id="edit-header-shipment_smu" class="form-control">
+                                <input type="text" name="shipment_smu" id="edit-header-shipment_smu"
+                                    class="form-control">
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Wavepick BAS</label>
-                                <input type="text" name="wavepick_bas" id="edit-header-wavepick_bas" class="form-control">
+                                <input type="text" name="wavepick_bas" id="edit-header-wavepick_bas"
+                                    class="form-control">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Shipment BAS</label>
-                                <input type="text" name="shipment_bas" id="edit-header-shipment_bas" class="form-control">
+                                <input type="text" name="shipment_bas" id="edit-header-shipment_bas"
+                                    class="form-control">
                             </div>
                         </div>
                         <div class="row">
@@ -173,23 +230,27 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">No. Kontainer</label>
-                                <input type="text" name="no_kontainer" id="edit-header-no_kontainer" class="form-control">
+                                <input type="text" name="no_kontainer" id="edit-header-no_kontainer"
+                                    class="form-control">
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">No. Segel BAS</label>
-                                <input type="text" name="no_segel_bas" id="edit-header-no_segel_bas" class="form-control">
+                                <input type="text" name="no_segel_bas" id="edit-header-no_segel_bas"
+                                    class="form-control">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">No. Segel Vendor</label>
-                                <input type="text" name="no_segel_vendor" id="edit-header-no_segel_vendor" class="form-control">
+                                <input type="text" name="no_segel_vendor" id="edit-header-no_segel_vendor"
+                                    class="form-control">
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Slipsheet</label>
-                                <input type="number" name="jumlah_slipsheet" id="edit-header-slipsheet" class="form-control">
+                                <input type="number" name="jumlah_slipsheet" id="edit-header-slipsheet"
+                                    class="form-control">
                             </div>
                         </div>
                     </div>
@@ -330,8 +391,14 @@
 
             window.loadData = function(page = 1) {
                 const search = $('#searchInput').val();
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
+                const status = $('#statusFilter').val();
                 const tbody = $('#bongkarMuatTable tbody');
-                tbody.empty();
+
+                tbody.html(
+                    '<tr><td colspan="13" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>'
+                );
                 $('#paginationContainer').empty();
 
                 $.ajax({
@@ -339,11 +406,16 @@
                     type: "GET",
                     data: {
                         page: page,
-                        search: search
+                        search: search,
+                        start_date: startDate,
+                        end_date: endDate,
+                        status: status
                     },
                     success: function(res) {
                         const paginatedData = res.data;
                         const items = paginatedData.data;
+
+                        tbody.empty();
 
                         if (res.status && items.length > 0) {
                             $.each(items, function(index, order) {
@@ -490,11 +562,27 @@
 
             $('#searchInput').keyup(debounce(function() {
                 loadData(1);
-            }, 300));
+            }, 500));
+
+            $('#btnFilter').click(function() {
+                loadData(1);
+            });
+
+            $('#btnReset').click(function() {
+                $('#searchInput').val('');
+                $('#startDate').val('');
+                $('#endDate').val('');
+                $('#statusFilter').val('');
+                loadData(1);
+            });
+
+            $('#startDate, #endDate, #statusFilter').change(function() {
+                loadData(1);
+            });
 
             $(document).on('click', '.btn-detail', function() {
                 const order = JSON.parse(decodeURIComponent($(this).data('order')));
-                
+
                 // Store order in window for header edit
                 window.currentOrder = order;
 
@@ -532,6 +620,7 @@
                             <td class="text-center">
                                 ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
                                 ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel</span>' : ''}
+                                ${detail.manual_picking ? '<span class="badge bg-soft-success text-success">Manual</span>' : ''}
                             </td>
                             @can('permission', 'approval-bongkar-muat')
                                 <td class="text-center">
@@ -596,9 +685,10 @@
             // Edit Item Logic
             $(document).on('click', '.btn-edit-item', function() {
                 const detail = JSON.parse(decodeURIComponent($(this).data('item')));
-                
+
                 $('#edit-item-id').val(detail.id);
-                $('#edit-item-material').val(`[${detail.material.mid_barang}] ${detail.material.nama_barang}`);
+                $('#edit-item-material').val(
+                    `[${detail.material.mid_barang}] ${detail.material.nama_barang}`);
                 $('#edit-item-batch').val(detail.batch_number);
                 $('#edit-item-jenis').val(detail.jenis);
                 $('#edit-item-qty').val(detail.qty);
@@ -606,17 +696,38 @@
                 $('#edit-item-to-sap').val(detail.to_sap);
                 $('#edit-item-double-po').prop('checked', detail.double_po == 1);
                 $('#edit-item-cancel-to').prop('checked', detail.cancel_to == 1);
+                $('#edit-item-manual-picking').prop('checked', detail.manual_picking == 1);
 
                 $('#detailModal').modal('hide');
                 $('#editItemModal').modal('show');
             });
 
             // Optional: Restore detail modal when edit modal is closed
-            $('#editItemModal').on('hidden.bs.modal', function () {
+            $('#editItemModal').on('hidden.bs.modal', function() {
                 // If the detail modal was hidden to show this one, we might want to bring it back
                 // We check if we are not currently showing a success message or similar
                 if (!$('.swal2-container').is(':visible')) {
                     $('#detailModal').modal('show');
+                }
+            });
+
+            // Mutual exclusivity for Edit Item Modal
+            $('#edit-item-cancel-to').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#edit-item-double-po').prop('checked', false);
+                    $('#edit-item-manual-picking').prop('checked', false);
+                }
+            });
+
+            $('#edit-item-double-po').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#edit-item-cancel-to').prop('checked', false);
+                }
+            });
+
+            $('#edit-item-manual-picking').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#edit-item-cancel-to').prop('checked', false);
                 }
             });
 
@@ -637,7 +748,8 @@
                         }
                     },
                     error: function(xhr) {
-                        Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to update item', 'error');
+                        Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON.message :
+                            'Failed to update item', 'error');
                     }
                 });
             });
@@ -669,7 +781,8 @@
                                 }
                             },
                             error: function(xhr) {
-                                Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to delete item', 'error');
+                                Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON
+                                    .message : 'Failed to delete item', 'error');
                             }
                         });
                     }
@@ -696,7 +809,7 @@
                 $('#editHeaderModal').modal('show');
             });
 
-            $('#editHeaderModal').on('hidden.bs.modal', function () {
+            $('#editHeaderModal').on('hidden.bs.modal', function() {
                 // No need to restore detail modal anymore as we open from main table
             });
 
@@ -717,7 +830,8 @@
                         }
                     },
                     error: function(xhr) {
-                        Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON.message : 'Failed to update header', 'error');
+                        Swal.fire('Error', xhr.responseJSON ? xhr.responseJSON.message :
+                            'Failed to update header', 'error');
                     }
                 });
             });
