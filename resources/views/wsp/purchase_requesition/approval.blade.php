@@ -237,9 +237,15 @@
                         <div class="mb-0" id="signatureWrapper">
                             <label class="form-label fw-bold">Tanda Tangan Digital</label>
                             @if ($signature)
+                                @php
+                                    $sigPath = $signature->signature;
+                                    if (!Str::startsWith($sigPath, 'storage/') && !Str::startsWith($sigPath, 'http') && !Str::startsWith($sigPath, '/storage/')) {
+                                        $sigPath = 'storage/' . $sigPath;
+                                    }
+                                @endphp
                                 <div class="border rounded p-3 text-center bg-white mb-2">
                                     <p class="small text-muted mb-2">Tanda tangan yang akan Anda gunakan:</p>
-                                    <img src="{{ asset('storage/' . $signature->signature) }}" alt="Signature"
+                                    <img src="{{ asset($sigPath) }}" alt="Signature"
                                         style="max-height: 150px; width: auto;">
                                 </div>
                                 <input type="hidden" id="useStoredSignature" value="1">

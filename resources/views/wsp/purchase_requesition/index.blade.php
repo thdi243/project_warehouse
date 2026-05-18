@@ -308,10 +308,19 @@
 
                 <div class="modal-body text-center">
                     @if ($signature)
+                        @php
+                            $sigPath = $signature->signature;
+                            if (
+                                !Str::startsWith($sigPath, 'storage/') &&
+                                !Str::startsWith($sigPath, 'http') &&
+                                !Str::startsWith($sigPath, '/storage/')
+                            ) {
+                                $sigPath = 'storage/' . $sigPath;
+                            }
+                        @endphp
                         <div class="border rounded p-3 text-center bg-white mb-2">
                             <p class="small text-muted mb-2">Tanda tangan yang akan Anda gunakan:</p>
-                            <img src="{{ asset('storage/' . $signature->signature) }}" alt="Signature"
-                                style="max-height: 150px; width: auto;">
+                            <img src="{{ asset($sigPath) }}" alt="Signature" style="max-height: 150px; width: auto;">
                         </div>
                         <input type="hidden" id="useStoredSignature" value="1">
                     @else
@@ -454,7 +463,7 @@
                                     ${pr.status}
                                 </span>
                             </td>
-                            @can('permission', 'wsp-pr-data-plus')
+                            @can('permission', 'wsp-data-pr-plus')
                                 <td>
                                     <div class="d-flex gap-2 justify-content-center">
                                         <button 
@@ -707,10 +716,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                        <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                            Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                             </div>
 
                         </div>
