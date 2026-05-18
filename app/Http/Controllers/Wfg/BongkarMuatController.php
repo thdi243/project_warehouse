@@ -679,7 +679,7 @@ class BongkarMuatController extends Controller
         $order = BongkarMuat::findOrFail($id);
 
         // Only allow deletion if not yet verified or heavily processed
-        if (in_array($order->status, ['draft', 'submitted', 'rejected'])) {
+        if (in_array($order->status, ['draft', 'submitted', 'rejected', 'approved', 'loaded'])) {
             // Hapus notifikasi jika ada
             NotificationsModel::where('notifiable_type', BongkarMuat::class)
                 ->where('notifiable_id', $order->id)

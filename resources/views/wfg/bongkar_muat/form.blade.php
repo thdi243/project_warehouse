@@ -32,11 +32,11 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0">Create Bongkar Muat</h4>
+                        <h4 class="mb-sm-0">Form Bongkar Muat</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript: void(0);">WFG</a></li>
-                                <li class="breadcrumb-item active">Create Bongkar Muat</li>
+                                <li class="breadcrumb-item active">Form Bongkar Muat</li>
                             </ol>
                         </div>
                     </div>
@@ -178,7 +178,7 @@
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-header d-flex align-items-center">
-                                <h5 class="card-title mb-0 flex-grow-1"><i class="ri-barcode-line me-2"></i>Add Items</h5>
+                                <h5 class="card-title mb-0 flex-grow-1"><i class="ri-truck-line me-2"></i>Add Items</h5>
                                 <div class="flex-shrink-0 d-flex gap-2">
                                     <button type="button" class="btn btn-primary btn-sm" onclick="showManualModal()">
                                         <i class="ri-add-line me-1"></i> Add
@@ -207,8 +207,9 @@
                                 </div>
 
                                 <div id="empty-state" class="text-center py-5">
-                                    <i class="ri-barcode-box-line fs-1 text-muted"></i>
-                                    <p class="text-muted mt-2">No items scanned yet. Start scanning to add materials.</p>
+                                    <i class="ri-truck-line fs-1 text-muted"></i>
+                                    <p class="text-muted mt-2">No items have been selected yet. Click the “Add” button to
+                                        add an item.</p>
                                 </div>
 
                                 <div class="row mt-3 px-3 d-none" id="summary-section">

@@ -18,7 +18,7 @@
             </div>
 
             <div class="row justify-content-center">
-                <div class="col-xl-10 col-lg-12">
+                <div class="col-lg-12">
                     <div class="card shadow-sm border-0">
                         <div class="card-body p-4">
                             <div class="text-center mb-4">
@@ -169,95 +169,110 @@
                             </div>
 
                             @if ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
-                            <form action="{{ route('wfg.bongkar_muat.validate', $order->id) }}" method="POST">
-                                @csrf
+                                <form action="{{ route('wfg.bongkar_muat.validate', $order->id) }}" method="POST">
+                                    @csrf
                             @endif
 
-                            <!-- Item Details Table -->
-                            <div class="mb-5">
-                                <h6 class="text-uppercase fw-bold mb-3 text-muted"><i class="ri-list-settings-line me-1"></i> Individual Item Details</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered align-middle">
-                                        <thead class="table-light text-center" style="font-size: 13px;">
-                                            <tr>
-                                                <th>Material</th>
-                                                <th>Batch</th>
-                                                <th>Type</th>
-                                                <th>Qty</th>
-                                                <th>TO Dummy</th>
-                                                <th>TO SAP</th>
-                                                <th>Flags</th>
-                                                <th width="180">No. TO Verifikator</th>
-                                                <th width="130">Qty TO Verifikator</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($order->details as $index => $detail)
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex flex-column">
-                                                        <span class="fw-medium text-dark">{{ $detail->material->nama_barang ?? '-' }}</span>
-                                                        <small class="text-muted">{{ $detail->material->mid_barang ?? '-' }}</small>
-                                                    </div>
-                                                    <input type="hidden" name="details[{{ $index }}][id]" value="{{ $detail->id }}">
-                                                </td>
-                                                <td class="text-center">{{ $detail->batch_number ?? '-' }}</td>
-                                                <td class="text-center"><span class="badge bg-soft-primary text-primary">{{ $detail->jenis }}</span></td>
-                                                <td class="text-center fw-medium">{{ $detail->qty }}</td>
-                                                <td class="text-center text-muted small">{{ $detail->to_dummy ?? '-' }}</td>
-                                                <td class="text-center text-muted small">{{ $detail->to_sap ?? '-' }}</td>
-                                                <td class="text-center">
-                                                    @if ($detail->double_po)
-                                                        <span class="badge bg-soft-warning text-warning mb-1">Double PO</span>
-                                                    @endif
-                                                    @if ($detail->cancel_to)
-                                                        <span class="badge bg-soft-danger text-danger mb-1">Cancel TO</span>
-                                                    @endif
-                                                    @if ($detail->manual_picking)
-                                                        <span class="badge bg-soft-success text-success">Manual Picking</span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-center">
-                                                    @if ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
-                                                        @if ($detail->double_po || $detail->cancel_to)
-                                                            <input type="text" 
-                                                                   name="details[{{ $index }}][no_to]" 
-                                                                   class="form-control form-control-sm text-center border-warning fw-bold" 
-                                                                   placeholder="Input No. TO" 
-                                                                   value="{{ $detail->no_to }}" 
-                                                                   required 
-                                                                   pattern="[0-9]+" 
-                                                                   title="Masukkan hanya angka">
-                                                        @else
-                                                            <span class="text-muted small">-</span>
-                                                        @endif
-                                                    @else
-                                                        <span class="fw-bold text-primary">{{ $detail->no_to ?? '-' }}</span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-center">
-                                                    @if ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
-                                                        @if ($detail->cancel_to)
-                                                            <input type="number" 
-                                                                   name="details[{{ $index }}][qty_to]" 
-                                                                   class="form-control form-control-sm text-center border-danger fw-bold" 
-                                                                   placeholder="Qty TO" 
-                                                                   value="{{ $detail->qty_to }}" 
-                                                                   min="1" 
-                                                                   required>
-                                                        @else
-                                                            <span class="text-muted small">-</span>
-                                                        @endif
-                                                    @else
-                                                        <span class="fw-bold text-success">{{ $detail->qty_to ?? '-' }}</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                            @if (in_array($order->status, ['loaded', 'verified']))
+                                <!-- Item Details Table -->
+                                <div class="mb-5">
+                                    <h6 class="text-uppercase fw-bold mb-3 text-muted"><i
+                                            class="ri-list-settings-line me-1"></i> Individual Item Details</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered align-middle">
+                                            <thead class="table-light text-center text-nowrap" style="font-size: 13px;">
+                                                <tr>
+                                                    <th>MID</th>
+                                                    <th>Batch</th>
+                                                    <th>Type</th>
+                                                    <th>Qty</th>
+                                                    <th>TO Dummy</th>
+                                                    <th>TO SAP</th>
+                                                    <th>Flags</th>
+                                                    <th width="180">No. TO</th>
+                                                    <th width="130">Qty TO</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($order->details as $index => $detail)
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex flex-column">
+                                                                {{-- <span
+                                                                    class="fw-medium text-dark">{{ $detail->material->nama_barang ?? '-' }}</span> --}}
+                                                                <span
+                                                                    class="text-dark">{{ $detail->material->mid_barang ?? '-' }}</span>
+                                                            </div>
+                                                            <input type="hidden" name="details[{{ $index }}][id]"
+                                                                value="{{ $detail->id }}">
+                                                        </td>
+                                                        <td class="text-center">{{ $detail->batch_number ?? '-' }}</td>
+                                                        <td class="text-center"><span
+                                                                class="badge bg-soft-primary text-primary">{{ $detail->jenis }}</span>
+                                                        </td>
+                                                        <td class="text-center fw-medium">{{ $detail->qty }}</td>
+                                                        <td class="text-center text-muted small">
+                                                            {{ $detail->to_dummy ?? '-' }}
+                                                        </td>
+                                                        <td class="text-center text-muted small">
+                                                            {{ $detail->to_sap ?? '-' }}
+                                                        </td>
+                                                        <td class="text-center">
+                                                            @if ($detail->double_po)
+                                                                <span
+                                                                    class="badge bg-soft-warning text-warning mb-1">Double
+                                                                    PO</span>
+                                                            @endif
+                                                            @if ($detail->cancel_to)
+                                                                <span class="badge bg-soft-danger text-danger mb-1">Cancel
+                                                                    TO</span>
+                                                            @endif
+                                                            @if ($detail->manual_picking)
+                                                                <span class="badge bg-soft-success text-success">Manual
+                                                                    Picking</span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-center" style="min-width: 150px;">
+                                                            @if ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
+                                                                @if ($detail->double_po || $detail->cancel_to)
+                                                                    <input type="text"
+                                                                        name="details[{{ $index }}][no_to]"
+                                                                        class="form-control form-control-sm text-center border-warning fw-bold"
+                                                                        placeholder="Input No. TO"
+                                                                        value="{{ $detail->no_to }}" required
+                                                                        pattern="[0-9]+">
+                                                                @else
+                                                                    <span class="text-muted small">-</span>
+                                                                @endif
+                                                            @else
+                                                                <span
+                                                                    class="fw-bold text-primary">{{ $detail->no_to ?? '-' }}</span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-center" style="min-width: 150px;">
+                                                            @if ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
+                                                                @if ($detail->cancel_to)
+                                                                    <input type="number"
+                                                                        name="details[{{ $index }}][qty_to]"
+                                                                        class="form-control form-control-sm text-center border-danger fw-bold"
+                                                                        placeholder="Qty TO"
+                                                                        value="{{ $detail->qty_to }}" min="1"
+                                                                        required>
+                                                                @else
+                                                                    <span class="text-muted small">-</span>
+                                                                @endif
+                                                            @else
+                                                                <span
+                                                                    class="fw-bold text-success">{{ $detail->qty_to ?? '-' }}</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
 
                             <!-- Step Content -->
                             <div class="step-content px-3">
@@ -273,7 +288,8 @@
                                         @csrf
                                         <div class="mb-3">
                                             <label class="form-label">Checker</label>
-                                            <input type="text" class="form-control text-dark bg-light fw-bold" value="{{ auth()->user()->username }}" readonly disabled>
+                                            <input type="text" class="form-control text-dark bg-light fw-bold"
+                                                value="{{ auth()->user()->username }}" readonly disabled>
                                             <input type="hidden" name="checker_id" value="{{ auth()->user()->id }}">
                                         </div>
                                         <div class="mb-3">
@@ -322,18 +338,21 @@
                                             <input type="hidden" name="signature" id="driver-signature-data">
                                         </div>
                                         <div class="text-center mt-4">
-                                            <button type="submit" class="btn btn-primary px-5">Approve Driver & Route to
-                                                Verificator</button>
+                                            <button type="submit" class="btn btn-primary px-5">Approve Driver</button>
                                         </div>
                                     </form>
                                 @elseif($order->status == 'loaded')
                                     <div class="text-center mb-4">
-                                        <h5 class="text-primary"><i class="ri-shield-check-line me-2"></i>Step 3: Final Verification</h5>
-                                        <p class="text-muted">Order ini sudah di-approve oleh Checker dan Driver. Verificator Bongkar Muat WFG silakan mengisi kolom input di rincian item di atas (jika ada flag Double PO/Cancel TO), lalu klik tombol di bawah untuk verifikasi.</p>
+                                        <h5 class="text-primary"><i class="ri-shield-check-line me-2"></i>Step 3: Final
+                                            Verification</h5>
+                                        <p class="text-muted">Order ini sudah di-approve oleh Checker dan Driver.
+                                            Verificator silakan mengisi kolom input di rincian item di atas
+                                            (jika ada flag Double PO/Cancel TO), lalu klik tombol di bawah untuk verifikasi.
+                                        </p>
                                     </div>
 
                                     @if (auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
-                                        <div class="w-50 mx-auto text-start bg-light p-4 rounded border mb-4">
+                                        <div class="w-80 mx-auto text-start bg-light p-4 rounded border mb-4">
                                             @php
                                                 $userSignature = auth()->user()->signature;
                                             @endphp
@@ -341,44 +360,63 @@
                                             @if ($userSignature && $userSignature->signature)
                                                 @php
                                                     $sigPath = $userSignature->signature;
-                                                    if (!Str::startsWith($sigPath, 'storage/') && !Str::startsWith($sigPath, 'http') && !Str::startsWith($sigPath, '/storage/')) {
+                                                    if (
+                                                        !Str::startsWith($sigPath, 'storage/') &&
+                                                        !Str::startsWith($sigPath, 'http') &&
+                                                        !Str::startsWith($sigPath, '/storage/')
+                                                    ) {
                                                         $sigPath = 'storage/' . $sigPath;
                                                     }
                                                 @endphp
                                                 <div class="mb-3 text-center border-bottom pb-3">
-                                                    <label class="form-label d-block fw-bold text-muted">TTD Profil Anda Saat Ini:</label>
+                                                    <label class="form-label d-block fw-bold text-muted">TTD Profil Anda
+                                                        Saat Ini:</label>
                                                     <div class="p-2 border rounded bg-white d-inline-block shadow-sm mb-3">
-                                                        <img src="{{ asset($sigPath) }}" alt="Saved Signature" style="max-height: 80px; filter: grayscale(1) contrast(2);">
+                                                        <img src="{{ asset($sigPath) }}" alt="Saved Signature"
+                                                            style="max-height: 80px; filter: grayscale(1) contrast(2);">
                                                     </div>
-                                                    
-                                                    <div class="form-check form-switch justify-content-center d-flex align-items-center">
-                                                        <input class="form-check-input me-2" type="checkbox" name="use_stored_signature" id="useStoredSignature" value="1" checked>
-                                                        <label class="form-check-label fw-bold text-success" for="useStoredSignature">
+
+                                                    <div
+                                                        class="form-check form-switch justify-content-center d-flex align-items-center">
+                                                        <input class="form-check-input me-2" type="checkbox"
+                                                            name="use_stored_signature" id="useStoredSignature"
+                                                            value="1" checked>
+                                                        <label class="form-check-label fw-bold text-success"
+                                                            for="useStoredSignature">
                                                             Gunakan TTD Tersimpan dari Profil
                                                         </label>
                                                     </div>
                                                 </div>
                                             @endif
 
-                                            <div id="verificator-pad-wrapper" style="{{ $userSignature && $userSignature->signature ? 'display: none;' : '' }}">
+                                            <div id="verificator-pad-wrapper"
+                                                style="{{ $userSignature && $userSignature->signature ? 'display: none;' : '' }}">
                                                 <div class="mb-3">
-                                                    <label class="form-label fw-bold">Signature Verifikator <span class="text-danger">*</span></label>
-                                                    <div class="signature-container border rounded bg-white shadow-sm" style="width: 100%; height: 200px; position: relative;">
-                                                        <canvas id="verificator-signature-pad" class="signature-pad" style="width: 100%; height: 100%; cursor: crosshair;"></canvas>
-                                                        <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-2" id="clear-verificator-sig">Clear</button>
+                                                    <label class="form-label fw-bold">Signature Verifikator <span
+                                                            class="text-danger">*</span></label>
+                                                    <div class="signature-container border rounded bg-white shadow-sm"
+                                                        style="width: 100%; height: 200px; position: relative;">
+                                                        <canvas id="verificator-signature-pad" class="signature-pad"
+                                                            style="width: 100%; height: 100%; cursor: crosshair;"></canvas>
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-light position-absolute top-0 end-0 m-2"
+                                                            id="clear-verificator-sig">Clear</button>
                                                     </div>
-                                                    <input type="hidden" name="signature" id="verificator-signature-data">
+                                                    <input type="hidden" name="signature"
+                                                        id="verificator-signature-data">
                                                 </div>
                                             </div>
 
                                             <div class="mb-3 mt-3">
                                                 <label class="form-label fw-bold">Catatan Verifikator (Optional)</label>
-                                                <textarea name="verified_note" class="form-control" rows="3" placeholder="Masukkan catatan tambahan jika diperlukan..."></textarea>
+                                                <textarea name="verified_note" class="form-control" rows="3"
+                                                    placeholder="Masukkan catatan tambahan jika diperlukan..."></textarea>
                                             </div>
                                         </div>
 
                                         <div class="text-center mt-4">
-                                            <button type="submit" id="btn-submit-verification" class="btn btn-success px-5 fs-5 shadow-sm">
+                                            <button type="submit" id="btn-submit-verification"
+                                                class="btn btn-success px-5 fs-5 shadow-sm">
                                                 <i class="ri-check-double-line"></i> Verifikasi Data
                                             </button>
                                             </form>
@@ -387,7 +425,8 @@
                                         <div class="text-center mt-4">
                                             <div class="alert alert-warning d-inline-block px-4">
                                                 <i class="ri-lock-line me-2"></i> Menunggu proses verifikasi akhir. Anda
-                                                tidak memiliki akses (role: <b>verificator-bongkar-muat-wfg</b>) untuk melakukan proses ini.
+                                                tidak memiliki akses (role: <b>verificator-bongkar-muat-wfg</b>) untuk
+                                                melakukan proses ini.
                                             </div>
                                         </div>
                                     @endif
@@ -429,7 +468,11 @@
                                                 @if ($order->verified_signature)
                                                     @php
                                                         $vSigPath = $order->verified_signature;
-                                                        if (!Str::startsWith($vSigPath, 'storage/') && !Str::startsWith($vSigPath, 'http') && !Str::startsWith($vSigPath, '/storage/')) {
+                                                        if (
+                                                            !Str::startsWith($vSigPath, 'storage/') &&
+                                                            !Str::startsWith($vSigPath, 'http') &&
+                                                            !Str::startsWith($vSigPath, '/storage/')
+                                                        ) {
                                                             $vSigPath = 'storage/' . $vSigPath;
                                                         }
                                                     @endphp
@@ -439,7 +482,8 @@
                                                     <p class="text-muted small italic">No signature</p>
                                                 @endif
                                                 @if ($order->verified_note)
-                                                    <div class="mt-2 small text-muted italic">"{{ $order->verified_note }}"</div>
+                                                    <div class="mt-2 small text-muted italic">
+                                                        "{{ $order->verified_note }}"</div>
                                                 @endif
                                             </div>
                                         </div>
@@ -473,7 +517,7 @@
                     icon: 'info',
                     title: 'Informasi',
                     text: "{{ session('info') }}",
-                    timer: 5000,
+                    timer: 3000,
                     showConfirmButton: true
                 });
             @endif
@@ -483,7 +527,7 @@
                     icon: 'success',
                     title: 'Berhasil',
                     text: "{{ session('success') }}",
-                    timer: 3000,
+                    timer: 2000,
                     showConfirmButton: false
                 });
             @endif
@@ -543,8 +587,9 @@
                     }
                 });
             @elseif ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
-                const verificatorPad = initSignature('verificator-signature-pad', 'verificator-signature-data', 'clear-verificator-sig');
-                
+                const verificatorPad = initSignature('verificator-signature-pad', 'verificator-signature-data',
+                    'clear-verificator-sig');
+
                 // Toggle signature pad wrapper based on checkbox state
                 $('#useStoredSignature').on('change', function() {
                     if (this.checked) {
@@ -573,7 +618,8 @@
                             e.preventDefault();
                             Swal.fire('Peringatan', 'Tanda tangan wajib diisi.', 'warning');
                         } else {
-                            document.getElementById('verificator-signature-data').value = verificatorPad.toDataURL();
+                            document.getElementById('verificator-signature-data').value = verificatorPad
+                                .toDataURL();
                         }
                     }
                 });
