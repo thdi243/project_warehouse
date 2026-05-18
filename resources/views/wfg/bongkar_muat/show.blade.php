@@ -529,6 +529,10 @@
                     text: "{{ session('success') }}",
                     timer: 2000,
                     showConfirmButton: false
+                }).then(() => {
+                    @if (session('success') === 'Driver approved successfully.')
+                        window.location.href = "{{ route('wfg.bongkar_muat.index') }}";
+                    @endif
                 });
             @endif
 
