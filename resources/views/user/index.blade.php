@@ -1062,9 +1062,17 @@
 
                         // Show existing signature if available
                         if (user.signature && user.signature.signature) {
-                            let sigPath = "{{ asset('storage') }}/" + user.signature.signature +
-                                '?v=' +
-                                new Date().getTime();
+                            let rawSig = user.signature.signature;
+                            let sigPath = "";
+                            if (rawSig.startsWith('storage/') || rawSig.startsWith('/storage/')) {
+                                if (rawSig.startsWith('/')) {
+                                    rawSig = rawSig.substring(1);
+                                }
+                                sigPath = "{{ asset('') }}" + rawSig;
+                            } else {
+                                sigPath = "{{ asset('storage') }}/" + rawSig;
+                            }
+                            sigPath += '?v=' + new Date().getTime();
                             $('#edit-signature-image').attr('src', sigPath);
                             $('#edit-signature-preview').show();
                             $('#edit-signature-old').val(sigPath);

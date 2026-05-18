@@ -340,10 +340,18 @@
 
                         // Handle signature (FIX PATH DISINI)
                         if (user.signature && user.signature.signature) {
-                            // Pakai asset('storage') + path dari database
-                            let sigPath = "{{ asset('storage') }}/" + user.signature.signature;
+                            let rawSig = user.signature.signature;
+                            let sigPath = "";
+                            if (rawSig.startsWith('storage/') || rawSig.startsWith('/storage/')) {
+                                if (rawSig.startsWith('/')) {
+                                    rawSig = rawSig.substring(1);
+                                }
+                                sigPath = "{{ asset('') }}" + rawSig;
+                            } else {
+                                sigPath = "{{ asset('storage') }}/" + rawSig;
+                            }
                             console.log('Signature path:', sigPath); // debug: cek di console
-
+                            
                             $('#currentSignature')
                                 .attr('src', sigPath)
                                 .show()
