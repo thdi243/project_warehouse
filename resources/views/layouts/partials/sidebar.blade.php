@@ -39,13 +39,48 @@
             <div id="two-column-menu">
             </div>
             @if ($departemen != 'warehouse' && $jabatan != 'admin')
-            <ul class="navbar-nav" id="navbar-nav">
-                @include('layouts.partials.sidebar-no-warehouse.sidebar_no_warehouse')
-            </ul>
+                <ul class="navbar-nav" id="navbar-nav">
+                    @include('layouts.partials.sidebar-no-warehouse.sidebar_no_warehouse')
+
+                    @if (auth()->user()->hasAnyPermission([
+                                'dashboard',
+                                'tkbm',
+                                'wsp-menu',
+                                'p2h',
+                                'wfg-menu',
+                                'wrm-menu',
+                                'master-wfg',
+                                'master-wsp',
+                                'master-wrm',
+                                'manage-users',
+                                'manage-permissions',
+                            ]))
+                        @include('layouts.partials.sidebar.dashboard')
+
+                        @if (auth()->user()->hasAnyPermission(['tkbm', 'wsp-menu', 'p2h', 'wfg-menu', 'wrm-menu']))
+                            <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
+                            @include('layouts.partials.sidebar.tkbm')
+                            @include('layouts.partials.sidebar.wsp')
+                            @include('layouts.partials.sidebar.p2h')
+                            @include('layouts.partials.sidebar.wfg')
+                            @include('layouts.partials.sidebar.wrm')
+                        @endif
+
+                        @if (auth()->user()->hasAnyPermission(['master-wfg', 'master-wsp', 'master-wrm']))
+                            <li class="menu-title"><span data-key="t-menu">Data Master</span></li>
+                            @include('layouts.partials.sidebar.master_wfg')
+                            @include('layouts.partials.sidebar.master_wsp')
+                            @include('layouts.partials.sidebar.master_wrm')
+                        @endif
+
+                        @include('layouts.partials.sidebar.user')
+                        @include('layouts.partials.sidebar.permissions')
+                    @endif
+                </ul>
             @else
                 @if (in_array($jabatan, ['dept_head', 'foreman', 'operator', 'supervisor', 'admin']))
                     <ul class="navbar-nav" id="navbar-nav">
-                        
+
                         @include('layouts.partials.sidebar.dashboard')
 
                         <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
