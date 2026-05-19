@@ -239,7 +239,8 @@
                         <div class="mb-0" id="signatureWrapper">
                             <label class="form-label fw-bold d-block mb-2">Tanda Tangan Digital</label>
                             @if ($signature)
-                                @php
+                                {{-- {{ dd($signature) }} --}}
+                                {{-- @php
                                     $sigPath = $signature->signature;
                                     if (
                                         !Str::startsWith($sigPath, 'storage/') &&
@@ -248,17 +249,21 @@
                                     ) {
                                         $sigPath = 'storage/' . $sigPath;
                                     }
-                                @endphp
+                                @endphp --}}
                                 <div class="d-flex gap-3 mb-3 pb-2 border-bottom">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="signature_option" id="sigOptionStored" value="stored" checked>
-                                        <label class="form-check-label fw-semibold" for="sigOptionStored" style="cursor: pointer;">
+                                        <input class="form-check-input" type="radio" name="signature_option"
+                                            id="sigOptionStored" value="stored" checked>
+                                        <label class="form-check-label fw-semibold" for="sigOptionStored"
+                                            style="cursor: pointer;">
                                             Gunakan Tanda Tangan Terdaftar
                                         </label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="signature_option" id="sigOptionNew" value="new">
-                                        <label class="form-check-label fw-semibold" for="sigOptionNew" style="cursor: pointer;">
+                                        <input class="form-check-input" type="radio" name="signature_option"
+                                            id="sigOptionNew" value="new">
+                                        <label class="form-check-label fw-semibold" for="sigOptionNew"
+                                            style="cursor: pointer;">
                                             Buat Tanda Tangan Baru
                                         </label>
                                     </div>
@@ -266,7 +271,7 @@
 
                                 <div id="storedSignatureContainer" class="border rounded p-3 text-center bg-light mb-2">
                                     <p class="small text-muted mb-2">Tanda tangan terdaftar yang akan digunakan:</p>
-                                    <img src="{{ asset($sigPath) }}" alt="Signature"
+                                    <img src="{{ Storage::url($signature->signature) }}" alt="Signature"
                                         style="max-height: 150px; width: auto;">
                                 </div>
 
@@ -274,8 +279,10 @@
                                     <canvas id="signaturePad" class="signature-canvas"></canvas>
                                     <div class="mt-2 d-flex justify-content-between align-items-center">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="updateSignatureCheckbox" value="1" checked>
-                                            <label class="form-check-label small text-muted" for="updateSignatureCheckbox" style="cursor: pointer;">
+                                            <input class="form-check-input" type="checkbox" id="updateSignatureCheckbox"
+                                                value="1" checked>
+                                            <label class="form-check-label small text-muted" for="updateSignatureCheckbox"
+                                                style="cursor: pointer;">
                                                 Update tanda tangan terdaftar saya
                                             </label>
                                         </div>
@@ -289,8 +296,10 @@
                                 <canvas id="signaturePad" class="signature-canvas"></canvas>
                                 <div class="mt-2 d-flex justify-content-between align-items-center">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="updateSignatureCheckbox" value="1" checked>
-                                        <label class="form-check-label small text-muted" for="updateSignatureCheckbox" style="cursor: pointer;">
+                                        <input class="form-check-input" type="checkbox" id="updateSignatureCheckbox"
+                                            value="1" checked>
+                                        <label class="form-check-label small text-muted" for="updateSignatureCheckbox"
+                                            style="cursor: pointer;">
                                             Simpan sebagai tanda tangan default
                                         </label>
                                     </div>
@@ -339,7 +348,8 @@
 
                 $('#modalAction').on('shown.bs.modal', function() {
                     if (currentAction === 'approved') {
-                        if (!hasStoredSignature || $('input[name="signature_option"]:checked').val() === 'new') {
+                        if (!hasStoredSignature || $('input[name="signature_option"]:checked').val() ===
+                            'new') {
                             resizeCanvas();
                         }
                     }
@@ -636,7 +646,7 @@
                     $('#storedSignatureContainer').addClass('d-none');
                     $('#newSignatureContainer').removeClass('d-none');
                     $('#useStoredSignature').val('0');
-                    
+
                     // Resize canvas when it becomes visible to avoid drawing issues
                     const canvas = document.getElementById('signaturePad');
                     if (canvas && signaturePad) {
