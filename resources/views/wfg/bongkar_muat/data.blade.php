@@ -85,7 +85,9 @@
                                     <th>Status</th>
                                     <th>Jam Muat</th>
                                     <th>Verified By</th>
-                                    <th class="text-center">Actions</th>
+                                    @can('permission', 'bongkar-muat-plus')
+                                        <th class="text-center">Actions</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody>
@@ -499,11 +501,13 @@
                                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                                         <td>${order.jam_muat || '-'}</td>
                                         <td>${verificatorName}</td>
-                                        <td class="text-center">
-                                            <div class="d-flex gap-1 justify-content-center">
-                                                ${actions}
-                                            </div>
-                                        </td>
+                                        @can('permission', 'bongkar-muat-plus')
+                                            <td class="text-center">
+                                                <div class="d-flex gap-1 justify-content-center">
+                                                    ${actions}
+                                                </div>
+                                            </td>
+                                        @endcan
                                     </tr>
                                 `;
                                 tbody.append(rowHtml);

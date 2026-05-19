@@ -238,9 +238,8 @@
                                                                     <input type="text"
                                                                         name="details[{{ $index }}][no_to]"
                                                                         class="form-control form-control-sm text-center border-warning fw-bold"
-                                                                        placeholder="Input No. TO"
-                                                                        value="{{ $detail->no_to }}" required
-                                                                        pattern="[0-9]+">
+                                                                        placeholder="No. TO" value="{{ $detail->no_to }}"
+                                                                        required pattern="[0-9]+">
                                                                 @else
                                                                     <span class="text-muted small">-</span>
                                                                 @endif

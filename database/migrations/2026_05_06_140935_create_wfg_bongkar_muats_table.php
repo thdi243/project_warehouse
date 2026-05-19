@@ -41,6 +41,7 @@ return new class extends Migration
             $table->foreignId('verified_by')->nullable()->constrained('users')->cascadeOnDelete();
             $table->dateTime('verified_at')->nullable();
             $table->text('verified_note')->nullable();
+            $table->longText('verified_signature')->nullable();
 
             $table->foreignId('created_by')->nullable()->constrained('users')->cascadeOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->cascadeOnDelete();

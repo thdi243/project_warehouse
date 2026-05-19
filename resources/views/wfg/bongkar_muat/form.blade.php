@@ -237,8 +237,10 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="card-footer d-flex justify-content-between align-items-center bg-light p-3">
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                            <div
+                                class="card-footer d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 bg-light p-3">
+                                <div
+                                    class="d-flex align-items-center justify-content-center justify-content-md-start gap-3 flex-wrap text-center">
                                     <h6 class="mb-0">Total Items: <span id="total-items"
                                             class="text-primary fw-bold">0</span></h6>
                                     <h6 class="mb-0">Total Full Pallet: <span id="total-full-pallet"
@@ -246,14 +248,16 @@
                                     <h6 class="mb-0">Total Pallet Receh: <span id="total-pallet-receh"
                                             class="text-warning fw-bold">0</span></h6>
                                 </div>
-                                <div class="d-flex gap-2">
+                                <div
+                                    class="d-flex flex-column flex-sm-row gap-2 w-md-auto justify-content-center justify-content-md-end mb-2">
                                     @if (isset($draft))
-                                        <button type="button" class="btn btn-outline-danger px-4 shadow"
+                                        <button type="button"
+                                            class="btn btn-outline-danger px-4 shadow w-100 text-nowrap"
                                             id="btnCancelDraft">
                                             <i class="ri-delete-bin-line me-1"></i> CANCEL DRAFT
                                         </button>
                                     @endif
-                                    <button type="submit" class="btn btn-success px-5 shadow">
+                                    <button type="submit" class="btn btn-success px-5 shadow w-100">
                                         <i class="ri-save-line me-1"></i> SUBMIT
                                     </button>
                                 </div>
@@ -420,16 +424,17 @@
         function renderTable() {
             let html = '';
             items.forEach((item, index) => {
+                const badgeJenis = item.jenis === 'P' ? 'badge bg-soft-primary text-primary' :
+                    'badge bg-soft-success text-success';
                 html += `
                 <tr>
                     <td>
                         <div class="d-flex flex-column">
-                            <span class="fw-bold">${item.nama_barang}</span>
-                            <small class="text-muted">${item.mid}</small>
+                            <span class="fw-bold">${item.mid}</span>
                         </div>
                     </td>
                     <td>${item.batch ?? '-'}</td>
-                    <td><span class="badge bg-soft-primary text-primary">${item.jenis}</span></td>
+                    <td><span class="${badgeJenis}">${item.jenis}</span></td>
                     <td class="text-center">
                         ${item.qty}
                         <input type="hidden" name="details[${index}][qty]" value="${item.qty}">
@@ -438,24 +443,26 @@
                         <input type="hidden" name="details[${index}][jenis]" value="${item.jenis}">
                     </td>
                     <td class="text-center">
-                        <input type="text" class="form-control form-control-sm text-center" value="${item.to_dummy || ''}" onchange="updateItemFlag(${index}, 'to_dummy', this.value)" style="width: 80px;">
+                        ${item.to_dummy || '-'}
+                        <input type="hidden" name="details[${index}][to_dummy]" value="${item.to_dummy || ''}">
                     </td>
                     <td class="text-center">
-                        <input type="text" class="form-control form-control-sm text-center" value="${item.to_sap || ''}" onchange="updateItemFlag(${index}, 'to_sap', this.value)" style="width: 80px;">
+                        ${item.to_sap || '-'}
+                        <input type="hidden" name="details[${index}][to_sap]" value="${item.to_sap || ''}">
                     </td>
                     <td>
                         <div class="d-flex gap-2 justify-content-center">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" name="details[${index}][double_po]" value="1" ${item.double_po ? 'checked' : ''} onchange="updateItemFlag(${index}, 'double_po', this.checked)">
-                                <label class="form-label mb-0 small">2 PO</label>
+                                <label class="form-label mb-0 small text-nowrap">2 PO</label>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" name="details[${index}][cancel_to]" value="1" ${item.cancel_to ? 'checked' : ''} onchange="updateItemFlag(${index}, 'cancel_to', this.checked)">
-                                <label class="form-label mb-0 small">Cancel TO</label>
+                                <label class="form-label mb-0 small text-nowrap">Cancel TO</label>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" name="details[${index}][manual_picking]" value="1" ${item.manual_picking ? 'checked' : ''} onchange="updateItemFlag(${index}, 'manual_picking', this.checked)">
-                                <label class="form-label mb-0 small">Manual</label>
+                                <label class="form-label mb-0 small text-nowrap">Manual</label>
                             </div>
                         </div>
                     </td>
