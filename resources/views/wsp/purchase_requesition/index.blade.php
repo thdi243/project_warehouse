@@ -112,9 +112,9 @@
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>STATUS</th>
-                                    @can('permission', 'wsp-data-pr-plus')
-                                        <th class="text-center">AKSI</th>
-                                    @endcan
+                                    {{-- @can('permission', 'wsp-data-pr-plus') --}}
+                                    <th class="text-center">AKSI</th>
+                                    {{-- @endcan --}}
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -495,9 +495,12 @@
                                     ${pr.status}
                                 </span>
                             </td>
-                            @can('permission', 'wsp-data-pr-plus')
-                                <td>
-                                    <div class="d-flex gap-2 justify-content-center text-nowrap">
+                            <td>
+                                <div class="d-flex gap-2 justify-content-center text-nowrap">
+                                    <button class="btn btn-info btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
+                                        <i class="mdi mdi-eye"></i>
+                                    </button>
+                                    @can('permission', 'wsp-data-pr-plus')
                                         <button 
                                             class="btn ${isFinished ? 'btn-light' : (canConfirm ? 'btn-success' : 'btn-outline-secondary')} btn-confirm btn-sm"
                                             data-id="${pr.id}"
@@ -510,18 +513,15 @@
                                         <button class="btn btn-primary btn-copy btn-sm" onclick="copyFormatted(${pr.id})" title="Copy Formatted">
                                             <i class="mdi mdi-content-copy"></i>
                                         </button>
-                                        <button class="btn btn-info btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
-                                            <i class="mdi mdi-eye"></i>
-                                        </button>
                                         <button class="btn btn-danger btn-delete btn-sm" onclick="deletePR(${pr.id})" title="Delete">
                                             <i class="mdi mdi-delete"></i>
                                         </button>
-                                        <button class="btn btn-warning btn-print btn-sm" onclick="printPR(${pr.id})" title="Print">
-                                            <i class="mdi mdi-printer"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            @endcan
+                                    @endcan
+                                    <button class="btn btn-warning btn-print btn-sm" onclick="printPR(${pr.id})" title="Download PDF">
+                                        <i class="mdi mdi-printer"></i>
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
                     `);
                 });
@@ -765,10 +765,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                             </div>
 
                         </div>

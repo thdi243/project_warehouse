@@ -52,7 +52,8 @@
                     <div class="alert alert-info py-2 px-3 w-100" role="alert">
                         <small>
                             <i class="ri-information-line me-1"></i>
-                            Klik badge status untuk melihat tracking approval PR. Gunakan tombol Form PR untuk pengajuan baru.
+                            Klik badge status untuk melihat tracking approval PR. Gunakan tombol Form PR untuk pengajuan
+                            baru.
                         </small>
                     </div>
                     <div class="table-responsive">
@@ -71,7 +72,7 @@
                             </thead>
                             <tbody id="tableBody">
                                 <tr class="empty-state-row">
-                                    <td colspan="7" class="text-center py-5">
+                                    <td colspan="8" class="text-center py-5">
                                         <div class="d-flex flex-column align-items-center">
                                             <i class="mdi mdi-package-variant-closed fs-1 text-muted mb-2"></i>
                                             <h6 class="fw-bold">Belum Ada Data</h6>
@@ -116,16 +117,34 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <table class="table table-sm table-borderless">
-                                <tr><th style="width:150px;">PR Date</th><td id="d_pr_date">-</td></tr>
-                                <tr><th>Requested By</th><td id="d_requested_by">-</td></tr>
-                                <tr><th>Department</th><td id="d_department">-</td></tr>
+                                <tr>
+                                    <th style="width:150px;">PR Date</th>
+                                    <td id="d_pr_date">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Requested By</th>
+                                    <td id="d_requested_by">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Department</th>
+                                    <td id="d_department">-</td>
+                                </tr>
                             </table>
                         </div>
                         <div class="col-md-6">
                             <table class="table table-sm table-borderless">
-                                <tr><th style="width:150px;">Jenis</th><td id="d_jenis">-</td></tr>
-                                <tr><th>Detail Jenis</th><td id="d_detail_jenis">-</td></tr>
-                                <tr><th>Status</th><td id="d_status">-</td></tr>
+                                <tr>
+                                    <th style="width:150px;">Jenis</th>
+                                    <td id="d_jenis">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Detail Jenis</th>
+                                    <td id="d_detail_jenis">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td id="d_status">-</td>
+                                </tr>
                             </table>
                         </div>
                     </div>
@@ -147,7 +166,9 @@
                                 </tr>
                             </thead>
                             <tbody id="detailItems">
-                                <tr><td colspan="10" class="text-center">Loading...</td></tr>
+                                <tr>
+                                    <td colspan="10" class="text-center">Loading...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -193,7 +214,7 @@
                     beforeSend: function() {
                         $('#tableBody').html(`
                             <tr>
-                                <td colspan="7" class="text-center py-4">
+                                <td colspan="8" class="text-center py-4">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -214,7 +235,7 @@
                     error: function(xhr) {
                         $('#tableBody').html(`
                             <tr>
-                                <td colspan="7" class="text-center text-danger py-3">
+                                <td colspan="8" class="text-center text-danger py-3">
                                     <i class="mdi mdi-alert-circle-outline me-1"></i> Gagal memuat data dari server.
                                 </td>
                             </tr>
@@ -226,7 +247,7 @@
             function showEmptyState() {
                 $('#tableBody').html(`
                     <tr class="empty-state-row">
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <div class="d-flex flex-column align-items-center">
                                 <i class="mdi mdi-package-variant-closed fs-1 text-muted mb-2"></i>
                                 <h6 class="fw-bold">Belum Ada Data</h6>
@@ -262,7 +283,7 @@
 
                 pageData.forEach((pr, index) => {
                     const badgeClass = badgeStatus[pr.status] ?? 'secondary';
-                    
+
                     tbody.append(`
                         <tr>
                             <td>${startIndex + index + 1}</td>
@@ -282,8 +303,11 @@
                                 </span>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-info" onclick="showDetailPR(${pr.id})">
-                                    <i class="mdi mdi-eye"></i> Detail
+                                <button class="btn btn-sm btn-info" onclick="showDetailPR(${pr.id})" title="Lihat Detail">
+                                    <i class="mdi mdi-eye"></i>
+                                </button>
+                                <button class="btn btn-warning btn-print btn-sm" onclick="printPR(${pr.id})" title="Download PDF">
+                                        <i class="mdi mdi-printer"></i>
                                 </button>
                             </td>
                         </tr>
@@ -361,7 +385,12 @@
                 $('#modalDetailPR').modal('show');
             };
 
-
+            window.printPR = function(id) {
+                window.open(
+                    `/api/purchase-requesition/print-riwayat/${id}`,
+                    "_blank"
+                );
+            }
 
             function renderPagination() {
                 const totalPages = Math.ceil(filteredPR.length / itemsPerPage);
@@ -412,7 +441,8 @@
                     filteredPR = allPR;
                 } else {
                     filteredPR = allPR.filter(item => {
-                        const requestedBy = item.requested_by ? item.requested_by.toLowerCase() : '';
+                        const requestedBy = item.requested_by ? item.requested_by.toLowerCase() :
+                            '';
                         const noDoc = item.no_doc ? item.no_doc.toLowerCase() : '';
                         return requestedBy.includes(keyword) || noDoc.includes(keyword);
                     });
