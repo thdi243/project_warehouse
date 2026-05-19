@@ -237,7 +237,7 @@
                             <textarea class="form-control" id="actionComment" rows="3" placeholder="Opsional..."></textarea>
                         </div>
                         <div class="mb-0" id="signatureWrapper">
-                            <label class="form-label fw-bold">Tanda Tangan Digital</label>
+                            <label class="form-label fw-bold d-block mb-2">Tanda Tangan Digital</label>
                             @if ($signature)
                                 @php
                                     $sigPath = $signature->signature;
@@ -249,15 +249,51 @@
                                         $sigPath = 'storage/' . $sigPath;
                                     }
                                 @endphp
-                                <div class="border rounded p-3 text-center bg-white mb-2">
-                                    <p class="small text-muted mb-2">Tanda tangan yang akan Anda gunakan:</p>
+                                <div class="d-flex gap-3 mb-3 pb-2 border-bottom">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="signature_option" id="sigOptionStored" value="stored" checked>
+                                        <label class="form-check-label fw-semibold" for="sigOptionStored" style="cursor: pointer;">
+                                            Gunakan Tanda Tangan Terdaftar
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="signature_option" id="sigOptionNew" value="new">
+                                        <label class="form-check-label fw-semibold" for="sigOptionNew" style="cursor: pointer;">
+                                            Buat Tanda Tangan Baru
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div id="storedSignatureContainer" class="border rounded p-3 text-center bg-light mb-2">
+                                    <p class="small text-muted mb-2">Tanda tangan terdaftar yang akan digunakan:</p>
                                     <img src="{{ asset($sigPath) }}" alt="Signature"
                                         style="max-height: 150px; width: auto;">
+                                </div>
+
+                                <div id="newSignatureContainer" class="d-none">
+                                    <canvas id="signaturePad" class="signature-canvas"></canvas>
+                                    <div class="mt-2 d-flex justify-content-between align-items-center">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="updateSignatureCheckbox" value="1" checked>
+                                            <label class="form-check-label small text-muted" for="updateSignatureCheckbox" style="cursor: pointer;">
+                                                Update tanda tangan terdaftar saya
+                                            </label>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature">
+                                            <i class="mdi mdi-eraser me-1"></i> Bersihkan
+                                        </button>
+                                    </div>
                                 </div>
                                 <input type="hidden" id="useStoredSignature" value="1">
                             @else
                                 <canvas id="signaturePad" class="signature-canvas"></canvas>
-                                <div class="mt-2 text-end">
+                                <div class="mt-2 d-flex justify-content-between align-items-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="updateSignatureCheckbox" value="1" checked>
+                                        <label class="form-check-label small text-muted" for="updateSignatureCheckbox" style="cursor: pointer;">
+                                            Simpan sebagai tanda tangan default
+                                        </label>
+                                    </div>
                                     <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature">
                                         <i class="mdi mdi-eraser me-1"></i> Bersihkan
                                     </button>
@@ -287,27 +323,27 @@
             const hasStoredSignature = {{ $signature ? 'true' : 'false' }};
 
             // Initialize Signature Pad
-            if (!hasStoredSignature) {
-                const canvas = document.getElementById('signaturePad');
-                if (canvas) {
-                    signaturePad = new SignaturePad(canvas);
+            const canvas = document.getElementById('signaturePad');
+            if (canvas) {
+                signaturePad = new SignaturePad(canvas);
 
-                    function resizeCanvas() {
-                        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-                        canvas.width = canvas.offsetWidth * ratio;
-                        canvas.height = canvas.offsetHeight * ratio;
-                        canvas.getContext("2d").scale(ratio, ratio);
-                        signaturePad.clear();
-                    }
+                function resizeCanvas() {
+                    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                    canvas.width = canvas.offsetWidth * ratio;
+                    canvas.height = canvas.offsetHeight * ratio;
+                    canvas.getContext("2d").scale(ratio, ratio);
+                    signaturePad.clear();
+                }
 
-                    window.onresize = resizeCanvas;
+                window.onresize = resizeCanvas;
 
-                    $('#modalAction').on('shown.bs.modal', function() {
-                        if (currentAction === 'approved') {
+                $('#modalAction').on('shown.bs.modal', function() {
+                    if (currentAction === 'approved') {
+                        if (!hasStoredSignature || $('input[name="signature_option"]:checked').val() === 'new') {
                             resizeCanvas();
                         }
-                    });
-                }
+                    }
+                });
             }
 
             let currentFilterLevel = $('#approvalTabs button.active').data('level') || 2;
@@ -590,6 +626,29 @@
                 openActionModal('rejected');
             });
 
+            // Signature Option Toggle
+            $(document).on('change', 'input[name="signature_option"]', function() {
+                if ($(this).val() === 'stored') {
+                    $('#storedSignatureContainer').removeClass('d-none');
+                    $('#newSignatureContainer').addClass('d-none');
+                    $('#useStoredSignature').val('1');
+                } else {
+                    $('#storedSignatureContainer').addClass('d-none');
+                    $('#newSignatureContainer').removeClass('d-none');
+                    $('#useStoredSignature').val('0');
+                    
+                    // Resize canvas when it becomes visible to avoid drawing issues
+                    const canvas = document.getElementById('signaturePad');
+                    if (canvas && signaturePad) {
+                        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                        canvas.width = canvas.offsetWidth * ratio;
+                        canvas.height = canvas.offsetHeight * ratio;
+                        canvas.getContext("2d").scale(ratio, ratio);
+                        signaturePad.clear();
+                    }
+                }
+            });
+
             function openActionModal(status) {
                 currentAction = status;
                 $('#actionModalTitle').text(status === 'approved' ? 'Konfirmasi Approval' : 'Konfirmasi Penolakan');
@@ -603,6 +662,11 @@
                     $('#signatureWrapper').removeClass('d-none');
                 }
 
+                // Reset signature option to stored if available
+                if (hasStoredSignature) {
+                    $('#sigOptionStored').prop('checked', true).trigger('change');
+                }
+
                 signaturePad?.clear();
                 $('#actionComment').val('');
                 $('#modalAction').modal('show');
@@ -613,7 +677,9 @@
             });
 
             $('#btnSubmitAction').on('click', function() {
-                if (currentAction === 'approved' && !hasStoredSignature && signaturePad.isEmpty()) {
+                const useStored = $('#useStoredSignature').val() == '1';
+
+                if (currentAction === 'approved' && !useStored && signaturePad.isEmpty()) {
                     Swal.fire('Error', 'Tanda tangan wajib diisi untuk approval.', 'error');
                     return;
                 }
@@ -623,9 +689,10 @@
                     status: currentAction,
                     comment: $('#actionComment').val(),
                     items: window.currentSelectedItems || [],
-                    ttd: (currentAction === 'approved' && !hasStoredSignature) ? signaturePad
+                    ttd: (currentAction === 'approved' && !useStored) ? signaturePad
                         .toDataURL() : null,
-                    use_stored_signature: (currentAction === 'approved' && hasStoredSignature) ? 1 : 0
+                    use_stored_signature: (currentAction === 'approved' && useStored) ? 1 : 0,
+                    update_signature: $('#updateSignatureCheckbox').is(':checked') ? 1 : 0
                 };
 
                 Swal.fire({

@@ -839,7 +839,8 @@ class WspPurchaseRequesitionController extends Controller
             'ttd'     => 'required_if:status,approved|nullable',
             'no_pr'   => 'nullable',
             'items'   => 'nullable|array',
-            'items.*' => 'exists:wsp_purchase_requesition_items,id'
+            'items.*' => 'exists:wsp_purchase_requesition_items,id',
+            'update_signature' => 'nullable'
         ]);
 
         try {
@@ -853,7 +854,8 @@ class WspPurchaseRequesitionController extends Controller
                 $request->ttd,
                 $request->no_pr,
                 $request->items,
-                $request->boolean('use_stored_signature')
+                $request->boolean('use_stored_signature'),
+                $request->boolean('update_signature')
             );
 
             if (!$res['status']) {
@@ -877,7 +879,7 @@ class WspPurchaseRequesitionController extends Controller
         }
     }
 
-    private function processApproval($prId, $userId, $status, $comment = null, $ttd = null, $noPr = null, $itemIds = [], $useStoredSignature = false)
+    private function processApproval($prId, $userId, $status, $comment = null, $ttd = null, $noPr = null, $itemIds = [], $useStoredSignature = false, $updateSignature = false)
     {
         $pr = WspPurchaseRequesitionModel::with('approval')->findOrFail($prId);
 
@@ -949,11 +951,13 @@ class WspPurchaseRequesitionController extends Controller
                     Storage::disk('public')->put($path, $image);
                     $approval->ttd = $path;
 
-                    // Jika user belum punya signature tersimpan, simpan ttd ini sebagai default
-                    UserSignatureModel::firstOrCreate(
-                        ['user_id' => $userId],
-                        ['signature' => $path]
-                    );
+                    // Simpan atau update signature ke user_signature jika dipilih/belum punya
+                    if ($updateSignature || !UserSignatureModel::where('user_id', $userId)->exists()) {
+                        UserSignatureModel::updateOrCreate(
+                            ['user_id' => $userId],
+                            ['signature' => $path]
+                        );
+                    }
                 }
             }
         }
@@ -1030,7 +1034,8 @@ class WspPurchaseRequesitionController extends Controller
             'ids.*' => 'exists:wsp_purchase_requesition,id',
             'status' => 'required|in:approved,rejected',
             'comment' => 'nullable|string|max:500',
-            'ttd' => 'nullable|string' // bulk approval might share one signature
+            'ttd' => 'nullable|string', // bulk approval might share one signature
+            'update_signature' => 'nullable'
         ]);
 
         $userId = Auth::id();
@@ -1047,8 +1052,9 @@ class WspPurchaseRequesitionController extends Controller
                     $request->comment,
                     $request->ttd,
                     null,
-                    [],
-                    $request->boolean('use_stored_signature')
+                    $request->items ?? [],
+                    $request->boolean('use_stored_signature'),
+                    $request->boolean('update_signature')
                 );
                 if ($res['status']) {
                     DB::commit();
