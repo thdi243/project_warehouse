@@ -239,7 +239,7 @@
                         <div class="mb-0" id="signatureWrapper">
                             <label class="form-label fw-bold d-block mb-2">Tanda Tangan Digital</label>
                             @if ($signature)
-                                {{-- {{ dd($signature) }} --}}
+                                {{ dd($signature) }}
                                 {{-- @php
                                     $sigPath = $signature->signature;
                                     if (
