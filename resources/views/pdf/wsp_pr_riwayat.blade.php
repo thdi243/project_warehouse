@@ -275,25 +275,25 @@
                 <td class="approver-ttd-cell">
                     @if (!empty($approvers[0]['ttd']))
                         <img src="{{ $approvers[0]['ttd'] }}" style="max-width: 120px; max-height: 60px;"
-                            alt="TTD">
+                            alt="Ttd {{ $approvers[0]['nama'] }}">
                     @endif
                 </td>
                 <td class="approver-ttd-cell">
                     @if (!empty($approvers[1]['ttd']))
                         <img src="{{ $approvers[1]['ttd'] }}" style="max-width: 120px; max-height: 60px;"
-                            alt="TTD">
+                            alt="Ttd {{ $approvers[1]['nama'] }}">
                     @endif
                 </td>
                 <td class="approver-ttd-cell">
                     @if (!empty($approvers[2]['ttd']))
                         <img src="{{ $approvers[2]['ttd'] }}" style="max-width: 120px; max-height: 60px;"
-                            alt="TTD">
+                            alt="Ttd {{ $approvers[2]['nama'] }}">
                     @endif
                 </td>
                 <td class="approver-ttd-cell">
                     @if (!empty($approvers[3]['ttd']))
                         <img src="{{ $approvers[3]['ttd'] }}" style="max-width: 120px; max-height: 60px;"
-                            alt="TTD">
+                            alt="Ttd {{ $approvers[3]['nama'] }}">
                     @endif
                 </td>
             </tr>

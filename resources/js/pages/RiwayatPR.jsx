@@ -207,6 +207,7 @@ export default function RiwayatPR() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Tanggal</TableHead>
+                                <TableHead>No Doc</TableHead>
                                 <TableHead>No PR</TableHead>
                                 <TableHead>Departemen</TableHead>
                                 <TableHead>Status</TableHead>
@@ -231,6 +232,9 @@ export default function RiwayatPR() {
                                     <TableRow key={pr.id}>
                                         <TableCell>
                                             {pr.pr_date ?? "-"}
+                                        </TableCell>
+                                        <TableCell>
+                                            {pr.no_doc ?? "-"}
                                         </TableCell>
                                         <TableCell>
                                             {pr.pr_number ?? "-"}

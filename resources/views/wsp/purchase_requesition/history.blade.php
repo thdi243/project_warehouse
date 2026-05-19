@@ -66,6 +66,7 @@
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>STATUS</th>
+                                    <th>ACTION</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -98,6 +99,61 @@
                             </ul>
                         </nav>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detail PR -->
+    <div class="modal fade" id="modalDetailPR" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold">Detail Purchase Requisition</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless">
+                                <tr><th style="width:150px;">PR Date</th><td id="d_pr_date">-</td></tr>
+                                <tr><th>Requested By</th><td id="d_requested_by">-</td></tr>
+                                <tr><th>Department</th><td id="d_department">-</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless">
+                                <tr><th style="width:150px;">Jenis</th><td id="d_jenis">-</td></tr>
+                                <tr><th>Detail Jenis</th><td id="d_detail_jenis">-</td></tr>
+                                <tr><th>Status</th><td id="d_status">-</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <h6 class="mb-2 fw-bold"><i class="mdi mdi-format-list-bulleted me-2"></i>Detail Items</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead class="table-light align-middle">
+                                <tr>
+                                    <th>No</th>
+                                    <th>MID</th>
+                                    <th>Nama Barang</th>
+                                    <th>Qty</th>
+                                    <th>UOM</th>
+                                    <th>Jenis</th>
+                                    <th>Alasan</th>
+                                    <th>Keterangan</th>
+                                    <th class="text-center">Manager User</th>
+                                    <th class="text-center">Manager WRH</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailItems">
+                                <tr><td colspan="10" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
@@ -225,6 +281,11 @@
                                     ${pr.status.toUpperCase()}
                                 </span>
                             </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="showDetailPR(${pr.id})">
+                                    <i class="mdi mdi-eye"></i> Detail
+                                </button>
+                            </td>
                         </tr>
                     `);
                 });
@@ -233,11 +294,74 @@
                 renderPagination();
             }
 
+
             function updatePaginationInfo(from, to, total) {
                 $('#showingFrom').text(from);
                 $('#showingTo').text(to);
                 $('#totalRecords').text(total);
             }
+
+            window.showDetailPR = function(id) {
+                const pr = allPR.find(p => p.id === id);
+                if (!pr) return;
+
+                $('#d_pr_date').text(pr.pr_date);
+                $('#d_requested_by').text(pr.requested_by);
+                $('#d_department').text(pr.department.toUpperCase());
+                $('#d_jenis').text(pr.jenis || '-');
+                $('#d_detail_jenis').text(pr.detail_jenis || '-');
+                $('#d_status').text(pr.status.toUpperCase());
+
+                const tbody = $('#detailItems');
+                tbody.empty();
+
+                if (!pr.items || pr.items.length === 0) {
+                    tbody.html('<tr><td colspan="10" class="text-center">Tidak ada item.</td></tr>');
+                } else {
+                    $.each(pr.items, function(i, item) {
+                        const badgeClass = item.jenis === 'blocked' ? 'bg-danger' : 'bg-success';
+                        const jenisText = item.jenis === 'blocked' ? 'Blocked' : 'PR';
+
+                        let statusUser = '-';
+                        let statusWrh = '-';
+
+                        if (item.approval && item.approval.length > 0) {
+                            item.approval.forEach(a => {
+                                const level = a.approval?.level;
+                                if (level == 2) statusUser = a.status;
+                                if (level == 3) statusWrh = a.status;
+                            });
+                        }
+
+                        const formatBadge = (status) => {
+                            if (status === '-') return '-';
+                            let bg = 'warning';
+                            if (status === 'approved') bg = 'success';
+                            if (status === 'rejected') bg = 'danger';
+                            return `<span class="badge badge-soft-${bg}">${status}</span>`;
+                        };
+
+                        tbody.append(`
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td>${item.barang?.mid_barang ?? '-'}</td>
+                                <td>${item.barang?.nama_barang ?? '-'}</td>
+                                <td>${item.qty}</td>
+                                <td>${item.barang?.uom ?? '-'}</td>
+                                <td><span class="badge ${badgeClass}">${jenisText}</span></td>
+                                <td>${item.alasan ?? '-'}</td>
+                                <td>${item.keterangan ?? '-'}</td>
+                                <td class="text-center">${formatBadge(statusUser)}</td>
+                                <td class="text-center">${formatBadge(statusWrh)}</td>
+                            </tr>
+                        `);
+                    });
+                }
+
+                $('#modalDetailPR').modal('show');
+            };
+
+
 
             function renderPagination() {
                 const totalPages = Math.ceil(filteredPR.length / itemsPerPage);

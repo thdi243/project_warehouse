@@ -10,10 +10,10 @@
         <i class="bx bx-git-commit fs-12"></i>Data Riwayat PR</a>
 </li>
 @if ($jabatan == 'dept_head')
-<li class="nav-item">
-    <a href="{{ route('stock.pr.approval') }}"
-        class="nav-link menu-link {{ request()->routeIs('stock.pr.approval') ? 'active' : '' }}">
-        <i class="bx bx-git-commit fs-12"></i>Approval PR
-    </a>
-</li>
+    <li class="nav-item">
+        <a href="{{ route('stock.pr.approval') }}"
+            class="nav-link menu-link {{ request()->routeIs('stock.pr.approval') ? 'active' : '' }}">
+            <i class="bx bx-git-commit fs-12"></i>Approval PR
+        </a>
+    </li>
 @endif

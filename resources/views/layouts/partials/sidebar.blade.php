@@ -42,6 +42,7 @@
                 <ul class="navbar-nav" id="navbar-nav">
                     @include('layouts.partials.sidebar-no-warehouse.sidebar_no_warehouse')
 
+                    {{-- Jika user no warehouse akses menu warehouse ada di sini --}}
                     @if (auth()->user()->hasAnyPermission([
                                 'dashboard',
                                 'tkbm',

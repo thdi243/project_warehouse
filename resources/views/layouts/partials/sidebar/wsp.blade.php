@@ -1,13 +1,11 @@
 @can('permission', 'wsp-menu')
     <li class="nav-item">
-        <a class="nav-link menu-link {{ request()->routeIs('stock.*') ? '' : 'collapsed' }}"
-            href="#sideBarRak" data-bs-toggle="collapse" role="button"
-            aria-expanded="{{ request()->routeIs('stock.*') ? 'true' : 'false' }}"
+        <a class="nav-link menu-link {{ request()->routeIs('stock.*') ? '' : 'collapsed' }}" href="#sideBarRak"
+            data-bs-toggle="collapse" role="button" aria-expanded="{{ request()->routeIs('stock.*') ? 'true' : 'false' }}"
             aria-controls="sideBarRak">
             <i class="mdi mdi-package-variant"></i><span data-key="t-stock">WSP</span>
         </a>
-        <div class="collapse menu-dropdown {{ request()->routeIs('stock.*') ? 'show' : '' }}"
-            id="sideBarRak">
+        <div class="collapse menu-dropdown {{ request()->routeIs('stock.*') ? 'show' : '' }}" id="sideBarRak">
             <ul class="nav nav-sm flex-column">
                 @can('permission', 'wsp-stock-location')
                     <li class="nav-item">
@@ -36,11 +34,18 @@
                         </a>
                     </li>
                 @endcan
+                @can('permission', 'wsp-riwayat-pr')
+                    <li class="nav-item">
+                        <a href="{{ route('stock.pr.history') }}"
+                            class="nav-link menu-link {{ request()->routeIs('stock.pr.history') ? 'active' : '' }}">
+                            <i class="bx bx-git-commit fs-12"></i>Riwayat PR</a>
+                    </li>
+                @endcan
                 @can('permission', 'wsp-data-pr')
                     <li class="nav-item">
                         <a href="{{ route('stock.pr.index') }}"
                             class="nav-link menu-link {{ request()->routeIs('stock.pr.index') ? 'active' : '' }}">
-                            <i class="bx bx-git-commit fs-12"></i>Purchase Requesition</a>
+                            <i class="bx bx-git-commit fs-12"></i>Data PR</a>
                     </li>
                 @endcan
                 @can('permission', 'wsp-approval-pr')

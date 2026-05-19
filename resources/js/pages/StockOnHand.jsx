@@ -105,7 +105,7 @@ const StockOnHandTable = () => {
                 item.mid_barang,
                 item.nama_barang,
                 item.uom,
-                item.qty_soh,
+                item.unrest,
                 item.last_update,
             ]);
         });
@@ -234,12 +234,12 @@ const StockOnHandTable = () => {
                                             <TableCell>
                                                 <Badge
                                                     variant={
-                                                        item.qty_soh > 0
+                                                        item.unrest > 0
                                                             ? "info"
                                                             : "soft_destructive"
                                                     }
                                                 >
-                                                    {item.qty_soh}
+                                                    {item.unrest}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>

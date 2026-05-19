@@ -13,10 +13,10 @@ class WspPurchaseRequesitionItemsModel extends Model
     protected $fillable = [
         'pr_id',
         'barang_id',
+        'jenis',
         'qty',
-        'qty_book_soh',
         'keterangan',
-        'status'
+        'alasan'
     ];
 
     public function barang()

@@ -23,11 +23,6 @@ class StockOnHandController extends Controller
                 ->selectRaw('MAX(last_update) as last_update')
                 ->groupBy('barang_id');
 
-            // subquery: ambil total qty_book_soh per barang dari PR items
-            $bookedSoh = DB::table('wsp_purchase_requesition_items')
-                ->select('barang_id')
-                ->selectRaw('SUM(qty_book_soh) as total_book_soh')
-                ->groupBy('barang_id');
 
             $data = BarangModel::query()
                 ->leftJoinSub($latestPerBarang, 'latest', function ($join) {
@@ -37,21 +32,17 @@ class StockOnHandController extends Controller
                     $join->on('wsp_barang.id', '=', 'soh.barang_id')
                         ->on('soh.last_update', '=', 'latest.last_update');
                 })
-                ->leftJoinSub($bookedSoh, 'booked', function ($join) {
-                    $join->on('wsp_barang.id', '=', 'booked.barang_id');
-                })
                 ->select([
                     'soh.id',
                     'wsp_barang.id as barang_id',
                     'wsp_barang.mid_barang',
                     'wsp_barang.nama_barang',
                     'wsp_barang.uom',
-                    DB::raw('COALESCE(soh.qty_soh, 0) as qty_soh'),
+                    // DB::raw('COALESCE(soh.qty_soh, 0) as qty_soh'),
                     DB::raw('COALESCE(soh.unrest, 0) as unrest'),
                     DB::raw('COALESCE(soh.qual_insp, 0) as qual_insp'),
-                    DB::raw('COALESCE(soh.blocked, 0) as blocked'),
+                    // DB::raw('COALESCE(soh.blocked, 0) as blocked'),
                     DB::raw('COALESCE(soh.transf, 0) as transf'),
-                    DB::raw('COALESCE(booked.total_book_soh, 0) as total_book_soh'),
                     'soh.last_update',
                 ])
                 ->orderBy('soh.last_update', 'desc')
@@ -427,7 +418,6 @@ class StockOnHandController extends Controller
                 'saved'   => $saved,
                 'total'   => count($validData),
             ]);
-
         } catch (\Throwable $e) {
             return response()->json([
                 'status'  => 'error',

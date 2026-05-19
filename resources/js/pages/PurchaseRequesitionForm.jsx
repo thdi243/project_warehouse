@@ -80,14 +80,16 @@ export default function PurchaseRequisitionForm() {
         }
 
         let type = "pr";
+        let alasan = "";
+        
         if (currentItem.available_qty > 0) {
             const result = await Swal.fire({
                 title: "Stok Tersedia!",
-                text: `Barang ini memiliki stok ${currentItem.available_qty}. Apakah Anda ingin melanjutkan PR (stok lama akan dibooking dan menaikkan PR) atau hanya Reservasi (memotong stok)?`,
+                text: `Barang ini memiliki stok ${currentItem.available_qty}. Apakah Anda ingin melanjutkan PR (Menaikkan PR) atau hanya Block Stok?`,
                 icon: "question",
                 showCancelButton: true,
-                confirmButtonText: "Lanjut PR",
-                cancelButtonText: "Hanya Reservasi",
+                confirmButtonText: "Naikkan PR",
+                cancelButtonText: "Reservasi",
                 confirmButtonColor: "#3085d6",
                 cancelButtonColor: "#10b981",
                 allowOutsideClick: false,
@@ -96,13 +98,40 @@ export default function PurchaseRequisitionForm() {
             if (result.isConfirmed) {
                 type = "pr";
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-                type = "reservation";
+                type = "blocked";
             } else {
                 return; // User clicked outside or closed (though allowOutsideClick: false)
             }
+
+            if (type === "pr") {
+                const reasonResult = await Swal.fire({
+                    title: "Alasan Naik PR",
+                    input: "text",
+                    inputPlaceholder: "Wajib mengisi alasan...",
+                    inputValidator: (value) => {
+                        if (!value) {
+                            return "Alasan wajib diisi!";
+                        }
+                    },
+                    allowOutsideClick: false,
+                    showCancelButton: true,
+                });
+
+                if (reasonResult.isConfirmed && reasonResult.value) {
+                    alasan = reasonResult.value;
+                } else {
+                    return; // User canceled reason input
+                }
+            }
         }
 
-        const success = await addItem(currentItem, type);
+        const itemToPass = {
+            ...currentItem,
+            jenis: type,
+            alasan: alasan,
+        };
+
+        const success = await addItem(itemToPass, type);
         if (success) {
             setCurrentItem({
                 mid: "",
@@ -166,6 +195,8 @@ export default function PurchaseRequisitionForm() {
                         qty: item.qty,
                         keterangan: item.keterangan,
                         reservation_id: item.reservation_id,
+                        jenis: item.jenis,
+                        alasan: item.alasan,
                     })),
                     session_id: getSessionId(),
                 }),

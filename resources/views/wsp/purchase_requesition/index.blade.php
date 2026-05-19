@@ -38,23 +38,58 @@
                 </div>
             </div>
 
-            {{-- Table --}}
-            <div class="card shadow-sm" data-aos="fade-up">
-                <div class="card-header bg-light py-3">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h5 class="mb-0">
-                                <i class="mdi mdi-table me-2"></i>Data Purchase Requesition
-                            </h5>
+            <div class="card shadow-sm mb-3" data-aos="fade-up">
+                <div class="card-body p-auto">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-3">
+                            <label class="form-label mb-1 small text-muted">Departemen</label>
+                            <select id="filterDepartemen" class="form-select">
+                                <option value="all">Semua Departemen</option>
+                                @foreach ($departemen as $dept)
+                                    <option value="{{ $dept }}">{{ $dept }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                        <div class="col-md-4 mt-3 mt-md-0">
+                        <div class="col-md-3">
+                            <label class="form-label mb-1 small text-muted">Jenis Item</label>
+                            <select id="filterJenisPR" class="form-select">
+                                <option value="all">Semua Jenis Item</option>
+                                <option value="pr">PR</option>
+                                <option value="blocked">Blocked/Reservasi</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1 small text-muted">Status</label>
+                            <select id="filterStatusPR" class="form-select">
+                                <option value="all">Semua Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="finished">Finished</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1 small text-muted">Pencarian</label>
                             <div class="input-group">
                                 <span class="input-group-text">
                                     <i class="mdi mdi-magnify"></i>
                                 </span>
                                 <input type="text" class="form-control" id="searchInput"
-                                    placeholder="Cari User Peminta ...">
+                                    placeholder="Cari User / No Doc ...">
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Table --}}
+            <div class="card shadow-sm" data-aos="fade-up">
+                <div class="card-header bg-light py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-5">
+                            <h5 class="mb-0">
+                                <i class="mdi mdi-table me-2"></i>Data Purchase Requesition
+                            </h5>
                         </div>
                     </div>
                 </div>
@@ -174,7 +209,7 @@
 
     <!-- Modal Detail PR -->
     <div class="modal fade" id="modalDetailPR" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
 
                 <div class="modal-header">
@@ -231,13 +266,16 @@
                                     <th>Nama Barang</th>
                                     <th>Qty</th>
                                     <th>UOM</th>
+                                    <th>Jenis</th>
+                                    <th>Alasan</th>
                                     <th>Keterangan</th>
-                                    <th class="text-center">Status Manager <br> User, WRH </th>
+                                    <th class="text-center">Status Manager User</th>
+                                    <th class="text-center">Status Manager WRH</th>
                                 </tr>
                             </thead>
                             <tbody id="detailItems">
                                 <tr>
-                                    <td colspan="6" class="text-center">Loading...</td>
+                                    <td colspan="9" class="text-center">Loading...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -348,18 +386,27 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            loadPRData();
-
             let allPR = [];
-            let filteredPR = [];
             let currentPage = 1;
-            const itemsPerPage = 10;
 
-            // Ambil data dari backend
-            function loadPRData() {
+            window.loadPRData = function(page = 1) {
+                const search = $('#searchInput').val().trim();
+                const jenis = $('#filterJenisPR').val();
+                const status = $('#filterStatusPR').val();
+                const departemen = $('#filterDepartemen').val();
+
+                currentPage = page;
+
                 $.ajax({
                     url: "{{ url('api/purchase-requesition/getData') }}",
                     type: "GET",
+                    data: {
+                        page: page,
+                        search: search,
+                        jenis: jenis,
+                        status: status,
+                        departemen: departemen
+                    },
                     dataType: "json",
                     beforeSend: function() {
                         $('#tableBody').html(`
@@ -374,11 +421,12 @@
                         `);
                     },
                     success: function(res) {
-                        if (res.success && Array.isArray(res.data)) {
-                            allPR = res.data;
-                            filteredPR = allPR;
-                            renderTable();
+                        if (res.success && res.data && Array.isArray(res.data.data) && res.data.data
+                            .length > 0) {
+                            allPR = res.data.data;
+                            renderTable(res.data);
                         } else {
+                            allPR = [];
                             $('#tableBody').html(
                                 `<tr class="empty-state-row">
                                     <td colspan="16" class="text-center py-5">
@@ -386,12 +434,14 @@
                                             <i class="mdi mdi-package-variant-closed fs-1 text-muted mb-2"></i>
                                             <h6 class="fw-bold">Belum Ada Data</h6>
                                             <p class="text-muted mb-0">
-                                                Klik tombol <strong>"Form PR"</strong> untuk membuat pengajuan pembelian.
+                                                Data tidak ditemukan.
                                             </p>
                                         </div>
                                     </td>
                                 </tr>
                             `);
+                            updatePaginationInfo(0, 0, 0);
+                            $('#pagination').empty();
                         }
                     },
                     error: function(xhr) {
@@ -407,32 +457,12 @@
                 });
             }
 
+            loadPRData();
+
             // Render table
-            function renderTable() {
+            function renderTable(paginationData) {
                 const tbody = $('#tableBody');
                 tbody.empty();
-
-                if (filteredPR.length === 0) {
-                    tbody.html(`
-                        <tr class="empty-state-row">
-                            <td colspan="16" class="text-center py-5">
-                                <div class="d-flex flex-column align-items-center">
-                                    <i class="mdi mdi-package-variant-closed fs-1 text-muted mb-2"></i>
-                                    <h6 class="fw-bold">Belum Ada Data</h6>
-                                    <p class="text-muted mb-0">
-                                        Klik tombol <strong>"Form PR"</strong> untuk membuat pengajuan pembelian.
-                                    </p>
-                                </div>
-                            </td>
-                        </tr>
-                    `);
-                    updatePaginationInfo(0, 0, 0);
-                    return;
-                }
-
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const endIndex = Math.min(startIndex + itemsPerPage, filteredPR.length);
-                const pageData = filteredPR.slice(startIndex, endIndex);
 
                 const badgeStatus = {
                     'pending': 'warning',
@@ -441,7 +471,9 @@
                     'rejected': 'danger',
                 };
 
-                pageData.forEach((pr, index) => {
+                const startIndex = (paginationData.current_page - 1) * paginationData.per_page;
+
+                allPR.forEach((pr, index) => {
                     const badgeClass = badgeStatus[pr.status] ?? 'secondary';
                     const isFinished = pr.status === 'finished';
                     const canConfirm = pr.status === 'approved';
@@ -451,7 +483,7 @@
                             <td>${startIndex + index + 1}</td>
                             <td>${pr.pr_date}</td>
                             <td>${pr.no_doc}</td>
-                            <td>${pr.pr_number}</td>
+                            <td>${pr.pr_number ?? '-'}</td>
                             <td>${pr.requested_by}</td>
                             <td>${pr.department}</td>
                             <td>
@@ -465,7 +497,7 @@
                             </td>
                             @can('permission', 'wsp-data-pr-plus')
                                 <td>
-                                    <div class="d-flex gap-2 justify-content-center">
+                                    <div class="d-flex gap-2 justify-content-center text-nowrap">
                                         <button 
                                             class="btn ${isFinished ? 'btn-light' : (canConfirm ? 'btn-success' : 'btn-outline-secondary')} btn-confirm btn-sm"
                                             data-id="${pr.id}"
@@ -476,7 +508,7 @@
                                             ${isFinished ? 'Confirmed' : 'Confirm'}
                                         </button>
                                         <button class="btn btn-primary btn-copy btn-sm" onclick="copyFormatted(${pr.id})" title="Copy Formatted">
-                                            <i class="mdi mdi-content-copy"></i> Copy
+                                            <i class="mdi mdi-content-copy"></i>
                                         </button>
                                         <button class="btn btn-info btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
                                             <i class="mdi mdi-eye"></i>
@@ -494,8 +526,8 @@
                     `);
                 });
 
-                updatePaginationInfo(startIndex + 1, endIndex, filteredPR.length);
-                renderPagination();
+                updatePaginationInfo(paginationData.from || 0, paginationData.to || 0, paginationData.total || 0);
+                renderPagination(paginationData);
             }
 
             // Update pagination info
@@ -506,8 +538,8 @@
             }
 
             // Render pagination
-            function renderPagination() {
-                const totalPages = Math.ceil(filteredPR.length / itemsPerPage);
+            function renderPagination(paginationData) {
+                const totalPages = paginationData.last_page;
                 const pagination = $('#pagination');
                 pagination.empty();
 
@@ -515,8 +547,8 @@
 
                 // Previous button
                 pagination.append(`
-                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
+                    <li class="page-item ${paginationData.current_page === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="loadPRData(${paginationData.current_page - 1}); return false;">
                             <i class="mdi mdi-chevron-left"></i>
                         </a>
                     </li>
@@ -524,62 +556,50 @@
 
                 // Page numbers
                 for (let i = 1; i <= totalPages; i++) {
-                    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    if (i === 1 || i === totalPages || (i >= paginationData.current_page - 1 && i <= paginationData
+                            .current_page + 1)) {
                         pagination.append(`
-                            <li class="page-item ${i === currentPage ? 'active' : ''}">
-                                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+                            <li class="page-item ${i === paginationData.current_page ? 'active' : ''}">
+                                <a class="page-link" href="#" onclick="loadPRData(${i}); return false;">${i}</a>
                             </li>
                         `);
-                    } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    } else if (i === paginationData.current_page - 2 || i === paginationData.current_page + 2) {
                         pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
                     }
                 }
 
                 // Next button
                 pagination.append(`
-                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
+                    <li class="page-item ${paginationData.current_page === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="loadPRData(${paginationData.current_page + 1}); return false;">
                             <i class="mdi mdi-chevron-right"></i>
                         </a>
                     </li>
                 `);
             }
 
-            // Change page
-            window.changePage = function(page) {
-                const totalPages = Math.ceil(filteredPR.length / itemsPerPage);
-                if (page < 1 || page > totalPages) return;
-                currentPage = page;
-                renderTable();
+            // Filter logic (Debounced)
+            let searchTimeout;
+
+            function applyFilters() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    loadPRData(1);
+                }, 500); // debounce 500ms
             }
 
-            // Event search
-            $('#searchInput').on('input', function() {
-                const keyword = $(this).val().toLowerCase().trim();
-
-                if (keyword === '') {
-                    filteredPR = allPR; // reset
-                } else {
-                    filteredPR = allPR.filter(item => {
-                        // const mid = item.items.barang?.mid_barang ?
-                        //     item.items.barang.mid_barang.toString().toLowerCase() :
-                        //     '';
-
-                        const requestedBy = item.requested_by ?
-                            item.requested_by.toLowerCase() :
-                            '';
-
-                        return requestedBy.includes(keyword);
-                    });
-                }
-
-                currentPage = 1; // reset ke page 1 saat search
-                renderTable();
-            });
+            $('#searchInput').on('input', applyFilters);
+            $('#filterJenisPR').on('change', () => loadPRData(1));
+            $('#filterStatusPR').on('change', () => loadPRData(1));
+            $('#filterDepartemen').on('change', () => loadPRData(1));
 
             // Refresh button
             $('#btnRefresh').on('click', function() {
-                loadPRData();
+                $('#searchInput').val('');
+                $('#filterJenisPR').val('all');
+                $('#filterStatusPR').val('all');
+                $('#filterDepartemen').val('all');
+                loadPRData(1);
             });
 
             // Delete soh
@@ -630,19 +650,47 @@
                 );
 
 
+                renderDetailItems(pr.items);
+
+                $('#modalDetailPR').modal('show');
+            };
+
+            function renderDetailItems(items) {
                 const tbody = $('#detailItems');
                 tbody.empty();
 
-                if (!pr.items || pr.items.length === 0) {
+                if (!items || items.length === 0) {
                     tbody.html(`
                         <tr>
-                            <td colspan="6" class="text-center text-muted">
+                            <td colspan="9" class="text-center text-muted">
                                 Tidak ada item
                             </td>
                         </tr>
                     `);
                 } else {
-                    $.each(pr.items, function(i, item) {
+                    $.each(items, function(i, item) {
+                        const badgeClass = item.jenis === 'blocked' ? 'bg-danger' : 'bg-success';
+                        const jenisText = item.jenis === 'blocked' ? 'Blocked' : 'PR';
+
+                        let statusUser = '-';
+                        let statusWrh = '-';
+
+                        if (item.approval && item.approval.length > 0) {
+                            item.approval.forEach(a => {
+                                const level = a.approval?.level;
+                                if (level == 2) statusUser = a.status;
+                                if (level == 3) statusWrh = a.status;
+                            });
+                        }
+
+                        const formatBadge = (status) => {
+                            if (status === '-') return '-';
+                            let bg = 'warning';
+                            if (status === 'approved') bg = 'success';
+                            if (status === 'rejected') bg = 'danger';
+                            return `<span class="badge badge-soft-${bg}">${status}</span>`;
+                        };
+
                         tbody.append(`
                             <tr>
                                 <td>${i + 1}</td>
@@ -650,15 +698,16 @@
                                 <td>${item.barang?.nama_barang ?? '-'}</td>
                                 <td>${item.qty}</td>
                                 <td>${item.barang?.uom ?? '-'}</td>
+                                <td><span class="badge ${badgeClass}">${jenisText}</span></td>
+                                <td>${item.alasan ?? '-'}</td>
                                 <td>${item.keterangan ?? '-'}</td>
-                                <td>${item.approval?.map(a => a.status).join(', ') ?? '-'}</td>
+                                <td class="text-center">${formatBadge(statusUser)}</td>
+                                <td class="text-center">${formatBadge(statusWrh)}</td>
                             </tr>
                         `);
                     });
                 }
-
-                $('#modalDetailPR').modal('show');
-            };
+            }
 
             window.printPR = function(id) {
                 window.open(
@@ -716,10 +765,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                             </div>
 
                         </div>

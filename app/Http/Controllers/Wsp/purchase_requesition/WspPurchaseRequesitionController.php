@@ -27,7 +27,9 @@ class WspPurchaseRequesitionController extends Controller
     public function index()
     {
         $signature = Auth::user()->signature;
-        return view('wsp.purchase_requesition.index', compact('signature'));
+        $departemen = WspPurchaseRequesitionModel::distinct()->pluck('department')->toArray();
+
+        return view('wsp.purchase_requesition.index', compact('signature', 'departemen'));
     }
 
     public function approvalIndex()
@@ -165,38 +167,34 @@ class WspPurchaseRequesitionController extends Controller
                     ], 422);
                 }
 
-                $qtyBookSoh = null;
-                $newQtySoh = 0;
-
-                if ($reservation->type === 'reservation') {
-                    // Hanya reservasi: kurangi stok SOH
-                    $newQtySoh = max(0, $stock->qty_soh - $item['qty']);
-                    $qtyBookSoh = 0;
-                } else {
-                    // Lanjut PR: SOH jadi 0, SOH lama masuk ke qty_book_soh
-                    $qtyBookSoh = $stock->qty_soh;
-                    $newQtySoh = 0;
-                }
+                // if ($reservation->type === 'reservation' || $reservation->type === 'blocked') {
+                //     // Hanya reservasi: kurangi stok SOH
+                //     $newQtySoh = max(0, $stock->qty_soh - $item['qty']);
+                // } else {
+                //     // Lanjut PR: SOH jadi 0
+                //     $newQtySoh = 0;
+                // }
 
                 $prItem = $pr->items()->create([
                     'pr_id'        => $pr->id,
                     'barang_id'    => $barang->id,
+                    'jenis'        => $item['jenis'] ?? 'pr',
                     'qty'          => $item['qty'],
-                    'qty_book_soh' => $qtyBookSoh,
+                    'alasan'       => $item['alasan'] ?? null,
                     'keterangan'   => $item['keterangan'] ?? null,
                 ]);
 
                 $createdItems[] = $prItem;
 
                 // UPDATE STOCK
-                $stock->update([
-                    'unrest'      => $newQtySoh, // assuming unrest is the main SOH column being used
-                    'qual_insp'   => 0,
-                    'blocked'     => 0,
-                    'transf'      => 0,
-                    'qty_soh'     => $newQtySoh,
-                    'last_update' => now(),
-                ]);
+                // $stock->update([
+                //     'unrest'      => $newQtySoh, // assuming unrest is the main SOH column being used
+                //     'qual_insp'   => 0,
+                //     'blocked'     => 0,
+                //     'transf'      => 0,
+                //     'qty_soh'     => $newQtySoh,
+                //     'last_update' => now(),
+                // ]);
 
                 $reservation->update([
                     'status' => 'confirmed',
@@ -274,11 +272,34 @@ class WspPurchaseRequesitionController extends Controller
         ]);
     }
 
-    public function getDataPR()
+    public function getDataPR(Request $request)
     {
-        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval', 'approval')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval');
+
+        if ($request->filled('departemen') && $request->departemen !== 'all') {
+            $query->where('department', $request->departemen);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('requested_by', 'like', "%{$search}%")
+                    ->orWhere('no_doc', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('jenis') && $request->jenis !== 'all') {
+            $jenis = $request->jenis;
+            $query->whereHas('items', function ($q) use ($jenis) {
+                $q->where('jenis', $jenis);
+            });
+        }
+
+        $pr = $query->orderBy('created_at', 'desc')->paginate(15);
 
         return response()->json([
             'success' => true,
@@ -296,10 +317,11 @@ class WspPurchaseRequesitionController extends Controller
             ->selectRaw('MAX(last_update) as last_update')
             ->groupBy('barang_id');
 
-        // subquery: total qty_book_soh per barang
+        // subquery: total qty_book_soh per barang (sekarang memakai jenis = 'blocked' dan sum qty)
         $bookedSohSub = DB::table('wsp_purchase_requesition_items')
             ->select('barang_id')
-            ->selectRaw('SUM(qty_book_soh) as total_book_soh')
+            ->selectRaw('SUM(qty) as total_book_soh')
+            ->where('jenis', 'blocked')
             ->groupBy('barang_id');
 
         // START DARI MASTER BARANG
@@ -324,7 +346,7 @@ class WspPurchaseRequesitionController extends Controller
                 'wsp_barang.mid_barang',
                 'wsp_barang.nama_barang',
                 'wsp_barang.uom',
-                DB::raw('COALESCE(soh.qty_soh, 0) as qty_soh'),
+                DB::raw('COALESCE(soh.unrest, 0) as unrest'),
                 DB::raw('COALESCE(booked.total_book_soh, 0) as total_book_soh'),
                 'soh.last_update',
             ])
@@ -349,7 +371,8 @@ class WspPurchaseRequesitionController extends Controller
                 ->sum('qty');
 
             $totalReserved = $reservedByOthers + $reservedByMe;
-            $availableQty = max(0, $item->qty_soh - $totalReserved);
+            $qtySoh = max(0, (int)$item->unrest - (int)$item->total_book_soh);
+            $availableQty = max(0, $qtySoh - $totalReserved);
             $isBeingBooked = $activeReservations->count() > 0;
             // $isAvailable = $item->qty_soh > 0 && !$isBeingBooked;
             $isAvailable = !$isBeingBooked;
@@ -364,7 +387,7 @@ class WspPurchaseRequesitionController extends Controller
                     'uom' => $item->uom,
                 ],
 
-                'qty_soh' => (int) $item->qty_soh,
+                'qty_soh' => $qtySoh,
                 'total_book_soh' => (int) $item->total_book_soh,
                 'reserved_by_others' => $reservedByOthers,
                 'reserved_by_me' => $reservedByMe,
@@ -380,7 +403,7 @@ class WspPurchaseRequesitionController extends Controller
                     $reservedByOthers,
                     $reservedByMe,
                     $availableQty,
-                    $item->qty_soh,
+                    $qtySoh,
                     (int) $item->total_book_soh
                 ),
             ];
@@ -434,7 +457,7 @@ class WspPurchaseRequesitionController extends Controller
         $user = Auth::user();
         $dept = strtolower(trim($user->departemen));
 
-        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang', 'approval')
+        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval')
             ->where(function ($q) use ($user, $dept) {
                 $q->where('user_id', $user->id)
                     ->orWhere('department', $dept);
@@ -524,7 +547,7 @@ class WspPurchaseRequesitionController extends Controller
             'approvers' => $approvers
         ])->setPaper('A5', 'landscape');
 
-        $prNumber = $pr->pr_number ?? 'Waiting';
+        $prNumber = $pr->pr_number ?? $pr->department;
 
         return $pdf->stream("PR-{$prNumber}.pdf");
     }
@@ -671,6 +694,8 @@ class WspPurchaseRequesitionController extends Controller
 
         $deptMap = [
             'ite' => 'engineering',
+            'quality control' => 'quality_control',
+            'qc' => 'quality_control'
         ];
 
         $approvalDept = $deptMap[$pr->department] ?? $pr->department;
