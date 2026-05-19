@@ -239,8 +239,7 @@
                         <div class="mb-0" id="signatureWrapper">
                             <label class="form-label fw-bold d-block mb-2">Tanda Tangan Digital</label>
                             @if ($signature)
-                                {{ dd($signature) }}
-                                {{-- @php
+                                @php
                                     $sigPath = $signature->signature;
                                     if (
                                         !Str::startsWith($sigPath, 'storage/') &&
@@ -249,7 +248,7 @@
                                     ) {
                                         $sigPath = 'storage/' . $sigPath;
                                     }
-                                @endphp --}}
+                                @endphp
                                 <div class="d-flex gap-3 mb-3 pb-2 border-bottom">
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="signature_option"
@@ -271,7 +270,7 @@
 
                                 <div id="storedSignatureContainer" class="border rounded p-3 text-center bg-light mb-2">
                                     <p class="small text-muted mb-2">Tanda tangan terdaftar yang akan digunakan:</p>
-                                    <img src="{{ Storage::url($signature->signature) }}" alt="Signature"
+                                    <img src="{{ asset($sigPath) }}" alt="Signature"
                                         style="max-height: 150px; width: auto;">
                                 </div>
 
