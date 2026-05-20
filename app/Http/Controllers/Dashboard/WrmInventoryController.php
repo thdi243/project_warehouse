@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Wrm\Inventory\StockBalance;
-use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wrm\Inventory\StockMovement;
+use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wrm\Inventory\StockOutbound;
 use App\Models\Wrm\Inventory\StockTransferDetail;
 use App\Models\Wrm\MasterBarangModel;
-use App\Models\Wrm\MasterLocationModel;
 use App\Models\Wrm\MasterBinModel;
+use App\Models\Wrm\MasterLocationModel;
 use App\Models\Wrm\MasterSupplierModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -32,6 +32,7 @@ class WrmInventoryController extends Controller
     {
         $startDate = $request->start_date ? Carbon::parse($request->start_date)->startOfDay() : Carbon::now()->subDays(30)->startOfDay();
         $endDate = $request->end_date ? Carbon::parse($request->end_date)->endOfDay() : Carbon::now()->endOfDay();
+
         return [$startDate, $endDate];
     }
 
@@ -44,6 +45,7 @@ class WrmInventoryController extends Controller
                 $q->where('gudang', $gudang);
             });
         }
+
         return $query;
     }
 
@@ -61,7 +63,7 @@ class WrmInventoryController extends Controller
             $inboundDetailQuery->where('supplier', $request->supplier);
         }
 
-        $totalStock       = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
+        $totalStock = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
         $activePalletCount = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->count();
 
         // Draft Outbound (Today) - Only count items still in RESERVED status
@@ -83,12 +85,12 @@ class WrmInventoryController extends Controller
         }
 
         $kpi = [
-            'total_stock'          => $totalStock,
-            'total_item'           => MasterBarangModel::count(),
-            'active_pallet'        => $activePalletCount,
-            'inbound_today'        => $inboundTodayQuery->sum('qty'),
+            'total_stock' => $totalStock,
+            'total_item' => MasterBarangModel::count(),
+            'active_pallet' => $activePalletCount,
+            'inbound_today' => $inboundTodayQuery->sum('qty'),
             'draft_outbound_today' => $draftOutboundToday,
-            'transfer_today'       => $transferToday,
+            'transfer_today' => $transferToday,
         ];
 
         return response()->json(['status' => true, 'data' => $kpi]);
@@ -116,9 +118,16 @@ class WrmInventoryController extends Controller
             ->groupBy('date')->get()->keyBy('date');
 
         // 3. Transfer (from StockTransferDetail created_at)
-        $transferDaily = StockTransferDetail::whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('DATE(created_at) as date, SUM(qty_actual) as total')
-            ->groupBy('date')->get()->keyBy('date');
+        // $transferDaily = StockTransferDetail::whereBetween('reservasi_date', [$startDate, $endDate])
+        //     ->selectRaw('DATE(reservasi_date) as date, SUM(qty_actual) as total')
+        //     ->groupBy('date')->get()->keyBy('date');
+
+        $transferDaily = StockTransferDetail::join('wrm_stock_transfers', 'wrm_stock_transfer_details.transfer_id', '=', 'wrm_stock_transfers.id')
+            ->whereBetween('wrm_stock_transfers.tgl_reservasi', [$startDate, $endDate])
+            ->selectRaw('DATE(wrm_stock_transfers.tgl_reservasi) as date, SUM(wrm_stock_transfer_details.qty_actual) as total')
+            ->groupBy('date')
+            ->get()
+            ->keyBy('date');
 
         $categories = [];
         $inboundSeries = [];
@@ -129,9 +138,9 @@ class WrmInventoryController extends Controller
         foreach ($period as $date) {
             $dateStr = $date->format('Y-m-d');
             $categories[] = $date->format('d M');
-            $inboundSeries[] = isset($inboundDaily[$dateStr]) ? (float)$inboundDaily[$dateStr]->total : 0;
-            $outboundSeries[] = isset($outboundDaily[$dateStr]) ? (float)$outboundDaily[$dateStr]->total : 0;
-            $transferSeries[] = isset($transferDaily[$dateStr]) ? (float)$transferDaily[$dateStr]->total : 0;
+            $inboundSeries[] = isset($inboundDaily[$dateStr]) ? (float) $inboundDaily[$dateStr]->total : 0;
+            $outboundSeries[] = isset($outboundDaily[$dateStr]) ? (float) $outboundDaily[$dateStr]->total : 0;
+            $transferSeries[] = isset($transferDaily[$dateStr]) ? (float) $transferDaily[$dateStr]->total : 0;
         }
 
         return response()->json([
@@ -142,8 +151,8 @@ class WrmInventoryController extends Controller
                     ['name' => 'Inbound', 'data' => $inboundSeries, 'color' => '#22c55e', 'type' => 'spline'],
                     ['name' => 'Draft Outbound', 'data' => $outboundSeries, 'color' => '#ef4444', 'type' => 'spline'],
                     ['name' => 'Transfer', 'data' => $transferSeries, 'color' => '#3b82f6', 'type' => 'spline'],
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 
@@ -162,7 +171,7 @@ class WrmInventoryController extends Controller
         foreach ($stockByGudangRaw as $sz) {
             $chartPie[] = [
                 'name' => $sz->gudang ?? 'Unknown',
-                'y' => (int)$sz->total
+                'y' => (int) $sz->total,
             ];
         }
 
@@ -196,7 +205,7 @@ class WrmInventoryController extends Controller
         $data = [];
         foreach ($topMaterials as $tm) {
             $categories[] = \Illuminate\Support\Str::limit($tm->nama_barang, 25);
-            $data[] = (float)$tm->total_qty;
+            $data[] = (float) $tm->total_qty;
         }
 
         return response()->json([
@@ -204,9 +213,9 @@ class WrmInventoryController extends Controller
             'data' => [
                 'categories' => $categories,
                 'series' => [
-                    ['name' => 'Quantity', 'data' => $data, 'color' => '#6366f1', 'type' => 'bar']
-                ]
-            ]
+                    ['name' => 'Quantity', 'data' => $data, 'color' => '#6366f1', 'type' => 'bar'],
+                ],
+            ],
         ]);
     }
 
@@ -229,7 +238,7 @@ class WrmInventoryController extends Controller
         $aging = [
             '0-30 Days' => 0,
             '30-90 Days' => 0,
-            '> 90 Days' => 0
+            '> 90 Days' => 0,
         ];
 
         $today = Carbon::today();
@@ -240,7 +249,7 @@ class WrmInventoryController extends Controller
 
                 if ($days <= 30) {
                     $aging['0-30 Days'] += $detail->qty;
-                } else if ($days <= 90) {
+                } elseif ($days <= 90) {
                     $aging['30-90 Days'] += $detail->qty;
                 } else {
                     $aging['> 90 Days'] += $detail->qty;
@@ -256,7 +265,7 @@ class WrmInventoryController extends Controller
                 ['name' => '0-30 Days', 'y' => $aging['0-30 Days'], 'color' => '#22c55e'],
                 ['name' => '30-90 Days', 'y' => $aging['30-90 Days'], 'color' => '#f59e0b'],
                 ['name' => '> 90 Days', 'y' => $aging['> 90 Days'], 'color' => '#ef4444'],
-            ]
+            ],
         ]);
     }
 
@@ -283,7 +292,7 @@ class WrmInventoryController extends Controller
                     'barang' => $mov->barang->nama_barang ?? 'Unknown',
                     'qty' => $mov->qty,
                     'lokasi' => $mov->location ? implode(' - ', array_filter([$mov->location->gudang, $mov->location->zona, $mov->location->bin])) : 'Unknown',
-                    'tipe' => $mov->ref_type
+                    'tipe' => $mov->ref_type,
                 ];
             });
 
@@ -317,7 +326,7 @@ class WrmInventoryController extends Controller
 
         $occupiedMap = [];
         foreach ($occupiedDetails as $detail) {
-            if (!isset($occupiedMap[$detail->loc_id])) {
+            if (! isset($occupiedMap[$detail->loc_id])) {
                 $occupiedMap[$detail->loc_id] = [
                     'mid' => $detail->barang ? $detail->barang->mid : 'UNKNOWN',
                     'nama_barang' => $detail->barang ? $detail->barang->nama_barang : 'Unknown',
@@ -342,17 +351,19 @@ class WrmInventoryController extends Controller
         $locations = [];
         foreach ($bins as $bin) {
             $loc = $bin->location;
-            if (!$loc) continue;
-            $locKey = $loc->plant . ' - ' . $loc->gudang . ' - ' . ($loc->zona ?? '') . ' - ' . $loc->bin;
+            if (! $loc) {
+                continue;
+            }
+            $locKey = $loc->plant.' - '.$loc->gudang.' - '.($loc->zona ?? '').' - '.$loc->bin;
 
-            if (!isset($locations[$locKey])) {
+            if (! isset($locations[$locKey])) {
                 $locations[$locKey] = [
                     'label' => $locKey,
                     'plant' => $loc->plant,
                     'gudang' => $loc->gudang,
                     'zona' => $loc->zona ?? '-',
                     'bin' => $loc->bin,
-                    'cells' => []
+                    'cells' => [],
                 ];
             }
 
@@ -363,7 +374,9 @@ class WrmInventoryController extends Controller
             $palletId = null;
             $noSpb = '-';
             $incomingDate = '-';
-            if (in_array($bin->id, $reservedIds)) $status = 'reserved';
+            if (in_array($bin->id, $reservedIds)) {
+                $status = 'reserved';
+            }
             if (in_array($bin->id, $occupiedIds)) {
                 $status = 'occupied';
                 $mid = $occupiedMap[$bin->id]['mid'];
@@ -375,24 +388,27 @@ class WrmInventoryController extends Controller
             }
 
             $locations[$locKey]['cells'][] = [
-                'id'     => $bin->id,
-                'kolom'  => $bin->kolom,
-                'level'  => $bin->level,
-                'label'  => $bin->kolom . '.' . $bin->level,
+                'id' => $bin->id,
+                'kolom' => $bin->kolom,
+                'level' => $bin->level,
+                'label' => $bin->kolom.'.'.$bin->level,
                 'status' => $status,
-                'mid'    => $mid,
+                'mid' => $mid,
                 'nama_barang' => $nama_barang,
                 'qty' => $qty,
                 'pallet_id' => $palletId,
                 'no_spb' => $noSpb,
-                'incoming_date' => $incomingDate
+                'incoming_date' => $incomingDate,
             ];
         }
 
         // Sort cells per location by kolom then level
         foreach ($locations as &$loc) {
             usort($loc['cells'], function ($a, $b) {
-                if ($a['kolom'] != $b['kolom']) return $a['kolom'] <=> $b['kolom'];
+                if ($a['kolom'] != $b['kolom']) {
+                    return $a['kolom'] <=> $b['kolom'];
+                }
+
                 return $a['level'] <=> $b['level'];
             });
         }
@@ -406,13 +422,13 @@ class WrmInventoryController extends Controller
         return response()->json([
             'status' => true,
             'summary' => [
-                'total'    => $totalBins,
+                'total' => $totalBins,
                 'occupied' => $occupiedCount,
                 'reserved' => $reservedCount,
-                'empty'    => $emptyCount,
+                'empty' => $emptyCount,
                 'available' => $emptyCount + $reservedCount,
             ],
-            'data' => array_values($locations)
+            'data' => array_values($locations),
         ]);
     }
 }
