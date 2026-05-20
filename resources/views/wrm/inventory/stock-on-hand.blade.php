@@ -250,15 +250,17 @@
                         </div>
 
                         <div class="col-md-3">
+                            <label class="form-label fw-semibold text-muted mb-2">MID</label>
+                            <select class="form-select select2-filter" id="filterMid" multiple>
+                            </select>
+                        </div>
+                        {{-- <div class="col-md-3">
                             <label class="form-label fw-semibold text-muted mb-2">Nama Barang</label>
                             <select class="form-select select2-filter" id="filterNamaBarang" multiple>
                             </select>
-                        </div>
+                        </div> --}}
                         <div class="col-md-3">
                             <div class="d-flex gap-2">
-                                <!-- <button class="btn btn-primary flex-grow-1" id="btnFilter">
-                                                                <i class="mdi mdi-filter-check-outline me-1"></i> Terapkan Filter
-                                                            </button> -->
                                 <button class="btn btn-soft-info w-100" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#collapseAdvancedFilter" aria-expanded="false"
                                     aria-controls="collapseAdvancedFilter">
@@ -275,12 +277,6 @@
                     <div class="collapse" id="collapseAdvancedFilter">
                         <div class="pt-4 mt-4 border-top">
                             <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold text-muted mb-2">MID</label>
-                                    <select class="form-select select2-filter" id="filterMid" multiple>
-                                    </select>
-                                </div>
-
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Supplier</label>
                                     <select class="form-select select2-filter" id="filterSupplier" multiple>
@@ -309,8 +305,13 @@
                                 </div>
 
                                 <div class="col-md-4">
-                                    <label class="form-label fw-semibold text-muted mb-2">Incoming Date</label>
-                                    <input type="date" class="form-control" id="filterDate">
+                                    <label class="form-label fw-semibold text-muted mb-2">Incoming Date (Start)</label>
+                                    <input type="date" class="form-control" id="filterStartDate">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold text-muted mb-2">Incoming Date (End)</label>
+                                    <input type="date" class="form-control" id="filterEndDate">
                                 </div>
                             </div>
                         </div>
@@ -323,6 +324,9 @@
                     <h5 class="mb-0 fw-bold">Raw Material Stock On Hand</h5>
                     @can('permission', 'wrm-inventory-soh-plus')
                         <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-success" id="btnExportExcel">
+                                <i class="mdi mdi-file-excel"></i> Export Excel
+                            </button>
                             <a href="{{ route('wrm.inventory.index-upload') }}" class="btn btn-outline-primary"
                                 id="btnUpload">
                                 <i class="mdi mdi-upload"></i> Upload
@@ -539,6 +543,48 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Export Excel --}}
+    <div class="modal fade" id="exportExcelModal" tabindex="-1" aria-labelledby="exportExcelModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportExcelModalLabel"><i
+                            class="mdi mdi-file-excel me-1 text-success"></i> Export Excel Opname</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="exportExcelForm" action="{{ route('wrm.inventory.export-excel') }}" method="POST">
+                    @csrf
+                    <!-- Hidden filter inputs to apply currently active UI filters to the export -->
+                    <input type="hidden" name="group" id="exportGroup">
+                    <input type="hidden" name="status" id="exportStatus">
+                    <input type="hidden" name="jenis_bahan" id="exportJenisBahan">
+                    <input type="hidden" name="supplier" id="exportSupplier">
+                    <input type="hidden" name="location" id="exportLocation">
+                    <input type="hidden" name="no_spb" id="exportNoSpb">
+                    <input type="hidden" name="start_date" id="exportStartDate">
+                    <input type="hidden" name="end_date" id="exportEndDate">
+                    <input type="hidden" name="catatan" id="exportCatatan">
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Pilih MID yang ingin di-export</label>
+                            <select class="form-select" name="mids[]" id="exportMids" multiple style="width: 100%;">
+                                <!-- Dynamically populated -->
+                            </select>
+                            <div class="form-text">Biarkan kosong untuk mengekspor seluruh MID.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-success"><i class="mdi mdi-download me-1"></i>
+                            Export</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -569,6 +615,47 @@
                 placeholder: 'Pilih...',
                 allowClear: true,
                 closeOnSelect: false
+            });
+
+            // Export Excel click handler
+            $('#btnExportExcel').click(function() {
+                // Copy filter values from page to hidden inputs
+                const getFilterVal = (sel) => {
+                    const val = $(sel).val();
+                    return val && val.length > 0 ? JSON.stringify(val) : '';
+                };
+
+                $('#exportGroup').val(getFilterVal('#filterGroup'));
+                $('#exportStatus').val(getFilterVal('#filterStatus'));
+                $('#exportSupplier').val(getFilterVal('#filterSupplier'));
+                $('#exportLocation').val(getFilterVal('#filterLocation'));
+                $('#exportNoSpb').val(getFilterVal('#filterNoSpb'));
+                $('#exportStartDate').val($('#filterStartDate').val() || '');
+                $('#exportEndDate').val($('#filterEndDate').val() || '');
+                $('#exportCatatan').val($('#filterCatatan').val() || '');
+
+                // Populate modal select options from filterMid options
+                const exportSelect = $('#exportMids');
+                exportSelect.empty();
+
+                $('#filterMid option').each(function() {
+                    const opt = $(this);
+                    if (opt.val()) {
+                        exportSelect.append(new Option(opt.text(), opt.val(), false, false));
+                    }
+                });
+
+                // Initialize select2 inside modal
+                exportSelect.select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#exportExcelModal'),
+                    placeholder: 'Pilih MID (kosongkan untuk semua)',
+                    allowClear: true,
+                    closeOnSelect: false
+                });
+
+                // Show modal
+                $('#exportExcelModal').modal('show');
             });
 
             $('#locEdit').select2({
@@ -626,9 +713,9 @@
                 };
 
                 addFilter('group', '#filterGroup');
-                addFilter('jenis_bahan', '#filterNamaBarang');
                 addFilter('mid', '#filterMid');
-                addFilter('date', '#filterDate');
+                addFilter('start_date', '#filterStartDate');
+                addFilter('end_date', '#filterEndDate');
                 addFilter('supplier', '#filterSupplier');
                 addFilter('status', '#filterStatus');
                 addFilter('no_spb', '#filterNoSpb');
@@ -840,7 +927,7 @@
 
             $(document).on('click', '.bulk-status', function(e) {
                 e.preventDefault();
-                
+
                 if (!checkBulkSelection()) return;
 
                 const status = $(this).data('status');
@@ -879,9 +966,9 @@
 
                         if (selectAllTotal) {
                             ajaxData.group = $('#filterGroup').val();
-                            ajaxData.jenis_bahan = $('#filterNamaBarang').val();
                             ajaxData.mid = $('#filterMid').val();
-                            ajaxData.date = $('#filterDate').val();
+                            ajaxData.start_date = $('#filterStartDate').val();
+                            ajaxData.end_date = $('#filterEndDate').val();
                             ajaxData.supplier = $('#filterSupplier').val();
                             ajaxData.no_spb = $('#filterNoSpb').val();
                             ajaxData.location = $('#filterLocation').val();
@@ -956,9 +1043,9 @@
                         if (selectAllTotal) {
                             ajaxData.group_filter = $('#filterGroup')
                                 .val(); // avoid conflict with group to update
-                            ajaxData.jenis_bahan = $('#filterNamaBarang').val();
                             ajaxData.mid = $('#filterMid').val();
-                            ajaxData.date = $('#filterDate').val();
+                            ajaxData.start_date = $('#filterStartDate').val();
+                            ajaxData.end_date = $('#filterEndDate').val();
                             ajaxData.supplier = $('#filterSupplier').val();
                             ajaxData.no_spb = $('#filterNoSpb').val();
                             ajaxData.location = $('#filterLocation').val();
@@ -1026,9 +1113,9 @@
 
                         if (selectAllTotal) {
                             ajaxData.group = $('#filterGroup').val();
-                            ajaxData.jenis_bahan = $('#filterNamaBarang').val();
                             ajaxData.mid = $('#filterMid').val();
-                            ajaxData.date = $('#filterDate').val();
+                            ajaxData.start_date = $('#filterStartDate').val();
+                            ajaxData.end_date = $('#filterEndDate').val();
                             ajaxData.supplier = $('#filterSupplier').val();
                             ajaxData.no_spb = $('#filterNoSpb').val();
                             ajaxData.location = $('#filterLocation').val();
@@ -1264,7 +1351,7 @@
             });
 
             // Event listener for all filters
-            $('.select2-filter, #filterDate').on('change', function() {
+            $('.select2-filter, #filterStartDate, #filterEndDate').on('change', function() {
                 // Check if this change was triggered manually or by select2 update
                 if ($(this).hasClass('updating') || $('body').hasClass('is-resetting')) return;
 
@@ -1309,7 +1396,8 @@
                 $('body').addClass('is-resetting');
 
                 $('.select2-filter').val(null).trigger('change');
-                $('#filterDate').val('');
+                $('#filterStartDate').val('');
+                $('#filterEndDate').val('');
                 $('#filterCatatan').val('');
 
                 selectAllTotal = false;

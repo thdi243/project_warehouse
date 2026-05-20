@@ -199,9 +199,9 @@ Route::middleware('auth')->group(function () {
             Route::delete('/delete/{id}', [WspPurchaseRequesitionController::class, 'destroy'])->name('stock.pr.delete');
             Route::get('/show/{id}', [WspPurchaseRequesitionController::class, 'show'])->name('stock.pr.show');
             Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action'])->name('stock.pr.approval-action');
+            Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
         });
 
-        Route::get('purchase-requesition/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
     });
 
     // Warehouse Raw Material
@@ -247,6 +247,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/upload', [InboundController::class, 'upload'])->name('wrm.inventory.upload');
                 Route::post('/non-gula-upload', [InboundController::class, 'uploadNonGula'])->name('wrm.inventory.non-gula-upload');
                 Route::post('/non-gula-upload-excel', [InboundController::class, 'uploadNonGulaExcel'])->name('wrm.inventory.non-gula-upload-excel');
+                Route::post('/export-excel', [InboundController::class, 'exportExcel'])->name('wrm.inventory.export-excel');
                 Route::get('/transfer-history', [StockTransferController::class, 'index'])->name('wrm.inventory.index-transfer');
                 Route::get('/transfer-data', [StockTransferController::class, 'getData'])->name('wrm.inventory.get-transfer-data');
                 Route::delete('/transfer-detail/delete/{id}', [StockTransferController::class, 'destroyDetail'])->name('wrm.inventory.delete-transfer-detail');
