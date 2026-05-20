@@ -15,9 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class StockTransferController extends Controller
 {
@@ -29,7 +26,7 @@ class StockTransferController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xls,xlsx|max:2048'
+            'file' => 'required|mimes:xls,xlsx|max:2048',
         ]);
 
         DB::beginTransaction();
@@ -48,27 +45,27 @@ class StockTransferController extends Controller
                 $line = $i + 1;
 
                 // Template Mapping (22 columns)
-                $noUrut      = trim($row[0] ?? '');
-                $noBa        = trim($row[1] ?? '');
-                $tglBaRaw    = trim($row[2] ?? '');
+                $noUrut = trim($row[0] ?? '');
+                $noBa = trim($row[1] ?? '');
+                $tglBaRaw = trim($row[2] ?? '');
                 $matdocScrup = trim($row[3] ?? '');
-                $matdocYear  = trim($row[4] ?? '');
-                $tglGrRaw    = trim($row[5] ?? '');
-                $tglResRaw   = trim($row[6] ?? '');
+                $matdocYear = trim($row[4] ?? '');
+                $tglGrRaw = trim($row[5] ?? '');
+                $tglResRaw = trim($row[6] ?? '');
                 $noReservasi = trim($row[7] ?? '');
-                $tglGiRaw    = trim($row[8] ?? '');
-                $matdocGi    = trim($row[9] ?? '');
-                $plant       = trim($row[10] ?? '');
-                $sloc        = trim($row[11] ?? '');
-                $matId       = trim($row[12] ?? '');
+                $tglGiRaw = trim($row[8] ?? '');
+                $matdocGi = trim($row[9] ?? '');
+                $plant = trim($row[10] ?? '');
+                $sloc = trim($row[11] ?? '');
+                $matId = trim($row[12] ?? '');
                 // $matDesc  = trim($row[13] ?? '');
-                $noBarcode   = trim($row[14] ?? '');
-                $grade       = trim($row[15] ?? '');
-                $qtyBarcode  = $row[16] ?? 0;
-                $qtyActual   = $row[17] ?? 0;
-                $qtySusut    = $row[18] ?? 0;
-                $uom         = trim($row[19] ?? '');
-                $lamaSimpan  = (int) ($row[20] ?? 0);
+                $noBarcode = trim($row[14] ?? '');
+                $grade = trim($row[15] ?? '');
+                $qtyBarcode = $row[16] ?? 0;
+                $qtyActual = $row[17] ?? 0;
+                $qtySusut = $row[18] ?? 0;
+                $uom = trim($row[19] ?? '');
+                $lamaSimpan = (int) ($row[20] ?? 0);
                 $persenSusut = $row[21] ?? 0;
 
                 if (empty($noBarcode) || empty($matId)) {
@@ -76,21 +73,22 @@ class StockTransferController extends Controller
                 }
 
                 // Parse Dates
-                $tglBa  = $this->parseDate($tglBaRaw);
-                $tglGr  = $this->parseDate($tglGrRaw);
+                $tglBa = $this->parseDate($tglBaRaw);
+                $tglGr = $this->parseDate($tglGrRaw);
                 $tglRes = $this->parseDate($tglResRaw);
-                $tglGi  = $this->parseDate($tglGiRaw);
+                $tglGi = $this->parseDate($tglGiRaw);
 
                 // Parse Numbers
                 $qtyBarcode = $this->parseNumber($qtyBarcode);
-                $qtyActual  = $this->parseNumber($qtyActual);
-                $qtySusut   = $this->parseNumber($qtySusut);
+                $qtyActual = $this->parseNumber($qtyActual);
+                $qtySusut = $this->parseNumber($qtySusut);
                 $persenSusut = $this->parseNumber($persenSusut);
 
                 // Find Material
                 $barang = MasterBarangModel::where('mid', $matId)->first();
-                if (!$barang) {
+                if (! $barang) {
                     $errors[] = "Baris {$line}: Material ID {$matId} tidak ditemukan";
+
                     continue;
                 }
 
@@ -98,6 +96,7 @@ class StockTransferController extends Controller
                 $exists = StockTransferDetail::where('no_barcode', $noBarcode)->exists();
                 if ($exists) {
                     $errors[] = "Baris {$line}: No. Barcode {$noBarcode} sudah pernah diproses/disimpan dalam history transfer.";
+
                     continue;
                 }
 
@@ -107,10 +106,11 @@ class StockTransferController extends Controller
                     ->where('barang_id', $barang->id)
                     ->first();
 
-                // if (!$stockOnHand) {
-                //     $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Stock On Hand.";
-                //     continue;
-                // }
+                if (! $stockOnHand) {
+                    $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Stock On Hand.";
+
+                    continue;
+                }
 
                 // --- HEADER AND DERIVATIONS ---
                 // Derive no_spb from barcode (first 10 chars)
@@ -119,38 +119,38 @@ class StockTransferController extends Controller
                 $headerKey = "{$matdocGi}|{$noBa}|{$noReservasi}";
 
                 // 1. Get or Create Header
-                if (!isset($headerTracker[$headerKey])) {
+                if (! isset($headerTracker[$headerKey])) {
                     $headerTracker[$headerKey] = StockTransfer::create([
-                        'no_ba'         => $noBa,
-                        'tgl_ba'        => $tglBa,
-                        'tgl_gr'        => $tglGr,
-                        'no_reservasi'  => $noReservasi,
+                        'no_ba' => $noBa,
+                        'tgl_ba' => $tglBa,
+                        'tgl_gr' => $tglGr,
+                        'no_reservasi' => $noReservasi,
                         'tgl_reservasi' => $tglRes,
-                        'tgl_gi'        => $tglGi,
-                        'matdoc_gi'     => $matdocGi,
-                        'created_by'    => Auth::id(),
+                        'tgl_gi' => $tglGi,
+                        'matdoc_gi' => $matdocGi,
+                        'created_by' => Auth::id(),
                     ]);
                 }
                 $header = $headerTracker[$headerKey];
 
                 // 2. Create Detail
                 $detail = StockTransferDetail::create([
-                    'transfer_id'      => $header->id,
-                    'matdoc_scrup'     => $matdocScrup,
-                    'matdoc_year'      => $matdocYear,
-                    'no_spb'           => $noSpbFromBarcode,
-                    'plant'            => $plant,
-                    'sloc'             => $sloc,
-                    'barang_id'        => $barang->id,
-                    'no_barcode'       => $noBarcode,
-                    'grade'            => $grade,
-                    'qty_barcode'      => $qtyBarcode,
-                    'qty_actual'       => $qtyActual,
+                    'transfer_id' => $header->id,
+                    'matdoc_scrup' => $matdocScrup,
+                    'matdoc_year' => $matdocYear,
+                    'no_spb' => $noSpbFromBarcode,
+                    'plant' => $plant,
+                    'sloc' => $sloc,
+                    'barang_id' => $barang->id,
+                    'no_barcode' => $noBarcode,
+                    'grade' => $grade,
+                    'qty_barcode' => $qtyBarcode,
+                    'qty_actual' => $qtyActual,
                     'qty_susut_simpan' => $qtySusut,
-                    'uom'              => $uom,
-                    'lama_simpan'      => $lamaSimpan,
-                    'persen_susut'     => $persenSusut,
-                    'created_by'       => Auth::id(),
+                    'uom' => $uom,
+                    'lama_simpan' => $lamaSimpan,
+                    'persen_susut' => $persenSusut,
+                    'created_by' => Auth::id(),
                 ]);
 
                 // --- INVENTORY UPDATES (MOVEMENT & BALANCE) ---
@@ -171,20 +171,20 @@ class StockTransferController extends Controller
 
                         // Record Stock Movement (out)
                         StockMovement::create([
-                            'barang_id'  => $barang->id,
-                            'loc_id'     => $locId,
-                            'tanggal'    => $tglGi ?? now(),
-                            'qty'        => $qtyActual, // Dashboard uses positive sums
-                            'jenis'      => 'out',
-                            'ref_type'   => 'stock_transfer',
-                            'ref_id'     => $detail->id,
+                            'barang_id' => $barang->id,
+                            'loc_id' => $locId,
+                            'tanggal' => $tglGi ?? now(),
+                            'qty' => $qtyActual, // Dashboard uses positive sums
+                            'jenis' => 'out',
+                            'ref_type' => 'stock_transfer',
+                            'ref_id' => $detail->id,
                             'created_by' => Auth::id(),
                         ]);
 
                         // Update Inbound Status and Qty
                         $stockOnHand->update([
                             'status' => 'ISSUED',
-                            'updated_by' => Auth::id()
+                            'updated_by' => Auth::id(),
                         ]);
                     }
                 }
@@ -205,17 +205,15 @@ class StockTransferController extends Controller
                 if ($draftDetail) {
                     $draftDetail->update([
                         'status' => 'ISSUED',
-                        'updated_by' => Auth::id()
+                        'updated_by' => Auth::id(),
                     ]);
                 }
                 // ----------------------------------------------
 
-
                 $processedCount++;
             }
 
-
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 throw new \Exception(implode("\n", $errors));
             }
 
@@ -224,15 +222,15 @@ class StockTransferController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => "Stock Transfer berhasil diunggah. {$processedCount} data diproses.",
-                'total' => $processedCount
+                'total' => $processedCount,
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return response()->json([
                 'status' => false,
-                'message' => 'Gagal memproses upload: ' . $e->getMessage(),
-                'errors' => explode("\n", $e->getMessage())
+                'message' => 'Gagal memproses upload: '.$e->getMessage(),
+                'errors' => explode("\n", $e->getMessage()),
             ], 422);
         }
     }
@@ -241,19 +239,19 @@ class StockTransferController extends Controller
     {
         $query = StockTransferDetail::with([
             'header',
-            'barang:id,mid,nama_barang,uom'
+            'barang:id,mid,nama_barang,uom',
         ]);
 
         if ($request->no_reservasi) {
             $query->whereHas('header', function ($q) use ($request) {
-                $q->where('no_reservasi', 'like', '%' . $request->no_reservasi . '%')
-                    ->orWhere('no_ba', 'like', '%' . $request->no_reservasi . '%');
+                $q->where('no_reservasi', 'like', '%'.$request->no_reservasi.'%')
+                    ->orWhere('no_ba', 'like', '%'.$request->no_reservasi.'%');
             });
         }
 
         if ($request->mid) {
             $query->whereHas('barang', function ($q) use ($request) {
-                $q->where('mid', 'like', '%' . $request->mid . '%');
+                $q->where('mid', 'like', '%'.$request->mid.'%');
             });
         }
 
@@ -268,7 +266,7 @@ class StockTransferController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Data transfer detail berhasil diambil',
-            'data' => $data
+            'data' => $data,
         ]);
     }
 
@@ -305,7 +303,7 @@ class StockTransferController extends Controller
                     $inbound->update([
                         'qty' => abs($movement->qty), // Restore original qty
                         'status' => 'IN_STOCK',       // Return to stock
-                        'updated_by' => Auth::id()
+                        'updated_by' => Auth::id(),
                     ]);
                 }
 
@@ -326,20 +324,23 @@ class StockTransferController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Data transfer berhasil dihapus dan inventory telah dikembalikan.'
+                'message' => 'Data transfer berhasil dihapus dan inventory telah dikembalikan.',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'status' => false,
-                'message' => 'Gagal menghapus data: ' . $e->getMessage()
+                'message' => 'Gagal menghapus data: '.$e->getMessage(),
             ], 500);
         }
     }
 
     private function parseDate($value)
     {
-        if (empty($value)) return null;
+        if (empty($value)) {
+            return null;
+        }
         try {
             // Usually Excel dates come as DD.MM.YYYY or MM/DD/YYYY
             if (is_numeric($value)) {
@@ -355,6 +356,7 @@ class StockTransferController extends Controller
                     continue;
                 }
             }
+
             return Carbon::parse($value)->format('Y-m-d');
         } catch (\Exception $e) {
             return null;
@@ -363,7 +365,9 @@ class StockTransferController extends Controller
 
     private function parseNumber($value)
     {
-        if ($value === null || $value === '') return 0;
+        if ($value === null || $value === '') {
+            return 0;
+        }
 
         // Remove thousand separator dots, then replace comma with dot for decimal
         $val = str_replace('.', '', $value);
