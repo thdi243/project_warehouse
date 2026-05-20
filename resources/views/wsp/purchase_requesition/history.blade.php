@@ -62,12 +62,12 @@
                                 <tr>
                                     <th style="width: 60px;">NO</th>
                                     <th>PR DATE</th>
-                                    <th>No Doc</th>
+                                    <th>NO DOC</th>
                                     <th>NO PR</th>
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>STATUS</th>
-                                    <th>ACTION</th>
+                                    <th>AKSI</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">

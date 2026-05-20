@@ -107,14 +107,15 @@
                                 <tr>
                                     <th style="width: 60px;">NO</th>
                                     <th>PR DATE</th>
-                                    <th>No Doc</th>
+                                    <th>NO DOC</th>
                                     <th>NO PR</th>
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>STATUS</th>
-                                    {{-- @can('permission', 'wsp-data-pr-plus') --}}
                                     <th class="text-center">AKSI</th>
-                                    {{-- @endcan --}}
+                                    @can('permission', 'wsp-data-pr-plus')
+                                        <th class="text-center">AKSI WSP</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -496,30 +497,74 @@
                                 </span>
                             </td>
                             <td>
-                                <div class="d-flex gap-2 justify-content-center text-nowrap">
-                                    <button class="btn btn-info btn-edit btn-sm" onclick="detailPR(${pr.id})" title="Detail">
+                                <div class="d-flex justify-content-center flex-wrap gap-1">
+
+                                    <!-- Detail -->
+                                    <button 
+                                        class="btn btn-info btn-sm"
+                                        onclick="detailPR(${pr.id})"
+                                        title="Detail"
+                                    >
                                         <i class="mdi mdi-eye"></i>
                                     </button>
-                                    @can('permission', 'wsp-data-pr-plus')
-                                        <button 
-                                            class="btn ${isFinished ? 'btn-light' : (canConfirm ? 'btn-success' : 'btn-outline-secondary')} btn-confirm btn-sm"
-                                            data-id="${pr.id}"
-                                            title="${isFinished ? 'Already Finished' : (canConfirm ? 'Confirm' : 'Waiting for Approval')}"
-                                            ${!canConfirm ? 'disabled' : ''}
-                                        >
-                                            <i class="mdi ${isFinished ? 'mdi-check-all' : 'mdi-check'}"></i>
-                                            ${isFinished ? 'Confirmed' : 'Confirm'}
-                                        </button>
-                                        <button class="btn btn-primary btn-copy btn-sm" onclick="copyFormatted(${pr.id})" title="Copy Formatted">
-                                            <i class="mdi mdi-content-copy"></i>
-                                        </button>
-                                        <button class="btn btn-danger btn-delete btn-sm" onclick="deletePR(${pr.id})" title="Delete">
-                                            <i class="mdi mdi-delete"></i>
-                                        </button>
-                                    @endcan
-                                    <button class="btn btn-warning btn-print btn-sm" onclick="printPR(${pr.id})" title="Download PDF">
+
+                                    <!-- Download -->
+                                    <button 
+                                        class="btn btn-warning btn-sm"
+                                        onclick="printPR(${pr.id})"
+                                        title="Download PDF"
+                                    >
                                         <i class="mdi mdi-printer"></i>
                                     </button>
+
+                                    @can('permission', 'wsp-data-pr-plus')
+
+                                        <!-- Edit -->
+                                        <button 
+                                            class="btn btn-secondary btn-sm"
+                                            onclick="editPR(${pr.id})"
+                                            title="Edit"
+                                        >
+                                            <i class="mdi mdi-pencil"></i>
+                                        </button>
+
+                                        <!-- Delete -->
+                                        <button 
+                                            class="btn btn-danger btn-sm"
+                                            onclick="deletePR(${pr.id})"
+                                            title="Delete"
+                                        >
+                                            <i class="mdi mdi-delete"></i>
+                                        </button>
+
+                                    @endcan
+
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex justify-content-center flex-wrap gap-1">
+                                    @can('permission', 'wsp-data-pr-plus')
+
+                                        <!-- Confirm -->
+                                        <button 
+                                            class="btn ${isFinished ? 'btn-light' : (canConfirm ? 'btn-success' : 'btn-outline-secondary')} btn-sm btn-confirm"
+                                            data-id="${pr.id}"
+                                            title="${isFinished ? 'Already Finished' : (canConfirm ? 'Confirm' : 'Waiting Approval')}"
+                                            ${!canConfirm ? 'disabled' : ''}
+                                        >
+                                            <i class="mdi ${isFinished ? 'mdi-check-all' : 'mdi-check'}"></i> Confirm
+                                        </button>
+
+                                        <!-- Copy -->
+                                        <button 
+                                            class="btn btn-primary btn-sm"
+                                            onclick="copyFormatted(${pr.id})"
+                                            title="Copy Formatted"
+                                        >
+                                            <i class="mdi mdi-content-copy"></i> Copy
+                                        </button>
+
+                                    @endcan
                                 </div>
                             </td>
                         </tr>
@@ -765,10 +810,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                             </div>
 
                         </div>
