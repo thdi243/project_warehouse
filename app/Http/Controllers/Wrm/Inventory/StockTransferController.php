@@ -107,10 +107,10 @@ class StockTransferController extends Controller
                     ->where('barang_id', $barang->id)
                     ->first();
 
-                if (!$stockOnHand) {
-                    $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Stock On Hand.";
-                    continue;
-                }
+                // if (!$stockOnHand) {
+                //     $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Stock On Hand.";
+                //     continue;
+                // }
 
                 // --- HEADER AND DERIVATIONS ---
                 // Derive no_spb from barcode (first 10 chars)
