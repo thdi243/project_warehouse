@@ -976,11 +976,20 @@ class WspPurchaseRequesitionController extends Controller
         // Refresh status PR
         if ($status === 'rejected') {
             $pr->update(['status' => 'rejected']);
+            if ($currentLevel == 4) {
+                $pr->items()->update(['status' => false]);
+            }
         } else if ($status === 'approved') {
             if ($currentLevel == 3) {
                 $pr->update(['status' => 'approved']);
             } else if ($currentLevel == 4) {
                 $pr->update(['status' => 'finished']);
+                if (!empty($itemIds)) {
+                    $pr->items()->whereIn('id', $itemIds)->update(['status' => true]);
+                    $pr->items()->whereNotIn('id', $itemIds)->update(['status' => false]);
+                } else {
+                    $pr->items()->update(['status' => false]);
+                }
             }
 
             // Notify next level
@@ -1035,6 +1044,7 @@ class WspPurchaseRequesitionController extends Controller
             'status' => 'required|in:approved,rejected',
             'comment' => 'nullable|string|max:500',
             'ttd' => 'nullable|string', // bulk approval might share one signature
+            'no_pr' => 'nullable|string',
             'update_signature' => 'nullable'
         ]);
 
@@ -1051,7 +1061,7 @@ class WspPurchaseRequesitionController extends Controller
                     $request->status,
                     $request->comment,
                     $request->ttd,
-                    null,
+                    $request->no_pr,
                     $request->items ?? [],
                     $request->boolean('use_stored_signature'),
                     $request->boolean('update_signature')
@@ -1083,11 +1093,7 @@ class WspPurchaseRequesitionController extends Controller
         $user = User::find($approval->approver_id);
         if (!$user) return;
 
-        if ($user && $user->jabatan == 'foreman') {
-            $url = "/purchase-requesition/index";
-        } else {
-            $url = "/purchase-requesition/approval";
-        }
+        $url = "/purchase-requesition/approval";
 
         NotificationsModel::create([
             'user_id' => $approval->approver_id,

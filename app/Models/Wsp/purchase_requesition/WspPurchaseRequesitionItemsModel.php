@@ -3,8 +3,8 @@
 namespace App\Models\Wsp\purchase_requesition;
 
 use App\Models\Wsp\BarangModel;
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Wsp\stock_manage\StockOnHandWspModel;
+use Illuminate\Database\Eloquent\Model;
 
 class WspPurchaseRequesitionItemsModel extends Model
 {
@@ -16,7 +16,12 @@ class WspPurchaseRequesitionItemsModel extends Model
         'jenis',
         'qty',
         'keterangan',
-        'alasan'
+        'alasan',
+        'status',
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
     ];
 
     public function barang()

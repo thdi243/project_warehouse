@@ -95,23 +95,35 @@
                 </div>
 
                 <div class="card-body">
-                    <div class="alert alert-info py-2 px-3 w-100" role="alert">
-                        <small>
-                            <i class="ri-information-line me-1"></i>
-                            Klik badge status untuk melihat tracking approval PR
-                        </small>
+                    <div class="alert alert-info py-2 px-3 w-100 mb-3" role="alert">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="ri-information-line"></i>
+                            <small class="mb-0">
+                                Klik badge status untuk melihat tracking approval PR
+                            </small>
+                        </div>
+
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="ri-information-line"></i>
+                            <small class="mb-0">
+                                Kolom <b>Flag</b> dengan nilai <b>"Yes"</b> menandakan terdapat item yang di-cancel atau
+                                jenis nya bukan PR tetapi (Blocked/Reservasi).<br>
+                                Silakan cek detail PR untuk informasi lebih lanjut.
+                            </small>
+                        </div>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover table-borderedless align-middle" id="IncomingTable">
                             <thead class="table-light text-nowrap">
                                 <tr>
-                                    <th style="width: 60px;">NO</th>
+                                    <th class="text-center" style="width: 60px;">NO</th>
                                     <th>PR DATE</th>
                                     <th>NO DOC</th>
                                     <th>NO PR</th>
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>STATUS</th>
+                                    <th>FLAG</th>
                                     <th class="text-center">AKSI</th>
                                     @can('permission', 'wsp-data-pr-plus')
                                         <th class="text-center">AKSI WSP</th>
@@ -267,9 +279,9 @@
                                     <th>Nama Barang</th>
                                     <th>Qty</th>
                                     <th>UOM</th>
+                                    <th>Keterangan</th>
                                     <th>Jenis</th>
                                     <th>Alasan</th>
-                                    <th>Keterangan</th>
                                     <th class="text-center">Status Manager User</th>
                                     <th class="text-center">Status Manager WRH</th>
                                 </tr>
@@ -310,78 +322,6 @@
         </div>
     </div>
 
-    {{-- Modal Confirm --}}
-    <div class="modal fade" id="confirmModal">
-        <div class="modal-dialog">
-            <div class="modal-content">
-
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm PR</h5>
-                </div>
-
-                <div class="modal-body">
-                    <input type="hidden" id="confirm_pr_id">
-
-                    <label>No PR</label>
-                    <input type="text" id="no_pr" class="form-control">
-                </div>
-
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-success" id="btnFinished">Finished</button>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    {{-- Modal TTD --}}
-    <div class="modal fade" id="signatureModal">
-        <div class="modal-dialog modal-md">
-            <div class="modal-content">
-
-                <div class="modal-header">
-                    <h5 class="modal-title">Signature</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body text-center">
-                    @if ($signature)
-                        @php
-                            $sigPath = $signature->signature;
-                            if (
-                                !Str::startsWith($sigPath, 'storage/') &&
-                                !Str::startsWith($sigPath, 'http') &&
-                                !Str::startsWith($sigPath, '/storage/')
-                            ) {
-                                $sigPath = 'storage/' . $sigPath;
-                            }
-                        @endphp
-                        <div class="border rounded p-3 text-center bg-white mb-2">
-                            <p class="small text-muted mb-2">Tanda tangan yang akan Anda gunakan:</p>
-                            <img src="{{ asset($sigPath) }}" alt="Signature" style="max-height: 150px; width: auto;">
-                        </div>
-                        <input type="hidden" id="useStoredSignature" value="1">
-                    @else
-                        <canvas id="signaturePad" class="signature-canvas"></canvas>
-                        <div class="mt-2 text-end">
-                            <button type="button" class="btn btn-sm btn-outline-danger" id="clearSignature">
-                                <i class="mdi mdi-eraser me-1"></i> Bersihkan
-                            </button>
-                        </div>
-                        <input type="hidden" id="useStoredSignature" value="0">
-                    @endif
-                </div>
-
-                <div class="modal-footer">
-                    <button class="btn btn-primary" id="submitSignature">
-                        Submit
-                    </button>
-                </div>
-
-            </div>
-        </div>
-    </div>
 @endsection
 
 @section('scripts')
@@ -479,9 +419,30 @@
                     const isFinished = pr.status === 'finished';
                     const canConfirm = pr.status === 'approved';
 
+                    const hasCancelledItems = pr.items && pr.items.some(item =>
+                        item.status === false || item.status === 0 || item.status === '0'
+                    );
+                    const hasBlockedItems = pr.items && pr.items.some(item =>
+                        item.jenis === 'blocked'
+                    );
+
+                    let flagText = '-';
+                    if (hasCancelledItems || hasBlockedItems) {
+                        let tooltipText = '';
+                        if (hasCancelledItems && hasBlockedItems) {
+                            tooltipText = 'Terdapat item yang di-cancel & Blocked/Reservasi';
+                        } else if (hasCancelledItems) {
+                            tooltipText = 'Terdapat item yang di-cancel';
+                        } else if (hasBlockedItems) {
+                            tooltipText = 'Terdapat item Blocked/Reservasi';
+                        }
+                        flagText =
+                            `<span class="badge badge-soft-danger animate-pulse" title="${tooltipText}" style="cursor: help;">yes</span>`;
+                    }
+
                     tbody.append(`
                         <tr>
-                            <td>${startIndex + index + 1}</td>
+                            <td class="text-center">${startIndex + index + 1}</td>
                             <td>${pr.pr_date}</td>
                             <td>${pr.no_doc}</td>
                             <td>${pr.pr_number ?? '-'}</td>
@@ -496,6 +457,7 @@
                                     ${pr.status}
                                 </span>
                             </td>
+                            <td>${flagText}</td>
                             <td>
                                 <div class="d-flex justify-content-center flex-wrap gap-1">
 
@@ -544,16 +506,6 @@
                             <td>
                                 <div class="d-flex justify-content-center flex-wrap gap-1">
                                     @can('permission', 'wsp-data-pr-plus')
-
-                                        <!-- Confirm -->
-                                        <button 
-                                            class="btn ${isFinished ? 'btn-light' : (canConfirm ? 'btn-success' : 'btn-outline-secondary')} btn-sm btn-confirm"
-                                            data-id="${pr.id}"
-                                            title="${isFinished ? 'Already Finished' : (canConfirm ? 'Confirm' : 'Waiting Approval')}"
-                                            ${!canConfirm ? 'disabled' : ''}
-                                        >
-                                            <i class="mdi ${isFinished ? 'mdi-check-all' : 'mdi-check'}"></i> Confirm
-                                        </button>
 
                                         <!-- Copy -->
                                         <button 
@@ -659,7 +611,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: "{{ route('stock.pr.delete', '') }}/" + id,
+                            url: "/purchase-requesition/delete/" + id,
                             type: 'DELETE',
                             success: function(res) {
                                 toastr.success(res.message || 'Data berhasil dihapus');
@@ -715,7 +667,7 @@
                 } else {
                     $.each(items, function(i, item) {
                         const badgeClass = item.jenis === 'blocked' ? 'bg-danger' : 'bg-success';
-                        const jenisText = item.jenis === 'blocked' ? 'Blocked' : 'PR';
+                        const jenisText = item.jenis === 'blocked' ? 'Reservasi' : 'PR';
 
                         let statusUser = '-';
                         let statusWrh = '-';
@@ -743,9 +695,9 @@
                                 <td>${item.barang?.nama_barang ?? '-'}</td>
                                 <td>${item.qty}</td>
                                 <td>${item.barang?.uom ?? '-'}</td>
+                                <td>${item.keterangan ?? '-'}</td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
-                                <td>${item.keterangan ?? '-'}</td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
                                 <td class="text-center">${formatBadge(statusWrh)}</td>
                             </tr>
@@ -810,10 +762,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                             </div>
 
                         </div>
@@ -853,14 +805,15 @@
                 let rows = [];
 
                 const approvedItems = pr.items.filter(item =>
-                    item.approval?.some(a => a.status === 'approved')
+                    (item.status === true || item.status === 1 || item.status === '1') && item.jenis ===
+                    'pr'
                 );
 
                 if (approvedItems.length === 0) {
                     Swal.fire({
                         icon: 'warning',
-                        title: 'Tidak Ada Item Approved',
-                        text: 'Tidak ada item yang bisa dicopy ke SAP'
+                        title: 'Tidak Ada Item Naik PR',
+                        text: 'Tidak ada item yang naik PR untuk dicopy ke SAP'
                     });
                     return;
                 }
@@ -927,181 +880,6 @@
                     });
                 }
             }
-
-            // TTD
-            let prID = null;
-
-            // klik confirm
-            $(document).on('click', '.btn-confirm', function() {
-
-                prID = $(this).data('id');
-
-                $('#confirm_pr_id').val(prID);
-
-                $('#confirmModal').modal('show');
-            });
-
-            $('#btnFinished').click(function() {
-
-                let no_pr = $('#no_pr').val();
-
-                if (!no_pr) {
-                    alert('No PR wajib diisi');
-                    return;
-                }
-
-                $('#confirmModal').modal('hide');
-                $('#signatureModal').modal('show');
-
-            });
-
-            const hasStoredSignature = '{{ $signature ? 'true' : 'false' }}' === 'true';
-            let signaturePad;
-            let canvas = document.getElementById("signaturePad");
-
-            if (!hasStoredSignature) {
-                function resizeCanvas() {
-                    let ratio = Math.max(window.devicePixelRatio || 1, 1);
-                    canvas.width = canvas.offsetWidth * ratio;
-                    canvas.height = canvas.offsetHeight * ratio;
-                    canvas.getContext("2d").scale(ratio, ratio);
-                }
-
-                signaturePad = new SignaturePad(canvas, {
-                    minWidth: 1,
-                    maxWidth: 2.5,
-                    penColor: "black"
-                });
-
-                $('#signatureModal').on('shown.bs.modal', function() {
-                    resizeCanvas();
-                    signaturePad.clear();
-                });
-
-                $('#clearSignature').click(function() {
-                    signaturePad.clear();
-                });
-            }
-
-            function trimCanvas(canvas) {
-
-                const ctx = canvas.getContext("2d");
-                const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = pixels.data;
-
-                let top = null,
-                    left = null,
-                    right = null,
-                    bottom = null;
-
-                for (let y = 0; y < canvas.height; y++) {
-                    for (let x = 0; x < canvas.width; x++) {
-
-                        let index = (y * canvas.width + x) * 4;
-
-                        if (data[index + 3] > 0) {
-
-                            if (top === null) top = y;
-                            if (left === null || x < left) left = x;
-                            if (right === null || x > right) right = x;
-                            if (bottom === null || y > bottom) bottom = y;
-
-                        }
-
-                    }
-                }
-
-                let width = right - left;
-                let height = bottom - top;
-
-                let trimmed = ctx.getImageData(left, top, width, height);
-
-                let copy = document.createElement("canvas");
-                let copyCtx = copy.getContext("2d");
-
-                copy.width = width;
-                copy.height = height;
-
-                copyCtx.putImageData(trimmed, 0, 0);
-
-                return copy;
-            }
-
-            $('#submitSignature').click(function() {
-                const useStored = $('#useStoredSignature').val() == '1';
-                let signature = null;
-
-                if (!useStored) {
-                    if (signaturePad.isEmpty()) {
-                        Swal.fire({
-                            icon: "warning",
-                            title: "Tanda tangan kosong",
-                            text: "Silakan buat tanda tangan terlebih dahulu"
-                        });
-                        return;
-                    }
-                    let trimmedCanvas = trimCanvas(canvas);
-                    signature = trimmedCanvas.toDataURL();
-                }
-
-                let no_pr = $('#no_pr').val();
-
-                Swal.fire({
-                    title: "Konfirmasi PR?",
-                    text: "Pastikan data sudah benar",
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonText: "Submit",
-                }).then((result) => {
-
-                    if (result.isConfirmed) {
-
-                        Swal.fire({
-                            title: "Menyimpan...",
-                            allowOutsideClick: false,
-                            didOpen: () => Swal.showLoading()
-                        });
-
-                        $.ajax({
-                            url: `/purchase-requesition/approval-pr/action/${prID}`,
-                            type: "POST",
-                            data: {
-                                status: "approved",
-                                ttd: signature,
-                                use_stored_signature: useStored ? 1 : 0,
-                                no_pr: no_pr,
-                                _token: $('meta[name="csrf-token"]').attr('content')
-                            },
-                            success: function(res) {
-
-                                $('#signatureModal').modal('hide');
-
-                                Swal.fire({
-                                    icon: "success",
-                                    title: "Berhasil",
-                                    text: res.message
-                                });
-
-                                loadPRData();
-
-                            },
-                            error: function(xhr) {
-
-                                Swal.fire({
-                                    icon: "error",
-                                    title: "Gagal",
-                                    text: xhr.responseJSON?.message ??
-                                        "Terjadi kesalahan"
-                                });
-
-                            }
-                        });
-
-                    }
-
-                });
-
-            });
         });
     </script>
 @endsection

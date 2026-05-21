@@ -19,6 +19,7 @@ return new class extends Migration
             $table->integer('qty')->default(0);
             $table->string('keterangan')->nullable();
             $table->string('alasan')->nullable();
+            $table->boolean('status')->nullable()->default(null);
             $table->timestamps();
         });
     }

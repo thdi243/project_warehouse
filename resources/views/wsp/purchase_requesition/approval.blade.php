@@ -88,10 +88,10 @@
                 $user = Auth::user();
                 $isDeptHead = $user->jabatan === 'dept_head';
                 $isWarehouseHead = $isDeptHead && $user->departemen === 'warehouse';
-                // $isForeman = $user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart';
+                $isForeman = $user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart';
                 $firstTab = true;
             @endphp
-            @if ($isDeptHead || $isWarehouseHead)
+            @if ($isDeptHead || $isWarehouseHead || $isForeman)
                 <ul class="nav nav-pills nav-justified mb-3 shadow-sm rounded bg-white p-1" id="approvalTabs" role="tablist"
                     data-aos="fade-up">
 
@@ -116,17 +116,17 @@
                         </li>
                         @php $firstTab = false; @endphp
                     @endif
-                    {{-- 
-                @if ($isForeman)
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link {{ $firstTab ? 'active' : '' }} py-2" id="tab-level-4" data-level="4"
-                            data-bs-toggle="pill" type="button" role="tab">
-                            <i class="mdi mdi-account-hard-hat me-1"></i> Foreman WSP (Level 4)
-                            <span class="badge bg-danger ms-2 count-level-4">0</span>
-                        </button>
-                    </li>
-                    @php $firstTab = false; @endphp
-                @endif --}}
+
+                    @if ($isForeman)
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {{ $firstTab ? 'active' : '' }} py-2" id="tab-level-4" data-level="4"
+                                data-bs-toggle="pill" type="button" role="tab">
+                                <i class="mdi mdi-account-hard-hat me-1"></i> Foreman WSP (Level 4)
+                                <span class="badge bg-danger ms-2 count-level-4">0</span>
+                            </button>
+                        </li>
+                        @php $firstTab = false; @endphp
+                    @endif
                 </ul>
             @endif
 
@@ -145,9 +145,7 @@
                         <table class="table table-hover align-middle mb-0" id="approvalTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 40px;" class="ps-3">
-                                        #
-                                    </th>
+                                    <th style="width: 40px;" class="ps-3">NO</th>
                                     <th>PR Date</th>
                                     <th>No Doc</th>
                                     <th>Requested By</th>
@@ -175,7 +173,7 @@
 
     <!-- Modal Detail -->
     <div class="modal fade" id="modalDetail" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-bold">Detail Purchase Requisition</h5>
@@ -185,6 +183,12 @@
                     <div id="detailContent">
                         <!-- Dynamic Content -->
                     </div>
+
+                    <div class="alert alert-info d-none mt-3" id="level4AlertInfo">
+                        <i class="mdi mdi-information-outline me-2"></i>
+                        Jika item di-checklist, maka data terkonfirmasi naik PR. Jika tidak di-checklist, maka item tersebut dicancel/tidak naik PR.
+                    </div>
+
                     <div class="mt-4">
                         <h6 class="fw-bold mb-3"><i class="mdi mdi-format-list-bulleted me-2"></i>Daftar Item</h6>
                         <div class="table-responsive" style="min-height: auto;">
@@ -202,6 +206,8 @@
                                         <th>UoM</th>
                                         <th>Keterangan</th>
                                         <th>Status</th>
+                                        <th class="level4-only-col">Jenis</th>
+                                        <th class="level4-only-col">Alasan</th>
                                     </tr>
                                 </thead>
                                 <tbody id="detailItemsBody">
@@ -232,6 +238,10 @@
                 </div>
                 <div class="modal-body">
                     <form id="formAction">
+                        <div class="mb-3 d-none" id="noPrWrapper">
+                            <label class="form-label fw-bold">No PR <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="actionNoPr" placeholder="Masukkan No PR...">
+                        </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Catatan / Alasan</label>
                             <textarea class="form-control" id="actionComment" rows="3" placeholder="Opsional..."></textarea>
@@ -434,18 +444,25 @@
                     return;
                 }
 
-                filteredByLevel.forEach(pr => {
+                filteredByLevel.forEach((pr, idx) => {
                     const myApproval = pr.approval.find(a => a.approver_id == userId && a.status ===
                         'pending');
                     const roleName = myApproval ? myApproval.role : '-';
+                    const isLevel4 = currentFilterLevel == 4;
+                    const approveText = isLevel4 ? 'Confirm' : 'Approve';
+
+                    let checkboxOrIndex = `
+                        <div class="form-check">
+                            <input class="form-check-input check-item" type="checkbox" value="${pr.id}">
+                        </div>
+                    `;
+                    if (isLevel4) {
+                        checkboxOrIndex = idx + 1;
+                    }
 
                     tbody.append(`
                         <tr>
-                            <td class="ps-3">
-                                <div class="form-check">
-                                    <input class="form-check-input check-item" type="checkbox" value="${pr.id}">
-                                </div>
-                            </td>
+                            <td class="ps-3">${checkboxOrIndex}</td>
                             <td>${pr.pr_date}</td>
                             <td><span class="fw-bold text-primary">${pr.no_doc}</span></td>
                             <td>${pr.requested_by}</td>
@@ -454,11 +471,13 @@
                             <td class="text-center">
                             <div class="d-flex gap-1 justify-content-center">
                                 <button class="btn btn-sm btn-success btn-action-row" data-id="${pr.id}" data-action="approved">
-                                    <i class="mdi mdi-check"></i> Approve
+                                    <i class="mdi mdi-check"></i> ${approveText}
                                 </button>
+                                ${!isLevel4 ? `
                                 <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
                                     <i class="mdi mdi-close"></i> Reject
                                 </button>
+                                ` : ''}
                             </div>
                         </td>
                     </tr>
@@ -496,6 +515,13 @@
             }
 
             function updateBulkUI() {
+                if (currentFilterLevel == 4) {
+                    $('.bulk-actions-wrapper').addClass('d-none');
+                    return;
+                } else {
+                    $('.bulk-actions-wrapper').removeClass('d-none');
+                }
+
                 if (selectedIds.length > 0) {
                     $('.bulk-actions').removeClass('d-none');
                     $('.selected-count').text(`${selectedIds.length} terpilih`);
@@ -523,32 +549,37 @@
                 currentAction = action;
 
                 $('#detailContent').html(`
-                <div class="row">
-                    <div class="col-6">
-                        <p class="mb-1 text-muted small">NO DOC</p>
-                        <h6 class="fw-bold">${pr.no_doc}</h6>
-                        <p class="mb-1 text-muted small mt-3">REQUESTED BY</p>
-                        <h6 class="fw-bold">${pr.requested_by}</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-1 text-muted small">NO DOC</p>
+                            <h6 class="fw-bold">${pr.no_doc}</h6>
+                            <p class="mb-1 text-muted small mt-3">REQUESTED BY</p>
+                            <h6 class="fw-bold">${pr.requested_by}</h6>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1 text-muted small">DATE</p>
+                            <h6 class="fw-bold">${pr.pr_date}</h6>
+                            <p class="mb-1 text-muted small mt-3">DEPARTMENT</p>
+                            <h6 class="fw-bold">${pr.department.toUpperCase()}</h6>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <p class="mb-1 text-muted small">HAL</p>
+                            <h6 class="fw-bold">${pr.hal || '-'}</h6>
+                        </div>
                     </div>
-                    <div class="col-6">
-                        <p class="mb-1 text-muted small">DATE</p>
-                        <h6 class="fw-bold">${pr.pr_date}</h6>
-                        <p class="mb-1 text-muted small mt-3">DEPARTMENT</p>
-                        <h6 class="fw-bold">${pr.department.toUpperCase()}</h6>
-                    </div>
-                    <div class="col-12 mt-3">
-                        <p class="mb-1 text-muted small">HAL</p>
-                        <h6 class="fw-bold">${pr.hal || '-'}</h6>
-                    </div>
-                </div>
-            `);
+                `);
 
                 const userId = {{ Auth::id() }};
                 const myApproval = pr.approval.find(a => a.approver_id == userId && a.status === 'pending');
-                const isLevel2 = myApproval && (myApproval.level == 2 || myApproval.role ===
-                    'Manager User');
+                const isLevel2Or4 = myApproval && (
+                    myApproval.level == 2 ||
+                    myApproval.level == 4 ||
+                    myApproval.role === 'Manager User' ||
+                    myApproval.role === 'Foreman Wsp'
+                );
+                const isLevel4 = myApproval && (myApproval.level == 4 || myApproval.role === 'Foreman Wsp');
 
-                if (isLevel2) {
+                if (isLevel2Or4) {
                     $('.item-check-col').show();
                 } else {
                     $('.item-check-col').hide();
@@ -558,11 +589,13 @@
                 itemsBody.empty();
                 pr.items.forEach(item => {
                     let checkHtml = '';
-                    if (isLevel2) {
+                    if (isLevel2Or4) {
+                        const isBlocked = isLevel4 && item.jenis === 'blocked';
+                        const checkedAttr = isBlocked ? '' : 'checked';
                         checkHtml = `
                         <td class="item-check-col">
                             <div class="form-check">
-                                <input class="form-check-input check-sub-item" type="checkbox" value="${item.id}" checked>
+                                <input class="form-check-input check-sub-item" type="checkbox" value="${item.id}" ${checkedAttr}>
                             </div>
                         </td>
                     `;
@@ -586,28 +619,47 @@
                         <td>${item.barang?.uom || '-'}</td>
                         <td>${item.keterangan || '-'}</td>
                         <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
+                        <td class="level4-only-col">${item.jenis || '-'}</td>
+                        <td class="level4-only-col">${item.alasan || '-'}</td>
                     </tr>
                 `);
                 });
 
-                $('#checkAllItems').prop('checked', true).off('change').on('change', function() {
+                if (isLevel4) {
+                    $('.level4-only-col').show();
+                    $('#level4AlertInfo').removeClass('d-none');
+                } else {
+                    $('.level4-only-col').hide();
+                    $('#level4AlertInfo').addClass('d-none');
+                }
+
+                const allChecked = $('.check-sub-item:not(:checked)').length === 0;
+                $('#checkAllItems').prop('checked', allChecked).off('change').on('change', function() {
                     $('.check-sub-item').prop('checked', $(this).is(':checked'));
                 });
 
+                $(document).off('change', '.check-sub-item').on('change', '.check-sub-item', function() {
+                    const total = $('.check-sub-item').length;
+                    const checked = $('.check-sub-item:checked').length;
+                    $('#checkAllItems').prop('checked', total === checked);
+                });
+
+                const actionLabel = isLevel4 ? (action === 'approved' ? 'Confirm' : 'Reject') : (action === 'approved' ? 'Approve' : 'Reject');
+
                 $('#detailActionButtons').html(`
-                <button type="button" class="btn btn-${action === 'approved' ? 'success' : 'danger'} btn-lanjut-action">Lanjut ${action === 'approved' ? 'Approve' : 'Reject'}</button>
-            `);
+                    <button type="button" class="btn btn-${action === 'approved' ? 'success' : 'danger'} btn-lanjut-action">Lanjut ${actionLabel}</button>
+                `);
 
                 $('.btn-lanjut-action').off('click').on('click', function() {
                     selectedIds = [pr.id];
 
-                    if (isLevel2) {
+                    if (isLevel2Or4) {
                         const selectedItems = [];
                         $('.check-sub-item:checked').each(function() {
                             selectedItems.push($(this).val());
                         });
 
-                        if (selectedItems.length === 0) {
+                        if (!isLevel4 && action === 'approved' && selectedItems.length === 0) {
                             Swal.fire('Peringatan', 'Harap pilih minimal satu item untuk diproses.',
                                 'warning');
                             return;
@@ -660,15 +712,24 @@
 
             function openActionModal(status) {
                 currentAction = status;
-                $('#actionModalTitle').text(status === 'approved' ? 'Konfirmasi Approval' : 'Konfirmasi Penolakan');
+                const isLevel4 = currentFilterLevel == 4;
+
+                $('#actionModalTitle').text(isLevel4 ? (status === 'approved' ? 'Konfirmasi PR (Confirm)' : 'Konfirmasi Penolakan') : (status === 'approved' ? 'Konfirmasi Approval' : 'Konfirmasi Penolakan'));
                 $('#btnSubmitAction').removeClass('btn-primary btn-success btn-danger')
                     .addClass(status === 'approved' ? 'btn-success' : 'btn-danger')
-                    .text(status === 'approved' ? 'Approve Sekarang' : 'Reject Sekarang');
+                    .text(isLevel4 ? (status === 'approved' ? 'Confirm Sekarang' : 'Reject Sekarang') : (status === 'approved' ? 'Approve Sekarang' : 'Reject Sekarang'));
 
                 if (status === 'rejected') {
                     $('#signatureWrapper').addClass('d-none');
                 } else {
                     $('#signatureWrapper').removeClass('d-none');
+                }
+
+                if (isLevel4 && status === 'approved') {
+                    $('#noPrWrapper').removeClass('d-none');
+                    $('#actionNoPr').val('');
+                } else {
+                    $('#noPrWrapper').addClass('d-none');
                 }
 
                 // Reset signature option to stored if available
@@ -687,9 +748,16 @@
 
             $('#btnSubmitAction').on('click', function() {
                 const useStored = $('#useStoredSignature').val() == '1';
+                const isLevel4 = currentFilterLevel == 4;
+                const noPr = $('#actionNoPr').val().trim();
 
                 if (currentAction === 'approved' && !useStored && signaturePad.isEmpty()) {
                     Swal.fire('Error', 'Tanda tangan wajib diisi untuk approval.', 'error');
+                    return;
+                }
+
+                if (isLevel4 && currentAction === 'approved' && !noPr) {
+                    Swal.fire('Error', 'No PR wajib diisi.', 'error');
                     return;
                 }
 
@@ -698,6 +766,7 @@
                     status: currentAction,
                     comment: $('#actionComment').val(),
                     items: window.currentSelectedItems || [],
+                    no_pr: isLevel4 && currentAction === 'approved' ? noPr : null,
                     ttd: (currentAction === 'approved' && !useStored) ? signaturePad
                         .toDataURL() : null,
                     use_stored_signature: (currentAction === 'approved' && useStored) ? 1 : 0,
