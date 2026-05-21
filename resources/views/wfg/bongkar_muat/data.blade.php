@@ -330,6 +330,10 @@
                                     <td class="fw-bold">: <span id="detail-jam_muat"></span></td>
                                 </tr>
                                 <tr>
+                                    <td class="text-muted">Jam Selesai</td>
+                                    <td class="fw-bold">: <span id="detail-jam_selesai"></span></td>
+                                </tr>
+                                <tr>
                                     <td class="text-muted">No. Kontainer</td>
                                     <td class="fw-bold">: <span id="detail-no_kontainer"></span></td>
                                 </tr>
@@ -603,6 +607,7 @@
                 $('#detail-destinasi').text(order.destinasi ? order.destinasi.destinasi : '-');
                 $('#detail-no_mobil').text(order.no_mobil || '-');
                 $('#detail-jam_muat').text(order.jam_muat || '-');
+                $('#detail-jam_selesai').text(order.jam_selesai || '-');
                 $('#detail-no_kontainer').text(order.no_kontainer || '-');
                 $('#detail-no_segel_bas').text(order.no_segel_bas || '-');
                 $('#detail-no_segel_vendor').text(order.no_segel_vendor || '-');

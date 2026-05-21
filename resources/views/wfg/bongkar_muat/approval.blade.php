@@ -65,6 +65,7 @@
                                     <th>Driver</th>
                                     <th>Status</th>
                                     <th>Jam Muat</th>
+                                    <th>Jam Selesai</th>
                                     <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
@@ -145,6 +146,10 @@
                                 <tr>
                                     <td class="text-muted">Jam Muat</td>
                                     <td class="fw-bold">: <span id="detail-jam_muat"></span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Jam Selesai</td>
+                                    <td class="fw-bold">: <span id="detail-jam_selesai"></span></td>
                                 </tr>
                             </table>
                         </div>
@@ -249,34 +254,35 @@
                                 const orderJson = encodeURIComponent(JSON.stringify(order));
 
                                 let actions = `
-                            <div class="d-flex justify-content-center gap-1">
-                                <button type="button" class="btn btn-info btn-sm btn-detail" data-order="${orderJson}" title="View Details">
-                                    <i class="ri-eye-line"></i> Check
-                                </button>
-                                <a href="${viewUrl}" class="btn btn-primary btn-sm" title="Verification">
-                                    <i class="ri-check-double-line"></i> Verify
-                                </a>
-                            </div>
-                        `;
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <button type="button" class="btn btn-info btn-sm btn-detail" data-order="${orderJson}" title="View Details">
+                                            <i class="ri-eye-line"></i> Check
+                                        </button>
+                                        <a href="${viewUrl}" class="btn btn-primary btn-sm" title="Verification">
+                                            <i class="ri-check-double-line"></i> Verify
+                                        </a>
+                                    </div>
+                                `;
 
                                 const rowHtml = `
-                            <tr>
-                                <td>${noUrut}</td>
-                                <td>${order.tanggal}</td>
-                                <td>${order.wavepick_smu ?? '-'}</td>
-                                <td>${order.shipment_smu ?? '-'}</td>
-                                <td>${order.wavepick_bas ?? '-'}</td>
-                                <td>${order.shipment_bas ?? '-'}</td>
-                                <td>${forkliftDriverName}</td>
-                                <td>${checkerName}</td>
-                                <td>${driverName}</td>
-                                <td><span class="badge ${statusClass}">${statusText}</span></td>
-                                <td>${order.jam_muat || '-'}</td>
-                                <td class="text-center">
-                                    ${actions}
-                                </td>
-                            </tr>
-                        `;
+                                    <tr>
+                                        <td>${noUrut}</td>
+                                        <td>${order.tanggal}</td>
+                                        <td>${order.wavepick_smu ?? '-'}</td>
+                                        <td>${order.shipment_smu ?? '-'}</td>
+                                        <td>${order.wavepick_bas ?? '-'}</td>
+                                        <td>${order.shipment_bas ?? '-'}</td>
+                                        <td>${forkliftDriverName}</td>
+                                        <td>${checkerName}</td>
+                                        <td>${driverName}</td>
+                                        <td><span class="badge ${statusClass}">${statusText}</span></td>
+                                        <td>${order.jam_muat || '-'}</td>
+                                        <td>${order.jam_selesai || '-'}</td>
+                                        <td class="text-center">
+                                            ${actions}
+                                        </td>
+                                    </tr>
+                                `;
                                 tbody.append(rowHtml);
                             });
                             renderPagination(paginatedData);
@@ -382,6 +388,7 @@
                 $('#detail-destinasi').text(order.destinasi ? order.destinasi.destinasi : '-');
                 $('#detail-no_mobil').text(order.no_mobil || '-');
                 $('#detail-jam_muat').text(order.jam_muat || '-');
+                $('#detail-jam_selesai').text(order.jam_selesai || '-');
 
                 let detailsHtml = '';
                 if (order.details && order.details.length > 0) {
