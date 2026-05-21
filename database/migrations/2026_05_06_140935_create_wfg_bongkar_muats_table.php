@@ -25,6 +25,7 @@ return new class extends Migration
             $table->string('no_segel_vendor')->nullable();
             $table->integer('jumlah_slipsheet')->nullable()->default(0);
             $table->time('jam_muat')->nullable();
+            $table->time('jam_selesai')->nullable();
 
             // Workflow fields
             $table->enum('status', ['draft', 'submitted', 'approved', 'loaded', 'verified', 'rejected'])->default('draft');

@@ -366,6 +366,7 @@ class BongkarMuatController extends Controller
                 'no_segel_vendor' => $request->no_segel_vendor,
                 'jumlah_slipsheet' => $request->jumlah_slipsheet ?? 0,
                 'jam_muat' => $request->jam_muat ?? Carbon::now()->format('H:i:s'),
+                'jam_selesai' => Carbon::now()->format('H:i:s'),
                 'status' => 'submitted',
                 'created_by' => auth()->id(),
             ];
