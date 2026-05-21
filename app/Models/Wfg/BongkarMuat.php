@@ -28,6 +28,7 @@ class BongkarMuat extends Model
         'no_segel_vendor',
         'jumlah_slipsheet',
         'jam_muat',
+        'jam_selesai',
         'status',
         'checker_id',
         'approved_at',
