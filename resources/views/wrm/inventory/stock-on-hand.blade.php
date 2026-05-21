@@ -239,7 +239,7 @@
                                 <span class="input-group-text bg-light border-end-0"><i
                                         class="mdi mdi-magnify text-primary"></i></span>
                                 <input type="text" class="form-control bg-light border-start-0" id="filterCatatan"
-                                    placeholder="Cari barcode, MID, atau catatan...">
+                                    placeholder="Cari barcode, atau catatan...">
                             </div>
                         </div>
 
