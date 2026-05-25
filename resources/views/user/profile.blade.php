@@ -170,7 +170,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editNik" class="form-label">NIK <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="editNik" name="editNik" required>
+                                    <input type="number" class="form-control" id="editNik" name="editNik" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -351,7 +351,7 @@
                                 sigPath = "{{ asset('storage') }}/" + rawSig;
                             }
                             console.log('Signature path:', sigPath); // debug: cek di console
-                            
+
                             $('#currentSignature')
                                 .attr('src', sigPath)
                                 .show()

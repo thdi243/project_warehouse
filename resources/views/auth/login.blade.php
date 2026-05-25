@@ -84,9 +84,9 @@
                                         <form id="loginForm">
                                             @csrf
                                             <div class="mb-3">
-                                                <label for="username" class="form-label">Username</label>
+                                                <label for="username" class="form-label">Username / NIK</label>
                                                 <input type="text" class="form-control" id="username"
-                                                    name="username" required placeholder="Enter username">
+                                                    name="username" required placeholder="Enter username or NIK">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label" for="password">Password</label>

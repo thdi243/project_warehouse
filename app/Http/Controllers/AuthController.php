@@ -34,26 +34,21 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $credentials = $request->only('username', 'password');
+        $login = $request->username;
+        $password = $request->password;
 
-        if (Auth::attempt($credentials)) {
+        $field = is_numeric($login) ? 'nik' : 'username';
+
+        if (Auth::attempt([
+            $field => $login,
+            'password' => $password
+        ])) {
             $request->session()->regenerate();
             $user = Auth::user();
 
             $imageUrl = $user->image && url(Storage::disk('public')->exists($user->image))
                 ? url(Storage::url($user->image)) // -> /storage/...
                 : asset('material/assets/images/users/user-dummy-img.jpg');
-
-            // Session::put('username', $user->username);
-            // Session::put('user_id', $user->id);
-            // Session::put('jabatan', $user->jabatan);
-            // Session::put('bagian', $user->bagian);
-            // Session::put('image_url', $imageUrl);
-            // Cookie::queue('username', $user->username, 60);
-
-            // Log::info('Username saved in session: ' . Session::get('username'));
-
-            // $redirectUrl = ;
 
             $intended = session('url.intended', $this->redirectUser($user));
 
