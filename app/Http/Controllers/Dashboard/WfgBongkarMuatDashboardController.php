@@ -289,7 +289,8 @@ class WfgBongkarMuatDashboardController extends Controller
         $query = BongkarMuat::with([
             'checker:id,nama_lengkap,username',
             'destinasi:id,destinasi',
-            'details.material:id,mid_barang,nama_barang'
+            'details.material:id,mid_barang,nama_barang',
+            'forkliftDriver:id,nama_lengkap,username',
         ])
             ->where('status', 'draft');
 
@@ -309,6 +310,7 @@ class WfgBongkarMuatDashboardController extends Controller
                 'wavepick'        => $o->wavepick_smu ?: ($o->wavepick_bas ?: '-'),
                 'destinasi'       => $o->destinasi?->destinasi ?? '-',
                 'checker'         => $o->checker?->nama_lengkap ?? $o->checker?->username,
+                'forklift_driver' => $o->forkliftDriver?->nama_lengkap ?? $o->forkliftDriver?->username,
                 'gate'            => $o->gate ?? '-',
                 'no_mobil'        => $o->no_mobil ?? '-',
                 'total_full'      => (int) $totalFull,
