@@ -494,8 +494,8 @@
                             <ul class="nav filter-tabs gap-1 flex-nowrap" id="statusTabs">
                                 <li class="nav-item"><a class="nav-link active" href="#"
                                         data-status="all">Semua</a></li>
-                                <li class="nav-item"><a class="nav-link" href="#" data-status="draft">Draft</a>
-                                </li>
+                                {{-- <li class="nav-item"><a class="nav-link" href="#" data-status="draft">Draft</a>
+                                </li> --}}
                                 <li class="nav-item"><a class="nav-link" href="#"
                                         data-status="submitted">Submitted</a></li>
                                 <li class="nav-item"><a class="nav-link" href="#"
@@ -733,21 +733,21 @@
                     let html = '';
                     r.data.forEach(function(o) {
                         html += `<tr>
-                    <td class="ps-3">${o.tanggal}</td>
-                    <td><span class="fw-semibold">${o.wavepick_smu}</span></td>
-                    <td>${o.wavepick_bas}</td>
-                    <td>${o.destinasi}</td>
-                    <td><span class="badge bg-light text-dark border">${o.gate}</span></td>
-                    <td class="text-center fw-semibold text-success">${fmt(o.total_qty_full)}</td>
-                    <td class="text-center fw-semibold text-warning">${fmt(o.total_qty_receh)}</td>
-                    <td class="text-center fw-bold">${fmt(o.total_qty_box)}</td>
-                    <td class="text-center"><span class="status-badge badge-${o.status}">${STATUS_LABEL[o.status] || o.status}</span></td>
-                    <td class="text-center">
-                        <a href="/wfg/bongkar-muat/show/${o.id}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:11px">
-                            <i class="bx bx-show-alt"></i>
-                        </a>
-                    </td>
-                </tr>`;
+                            <td class="ps-3">${o.tanggal}</td>
+                            <td><span class="fw-semibold">${o.wavepick_smu}</span></td>
+                            <td>${o.wavepick_bas}</td>
+                            <td>${o.destinasi}</td>
+                            <td><span class="badge bg-light text-dark border">${o.gate}</span></td>
+                            <td class="text-center fw-semibold text-success">${fmt(o.total_qty_full)}</td>
+                            <td class="text-center fw-semibold text-warning">${fmt(o.total_qty_receh)}</td>
+                            <td class="text-center fw-bold">${fmt(o.total_qty_box)}</td>
+                            <td class="text-center"><span class="status-badge badge-${o.status}">${STATUS_LABEL[o.status] || o.status}</span></td>
+                            <td class="text-center">
+                                <a href="/wfg/bongkar-muat/show/${o.id}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:11px">
+                                    <i class="bx bx-show-alt"></i>
+                                </a>
+                            </td>
+                        </tr>`;
                     });
                     $('#wavepickTable').html(html);
                 });
@@ -943,7 +943,7 @@
 
             setInterval(() => {
                 loadAll();
-            }, 100000); // Refresh every 5 minutes
+            }, 120000); // Refresh every 2 minutes
             // }, 300000); // Refresh every 5 minutes
 
             // ---- Events ----
