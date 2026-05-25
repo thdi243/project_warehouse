@@ -126,7 +126,7 @@ class WfgBongkarMuatDashboardController extends Controller
             'checker:id,nama_lengkap',
             'destinasi:id,destinasi',
         ])
-            ->whereNotIn('status', ['verified', 'rejected'])
+            ->whereNotIn('status', ['draft', 'verified', 'rejected'])
             ->withCount('details')
             ->withSum(['details as total_qty_full' => function ($q) {
                 $q->where('jenis', 'P');
