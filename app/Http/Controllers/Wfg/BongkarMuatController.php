@@ -33,6 +33,7 @@ class BongkarMuatController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $status = $request->input('status');
+        $flags = $request->input('flags');
 
         $query = BongkarMuat::with(['forkliftDriver', 'checker', 'destinasi', 'details.material', 'verificator']);
 
@@ -57,6 +58,12 @@ class BongkarMuatController extends Controller
 
         if ($status) {
             $query->where('status', $status);
+        }
+
+        if ($flags) {
+            $query->whereHas('details', function ($q) use ($flags) {
+                $q->where($flags, true);
+            });
         }
 
         $paginated = $query->latest()->paginate($perPage);

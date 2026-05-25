@@ -23,7 +23,7 @@
                     <div class="card shadow-sm border-0 mb-3">
                         <div class="card-body">
                             <div class="row align-items-center">
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Search</label>
                                     <div class="search-box">
                                         <input type="text" id="searchInput" class="form-control"
@@ -51,13 +51,18 @@
                                         <option value="rejected">Rejected</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3 mt-md-4 d-flex gap-2">
+                                <div class="col-md-2">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Flags</label>
+                                    <select id="flagsFilter" class="form-select">
+                                        <option value="" selected disabled>No Choose</option>
+                                        <option value="double_po">2 PO</option>
+                                        <option value="cancel_to">Cancel TO</option>
+                                        <option value="manual_picking">Manual Picking</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mt-md-4 d-flex gap-2">
                                     <button type="button" class="btn btn-soft-danger flex-fill" id="btnReset">
                                         <i class="ri-refresh-line"></i> Reset
-                                    </button>
-
-                                    <button type="button" class="btn btn-primary flex-fill" id="btnFilter">
-                                        <i class="ri-filter-3-line"></i> Filter
                                     </button>
                                 </div>
                             </div>
@@ -83,7 +88,9 @@
                                     <th>Driver</th>
                                     <th>Status</th>
                                     <th>Jam Muat</th>
+                                    <th>Jam Selesai</th>
                                     <th>Verified By</th>
+                                    <th>Flags</th>
                                     <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
@@ -362,6 +369,8 @@
                                     <th>TO Dummy</th>
                                     <th>TO SAP</th>
                                     <th>Flags</th>
+                                    <th>No TO</th>
+                                    <th>Qty TO</th>
                                     @can('permission', 'bongkar-muat-plus')
                                         <th class="text-center">Actions</th>
                                     @endcan
@@ -413,10 +422,11 @@
                 const startDate = $('#startDate').val();
                 const endDate = $('#endDate').val();
                 const status = $('#statusFilter').val();
+                const flags = $('#flagsFilter').val();
                 const tbody = $('#bongkarMuatTable tbody');
 
                 tbody.html(
-                    '<tr><td colspan="13" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>'
+                    '<tr><td colspan="15" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>'
                 );
                 $('#paginationContainer').empty();
 
@@ -428,7 +438,8 @@
                         search: search,
                         start_date: startDate,
                         end_date: endDate,
-                        status: status
+                        status: status,
+                        flags: flags
                     },
                     success: function(res) {
                         const paginatedData = res.data;
@@ -504,6 +515,14 @@
                                     </button>
                                 `;
 
+                                const flagBadges = order.details?.some(detail =>
+                                        detail.double_po ||
+                                        detail.cancel_to ||
+                                        detail.manual_picking
+                                    ) ?
+                                    '<span class="badge bg-warning text-dark">Yes</span>' :
+                                    '-';
+
                                 const rowHtml = `
                                     <tr>
                                         <td class="text-center">${noUrut}</td>
@@ -517,7 +536,9 @@
                                         <td>${driverName}</td>
                                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                                         <td>${order.jam_muat || '-'}</td>
+                                        <td>${order.jam_selesai || '-'}</td>
                                         <td>${verificatorName}</td>
+                                        <td>${flagBadges}</td>
                                         <td class="text-center">
                                             <div class="d-flex gap-1 justify-content-center">
                                                 ${actions}
@@ -592,10 +613,11 @@
                 $('#startDate').val('');
                 $('#endDate').val('');
                 $('#statusFilter').val('');
+                $('#flagsFilter').val('');
                 loadData(1);
             });
 
-            $('#startDate, #endDate, #statusFilter').change(function() {
+            $('#startDate, #endDate, #statusFilter, #flagsFilter').change(function() {
                 loadData(1);
             });
 
@@ -630,31 +652,33 @@
                         const materialName = detail.material ? detail.material.nama_barang : '-';
                         const materialCode = detail.material ? detail.material.mid_barang : '-';
                         detailsHtml += `
-                        <tr>
-                            <td>${materialCode}<br><small class="text-muted">${materialName}</small></td>
-                            <td>${detail.batch_number || '-'}</td>
-                            <td class="text-center">${detail.jenis || '-'}</td>
-                            <td class="text-center">${detail.qty || 0}</td>
-                            <td class="text-center small">${detail.to_dummy || '-'}</td>
-                            <td class="text-center small">${detail.to_sap || '-'}</td>
-                            <td class="text-center">
-                                ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
-                                ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel</span>' : ''}
-                                ${detail.manual_picking ? '<span class="badge bg-soft-success text-success">Manual</span>' : ''}
-                            </td>
-                            @can('permission', 'approval-bongkar-muat')
+                            <tr>
+                                <td>${materialCode}<br><small class="text-muted">${materialName}</small></td>
+                                <td>${detail.batch_number || '-'}</td>
+                                <td class="text-center">${detail.jenis || '-'}</td>
+                                <td class="text-center">${detail.qty || 0}</td>
+                                <td class="text-center small">${detail.to_dummy || '-'}</td>
+                                <td class="text-center small">${detail.to_sap || '-'}</td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-soft-info btn-edit-item" 
-                                        data-item='${encodeURIComponent(JSON.stringify(detail))}'>
-                                        <i class="ri-edit-2-line"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-soft-danger btn-delete-item" 
-                                        data-id="${detail.id}">
-                                        <i class="ri-delete-bin-line"></i>
-                                    </button>
+                                    ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
+                                    ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel TO</span>' : ''}
+                                    ${detail.manual_picking ? '<span class="badge bg-soft-success text-success">Manual Picking</span>' : ''}
                                 </td>
-                            @endcan
-                        </tr>
+                                <td class="text-center">${detail.no_to || '-'}</td>
+                                <td class="text-center">${detail.qty_to || '-'}</td>
+                                @can('permission', 'approval-bongkar-muat')
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-soft-info btn-edit-item" 
+                                            data-item='${encodeURIComponent(JSON.stringify(detail))}'>
+                                            <i class="ri-edit-2-line"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-soft-danger btn-delete-item" 
+                                            data-id="${detail.id}">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
+                                    </td>
+                                @endcan
+                            </tr>
                         `;
                     });
                 } else {
