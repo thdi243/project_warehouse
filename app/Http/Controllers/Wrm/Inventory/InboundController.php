@@ -1453,21 +1453,18 @@ class InboundController extends Controller
             $query->whereIn('wrm_stock_inbound_details.status', (array)$request->status);
         }
 
-        if ($request->jenis_bahan) {
-            $query->whereHas('barang', function ($q) use ($request) {
-                $q->whereIn('nama_barang', (array)$request->jenis_bahan);
-            });
-        }
-
         if ($request->mid) {
             $query->whereHas('barang', function ($q) use ($request) {
                 $q->whereIn('mid', (array)$request->mid);
             });
         }
 
-        if ($request->date) {
+        if ($request->start_date || $request->end_date) {
             $query->whereHas('inbound', function ($q) use ($request) {
-                $q->whereDate('incoming_date', $request->date);
+                $q->whereBetween('incoming_date', [
+                    Carbon::parse($request->start_date)->startOfDay(),
+                    Carbon::parse($request->end_date)->endOfDay(),
+                ]);
             });
         }
 
