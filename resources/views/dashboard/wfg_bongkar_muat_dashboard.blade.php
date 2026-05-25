@@ -695,6 +695,7 @@
                                     </div>
                                     <div class="text-muted mb-1"><i class="bx bx-map-pin me-1"></i>${o.destinasi}</div>
                                     <div class="text-muted mb-2"><i class="bx bx-user me-1"></i>Checker: <span class="text-dark fw-medium">${o.checker}</span></div>
+                                    <div class="text-muted mb-2"><i class="bx bx-user me-1"></i>Forklift Driver: <span class="text-dark fw-medium">${o.forklift_driver}</span></div>
                                     
                                     <div class="d-flex gap-2 mb-2">
                                         <div class="badge bg-light text-dark border w-50 py-2">Full: ${fmt(o.total_full)}</div>
