@@ -224,6 +224,7 @@ class BongkarMuatController extends Controller
                 'no_segel_vendor' => $request->no_segel_vendor,
                 'jumlah_slipsheet' => $request->jumlah_slipsheet ?? 0,
                 'updated_by' => auth()->id(),
+                'checker_id' => auth()->id(),
             ]);
 
             // Jam muat otomatis ketika item pertama disimpan

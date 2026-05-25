@@ -180,27 +180,27 @@
                     <table cellspacing="0" cellpadding="4" width="100%" style="line-height: 1.5;">
                         <tr>
                             <td width="140" class="text-muted no-border">Wavepick SMU</td>
-                            <td class="fw-bold no-border">: {{ $order->wavepick_smu }}</td>
+                            <td class="fw-bold no-border">: {{ $order->wavepick_smu ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Shipment SMU</td>
-                            <td class="fw-bold no-border">: {{ $order->shipment_smu }}</td>
+                            <td class="fw-bold no-border">: {{ $order->shipment_smu ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Wavepick BAS</td>
-                            <td class="fw-bold no-border">: {{ $order->wavepick_bas }}</td>
+                            <td class="fw-bold no-border">: {{ $order->wavepick_bas ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Shipment BAS</td>
-                            <td class="fw-bold no-border">: {{ $order->shipment_bas }}</td>
+                            <td class="fw-bold no-border">: {{ $order->shipment_bas ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Forklift Driver</td>
-                            <td class="fw-bold no-border">: {{ $order->forkliftDriver->username }}</td>
+                            <td class="fw-bold no-border">: {{ $order->forkliftDriver->username ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Tujuan</td>
-                            <td class="fw-bold no-border">: {{ $order->destinasi->destinasi }}</td>
+                            <td class="fw-bold no-border">: {{ $order->destinasi->destinasi ?? '-' }}</td>
                         </tr>
                     </table>
                 </td>
@@ -216,23 +216,23 @@
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Nomor Kontainer</td>
-                            <td class="fw-bold no-border">: {{ $order->no_kontainer }}</td>
+                            <td class="fw-bold no-border">: {{ $order->no_kontainer ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Nomor Segel BAS</td>
-                            <td class="fw-bold no-border">: {{ $order->no_segel_bas }}</td>
+                            <td class="fw-bold no-border">: {{ $order->no_segel_bas ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Nomor Segel Vendor</td>
-                            <td class="fw-bold no-border">: {{ $order->no_segel_vendor }}</td>
+                            <td class="fw-bold no-border">: {{ $order->no_segel_vendor ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Jumlah Slipsheet</td>
-                            <td class="fw-bold no-border">: {{ $order->jumlah_slipsheet }}</td>
+                            <td class="fw-bold no-border">: {{ $order->jumlah_slipsheet ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted no-border">Jam Muat</td>
-                            <td class="fw-bold no-border">: {{ $order->jam_muat }}</td>
+                            <td class="fw-bold no-border">: {{ $order->jam_muat ?? '-' }}</td>
                         </tr>
                     </table>
                 </td>
@@ -304,25 +304,33 @@
         </table>
 
         {{-- Summary Data Table --}}
-        <table cellspacing="0" cellpadding="4" style="width: 100%; border: 1px solid #000; margin-top: 10px; border-collapse: collapse;">
+        <table cellspacing="0" cellpadding="4"
+            style="width: 100%; border: 1px solid #000; margin-top: 10px; border-collapse: collapse;">
             <thead>
                 <tr style="background-color: #f5f5f5; border-bottom: 1px solid #000;">
-                    <th width="50%" style="text-align: left; font-size: 11px; padding: 6px; border-right: 1px solid #000;"><strong>SUMMARY SMU</strong></th>
-                    <th width="50%" style="text-align: left; font-size: 11px; padding: 6px;"><strong>SUMMARY BAS</strong></th>
+                    <th width="50%"
+                        style="text-align: left; font-size: 11px; padding: 6px; border-right: 1px solid #000;">
+                        <strong>SUMMARY SMU</strong>
+                    </th>
+                    <th width="50%" style="text-align: left; font-size: 11px; padding: 6px;"><strong>SUMMARY
+                            BAS</strong></th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td valign="top" style="font-size: 11px; padding: 6px; border-right: 1px solid #000; line-height: 1.5;">
+                    <td valign="top"
+                        style="font-size: 11px; padding: 6px; border-right: 1px solid #000; line-height: 1.5;">
                         @forelse ($summarySMU as $item)
-                            <strong>{{ $item['mid'] }}</strong> : {{ number_format($item['qty'] ?? 0, 0, ',', '.') }} Box<br>
+                            <strong>{{ $item['mid'] }}</strong> : {{ number_format($item['qty'] ?? 0, 0, ',', '.') }}
+                            Box<br>
                         @empty
                             <span style="color: #999;">-</span>
                         @endforelse
                     </td>
                     <td valign="top" style="font-size: 11px; padding: 6px; line-height: 1.5;">
                         @forelse ($summaryBAS as $item)
-                            <strong>{{ $item['mid'] }}</strong> : {{ number_format($item['qty'] ?? 0, 0, ',', '.') }} Box<br>
+                            <strong>{{ $item['mid'] }}</strong> : {{ number_format($item['qty'] ?? 0, 0, ',', '.') }}
+                            Box<br>
                         @empty
                             <span style="color: #999;">-</span>
                         @endforelse
@@ -338,14 +346,18 @@
             <tr>
                 {{-- Checker --}}
                 <td class="approver-ttd-cell" style="width: 33.33%;">
-                    @if($order->checker_signature)
+                    @if ($order->checker_signature)
                         @php
                             $checkerSig = $order->checker_signature;
-                            if (!Str::startsWith($checkerSig, 'storage/') && !Str::startsWith($checkerSig, 'http') && !Str::startsWith($checkerSig, '/storage/')) {
+                            if (
+                                !Str::startsWith($checkerSig, 'storage/') &&
+                                !Str::startsWith($checkerSig, 'http') &&
+                                !Str::startsWith($checkerSig, '/storage/')
+                            ) {
                                 $checkerSig = 'storage/' . $checkerSig;
                             }
                         @endphp
-                        <img src="{{ $checkerSig }}" width="150"
+                        <img src="{{ $checkerSig }}" width="200"
                             alt="TTD {{ $order->checker ? $order->checker->username : '' }}">
                     @else
                         <div style="height: 60px;"></div>
@@ -354,14 +366,18 @@
 
                 {{-- Driver --}}
                 <td class="approver-ttd-cell" style="width: 33.33%;">
-                    @if($order->driver_signature)
+                    @if ($order->driver_signature)
                         @php
                             $driverSig = $order->driver_signature;
-                            if (!Str::startsWith($driverSig, 'storage/') && !Str::startsWith($driverSig, 'http') && !Str::startsWith($driverSig, '/storage/')) {
+                            if (
+                                !Str::startsWith($driverSig, 'storage/') &&
+                                !Str::startsWith($driverSig, 'http') &&
+                                !Str::startsWith($driverSig, '/storage/')
+                            ) {
                                 $driverSig = 'storage/' . $driverSig;
                             }
                         @endphp
-                        <img src="{{ $driverSig }}" width="150" alt="TTD {{ $order->driver_name }}">
+                        <img src="{{ $driverSig }}" width="200" alt="TTD {{ $order->driver_name }}">
                     @else
                         <div style="height: 60px;"></div>
                     @endif
@@ -369,14 +385,18 @@
 
                 {{-- Verificator --}}
                 <td class="approver-ttd-cell" style="width: 33.33%;">
-                    @if($order->verified_signature)
+                    @if ($order->verified_signature)
                         @php
                             $verifSig = $order->verified_signature;
-                            if (!Str::startsWith($verifSig, 'storage/') && !Str::startsWith($verifSig, 'http') && !Str::startsWith($verifSig, '/storage/')) {
+                            if (
+                                !Str::startsWith($verifSig, 'storage/') &&
+                                !Str::startsWith($verifSig, 'http') &&
+                                !Str::startsWith($verifSig, '/storage/')
+                            ) {
                                 $verifSig = 'storage/' . $verifSig;
                             }
                         @endphp
-                        <img src="{{ $verifSig }}" width="150"
+                        <img src="{{ $verifSig }}" width="200"
                             alt="TTD {{ $order->verificator ? $order->verificator->username : '' }}">
                     @else
                         <div style="height: 60px;"></div>

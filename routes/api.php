@@ -71,6 +71,7 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/bongkar-muat/chart-trend',  [WfgBongkarMuatDashboardController::class, 'getChartTrend']);
         Route::get('/bongkar-muat/chart-status', [WfgBongkarMuatDashboardController::class, 'getChartStatus']);
         Route::get('/bongkar-muat/chart-destination', [WfgBongkarMuatDashboardController::class, 'getChartDestination']);
+        Route::get('/bongkar-muat/loading-visual', [WfgBongkarMuatDashboardController::class, 'getLoadingVisual']);
     });
 
     // WSP

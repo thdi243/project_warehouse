@@ -175,7 +175,7 @@
                         } else {
                             container.append(
                                 '<tr><td colspan="5" class="text-center">Data tidak ditemukan</td></tr>'
-                                );
+                            );
                         }
                     },
                     error: function(xhr) {
@@ -199,29 +199,69 @@
                 let paginationHtml =
                     '<nav aria-label="Page navigation"><ul class="pagination pagination-separated justify-content-center mb-0">';
 
-                // Previous
-                const prevDisabled = data.current_page === 1 ? 'disabled' : '';
-                paginationHtml +=
-                    `<li class="page-item ${prevDisabled}"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
+                // First
+                paginationHtml += `
+                    <li class="page-item ${data.current_page === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" data-page="1">First</a>
+                    </li>
+                `;
 
-                for (let i = 1; i <= data.last_page; i++) {
-                    const activeClass = data.current_page === i ? 'active' : '';
-                    paginationHtml +=
-                        `<li class="page-item ${activeClass}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+                // Previous
+                paginationHtml += `
+                    <li class="page-item ${data.current_page === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" data-page="${data.current_page - 1}">Prev</a>
+                    </li>
+                `;
+
+                // Pagination number limit
+                let startPage = Math.max(1, data.current_page - 2);
+                let endPage = Math.min(data.last_page, data.current_page + 2);
+
+                // Adjust biar tetap 5 halaman jika memungkinkan
+                if (data.current_page <= 3) {
+                    endPage = Math.min(5, data.last_page);
+                }
+
+                if (data.current_page >= data.last_page - 2) {
+                    startPage = Math.max(1, data.last_page - 4);
+                }
+
+                // Number pages
+                for (let i = startPage; i <= endPage; i++) {
+                    paginationHtml += `
+                        <li class="page-item ${data.current_page === i ? 'active' : ''}">
+                            <a class="page-link" href="#" data-page="${i}">${i}</a>
+                        </li>
+                    `;
                 }
 
                 // Next
-                const nextDisabled = data.current_page === data.last_page ? 'disabled' : '';
-                paginationHtml +=
-                    `<li class="page-item ${nextDisabled}"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
+                paginationHtml += `
+                    <li class="page-item ${data.current_page === data.last_page ? 'disabled' : ''}">
+                        <a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a>
+                    </li>
+                `;
+
+                // Last
+                paginationHtml += `
+                    <li class="page-item ${data.current_page === data.last_page ? 'disabled' : ''}">
+                        <a class="page-link" href="#" data-page="${data.last_page}">Last</a>
+                    </li>
+                `;
 
                 paginationHtml += '</ul></nav>';
+
                 container.append(paginationHtml);
 
                 $('#paginationContainer .page-link').on('click', function(e) {
                     e.preventDefault();
+
                     const page = $(this).data('page');
-                    if (!page || $(this).closest('.page-item').hasClass('disabled')) return;
+
+                    if (!page || $(this).closest('.page-item').hasClass('disabled')) {
+                        return;
+                    }
+
                     loadDestinasi(page);
                 });
             }

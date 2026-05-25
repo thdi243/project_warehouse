@@ -46,7 +46,6 @@
                                         <option value="draft">Draft</option>
                                         <option value="submitted">Submitted</option>
                                         <option value="approved">Approved</option>
-                                        <option value="loading">Loading</option>
                                         <option value="loaded">Loaded</option>
                                         <option value="verified">Verified</option>
                                         <option value="rejected">Rejected</option>
@@ -85,9 +84,7 @@
                                     <th>Status</th>
                                     <th>Jam Muat</th>
                                     <th>Verified By</th>
-                                    @can('permission', 'bongkar-muat-plus')
-                                        <th class="text-center">Actions</th>
-                                    @endcan
+                                    <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -365,7 +362,7 @@
                                     <th>TO Dummy</th>
                                     <th>TO SAP</th>
                                     <th>Flags</th>
-                                    @can('permission', 'approval-bongkar-muat')
+                                    @can('permission', 'bongkar-muat-plus')
                                         <th class="text-center">Actions</th>
                                     @endcan
                                 </tr>
@@ -385,6 +382,22 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            @if (session('success'))
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: '{{ session('success') }}',
+                });
+            @endif
+
+            @if (session('error'))
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: '{{ session('error') }}',
+                });
+            @endif
+
             function debounce(func, delay) {
                 let timeout;
                 return function() {
@@ -478,14 +491,14 @@
                                     <button type="button" class="btn btn-soft-info btn-sm btn-detail" data-order="${orderJson}" title="Quick View Items">
                                         <i class="ri-eye-line"></i>
                                     </button>
-                                    @can('permission', 'approval-bongkar-muat')
+                                    @can('permission', 'bongkar-muat-plus')
                                         <button type="button" class="btn btn-soft-primary btn-sm btn-edit" data-order="${orderJson}" title="Edit Items">
                                             <i class="ri-edit-line"></i>
                                         </button>
+                                        <button type="button" class="btn btn-soft-danger btn-sm btn-delete" data-id="${order.id}" title="Delete">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
                                     @endcan 
-                                    <button type="button" class="btn btn-soft-danger btn-sm btn-delete" data-id="${order.id}" title="Delete">
-                                        <i class="ri-delete-bin-line"></i>
-                                    </button>
                                     <button type="button" class="btn btn-soft-success btn-sm btn-download" data-id="${order.id}" title="Download">
                                         <i class="ri-download-line"></i>
                                     </button>
@@ -505,13 +518,11 @@
                                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                                         <td>${order.jam_muat || '-'}</td>
                                         <td>${verificatorName}</td>
-                                        @can('permission', 'bongkar-muat-plus')
-                                            <td class="text-center">
-                                                <div class="d-flex gap-1 justify-content-center">
-                                                    ${actions}
-                                                </div>
-                                            </td>
-                                        @endcan
+                                        <td class="text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                ${actions}
+                                            </div>
+                                        </td>
                                     </tr>
                                 `;
                                 tbody.append(rowHtml);
@@ -688,7 +699,7 @@
             $(document).on('click', '.btn-download', function() {
                 const id = $(this).data('id');
 
-                window.open("{{ url('wfg/bongkar-muat/download') }}/" + id, '_blank');
+                window.open("{{ url('wfg/bongkar-muat/download') }}/" + id);
             });
 
             // Edit Item Logic

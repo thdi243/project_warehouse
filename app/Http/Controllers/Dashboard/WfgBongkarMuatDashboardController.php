@@ -282,4 +282,50 @@ class WfgBongkarMuatDashboardController extends Controller
             ]
         ]);
     }
+
+    // --- 6. Loading Visual: Draft Orders ---
+    public function getLoadingVisual(Request $request)
+    {
+        $query = BongkarMuat::with([
+            'checker:id,nama_lengkap,username',
+            'destinasi:id,destinasi',
+            'details.material:id,mid_barang,nama_barang'
+        ])
+            ->where('status', 'draft');
+
+        if ($request->start_date) {
+            $query->whereDate('tanggal', '>=', $request->start_date);
+        }
+        if ($request->end_date) {
+            $query->whereDate('tanggal', '<=', $request->end_date);
+        }
+
+        $orders = $query->latest('id')->limit(15)->get()->map(function ($o) {
+            $totalFull  = $o->details->where('jenis', 'P')->sum('qty');
+            $totalReceh = $o->details->where('jenis', 'R')->sum('qty');
+
+            return [
+                'id'              => $o->id,
+                'wavepick'        => $o->wavepick_smu ?: ($o->wavepick_bas ?: '-'),
+                'destinasi'       => $o->destinasi?->destinasi ?? '-',
+                'checker'         => $o->checker?->nama_lengkap ?? $o->checker?->username,
+                'gate'            => $o->gate ?? '-',
+                'no_mobil'        => $o->no_mobil ?? '-',
+                'total_full'      => (int) $totalFull,
+                'total_receh'     => (int) $totalReceh,
+                'total_qty'       => (int) ($totalFull + $totalReceh),
+                'total_items'     => $o->details->count(),
+                'items' => $o->details
+                    ->sortByDesc('id')
+                    ->map(fn($d) => [
+                        'material' => $d->material?->mid_barang ?? '-',
+                        'qty'      => $d->qty,
+                        'jenis'    => $d->jenis
+                    ])
+                    ->values()
+            ];
+        });
+
+        return response()->json(['status' => true, 'data' => $orders]);
+    }
 }

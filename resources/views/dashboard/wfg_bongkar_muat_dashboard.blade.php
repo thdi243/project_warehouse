@@ -144,6 +144,130 @@
             color: #64748b;
             margin-top: 2px;
         }
+
+        /* Truck Visualization Styles */
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background: #ef4444;
+            border-radius: 50%;
+            display: inline-block;
+            animation: livePulse 1s infinite;
+            box-shadow: 0 0 0 rgba(239, 68, 68, 0.7);
+        }
+
+        @keyframes livePulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+
+            70% {
+                transform: scale(1.3);
+                opacity: 0.7;
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        .truck-item {
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            min-width: 280px;
+            flex: 0 0 auto;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .truck-item:hover {
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+            border-color: #6366f1;
+        }
+
+        .truck-icon-wrapper {
+            font-size: 38px;
+            color: #6366f1;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+            border-radius: 10px;
+        }
+
+        .truck-anim {
+            animation: truck-move 2s infinite ease-in-out;
+        }
+
+        @keyframes truck-move {
+
+            0%,
+            100% {
+                transform: translateX(-5px);
+            }
+
+            50% {
+                transform: translateX(5px);
+            }
+        }
+
+        .gate-label {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #6366f1;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .truck-info {
+            min-width: 0;
+        }
+
+        .item-list-mini {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #e2e8f0;
+
+            height: 100px;
+            /* ganti max-height */
+            overflow-y: auto;
+
+            display: block;
+            padding-right: 4px;
+        }
+
+        /* Optional: scrollbar lebih kecil */
+        .item-list-mini::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .item-list-mini::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .item-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            margin-right: 5px;
+        }
     </style>
 @endsection
 
@@ -319,7 +443,8 @@
             <div class="row g-3 mb-4">
                 <div class="col-xl-8">
                     <div class="card dashboard-card h-100 p-3">
-                        <h6 class="fw-bold mb-0"><i class="bx bx-bar-chart-alt-2 me-2 text-primary"></i>Trend Bongkar Muat & QTY Harian</h6>
+                        <h6 class="fw-bold mb-0"><i class="bx bx-bar-chart-alt-2 me-2 text-primary"></i>Trend Bongkar Muat
+                            & QTY Harian</h6>
                         <div id="chartTrend" style="height:310px; width:100%"></div>
                     </div>
                 </div>
@@ -330,6 +455,30 @@
                         <div id="chartStatus" style="height:310px; width:100%"></div>
                         {{-- Status summary pills --}}
                         <div class="d-flex flex-wrap gap-1 justify-content-center mt-2" id="statusPills"></div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Live Loading Monitor (Draft) --}}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card dashboard-card border-0 bg-transparent shadow-none mb-0">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h6 class="fw-bold mb-0 text-uppercase tracking-wider align-items-center"
+                                style="font-size:12px">
+                                <span class="live-dot me-2"></span>
+                                <i class="mdi mdi-truck-delivery me-2 text-primary fs-5 "></i>Live Loading Monitor (Draft)
+                            </h6>
+                            <span class="badge bg-soft-indigo text-indigo px-3">Status: DRAFT</span>
+                        </div>
+                        <div class="d-flex gap-3 overflow-auto pb-3" id="loadingVisualContainer"
+                            style="scrollbar-width: thin;">
+                            {{-- Content loaded via JS --}}
+                            <div class="text-center w-100 py-5 text-muted">
+                                <i class="bx bx-loader bx-spin fs-2 mb-2"></i>
+                                <p class="mb-0">Memuat visualisasi truk...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -404,6 +553,7 @@
             trend: '/api/dashboard/wfg/bongkar-muat/chart-trend',
             status: '/api/dashboard/wfg/bongkar-muat/chart-status',
             destination: '/api/dashboard/wfg/bongkar-muat/chart-destination',
+            visual: '/api/dashboard/wfg/bongkar-muat/loading-visual',
         };
 
         const STATUS_COLOR = {
@@ -506,6 +656,62 @@
                             `<span class="status-badge badge-${s}">${STATUS_LABEL[s] || s}: <b>${v}</b></span>`;
                     });
                     $('#statusPills').html(pills);
+                });
+            }
+
+            // ---- Loading Visual ----
+            function loadVisual() {
+                $.get(API.visual, getParams(), function(r) {
+                    if (!r.status || !r.data.length) {
+                        $('#loadingVisualContainer').html(
+                            '<div class="text-center w-100 py-4 text-muted"><p class="mb-0 small italic text-muted">Tidak ada data wavepick draft saat ini.</p></div>'
+                        );
+                        return;
+                    }
+
+                    let html = '';
+                    r.data.forEach(function(o) {
+                        let itemsHtml = '';
+
+                        o.items.forEach(function(it) {
+                            itemsHtml += `
+                                <div class="mb-1">
+                                    <span class="item-dot"></span>
+                                    ${it.material} (${fmt(it.qty)})
+                                </div>
+                            `;
+                        });
+
+                        html += `
+                            <div class="card shadow-sm truck-item">
+                                <div class="gate-label">Gate ${o.gate}</div>
+                                <div class="truck-icon-wrapper bg-light">
+                                    <i class="mdi mdi-truck-delivery truck-anim"></i>
+                                </div>
+                                <div class="truck-info">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="fw-bold text-dark">${o.wavepick}</span>
+                                        <span class="text-primary fw-semibold">${o.no_mobil}</span>
+                                    </div>
+                                    <div class="text-muted mb-1"><i class="bx bx-map-pin me-1"></i>${o.destinasi}</div>
+                                    <div class="text-muted mb-2"><i class="bx bx-user me-1"></i>Checker: <span class="text-dark fw-medium">${o.checker}</span></div>
+                                    
+                                    <div class="d-flex gap-2 mb-2">
+                                        <div class="badge bg-light text-dark border w-50 py-2">Full: ${fmt(o.total_full)}</div>
+                                        <div class="badge bg-light text-dark border w-50 py-2">Receh: ${fmt(o.total_receh)}</div>
+                                    </div>
+
+                                    <div class="item-list-mini">
+                                        <div class="fw-semibold mb-1 text-uppercase" style="font-size:9px">
+                                            Items Sample:
+                                        </div>
+                                        ${itemsHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    $('#loadingVisualContainer').html(html);
                 });
             }
 
@@ -726,6 +932,7 @@
             // ---- Load All ----
             function loadAll() {
                 loadKpi();
+                loadVisual();
                 loadWavepick(activeStatus);
                 loadTrend();
                 loadStatusChart();
@@ -736,7 +943,8 @@
 
             setInterval(() => {
                 loadAll();
-            }, 300000); // Refresh every 5 minutes
+            }, 100000); // Refresh every 5 minutes
+            // }, 300000); // Refresh every 5 minutes
 
             // ---- Events ----
             $('#btnFilter, #btnRefresh').on('click', loadAll);

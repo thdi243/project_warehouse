@@ -212,8 +212,8 @@
                                         add an item.</p>
                                 </div>
 
-                                <div class="row mt-3 px-3 d-none" id="summary-section">
-                                    <div class="col-md-6 mb-2">
+                                <div class="row mt-4 px-3 d-none" id="summary-section">
+                                    <div class="col-md-6 mb-3">
                                         <div class="card bg-light border shadow-none h-100 mb-0">
                                             <div class="card-body py-2 px-3">
                                                 <h6 class="text-info fw-bold mb-2"><i
@@ -224,7 +224,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-6 mb-2">
+                                    <div class="col-md-6 mb-3">
                                         <div class="card bg-light border shadow-none h-100 mb-0">
                                             <div class="card-body py-2 px-3">
                                                 <h6 class="text-success fw-bold mb-2"><i
@@ -235,29 +235,32 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="col-md-12 mb-2">
+                                        <div class="card bg-light border shadow-none h-100 mb-0">
+                                            <div
+                                                class="card-body py-3 px-3 d-flex align-items-center justify-content-start gap-5">
+                                                <h6 class="mb-0">Total Items: <span id="total-items"
+                                                        class="text-primary fw-bold">0</span></h6>
+                                                <h6 class="mb-0">Total Full Pallet: <span id="total-full-pallet"
+                                                        class="text-info fw-bold">0</span></h6>
+                                                <h6 class="mb-0">Total Pallet Receh: <span id="total-pallet-receh"
+                                                        class="text-warning fw-bold">0</span></h6>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div
-                                class="card-footer d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 bg-light p-3">
-                                <div
-                                    class="d-flex align-items-center justify-content-center justify-content-md-start gap-3 flex-wrap text-center">
-                                    <h6 class="mb-0">Total Items: <span id="total-items"
-                                            class="text-primary fw-bold">0</span></h6>
-                                    <h6 class="mb-0">Total Full Pallet: <span id="total-full-pallet"
-                                            class="text-info fw-bold">0</span></h6>
-                                    <h6 class="mb-0">Total Pallet Receh: <span id="total-pallet-receh"
-                                            class="text-warning fw-bold">0</span></h6>
-                                </div>
+                                class="card-footer d-flex flex-column flex-md-row justify-content-end align-items-center gap-3 bg-light p-3">
                                 <div
                                     class="d-flex flex-column flex-sm-row gap-2 w-md-auto justify-content-center justify-content-md-end mb-2">
                                     @if (isset($draft))
-                                        <button type="button"
-                                            class="btn btn-outline-danger px-4 shadow w-100 text-nowrap"
+                                        <button type="button" class="btn btn-danger px-4 shadow w-100 text-nowrap"
                                             id="btnCancelDraft">
                                             <i class="ri-delete-bin-line me-1"></i> CANCEL DRAFT
                                         </button>
                                     @endif
-                                    <button type="submit" class="btn btn-success px-5 shadow w-100">
+                                    <button type="submit" class="btn btn-success px-5 shadow w-100 text-nowrap">
                                         <i class="ri-save-line me-1"></i> SUBMIT
                                     </button>
                                 </div>
