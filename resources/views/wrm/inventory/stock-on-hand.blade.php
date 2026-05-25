@@ -1462,13 +1462,13 @@
                 let last = data.last_page;
 
                 html +=
-                    `<button class="btn btn-sm btn-light page-btn" data-page="${current-1}" ${current==1?'disabled':''}>Prev</button>`;
+                    `<button class="btn btn-sm page-btn" data-page="${current-1}" ${current==1?'disabled':''}>Prev</button>`;
 
                 let start = Math.max(1, current - 2);
                 let end = Math.min(last, current + 2);
 
                 if (start > 1) {
-                    html += `<button class="btn btn-sm btn-light page-btn" data-page="1">1</button>`;
+                    html += `<button class="btn btn-sm page-btn" data-page="1">1</button>`;
                     if (start > 2) html += `<span class="mx-1">...</span>`;
                 }
 
@@ -1486,11 +1486,11 @@
 
                     if (end < last - 1) html += `<span class="mx-1">...</span>`;
 
-                    html += `<button class="btn btn-sm btn-light page-btn" data-page="${last}">${last}</button>`;
+                    html += `<button class="btn btn-sm page-btn" data-page="${last}">${last}</button>`;
                 }
 
                 html +=
-                    `<button class="btn btn-sm btn-light page-btn" data-page="${current+1}" ${current==last?'disabled':''}>Next</button>`;
+                    `<button class="btn btn-sm page-btn" data-page="${current+1}" ${current==last?'disabled':''}>Next</button>`;
 
                 $('#pagination').html(html);
             }

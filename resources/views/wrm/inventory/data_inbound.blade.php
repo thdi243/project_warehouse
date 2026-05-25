@@ -339,31 +339,78 @@
 
             function renderPagination(data) {
                 let html = `
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item ${data.current_page === 1 ? 'disabled' : ''}">
-                                <a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a>
-                            </li>
-                `;
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <!-- Previous -->
+                                <li class="page-item ${data.current_page === 1 ? 'disabled' : ''}">
+                                    <a class="page-link" href="#" data-page="${data.current_page - 1}">
+                                        Previous
+                                    </a>
+                                </li>
+                    `;
 
                 let start = Math.max(1, data.current_page - 2);
                 let end = Math.min(data.last_page, data.current_page + 2);
 
+                // Show first page + dots
+                if (start > 1) {
+                    html += `
+                        <li class="page-item">
+                            <a class="page-link" href="#" data-page="1">1</a>
+                        </li>
+                    `;
+
+                    if (start > 2) {
+                        html += `
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        `;
+                    }
+                }
+
+                // Middle pages
                 for (let i = start; i <= end; i++) {
                     html += `
                         <li class="page-item ${i === data.current_page ? 'active' : ''}">
-                            <a class="page-link" href="#" data-page="${i}">${i}</a>
+                            <a class="page-link" href="#" data-page="${i}">
+                                ${i}
+                            </a>
+                        </li>
+                    `;
+                }
+
+                // Show last page + dots
+                if (end < data.last_page) {
+
+                    if (end < data.last_page - 1) {
+                        html += `
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        `;
+                    }
+
+                    html += `
+                        <li class="page-item">
+                            <a class="page-link" href="#" data-page="${data.last_page}">
+                                ${data.last_page}
+                            </a>
                         </li>
                     `;
                 }
 
                 html += `
+                            <!-- Next -->
                             <li class="page-item ${data.current_page === data.last_page ? 'disabled' : ''}">
-                                <a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a>
+                                <a class="page-link" href="#" data-page="${data.current_page + 1}">
+                                    Next
+                                </a>
                             </li>
                         </ul>
                     </nav>
                 `;
+
                 $('#pagination').html(html);
             }
 
