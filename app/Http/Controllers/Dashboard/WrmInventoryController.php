@@ -22,10 +22,11 @@ class WrmInventoryController extends Controller
     {
         // Get locations grouped by gudang for filter dropdown
         $locations = MasterLocationModel::select('gudang')->whereNotNull('gudang')->distinct()->get();
-        // Get suppliers for filter dropdown
-        $suppliers = MasterSupplierModel::select('nama')->distinct()->get();
 
-        return view('dashboard.wrm_dashboard', compact('locations', 'suppliers'));
+        $mid = MasterBarangModel::select('mid')->distinct()->get();
+        $noSpb = StockOnHand::select('no_spb')->whereNotNull('no_spb')->distinct()->get();
+
+        return view('dashboard.wrm_dashboard', compact('locations', 'mid', 'noSpb'));
     }
 
     private function getFilterDates(Request $request)
@@ -59,8 +60,15 @@ class WrmInventoryController extends Controller
                 $q->where('gudang', $request->gudang);
             });
         }
-        if ($request->supplier) {
-            $inboundDetailQuery->where('supplier', $request->supplier);
+
+        if ($request->mid) {
+            $inboundDetailQuery->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', $request->mid);
+            });
+        }
+
+        if ($request->spb) {
+            $inboundDetailQuery->where('no_spb', $request->spb);
         }
 
         $totalStock = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
@@ -101,33 +109,120 @@ class WrmInventoryController extends Controller
     {
         [$startDate, $endDate] = $this->getFilterDates($request);
 
-        // 1. Inbound (from StockMovement)
-        $inboundQuery = StockMovement::whereBetween('tanggal', [$startDate, $endDate])->where('jenis', 'in')->where('ref_type', 'inbound');
+        /*
+    |--------------------------------------------------------------------------
+    | INBOUND
+    |--------------------------------------------------------------------------
+    */
+
+        $inboundQuery = StockMovement::whereBetween('tanggal', [$startDate, $endDate])
+            ->where('jenis', 'in')
+            ->where('ref_type', 'inbound');
+
         if ($request->gudang) {
             $inboundQuery->whereHas('location', function ($q) use ($request) {
                 $q->where('gudang', $request->gudang);
             });
         }
-        $inboundDaily = $inboundQuery->selectRaw('DATE(tanggal) as date, SUM(qty) as total')->groupBy('date')->get()->keyBy('date');
 
-        // 2. Draft Outbound (from StockOutboundDetail status RESERVED)
-        $outboundDaily = StockOutbound::join('wrm_stock_draft_outbound_details', 'wrm_stock_draft_outbound.id', '=', 'wrm_stock_draft_outbound_details.outbound_id')
-            ->whereBetween('wrm_stock_draft_outbound.reservasi_date', [$startDate, $endDate])
-            ->where('wrm_stock_draft_outbound_details.status', 'RESERVED')
+        if ($request->mid) {
+            $inboundQuery->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', $request->mid);
+            });
+        }
+
+        $inboundDaily = $inboundQuery
+            ->selectRaw('DATE(tanggal) as date, SUM(qty) as total')
+            ->groupBy('date')
+            ->get()
+            ->keyBy('date');
+
+        /*
+    |--------------------------------------------------------------------------
+    | OUTBOUND
+    |--------------------------------------------------------------------------
+    */
+
+        $outboundQuery = StockOutbound::join(
+            'wrm_stock_draft_outbound_details',
+            'wrm_stock_draft_outbound.id',
+            '=',
+            'wrm_stock_draft_outbound_details.outbound_id'
+        )
+            ->join(
+                'wrm_master_barang',
+                'wrm_stock_draft_outbound_details.barang_id',
+                '=',
+                'wrm_master_barang.id'
+            )
+            ->whereBetween(
+                'wrm_stock_draft_outbound.reservasi_date',
+                [$startDate, $endDate]
+            )
+            ->where('wrm_stock_draft_outbound_details.status', 'RESERVED');
+
+        if ($request->mid) {
+            $outboundQuery->where('wrm_master_barang.mid', $request->mid);
+        }
+
+        if ($request->no_spb) {
+            $outboundQuery->where(
+                'wrm_stock_draft_outbound_details.no_spb',
+                $request->no_spb
+            );
+        }
+
+        $outboundDaily = $outboundQuery
             ->selectRaw('DATE(wrm_stock_draft_outbound.reservasi_date) as date, SUM(wrm_stock_draft_outbound_details.qty) as total')
-            ->groupBy('date')->get()->keyBy('date');
+            ->groupBy('date')
+            ->get()
+            ->keyBy('date');
 
-        // 3. Transfer (from StockTransferDetail created_at)
-        // $transferDaily = StockTransferDetail::whereBetween('reservasi_date', [$startDate, $endDate])
-        //     ->selectRaw('DATE(reservasi_date) as date, SUM(qty_actual) as total')
-        //     ->groupBy('date')->get()->keyBy('date');
+        /*
+    |--------------------------------------------------------------------------
+    | TRANSFER
+    |--------------------------------------------------------------------------
+    */
 
-        $transferDaily = StockTransferDetail::join('wrm_stock_transfers', 'wrm_stock_transfer_details.transfer_id', '=', 'wrm_stock_transfers.id')
-            ->whereBetween('wrm_stock_transfers.tgl_reservasi', [$startDate, $endDate])
+        $transferQuery = StockTransferDetail::join(
+            'wrm_stock_transfers',
+            'wrm_stock_transfer_details.transfer_id',
+            '=',
+            'wrm_stock_transfers.id'
+        )
+            ->join(
+                'wrm_master_barang',
+                'wrm_stock_transfer_details.barang_id',
+                '=',
+                'wrm_master_barang.id'
+            )
+            ->whereBetween(
+                'wrm_stock_transfers.tgl_reservasi',
+                [$startDate, $endDate]
+            );
+
+        if ($request->mid) {
+            $transferQuery->where('wrm_master_barang.mid', $request->mid);
+        }
+
+        if ($request->no_spb) {
+            $transferQuery->where(
+                'wrm_stock_transfer_details.no_spb',
+                $request->no_spb
+            );
+        }
+
+        $transferDaily = $transferQuery
             ->selectRaw('DATE(wrm_stock_transfers.tgl_reservasi) as date, SUM(wrm_stock_transfer_details.qty_actual) as total')
             ->groupBy('date')
             ->get()
             ->keyBy('date');
+
+        /*
+    |--------------------------------------------------------------------------
+    | FORMAT CHART
+    |--------------------------------------------------------------------------
+    */
 
         $categories = [];
         $inboundSeries = [];
@@ -135,12 +230,23 @@ class WrmInventoryController extends Controller
         $transferSeries = [];
 
         $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
+
         foreach ($period as $date) {
             $dateStr = $date->format('Y-m-d');
+
             $categories[] = $date->format('d M');
-            $inboundSeries[] = isset($inboundDaily[$dateStr]) ? (float) $inboundDaily[$dateStr]->total : 0;
-            $outboundSeries[] = isset($outboundDaily[$dateStr]) ? (float) $outboundDaily[$dateStr]->total : 0;
-            $transferSeries[] = isset($transferDaily[$dateStr]) ? (float) $transferDaily[$dateStr]->total : 0;
+
+            $inboundSeries[] = isset($inboundDaily[$dateStr])
+                ? (float) $inboundDaily[$dateStr]->total
+                : 0;
+
+            $outboundSeries[] = isset($outboundDaily[$dateStr])
+                ? (float) $outboundDaily[$dateStr]->total
+                : 0;
+
+            $transferSeries[] = isset($transferDaily[$dateStr])
+                ? (float) $transferDaily[$dateStr]->total
+                : 0;
         }
 
         return response()->json([
@@ -148,9 +254,24 @@ class WrmInventoryController extends Controller
             'data' => [
                 'categories' => $categories,
                 'series' => [
-                    ['name' => 'Inbound', 'data' => $inboundSeries, 'color' => '#22c55e', 'type' => 'spline'],
-                    ['name' => 'Draft Outbound', 'data' => $outboundSeries, 'color' => '#ef4444', 'type' => 'spline'],
-                    ['name' => 'Transfer', 'data' => $transferSeries, 'color' => '#3b82f6', 'type' => 'spline'],
+                    [
+                        'name' => 'Inbound',
+                        'data' => $inboundSeries,
+                        'color' => '#22c55e',
+                        'type' => 'spline'
+                    ],
+                    [
+                        'name' => 'Draft Outbound',
+                        'data' => $outboundSeries,
+                        'color' => '#ef4444',
+                        'type' => 'spline'
+                    ],
+                    [
+                        'name' => 'Transfer',
+                        'data' => $transferSeries,
+                        'color' => '#3b82f6',
+                        'type' => 'spline'
+                    ],
                 ],
             ],
         ]);
@@ -189,8 +310,16 @@ class WrmInventoryController extends Controller
                 $q->where('gudang', $request->gudang);
             });
         }
-        if ($request->supplier) {
-            $query->where('supplier', $request->supplier);
+
+
+        if ($request->mid) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', $request->mid);
+            });
+        }
+
+        if ($request->spb) {
+            $query->where('no_spb', $request->spb);
         }
 
         $topMaterials = $query
@@ -229,8 +358,15 @@ class WrmInventoryController extends Controller
                 $q->where('gudang', $request->gudang);
             });
         }
-        if ($request->supplier) {
-            $query->where('supplier', $request->supplier);
+
+        if ($request->mid) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', $request->mid);
+            });
+        }
+
+        if ($request->spb) {
+            $query->where('no_spb', $request->spb);
         }
 
         $details = $query->get();
@@ -280,6 +416,12 @@ class WrmInventoryController extends Controller
             });
         }
 
+        if ($request->mid) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', $request->mid);
+            });
+        }
+
         $recentActivities = $query
             ->latest('tanggal')
             ->latest('id')
@@ -318,8 +460,14 @@ class WrmInventoryController extends Controller
             ->whereIn('status', ['UNREST', 'QI', 'BLOCKED'])
             ->where('qty', '>', 0);
 
-        if ($request->supplier) {
-            $occupiedDetails->where('supplier', $request->supplier);
+        if ($request->mid) {
+            $occupiedDetails->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', $request->mid);
+            });
+        }
+
+        if ($request->spb) {
+            $occupiedDetails->where('no_spb', $request->spb);
         }
 
         $occupiedDetails = $occupiedDetails->get();
@@ -341,9 +489,14 @@ class WrmInventoryController extends Controller
         $occupiedIds = array_keys($occupiedMap);
 
         $reservedIdsQuery = clone StockOnHand::where('status', 'RESERVED')->where('qty', '>', 0);
-        if ($request->supplier) {
-            $reservedIdsQuery->where('supplier', $request->supplier);
+        if ($request->mid) {
+            $reservedIdsQuery->whereHas('barang', function ($q) use ($request) {
+                $q->where('mid', $request->mid);
+            });
         }
+        // if ($request->supplier) {
+        //     $reservedIdsQuery->where('supplier', $request->supplier);
+        // }
 
         $reservedIds = $reservedIdsQuery->distinct('loc_id')->pluck('loc_id')->toArray();
 
@@ -354,7 +507,7 @@ class WrmInventoryController extends Controller
             if (! $loc) {
                 continue;
             }
-            $locKey = $loc->plant.' - '.$loc->gudang.' - '.($loc->zona ?? '').' - '.$loc->bin;
+            $locKey = $loc->plant . ' - ' . $loc->gudang . ' - ' . ($loc->zona ?? '') . ' - ' . $loc->bin;
 
             if (! isset($locations[$locKey])) {
                 $locations[$locKey] = [
@@ -391,7 +544,7 @@ class WrmInventoryController extends Controller
                 'id' => $bin->id,
                 'kolom' => $bin->kolom,
                 'level' => $bin->level,
-                'label' => $bin->kolom.'.'.$bin->level,
+                'label' => $bin->kolom . '.' . $bin->level,
                 'status' => $status,
                 'mid' => $mid,
                 'nama_barang' => $nama_barang,
