@@ -500,7 +500,8 @@
                                         data-status="submitted">Submitted</a></li>
                                 <li class="nav-item"><a class="nav-link" href="#"
                                         data-status="approved">Approved</a></li>
-                                <li class="nav-item"><a class="nav-link" href="#" data-status="loaded">Loaded</a>
+                                <li class="nav-item"><a class="nav-link" href="#"
+                                        data-status="finished">Finished</a>
                                 </li>
                             </ul>
                         </div>
@@ -560,7 +561,7 @@
             draft: '#94a3b8',
             submitted: '#3b82f6',
             approved: '#a855f7',
-            loaded: '#f59e0b',
+            finished: '#f59e0b',
             verified: '#16a34a',
             rejected: '#dc2626'
         };
@@ -569,7 +570,7 @@
             draft: 'Draft',
             submitted: 'Submitted',
             approved: 'Approved',
-            loaded: 'Loaded',
+            finished: 'Finished',
             verified: 'Verified',
             rejected: 'Rejected'
         };

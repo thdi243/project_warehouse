@@ -375,6 +375,7 @@
             saveProgress();
         }
 
+        let currentSaveRequest = null;
         function saveProgress() {
             let formData = $('#form-bongkar-muat').serializeArray();
             items.forEach((item, index) => {
@@ -416,11 +417,17 @@
                 });
             });
 
-            $.post("{{ route('wfg.bongkar_muat.save_draft') }}", formData, function(res) {
+            if (currentSaveRequest) {
+                currentSaveRequest.abort();
+            }
+
+            currentSaveRequest = $.post("{{ route('wfg.bongkar_muat.save_draft') }}", formData, function(res) {
                 if (res.status && res.jam_muat) {
                     $('#jam').val(res.jam_muat);
                     console.log('Progress saved automatically');
                 }
+            }).always(function() {
+                currentSaveRequest = null;
             });
         }
 
@@ -619,8 +626,12 @@
                 width: '100%'
             });
 
+            let saveTimeout;
             $('#form-bongkar-muat input, #form-bongkar-muat select').on('change input', function() {
-                saveProgress();
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(function() {
+                    saveProgress();
+                }, 500);
             });
 
             $('#manual-material-select').select2({
