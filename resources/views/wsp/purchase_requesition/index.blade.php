@@ -762,10 +762,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                             </div>
 
                         </div>
@@ -805,9 +805,10 @@
                 let rows = [];
 
                 const approvedItems = pr.items.filter(item =>
-                    (item.status === true || item.status === 1 || item.status === '1') && item.jenis ===
-                    'pr'
+                    item.jenis === 'pr'
                 );
+
+                // (item.status === true || item.status === 1 || item.status === '1') &&
 
                 if (approvedItems.length === 0) {
                     Swal.fire({
