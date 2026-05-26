@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('wfg_bongkar_muats', function (Blueprint $table) {
             $table->id();
             $table->date('tanggal');
-            $table->string('no_dokumen')->unique();
+            $table->string('no_dokumen')->nullable()->unique();
             $table->string('shipment_smu')->nullable();
             $table->string('wavepick_smu')->nullable();
             $table->string('shipment_bas')->nullable();
