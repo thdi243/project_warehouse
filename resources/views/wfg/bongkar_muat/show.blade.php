@@ -81,7 +81,7 @@
                                             $progress = 33;
                                         } elseif ($order->status == 'approved') {
                                             $progress = 66;
-                                        } elseif (in_array($order->status, ['loaded', 'verified'])) {
+                                        } elseif (in_array($order->status, ['finished', 'verified'])) {
                                             $progress = 100;
                                         }
                                     @endphp
@@ -100,7 +100,7 @@
                                         <div class="mt-2 small fw-medium">Submitted</div>
                                     </div>
                                     <div class="text-center">
-                                        @php $isCheckerDone = in_array($order->status, ['approved', 'loaded', 'verified']); @endphp
+                                        @php $isCheckerDone = in_array($order->status, ['approved', 'finished', 'verified']); @endphp
                                         <div class="rounded-circle d-flex align-items-center justify-content-center {{ $isCheckerDone ? 'bg-success text-white' : ($order->status == 'submitted' ? 'bg-primary text-white' : 'bg-light text-muted') }}"
                                             style="width: 25px; height: 25px; margin: 0 auto;">
                                             {!! $isCheckerDone ? '<i class="ri-check-line"></i>' : '2' !!}
@@ -108,7 +108,7 @@
                                         <div class="mt-2 small fw-medium">Checker Apprv</div>
                                     </div>
                                     <div class="text-center">
-                                        @php $isDriverDone = in_array($order->status, ['loaded', 'verified']); @endphp
+                                        @php $isDriverDone = in_array($order->status, ['finished', 'verified']); @endphp
                                         <div class="rounded-circle d-flex align-items-center justify-content-center {{ $isDriverDone ? 'bg-success text-white' : ($order->status == 'approved' ? 'bg-primary text-white' : 'bg-light text-muted') }}"
                                             style="width: 25px; height: 25px; margin: 0 auto;">
                                             {!! $isDriverDone ? '<i class="ri-check-line"></i>' : '3' !!}
@@ -168,12 +168,12 @@
                                 </div>
                             </div>
 
-                            @if ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
+                            @if ($order->status == 'finished' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
                                 <form action="{{ route('wfg.bongkar_muat.validate', $order->id) }}" method="POST">
                                     @csrf
                             @endif
 
-                            @if (in_array($order->status, ['loaded', 'verified']))
+                            @if (in_array($order->status, ['finished', 'verified']))
                                 <!-- Item Details Table -->
                                 <div class="mb-5">
                                     <h6 class="text-uppercase fw-bold mb-3 text-muted"><i
@@ -233,8 +233,8 @@
                                                             @endif
                                                         </td>
                                                         <td class="text-center" style="min-width: 150px;">
-                                                            @if ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
-                                                                @if ($detail->double_po || $detail->cancel_to)
+                                                            @if ($order->status == 'finished' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
+                                                                @if ($detail->double_po || $detail->cancel_to || $detail->manual_picking)
                                                                     <input type="text"
                                                                         name="details[{{ $index }}][no_to]"
                                                                         class="form-control form-control-sm text-center border-warning fw-bold"
@@ -249,7 +249,7 @@
                                                             @endif
                                                         </td>
                                                         <td class="text-center" style="min-width: 150px;">
-                                                            @if ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
+                                                            @if ($order->status == 'finished' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
                                                                 @if ($detail->cancel_to)
                                                                     <input type="number"
                                                                         name="details[{{ $index }}][qty_to]"
@@ -326,7 +326,7 @@
                                         <div class="mb-3">
                                             <label class="form-label">Signature Driver <span
                                                     class="text-danger">*</span></label>
-                                            <div class="signature-container border rounded"
+                                            <div class="signature-container border border-dark rounded"
                                                 style="width: 100%; height: 200px; position: relative;">
                                                 <canvas id="driver-signature-pad" class="signature-pad"
                                                     style="width: 100%; height: 100%; cursor: crosshair;"></canvas>
@@ -340,7 +340,7 @@
                                             <button type="submit" class="btn btn-primary px-5">Approve Driver</button>
                                         </div>
                                     </form>
-                                @elseif($order->status == 'loaded')
+                                @elseif($order->status == 'finished')
                                     <div class="text-center mb-4">
                                         <h5 class="text-primary"><i class="ri-shield-check-line me-2"></i>Step 3: Final
                                             Verification</h5>
@@ -589,7 +589,7 @@
                         document.getElementById('driver-signature-data').value = driverPad.toDataURL();
                     }
                 });
-            @elseif ($order->status == 'loaded' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
+            @elseif ($order->status == 'finished' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
                 const verificatorPad = initSignature('verificator-signature-pad', 'verificator-signature-data',
                     'clear-verificator-sig');
 
@@ -613,7 +613,7 @@
                     }
                 });
 
-                // Validate on submit (only one form exists on this page when status is loaded)
+                // Validate on submit (only one form exists on this page when status is finished)
                 $('form').on('submit', function(e) {
                     const useStored = $('#useStoredSignature').is(':checked');
                     if (!useStored) {

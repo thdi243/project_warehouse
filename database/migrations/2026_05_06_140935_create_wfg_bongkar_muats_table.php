@@ -28,7 +28,7 @@ return new class extends Migration
             $table->time('jam_selesai')->nullable();
 
             // Workflow fields
-            $table->enum('status', ['draft', 'submitted', 'approved', 'loaded', 'verified', 'rejected'])->default('draft');
+            $table->enum('status', ['draft', 'submitted', 'approved', 'finished', 'verified', 'rejected'])->default('draft');
 
             // Approval fields
             $table->foreignId('checker_id')->nullable()->constrained('users')->cascadeOnDelete();

@@ -46,7 +46,7 @@
                                         <option value="draft">Draft</option>
                                         <option value="submitted">Submitted</option>
                                         <option value="approved">Approved</option>
-                                        <option value="loaded">Loaded</option>
+                                        <option value="finished">Finished</option>
                                         <option value="verified">Verified</option>
                                         <option value="rejected">Rejected</option>
                                     </select>
@@ -470,7 +470,7 @@
                                     case 'loading':
                                         statusClass = 'bg-soft-warning text-warning';
                                         break;
-                                    case 'loaded':
+                                    case 'finished':
                                         statusClass = 'bg-soft-success text-success';
                                         break;
                                     case 'verified':
@@ -551,7 +551,7 @@
                             renderPagination(paginatedData);
                         } else {
                             tbody.append(
-                                '<tr><td colspan="13" class="text-center py-4">No bongkar muat records found.</td></tr>'
+                                '<tr><td colspan="15" class="text-center py-4">No bongkar muat records found.</td></tr>'
                             );
                         }
                     },

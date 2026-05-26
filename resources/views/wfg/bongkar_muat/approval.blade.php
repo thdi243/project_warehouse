@@ -233,7 +233,7 @@
                                 let statusText = order.status ? order.status.toUpperCase() :
                                     'UNKNOWN';
                                 switch (order.status) {
-                                    case 'loaded':
+                                    case 'finished':
                                         statusClass = 'bg-soft-success text-success';
                                         break;
                                     case 'verified':
