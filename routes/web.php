@@ -418,6 +418,7 @@ Route::middleware('auth')->group(function () {
                     Route::get('/data', [MasterDestinasiController::class, 'data'])->name('wfg.master.destinasi.data');
                     Route::post('/store', [MasterDestinasiController::class, 'store'])->name('wfg.master.destinasi.store');
                     Route::put('/update/{id}', [MasterDestinasiController::class, 'update'])->name('wfg.master.destinasi.update');
+                    Route::patch('/toggle-status/{id}', [MasterDestinasiController::class, 'toggleStatus'])->name('wfg.master.destinasi.toggleStatus');
                     Route::delete('/delete/{id}', [MasterDestinasiController::class, 'destroy'])->name('wfg.master.destinasi.delete');
                 });
             });
