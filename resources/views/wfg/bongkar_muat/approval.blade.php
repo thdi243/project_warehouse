@@ -203,7 +203,7 @@
                 const tbody = $('#bongkarMuatApprovalTable tbody');
 
                 tbody.html(
-                    '<tr><td colspan="12" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>'
+                    '<tr><td colspan="13" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>'
                 );
                 $('#paginationContainer').empty();
 
@@ -289,7 +289,7 @@
                         } else {
                             tbody.append(`
                                 <tr>
-                                    <td colspan="12" class="text-center py-5">
+                                    <td colspan="13" class="text-center py-5">
                                         <div class="d-flex flex-column align-items-center justify-content-center text-muted">
                                             
                                             <i class="ti ti-package-off fs-1 mb-2"></i>
@@ -310,7 +310,7 @@
                     error: function(xhr) {
                         console.error("Error loading data", xhr);
                         tbody.append(
-                            '<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load data.</td></tr>'
+                            '<tr><td colspan="13" class="text-center py-4 text-danger">Failed to load data.</td></tr>'
                         );
                     }
                 });
