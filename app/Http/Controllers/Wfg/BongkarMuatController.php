@@ -100,7 +100,7 @@ class BongkarMuatController extends Controller
         }
 
         $query = BongkarMuat::with(['forkliftDriver:id,username,nama_lengkap', 'checker:id,username,nama_lengkap', 'destinasi:id,destinasi', 'details.material'])
-            ->where('status', 'loaded');
+            ->where('status', 'finished');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -154,9 +154,11 @@ class BongkarMuatController extends Controller
             ->unique('id');
 
         $checkers = User::role('checker')->get();
-        $destinations = MasterDestinasi::select('id', 'destinasi')->get();
+        $destinations = MasterDestinasi::select('id', 'destinasi')
+            ->where('active', true)
+            ->get();
 
-        // Gates currently in use (released when status is loaded, verified, or rejected)
+        // Gates currently in use (released when status, verified, or rejected)
         $bookedGates = BongkarMuat::whereIn('status', ['draft', 'submitted', 'approved'])
             ->whereNotNull('gate')
             ->pluck('gate')
@@ -184,14 +186,16 @@ class BongkarMuatController extends Controller
 
         $now = now();
 
-        $lastOrder = BongkarMuat::whereYear('created_at', $now->year)
+        $lastOrder = BongkarMuat::whereNotNull('no_dokumen')
+            ->whereYear('created_at', $now->year)
             ->whereMonth('created_at', $now->month)
             ->orderBy('id', 'desc')
             ->first();
 
-        $lastNumber = 0;
+        // nomor awal
+        $lastNumber = 3444;
 
-        if ($lastOrder && $lastOrder->no_dokumen) {
+        if ($lastOrder) {
             $parts = explode('/', $lastOrder->no_dokumen);
             $lastNumber = (int) $parts[0];
         }
@@ -210,14 +214,12 @@ class BongkarMuatController extends Controller
                 ->where('status', 'draft')
                 ->first();
 
-            $noDok = $existingDraft?->no_dokumen ?? $this->generateNoDokumen();
-
             $order = BongkarMuat::updateOrCreate([
                 'created_by' => auth()->id(),
                 'status' => 'draft',
             ], [
                 'tanggal' => $request->tanggal,
-                'no_dokumen' => $noDok,
+                'no_dokumen' => null,
                 'shipment_smu' => $request->shipment_smu,
                 'wavepick_smu' => $request->wavepick_smu,
                 'shipment_bas' => $request->shipment_bas,
@@ -358,9 +360,15 @@ class BongkarMuatController extends Controller
             // Find existing draft or create new
             $order = BongkarMuat::where('created_by', auth()->id())->where('status', 'draft')->first();
 
+            if (!$order || $order->no_dokumen === null || $order->no_dokumen === '') {
+                $noDok = $this->generateNoDokumen();
+            } else {
+                $noDok = $order->no_dokumen;
+            }
+
             $orderData = [
                 'tanggal' => $request->tanggal,
-                'no_dokumen' => $order->no_dokumen,
+                'no_dokumen' => $noDok,
                 'shipment_smu' => $request->shipment_smu,
                 'wavepick_smu' => $request->wavepick_smu,
                 'shipment_bas' => $request->shipment_bas,
@@ -493,7 +501,7 @@ class BongkarMuatController extends Controller
             'driver_name' => $request->driver_name,
             'driver_signature' => $signaturePath,
             'driver_approved_at' => Carbon::now(),
-            'status' => 'loaded' // Final status before verification
+            'status' => 'finished' // Final status before verification
         ]);
 
         // Kirim notifikasi ke semua verificator
@@ -553,7 +561,7 @@ class BongkarMuatController extends Controller
 
         $order = BongkarMuat::with('details')->findOrFail($id);
 
-        if ($order->status !== 'loaded') {
+        if ($order->status !== 'finished') {
             return back()->with('error', 'Order belum siap untuk diverifikasi.');
         }
 
@@ -688,7 +696,7 @@ class BongkarMuatController extends Controller
         $order = BongkarMuat::findOrFail($id);
 
         // Only allow deletion if not yet verified or heavily processed
-        if (in_array($order->status, ['draft', 'submitted', 'rejected', 'approved', 'loaded'])) {
+        if (in_array($order->status, ['draft', 'submitted', 'rejected', 'approved', 'finished'])) {
             // Hapus notifikasi jika ada
             NotificationsModel::where('notifiable_type', BongkarMuat::class)
                 ->where('notifiable_id', $order->id)

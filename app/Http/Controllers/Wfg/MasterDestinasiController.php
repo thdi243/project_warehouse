@@ -63,6 +63,17 @@ class MasterDestinasiController extends Controller
         return response()->json(['message' => 'Destinasi berhasil diperbarui']);
     }
 
+    public function toggleStatus($id)
+    {
+        $destinasi = MasterDestinasi::findOrFail($id);
+        $destinasi->update([
+            'active' => !$destinasi->active,
+            'updated_by' => Auth::id(),
+        ]);
+
+        return response()->json(['message' => 'Status destinasi berhasil diubah']);
+    }
+
     public function destroy($id)
     {
         $destinasi = MasterDestinasi::findOrFail($id);

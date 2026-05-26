@@ -58,7 +58,7 @@
                                                 <th class="sort" data-sort="destinasi">Nama Destinasi</th>
                                                 <th class="sort" data-sort="status">Status</th>
                                                 <th>Dibuat Oleh</th>
-                                                <th>Action</th>
+                                                <th colspan="2" class="text-center" style="width: 15%">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody class="list form-check-all">
@@ -151,23 +151,35 @@
                                         .nama_lengkap : '-');
 
                                 let row = `
-                                <tr>
-                                    <td>${noUrut}</td>
-                                    <td>${item.destinasi}</td>
-                                    <td>${statusBadge}</td>
-                                    <td>${creator}</td>
-                                    <td>
-                                        <div class="d-flex gap-2">
-                                            <button type="button" class="btn btn-sm btn-soft-info btn-edit" data-id="${item.id}" data-name="${item.destinasi}">
-                                                <i class="ri-pencil-fill align-bottom"></i>
+                                    <tr>
+                                        <td>${noUrut}</td>
+                                        <td>${item.destinasi}</td>
+                                        <td>${statusBadge}</td>
+                                        <td>${creator}</td>
+                                        <td>
+                                            <button type="button"
+                                                class="btn btn-sm btn-toggle-status ${item.active ? 'btn-soft-danger' : 'btn-soft-success'}"
+                                                data-id="${item.id}"
+                                                data-active="${item.active}">
+                                                <i
+                                                    class="${item.active ? 'ri-close-circle-fill' : 'ri-check-double-fill'} align-bottom me-1"></i>
+                                                ${item.active ? 'Nonaktifkan' : 'Aktifkan'}
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-soft-danger btn-delete" data-id="${item.id}">
-                                                <i class="ri-delete-bin-fill align-bottom"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-sm btn-soft-info btn-edit"
+                                                    data-id="${item.id}" data-name="${item.destinasi}" title="Edit">
+                                                    <i class="ri-pencil-fill align-bottom"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-soft-danger btn-delete"
+                                                    data-id="${item.id}" title="Hapus">
+                                                    <i class="ri-delete-bin-fill align-bottom"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
                                 container.append(row);
                             });
 
@@ -332,7 +344,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: "{{ url('wfg/master/destinasi/delete') }}/" + id,
+                            url: "{{ url('master/wfg/destinasi/delete') }}/" + id,
                             type: 'DELETE',
                             data: {
                                 _token: "{{ csrf_token() }}"
@@ -345,6 +357,77 @@
                                 Swal.fire('Error!',
                                     'Terjadi kesalahan saat menghapus data.',
                                     'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            $(document).on('click', '.btn-toggle-status', function() {
+
+                const id = $(this).data('id');
+                const isActive = $(this).data('active');
+
+                const actionText = isActive ? 'Nonaktifkan' : 'Aktifkan';
+                const successText = isActive ? 'dinonaktifkan' : 'diaktifkan';
+
+                Swal.fire({
+                    title: `${actionText} Data?`,
+                    html: `
+                        <div style="font-size:14px">
+                            Apakah anda yakin ingin
+                            <b>${actionText.toLowerCase()}</b>
+                            data destinasi ini?
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: isActive ? '#d33' : '#16a34a',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: `Ya, ${actionText}!`,
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true
+                }).then((result) => {
+
+                    if (result.isConfirmed) {
+
+                        Swal.fire({
+                            title: 'Memproses...',
+                            text: 'Mohon tunggu sebentar',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        $.ajax({
+                            url: "{{ url('master/wfg/destinasi/toggle-status') }}/" + id,
+                            type: 'PATCH',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+
+                            success: function(response) {
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil!',
+                                    text: `Data berhasil ${successText}.`,
+                                    timer: 1800,
+                                    showConfirmButton: false
+                                });
+
+                                loadDestinasi();
+                            },
+
+                            error: function() {
+
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal!',
+                                    text: `Data gagal ${successText}.`
+                                });
+
                             }
                         });
                     }
