@@ -481,14 +481,14 @@
 
                                     @can('permission', 'wsp-data-pr-plus')
 
-                                        <!-- Edit -->
+                                        <!-- Edit 
                                         <button 
                                             class="btn btn-secondary btn-sm"
                                             onclick="editPR(${pr.id})"
                                             title="Edit"
                                         >
                                             <i class="mdi mdi-pencil"></i>
-                                        </button>
+                                        </button> -->
 
                                         <!-- Delete -->
                                         <button 
@@ -762,10 +762,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : ''}
                             </div>
 
                         </div>
