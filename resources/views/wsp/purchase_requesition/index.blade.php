@@ -762,10 +762,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                             </div>
 
                         </div>
@@ -782,15 +782,15 @@
                 if (!pr) return;
 
                 // hanya boleh copy jika approved
-                if (pr.status !== 'finished') {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Belum Bisa Copy',
-                        text: 'PR harus finished terlebih dahulu',
-                        confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-                }
+                // if (pr.status !== 'finished') {
+                //     Swal.fire({
+                //         icon: 'warning',
+                //         title: 'Belum Bisa Copy',
+                //         text: 'PR harus finished terlebih dahulu',
+                //         confirmButtonColor: '#f59e0b'
+                //     });
+                //     return;
+                // }
 
                 const deptMap = {
                     engineering: 'BAS-ENG',
