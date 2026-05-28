@@ -418,6 +418,9 @@
                         .removeClass('btn-outline-success')
                         .addClass('btn-success')
                         .html('<i class="mdi mdi-loading mdi-spin me-2"></i> Opname...');
+
+                    $('.page-header').addClass('d-none');
+
                     generatePrincipalTabs(true);
                 } else if (res.status === 'finished') {
                     btn.prop('disabled', true)
@@ -466,6 +469,8 @@
                     .removeClass('btn-outline-success')
                     .addClass('btn-success')
                     .html('<i class="mdi mdi-loading mdi-spin me-2"></i> Opname...');
+
+                $('.page-header').addClass('d-none');
 
                 $.ajax({
                     url: "{{ route('startOpname') }}",
