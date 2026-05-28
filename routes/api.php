@@ -1,17 +1,19 @@
 <?php
 
+use App\Http\Controllers\Dashboard\BpsDashboardController;
+use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
 use App\Http\Controllers\Dashboard\P2hDashboardController;
 use App\Http\Controllers\Dashboard\RakDashboardController;
-use App\Http\Controllers\Dashboard\BpsDashboardController;
 use App\Http\Controllers\Dashboard\UserDashboardController;
-use App\Http\Controllers\Dashboard\WspManRakController;
-use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
+use App\Http\Controllers\Dashboard\WrmInventoryController;
+use App\Http\Controllers\Dashboard\WspManRakController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+use App\Http\Controllers\Wrm\Inventory\MonitoringController;
 use App\Http\Controllers\Wrm\P2HController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
@@ -20,7 +22,6 @@ use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
-use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -174,5 +175,6 @@ Route::prefix('purchase-requesition')->middleware('web')->group(function () {
     Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action']);
 });
 
+Route::get('/data/summary-stock', [MonitoringController::class, 'getSummaryStockData'])->name('wrm.inventory.monitoring.summary-stock.data');
 // SSO callback is now in web.php as a GET request
 // Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);

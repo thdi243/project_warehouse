@@ -2,24 +2,26 @@
 
 use App\Events\ShowPortalNotification;
 use App\Http\Controllers\Admin\PermissionController;
-use App\Http\Controllers\Admin\UserPermissionController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UserPermissionController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Dashboard\BpsDashboardController;
+use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
+use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
+use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
-use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
-use App\Http\Controllers\Dashboard\BpsDashboardController;
 use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
+use App\Http\Controllers\TokenAuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\Wfg\BongkarMuatController;
+use App\Http\Controllers\Wfg\MasterDestinasiController;
 use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
-use App\Http\Controllers\Wfg\MasterDestinasiController;
-use App\Http\Controllers\Wfg\BongkarMuatController;
-use App\Http\Controllers\Dashboard\WrmInventoryController;
-use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
+use App\Http\Controllers\Wrm\Inventory\MonitoringController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
 use App\Http\Controllers\Wrm\Inventory\StockTransferController;
 use App\Http\Controllers\Wrm\MasterBarangController;
@@ -36,7 +38,6 @@ use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
-use App\Http\Controllers\TokenAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -201,7 +202,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action'])->name('stock.pr.approval-action');
             Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
         });
-
     });
 
     // Warehouse Raw Material
@@ -267,18 +267,21 @@ Route::middleware('auth')->group(function () {
 
                 // Monitoring PPIC & Purchasing
                 Route::prefix('monitoring')->group(function () {
-                    Route::get('/ppic', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'indexPpic'])->name('wrm.inventory.monitoring.ppic.index');
-                    Route::get('/purchasing', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'indexPurchasing'])->name('wrm.inventory.monitoring.purchasing.index');
+                    Route::get('/', [MonitoringController::class, 'indexSummaryStock'])->name('wrm.inventory.monitoring.index');
+                    Route::get('/ppic', [MonitoringController::class, 'indexPpic'])->name('wrm.inventory.monitoring.ppic.index');
+                    Route::get('/purchasing', [MonitoringController::class, 'indexPurchasing'])->name('wrm.inventory.monitoring.purchasing.index');
+                    Route::get('/summary-stock', [MonitoringController::class, 'indexSummaryStock'])->name('wrm.inventory.summary.stock');
 
-                    Route::get('/summary/ppic', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSummaryPpic'])->name('wrm.inventory.monitoring.summary.ppic');
-                    Route::get('/summary/purchasing', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSummaryPurchasing'])->name('wrm.inventory.monitoring.summary.purchasing');
+                    Route::get('/summary/ppic', [MonitoringController::class, 'getSummaryPpic'])->name('wrm.inventory.monitoring.summary.ppic');
+                    Route::get('/summary/purchasing', [MonitoringController::class, 'getSummaryPurchasing'])->name('wrm.inventory.monitoring.summary.purchasing');
 
-                    Route::get('/data/soh', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getSohData'])->name('wrm.inventory.monitoring.soh');
-                    Route::get('/data/inbound', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getInboundData'])->name('wrm.inventory.monitoring.inbound');
-                    Route::get('/data/outbound', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getOutboundData'])->name('wrm.inventory.monitoring.outbound');
-                    Route::get('/data/transfer', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getTransferData'])->name('wrm.inventory.monitoring.transfer');
-                    Route::get('/data/ppic-stock', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getPpicStockData'])->name('wrm.inventory.monitoring.ppic.stock-data');
-                    Route::get('/data/purchasing-stock', [\App\Http\Controllers\Wrm\Inventory\MonitoringController::class, 'getPurchasingStockData'])->name('wrm.inventory.monitoring.purchasing.stock-data');
+                    Route::get('/data/soh', [MonitoringController::class, 'getSohData'])->name('wrm.inventory.monitoring.soh');
+                    Route::get('/data/inbound', [MonitoringController::class, 'getInboundData'])->name('wrm.inventory.monitoring.inbound');
+                    Route::get('/data/outbound', [MonitoringController::class, 'getOutboundData'])->name('wrm.inventory.monitoring.outbound');
+                    Route::get('/data/transfer', [MonitoringController::class, 'getTransferData'])->name('wrm.inventory.monitoring.transfer');
+                    Route::get('/data/ppic-stock', [MonitoringController::class, 'getPpicStockData'])->name('wrm.inventory.monitoring.ppic.stock-data');
+                    Route::get('/data/purchasing-stock', [MonitoringController::class, 'getPurchasingStockData'])->name('wrm.inventory.monitoring.purchasing.stock-data');
+                    Route::get('/data/summary-stock', [MonitoringController::class, 'getSummaryStockData'])->name('wrm.inventory.monitoring.summary-stock.data');
                 });
             });
         });

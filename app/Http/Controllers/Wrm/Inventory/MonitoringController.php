@@ -25,6 +25,80 @@ class MonitoringController extends Controller
         return view('wrm.inventory.monitoring_purchasing');
     }
 
+    public function indexSummaryStock()
+    {
+        return view('wrm.inventory.summary_stock');
+    }
+
+    public function getSummaryStockData(Request $request)
+    {
+        $summaryType = $request->get('summary_type', 'item');
+
+        $query = StockOnHand::query()
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->selectRaw("
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'UNREST' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_unrest,
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'QI' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_qi,
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'BLOCKED' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_blocked
+            ");
+
+        if ($summaryType === 'spb') {
+            $query->addSelect('wrm_stock_on_hand.no_spb', 'wrm_master_barang.uom')
+                ->whereNotNull('wrm_stock_on_hand.no_spb')
+                ->groupBy('wrm_stock_on_hand.no_spb', 'wrm_master_barang.uom');
+            $sortColumn = 'wrm_stock_on_hand.no_spb';
+        } else {
+            $query->addSelect('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom')
+                ->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
+            $sortColumn = 'wrm_master_barang.mid';
+        }
+
+        if ($summaryType === 'item' && $request->mid) {
+            $query->where('wrm_master_barang.mid', 'like', $request->mid . '%');
+        }
+
+        if ($summaryType === 'spb' && $request->no_spb) {
+            $query->where('wrm_stock_on_hand.no_spb', 'like', $request->no_spb . '%');
+        }
+
+        // Count for pagination and grand totals
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select(
+                'uom',
+                DB::raw("SUM(qty_unrest) as total_unrest"),
+                DB::raw("SUM(qty_qi) as total_qi"),
+                DB::raw("SUM(qty_blocked) as total_blocked")
+            )
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 10;
+        
+        $data = $query->orderBy($sortColumn)->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom->map(function($item) {
+                return [
+                    'uom' => $item->uom,
+                    'unrest' => $item->total_unrest ?? 0,
+                    'qi' => $item->total_qi ?? 0,
+                    'blocked' => $item->total_blocked ?? 0,
+                    'all' => ($item->total_unrest ?? 0) + ($item->total_qi ?? 0) + ($item->total_blocked ?? 0)
+                ];
+            })
+        ]);
+    }
+
     public function getSummaryPpic()
     {
         // On Hand (Physical)

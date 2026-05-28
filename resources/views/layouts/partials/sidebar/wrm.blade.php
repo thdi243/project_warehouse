@@ -1,13 +1,11 @@
 @can('permission', 'wrm-menu')
     <li class="nav-item">
-        <a class="nav-link menu-link {{ request()->routeIs('wrm.inventory.*') ? '' : 'collapsed' }}"
-            href="#sideBarWrmStock" data-bs-toggle="collapse" role="button"
-            aria-expanded="{{ request()->routeIs('wrm.inventory.*') ? 'true' : 'false' }}"
-            aria-controls="sideBarWrmStock">
+        <a class="nav-link menu-link {{ request()->routeIs('wrm.inventory.*') ? '' : 'collapsed' }}" href="#sideBarWrmStock"
+            data-bs-toggle="collapse" role="button"
+            aria-expanded="{{ request()->routeIs('wrm.inventory.*') ? 'true' : 'false' }}" aria-controls="sideBarWrmStock">
             <i class="mdi mdi-cube-outline"></i><span data-key="t-wrm.inventory">WRM</span>
         </a>
-        <div class="collapse menu-dropdown {{ request()->routeIs('wrm.inventory.*') ? 'show' : '' }}"
-            id="sideBarWrmStock">
+        <div class="collapse menu-dropdown {{ request()->routeIs('wrm.inventory.*') ? 'show' : '' }}" id="sideBarWrmStock">
             <ul class="nav nav-sm flex-column">
                 @can('permission', 'wrm-inventory-upload')
                     <li class="nav-item">
@@ -31,6 +29,14 @@
                         <a href="{{ route('wrm.inventory.index') }}"
                             class="nav-link menu-link sub-menu {{ request()->routeIs('wrm.inventory.index') ? 'active' : '' }}">
                             <i class="bx bx-git-commit fs-12"></i>Stock On Hand
+                        </a>
+                    </li>
+                @endcan
+                @can('permission', 'wrm-inventory-summary-stock')
+                    <li class="nav-item">
+                        <a href="{{ route('wrm.inventory.summary.stock') }}"
+                            class="nav-link menu-link sub-menu {{ request()->routeIs('wrm.inventory.summary.stock') ? 'active' : '' }}">
+                            <i class="bx bx-git-commit fs-12"></i>Summary Stock
                         </a>
                     </li>
                 @endcan
