@@ -98,7 +98,7 @@
                                                     </button>
 
                                                     <button type="button" class="btn btn-outline-danger flex-fill"
-                                                        id="btnReset">
+                                                        id="btnResetSpb">
                                                         <i class="ri-refresh me-1 align-bottom"></i>
                                                         Reset
                                                     </button>
@@ -378,7 +378,7 @@
                 spbTable.ajax.reload();
             });
 
-            $('#btnReset').on('click', function() {
+            $('#btnReset, #btnResetSpb').on('click', function() {
                 $('#filter-mid').val('');
                 $('#filter-no-spb').val('');
                 $('#filter-mid-spb').val('');
