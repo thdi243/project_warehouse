@@ -101,10 +101,8 @@
         }
 
         .approval-stat {
-            border: 1px solid var(--gray-200);
             border-radius: 0.5rem;
             padding: 0.85rem 1rem;
-            background: #fff;
             min-height: 82px;
         }
 
@@ -256,25 +254,25 @@
                         <div class="tab-pane fade" id="tabApproval" role="tabpanel" aria-labelledby="approval-tab">
                             <div class="row g-3 mb-3" id="approvalStats">
                                 <div class="col-md-3 col-6">
-                                    <div class="approval-stat">
+                                    <div class="approval-stat bg-light">
                                         <div class="text-muted small mb-2">SO Pending</div>
                                         <div class="stat-value" id="approvalTotal">0</div>
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-6">
-                                    <div class="approval-stat">
+                                    <div class="approval-stat bg-light">
                                         <div class="text-muted small mb-2">Belum Approve</div>
                                         <div class="stat-value text-warning" id="approvalPending">0</div>
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-6">
-                                    <div class="approval-stat">
+                                    <div class="approval-stat bg-light">
                                         <div class="text-muted small mb-2">Dibaca</div>
                                         <div class="stat-value text-info" id="approvalApproved">0</div>
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-6">
-                                    <div class="approval-stat">
+                                    <div class="approval-stat bg-light">
                                         <div class="text-muted small mb-2">Menunggu</div>
                                         <div class="stat-value text-secondary" id="approvalRejected">0</div>
                                     </div>
@@ -282,8 +280,8 @@
                             </div>
 
                             <div class="table-responsive">
-                                <table class="table table-hover align-middle text-nowrap">
-                                    <thead class="bg-soft-warning text-dark border-bottom">
+                                <table class="table stripped table-hover align-middle text-nowrap">
+                                    <thead class="bg-light border-bottom">
                                         <tr>
                                             <th style="width: 70px;" class="text-center">No</th>
                                             <th>Tanggal Opname</th>
@@ -562,7 +560,7 @@
 
                 const rows = pending.map((approval, index) => {
                     const status = (approval.status || 'pending').toLowerCase();
-                    const statusLabel = status === 'read' ? 'Dibaca' : 'Menunggu';
+                    const statusLabel = status === 'read' ? 'Not Send Approval' : 'Waiting';
                     const statusClass = status === 'read' ? 'info' : 'warning';
 
                     return `
@@ -577,7 +575,7 @@
                             </td>
                             <td>${escapeHtml(approval.jabatan || '-')}</td>
                             <td>
-                                <span class="badge bg-${statusClass} ${statusClass === 'warning' ? 'text-dark' : ''}">
+                                <span class="badge badge-soft-${statusClass}">
                                     ${statusLabel}
                                 </span>
                             </td>
