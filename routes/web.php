@@ -346,6 +346,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/sop/update/status-approval', [StockOpnameWfgController::class, 'updateStatus'])->name('wfg.stock_opname.update.status-approval');
                 Route::get('/sop/approval/show/{id}', [StockOpnameWfgController::class, 'show'])->name('wfg.stock_opname.approval.show');
                 Route::get('/sop/report/getData', [StockOpnameWfgController::class, 'getDataReport'])->name('wfg.stock_opname.report.getData');
+                Route::get('/sop/report/pending-approval', [StockOpnameWfgController::class, 'getPendingApprovalReport'])->name('wfg.stock_opname.report.pending-approval');
                 Route::get('/sop/getDataTempBatch', [StockOpnameWfgController::class, 'getDataTempBatch'])->name('wfg.stock_opname.getTempBatch');
                 Route::delete('/sop/reset-temp', [StockOpnameWfgController::class, 'resetTemp'])->name('wfg.stock_opname.reset-temp');
                 Route::delete('/sop/reset-temp-row', [StockOpnameWfgController::class, 'resetTempRow'])->name('wfg.stock_opname.reset-temp-row');

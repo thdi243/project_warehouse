@@ -1450,6 +1450,70 @@ class StockOpnameWfgController extends Controller
         }
     }
 
+    public function getPendingApprovalReport(Request $request)
+    {
+        $user = Auth::user();
+        $principalFilter = $request->input('principal');
+
+        $approvals = WfgSopApprovalModel::with([
+            'approver:id,nama_lengkap,username,jabatan',
+            'sop:id,tgl_opname,principal,status,user_id',
+            'sop.user:id,username,nama_lengkap',
+        ])
+            ->whereIn('wfg_sop_approvals.status', ['pending', 'read'])
+            ->whereHas('sop', function ($query) use ($user, $principalFilter) {
+                if ($user->jabatan === 'operator') {
+                    $query->where('principal', optional($user->principal)->principal);
+                    return;
+                }
+
+                if (!empty($principalFilter)) {
+                    $query->where('principal', $principalFilter);
+                }
+            })
+            ->join('wfg_sop', 'wfg_sop.id', '=', 'wfg_sop_approvals.sop_id')
+            ->orderByDesc('wfg_sop.tgl_opname')
+            ->orderByDesc('wfg_sop_approvals.created_at')
+            ->select('wfg_sop_approvals.*')
+            ->get();
+
+        $items = $approvals->map(function ($approval) {
+            $sop = $approval->sop;
+            $status = strtolower($approval->status ?? 'pending');
+
+            return [
+                'id' => $approval->id,
+                'sop_id' => $approval->sop_id,
+                'tgl_opname' => $sop?->tgl_opname ?? '-',
+                'principal' => $sop?->principal ?? '-',
+                'status_sop' => $sop?->status ?? '-',
+                'operator' => $sop?->user?->nama_lengkap ?? $sop?->user?->username ?? '-',
+                'nama' => $approval->approver->nama_lengkap
+                    ?? $approval->approver->username
+                    ?? '-',
+                'jabatan' => $approval->approver->jabatan ?? '-',
+                'status' => $status,
+                'catatan' => $approval->catatan,
+                'action_at' => $approval->action_at
+                    ? Carbon::parse($approval->action_at)->format('d M Y H:i')
+                    : null,
+                'requested_at' => optional($approval->created_at)->format('d M Y H:i'),
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'approval_summary' => [
+                'total_sop' => $items->pluck('sop_id')->unique()->count(),
+                'pending_count' => $items->count(),
+                'read_count' => $items->where('status', 'read')->count(),
+                'waiting_count' => $items->where('status', 'pending')->count(),
+                'pending' => $items,
+                'items' => $items,
+            ],
+        ]);
+    }
+
     public function getDataDetailEdit($barangId, Request $request)
     {
         $tanggal = $request->input('tanggal'); // ambil dari query param

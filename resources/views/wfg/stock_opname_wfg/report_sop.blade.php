@@ -205,9 +205,8 @@
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="approval-tab" data-bs-toggle="pill"
-                                data-bs-target="#tabApproval" type="button" role="tab" aria-controls="tabApproval"
-                                aria-selected="false">
+                            <button class="nav-link" id="approval-tab" data-bs-toggle="pill" data-bs-target="#tabApproval"
+                                type="button" role="tab" aria-controls="tabApproval" aria-selected="false">
                                 <i class="mdi mdi-account-clock-outline me-1"></i> Belum Approve
                                 <span id="pendingApprovalBadge" class="badge bg-warning text-dark ms-1">0</span>
                             </button>
@@ -248,7 +247,8 @@
 
                             <!-- Empty State -->
                             <div id="empty_state" class="text-center py-5" style="display: none;">
-                                <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
+                                <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty"
+                                    style="width:150px;">
                                 <p class="text-muted">Tidak ada data yang ditemukan</p>
                             </div>
                         </div>
@@ -257,7 +257,7 @@
                             <div class="row g-3 mb-3" id="approvalStats">
                                 <div class="col-md-3 col-6">
                                     <div class="approval-stat">
-                                        <div class="text-muted small mb-2">Total Approver</div>
+                                        <div class="text-muted small mb-2">SO Pending</div>
                                         <div class="stat-value" id="approvalTotal">0</div>
                                     </div>
                                 </div>
@@ -269,14 +269,14 @@
                                 </div>
                                 <div class="col-md-3 col-6">
                                     <div class="approval-stat">
-                                        <div class="text-muted small mb-2">Sudah Approve</div>
-                                        <div class="stat-value text-success" id="approvalApproved">0</div>
+                                        <div class="text-muted small mb-2">Dibaca</div>
+                                        <div class="stat-value text-info" id="approvalApproved">0</div>
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-6">
                                     <div class="approval-stat">
-                                        <div class="text-muted small mb-2">Reject</div>
-                                        <div class="stat-value text-danger" id="approvalRejected">0</div>
+                                        <div class="text-muted small mb-2">Menunggu</div>
+                                        <div class="stat-value text-secondary" id="approvalRejected">0</div>
                                     </div>
                                 </div>
                             </div>
@@ -286,11 +286,13 @@
                                     <thead class="bg-soft-warning text-dark border-bottom">
                                         <tr>
                                             <th style="width: 70px;" class="text-center">No</th>
+                                            <th>Tanggal Opname</th>
+                                            <th>Principal</th>
+                                            <th>Stock Control</th>
                                             <th>Tanggal Request</th>
                                             <th>Approver</th>
                                             <th>Jabatan</th>
                                             <th>Status</th>
-                                            <th>Terakhir Action</th>
                                             <th>Keterangan</th>
                                         </tr>
                                     </thead>
@@ -473,6 +475,7 @@
                 $('#empty_state').hide();
                 $('#tableBody').html('');
                 renderApprovalSummary(null);
+                loadPendingApprovals(principal);
                 const tanggal = $('#filter_tanggal').val() || new Date().toISOString().slice(0,
                     10);
 
@@ -489,7 +492,6 @@
                         $('#loading_state').hide();
 
                         checkApprovalStatus(response, tanggal);
-                        renderApprovalSummary(response);
 
                         if (!response.summaries || response.summaries.length === 0) {
                             $('#empty_state').show();
@@ -512,6 +514,23 @@
                 });
             }
 
+            function loadPendingApprovals(principal = '') {
+                $.ajax({
+                    url: "{{ route('wfg.stock_opname.report.pending-approval') }}",
+                    method: 'GET',
+                    dataType: 'json',
+                    data: {
+                        principal: principal
+                    },
+                    success: function(response) {
+                        renderApprovalSummary(response);
+                    },
+                    error: function() {
+                        renderApprovalSummary(null);
+                    }
+                });
+            }
+
             function renderApprovalSummary(response) {
                 const summary = response?.approval_summary || null;
                 const pending = summary?.pending || [];
@@ -519,15 +538,15 @@
                 const pendingCount = summary?.pending_count || 0;
 
                 $('#pendingApprovalBadge').text(pendingCount);
-                $('#approvalTotal').text(summary?.total || 0);
+                $('#approvalTotal').text(summary?.total_sop || 0);
                 $('#approvalPending').text(pendingCount);
-                $('#approvalApproved').text(summary?.approved_count || 0);
-                $('#approvalRejected').text(summary?.rejected_count || 0);
+                $('#approvalApproved').text(summary?.read_count || 0);
+                $('#approvalRejected').text(summary?.waiting_count || 0);
 
                 if (!summary || items.length === 0) {
                     $('#pendingApprovalBody').html('');
                     $('#pendingApprovalBody').closest('.table-responsive').hide();
-                    $('#approval_empty_state').show().find('p').text('Belum ada data approval untuk tanggal dan principal ini.');
+                    $('#approval_empty_state').show().find('p').text('Belum ada data approval pending.');
                     return;
                 }
 
@@ -549,6 +568,9 @@
                     return `
                         <tr>
                             <td class="text-center">${index + 1}</td>
+                            <td>${escapeHtml(formatDate(approval.tgl_opname || '-'))}</td>
+                            <td>${escapeHtml(approval.principal || '-')}</td>
+                            <td>${escapeHtml(approval.operator || '-')}</td>
                             <td>${escapeHtml(approval.requested_at || '-')}</td>
                             <td>
                                 <div class="fw-semibold">${escapeHtml(approval.nama || '-')}</div>
@@ -559,8 +581,7 @@
                                     ${statusLabel}
                                 </span>
                             </td>
-                            <td>${escapeHtml(approval.action_at || '-')}</td>
-                            <td class="approval-note">${escapeHtml(approval.catatan || 'Belum ada keterangan.')}</td>
+                            <td class="approval-note">${escapeHtml(approval.catatan || '-')}</td>
                         </tr>
                     `;
                 }).join('');
@@ -570,13 +591,13 @@
 
             function escapeHtml(value) {
                 return String(value ?? '').replace(/[&<>"'`=\/]/g, function(char) {
-                    return {
-                        '&': '&amp;',
-                        '<': '&lt;',
-                        '>': '&gt;',
-                        '"': '&quot;',
-                        "'": '&#39;',
-                        '`': '&#96;',
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;',
+                    '`': '&#96;',
                         '=': '&#61;',
                         '/': '&#47;'
                     } [char];
@@ -1111,7 +1132,9 @@
             }
 
             function formatDate(dateString) {
+                if (!dateString || dateString === '-') return '-';
                 const date = new Date(dateString);
+                if (isNaN(date.getTime())) return '-';
                 const options = {
                     year: 'numeric',
                     month: 'long',
