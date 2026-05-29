@@ -61,6 +61,12 @@ class MonitoringController extends Controller
             $query->where('wrm_stock_on_hand.no_spb', 'like', $request->no_spb . '%');
         }
 
+        if ($summaryType === 'spb' && $request->mid) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->where('wrm_master_barang.mid', 'like', $request->mid . '%');
+            });
+        }
+
         // Count for pagination and grand totals
         $recordsTotal = DB::query()
             ->fromSub(clone $query, 'sub')
@@ -79,7 +85,7 @@ class MonitoringController extends Controller
 
         $start = $request->start ?? 0;
         $length = $request->length ?? 10;
-        
+
         $data = $query->orderBy($sortColumn)->skip($start)->take($length)->get();
 
         return response()->json([
@@ -87,7 +93,7 @@ class MonitoringController extends Controller
             'recordsTotal' => $recordsTotal,
             'recordsFiltered' => $recordsTotal,
             'data' => $data,
-            'grand_total_per_uom' => $totalsPerUom->map(function($item) {
+            'grand_total_per_uom' => $totalsPerUom->map(function ($item) {
                 return [
                     'uom' => $item->uom,
                     'unrest' => $item->total_unrest ?? 0,

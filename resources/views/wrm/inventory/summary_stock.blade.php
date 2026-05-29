@@ -74,7 +74,7 @@
                                 <div class="tab-pane" id="summary-spb-tab" role="tabpanel">
                                     <form id="filter-spb-form">
                                         <div class="row g-3 align-items-end">
-                                            <div class="col-xxl-3 col-sm-6">
+                                            <div class="col-xxl-3 col-sm-4">
                                                 <div class="search-box">
                                                     <input type="text" class="form-control" id="filter-no-spb"
                                                         placeholder="Search No SPB...">
@@ -82,8 +82,14 @@
                                                     <i class="ri-search-line search-icon"></i>
                                                 </div>
                                             </div>
-
-                                            <div class="col-xxl-2 col-sm-6">
+                                            <div class="col-xxl-3 col-sm-4">
+                                                <div class="search-box">
+                                                    <input type="text" class="form-control" id="filter-mid-spb"
+                                                        placeholder="Search MID...">
+                                                    <i class="ri-search-line search-icon"></i>
+                                                </div>
+                                            </div>
+                                            <div class="col-xxl-2 col-sm-4">
                                                 <div class="d-flex gap-2">
                                                     <button type="button" class="btn btn-primary flex-fill"
                                                         id="btn-filter-spb">
@@ -296,6 +302,7 @@
                         data: function(d) {
                             d.summary_type = 'spb';
                             d.no_spb = $('#filter-no-spb').val();
+                            d.mid = $('#filter-mid-spb').val();
                         },
                         error: function(xhr, error, thrown) {
                             console.error("DataTable error:", error, thrown);
@@ -366,9 +373,15 @@
                 spbTable.ajax.reload();
             });
 
+            $('#filter-mid-spb').on('change', function() {
+                initSpbTable();
+                spbTable.ajax.reload();
+            });
+
             $('#btnReset').on('click', function() {
                 $('#filter-mid').val('');
                 $('#filter-no-spb').val('');
+                $('#filter-mid-spb').val('');
                 itemTable.ajax.reload();
                 if (spbTable) {
                     spbTable.ajax.reload();
