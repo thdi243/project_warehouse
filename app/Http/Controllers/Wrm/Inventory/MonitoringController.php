@@ -40,7 +40,8 @@ class MonitoringController extends Controller
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'UNREST' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_unrest,
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'QI' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_qi,
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'BLOCKED' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_blocked
-            ");
+            ")
+            ->whereNotIn('status', ['ISSUED', 'RESERVED']);
 
         if ($summaryType === 'spb') {
             $query->addSelect('wrm_stock_on_hand.no_spb', 'wrm_master_barang.uom')
