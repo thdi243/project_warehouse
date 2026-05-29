@@ -86,6 +86,38 @@
             border-radius: 0.75rem;
             padding: 1rem 1.25rem;
         }
+
+        .report-tabs .nav-link {
+            color: var(--gray-600);
+            border: 1px solid var(--gray-200);
+            margin-right: 0.5rem;
+            font-weight: 600;
+        }
+
+        .report-tabs .nav-link.active {
+            color: #fff;
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .approval-stat {
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            padding: 0.85rem 1rem;
+            background: #fff;
+            min-height: 82px;
+        }
+
+        .approval-stat .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .approval-note {
+            max-width: 320px;
+            white-space: normal;
+        }
     </style>
 @endsection
 
@@ -162,44 +194,117 @@
                 </div>
             </div>
 
-            <!-- Table Card -->
+            <!-- Report Card -->
             <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="200">
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle shadow-sm rounded-3 text-nowrap sortable"
-                            id="tableOpname">
-                            <thead class="bg-soft-info text-dark border-bottom">
-                                <tr>
-                                    <th class="text-center no-sort" style="width: 70px;">ID</th>
-                                    <th class="no-sort">Tanggal Opname</th>
-                                    <th class="no-sort">MID Barang</th>
-                                    <th class="no-sort">Nama Barang</th>
-                                    <th>Qty SAP</th>
-                                    <th>Qty Fisik</th>
-                                    <th>Selisih</th>
-                                    <th>Keterangan</th>
-                                    <th class="text-center no-sort" style="width: 130px;">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                                <!-- Data akan dimuat di sini -->
-                            </tbody>
-                        </table>
+                    <ul class="nav nav-pills report-tabs mb-3" id="reportTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="data-tab" data-bs-toggle="pill" data-bs-target="#tabData"
+                                type="button" role="tab" aria-controls="tabData" aria-selected="true">
+                                <i class="mdi mdi-table me-1"></i> Data Opname
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="approval-tab" data-bs-toggle="pill"
+                                data-bs-target="#tabApproval" type="button" role="tab" aria-controls="tabApproval"
+                                aria-selected="false">
+                                <i class="mdi mdi-account-clock-outline me-1"></i> Belum Approve
+                                <span id="pendingApprovalBadge" class="badge bg-warning text-dark ms-1">0</span>
+                            </button>
+                        </li>
+                    </ul>
 
-                    </div>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="tabData" role="tabpanel" aria-labelledby="data-tab">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle shadow-sm rounded-3 text-nowrap sortable"
+                                    id="tableOpname">
+                                    <thead class="bg-soft-info text-dark border-bottom">
+                                        <tr>
+                                            <th class="text-center no-sort" style="width: 70px;">ID</th>
+                                            <th class="no-sort">Tanggal Opname</th>
+                                            <th class="no-sort">MID Barang</th>
+                                            <th class="no-sort">Nama Barang</th>
+                                            <th>Qty SAP</th>
+                                            <th>Qty Fisik</th>
+                                            <th>Selisih</th>
+                                            <th>Keterangan</th>
+                                            <th class="text-center no-sort" style="width: 130px;">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tableBody">
+                                        <!-- Data akan dimuat di sini -->
+                                    </tbody>
+                                </table>
+                            </div>
 
-                    <!-- Loading State -->
-                    <div id="loading_state" class="text-center py-5" style="display: none;">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
+                            <!-- Loading State -->
+                            <div id="loading_state" class="text-center py-5" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="text-muted mt-2">Memuat data...</p>
+                            </div>
+
+                            <!-- Empty State -->
+                            <div id="empty_state" class="text-center py-5" style="display: none;">
+                                <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
+                                <p class="text-muted">Tidak ada data yang ditemukan</p>
+                            </div>
                         </div>
-                        <p class="text-muted mt-2">Memuat data...</p>
-                    </div>
 
-                    <!-- Empty State -->
-                    <div id="empty_state" class="text-center py-5" style="display: none;">
-                        <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
-                        <p class="text-muted">Tidak ada data yang ditemukan</p>
+                        <div class="tab-pane fade" id="tabApproval" role="tabpanel" aria-labelledby="approval-tab">
+                            <div class="row g-3 mb-3" id="approvalStats">
+                                <div class="col-md-3 col-6">
+                                    <div class="approval-stat">
+                                        <div class="text-muted small mb-2">Total Approver</div>
+                                        <div class="stat-value" id="approvalTotal">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <div class="approval-stat">
+                                        <div class="text-muted small mb-2">Belum Approve</div>
+                                        <div class="stat-value text-warning" id="approvalPending">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <div class="approval-stat">
+                                        <div class="text-muted small mb-2">Sudah Approve</div>
+                                        <div class="stat-value text-success" id="approvalApproved">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <div class="approval-stat">
+                                        <div class="text-muted small mb-2">Reject</div>
+                                        <div class="stat-value text-danger" id="approvalRejected">0</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle text-nowrap">
+                                    <thead class="bg-soft-warning text-dark border-bottom">
+                                        <tr>
+                                            <th style="width: 70px;" class="text-center">No</th>
+                                            <th>Tanggal Request</th>
+                                            <th>Approver</th>
+                                            <th>Jabatan</th>
+                                            <th>Status</th>
+                                            <th>Terakhir Action</th>
+                                            <th>Keterangan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pendingApprovalBody">
+                                        <!-- Data approval akan dimuat di sini -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div id="approval_empty_state" class="text-center py-5" style="display:none;">
+                                <i class="mdi mdi-check-circle-outline text-success" style="font-size: 56px;"></i>
+                                <p class="text-muted mb-0">Tidak ada approval yang masih pending.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -367,6 +472,7 @@
                 $('#loading_state').show();
                 $('#empty_state').hide();
                 $('#tableBody').html('');
+                renderApprovalSummary(null);
                 const tanggal = $('#filter_tanggal').val() || new Date().toISOString().slice(0,
                     10);
 
@@ -383,6 +489,7 @@
                         $('#loading_state').hide();
 
                         checkApprovalStatus(response, tanggal);
+                        renderApprovalSummary(response);
 
                         if (!response.summaries || response.summaries.length === 0) {
                             $('#empty_state').show();
@@ -392,15 +499,87 @@
                     },
                     error: function(xhr, status, error) {
                         $('#loading_state').hide();
+                        renderApprovalSummary(null);
                         $('#tableBody').html(`
                             <tr>
-                                <td colspan="6" class="text-center text-danger py-4">
+                                <td colspan="9" class="text-center text-danger py-4">
                                     <i class="fas fa-exclamation-triangle"></i> 
                                     Gagal memuat data: ${error}
                                 </td>
                             </tr>
                         `);
                     }
+                });
+            }
+
+            function renderApprovalSummary(response) {
+                const summary = response?.approval_summary || null;
+                const pending = summary?.pending || [];
+                const items = summary?.items || [];
+                const pendingCount = summary?.pending_count || 0;
+
+                $('#pendingApprovalBadge').text(pendingCount);
+                $('#approvalTotal').text(summary?.total || 0);
+                $('#approvalPending').text(pendingCount);
+                $('#approvalApproved').text(summary?.approved_count || 0);
+                $('#approvalRejected').text(summary?.rejected_count || 0);
+
+                if (!summary || items.length === 0) {
+                    $('#pendingApprovalBody').html('');
+                    $('#pendingApprovalBody').closest('.table-responsive').hide();
+                    $('#approval_empty_state').show().find('p').text('Belum ada data approval untuk tanggal dan principal ini.');
+                    return;
+                }
+
+                if (pending.length === 0) {
+                    $('#pendingApprovalBody').html('');
+                    $('#pendingApprovalBody').closest('.table-responsive').hide();
+                    $('#approval_empty_state').show().find('p').text('Tidak ada approval yang masih pending.');
+                    return;
+                }
+
+                $('#approval_empty_state').hide();
+                $('#pendingApprovalBody').closest('.table-responsive').show();
+
+                const rows = pending.map((approval, index) => {
+                    const status = (approval.status || 'pending').toLowerCase();
+                    const statusLabel = status === 'read' ? 'Dibaca' : 'Menunggu';
+                    const statusClass = status === 'read' ? 'info' : 'warning';
+
+                    return `
+                        <tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td>${escapeHtml(approval.requested_at || '-')}</td>
+                            <td>
+                                <div class="fw-semibold">${escapeHtml(approval.nama || '-')}</div>
+                            </td>
+                            <td>${escapeHtml(approval.jabatan || '-')}</td>
+                            <td>
+                                <span class="badge bg-${statusClass} ${statusClass === 'warning' ? 'text-dark' : ''}">
+                                    ${statusLabel}
+                                </span>
+                            </td>
+                            <td>${escapeHtml(approval.action_at || '-')}</td>
+                            <td class="approval-note">${escapeHtml(approval.catatan || 'Belum ada keterangan.')}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                $('#pendingApprovalBody').html(rows);
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? '').replace(/[&<>"'`=\/]/g, function(char) {
+                    return {
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#39;',
+                        '`': '&#96;',
+                        '=': '&#61;',
+                        '/': '&#47;'
+                    } [char];
                 });
             }
 

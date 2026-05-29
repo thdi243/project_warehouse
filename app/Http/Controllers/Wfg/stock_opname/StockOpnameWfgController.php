@@ -1390,6 +1390,34 @@ class StockOpnameWfgController extends Controller
 
             $summaries = $summariesQuery->get();
             $details   = $detailsQuery->get();
+            $approvals = WfgSopApprovalModel::with('approver:id,nama_lengkap,username,jabatan')
+                ->where('sop_id', $sop->id)
+                ->orderByRaw("FIELD(status, 'pending', 'read', 'rejected', 'approved')")
+                ->orderBy('id')
+                ->get();
+
+            $approvalItems = $approvals->map(function ($approval) {
+                $status = strtolower($approval->status ?? 'pending');
+                $actionAt = $approval->action_at
+                    ? Carbon::parse($approval->action_at)->format('d M Y H:i')
+                    : null;
+
+                return [
+                    'id' => $approval->id,
+                    'nama' => $approval->approver->nama_lengkap
+                        ?? $approval->approver->username
+                        ?? '-',
+                    'jabatan' => $approval->approver->jabatan ?? '-',
+                    'status' => $status,
+                    'catatan' => $approval->catatan,
+                    'action_at' => $actionAt,
+                    'requested_at' => optional($approval->created_at)->format('d M Y H:i'),
+                ];
+            })->values();
+
+            $pendingApprovals = $approvalItems
+                ->filter(fn($approval) => in_array($approval['status'], ['pending', 'read'], true))
+                ->values();
 
             return response()->json([
                 'status' => 'success',
@@ -1403,6 +1431,14 @@ class StockOpnameWfgController extends Controller
                 ],
                 'summaries' => $summaries,
                 'details' => $details,
+                'approval_summary' => [
+                    'total' => $approvalItems->count(),
+                    'pending_count' => $pendingApprovals->count(),
+                    'approved_count' => $approvalItems->where('status', 'approved')->count(),
+                    'rejected_count' => $approvalItems->where('status', 'rejected')->count(),
+                    'pending' => $pendingApprovals,
+                    'items' => $approvalItems,
+                ],
             ]);
         } catch (\Exception $e) {
             Log::error('Gagal mengambil data report SO: ' . $e->getMessage());
