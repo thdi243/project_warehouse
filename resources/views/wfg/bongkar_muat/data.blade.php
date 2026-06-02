@@ -509,6 +509,9 @@
                                         <button type="button" class="btn btn-soft-danger btn-sm btn-delete" data-id="${order.id}" title="Delete">
                                             <i class="ri-delete-bin-line"></i>
                                         </button>
+                                        <button type="button" class="btn btn-soft-warning btn-sm btn-follow-up-checker" data-id="${order.id}" title="Follow Up Checker" ${(order.status === 'submitted' || order.status === 'draft') && order.checker_id ? '' : 'disabled'}>
+                                            <i class="ri-notification-3-line"></i>
+                                        </button>
                                     @endcan 
                                     <button type="button" class="btn btn-soft-success btn-sm btn-download" data-id="${order.id}" title="Download">
                                         <i class="ri-download-line"></i>
@@ -724,6 +727,42 @@
                 const id = $(this).data('id');
 
                 window.open("{{ url('wfg/bongkar-muat/download') }}/" + id);
+            });
+
+            $(document).on('click', '.btn-follow-up-checker', function() {
+                const id = $(this).data('id');
+                const button = $(this);
+
+                Swal.fire({
+                    title: 'Kirim follow up?',
+                    text: 'Checker akan menerima notifikasi approval Bongkar Muat.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Kirim',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    button.prop('disabled', true);
+
+                    $.ajax({
+                        url: "{{ url('wfg/bongkar-muat/follow-up-checker') }}/" + id,
+                        type: 'POST',
+                        data: {
+                            _token: "{{ csrf_token() }}"
+                        },
+                        success: function(response) {
+                            Swal.fire('Berhasil', response.message, 'success');
+                        },
+                        error: function(xhr) {
+                            Swal.fire('Gagal', xhr.responseJSON?.message ||
+                                'Follow up gagal dikirim.', 'error');
+                        },
+                        complete: function() {
+                            button.prop('disabled', false);
+                        }
+                    });
+                });
             });
 
             // Edit Item Logic

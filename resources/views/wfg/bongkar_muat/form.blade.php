@@ -23,6 +23,51 @@
         .select2-container--default .select2-selection--single .select2-selection__placeholder {
             color: #adb5bd !important;
         }
+
+        .select2-container .select2-selection--multiple {
+            min-height: 37px !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 0.25rem !important;
+        }
+
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: #3577f1 !important;
+            border: none !important;
+            /* color: #fff !important; */
+            font-size: 0.85rem !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+        }
+
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+            /* color: #fff !important; */
+            margin-right: 5px !important;
+        }
+
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+            color: #f06548 !important;
+            background-color: transparent !important;
+        }
+
+        .table-input {
+            border: 1px solid transparent !important;
+            background-color: transparent !important;
+            padding: 0.25rem 0.5rem !important;
+            border-radius: 4px !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        .table-input:hover {
+            border-color: #ced4da !important;
+            background-color: #fff !important;
+        }
+
+        .table-input:focus {
+            border-color: #86b7fe !important;
+            background-color: #fff !important;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+            outline: 0 !important;
+        }
     </style>
 @endsection
 
@@ -180,13 +225,16 @@
                             <div class="card-header d-flex align-items-center">
                                 <h5 class="card-title mb-0 flex-grow-1"><i class="ri-truck-line me-2"></i>Add Items</h5>
                                 <div class="flex-shrink-0 d-flex gap-2">
+                                    <button type="button" class="btn btn-soft-primary btn-sm" onclick="addEmptyRow()">
+                                        <i class="ri-add-line me-1"></i> Add Row
+                                    </button>
                                     <button type="button" class="btn btn-primary btn-sm" onclick="showManualModal()">
-                                        <i class="ri-add-line me-1"></i> Add
+                                        <i class="ri-list-check-2 me-1"></i> Add List
                                     </button>
                                 </div>
                             </div>
                             <div class="card-body">
-                                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <div class="table-responsive" style="max-height: 700px; overflow-y: auto;">
                                     <table class="table table-hover align-middle" id="table-items">
                                         <thead class="table-light sticky-top" style="z-index: 1;">
                                             <tr>
@@ -194,8 +242,8 @@
                                                 <th>Batch</th>
                                                 <th>Jenis</th>
                                                 <th class="text-center" width="100px">Qty</th>
-                                                <th class="text-center">TO Dummy</th>
-                                                <th class="text-center">TO SAP</th>
+                                                <th>TO Dummy</th>
+                                                <th>TO SAP</th>
                                                 <th class="text-center">Flags</th>
                                                 <th width="50px">Aksi</th>
                                             </tr>
@@ -208,7 +256,8 @@
 
                                 <div id="empty-state" class="text-center py-5">
                                     <i class="ri-truck-line fs-1 text-muted"></i>
-                                    <p class="text-muted mt-2">No items have been selected yet. Click the “Add” button to
+                                    <p class="text-muted mt-2">No items have been selected yet. Click Add Row or Add List
+                                        to
                                         add an item.</p>
                                 </div>
 
@@ -239,7 +288,8 @@
                                         <div class="card bg-light border shadow-none h-100 mb-0">
                                             <div
                                                 class="card-body py-3 px-3 d-flex align-items-center justify-content-start gap-5">
-                                                <h6 class="mb-0">Total Items: <span id="total-items"
+                                                <h6 class="mb-0">Total Items (<span class="text-primary">Semua
+                                                        Row</span>): <span id="total-items"
                                                         class="text-primary fw-bold">0</span></h6>
                                                 <h6 class="mb-0">Total Full Pallet: <span id="total-full-pallet"
                                                         class="text-info fw-bold">0</span></h6>
@@ -293,6 +343,12 @@
                     <div class="mb-3">
                         <label class="form-label">Search Material <span class="text-danger">*</span></label>
                         <select id="manual-material-select" class="form-select"></select>
+                        {{-- </div>
+                    {{-- <div class="mb-3">
+                        <label class="form-label">Banyak Item <span class="text-danger">*</span></label>
+                        <input type="number" id="manual-row-count" class="form-control" min="0" value="0"
+                            required>
+                        <small class="text-muted">Banyak data item yang akan dimuat</small> --}}
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -307,10 +363,12 @@
                             </select>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Quantity <span class="text-danger">*</span></label>
-                        <input type="number" id="manual-qty" class="form-control" min="1" readonly>
-                        <small class="text-muted" id="qty-hint">Ambil dari Qty Box Master</small>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" id="manual-qty" class="form-control" min="1" readonly>
+                            <small class="text-muted" id="qty-hint">Ambil dari Qty Box Master</small>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -325,7 +383,8 @@
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary px-4" onclick="addManualItem()">Add to List</button>
+                    <button type="button" class="btn btn-primary px-4" onclick="addManualItem()">Add to
+                        List</button>
                 </div>
             </div>
         </div>
@@ -336,6 +395,7 @@
     <script>
         // Global items state
         let items = @json($draft->details ?? []);
+
         if (items.length > 0) {
             items = items.map(i => ({
                 material_id: i.material_id,
@@ -344,6 +404,7 @@
                 batch: i.batch_number || '',
                 jenis: i.jenis,
                 qty: i.qty,
+                qty_box: i.material ? i.material.qty_box : 0,
                 to_dummy: i.to_dummy || '',
                 to_sap: i.to_sap || '',
                 double_po: i.double_po,
@@ -351,6 +412,24 @@
                 manual_picking: i.manual_picking,
                 principal: i.material ? i.material.principal : ''
             }));
+        }
+
+        function normalizeMaterialData(data) {
+            return {
+                material_id: data.id || data.material_id,
+                mid: data.mid || data.mid_barang || '',
+                nama_barang: data.nama || data.nama_barang || '',
+                qty_box: parseInt(data.qty_box) || 0,
+                principal: data.principal || ''
+            };
+        }
+
+        function isRowComplete(item) {
+            return item.material_id && item.jenis && parseInt(item.qty) > 0;
+        }
+
+        function escapeHtml(value) {
+            return $('<div>').text(value ?? '').html();
         }
 
         // Function definitions
@@ -362,6 +441,7 @@
                 batch: data.batch || '',
                 jenis: data.jenis,
                 qty: data.qty || 0,
+                qty_box: data.qty_box || 0,
                 to_dummy: data.to_dummy || '',
                 to_sap: data.to_sap || '',
                 double_po: data.double_po || false,
@@ -376,16 +456,21 @@
         }
 
         let currentSaveRequest = null;
+
         function saveProgress() {
             let formData = $('#form-bongkar-muat').serializeArray();
+
+            // Filter out existing details inputs to avoid duplicates
+            formData = formData.filter(item => !item.name.startsWith('details['));
+
             items.forEach((item, index) => {
                 formData.push({
                     name: `details[${index}][material_id]`,
-                    value: item.material_id
+                    value: item.material_id || ''
                 });
                 formData.push({
                     name: `details[${index}][batch_number]`,
-                    value: item.batch
+                    value: item.batch || ''
                 });
                 formData.push({
                     name: `details[${index}][jenis]`,
@@ -434,63 +519,68 @@
         function renderTable() {
             let html = '';
             items.forEach((item, index) => {
-                const badgeJenis = item.jenis === 'P' ? 'badge bg-soft-primary text-primary' :
-                    'badge bg-soft-success text-success';
+
                 html += `
-                <tr>
-                    <td>
-                        <div class="d-flex flex-column">
-                            <span class="fw-bold">${item.mid}</span>
-                        </div>
-                    </td>
-                    <td>${item.batch ?? '-'}</td>
-                    <td><span class="${badgeJenis}">${item.jenis}</span></td>
-                    <td class="text-center">
-                        ${item.qty}
-                        <input type="hidden" name="details[${index}][qty]" value="${item.qty}">
-                        <input type="hidden" name="details[${index}][material_id]" value="${item.material_id}">
-                        <input type="hidden" name="details[${index}][batch_number]" value="${item.batch}">
-                        <input type="hidden" name="details[${index}][jenis]" value="${item.jenis}">
-                    </td>
-                    <td class="text-center">
-                        ${item.to_dummy || '-'}
-                        <input type="hidden" name="details[${index}][to_dummy]" value="${item.to_dummy || ''}">
-                    </td>
-                    <td class="text-center">
-                        ${item.to_sap || '-'}
-                        <input type="hidden" name="details[${index}][to_sap]" value="${item.to_sap || ''}">
-                    </td>
-                    <td>
-                        <div class="d-flex gap-2 justify-content-center">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="details[${index}][double_po]" value="1" ${item.double_po ? 'checked' : ''} onchange="updateItemFlag(${index}, 'double_po', this.checked)">
-                                <label class="form-label mb-0 small text-nowrap">2 PO</label>
+                    <tr>
+                        <td style="min-width: 180px;">
+                            <select class="form-select form-select-sm table-material-select" data-index="${index}">
+                            </select>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm table-input" value="${escapeHtml(item.batch)}" onchange="updateItemField(${index}, 'batch', this.value)" placeholder="Batch...">
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm fw-semibold text-center text-nowrap" style="min-width: 60px;" onchange="updateItemJenis(${index}, this.value)">
+                                <option value="P" ${item.jenis === 'P' ? 'selected' : ''} class="text-primary fw-semibold">P</option>
+                                <option value="R" ${item.jenis === 'R' ? 'selected' : ''} class="text-success fw-semibold">R</option>
+                            </select>
+                        </td>
+                        <td class="text-center" style="min-width: 80px;">
+                            <input type="number" class="form-control form-control-sm table-input text-center" value="${item.qty}" ${item.jenis === 'P' ? 'readonly' : ''} onchange="updateItemQty(${index}, this.value)" min="1">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm table-input" value="${escapeHtml(item.to_dummy)}" onchange="updateItemField(${index}, 'to_dummy', this.value)" placeholder="...">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm table-input" value="${escapeHtml(item.to_sap)}" onchange="updateItemField(${index}, 'to_sap', this.value)" placeholder="...">
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="details[${index}][double_po]" value="1" ${item.double_po ? 'checked' : ''} onchange="updateItemFlag(${index}, 'double_po', this.checked)">
+                                    <label class="form-label mb-0 small text-nowrap">2 PO</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="details[${index}][cancel_to]" value="1" ${item.cancel_to ? 'checked' : ''} onchange="updateItemFlag(${index}, 'cancel_to', this.checked)">
+                                    <label class="form-label mb-0 small text-nowrap">Cancel TO</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="details[${index}][manual_picking]" value="1" ${item.manual_picking ? 'checked' : ''} onchange="updateItemFlag(${index}, 'manual_picking', this.checked)">
+                                    <label class="form-label mb-0 small text-nowrap">Manual</label>
+                                </div>
                             </div>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="details[${index}][cancel_to]" value="1" ${item.cancel_to ? 'checked' : ''} onchange="updateItemFlag(${index}, 'cancel_to', this.checked)">
-                                <label class="form-label mb-0 small text-nowrap">Cancel TO</label>
-                            </div>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="details[${index}][manual_picking]" value="1" ${item.manual_picking ? 'checked' : ''} onchange="updateItemFlag(${index}, 'manual_picking', this.checked)">
-                                <label class="form-label mb-0 small text-nowrap">Manual</label>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="text-end">
-                        <button type="button" class="btn btn-soft-danger btn-sm" onclick="removeItem(${index})">
-                            <i class="ri-delete-bin-line"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-soft-danger btn-sm" onclick="removeItem(${index})">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
             });
 
             $('#table-items tbody').html(html);
 
-            const totalFullPallet = items.filter(item => item.jenis === 'P').length;
-            const totalPalletReceh = items.filter(item => item.jenis === 'R').length;
+            setTimeout(() => {
+                initTableMaterialSelects();
+            }, 0);
 
-            $('#total-items').text(items.length);
+            const completedItems = items.filter(isRowComplete);
+            const totalItems = items.length;
+            const totalFullPallet = completedItems.filter(item => item.jenis === 'P').length;
+            const totalPalletReceh = completedItems.filter(item => item.jenis === 'R').length;
+
+            $('#total-items').text(totalItems);
             $('#total-full-pallet').text(totalFullPallet);
             $('#total-pallet-receh').text(totalPalletReceh);
 
@@ -498,7 +588,7 @@
             let summarySMU = {};
             let summaryBAS = {};
 
-            items.forEach(item => {
+            completedItems.forEach(item => {
                 let mid = item.mid || '-';
                 let qty = parseInt(item.qty) || 0;
                 let principal = item.principal ? item.principal.toUpperCase() : '';
@@ -548,7 +638,36 @@
             }
         }
 
+        function materialLabel(item) {
+            if (!item.material_id) return '';
+
+            const mid = item.mid || `${item.material_id}`;
+            const nama = item.nama_barang || '';
+            return nama ? `${mid}` : mid;
+        }
+
         // Expose functions to window for HTML events
+        window.addEmptyRow = function() {
+            items.push({
+                material_id: null,
+                mid: '',
+                nama_barang: '',
+                batch: '',
+                jenis: 'P',
+                qty: 0,
+                qty_box: 0,
+                to_dummy: '',
+                to_sap: '',
+                double_po: false,
+                cancel_to: false,
+                manual_picking: false,
+                principal: ''
+            });
+
+            renderTable();
+            saveProgress();
+        };
+
         window.removeItem = function(index) {
             items.splice(index, 1);
             renderTable();
@@ -577,9 +696,43 @@
             $('#manual-qty').val(0);
             $('#manual-jenis').val('P').trigger('change');
             $('#manual-material-select').val(null).trigger('change');
+            // $('#manual-row-count').val(0);
             $('#manual-to-dummy').val('');
             $('#manual-to-sap').val('');
             new bootstrap.Modal('#manualItemModal').show();
+        };
+
+        window.updateItemField = function(index, field, value) {
+            if (items[index]) {
+                items[index][field] = value;
+                saveProgress();
+            }
+        };
+
+        window.updateItemJenis = function(index, value) {
+            if (items[index]) {
+                items[index].jenis = value;
+                if (value === 'P') {
+                    items[index].qty = items[index].qty_box || 0;
+                }
+                renderTable();
+                saveProgress();
+            }
+        };
+
+        window.updateItemQty = function(index, value) {
+            if (items[index]) {
+                let qty = parseInt(value) || 0;
+                let qtyBox = parseInt(items[index].qty_box) || 0;
+                if (items[index].jenis === 'R' && qty > qtyBox) {
+                    Swal.fire('Invalid Quantity!', 'Quantity untuk Receh (R) tidak boleh melebihi Qty Box Master (' +
+                        qtyBox + ').', 'warning');
+                    qty = qtyBox;
+                }
+                items[index].qty = qty;
+                renderTable();
+                saveProgress();
+            }
         };
 
         window.addManualItem = function() {
@@ -589,13 +742,18 @@
             let qty = $('#manual-qty').val();
             let to_dummy = $('#manual-to-dummy').val();
             let to_sap = $('#manual-to-sap').val();
+            // let rowCount = parseInt($('#manual-row-count').val()) || 1;
 
-            if (!materialData || !qty || qty < 0) {
-                Swal.fire('Required!', 'Please select material and valid quantity.', 'warning');
+            if (!materialData) {
+                Swal.fire('Required!', 'Please select material.', 'warning');
                 return;
             }
 
-            // Validasi: jika jenis yg dipilih R, maka qty yg diinput tidak boleh melebihi master qty_box
+            if (!qty || qty <= 0) {
+                Swal.fire('Required!', 'Please enter a valid quantity.', 'warning');
+                return;
+            }
+
             let qtyBox = materialData.qty_box ? parseInt(materialData.qty_box) : 0;
             if (jenis === 'R' && parseInt(qty) > qtyBox) {
                 Swal.fire('Invalid Quantity!', 'Quantity untuk Receh (R) tidak boleh melebihi Qty Box Master (' +
@@ -603,6 +761,7 @@
                 return;
             }
 
+            // for (let i = 0; i < rowCount; i++) {
             let data = {
                 material_id: materialData.id,
                 mid: materialData.mid || materialData.mid_barang,
@@ -610,16 +769,67 @@
                 batch: batch,
                 jenis: jenis,
                 qty: qty,
+                qty_box: qtyBox,
                 to_dummy: to_dummy,
                 to_sap: to_sap,
                 principal: materialData.principal || ''
             };
 
             addItem(data);
+            // }
+
             bootstrap.Modal.getInstance('#manualItemModal').hide();
         };
 
+        function initTableMaterialSelects() {
+            $('.table-material-select').each(function() {
+                const select = $(this);
+                const index = parseInt(select.data('index'));
+                const item = items[index];
+
+                if (select.hasClass('select2-hidden-accessible')) {
+                    select.select2('destroy');
+                }
+
+                select.select2({
+                    placeholder: 'Search material...',
+                    width: '100%',
+                    minimumInputLength: 2,
+                    templateSelection: function(data) {
+                        // Untuk AJAX select2, data.text sudah berisi teks option dari DOM
+                        if (data.text && data.text.trim() !== '') {
+                            return data.text;
+                        }
+                        // Fallback ke label dari items state
+                        if (item && item.material_id) {
+                            return materialLabel(item);
+                        }
+                        return data.text || data.id;
+                    },
+                    ajax: {
+                        url: "{{ route('wfg.bongkar_muat.search_materials') }}",
+                        dataType: 'json',
+                        data: params => ({
+                            q: params.term
+                        }),
+                        processResults: data => ({
+                            results: data
+                        })
+                    }
+                });
+
+                // CARA RESMI Select2 AJAX untuk preload nilai yang sudah ada:
+                // Buat Option baru setelah Select2 init, lalu trigger change.
+                // Ini memastikan Select2 membaca dan menampilkan nilai dengan benar.
+                if (item && item.material_id) {
+                    var option = new Option(materialLabel(item), item.material_id, true, true);
+                    select.append(option).trigger('change');
+                }
+            });
+        }
+
         $(document).ready(function() {
+            console.log('items saat load', items);
             renderTable();
 
             $('.select2').select2({
@@ -628,6 +838,8 @@
 
             let saveTimeout;
             $('#form-bongkar-muat input, #form-bongkar-muat select').on('change input', function() {
+                if ($(this).closest('#table-items').length) return;
+
                 clearTimeout(saveTimeout);
                 saveTimeout = setTimeout(function() {
                     saveProgress();
@@ -672,14 +884,83 @@
                 }
             });
 
+            $(document).on('select2:select', '.table-material-select', function(e) {
+                const index = $(this).data('index');
+                const material = normalizeMaterialData(e.params.data);
+
+                if (!items[index]) return;
+
+                items[index] = {
+                    ...items[index],
+                    ...material,
+                    qty: items[index].jenis === 'P' ? material.qty_box : items[index].qty
+                };
+
+                renderTable();
+                saveProgress();
+            });
+
             $('#form-bongkar-muat').on('submit', function(e) {
                 e.preventDefault();
-                if (items.length === 0) {
+                const completedItems = items.filter(isRowComplete);
+
+                if (completedItems.length === 0) {
                     Swal.fire('Empty!', 'Please scan at least one item.', 'warning');
                     return;
                 }
 
-                let formData = $(this).serialize();
+                if (completedItems.length !== items.length) {
+                    Swal.fire('Incomplete Row',
+                        'Masih ada row item yang belum lengkap. Pilih material dan isi qty terlebih dahulu, atau hapus row kosong.',
+                        'warning');
+                    return;
+                }
+
+                let formDataArr = $(this).serializeArray();
+                // Filter out any default details entries to prevent duplicates or out-of-sync data
+                formDataArr = formDataArr.filter(item => !item.name.startsWith('details['));
+
+                completedItems.forEach((item, index) => {
+                    formDataArr.push({
+                        name: `details[${index}][material_id]`,
+                        value: item.material_id
+                    });
+                    formDataArr.push({
+                        name: `details[${index}][batch_number]`,
+                        value: item.batch || ''
+                    });
+                    formDataArr.push({
+                        name: `details[${index}][jenis]`,
+                        value: item.jenis
+                    });
+                    formDataArr.push({
+                        name: `details[${index}][qty]`,
+                        value: item.qty
+                    });
+                    if (item.to_dummy) formDataArr.push({
+                        name: `details[${index}][to_dummy]`,
+                        value: item.to_dummy
+                    });
+                    if (item.to_sap) formDataArr.push({
+                        name: `details[${index}][to_sap]`,
+                        value: item.to_sap
+                    });
+                    if (item.double_po) formDataArr.push({
+                        name: `details[${index}][double_po]`,
+                        value: 1
+                    });
+                    if (item.cancel_to) formDataArr.push({
+                        name: `details[${index}][cancel_to]`,
+                        value: 1
+                    });
+                    if (item.manual_picking) formDataArr.push({
+                        name: `details[${index}][manual_picking]`,
+                        value: 1
+                    });
+                });
+
+                let formData = $.param(formDataArr);
+
                 Swal.fire({
                     title: 'Confirm Submission?',
                     text: "This will create a new Bongkar Muat records.",
@@ -704,32 +985,33 @@
                     }
                 });
             });
-        });
-        $('#btnCancelDraft').click(function() {
-            Swal.fire({
-                title: 'Batalkan Draft?',
-                text: "Semua data yang sudah diisi akan dihapus dan form akan direset.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Ya, Batalkan!',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.post("{{ route('wfg.bongkar_muat.cancel_draft') }}", {
-                        _token: "{{ csrf_token() }}"
-                    }, function(res) {
-                        if (res.status) {
-                            Swal.fire('Berhasil', res.message, 'success').then(() => {
-                                window.location.reload();
-                            });
-                        } else {
-                            Swal.fire('Gagal', res.message, 'error');
-                        }
-                    });
-                }
-            })
+
+            $('#btnCancelDraft').click(function() {
+                Swal.fire({
+                    title: 'Batalkan Draft?',
+                    text: "Semua data yang sudah diisi akan dihapus dan form akan direset.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Batalkan!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post("{{ route('wfg.bongkar_muat.cancel_draft') }}", {
+                            _token: "{{ csrf_token() }}"
+                        }, function(res) {
+                            if (res.status) {
+                                Swal.fire('Berhasil', res.message, 'success').then(() => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
+                        });
+                    }
+                })
+            });
         });
     </script>
 @endsection

@@ -301,6 +301,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/store', [BongkarMuatController::class, 'store'])->name('wfg.bongkar_muat.store');
                 Route::post('/save-draft', [BongkarMuatController::class, 'saveDraft'])->name('wfg.bongkar_muat.save_draft');
                 Route::post('/cancel-draft', [BongkarMuatController::class, 'cancelDraft'])->name('wfg.bongkar_muat.cancel_draft');
+                Route::post('/follow-up-checker/{id}', [BongkarMuatController::class, 'followUpChecker'])->name('wfg.bongkar_muat.follow_up_checker');
                 Route::delete('/{id}', [BongkarMuatController::class, 'destroy'])->name('wfg.bongkar_muat.destroy');
                 Route::get('/show/{id}', [BongkarMuatController::class, 'show'])->name('wfg.bongkar_muat.show');
                 Route::post('/approve-checker/{id}', [BongkarMuatController::class, 'approveChecker'])->name('wfg.bongkar_muat.approve_checker');

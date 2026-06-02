@@ -186,19 +186,20 @@ class BongkarMuatController extends Controller
 
         $now = now();
 
-        $lastOrder = BongkarMuat::whereNotNull('no_dokumen')
+        // $lastOrder = BongkarMuat::whereNotNull('no_dokumen')
+        //     ->whereYear('created_at', $now->year)
+        //     ->whereMonth('created_at', $now->month)
+        //     ->orderBy('id', 'desc')
+        //     ->first();
+
+        $lastNumber = BongkarMuat::whereNotNull('no_dokumen')
             ->whereYear('created_at', $now->year)
             ->whereMonth('created_at', $now->month)
-            ->orderBy('id', 'desc')
-            ->first();
+            ->selectRaw('MAX(CAST(SUBSTRING_INDEX(no_dokumen, "/", 1) AS UNSIGNED)) as max_no')
+            ->value('max_no');
 
         // nomor awal
-        $lastNumber = 3489;
-
-        if ($lastOrder) {
-            $parts = explode('/', $lastOrder->no_dokumen);
-            $lastNumber = (int) $parts[0];
-        }
+        $lastNumber = $lastNumber ?: 3489;
 
         $newNumber = str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
 
@@ -237,7 +238,11 @@ class BongkarMuatController extends Controller
             ]);
 
             // Jam muat otomatis ketika item pertama disimpan
-            if (empty($order->jam_muat) && !empty($request->details)) {
+            $hasMaterialDetails = collect($request->details ?? [])->contains(function ($detail) {
+                return !empty($detail['material_id']);
+            });
+
+            if (empty($order->jam_muat) && $hasMaterialDetails) {
                 $order->jam_muat = Carbon::now()->format('H:i:s');
                 $order->save();
             }
@@ -245,6 +250,10 @@ class BongkarMuatController extends Controller
             // Sync details
             if ($request->has('details')) {
                 foreach ($request->details as $detail) {
+                    if (empty($detail['material_id'])) {
+                        continue;
+                    }
+
                     $jenis = $detail['jenis'] ?? 'P';
                     if ($jenis === 'R') {
                         $material = BarangWfgModel::find($detail['material_id']);
@@ -279,7 +288,7 @@ class BongkarMuatController extends Controller
                     BongkarMuatDetail::create([
                         'bongkar_muat_id' => $order->id,
                         'barcode' => $detail['barcode'] ?? null,
-                        'material_id' => $detail['material_id'],
+                        'material_id' => $this->cleanNull($detail['material_id'] ?? null),
                         'batch_number' => $detail['batch_number'] ?? null,
                         'jenis' => $detail['jenis'] ?? 'P',
                         'qty' => $detail['qty'] ?? 0,
@@ -374,6 +383,7 @@ class BongkarMuatController extends Controller
                 'shipment_bas' => $request->shipment_bas,
                 'wavepick_bas' => $request->wavepick_bas,
                 'forklift_driver_id' => $request->forklift_driver_id,
+                'checker_id' => $order->checker_id ?? auth()->id(),
                 'destinasi_id' => $request->destinasi_id,
                 'no_mobil' => $request->no_mobil,
                 'gate' => $request->gate,
@@ -466,6 +476,10 @@ class BongkarMuatController extends Controller
             return back()->with('error', 'Order is not in submitted status.');
         }
 
+        if ($order->checker_id && (int) $order->checker_id !== (int) auth()->id()) {
+            return back()->with('error', 'Anda bukan checker yang ditugaskan untuk Bongkar Muat ini.');
+        }
+
         // Save signature to storage
         $signatureData = $request->signature;
         $signaturePath = $this->saveSignature($signatureData, '/checker/checker_' . $id);
@@ -477,7 +491,51 @@ class BongkarMuatController extends Controller
             'status' => 'approved' // Moves to next step: Driver Approval
         ]);
 
+        NotificationsModel::where('user_id', $request->checker_id)
+            ->where('notifiable_type', BongkarMuat::class)
+            ->where('notifiable_id', $order->id)
+            ->where('title', 'Follow Up Checker Bongkar Muat')
+            ->delete();
+
         return back()->with('success', 'Checker approved successfully.');
+    }
+
+    public function followUpChecker($id)
+    {
+        $order = BongkarMuat::with('checker')->findOrFail($id);
+
+        if (!in_array($order->status, ['submitted', 'draft'])) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Follow up hanya bisa dikirim untuk status submitted atau draft.'
+            ], 422);
+        }
+
+        if (!$order->checker_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Checker belum ditentukan untuk Bongkar Muat ini.'
+            ], 422);
+        }
+
+        NotificationsModel::updateOrCreate(
+            [
+                'user_id' => $order->checker_id,
+                'notifiable_type' => BongkarMuat::class,
+                'notifiable_id' => $order->id,
+                'title' => 'Info Bongkar Muat',
+            ],
+            [
+                'message' => 'Form Bongkar Muat Anda belum disubmit, tolong segera disubmit, dari Admin.',
+                'url' => route('wfg.bongkar_muat.form'),
+                'is_read' => false,
+            ]
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Follow up berhasil dikirim ke checker ' . ($order->checker->username ?? '') . '.'
+        ]);
     }
 
     public function approveDriver(Request $request, $id)
@@ -663,6 +721,7 @@ class BongkarMuatController extends Controller
                     'batch' => $soh->no_spb,
                     'jenis' => 'P',
                     'qty' => $soh->qty,
+                    'qty_box' => $wfgBarang->qty_box,
                     'principal' => $wfgBarang->principal
                 ]
             ]);

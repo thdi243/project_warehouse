@@ -256,6 +256,37 @@
 
                 let lastNotificationId = null;
 
+                let activeFollowUpSwalId = null;
+
+                function showCheckerFollowUpSwal(notification) {
+                    if (!notification || notification.is_read || activeFollowUpSwalId === notification.id) return;
+
+                    const dismissedKey = `checker-follow-up-dismissed-${notification.id}`;
+                    if (sessionStorage.getItem(dismissedKey)) return;
+
+                    activeFollowUpSwalId = notification.id;
+
+                    Swal.fire({
+                        icon: 'warning',
+                        title: notification.title,
+                        text: notification.message,
+                        showCancelButton: true,
+                        confirmButtonText: 'Buka Form',
+                        cancelButtonText: 'Nanti',
+                        allowOutsideClick: false
+                    }).then((result) => {
+                        activeFollowUpSwalId = null;
+
+                        if (!result.isConfirmed) {
+                            sessionStorage.setItem(dismissedKey, '1');
+                            return;
+                        }
+
+                        sessionStorage.setItem(dismissedKey, '1');
+                        window.location.href = notification.url;
+                    });
+                }
+
                 function fetchNotifications(showToast = false) {
                     $.ajax({
                         url: "{{ route('notifications') }}",
@@ -279,6 +310,14 @@
 
                             // Hitung unread
                             const unreadCount = response.filter(n => !n.is_read).length;
+                            const checkerFollowUp = response.find(n =>
+                                !n.is_read &&
+                                n.title === 'Info Bongkar Muat' &&
+                                n.url
+                            );
+
+                            showCheckerFollowUpSwal(checkerFollowUp);
+
                             if (unreadCount > 0) {
                                 notifBadge.text(unreadCount).show();
                             } else {
