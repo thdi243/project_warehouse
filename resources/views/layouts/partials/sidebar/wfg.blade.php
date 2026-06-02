@@ -1,13 +1,11 @@
 @can('permission', 'wfg-menu')
     <li class="nav-item">
-        <a class="nav-link menu-link {{ request()->routeIs('wfg.*') ? '' : 'collapsed' }}"
-            href="#sidebarWFG" data-bs-toggle="collapse" role="button"
-            aria-expanded="{{ request()->routeIs('wfg.*') ? 'true' : 'false' }}"
+        <a class="nav-link menu-link {{ request()->routeIs('wfg.*') ? '' : 'collapsed' }}" href="#sidebarWFG"
+            data-bs-toggle="collapse" role="button" aria-expanded="{{ request()->routeIs('wfg.*') ? 'true' : 'false' }}"
             aria-controls="sidebarWFG">
             <i class="mdi mdi-warehouse"></i> <span data-key="t-wfg">WFG</span>
         </a>
-        <div class="collapse menu-dropdown {{ request()->routeIs('wfg.*') ? 'show' : '' }}"
-            id="sidebarWFG">
+        <div class="collapse menu-dropdown {{ request()->routeIs('wfg.*') ? 'show' : '' }}" id="sidebarWFG">
             <ul class="nav nav-sm flex-column">
                 @can('permission', 'bongkar-muat')
                     <li class="nav-item">
@@ -23,7 +21,7 @@
                                 <li class="nav-item">
                                     <a href="{{ route('wfg.bongkar_muat.form') }}"
                                         class="nav-link {{ request()->routeIs('wfg.bongkar_muat.form') ? 'active' : '' }}">
-                                        <i class="bx bx-git-commit fs-12"></i> Form Input
+                                        <i class="bx bx-git-commit fs-12"></i> Form Muat
                                     </a>
                                 </li>
                                 <li class="nav-item">
