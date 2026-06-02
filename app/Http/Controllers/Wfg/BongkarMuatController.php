@@ -193,12 +193,9 @@ class BongkarMuatController extends Controller
         //     ->first();
 
         $lastNumber = BongkarMuat::whereNotNull('no_dokumen')
-            ->whereYear('created_at', $now->year)
-            ->whereMonth('created_at', $now->month)
             ->selectRaw('MAX(CAST(SUBSTRING_INDEX(no_dokumen, "/", 1) AS UNSIGNED)) as max_no')
             ->value('max_no');
 
-        // nomor awal
         $lastNumber = $lastNumber ?: 3489;
 
         $newNumber = str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
