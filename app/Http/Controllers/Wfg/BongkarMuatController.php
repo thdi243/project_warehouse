@@ -193,7 +193,7 @@ class BongkarMuatController extends Controller
             ->first();
 
         // nomor awal
-        $lastNumber = 3460;
+        $lastNumber = 3489;
 
         if ($lastOrder) {
             $parts = explode('/', $lastOrder->no_dokumen);
