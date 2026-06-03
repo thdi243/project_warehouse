@@ -366,12 +366,12 @@ class BongkarMuatController extends Controller
 
                 $hasCondition = false;
 
-                if (!empty($request->wavepick_smu)) {
+                if ($request->filled('wavepick_smu')) {
                     $q->where('wavepick_smu', $request->wavepick_smu);
                     $hasCondition = true;
                 }
 
-                if (!empty($request->wavepick_bas)) {
+                if ($request->filled('wavepick_bas')) {
                     if ($hasCondition) {
                         $q->orWhere('wavepick_bas', $request->wavepick_bas);
                     } else {
