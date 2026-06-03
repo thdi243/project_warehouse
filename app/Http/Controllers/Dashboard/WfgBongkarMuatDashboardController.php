@@ -162,6 +162,7 @@ class WfgBongkarMuatDashboardController extends Controller
                 'details_count'   => $o->details_count,
                 'total_qty_full'  => (int) $o->total_qty_full,
                 'total_qty_receh' => (int) $o->total_qty_receh,
+                'total_qty_box'   => (int) ($o->total_qty_full + $o->total_qty_receh),
                 'jam_muat'        => $o->jam_muat ?? '-',
                 'approved_at'     => $o->approved_at ? Carbon::parse($o->approved_at)->format('d M Y H:i') : '-',
             ];
