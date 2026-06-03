@@ -129,10 +129,10 @@
                             <hr class="mt-5 mb-4 border-dashed">
 
                             <!-- Material Summary Table (Grouped by MID) -->
-                            <div class="mb-5">
+                            <div class="mb-5 {{ in_array($order->status, ['finished', 'verified']) ? 'd-none' : '' }}">
                                 <h6 class="text-uppercase fw-bold mb-3"><i class="ri-pie-chart-line me-1"></i> Bongkar Muat
                                     Summary (Per Material)</h6>
-                                <div class="table-responsive">
+                                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                                     <table class="table table-bordered align-middle">
                                         <thead class="table-info text-center">
                                             <tr>
@@ -178,7 +178,7 @@
                                 <div class="mb-5">
                                     <h6 class="text-uppercase fw-bold mb-3 text-muted"><i
                                             class="ri-list-settings-line me-1"></i> Individual Item Details</h6>
-                                    <div class="table-responsive">
+                                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                                         <table class="table table-bordered align-middle">
                                             <thead class="table-light text-center text-nowrap" style="font-size: 13px;">
                                                 <tr>
