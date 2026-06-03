@@ -359,6 +359,36 @@ class BongkarMuatController extends Controller
         try {
             DB::beginTransaction();
 
+            $query = BongkarMuat::where('status', '!=', 'draft')
+                ->where('created_by', '!=', auth()->id());
+
+            $query->where(function ($q) use ($request) {
+
+                $hasCondition = false;
+
+                if (!empty($request->wavepick_smu)) {
+                    $q->where('wavepick_smu', $request->wavepick_smu);
+                    $hasCondition = true;
+                }
+
+                if (!empty($request->wavepick_bas)) {
+                    if ($hasCondition) {
+                        $q->orWhere('wavepick_bas', $request->wavepick_bas);
+                    } else {
+                        $q->where('wavepick_bas', $request->wavepick_bas);
+                    }
+                }
+            });
+
+            $existWavepick = $query->exists();
+
+            if ($existWavepick) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Wavepick SMU atau BAS sudah pernah digunakan, silahkan koordinasi dengan admin.'
+                ], 422);
+            }
+
             // Find existing draft or create new
             $order = BongkarMuat::where('created_by', auth()->id())->where('status', 'draft')->first();
 
@@ -366,18 +396,6 @@ class BongkarMuatController extends Controller
                 $noDok = $this->generateNoDokumen();
             } else {
                 $noDok = $order->no_dokumen;
-            }
-
-            $existWavepick = BongkarMuat::where(function ($q) use ($request) {
-                $q->where('wavepick_smu', $request->wavepick_smu)
-                    ->orWhere('wavepick_bas', $request->wavepick_bas);
-            })->first();
-
-            if ($existWavepick) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Wavepick SMU atau BAS sudah pernah digunakan, silahkan koordinasi dengan admin.'
-                ], 422);
             }
 
             $orderData = [
