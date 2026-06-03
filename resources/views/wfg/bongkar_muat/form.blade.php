@@ -829,7 +829,6 @@
         }
 
         $(document).ready(function() {
-            console.log('items saat load', items);
             renderTable();
 
             $('.select2').select2({

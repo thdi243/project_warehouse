@@ -208,10 +208,6 @@ class BongkarMuatController extends Controller
         try {
             DB::beginTransaction();
 
-            $existingDraft = BongkarMuat::where('created_by', auth()->id())
-                ->where('status', 'draft')
-                ->first();
-
             $order = BongkarMuat::updateOrCreate([
                 'created_by' => auth()->id(),
                 'status' => 'draft',
@@ -370,6 +366,18 @@ class BongkarMuatController extends Controller
                 $noDok = $this->generateNoDokumen();
             } else {
                 $noDok = $order->no_dokumen;
+            }
+
+            $existWavepick = BongkarMuat::where(function ($q) use ($request) {
+                $q->where('wavepick_smu', $request->wavepick_smu)
+                    ->orWhere('wavepick_bas', $request->wavepick_bas);
+            })->first();
+
+            if ($existWavepick) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Wavepick SMU atau BAS sudah pernah digunakan, silahkan koordinasi dengan admin.'
+                ], 422);
             }
 
             $orderData = [
