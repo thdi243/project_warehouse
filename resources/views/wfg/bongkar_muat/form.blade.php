@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
-@section('title', '| Create Bongkar Muat')
+@section('title', '| Form Muat')
+
+@section('sidebar-size', 'sm')
 
 @section('styles')
     <style>

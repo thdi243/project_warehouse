@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('sidebar-size', 'sm')
+
 @section('title', '| Verifikasi & Approval Bongkar Muat')
 
 @section('content')
