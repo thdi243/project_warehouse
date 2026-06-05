@@ -60,6 +60,7 @@ Route::prefix('dashboard')->group(function () {
         Route::get('/inventory/chart-pie', [WrmInventoryController::class, 'getChartPie']);
         Route::get('/inventory/chart-bar', [WrmInventoryController::class, 'getChartBar']);
         Route::get('/inventory/chart-capacity', [WrmInventoryController::class, 'getChartCapacity']);
+        Route::get('/inventory/aging-detail', [WrmInventoryController::class, 'getAgingDetail']);
         Route::get('/inventory/table-expiring', [WrmInventoryController::class, 'getTableExpiring']);
         Route::get('/inventory/table-recent', [WrmInventoryController::class, 'getTableRecent']);
         Route::get('/inventory/location-layout', [WrmInventoryController::class, 'getLocationLayout']);

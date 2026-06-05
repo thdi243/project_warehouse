@@ -592,6 +592,49 @@
             </div>
         </div>
     </div>
+
+    {{-- Aging Stock Detail Modal --}}
+    <div class="modal fade" id="modalAgingDetail" tabindex="-1" aria-labelledby="modalAgingDetailLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light border-bottom-0">
+                    <h5 class="modal-title fw-bold" id="modalAgingDetailLabel">
+                        <i class="bx bx-time-five me-2 text-primary"></i> Detail Stock Aging: <span id="agingRangeTitle"
+                            class="text-primary"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="table-responsive rounded shadow-sm">
+                        <table class="table table-bordered table-striped align-middle text-nowrap mb-0"
+                            id="tableAgingDetail">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center" width="50">No</th>
+                                    <th>No SPB</th>
+                                    <th>Supplier</th>
+                                    <th>Pallet ID</th>
+                                    <th>MID</th>
+                                    <th>Nama Barang</th>
+                                    <th class="text-end">Qty (KG)</th>
+                                    <th>Status</th>
+                                    <th>Lokasi</th>
+                                    <th>Incoming Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -686,7 +729,16 @@
                     },
                     tooltip: {
                         shared: true,
-                        valueSuffix: ' KG'
+                        formatter: function() {
+                            let s = `<b>${this.x}</b><br/>`;
+                            this.points.forEach(point => {
+                                let qtyFormatted = Highcharts.numberFormat(point.point.qty, 0,
+                                    ',', '.');
+                                s +=
+                                `<span style="color:${point.color}">\u25CF</span> ${point.series.name}: <b>${point.y} Pallet</b> (Total Qty: <b>${qtyFormatted} KG</b>)<br/>`;
+                            });
+                            return s;
+                        }
                     },
                     legend: {
                         verticalAlign: 'top',
@@ -717,7 +769,7 @@
                         text: null
                     },
                     tooltip: {
-                        pointFormat: '{series.name}: <b>{point.y:,.0f} KG</b> ({point.percentage:.1f}%)'
+                        pointFormat: '{series.name}: <b>{point.y:,.0f} Pallet</b><br/>Total Qty: <b>{point.qty:,.0f} KG</b> ({point.percentage:.1f}%)'
                     },
                     plotOptions: {
                         pie: {
@@ -771,8 +823,8 @@
                         formatter: function() {
                             let qtyFormatted = Highcharts.numberFormat(this.point.qty, 0, ',', '.');
                             return `<b>${this.x}</b><br/>` +
-                                   `<span style="color:${this.point.color}">\u25CF</span> ${this.series.name}: <b>${this.y} Pallet</b><br/>` +
-                                   `Total Qty: <b>${qtyFormatted} KG</b>`;
+                                `<span style="color:${this.point.color}">\u25CF</span> ${this.series.name}: <b>${this.y} Pallet</b><br/>` +
+                                `Total Qty: <b>${qtyFormatted} KG</b>`;
                         }
                     },
                     plotOptions: {
@@ -804,13 +856,20 @@
                         text: null
                     },
                     tooltip: {
-                        pointFormat: '{series.name}: <b>{point.y:,.0f} KG</b> ({point.percentage:.1f}%)'
+                        pointFormat: '{series.name}: <b>{point.y:,.0f} Pallet</b><br/>Total Qty: <b>{point.qty:,.0f} KG</b> ({point.percentage:.1f}%)'
                     },
                     plotOptions: {
                         pie: {
                             innerSize: '65%',
                             allowPointSelect: true,
                             cursor: 'pointer',
+                            point: {
+                                events: {
+                                    click: function() {
+                                        openAgingDetail(this.name);
+                                    }
+                                }
+                            },
                             dataLabels: {
                                 enabled: true,
                                 format: '<b>{point.name}</b>',
@@ -1247,6 +1306,78 @@
                 $('#filterEndDate').val(today.toISOString().split('T')[0]);
                 fetchAllData();
             });
+
+            function openAgingDetail(range) {
+                $('#agingRangeTitle').text(range);
+                const $tbody = $('#tableAgingDetail tbody');
+                $tbody.html(
+                    '<tr><td colspan="10" class="text-center py-4 text-muted"><i class="bx bx-loader bx-spin me-2"></i>Loading details...</td></tr>'
+                    );
+
+                // Show modal first
+                const myModal = new bootstrap.Modal(document.getElementById('modalAgingDetail'));
+                myModal.show();
+
+                const params = {
+                    range: range,
+                    gudang: $('#filterGudang').val(),
+                    mid: $('#filterMid').val(),
+                    spb: $('#filterNoSpb').val(),
+                };
+
+                $.ajax({
+                    url: '/api/dashboard/wrm/inventory/aging-detail',
+                    type: 'GET',
+                    data: params,
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status && res.data) {
+                            $tbody.empty();
+                            if (res.data.length === 0) {
+                                $tbody.append(
+                                    '<tr><td colspan="10" class="text-center py-4 text-muted">No stock items in this range.</td></tr>'
+                                    );
+                            } else {
+                                let html = '';
+                                res.data.forEach((item, index) => {
+                                    let locStr = '-';
+                                    if (item.bin && item.bin.location) {
+                                        let l = item.bin.location;
+                                        locStr =
+                                            `${l.plant} - ${l.gudang} - ${l.bin} (${item.bin.kolom}.${item.bin.level})`;
+                                    }
+                                    let incomingDateStr = item.incoming_date ? item
+                                        .incoming_date.substring(0, 10) : '-';
+                                    html += `
+                                        <tr>
+                                            <td class="text-center">${index + 1}</td>
+                                            <td>${item.no_spb ?? '-'}</td>
+                                            <td>${item.supplier ?? '-'}</td>
+                                            <td><b class="text-primary">${item.pallet_id ?? '-'}</b></td>
+                                            <td>${item.barang ? item.barang.mid : '-'}</td>
+                                            <td>${item.barang ? item.barang.nama_barang : '-'}</td>
+                                            <td class="text-end fw-bold">${formatQty(item.qty)}</td>
+                                            <td><span class="badge bg-soft-info text-info border border-info border-opacity-25">${item.status}</span></td>
+                                            <td class="small">${locStr}</td>
+                                            <td>${incomingDateStr}</td>
+                                        </tr>
+                                    `;
+                                });
+                                $tbody.html(html);
+                            }
+                        } else {
+                            $tbody.html(
+                                '<tr><td colspan="10" class="text-center text-danger py-4">Gagal memuat detail data.</td></tr>'
+                                );
+                        }
+                    },
+                    error: function() {
+                        $tbody.html(
+                            '<tr><td colspan="10" class="text-center text-danger py-4">Terjadi kesalahan koneksi.</td></tr>'
+                            );
+                    }
+                });
+            }
 
             initCharts();
             fetchAllData(); // Initial load
