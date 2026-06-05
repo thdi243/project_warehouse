@@ -110,10 +110,10 @@ class WrmInventoryController extends Controller
         [$startDate, $endDate] = $this->getFilterDates($request);
 
         /*
-    |--------------------------------------------------------------------------
-    | INBOUND
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | INBOUND
+        |--------------------------------------------------------------------------
+        */
 
         $inboundQuery = StockMovement::whereBetween('tanggal', [$startDate, $endDate])
             ->where('jenis', 'in')
@@ -138,10 +138,10 @@ class WrmInventoryController extends Controller
             ->keyBy('date');
 
         /*
-    |--------------------------------------------------------------------------
-    | OUTBOUND
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | OUTBOUND
+        |--------------------------------------------------------------------------
+        */
 
         $outboundQuery = StockOutbound::join(
             'wrm_stock_draft_outbound_details',
@@ -179,10 +179,10 @@ class WrmInventoryController extends Controller
             ->keyBy('date');
 
         /*
-    |--------------------------------------------------------------------------
-    | TRANSFER
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | TRANSFER
+        |--------------------------------------------------------------------------
+        */
 
         $transferQuery = StockTransferDetail::join(
             'wrm_stock_transfers',
@@ -219,10 +219,10 @@ class WrmInventoryController extends Controller
             ->keyBy('date');
 
         /*
-    |--------------------------------------------------------------------------
-    | FORMAT CHART
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | FORMAT CHART
+        |--------------------------------------------------------------------------
+        */
 
         $categories = [];
         $inboundSeries = [];
@@ -324,9 +324,13 @@ class WrmInventoryController extends Controller
 
         $topMaterials = $query
             ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
-            ->select('wrm_master_barang.nama_barang', DB::raw('SUM(wrm_stock_on_hand.qty) as total_qty'))
+            ->select(
+                'wrm_master_barang.nama_barang',
+                DB::raw('COUNT(wrm_stock_on_hand.id) as total_pallet'),
+                DB::raw('SUM(wrm_stock_on_hand.qty) as total_qty')
+            )
             ->groupBy('wrm_master_barang.id', 'wrm_master_barang.nama_barang')
-            ->orderByDesc('total_qty')
+            ->orderByDesc('total_pallet')
             ->limit(5)
             ->get();
 
@@ -334,7 +338,10 @@ class WrmInventoryController extends Controller
         $data = [];
         foreach ($topMaterials as $tm) {
             $categories[] = \Illuminate\Support\Str::limit($tm->nama_barang, 25);
-            $data[] = (float) $tm->total_qty;
+            $data[] = [
+                'y' => (int) $tm->total_pallet,
+                'qty' => (float) $tm->total_qty,
+            ];
         }
 
         return response()->json([
@@ -342,7 +349,7 @@ class WrmInventoryController extends Controller
             'data' => [
                 'categories' => $categories,
                 'series' => [
-                    ['name' => 'Quantity', 'data' => $data, 'color' => '#6366f1', 'type' => 'bar'],
+                    ['name' => 'Pallet', 'data' => $data, 'color' => '#6366f1', 'type' => 'bar'],
                 ],
             ],
         ]);

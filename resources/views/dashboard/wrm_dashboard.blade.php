@@ -469,7 +469,7 @@
                 <div class="col-xl-8">
                     <div class="card dashboard-card h-100 p-3">
                         <h6 class="card-title fw-bold mb-0"><i class="bx bx-bar-chart-alt me-2 text-primary"></i>Top 5
-                            Material by Qty</h6>
+                            Material by Pallet</h6>
                         <div id="chartBar" style="height: 300px; width: 100%;"></div>
                     </div>
                 </div>
@@ -768,7 +768,12 @@
                         gridLineColor: '#f1f5f9'
                     },
                     tooltip: {
-                        valueSuffix: ' KG'
+                        formatter: function() {
+                            let qtyFormatted = Highcharts.numberFormat(this.point.qty, 0, ',', '.');
+                            return `<b>${this.x}</b><br/>` +
+                                   `<span style="color:${this.point.color}">\u25CF</span> ${this.series.name}: <b>${this.y} Pallet</b><br/>` +
+                                   `Total Qty: <b>${qtyFormatted} KG</b>`;
+                        }
                     },
                     plotOptions: {
                         bar: {
@@ -785,7 +790,7 @@
                         enabled: false
                     },
                     series: [{
-                        name: 'Quantity',
+                        name: 'Pallet',
                         data: []
                     }]
                 });
