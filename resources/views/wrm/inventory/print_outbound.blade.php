@@ -409,7 +409,7 @@
             </div>
 
             <!-- Signatures Section -->
-            <div class="signature-section">
+            {{-- <div class="signature-section">
                 <div class="sig-box">
                     <div class="sig-title">Dibuat Oleh,</div>
                     <div class="sig-name">&nbsp;</div>
@@ -425,7 +425,7 @@
                     <div class="sig-name">&nbsp;</div>
                     <div class="sig-role">Foreman / Supervisor</div>
                 </div>
-            </div>
+            </div> --}}
 
             <!-- Footer -->
             <div class="doc-footer">
