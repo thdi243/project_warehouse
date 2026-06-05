@@ -23,7 +23,7 @@ class WrmInventoryController extends Controller
         // Get locations grouped by gudang for filter dropdown
         $locations = MasterLocationModel::select('gudang')->whereNotNull('gudang')->distinct()->get();
 
-        $mid = MasterBarangModel::select('mid')->distinct()->get();
+        $mid = MasterBarangModel::select('mid', 'nama_barang')->distinct()->get();
         $noSpb = StockOnHand::select('no_spb')
             ->whereNotNull('no_spb')
             ->whereNotIn('status', ['ISSUED', 'RESERVED'])
@@ -470,7 +470,7 @@ class WrmInventoryController extends Controller
             });
         }
 
-        $data = $query->orderBy('incoming_date', 'desc')->get();
+        $data = $query->orderBy('incoming_date', 'desc')->paginate(10);
 
         return response()->json([
             'status' => true,

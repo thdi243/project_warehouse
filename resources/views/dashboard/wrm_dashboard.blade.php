@@ -322,10 +322,10 @@
                     <label class="form-label small mb-1">MID</label>
                     <select id="filterMid" class="form-select">
                         <option value="">All MID</option>
-                        @foreach ($mid as $mid)
-                            @if ($mid->mid)
-                                <option value="{{ $mid->mid }}">
-                                    {{ $mid->mid }}
+                        @foreach ($mid as $m)
+                            @if ($m->mid)
+                                <option value="{{ $m->mid }}">
+                                    {{ $m->mid . ' - ' . $m->nama_barang }}
                                 </option>
                             @endif
                         @endforeach
@@ -628,6 +628,18 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination Container -->
+                    <div class="d-flex justify-content-between align-items-center mt-3 d-none" id="agingPaginationContainer">
+                        <div class="text-muted small" id="agingPaginationInfo">
+                            Showing 0 to 0 of 0 entries
+                        </div>
+                        <nav aria-label="Aging Page navigation">
+                            <ul class="pagination pagination-sm mb-0" id="agingPagination">
+                                <!-- dynamically populated -->
+                            </ul>
+                        </nav>
+                    </div>
                 </div>
                 <div class="modal-footer bg-light border-top-0">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -735,7 +747,7 @@
                                 let qtyFormatted = Highcharts.numberFormat(point.point.qty, 0,
                                     ',', '.');
                                 s +=
-                                `<span style="color:${point.color}">\u25CF</span> ${point.series.name}: <b>${point.y} Pallet</b> (Total Qty: <b>${qtyFormatted} KG</b>)<br/>`;
+                                    `<span style="color:${point.color}">\u25CF</span> ${point.series.name}: <b>${point.y} Pallet</b> (Total Qty: <b>${qtyFormatted} KG</b>)<br/>`;
                             });
                             return s;
                         }
@@ -1307,19 +1319,29 @@
                 fetchAllData();
             });
 
-            function openAgingDetail(range) {
+            var modalAgingDetailInstance = null;
+            function openAgingDetail(range, page = 1) {
                 $('#agingRangeTitle').text(range);
                 const $tbody = $('#tableAgingDetail tbody');
                 $tbody.html(
                     '<tr><td colspan="10" class="text-center py-4 text-muted"><i class="bx bx-loader bx-spin me-2"></i>Loading details...</td></tr>'
-                    );
+                );
+
+                // Hide pagination container while loading
+                $('#agingPaginationContainer').addClass('d-none');
 
                 // Show modal first
-                const myModal = new bootstrap.Modal(document.getElementById('modalAgingDetail'));
-                myModal.show();
+                const modalEl = document.getElementById('modalAgingDetail');
+                if (!modalAgingDetailInstance) {
+                    modalAgingDetailInstance = new bootstrap.Modal(modalEl);
+                }
+                if (!modalEl.classList.contains('show')) {
+                    modalAgingDetailInstance.show();
+                }
 
                 const params = {
                     range: range,
+                    page: page,
                     gudang: $('#filterGudang').val(),
                     mid: $('#filterMid').val(),
                     spb: $('#filterNoSpb').val(),
@@ -1331,15 +1353,18 @@
                     data: params,
                     dataType: 'json',
                     success: function(res) {
-                        if (res.status && res.data) {
+                        if (res.status && res.data && res.data.data) {
                             $tbody.empty();
-                            if (res.data.length === 0) {
+                            const paginator = res.data;
+                            const items = paginator.data;
+                            if (items.length === 0) {
                                 $tbody.append(
                                     '<tr><td colspan="10" class="text-center py-4 text-muted">No stock items in this range.</td></tr>'
-                                    );
+                                );
                             } else {
                                 let html = '';
-                                res.data.forEach((item, index) => {
+                                const startIndex = paginator.from || 1;
+                                items.forEach((item, index) => {
                                     let locStr = '-';
                                     if (item.bin && item.bin.location) {
                                         let l = item.bin.location;
@@ -1350,7 +1375,7 @@
                                         .incoming_date.substring(0, 10) : '-';
                                     html += `
                                         <tr>
-                                            <td class="text-center">${index + 1}</td>
+                                            <td class="text-center">${startIndex + index}</td>
                                             <td>${item.no_spb ?? '-'}</td>
                                             <td>${item.supplier ?? '-'}</td>
                                             <td><b class="text-primary">${item.pallet_id ?? '-'}</b></td>
@@ -1364,17 +1389,98 @@
                                     `;
                                 });
                                 $tbody.html(html);
+
+                                // Render pagination controls
+                                renderAgingPagination(paginator, range);
                             }
                         } else {
                             $tbody.html(
                                 '<tr><td colspan="10" class="text-center text-danger py-4">Gagal memuat detail data.</td></tr>'
-                                );
+                            );
                         }
                     },
                     error: function() {
                         $tbody.html(
                             '<tr><td colspan="10" class="text-center text-danger py-4">Terjadi kesalahan koneksi.</td></tr>'
-                            );
+                        );
+                    }
+                });
+            }
+
+            function renderAgingPagination(paginator, range) {
+                const $container = $('#agingPaginationContainer');
+                const $info = $('#agingPaginationInfo');
+                const $pagination = $('#agingPagination');
+
+                $info.text(`Showing ${paginator.from || 0} to ${paginator.to || 0} of ${paginator.total || 0} entries`);
+                $pagination.empty();
+
+                if (paginator.last_page <= 1) {
+                    $container.addClass('d-none');
+                    return;
+                }
+
+                $container.removeClass('d-none');
+
+                // Previous button
+                let prevDisabled = paginator.current_page === 1 ? 'disabled' : '';
+                let prevPage = paginator.current_page > 1 ? paginator.current_page - 1 : 1;
+                $pagination.append(`
+                    <li class="page-item ${prevDisabled}">
+                        <a class="page-link" href="#" data-page="${prevPage}">&laquo;</a>
+                    </li>
+                `);
+
+                // Pages around current page
+                let startPage = Math.max(1, paginator.current_page - 2);
+                let endPage = Math.min(paginator.last_page, paginator.current_page + 2);
+
+                if (startPage > 1) {
+                    $pagination.append(`
+                        <li class="page-item">
+                            <a class="page-link" href="#" data-page="1">1</a>
+                        </li>
+                    `);
+                    if (startPage > 2) {
+                        $pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                    }
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    let active = paginator.current_page === i ? 'active' : '';
+                    $pagination.append(`
+                        <li class="page-item ${active}">
+                            <a class="page-link" href="#" data-page="${i}">${i}</a>
+                        </li>
+                    `);
+                }
+
+                if (endPage < paginator.last_page) {
+                    if (endPage < paginator.last_page - 1) {
+                        $pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                    }
+                    $pagination.append(`
+                        <li class="page-item">
+                            <a class="page-link" href="#" data-page="${paginator.last_page}">${paginator.last_page}</a>
+                        </li>
+                    `);
+                }
+
+                // Next button
+                let nextDisabled = paginator.current_page === paginator.last_page ? 'disabled' : '';
+                let nextPage = paginator.current_page < paginator.last_page ? paginator.current_page + 1 : paginator.last_page;
+                $pagination.append(`
+                    <li class="page-item ${nextDisabled}">
+                        <a class="page-link" href="#" data-page="${nextPage}">&raquo;</a>
+                    </li>
+                `);
+
+                // Event listener on page click
+                $pagination.find('.page-link').off('click').on('click', function(e) {
+                    e.preventDefault();
+                    let page = $(this).data('page');
+                    if (page && page !== paginator.current_page) {
+                        openAgingDetail(range, page);
                     }
                 });
             }
