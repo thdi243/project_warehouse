@@ -263,6 +263,8 @@ Route::middleware('auth')->group(function () {
                 Route::get('/get-data-outbound', [OutboundController::class, 'getData'])->name('wrm.inventory.get-data-outbound');
                 Route::get('/detail-data-outbound/{id}', [OutboundController::class, 'getOutboundDetail'])->name('wrm.inventory.get-detail-outbound');
                 Route::post('/cancel-outbound/{id}', [OutboundController::class, 'cancelOutbound'])->name('wrm.inventory.cancel-outbound');
+                Route::post('/cancel-outbound-item/{id}', [OutboundController::class, 'cancelOutboundItem'])->name('wrm.inventory.cancel-outbound-item');
+                Route::post('/cancel-outbound-items', [OutboundController::class, 'cancelOutboundItems'])->name('wrm.inventory.cancel-outbound-items');
                 Route::get('/magic-number/{id}', [OutboundController::class, 'printMagicNumber'])->name('wrm.inventory.magic-number');
 
                 // Monitoring PPIC & Purchasing

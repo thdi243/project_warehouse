@@ -3,206 +3,213 @@
 @section('title', ' | Outbound Inventory Data')
 
 @section('content')
-<div class="page-content">
-    <div class="container-fluid">
-        {{-- Card Filter --}}
-        <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="mb-0">Filter Data</h5>
-            </div>
-
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Group</label>
-                        <select class="form-select" id="filterGroup">
-                            <option value="">Semua Group</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Jenis Bahan</label>
-                        <select class="form-select" id="filterJenisBahan">
-                            <option value="">Semua Jenis Bahan</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">MID</label>
-                        <input type="text" class="form-control" id="filterMid" placeholder="Cari MID">
-                    </div>
-
-                    <div class="col-md-3 d-flex align-items-end gap-2 text-nowrap">
-                        <button class="btn btn-outline-primary w-100" data-bs-toggle="collapse"
-                            data-bs-target="#advancedFilter">
-                            <i class="mdi mdi-filter-plus"></i>
-                        </button>
-                        <button class="btn btn-primary w-100" id="btnReset">
-                            <i class="mdi mdi-refresh me-2"></i>Reset
-                        </button>
-                    </div>
+    <div class="page-content">
+        <div class="container-fluid">
+            {{-- Card Filter --}}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Filter Data</h5>
                 </div>
 
-                <div class="collapse mt-3" id="advancedFilter">
+                <div class="card-body">
                     <div class="row g-3">
-
                         <div class="col-md-3">
-                            <label class="form-label">Issued Date</label>
-                            <input type="date" class="form-control" id="filterDate" placeholder="Cari MID">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">No Reservasi</label>
-                            <input type="text" class="form-control" id="filterNoReserved" placeholder="Cari No Reservasi">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">Supplier</label>
-                            <select class="form-select" id="filterSupplier">
-                                <option value="">Semua Supplier</option>
-                                @foreach ($suppliers as $sup)
-                                <option value="{{ $sup->nama }}">{{ $sup->nama }}</option>
-                                @endforeach
+                            <label class="form-label">Group</label>
+                            <select class="form-select" id="filterGroup">
+                                <option value="">Semua Group</option>
                             </select>
                         </div>
 
-                        {{-- <div class="col-md-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Jenis Bahan</label>
+                            <select class="form-select" id="filterJenisBahan">
+                                <option value="">Semua Jenis Bahan</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">MID</label>
+                            <input type="text" class="form-control" id="filterMid" placeholder="Cari MID">
+                        </div>
+
+                        <div class="col-md-3 d-flex align-items-end gap-2 text-nowrap">
+                            <button class="btn btn-outline-primary w-100" data-bs-toggle="collapse"
+                                data-bs-target="#advancedFilter">
+                                <i class="mdi mdi-filter-plus"></i>
+                            </button>
+                            <button class="btn btn-primary w-100" id="btnReset">
+                                <i class="mdi mdi-refresh me-2"></i>Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="collapse mt-3" id="advancedFilter">
+                        <div class="row g-3">
+
+                            <div class="col-md-3">
+                                <label class="form-label">Issued Date</label>
+                                <input type="date" class="form-control" id="filterDate" placeholder="Cari MID">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">No Reservasi</label>
+                                <input type="text" class="form-control" id="filterNoReserved"
+                                    placeholder="Cari No Reservasi">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Supplier</label>
+                                <select class="form-select" id="filterSupplier">
+                                    <option value="">Semua Supplier</option>
+                                    @foreach ($suppliers as $sup)
+                                        <option value="{{ $sup->nama }}">{{ $sup->nama }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- <div class="col-md-3">
                                 <label class="form-label">Location</label>
                                 <input type="text" class="form-control" id="filterLocation">
                             </div> --}}
 
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Raw Material Stock Outbound</h5>
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped text-nowrap" id="tableStock">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center">No</th>
+                                    <th>No Reservasi</th>
+                                    <th>Shift</th>
+                                    <th>Draft Date</th>
+                                    <th>Qty Request (KG)</th>
+                                    <th>Catatan</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-end" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal detail --}}
+    <div class="modal fade" id="modalDetail" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Detail Outbound
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3 p-3 bg-light rounded" id="checklistSection" style="display: none;">
+                        <h6 class="fw-bold mb-2">Checklist Kondisi Barang:</h6>
+                        <div id="checklistContent" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-md align-middle text-nowrap">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center" style="width: 40px;"><input type="checkbox" id="checkAllItems"
+                                            class="form-check-input"></th>
+                                    <th>No</th>
+                                    <th>No Barcode</th>
+                                    <th>No SPB</th>
+                                    <th>Supplier</th>
+                                    <th>Pallet ID</th>
+                                    <th>MID</th>
+                                    <th>Nama Barang</th>
+                                    <th>Group</th>
+                                    <th>Qty (KG)</th>
+                                    <th>Status</th>
+                                    <th>Lokasi</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <!-- isi dari ajax -->
+                            </tbody>
+                        </table>
                     </div>
 
                 </div>
-            </div>
 
-        </div>
-
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Raw Material Stock Outbound</h5>
-            </div>
-
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped text-nowrap" id="tableStock">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="text-center">No</th>
-                                <th>No Reservasi</th>
-                                <th>Shift</th>
-                                <th>Draft Date</th>
-                                <th>Qty Request (KG)</th>
-                                <th>Catatan</th>
-                                <th class="text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                <div class="modal-footer">
+                    <button class="btn btn-danger me-auto" id="btnBulkCancel" style="display: none;">
+                        <i class="mdi mdi-close"></i> Cancel Terpilih (<span id="selectedCount">0</span>)
+                    </button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+                        Tutup
+                    </button>
                 </div>
-                <div class="mt-3 d-flex justify-content-end" id="pagination"></div>
+
             </div>
         </div>
     </div>
-</div>
-
-{{-- Modal detail --}}
-<div class="modal fade" id="modalDetail" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    Detail Outbound
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body">
-
-                <div class="mb-3 p-3 bg-light rounded" id="checklistSection" style="display: none;">
-                    <h6 class="fw-bold mb-2">Checklist Kondisi Barang:</h6>
-                    <div id="checklistContent" class="d-flex flex-wrap gap-2"></div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-bordered table-md align-middle text-nowrap">
-                        <thead class="table-light">
-                            <tr>
-                                <th>No</th>
-                                <th>No Barcode</th>
-                                <th>No SPB</th>
-                                <th>Supplier</th>
-                                <th>Pallet ID</th>
-                                <th>MID</th>
-                                <th>Nama Barang</th>
-                                <th>Group</th>
-                                <th>Qty (KG)</th>
-                                <th>Status</th>
-                                <th>Lokasi</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <!-- isi dari ajax -->
-                        </tbody>
-                    </table>
-                </div>
-
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">
-                    Tutup
-                </button>
-            </div>
-
-        </div>
-    </div>
-</div>
 @endsection
 
 @section('scripts')
-<script>
-    $(document).ready(function() {
-        function numberFormat(x) {
-            if (x === null || x === undefined) return '0';
-            let val = parseFloat(x);
-            return val.toLocaleString('id-ID', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 2
-            });
-        }
+    <script>
+        $(document).ready(function() {
+            function numberFormat(x) {
+                if (x === null || x === undefined) return '0';
+                let val = parseFloat(x);
+                return val.toLocaleString('id-ID', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2
+                });
+            }
 
-        loadData();
-        loadFilter();
+            loadData();
+            loadFilter();
 
-        function loadData(page = 1) {
+            function loadData(page = 1) {
 
-            let group = $('#filterGroup').val();
-            let jenisBahan = $('#filterJenisBahan').val();
-            let mid = $('#filterMid').val();
-            let date = $('#filterDate').val();
-            let supplier = $('#filterSupplier').val();
-            let no_reservasi = $('#filterNoReserved').val();
+                let group = $('#filterGroup').val();
+                let jenisBahan = $('#filterJenisBahan').val();
+                let mid = $('#filterMid').val();
+                let date = $('#filterDate').val();
+                let supplier = $('#filterSupplier').val();
+                let no_reservasi = $('#filterNoReserved').val();
 
-            $.get("{{ route('wrm.inventory.get-data-outbound') }}", {
-                page: page,
-                group: group,
-                jenis_bahan: jenisBahan,
-                mid: mid,
-                date: date,
-                supplier: supplier,
-                no_reservasi: no_reservasi,
-            }, function(res) {
+                $.get("{{ route('wrm.inventory.get-data-outbound') }}", {
+                    page: page,
+                    group: group,
+                    jenis_bahan: jenisBahan,
+                    mid: mid,
+                    date: date,
+                    supplier: supplier,
+                    no_reservasi: no_reservasi,
+                }, function(res) {
 
-                let html = '';
-                let data = res.data.data;
-                let startNo = res.data.from;
+                    let html = '';
+                    let data = res.data.data;
+                    let startNo = res.data.from;
 
-                if (data.length === 0) {
+                    if (data.length === 0) {
 
-                    html = `
+                        html = `
                             <tr>
                                 <td colspan="11" class="text-center text-muted py-4">
                                     <div class="d-flex flex-column align-items-center">
@@ -213,11 +220,11 @@
                             </tr>
                         `;
 
-                } else {
+                    } else {
 
-                    data.forEach((d, index) => {
+                        data.forEach((d, index) => {
 
-                        html += `
+                            html += `
                                 <tr>
                                     <td class="text-center">${startNo + index}</td>
                                     <td><b class="text-primary">${d.no_reservasi ?? '-'}</b></td>
@@ -237,141 +244,146 @@
                                         </button>
                                         <button class="btn btn-sm btn-danger btnCancel"
                                             data-id="${d.id}">
-                                            <i class="mdi mdi-close"></i> Cancel Trans
+                                            <i class="mdi mdi-close"></i> Cancel Reservasi
                                         </button>
                                     </td>
                                 </tr>
                             `;
-                    });
-                }
+                        });
+                    }
 
-                $('#tableStock tbody').html(html);
+                    $('#tableStock tbody').html(html);
 
-                renderPagination(res.data);
+                    renderPagination(res.data);
 
-            });
-        }
-
-        function renderPagination(data) {
-
-            let html = '';
-
-            let current = data.current_page;
-            let last = data.last_page;
-
-            html +=
-                `<button class="btn btn-sm btn-light page-btn" data-page="${current-1}" ${current==1?'disabled':''}>Prev</button>`;
-
-            let start = Math.max(1, current - 2);
-            let end = Math.min(last, current + 2);
-
-            if (start > 1) {
-                html += `<button class="btn btn-sm btn-light page-btn" data-page="1">1</button>`;
-                if (start > 2) html += `<span class="mx-1">...</span>`;
+                });
             }
 
-            for (let i = start; i <= end; i++) {
+            function renderPagination(data) {
 
-                html += `
+                let html = '';
+
+                let current = data.current_page;
+                let last = data.last_page;
+
+                html +=
+                    `<button class="btn btn-sm btn-light page-btn" data-page="${current-1}" ${current==1?'disabled':''}>Prev</button>`;
+
+                let start = Math.max(1, current - 2);
+                let end = Math.min(last, current + 2);
+
+                if (start > 1) {
+                    html += `<button class="btn btn-sm btn-light page-btn" data-page="1">1</button>`;
+                    if (start > 2) html += `<span class="mx-1">...</span>`;
+                }
+
+                for (let i = start; i <= end; i++) {
+
+                    html += `
                         <button class="btn btn-sm ${i==current?'btn-primary':'btn-light'} page-btn"
                         data-page="${i}">
                         ${i}
                         </button>
                     `;
+                }
+
+                if (end < last) {
+
+                    if (end < last - 1) html += `<span class="mx-1">...</span>`;
+
+                    html += `<button class="btn btn-sm btn-light page-btn" data-page="${last}">${last}</button>`;
+                }
+
+                html +=
+                    `<button class="btn btn-sm btn-light page-btn" data-page="${current+1}" ${current==last?'disabled':''}>Next</button>`;
+
+                $('#pagination').html(html);
             }
 
-            if (end < last) {
+            $(document).on('click', '.page-btn', function() {
 
-                if (end < last - 1) html += `<span class="mx-1">...</span>`;
+                let page = $(this).data('page');
 
-                html += `<button class="btn btn-sm btn-light page-btn" data-page="${last}">${last}</button>`;
-            }
-
-            html +=
-                `<button class="btn btn-sm btn-light page-btn" data-page="${current+1}" ${current==last?'disabled':''}>Next</button>`;
-
-            $('#pagination').html(html);
-        }
-
-        $(document).on('click', '.page-btn', function() {
-
-            let page = $(this).data('page');
-
-            loadData(page);
-
-        });
-
-        $('#filterGroup, #filterJenisBahan, #filterDate, #filterSupplier').on('change', function() {
-            loadData();
-        });
-
-        $('#filterNoReserved').on('keyup', function() {
-            clearTimeout(typingTimer);
-            typingTimer = setTimeout(function() {
-                loadData();
-            }, 500);
-        });
-
-        let typingTimer;
-
-        $('#filterMid').on('keyup', function() {
-            clearTimeout(typingTimer);
-            typingTimer = setTimeout(function() {
-                loadData();
-            }, 500);
-        });
-
-        function loadFilter() {
-
-            $.get("{{ route('wrm.inventory.getFilter') }}", function(res) {
-
-                let groupHtml = `<option value="">Semua Group</option>`;
-                res.groups.forEach(g => {
-                    groupHtml += `<option value="${g}">${g}</option>`;
-                });
-
-                $('#filterGroup').html(groupHtml);
-
-                let jenisHtml = `<option value="">Semua Jenis Bahan</option>`;
-                res.jenis_bahan.forEach(j => {
-                    jenisHtml += `<option value="${j}">${j}</option>`;
-                });
-
-                $('#filterJenisBahan').html(jenisHtml);
+                loadData(page);
 
             });
 
-        }
+            $('#filterGroup, #filterJenisBahan, #filterDate, #filterSupplier').on('change', function() {
+                loadData();
+            });
 
-        $(document).on('click', '.btnDetail', function() {
+            $('#filterNoReserved').on('keyup', function() {
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(function() {
+                    loadData();
+                }, 500);
+            });
 
-            let id = $(this).data('id');
+            let typingTimer;
 
-            $.get(`/wrm/inventory/detail-data-outbound/${id}`, function(res) {
+            $('#filterMid').on('keyup', function() {
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(function() {
+                    loadData();
+                }, 500);
+            });
 
-                let html = '';
+            function loadFilter() {
 
-                // Tampilkan Checklist
-                if (res.header && res.header.checklist_kondisi) {
-                    let checklist = JSON.parse(res.header.checklist_kondisi);
-                    if (checklist && checklist.length > 0) {
-                        let checkHtml = '';
-                        checklist.forEach(val => {
-                            checkHtml += `<span class="badge bg-success"><i class="mdi mdi-check-circle me-1"></i>${val}</span>`;
-                        });
-                        $('#checklistContent').html(checkHtml);
-                        $('#checklistSection').show();
+                $.get("{{ route('wrm.inventory.getFilter') }}", function(res) {
+
+                    let groupHtml = `<option value="">Semua Group</option>`;
+                    res.groups.forEach(g => {
+                        groupHtml += `<option value="${g}">${g}</option>`;
+                    });
+
+                    $('#filterGroup').html(groupHtml);
+
+                    let jenisHtml = `<option value="">Semua Jenis Bahan</option>`;
+                    res.jenis_bahan.forEach(j => {
+                        jenisHtml += `<option value="${j}">${j}</option>`;
+                    });
+
+                    $('#filterJenisBahan').html(jenisHtml);
+
+                });
+
+            }
+
+            function showOutboundDetail(id) {
+                $('#checkAllItems').prop('checked', false);
+                $('#btnBulkCancel').hide();
+                $('#selectedCount').text('0');
+
+                $.get(`/wrm/inventory/detail-data-outbound/${id}`, function(res) {
+
+                    let html = '';
+
+                    // Tampilkan Checklist
+                    if (res.header && res.header.checklist_kondisi) {
+                        let checklist = JSON.parse(res.header.checklist_kondisi);
+                        if (checklist && checklist.length > 0) {
+                            let checkHtml = '';
+                            checklist.forEach(val => {
+                                checkHtml +=
+                                    `<span class="badge bg-success"><i class="mdi mdi-check-circle me-1"></i>${val}</span>`;
+                            });
+                            $('#checklistContent').html(checkHtml);
+                            $('#checklistSection').show();
+                        } else {
+                            $('#checklistSection').hide();
+                        }
                     } else {
                         $('#checklistSection').hide();
                     }
-                } else {
-                    $('#checklistSection').hide();
-                }
 
-                res.data.forEach((d, i) => {
+                    res.data.forEach((d, i) => {
 
-                    html += `
+                        html += `
                             <tr>
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input select-item" data-id="${d.id}" data-outbound-id="${d.outbound_id}">
+                                </td>
                                 <td>${i+1}</td>
                                 <td>${d.barcode ?? '-'}</td>
                                 <td>${d.no_spb ?? '-'}</td>
@@ -383,64 +395,192 @@
                                 <td>${numberFormat(d.qty)}</td>
                                 <td>${d.status}</td>
                                 <td style="font-size: 11px;">${d.bin.location.plant} - ${d.bin.location.gudang} - ${d.bin.location.bin} - (${d.bin.kolom}.${d.bin.level})</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-danger btnCancelItem"
+                                        data-id="${d.id}"
+                                        data-outbound-id="${d.outbound_id}"
+                                        title="Cancel Item draft ini">
+                                        <i class="mdi mdi-close"></i> Cancel
+                                    </button>
+                                </td>
                             </tr>
                         `;
-                });
-
-                $('#modalDetail tbody').html(html);
-
-                $('#modalDetail').modal('show');
-
-            });
-
-        });
-
-        $('#btnReset').click(function() {
-
-            $('#filterGroup').val('');
-            $('#filterJenisBahan').val('');
-            $('#filterMid').val('');
-
-            loadData();
-
-        });
-
-        $(document).on('click', '.btnMagicNumber', function() {
-
-            let id = $(this).data('id');
-
-            // Buka magic number di tab baru
-            window.open(`/wrm/inventory/magic-number/${id}`, '_blank');
-
-        });
-
-        $(document).on('click', '.btnCancel', function() {
-
-            let id = $(this).data('id');
-
-            Swal.fire({
-                title: 'Cancel Transfer?',
-                icon: 'warning',
-                showCancelButton: true
-            }).then((r) => {
-
-                if (r.isConfirmed) {
-
-                    $.post(`/wrm/inventory/cancel-outbound/${id}`, {
-                        _token: "{{ csrf_token() }}"
-                    }, function(res) {
-
-                        Swal.fire('Berhasil', res.message, 'success');
-
-                        loadData();
-
                     });
 
-                }
+                    $('#modalDetail tbody').html(html);
+
+                    $('#modalDetail').modal('show');
+
+                });
+            }
+
+            $(document).on('click', '.btnDetail', function() {
+
+                let id = $(this).data('id');
+                showOutboundDetail(id);
 
             });
 
-        });
-    })
-</script>
+            $('#btnReset').click(function() {
+
+                $('#filterGroup').val('');
+                $('#filterJenisBahan').val('');
+                $('#filterMid').val('');
+
+                loadData();
+
+            });
+
+            $(document).on('click', '.btnMagicNumber', function() {
+
+                let id = $(this).data('id');
+
+                // Buka magic number di tab baru
+                window.open(`/wrm/inventory/magic-number/${id}`, '_blank');
+
+            });
+
+            $(document).on('click', '.btnCancel', function() {
+
+                let id = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Cancel Reservasi?',
+                    text: 'Semua item pada no reservasi ini akan dihapus dari draft outbound dan dikembalikan ke Stock on Hand (SOH).',
+                    icon: 'warning',
+                    showCancelButton: true
+                }).then((r) => {
+
+                    if (r.isConfirmed) {
+
+                        $.post(`/wrm/inventory/cancel-outbound/${id}`, {
+                            _token: "{{ csrf_token() }}"
+                        }, function(res) {
+
+                            Swal.fire('Berhasil', res.message, 'success');
+
+                            loadData();
+
+                        });
+
+                    }
+
+                });
+
+            });
+
+            $(document).on('click', '.btnCancelItem', function() {
+                let itemId = $(this).data('id');
+                let outboundId = $(this).data('outbound-id');
+
+                Swal.fire({
+                    title: 'Cancel Item Draft?',
+                    text: 'Item ini akan dihapus dari draft outbound dan dikembalikan ke Stock on Hand (SOH).',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Cancel!',
+                    cancelButtonText: 'Batal'
+                }).then((r) => {
+                    if (r.isConfirmed) {
+                        $.post(`/wrm/inventory/cancel-outbound-item/${itemId}`, {
+                            _token: "{{ csrf_token() }}"
+                        }, function(res) {
+                            Swal.fire('Berhasil', res.message, 'success');
+
+                            loadData();
+
+                            if (res.deleted_header) {
+                                $('#modalDetail').modal('hide');
+                            } else {
+                                showOutboundDetail(outboundId);
+                            }
+                        }).fail(function(xhr) {
+                            let errMsg = xhr.responseJSON ? xhr.responseJSON.message :
+                                'Terjadi kesalahan saat membatalkan item.';
+                            Swal.fire('Error', errMsg, 'error');
+                        });
+                    }
+                });
+            });
+
+            // Check/Uncheck all items
+            $(document).on('change', '#checkAllItems', function() {
+                let checked = $(this).prop('checked');
+                $('.select-item').prop('checked', checked);
+                updateBulkCancelButton();
+            });
+
+            // Single item checkbox change
+            $(document).on('change', '.select-item', function() {
+                if ($('.select-item:checked').length === $('.select-item').length) {
+                    $('#checkAllItems').prop('checked', true);
+                } else {
+                    $('#checkAllItems').prop('checked', false);
+                }
+                updateBulkCancelButton();
+            });
+
+            function updateBulkCancelButton() {
+                let checkedCount = $('.select-item:checked').length;
+                if (checkedCount > 0) {
+                    $('#selectedCount').text(checkedCount);
+                    $('#btnBulkCancel').fadeIn(200);
+                } else {
+                    $('#btnBulkCancel').fadeOut(200);
+                }
+            }
+
+            // Bulk cancel action
+            $(document).on('click', '#btnBulkCancel', function() {
+                let selectedIds = [];
+                let outboundId = null;
+
+                $('.select-item:checked').each(function() {
+                    selectedIds.push($(this).data('id'));
+                    if (!outboundId) {
+                        outboundId = $(this).data('outbound-id');
+                    }
+                });
+
+                if (selectedIds.length === 0) return;
+
+                Swal.fire({
+                    title: 'Cancel Item Terpilih?',
+                    text: `${selectedIds.length} item terpilih akan dihapus dari draft outbound dan dikembalikan ke Stock on Hand (SOH).`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Cancel!',
+                    cancelButtonText: 'Batal'
+                }).then((r) => {
+                    if (r.isConfirmed) {
+                        $.post(`/wrm/inventory/cancel-outbound-items`, {
+                            _token: "{{ csrf_token() }}",
+                            ids: selectedIds
+                        }, function(res) {
+                            Swal.fire('Berhasil', res.message, 'success');
+
+                            loadData();
+
+                            if (res.deleted_headers && res.deleted_headers
+                                .includes(outboundId)) {
+                                $('#modalDetail').modal('hide');
+                            } else {
+                                showOutboundDetail(outboundId);
+                            }
+                        }).fail(function(xhr) {
+                            let errMsg = xhr.responseJSON ? xhr.responseJSON
+                                .message :
+                                'Terjadi kesalahan saat membatalkan item.';
+                            Swal.fire('Error', errMsg, 'error');
+                        });
+                    }
+                });
+            });
+
+        })
+    </script>
 @endsection

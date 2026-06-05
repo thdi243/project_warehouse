@@ -384,6 +384,192 @@ class OutboundController extends Controller
         }
     }
 
+    public function cancelOutboundItem($id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $detail = StockOutboundDetail::findOrFail($id);
+            $outbound = StockOutbound::findOrFail($detail->outbound_id);
+
+            if ($detail->status === 'ISSUED') {
+                // Reverse inventory if it was auto-issued
+                $transferDetail = StockTransferDetail::where('no_barcode', $detail->barcode)
+                    ->where('barang_id', $detail->barang_id)
+                    ->whereHas('header', function ($q) use ($outbound) {
+                        $q->where('no_reservasi', $outbound->no_reservasi);
+                    })
+                    ->first();
+
+                if ($transferDetail) {
+                    $movement = StockMovement::where('ref_type', 'stock_transfer')
+                        ->where('ref_id', $transferDetail->id)
+                        ->first();
+
+                    if ($movement) {
+                        $balance = StockBalance::where('barang_id', $movement->barang_id)
+                            ->where('loc_id', $movement->loc_id)
+                            ->first();
+
+                        if ($balance) {
+                            $balance->increment('qty', abs($movement->qty));
+                            $balance->update(['updated_by' => Auth::id()]);
+                        }
+
+                        $movement->delete();
+                    }
+
+                    $header = $transferDetail->header;
+                    $transferDetail->delete();
+
+                    if ($header && $header->details()->count() === 0) {
+                        $header->delete();
+                    }
+                }
+            }
+
+            // Return inbound status to UNREST (available again)
+            StockOnHand::where([
+                'barang_id' => $detail->barang_id,
+                'pallet_id' => $detail->pallet_id
+            ])->update([
+                'status' => 'UNREST',
+                'updated_by' => Auth::id()
+            ]);
+
+            $detail->delete();
+
+            $remainingCount = StockOutboundDetail::where('outbound_id', $outbound->id)->count();
+            if ($remainingCount === 0) {
+                $outbound->delete();
+                $deletedHeader = true;
+            } else {
+                $outbound->decrement('qty_request', $detail->qty);
+                $deletedHeader = false;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Item outbound berhasil dibatalkan',
+                'deleted_header' => $deletedHeader
+            ]);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function cancelOutboundItems(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:wrm_stock_draft_outbound_details,id'
+        ]);
+
+        $ids = $request->ids;
+
+        DB::beginTransaction();
+
+        try {
+            $details = StockOutboundDetail::whereIn('id', $ids)->get();
+
+            $outboundIdsToUpdate = [];
+
+            foreach ($details as $detail) {
+                $outbound = StockOutbound::findOrFail($detail->outbound_id);
+                $outboundIdsToUpdate[$outbound->id] = true;
+
+                if ($detail->status === 'ISSUED') {
+                    // Reverse inventory if it was auto-issued
+                    $transferDetail = StockTransferDetail::where('no_barcode', $detail->barcode)
+                        ->where('barang_id', $detail->barang_id)
+                        ->whereHas('header', function ($q) use ($outbound) {
+                            $q->where('no_reservasi', $outbound->no_reservasi);
+                        })
+                        ->first();
+
+                    if ($transferDetail) {
+                        $movement = StockMovement::where('ref_type', 'stock_transfer')
+                            ->where('ref_id', $transferDetail->id)
+                            ->first();
+
+                        if ($movement) {
+                            $balance = StockBalance::where('barang_id', $movement->barang_id)
+                                ->where('loc_id', $movement->loc_id)
+                                ->first();
+
+                            if ($balance) {
+                                $balance->increment('qty', abs($movement->qty));
+                                $balance->update(['updated_by' => Auth::id()]);
+                            }
+
+                            $movement->delete();
+                        }
+
+                        $header = $transferDetail->header;
+                        $transferDetail->delete();
+
+                        if ($header && $header->details()->count() === 0) {
+                            $header->delete();
+                        }
+                    }
+                }
+
+                // Return inbound status to UNREST (available again)
+                StockOnHand::where([
+                    'barang_id' => $detail->barang_id,
+                    'pallet_id' => $detail->pallet_id
+                ])->update([
+                    'status' => 'UNREST',
+                    'updated_by' => Auth::id()
+                ]);
+
+                // Delete the detail item
+                $detail->delete();
+            }
+
+            // Post-deletion update for headers
+            $deletedHeaders = [];
+            foreach (array_keys($outboundIdsToUpdate) as $outboundId) {
+                $outbound = StockOutbound::find($outboundId);
+                if ($outbound) {
+                    $remainingCount = StockOutboundDetail::where('outbound_id', $outboundId)->count();
+                    if ($remainingCount === 0) {
+                        $outbound->delete();
+                        $deletedHeaders[] = (int) $outboundId;
+                    } else {
+                        // Decrement qty_request by the sum of deleted details in this outbound
+                        $deletedQty = $details->where('outbound_id', $outboundId)->sum('qty');
+                        $outbound->decrement('qty_request', $deletedQty);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Item-item outbound terpilih berhasil dibatalkan',
+                'deleted_headers' => $deletedHeaders
+            ]);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function printMagicNumber($id)
     {
         $outbound = StockOutbound::with([
