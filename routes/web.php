@@ -262,6 +262,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/store-outbound', [OutboundController::class, 'submitOutbound'])->name('wrm.inventory.submit-outbound');
                 Route::get('/get-data-outbound', [OutboundController::class, 'getData'])->name('wrm.inventory.get-data-outbound');
                 Route::get('/detail-data-outbound/{id}', [OutboundController::class, 'getOutboundDetail'])->name('wrm.inventory.get-detail-outbound');
+                Route::post('/update-outbound/{id}', [OutboundController::class, 'updateOutbound'])->name('wrm.inventory.update-outbound');
                 Route::post('/cancel-outbound/{id}', [OutboundController::class, 'cancelOutbound'])->name('wrm.inventory.cancel-outbound');
                 Route::post('/cancel-outbound-item/{id}', [OutboundController::class, 'cancelOutboundItem'])->name('wrm.inventory.cancel-outbound-item');
                 Route::post('/cancel-outbound-items', [OutboundController::class, 'cancelOutboundItems'])->name('wrm.inventory.cancel-outbound-items');

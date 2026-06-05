@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ' | Outbound Inventory Data')
+@section('title', ' | Data Draft Outbound')
 
 @section('content')
     <div class="page-content">
@@ -81,7 +81,7 @@
 
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Raw Material Stock Outbound</h5>
+                    <h5 class="mb-0">Data Draft Outbound Raw Material</h5>
                 </div>
 
                 <div class="card-body">
@@ -167,6 +167,48 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Edit --}}
+    <div class="modal fade" id="modalEdit" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Header Draft Outbound</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formEdit">
+                    @csrf
+                    <input type="hidden" name="id" id="editId">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="editNoReservasi">No Reservasi <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editNoReservasi" name="no_reservasi" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="editTglReservasi">Tgl Reservasi <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="editTglReservasi" name="tgl_reservasi" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="editShift">Shift <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editShift" name="shift" required>
+                                <option value="1">Shift 1</option>
+                                <option value="2">Shift 2</option>
+                                <option value="3">Shift 3</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="editCatatan">Catatan</label>
+                            <textarea class="form-control" id="editCatatan" name="catatan" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmitEdit">Simpan Perubahan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -237,6 +279,10 @@
                                             data-id="${d.id}"
                                             title="Print List Draft untuk Forklift">
                                             <i class="mdi mdi-printer"></i> Draft
+                                        </button>
+                                        <button class="btn btn-sm btn-warning btnEdit text-white"
+                                            data-id="${d.id}">
+                                            <i class="mdi mdi-pencil"></i> Edit
                                         </button>
                                         <button class="btn btn-sm btn-info btnDetail"
                                             data-id="${d.id}">
@@ -419,6 +465,71 @@
                 let id = $(this).data('id');
                 showOutboundDetail(id);
 
+            });
+
+            // Edit draft outbound header
+            $(document).on('click', '.btnEdit', function() {
+                let id = $(this).data('id');
+
+                $.get(`/wrm/inventory/detail-data-outbound/${id}`, function(res) {
+                    if (res.status && res.header) {
+                        $('#editId').val(res.header.id);
+                        $('#editNoReservasi').val(res.header.no_reservasi);
+                        
+                        // Extract only date string (YYYY-MM-DD)
+                        let dateVal = '';
+                        if (res.header.reservasi_date) {
+                            dateVal = res.header.reservasi_date.substring(0, 10);
+                        }
+                        $('#editTglReservasi').val(dateVal);
+                        $('#editShift').val(res.header.shift);
+                        $('#editCatatan').val(res.header.catatan);
+
+                        $('#modalEdit').modal('show');
+                    } else {
+                        Swal.fire('Error', 'Gagal mengambil data header.', 'error');
+                    }
+                }).fail(function() {
+                    Swal.fire('Error', 'Koneksi gagal saat mengambil data.', 'error');
+                });
+            });
+
+            $('#formEdit').on('submit', function(e) {
+                e.preventDefault();
+                let id = $('#editId').val();
+
+                $.ajax({
+                    url: `/wrm/inventory/update-outbound/${id}`,
+                    method: "POST",
+                    data: $(this).serialize(),
+                    beforeSend: function() {
+                        Swal.fire({
+                            title: 'Menyimpan...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+                    },
+                    success: function(res) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: res.message ?? 'Header draft outbound berhasil diperbarui',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            $('#modalEdit').modal('hide');
+                            loadData();
+                        });
+                    },
+                    error: function(xhr) {
+                        let errMsg = xhr.responseJSON?.message ?? 'Terjadi kesalahan sistem';
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: errMsg
+                        });
+                    }
+                });
             });
 
             $('#btnReset').click(function() {

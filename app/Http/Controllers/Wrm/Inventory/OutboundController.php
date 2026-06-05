@@ -310,6 +310,54 @@ class OutboundController extends Controller
         ]);
     }
 
+    public function updateOutbound(Request $request, $id)
+    {
+        $request->validate([
+            'no_reservasi' => 'required|string|max:100',
+            'tgl_reservasi' => 'required|date',
+            'shift' => 'required|string|max:50',
+            'catatan' => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $outbound = StockOutbound::findOrFail($id);
+            $oldNoReservasi = $outbound->no_reservasi;
+            $newNoReservasi = $request->no_reservasi;
+            $newReservasiDate = Carbon::parse($request->tgl_reservasi)->setTimeFrom(now());
+
+            $outbound->update([
+                'no_reservasi' => $newNoReservasi,
+                'reservasi_date' => $newReservasiDate,
+                'shift' => $request->shift,
+                'catatan' => $request->catatan,
+                'updated_by' => Auth::id(),
+            ]);
+
+            // Sync with StockTransfer if any matching oldNoReservasi
+            StockTransfer::where('no_reservasi', $oldNoReservasi)->update([
+                'no_reservasi' => $newNoReservasi,
+                'tgl_reservasi' => Carbon::parse($request->tgl_reservasi),
+                'updated_by' => Auth::id(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Header draft outbound berhasil diperbarui'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function cancelOutbound($id)
     {
         DB::beginTransaction();
