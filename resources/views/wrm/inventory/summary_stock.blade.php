@@ -26,7 +26,7 @@
                             <h4 class="card-title mb-0 flex-grow-1">Stock Summary</h4>
                         </div>
                         <div class="card-body border border-dashed border-end-0 border-start-0">
-                            <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist">
+                            <ul class="nav nav-tabs nav-justified nav-tabs-custom nav-success mb-3" role="tablist">
                                 <li class="nav-item" role="presentation">
                                     <a class="nav-link active" data-bs-toggle="tab" href="#summary-item-tab" role="tab"
                                         aria-selected="true">
@@ -37,6 +37,12 @@
                                     <a class="nav-link" data-bs-toggle="tab" href="#summary-spb-tab" role="tab"
                                         aria-selected="false">
                                         Per No SPB
+                                    </a>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#summary-moving-average-tab"
+                                        role="tab" aria-selected="false">
+                                        Moving Average
                                     </a>
                                 </li>
                             </ul>
@@ -107,6 +113,41 @@
                                         </div>
                                     </form>
                                 </div>
+
+                                <div class="tab-pane" id="summary-moving-average-tab" role="tabpanel">
+                                    <form id="filter-moving-average-form">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-xxl-3 col-sm-4">
+                                                <div class="search-box">
+                                                    <input type="text" class="form-control" id="filter-mid-ma"
+                                                        placeholder="Search MID or Nama Barang...">
+                                                    <i class="ri-search-line search-icon"></i>
+                                                </div>
+                                            </div>
+                                            <div class="col-xxl-3 col-sm-4">
+                                                <select class="form-select" id="filter-days-ma">
+                                                    <option value="20">20 Hari</option>
+                                                    <option value="30" selected>30 Hari</option>
+                                                    <option value="40">40 Hari</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-xxl-2 col-sm-4">
+                                                <div class="d-flex gap-2">
+                                                    <button type="button" class="btn btn-primary flex-fill"
+                                                        id="btn-filter-ma">
+                                                        <i class="ri-equalizer-fill me-1 align-bottom"></i>
+                                                        Filter
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger flex-fill"
+                                                        id="btnResetMa">
+                                                        <i class="ri-refresh me-1 align-bottom"></i>
+                                                        Reset
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                         <div class="card-body">
@@ -158,6 +199,29 @@
                                         </table>
                                     </div>
                                 </div>
+
+                                <div class="tab-pane" id="summary-moving-average-table-tab" role="tabpanel">
+                                    <div class="table-responsive table-card mb-4">
+                                        <table class="table align-middle table-nowrap mb-0" id="table-summary-ma"
+                                            style="width:100%;">
+                                            <thead class="table-light text-muted">
+                                                <tr>
+                                                    <th>MID</th>
+                                                    <th>Nama Barang</th>
+                                                    <th>UoM</th>
+                                                    <th class="text-end">Stock Transfer</th>
+                                                    <th class="text-end">Average</th>
+                                                    <th class="text-end">On Hand</th>
+                                                    <th class="text-center">Cover Days</th>
+                                                    <th class="text-center">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {{-- Data will be loaded via Ajax --}}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -167,18 +231,21 @@
     </div>
 
     <!-- SPB Detail Modal -->
-    <div class="modal fade" id="modalSpbDetail" tabindex="-1" aria-labelledby="modalSpbDetailLabel" aria-hidden="true">
+    <div class="modal fade" id="modalSpbDetail" tabindex="-1" aria-labelledby="modalSpbDetailLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-light border-bottom-0">
                     <h5 class="modal-title fw-bold" id="modalSpbDetailLabel">
-                        <i class="ri-article-line me-2 text-primary"></i> Detail Stock SPB: <span id="spbDetailNumber" class="text-primary"></span>
+                        <i class="ri-article-line me-2 text-primary"></i> Detail Stock SPB: <span id="spbDetailNumber"
+                            class="text-primary"></span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4 bg-light">
                     <div class="table-responsive rounded shadow-sm">
-                        <table class="table table-bordered table-striped align-middle text-nowrap mb-0" id="tableSpbDetail">
+                        <table class="table table-bordered table-striped align-middle text-nowrap mb-0"
+                            id="tableSpbDetail">
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center" width="50">No</th>
@@ -382,19 +449,87 @@
                 });
             }
 
+            let maTable = null;
+
+            function initMaTable() {
+                if (maTable) {
+                    return;
+                }
+
+                maTable = $('#table-summary-ma').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    searching: false,
+                    ajax: {
+                        url: "{{ route('wrm.inventory.monitoring.moving-average.data') }}",
+                        type: 'GET',
+                        data: function(d) {
+                            d.days = $('#filter-days-ma').val();
+                            d.search_mid = $('#filter-mid-ma').val();
+                        },
+                        error: function(xhr, error, thrown) {
+                            console.error("DataTable error:", error, thrown);
+                        }
+                    },
+                    columns: [{
+                            data: 'mid'
+                        },
+                        {
+                            data: 'nama_barang'
+                        },
+                        {
+                            data: 'uom'
+                        },
+                        {
+                            data: 'total_used',
+                            className: 'text-end',
+                            render: formatNumber.display
+                        },
+                        {
+                            data: 'avg_daily',
+                            className: 'text-end',
+                            render: formatNumber.display
+                        },
+                        {
+                            data: 'available',
+                            className: 'text-end',
+                            render: formatNumber.display
+                        },
+                        {
+                            data: 'cover_days',
+                            className: 'text-center fw-semibold'
+                        },
+                        {
+                            data: 'status_label',
+                            className: 'text-center'
+                        }
+                    ]
+                });
+            }
+
             $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
                 const target = $(e.target).attr('href');
                 if (target === '#summary-item-tab') {
                     $('#summary-item-table-tab').addClass('active show');
                     $('#summary-spb-table-tab').removeClass('active show');
+                    $('#summary-moving-average-table-tab').removeClass('active show');
                     itemTable.columns.adjust();
                 }
 
                 if (target === '#summary-spb-tab') {
                     $('#summary-spb-table-tab').addClass('active show');
                     $('#summary-item-table-tab').removeClass('active show');
+                    $('#summary-moving-average-table-tab').removeClass('active show');
                     initSpbTable();
                     spbTable.columns.adjust();
+                }
+
+                if (target === '#summary-moving-average-tab') {
+                    $('#summary-moving-average-table-tab').addClass('active show');
+                    $('#summary-item-table-tab').removeClass('active show');
+                    $('#summary-spb-table-tab').removeClass('active show');
+                    initMaTable();
+                    maTable.columns.adjust();
                 }
             });
 
@@ -405,6 +540,11 @@
             $('#btn-filter-spb').on('click', function() {
                 initSpbTable();
                 spbTable.ajax.reload();
+            });
+
+            $('#btn-filter-ma').on('click', function() {
+                initMaTable();
+                maTable.ajax.reload();
             });
 
             $('#filter-mid').on('change', function() {
@@ -421,13 +561,28 @@
                 spbTable.ajax.reload();
             });
 
-            $('#btnReset, #btnResetSpb').on('click', function() {
+            $('#filter-mid-ma').on('change', function() {
+                initMaTable();
+                maTable.ajax.reload();
+            });
+
+            $('#filter-days-ma').on('change', function() {
+                initMaTable();
+                maTable.ajax.reload();
+            });
+
+            $('#btnReset, #btnResetSpb, #btnResetMa').on('click', function() {
                 $('#filter-mid').val('');
                 $('#filter-no-spb').val('');
                 $('#filter-mid-spb').val('');
+                $('#filter-mid-ma').val('');
+                $('#filter-days-ma').val('30');
                 itemTable.ajax.reload();
                 if (spbTable) {
                     spbTable.ajax.reload();
+                }
+                if (maTable) {
+                    maTable.ajax.reload();
                 }
             });
 
@@ -435,7 +590,7 @@
             $(document).on('click', '.show-spb-detail', function(e) {
                 e.preventDefault();
                 const spbNumber = $(this).data('spb');
-                
+
                 $('#spbDetailNumber').text(spbNumber);
                 const $tbody = $('#tableSpbDetail tbody');
                 $tbody.html(
@@ -448,7 +603,9 @@
                 $.ajax({
                     url: "{{ route('wrm.inventory.monitoring.spb-detail.data') }}",
                     type: 'GET',
-                    data: { no_spb: spbNumber },
+                    data: {
+                        no_spb: spbNumber
+                    },
                     dataType: 'json',
                     success: function(res) {
                         if (res.status && res.data) {
@@ -463,9 +620,11 @@
                                     let locStr = '-';
                                     if (item.bin && item.bin.location) {
                                         let l = item.bin.location;
-                                        locStr = `${l.plant} - ${l.gudang} - ${l.bin} (${item.bin.kolom}.${item.bin.level})`;
+                                        locStr =
+                                            `${l.plant} - ${l.gudang} - ${l.bin} (${item.bin.kolom}.${item.bin.level})`;
                                     }
-                                    let incomingDateStr = item.incoming_date ? item.incoming_date.substring(0, 10) : '-';
+                                    let incomingDateStr = item.incoming_date ? item
+                                        .incoming_date.substring(0, 10) : '-';
                                     html += `
                                         <tr>
                                             <td class="text-center">${index + 1}</td>

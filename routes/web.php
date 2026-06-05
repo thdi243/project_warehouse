@@ -286,6 +286,7 @@ Route::middleware('auth')->group(function () {
                     Route::get('/data/purchasing-stock', [MonitoringController::class, 'getPurchasingStockData'])->name('wrm.inventory.monitoring.purchasing.stock-data');
                     Route::get('/data/summary-stock', [MonitoringController::class, 'getSummaryStockData'])->name('wrm.inventory.monitoring.summary-stock.data');
                     Route::get('/data/spb-detail', [MonitoringController::class, 'getSpbDetailData'])->name('wrm.inventory.monitoring.spb-detail.data');
+                    Route::get('/data/moving-average', [MonitoringController::class, 'getMovingAverageData'])->name('wrm.inventory.monitoring.moving-average.data');
                 });
             });
         });

@@ -466,4 +466,74 @@ class MonitoringController extends Controller
             'data' => $paginatedData
         ]);
     }
+
+    public function getMovingAverageData(Request $request)
+    {
+        $days = intval($request->get('days', 30));
+        if (!in_array($days, [20, 30, 40])) {
+            $days = 30;
+        }
+
+        $search = $request->get('search_mid');
+
+        $query = MasterBarangModel::select('id', 'mid', 'nama_barang', 'uom');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('mid', 'like', '%' . $search . '%')
+                  ->orWhere('nama_barang', 'like', '%' . $search . '%');
+            });
+        }
+
+        $recordsTotal = $query->count();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 10;
+        $materials = $query->orderBy('mid')->skip($start)->take($length)->get();
+
+        $materialIds = $materials->pluck('id')->toArray();
+
+        // Query total stock on hand for these materials (available stock = not ISSUED or RESERVED)
+        $soh = StockOnHand::whereIn('barang_id', $materialIds)
+            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->select('barang_id', DB::raw('SUM(qty) as available_qty'))
+            ->groupBy('barang_id')
+            ->get()
+            ->keyBy('barang_id');
+
+        // Query stock usage (outgoing movements) for these materials in the last X days
+        $startDate = Carbon::now()->subDays($days);
+        $usage = StockMovement::whereIn('barang_id', $materialIds)
+            ->where('jenis', 'out')
+            ->where('tanggal', '>=', $startDate)
+            ->select('barang_id', DB::raw('SUM(qty) as total_used'))
+            ->groupBy('barang_id')
+            ->get()
+            ->keyBy('barang_id');
+
+        $data = $materials->map(function ($m) use ($soh, $usage, $days) {
+            $available = (float)($soh[$m->id]->available_qty ?? 0);
+            $used = (float)($usage[$m->id]->total_used ?? 0);
+            $avgDaily = $used / $days;
+            $coverDays = $avgDaily > 0 ? floor($available / $avgDaily) : 999;
+
+            return [
+                'mid' => $m->mid,
+                'nama_barang' => $m->nama_barang,
+                'uom' => $m->uom,
+                'total_used' => $used,
+                'avg_daily' => $avgDaily,
+                'available' => $available,
+                'cover_days' => $coverDays == 999 ? '999+ Hari' : $coverDays . ' Hari',
+                'status_label' => $this->getCoverStatus($coverDays)
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data
+        ]);
+    }
 }
