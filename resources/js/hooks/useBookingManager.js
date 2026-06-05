@@ -179,6 +179,7 @@ export function useBookingManager() {
                     nama_barang: item.barang.nama_barang ?? "",
                     qty: item.qty,
                     keterangan: item.keterangan ?? "",
+                    uom: item.barang?.uom ?? "",
                     reservation_id: item.id,
                 }))
             );

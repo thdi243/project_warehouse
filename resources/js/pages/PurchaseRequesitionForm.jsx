@@ -46,6 +46,7 @@ export default function PurchaseRequisitionForm() {
         nama_barang: "",
         qty: "",
         keterangan: "",
+        uom: "",
     });
 
     const [loading, setLoading] = useState(false);
@@ -138,6 +139,7 @@ export default function PurchaseRequisitionForm() {
                 nama_barang: "",
                 qty: "",
                 keterangan: "",
+                uom: "",
                 available_qty: 0,
             });
         }
@@ -158,6 +160,7 @@ export default function PurchaseRequisitionForm() {
             nama_barang: "",
             qty: "",
             keterangan: "",
+            uom: "",
         });
 
         clearItems();
@@ -392,6 +395,15 @@ export default function PurchaseRequisitionForm() {
                                             ...item,
                                         })
                                     }
+                                />
+                            </Field>
+
+                            <Field label="UoM">
+                                <Input
+                                    value={currentItem.uom || ""}
+                                    disabled
+                                    placeholder="Satuan barang"
+                                    className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                                 />
                             </Field>
 

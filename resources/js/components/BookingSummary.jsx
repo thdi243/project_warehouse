@@ -69,7 +69,7 @@ export default function BookingSummary({
                                         {item.mid} – {item.nama_barang}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                        Qty: {item.qty}
+                                        Qty: {item.qty} {item.uom || ""}
                                     </p>
                                     {item.keterangan && (
                                         <p className="text-xs text-muted-foreground truncate">
