@@ -215,7 +215,7 @@
                     padding: 0;
                     margin: 0;
                     color: #000000;
-                    font-size: 9.5pt;
+                    font-size: 7.5pt;
                 }
 
                 .container {
@@ -237,15 +237,15 @@
                 }
 
                 .doc-title h1 {
-                    font-size: 15pt;
+                    font-size: 12pt;
                 }
 
                 .doc-title p {
-                    font-size: 8.5pt;
+                    font-size: 7.5pt;
                 }
 
                 .metadata-grid {
-                    font-size: 8.5pt;
+                    font-size: 7.5pt;
                     gap: 5px 20px;
                 }
 
@@ -255,7 +255,7 @@
                 }
 
                 table {
-                    font-size: 8pt;
+                    font-size: 7pt;
                     width: 100%;
                 }
 
@@ -263,13 +263,13 @@
                 td {
                     border: 1px solid #000000 !important;
                     padding: 6px 8px !important;
-                    line-height: 1.2 !important;
+                    line-height: 1 !important;
                 }
 
                 th {
                     background-color: #e2e8f0 !important;
                     color: #000000 !important;
-                    font-size: 8.5pt;
+                    font-size: 7.5pt;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
@@ -290,12 +290,12 @@
                 }
 
                 .sig-title {
-                    font-size: 8.5pt;
+                    font-size: 7.5pt;
                     margin-bottom: 45px;
                 }
 
                 .sig-name {
-                    font-size: 8.5pt;
+                    font-size: 7.5pt;
                     border-bottom: 1px solid #000000 !important;
                 }
 
