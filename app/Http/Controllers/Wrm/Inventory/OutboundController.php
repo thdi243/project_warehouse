@@ -630,7 +630,7 @@ class OutboundController extends Controller
             }
         ])->findOrFail($id);
 
-        return view('wrm.inventory.magic_number', [
+        return view('wrm.inventory.print_outbound', [
             'outbound' => $outbound
         ]);
     }

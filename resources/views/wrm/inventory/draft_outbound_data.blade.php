@@ -181,12 +181,16 @@
                     <input type="hidden" name="id" id="editId">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label" for="editNoReservasi">No Reservasi <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="editNoReservasi" name="no_reservasi" required>
+                            <label class="form-label" for="editNoReservasi">No Reservasi <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editNoReservasi" name="no_reservasi"
+                                required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="editTglReservasi">Tgl Reservasi <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="editTglReservasi" name="tgl_reservasi" required>
+                            <label class="form-label" for="editTglReservasi">Tgl Reservasi <span
+                                    class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="editTglReservasi" name="tgl_reservasi"
+                                required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="editShift">Shift <span class="text-danger">*</span></label>
@@ -278,7 +282,7 @@
                                         <button class="btn btn-sm btn-success btnMagicNumber"
                                             data-id="${d.id}"
                                             title="Print List Draft untuk Forklift">
-                                            <i class="mdi mdi-printer"></i> Draft
+                                            <i class="mdi mdi-printer"></i> List
                                         </button>
                                         <button class="btn btn-sm btn-warning btnEdit text-white"
                                             data-id="${d.id}">
@@ -290,7 +294,7 @@
                                         </button>
                                         <button class="btn btn-sm btn-danger btnCancel"
                                             data-id="${d.id}">
-                                            <i class="mdi mdi-close"></i> Cancel Reservasi
+                                            <i class="mdi mdi-close"></i> Cancel Draft
                                         </button>
                                     </td>
                                 </tr>
@@ -475,7 +479,7 @@
                     if (res.status && res.header) {
                         $('#editId').val(res.header.id);
                         $('#editNoReservasi').val(res.header.no_reservasi);
-                        
+
                         // Extract only date string (YYYY-MM-DD)
                         let dateVal = '';
                         if (res.header.reservasi_date) {
@@ -513,7 +517,8 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
-                            text: res.message ?? 'Header draft outbound berhasil diperbarui',
+                            text: res.message ??
+                                'Header draft outbound berhasil diperbarui',
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
