@@ -165,6 +165,45 @@
             </div>
         </div>
     </div>
+
+    <!-- SPB Detail Modal -->
+    <div class="modal fade" id="modalSpbDetail" tabindex="-1" aria-labelledby="modalSpbDetailLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light border-bottom-0">
+                    <h5 class="modal-title fw-bold" id="modalSpbDetailLabel">
+                        <i class="ri-article-line me-2 text-primary"></i> Detail Stock SPB: <span id="spbDetailNumber" class="text-primary"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="table-responsive rounded shadow-sm">
+                        <table class="table table-bordered table-striped align-middle text-nowrap mb-0" id="tableSpbDetail">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center" width="50">No</th>
+                                    <th>Pallet ID</th>
+                                    <th>MID</th>
+                                    <th>Nama Barang</th>
+                                    <th class="text-end">Qty (KG)</th>
+                                    <th>Status</th>
+                                    <th>Lokasi</th>
+                                    <th>Supplier</th>
+                                    <th>Tanggal Masuk</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -311,7 +350,11 @@
                     },
 
                     columns: [{
-                            data: 'no_spb'
+                            data: 'no_spb',
+                            render: function(data, type, row) {
+                                if (!data) return '-';
+                                return `<a href="#" class="fw-bold text-primary show-spb-detail" data-spb="${data}">${data}</a>`;
+                            }
                         },
                         {
                             data: 'uom'
@@ -386,6 +429,71 @@
                 if (spbTable) {
                     spbTable.ajax.reload();
                 }
+            });
+
+            // Handle clicking SPB detail link
+            $(document).on('click', '.show-spb-detail', function(e) {
+                e.preventDefault();
+                const spbNumber = $(this).data('spb');
+                
+                $('#spbDetailNumber').text(spbNumber);
+                const $tbody = $('#tableSpbDetail tbody');
+                $tbody.html(
+                    '<tr><td colspan="9" class="text-center py-4 text-muted"><i class="ri-loader-4-line ri-spin me-2"></i>Loading details...</td></tr>'
+                );
+
+                const myModal = new bootstrap.Modal(document.getElementById('modalSpbDetail'));
+                myModal.show();
+
+                $.ajax({
+                    url: "{{ route('wrm.inventory.monitoring.spb-detail.data') }}",
+                    type: 'GET',
+                    data: { no_spb: spbNumber },
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status && res.data) {
+                            $tbody.empty();
+                            if (res.data.length === 0) {
+                                $tbody.append(
+                                    '<tr><td colspan="9" class="text-center py-4 text-muted">No stock items found for this SPB.</td></tr>'
+                                );
+                            } else {
+                                let html = '';
+                                res.data.forEach((item, index) => {
+                                    let locStr = '-';
+                                    if (item.bin && item.bin.location) {
+                                        let l = item.bin.location;
+                                        locStr = `${l.plant} - ${l.gudang} - ${l.bin} (${item.bin.kolom}.${item.bin.level})`;
+                                    }
+                                    let incomingDateStr = item.incoming_date ? item.incoming_date.substring(0, 10) : '-';
+                                    html += `
+                                        <tr>
+                                            <td class="text-center">${index + 1}</td>
+                                            <td><b class="text-primary">${item.pallet_id ?? '-'}</b></td>
+                                            <td>${item.barang ? item.barang.mid : '-'}</td>
+                                            <td>${item.barang ? item.barang.nama_barang : '-'}</td>
+                                            <td class="text-end fw-bold">${formatNumber.display(item.qty)}</td>
+                                            <td><span class="badge bg-soft-info text-info">${item.status}</span></td>
+                                            <td class="small">${locStr}</td>
+                                            <td>${item.supplier ?? '-'}</td>
+                                            <td>${incomingDateStr}</td>
+                                        </tr>
+                                    `;
+                                });
+                                $tbody.html(html);
+                            }
+                        } else {
+                            $tbody.html(
+                                '<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat detail data.</td></tr>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $tbody.html(
+                            '<tr><td colspan="9" class="text-center text-danger py-4">Terjadi kesalahan koneksi.</td></tr>'
+                        );
+                    }
+                });
             });
         });
     </script>

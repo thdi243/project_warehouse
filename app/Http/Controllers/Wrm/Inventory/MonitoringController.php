@@ -106,6 +106,25 @@ class MonitoringController extends Controller
         ]);
     }
 
+    public function getSpbDetailData(Request $request)
+    {
+        $noSpb = $request->no_spb;
+
+        $data = StockOnHand::with([
+            'barang:id,mid,nama_barang,uom',
+            'bin:id,loc_id,kolom,level',
+            'bin.location:id,plant,s_loc,gudang,zona,bin'
+        ])
+            ->where('no_spb', $noSpb)
+            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+
     public function getSummaryPpic()
     {
         // On Hand (Physical)
