@@ -207,6 +207,17 @@ class StockTransferController extends Controller
                         'status' => 'ISSUED',
                         'updated_by' => Auth::id(),
                     ]);
+
+                    $outboundHeader = $draftDetail->outbound;
+                    if ($outboundHeader) {
+                        $hasReserved = $outboundHeader->details()->where('status', 'RESERVED')->exists();
+                        if (!$hasReserved) {
+                            $outboundHeader->update([
+                                'status_transfer' => 'COMPLETED',
+                                'updated_by' => Auth::id(),
+                            ]);
+                        }
+                    }
                 }
                 // ----------------------------------------------
 
