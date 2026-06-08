@@ -347,7 +347,7 @@
                     <div class="meta-item">
                         <span class="meta-label">Tanggal Reservasi</span>
                         <span class="meta-value">:
-                            {{ \Carbon\Carbon::parse($outbound->issued_date)->format('d M Y, H:i') }}</span>
+                            {{ \Carbon\Carbon::parse($outbound->reservasi_date)->format('d M Y, H:i') }}</span>
                     </div>
                     <div class="meta-item">
                         <span class="meta-label">Total Pallet</span>
