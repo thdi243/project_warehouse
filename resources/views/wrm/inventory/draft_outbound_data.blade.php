@@ -94,8 +94,11 @@
                                     <th>Shift</th>
                                     <th>Draft Date</th>
                                     <th>Qty Request (KG)</th>
+                                    <th>Driver Forklift</th>
+                                    <th>Status Transfer</th>
                                     <th>Catatan</th>
                                     <th class="text-center">Aksi</th>
+                                    <th class="text-center">Assign Driver</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -213,6 +216,40 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Assign Driver --}}
+    <div class="modal fade" id="modalAssignDriver" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign Driver Forklift</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formAssignDriver">
+                    @csrf
+                    <input type="hidden" name="id" id="assignOutboundId">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="selectDriver">Pilih Driver Forklift <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select" id="selectDriver" name="driver_id" required>
+                                <option value="">-- Pilih Driver --</option>
+                                @foreach ($drivers as $driver)
+                                    <option value="{{ $driver->id }}">{{ $driver->nama_lengkap }}
+                                        ({{ $driver->username }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmitAssign">Simpan Driver</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -269,6 +306,68 @@
                     } else {
 
                         data.forEach((d, index) => {
+                            let driverName = d.driver ? d.driver.nama_lengkap || d.driver.username :
+                                '<span class="text-muted">Belum di-assign</span>';
+
+                            let statusBadge = '';
+                            if (d.status_transfer === 'PENDING') {
+                                statusBadge = '<span class="badge bg-warning">PENDING</span>';
+                            } else if (d.status_transfer === 'ASSIGNED') {
+                                statusBadge = '<span class="badge bg-info">ASSIGNED</span>';
+                            } else if (d.status_transfer === 'COMPLETED') {
+                                statusBadge = '<span class="badge bg-success">COMPLETED</span>';
+                            } else {
+                                statusBadge =
+                                    `<span class="badge bg-secondary">${d.status_transfer ?? 'PENDING'}</span>`;
+                            }
+
+                            let btnAssignText = d.driver ?
+                                '<i class="mdi mdi-account-switch"></i> Ganti Driver' :
+                                '<i class="mdi mdi-account-plus"></i> Assign Driver';
+
+                            let actionButtons = `
+                                <button class="btn btn-sm btn-success btnMagicNumber"
+                                    data-id="${d.id}"
+                                    title="Print List Draft untuk Forklift">
+                                    <i class="mdi mdi-printer"></i> List
+                                </button>
+                            `;
+
+                            let isDisabled = d.status_transfer === 'COMPLETED' ? 'disabled' : '';
+                            let actionButtonsAssign = `
+                                <button class="btn btn-sm ${isDisabled ? 'btn-secondary' : 'btn-primary'} btnAssignDriver"
+                                    data-id="${d.id}"
+                                    data-driver-id="${d.driver_id ?? ''}"
+                                    title="Assign Driver Forklift"
+                                    ${isDisabled}>
+                                    ${btnAssignText}
+                                </button>
+                            `;
+
+                            if (d.status_transfer === 'ASSIGNED') {
+                                actionButtonsAssign += `
+                                    <button class="btn btn-sm btn-success btnCompleteTransfer"
+                                        data-id="${d.id}"
+                                        title="Selesai Dipindah">
+                                        <i class="mdi mdi-check"></i> Selesai Transfer
+                                    </button>
+                                `;
+                            }
+
+                            actionButtons += `
+                                <button class="btn btn-sm btn-warning btnEdit text-white"
+                                    data-id="${d.id}">
+                                    <i class="mdi mdi-pencil"></i> Edit
+                                </button>
+                                <button class="btn btn-sm btn-info btnDetail"
+                                    data-id="${d.id}">
+                                    <i class="mdi mdi-eye"></i> Detail
+                                </button>
+                                <button class="btn btn-sm btn-danger btnCancel"
+                                    data-id="${d.id}">
+                                    <i class="mdi mdi-close"></i> Cancel Draft
+                                </button>
+                            `;
 
                             html += `
                                 <tr>
@@ -277,25 +376,14 @@
                                     <td>Shift ${d.shift ?? '-'}</td>
                                     <td>${d.reservasi_date}</td>
                                     <td>${numberFormat(d.qty_request)}</td>
+                                    <td>${driverName}</td>
+                                    <td>${statusBadge}</td>
                                     <td>${d.catatan ?? '-'}</td>
                                     <td class="text-center">
-                                        <button class="btn btn-sm btn-success btnMagicNumber"
-                                            data-id="${d.id}"
-                                            title="Print List Draft untuk Forklift">
-                                            <i class="mdi mdi-printer"></i> List
-                                        </button>
-                                        <button class="btn btn-sm btn-warning btnEdit text-white"
-                                            data-id="${d.id}">
-                                            <i class="mdi mdi-pencil"></i> Edit
-                                        </button>
-                                        <button class="btn btn-sm btn-info btnDetail"
-                                            data-id="${d.id}">
-                                            <i class="mdi mdi-eye"></i> Detail
-                                        </button>
-                                        <button class="btn btn-sm btn-danger btnCancel"
-                                            data-id="${d.id}">
-                                            <i class="mdi mdi-close"></i> Cancel Draft
-                                        </button>
+                                        ${actionButtons}
+                                    </td>
+                                    <td class="text-start">
+                                        ${actionButtonsAssign}
                                     </td>
                                 </tr>
                             `;
@@ -697,6 +785,111 @@
                 });
             });
 
-        })
+            // Assign Driver button click
+            $(document).on('click', '.btnAssignDriver', function() {
+                let id = $(this).data('id');
+                let driverId = $(this).data('driver-id');
+
+                $('#assignOutboundId').val(id);
+                $('#selectDriver').val(driverId);
+                $('#modalAssignDriver').modal('show');
+            });
+
+            // Form Assign Driver submit
+            $('#formAssignDriver').on('submit', function(e) {
+                e.preventDefault();
+                let id = $('#assignOutboundId').val();
+
+                $.ajax({
+                    url: `/wrm/inventory/assign-driver/${id}`,
+                    method: "POST",
+                    data: $(this).serialize(),
+                    beforeSend: function() {
+                        Swal.fire({
+                            title: 'Menyimpan...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+                    },
+                    success: function(res) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: res.message ??
+                                'Driver forklift berhasil di-assign',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            $('#modalAssignDriver').modal('hide');
+                            loadData();
+                        });
+                    },
+                    error: function(xhr) {
+                        let errMsg = xhr.responseJSON?.message ??
+                            'Terjadi kesalahan sistem';
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: errMsg
+                        });
+                    }
+                });
+            });
+
+            // Complete Transfer click
+            $(document).on('click', '.btnCompleteTransfer', function() {
+                let id = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Selesai Dipindah?',
+                    text: 'Aksi ini akan memproses pemindahan stock dan memperbarui inventory balance.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Ya, Selesai!',
+                    cancelButtonText: 'Batal'
+                }).then((r) => {
+                    if (r.isConfirmed) {
+                        $.ajax({
+                            url: `/wrm/inventory/complete-transfer/${id}`,
+                            method: "POST",
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            beforeSend: function() {
+                                Swal.fire({
+                                    title: 'Memproses...',
+                                    allowOutsideClick: false,
+                                    didOpen: () => Swal
+                                        .showLoading()
+                                });
+                            },
+                            success: function(res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil',
+                                    text: res.message ??
+                                        'Proses pemindahan selesai.',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    loadData();
+                                });
+                            },
+                            error: function(xhr) {
+                                let errMsg = xhr.responseJSON?.message ??
+                                    'Terjadi kesalahan sistem';
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal',
+                                    text: errMsg
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+        });
     </script>
 @endsection

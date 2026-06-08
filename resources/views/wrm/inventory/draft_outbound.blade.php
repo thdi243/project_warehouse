@@ -15,6 +15,16 @@
         #tableStock tbody tr.row-picked {
             background-color: #e9f7ef;
         }
+
+        .form-actions {
+            position: sticky;
+            bottom: 0;
+            z-index: 3;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 15px 0;
+            backdrop-filter: blur(6px);
+            border-top: 1px solid #cbd5e1;
+        }
     </style>
 @endsection
 
@@ -106,7 +116,7 @@
                                 <b id="totalPick">0</b>
                             </div>
                         </div>
-                        <table class="table table-bordered table-striped table-hover" id="tableStock">
+                        <table class="table table-bordered table-striped table-hover scrollable" id="tableStock">
 
                             <thead class="table-light">
                                 <tr>
@@ -132,11 +142,11 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <div class="mt-3 d-flex justify-content-end">
-                            <button class="btn btn-success" id="btnSubmitOutbound">
-                                <i class="mdi mdi-send me-2"></i> Submit Draft Outbound (Reservation)
-                            </button>
-                        </div>
+                    </div>
+                    <div class="form-actions mt-3 d-flex justify-content-end">
+                        <button class="btn btn-success" id="btnSubmitOutbound">
+                            <i class="mdi mdi-send me-2"></i> Submit Draft Outbound (Reservation)
+                        </button>
                     </div>
 
                 </div>

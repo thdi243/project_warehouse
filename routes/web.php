@@ -267,6 +267,8 @@ Route::middleware('auth')->group(function () {
                 Route::post('/cancel-outbound-item/{id}', [OutboundController::class, 'cancelOutboundItem'])->name('wrm.inventory.cancel-outbound-item');
                 Route::post('/cancel-outbound-items', [OutboundController::class, 'cancelOutboundItems'])->name('wrm.inventory.cancel-outbound-items');
                 Route::get('/magic-number/{id}', [OutboundController::class, 'printMagicNumber'])->name('wrm.inventory.magic-number');
+                Route::post('/assign-driver/{id}', [OutboundController::class, 'assignDriver'])->name('wrm.inventory.assign-driver');
+                Route::post('/complete-transfer/{id}', [OutboundController::class, 'completeTransfer'])->name('wrm.inventory.complete-transfer');
 
                 // Monitoring PPIC & Purchasing
                 Route::prefix('monitoring')->group(function () {

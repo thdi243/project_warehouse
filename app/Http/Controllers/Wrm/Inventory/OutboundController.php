@@ -15,6 +15,7 @@ use App\Models\Wrm\Inventory\StockTransferDetail;
 use App\Models\Wrm\MasterBinModel;
 use App\Models\Wrm\MasterSupplierModel;
 use App\Models\Wrm\MasterBarangModel;
+use App\Models\P2h\UserForkliftAssignmentModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,7 +36,18 @@ class OutboundController extends Controller
     public function dataOutbound()
     {
         $suppliers = MasterSupplierModel::orderBy('nama')->get();
-        return view('wrm.inventory.draft_outbound_data', compact('suppliers'));
+
+        $drivers = UserForkliftAssignmentModel::active()
+            ->with('user:id,nama_lengkap,username')
+            ->get()
+            ->map(function ($assignment) {
+                return $assignment->user;
+            })
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        return view('wrm.inventory.draft_outbound_data', compact('suppliers', 'drivers'));
     }
 
     public function searchOutbound(Request $request)
@@ -118,24 +130,8 @@ class OutboundController extends Controller
                 'created_by'        => Auth::id(),
             ]);
 
-            $mids_exception = ['20000812', '20000860', '20001270'];
-            $names_exception = ['GULA KELAPA', 'GULA TEBU'];
-            $transferHeader = null;
-
             foreach ($details as $detail) {
-                // Determine status based on MID and Name criteria
-                $is_exception = in_array($detail->barang->mid, $mids_exception);
-                if (!$is_exception) {
-                    $nama_barang_upper = strtoupper($detail->barang->nama_barang);
-                    foreach ($names_exception as $name) {
-                        if (str_contains($nama_barang_upper, $name)) {
-                            $is_exception = true;
-                            break;
-                        }
-                    }
-                }
-
-                $status = $is_exception ? 'RESERVED' : 'ISSUED';
+                $status = 'RESERVED';
 
                 // Save outbound detail
                 StockOutboundDetail::create([
@@ -159,59 +155,6 @@ class OutboundController extends Controller
                 $detail->update([
                     'status' => $status
                 ]);
-
-                // If ISSUED, also create transfer record and update inventory
-                if ($status === 'ISSUED') {
-                    if (!$transferHeader) {
-                        $transferHeader = StockTransfer::create([
-                            'no_reservasi'  => $request->no_reservasi,
-                            'tgl_reservasi' => Carbon::parse($request->tgl_reservasi),
-                            'tgl_gi'        => now(),
-                            'created_by'    => Auth::id(),
-                        ]);
-                    }
-
-                    $transferDetail = StockTransferDetail::create([
-                        'transfer_id'      => $transferHeader->id,
-                        'no_spb'           => $detail->no_spb,
-                        'plant'            => $detail->bin->location->plant ?? null,
-                        'sloc'             => $detail->bin->location->s_loc ?? null,
-                        'barang_id'        => $detail->barang_id,
-                        'no_barcode'       => $detail->barcode,
-                        'qty_barcode'      => $detail->qty,
-                        'qty_actual'       => $detail->qty,
-                        'uom'              => $detail->barang->uom,
-                        'created_by'       => Auth::id(),
-                    ]);
-
-                    // Inventory updates (decrement balance and record movement)
-                    $bin = $detail->bin;
-                    if ($bin) {
-                        $locId = $bin->loc_id;
-
-                        // Decrement Stock Balance
-                        $balance = StockBalance::where('barang_id', $detail->barang_id)
-                            ->where('loc_id', $locId)
-                            ->first();
-
-                        if ($balance) {
-                            $balance->decrement('qty', $detail->qty);
-                            $balance->update(['updated_by' => Auth::id()]);
-                        }
-
-                        // Record Stock Movement (out)
-                        StockMovement::create([
-                            'barang_id'  => $detail->barang_id,
-                            'loc_id'     => $locId,
-                            'tanggal'    => now(),
-                            'qty'        => $detail->qty,
-                            'jenis'      => 'out',
-                            'ref_type'   => 'stock_transfer',
-                            'ref_id'     => $transferDetail->id,
-                            'created_by' => Auth::id(),
-                        ]);
-                    }
-                }
             }
 
             DB::commit();
@@ -234,20 +177,21 @@ class OutboundController extends Controller
     public function getData(Request $request)
     {
         $query = StockOutbound::with([
+            'driver:id,nama_lengkap,username',
             'details' => function ($q) {
-                $q->where('status', 'RESERVED')->with([
+                $q->whereIn('status', ['RESERVED', 'BA WAITING'])->with([
                     'barang:id,mid,nama_barang,uom',
                     'bin:id,loc_id,kolom,level',
                     'bin.location:id,plant,s_loc,gudang,zona,bin'
                 ]);
             }
         ])->whereHas('details', function ($q) {
-            $q->where('status', 'RESERVED');
+            $q->whereIn('status', ['RESERVED', 'BA WAITING']);
         });
 
         if ($request->group) {
             $query->whereHas('details', function ($q) use ($request) {
-                $q->where('group', $request->group)->where('status', 'RESERVED');
+                $q->where('group', $request->group)->whereIn('status', ['RESERVED', 'BA WAITING']);
             });
         }
 
@@ -255,7 +199,7 @@ class OutboundController extends Controller
             $query->whereHas('details.barang', function ($q) use ($request) {
                 $q->where('nama_barang', 'like', '%' . $request->jenis_bahan . '%');
             })->whereHas('details', function ($q) {
-                $q->where('status', 'RESERVED');
+                $q->whereIn('status', ['RESERVED', 'BA WAITING']);
             });
         }
 
@@ -263,7 +207,7 @@ class OutboundController extends Controller
             $query->whereHas('details.barang', function ($q) use ($request) {
                 $q->where('mid', 'like', '%' . $request->mid . '%');
             })->whereHas('details', function ($q) {
-                $q->where('status', 'RESERVED');
+                $q->whereIn('status', ['RESERVED', 'BA WAITING']);
             });
         }
 
@@ -273,7 +217,7 @@ class OutboundController extends Controller
 
         if ($request->supplier) {
             $query->whereHas('details', function ($q) use ($request) {
-                $q->where('supplier', 'like', '%' . $request->supplier . '%')->where('status', 'RESERVED');
+                $q->where('supplier', 'like', '%' . $request->supplier . '%')->whereIn('status', ['RESERVED', 'BA WAITING']);
             });
         }
 
@@ -298,7 +242,7 @@ class OutboundController extends Controller
             'bin.location:id,plant,gudang,s_loc,zona,bin'
         ])
             ->where('outbound_id', $id)
-            ->where('status', 'RESERVED')
+            ->whereIn('status', ['RESERVED', 'BA WAITING'])
             ->get();
 
         $header = StockOutbound::find($id);
@@ -366,7 +310,7 @@ class OutboundController extends Controller
             $outbound = StockOutbound::with('details')->findOrFail($id);
 
             foreach ($outbound->details as $detail) {
-                if ($detail->status === 'ISSUED') {
+                if ($detail->status === 'ISSUED' || $detail->status === 'BA WAITING') {
                     // Reverse inventory if it was auto-issued
                     $transferDetail = StockTransferDetail::where('no_barcode', $detail->barcode)
                         ->where('barang_id', $detail->barang_id)
@@ -440,7 +384,7 @@ class OutboundController extends Controller
             $detail = StockOutboundDetail::findOrFail($id);
             $outbound = StockOutbound::findOrFail($detail->outbound_id);
 
-            if ($detail->status === 'ISSUED') {
+            if ($detail->status === 'ISSUED' || $detail->status === 'BA WAITING') {
                 // Reverse inventory if it was auto-issued
                 $transferDetail = StockTransferDetail::where('no_barcode', $detail->barcode)
                     ->where('barang_id', $detail->barang_id)
@@ -534,7 +478,7 @@ class OutboundController extends Controller
                 $outbound = StockOutbound::findOrFail($detail->outbound_id);
                 $outboundIdsToUpdate[$outbound->id] = true;
 
-                if ($detail->status === 'ISSUED') {
+                if ($detail->status === 'ISSUED' || $detail->status === 'BA WAITING') {
                     // Reverse inventory if it was auto-issued
                     $transferDetail = StockTransferDetail::where('no_barcode', $detail->barcode)
                         ->where('barang_id', $detail->barang_id)
@@ -622,7 +566,7 @@ class OutboundController extends Controller
     {
         $outbound = StockOutbound::with([
             'details' => function ($q) {
-                $q->where('status', 'RESERVED')->with([
+                $q->whereIn('status', ['RESERVED', 'BA WAITING'])->with([
                     'barang:id,mid,nama_barang,uom',
                     'bin:id,loc_id,kolom,level',
                     'bin.location:id,plant,s_loc,gudang,zona,bin'
@@ -633,5 +577,147 @@ class OutboundController extends Controller
         return view('wrm.inventory.print_outbound', [
             'outbound' => $outbound
         ]);
+    }
+
+    public function assignDriver(Request $request, $id)
+    {
+        $request->validate([
+            'driver_id' => 'required|exists:users,id'
+        ]);
+
+        try {
+            $outbound = StockOutbound::findOrFail($id);
+            $outbound->update([
+                'driver_id' => $request->driver_id,
+                'status_transfer' => 'ASSIGNED',
+                'updated_by' => Auth::id()
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Driver forklift berhasil di-assign.'
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function completeTransfer($id)
+    {
+        DB::beginTransaction();
+        try {
+            $outbound = StockOutbound::with([
+                'details' => function ($q) {
+                    $q->where('status', 'RESERVED')->with([
+                        'barang',
+                        'bin.location'
+                    ]);
+                }
+            ])->findOrFail($id);
+
+            if ($outbound->details->isEmpty()) {
+                throw new \Exception('Tidak ada item draft outbound dengan status RESERVED.');
+            }
+
+            if (!$outbound->driver_id) {
+                throw new \Exception('Driver forklift belum di-assign untuk draft ini.');
+            }
+
+            $transferHeader = null;
+            $ba_waiting_mids = ['20000812', '20000860', '20001270'];
+
+            foreach ($outbound->details as $detail) {
+                $status = in_array($detail->barang->mid, $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
+
+                // Update status in draft outbound detail
+                $detail->update([
+                    'status' => $status,
+                    'updated_by' => Auth::id()
+                ]);
+
+                // Update status in StockOnHand
+                StockOnHand::where([
+                    'barang_id' => $detail->barang_id,
+                    'pallet_id' => $detail->pallet_id,
+                    'status' => 'RESERVED'
+                ])->update([
+                    'status' => $status,
+                    'updated_by' => Auth::id()
+                ]);
+
+                // Create StockTransfer header if not exists
+                if (!$transferHeader) {
+                    $transferHeader = StockTransfer::create([
+                        'no_reservasi'  => $outbound->no_reservasi,
+                        'tgl_reservasi' => Carbon::parse($outbound->reservasi_date),
+                        'tgl_gi'        => now(),
+                        'created_by'    => Auth::id(),
+                    ]);
+                }
+
+                // Create StockTransferDetail
+                $transferDetail = StockTransferDetail::create([
+                    'transfer_id' => $transferHeader->id,
+                    'no_spb'      => $detail->no_spb,
+                    'plant'       => $detail->bin->location->plant ?? null,
+                    'sloc'        => $detail->bin->location->s_loc ?? null,
+                    'barang_id'   => $detail->barang_id,
+                    'no_barcode'  => $detail->barcode,
+                    'qty_barcode' => $detail->qty,
+                    'qty_actual'  => $detail->qty,
+                    'uom'         => $detail->barang->uom,
+                    'created_by'  => Auth::id(),
+                ]);
+
+                // Decrement Stock Balance
+                $bin = $detail->bin;
+                if ($bin) {
+                    $locId = $bin->loc_id;
+
+                    $balance = StockBalance::where('barang_id', $detail->barang_id)
+                        ->where('loc_id', $locId)
+                        ->first();
+
+                    if ($balance) {
+                        $balance->decrement('qty', $detail->qty);
+                        $balance->update(['updated_by' => Auth::id()]);
+                    }
+
+                    // Record Stock Movement (out)
+                    StockMovement::create([
+                        'barang_id'  => $detail->barang_id,
+                        'loc_id'     => $locId,
+                        'tanggal'    => now(),
+                        'qty'        => $detail->qty,
+                        'jenis'      => 'out',
+                        'ref_type'   => 'stock_transfer',
+                        'ref_id'     => $transferDetail->id,
+                        'created_by' => Auth::id(),
+                    ]);
+                }
+            }
+
+            // Update header status_transfer to COMPLETED
+            $outbound->update([
+                'status_transfer' => 'COMPLETED',
+                'updated_by' => Auth::id()
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Proses pemindahan selesai dan inventory berhasil diperbarui.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

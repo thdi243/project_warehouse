@@ -20,6 +20,8 @@ class StockOutbound extends Model
         'qty_request',
         'catatan',
         'checklist_kondisi',
+        'driver_id',
+        'status_transfer',
         'created_by',
         'updated_by',
     ];
@@ -27,6 +29,11 @@ class StockOutbound extends Model
     public function details()
     {
         return $this->hasMany(StockOutboundDetail::class, 'outbound_id');
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(User::class, 'driver_id');
     }
 
     public function creator()
