@@ -137,6 +137,12 @@
                     }
                 });
 
+                $(document).ajaxError(function(event, xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    }
+                });
+
                 // Logout button functionality
                 $('#logoutButton').on('click', function(e) {
                     // e.preventDefault();
