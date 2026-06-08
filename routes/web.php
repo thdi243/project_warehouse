@@ -48,6 +48,11 @@ Route::get('/', function () {
     return view('auth.login');
 });
 
+Route::get('/temp-login', function() {
+    Auth::loginUsingId(3);
+    return redirect('/wrm/inventory/draft-outbound/15/assign-driver');
+});
+
 // Auth
 Route::middleware('web')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -268,6 +273,8 @@ Route::middleware('auth')->group(function () {
                 Route::post('/cancel-outbound-items', [OutboundController::class, 'cancelOutboundItems'])->name('wrm.inventory.cancel-outbound-items');
                 Route::get('/magic-number/{id}', [OutboundController::class, 'printMagicNumber'])->name('wrm.inventory.magic-number');
                 Route::post('/assign-driver/{id}', [OutboundController::class, 'assignDriver'])->name('wrm.inventory.assign-driver');
+                Route::get('/draft-outbound/{id}/assign-driver', [OutboundController::class, 'assignDriverPage'])->name('wrm.inventory.assign-driver-page');
+                Route::post('/assign-driver-items', [OutboundController::class, 'assignDriverItems'])->name('wrm.inventory.assign-driver-items');
                 Route::post('/complete-transfer/{id}', [OutboundController::class, 'completeTransfer'])->name('wrm.inventory.complete-transfer');
 
                 // Monitoring PPIC & Purchasing

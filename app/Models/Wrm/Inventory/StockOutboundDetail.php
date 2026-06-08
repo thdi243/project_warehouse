@@ -30,6 +30,7 @@ class StockOutboundDetail extends Model
         'loc_id',
         'catatan',
         'pallet',
+        'driver_id',
         'created_by',
         'updated_by',
     ];
@@ -38,6 +39,11 @@ class StockOutboundDetail extends Model
     public function outbound()
     {
         return $this->belongsTo(StockOutbound::class, 'outbound_id');
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'driver_id');
     }
 
     public function barang()

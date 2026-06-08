@@ -119,16 +119,30 @@ class OutboundController extends Controller
                 ->whereIn('id', collect($request->items)->pluck('id'))
                 ->get();
 
-            // Create Single Header for Reservation
-            $header = StockOutbound::create([
-                'no_reservasi'      => $request->no_reservasi,
-                'shift'             => $request->shift,
-                'reservasi_date'    => Carbon::parse($request->tgl_reservasi)->setTimeFrom(now()),
-                'qty_request'       => $request->qty_request,
-                'catatan'           => $request->catatan,
-                'checklist_kondisi' => $request->checklist_kondisi ? json_encode($request->checklist_kondisi) : null,
-                'created_by'        => Auth::id(),
-            ]);
+            // Find existing header or create a new one based on no_reservasi and date portion of reservasi_date
+            $header = StockOutbound::where('no_reservasi', $request->no_reservasi)
+                ->whereDate('reservasi_date', Carbon::parse($request->tgl_reservasi)->toDateString())
+                ->first();
+
+            if ($header) {
+                $header->update([
+                    'shift'             => $request->shift,
+                    'qty_request'       => $request->qty_request,
+                    'catatan'           => $request->catatan,
+                    'checklist_kondisi' => $request->checklist_kondisi ? json_encode($request->checklist_kondisi) : null,
+                    'updated_by'        => Auth::id(),
+                ]);
+            } else {
+                $header = StockOutbound::create([
+                    'no_reservasi'      => $request->no_reservasi,
+                    'shift'             => $request->shift,
+                    'reservasi_date'    => Carbon::parse($request->tgl_reservasi)->setTimeFrom(now()),
+                    'qty_request'       => $request->qty_request,
+                    'catatan'           => $request->catatan,
+                    'checklist_kondisi' => $request->checklist_kondisi ? json_encode($request->checklist_kondisi) : null,
+                    'created_by'        => Auth::id(),
+                ]);
+            }
 
             foreach ($details as $detail) {
                 $status = 'RESERVED';
@@ -156,6 +170,8 @@ class OutboundController extends Controller
                     'status' => $status
                 ]);
             }
+
+            $this->syncHeaderStatusTransfer($header);
 
             DB::commit();
 
@@ -239,7 +255,8 @@ class OutboundController extends Controller
         $details = StockOutboundDetail::with([
             'barang:id,mid,nama_barang,uom',
             'bin:id,loc_id,kolom,level',
-            'bin.location:id,plant,gudang,s_loc,zona,bin'
+            'bin.location:id,plant,gudang,s_loc,zona,bin',
+            'driver:id,nama_lengkap,username'
         ])
             ->where('outbound_id', $id)
             ->whereIn('status', ['RESERVED', 'BA WAITING'])
@@ -579,30 +596,150 @@ class OutboundController extends Controller
         ]);
     }
 
+    public function assignDriverPage($id)
+    {
+        $outbound = StockOutbound::with([
+            'details' => function ($q) {
+                $q->whereIn('status', ['RESERVED', 'BA WAITING'])->with([
+                    'barang:id,mid,nama_barang,uom',
+                    'bin:id,loc_id,kolom,level',
+                    'bin.location:id,plant,s_loc,gudang,zona,bin',
+                    'driver:id,nama_lengkap,username'
+                ]);
+            }
+        ])->findOrFail($id);
+
+        $drivers = UserForkliftAssignmentModel::active()
+            ->with('user:id,nama_lengkap,username')
+            ->get()
+            ->map(function ($assignment) {
+                return $assignment->user;
+            })
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        return view('wrm.inventory.draft_outbound_assign', compact('outbound', 'drivers'));
+    }
+
     public function assignDriver(Request $request, $id)
     {
         $request->validate([
             'driver_id' => 'required|exists:users,id'
         ]);
 
+        DB::beginTransaction();
         try {
             $outbound = StockOutbound::findOrFail($id);
-            $outbound->update([
+
+            // Assign driver to ALL details that are RESERVED
+            $outbound->details()->where('status', 'RESERVED')->update([
                 'driver_id' => $request->driver_id,
-                'status_transfer' => 'ASSIGNED',
                 'updated_by' => Auth::id()
             ]);
+
+            // Sync status_transfer & driver_id of the header
+            $this->syncHeaderStatusTransfer($outbound);
+
+            DB::commit();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Driver forklift berhasil di-assign.'
             ]);
         } catch (\Throwable $e) {
+            DB::rollBack();
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function assignDriverItems(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:wrm_stock_draft_outbound_details,id',
+            'driver_id' => 'required|exists:users,id'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Update selected details with driver
+            StockOutboundDetail::whereIn('id', $request->ids)
+                ->where('status', 'RESERVED')
+                ->update([
+                    'driver_id' => $request->driver_id,
+                    'updated_by' => Auth::id()
+                ]);
+
+            // Sync status_transfer for all affected headers
+            $outboundIds = StockOutboundDetail::whereIn('id', $request->ids)
+                ->pluck('outbound_id')
+                ->unique();
+
+            foreach ($outboundIds as $outboundId) {
+                $outbound = StockOutbound::find($outboundId);
+                if ($outbound) {
+                    $this->syncHeaderStatusTransfer($outbound);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Driver forklift berhasil di-assign ke item terpilih.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function syncHeaderStatusTransfer(StockOutbound $outbound)
+    {
+        $outbound->load('details');
+        $details = $outbound->details;
+
+        if ($details->isEmpty()) {
+            $statusTransfer = 'PENDING';
+        } else {
+            $allCompleted = $details->every(function ($detail) {
+                return $detail->status !== 'RESERVED';
+            });
+
+            if ($allCompleted) {
+                $statusTransfer = 'COMPLETED';
+            } else {
+                // Draft is ASSIGNED only if ALL remaining RESERVED details have a driver assigned.
+                // If there's even one RESERVED detail without a driver, it is PENDING.
+                $allDriversAssigned = $details->where('status', 'RESERVED')->every(function ($detail) {
+                    return !is_null($detail->driver_id);
+                });
+
+                $statusTransfer = $allDriversAssigned ? 'ASSIGNED' : 'PENDING';
+            }
+        }
+
+        // Determine header's driver_id (if all RESERVED details share one driver, set it; otherwise null)
+        $reservedDetails = $details->where('status', 'RESERVED');
+        $uniqueDrivers = $reservedDetails->pluck('driver_id')->filter()->unique();
+
+        $headerDriverId = null;
+        if ($uniqueDrivers->count() === 1) {
+            $headerDriverId = $uniqueDrivers->first();
+        }
+
+        $outbound->update([
+            'status_transfer' => $statusTransfer,
+            'driver_id' => $headerDriverId,
+            'updated_by' => Auth::id()
+        ]);
     }
 
     public function completeTransfer($id)
@@ -618,18 +755,19 @@ class OutboundController extends Controller
                 }
             ])->findOrFail($id);
 
-            if ($outbound->details->isEmpty()) {
-                throw new \Exception('Tidak ada item draft outbound dengan status RESERVED.');
-            }
+            // Only process details that have a driver assigned
+            $detailsToProcess = $outbound->details->filter(function ($detail) {
+                return !is_null($detail->driver_id);
+            });
 
-            if (!$outbound->driver_id) {
-                throw new \Exception('Driver forklift belum di-assign untuk draft ini.');
+            if ($detailsToProcess->isEmpty()) {
+                throw new \Exception('Tidak ada item draft outbound yang sudah di-assign driver dengan status RESERVED.');
             }
 
             $transferHeader = null;
             $ba_waiting_mids = ['20000812', '20000860', '20001270'];
 
-            foreach ($outbound->details as $detail) {
+            foreach ($detailsToProcess as $detail) {
                 $status = in_array($detail->barang->mid, $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
 
                 // Update status in draft outbound detail
@@ -648,14 +786,18 @@ class OutboundController extends Controller
                     'updated_by' => Auth::id()
                 ]);
 
-                // Create StockTransfer header if not exists
+                // Create or find StockTransfer header
                 if (!$transferHeader) {
-                    $transferHeader = StockTransfer::create([
-                        'no_reservasi'  => $outbound->no_reservasi,
-                        'tgl_reservasi' => Carbon::parse($outbound->reservasi_date),
-                        'tgl_gi'        => now(),
-                        'created_by'    => Auth::id(),
-                    ]);
+                    $transferHeader = StockTransfer::where('no_reservasi', $outbound->no_reservasi)->first();
+
+                    if (!$transferHeader) {
+                        $transferHeader = StockTransfer::create([
+                            'no_reservasi'  => $outbound->no_reservasi,
+                            'tgl_reservasi' => Carbon::parse($outbound->reservasi_date),
+                            'tgl_gi'        => now(),
+                            'created_by'    => Auth::id(),
+                        ]);
+                    }
                 }
 
                 // Create StockTransferDetail
@@ -700,11 +842,8 @@ class OutboundController extends Controller
                 }
             }
 
-            // Update header status_transfer to COMPLETED
-            $outbound->update([
-                'status_transfer' => 'COMPLETED',
-                'updated_by' => Auth::id()
-            ]);
+            // Sync header status_transfer & driver_id
+            $this->syncHeaderStatusTransfer($outbound);
 
             DB::commit();
 

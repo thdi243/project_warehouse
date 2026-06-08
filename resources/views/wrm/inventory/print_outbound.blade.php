@@ -370,6 +370,7 @@
                             <th class="text-end">Qty (KG)</th>
                             <th>No SPB</th>
                             <th>Supplier</th>
+                            <th>Driver Forklift</th>
                             <th>Lokasi (Plant - SLoc - Zona - Bin - Kolom.Lvl)</th>
                             <th class="text-center">Group</th>
                         </tr>
@@ -385,6 +386,7 @@
                                     {{ rtrim(rtrim(number_format($detail->qty, 2, ',', '.'), '0'), ',') }}</td>
                                 <td>{{ $detail->no_spb ?? '-' }}</td>
                                 <td>{{ $detail->supplier }}</td>
+                                <td>{{ $detail->driver ? ($detail->driver->nama_lengkap ?? $detail->driver->username) : '-' }}</td>
                                 <td>
                                     @if ($detail->bin && $detail->bin->location)
                                         {{ $detail->bin->location->plant }} - {{ $detail->bin->location->s_loc }} -

@@ -12,10 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('wrm_stock_draft_outbound', function (Blueprint $table) {
-            $table->unsignedBigInteger('driver_id')->nullable()->after('checklist_kondisi');
-            $table->string('status_transfer')->default('PENDING')->after('driver_id'); // 'PENDING', 'ASSIGNED', 'COMPLETED'
-
-            $table->foreign('driver_id')->references('id')->on('users')->onDelete('set null');
+            $table->enum('status_transfer', ['PENDING', 'ASSIGNED', 'COMPLETED'])
+                ->default('PENDING')
+                ->after('checklist_kondisi');
         });
     }
 
@@ -25,8 +24,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('wrm_stock_draft_outbound', function (Blueprint $table) {
-            $table->dropForeign(['driver_id']);
-            $table->dropColumn(['driver_id', 'status_transfer']);
+            $table->dropColumn('status_transfer');
         });
     }
 };
