@@ -494,10 +494,12 @@
 
                                 // Store order data for modal
                                 const orderJson = encodeURIComponent(JSON.stringify(order));
-                                const editUrl = "{{ route('wfg.bongkar_muat.form') }}?draft_id=" + order.id;
+                                const editUrl =
+                                    "{{ route('wfg.bongkar_muat.form') }}?draft_id=" + order
+                                    .id;
 
                                 const showUrl = "{{ url('wfg/bongkar-muat/show') }}/" +
-                                     order.id;
+                                    order.id;
 
                                 let actions = `
                                     <button type="button" class="btn btn-soft-info btn-sm btn-detail" data-order="${orderJson}" title="Quick View Items">
@@ -514,10 +516,7 @@
                                         <button type="button" class="btn btn-soft-warning btn-sm btn-follow-up-checker" data-id="${order.id}" title="Follow Up Checker" ${(order.status === 'submitted' || order.status === 'draft') && order.checker_id ? '' : 'disabled'}>
                                             <i class="ri-notification-3-line"></i>
                                         </button>
-                                    @endcan 
-                                    <a href="${showUrl}" class="btn btn-soft-success btn-sm" title="View Detail">
-                                        <i class="ri-file-list-3-line"></i>
-                                    </a>
+                                    @endcan
                                     <button type="button" class="btn btn-soft-success btn-sm btn-download" data-id="${order.id}" title="Download">
                                         <i class="ri-download-line"></i>
                                     </button>
@@ -690,7 +689,7 @@
                         `;
                     });
                 } else {
-                    detailsHtml = '<tr><td colspan="4" class="text-center">No items found</td></tr>';
+                    detailsHtml = '<tr><td colspan="10" class="text-center">No items found</td></tr>';
                 }
                 $('#detail-items tbody').html(detailsHtml);
 
