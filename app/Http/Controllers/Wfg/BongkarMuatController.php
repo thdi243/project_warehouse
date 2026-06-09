@@ -145,21 +145,27 @@ class BongkarMuatController extends Controller
         $draftId = $request->query('draft_id');
 
         if (!$draftId) {
-            // Find latest active draft for this user
-            $latestDraft = BongkarMuat::where('created_by', auth()->id())
-                ->where('status', 'draft')
+            // Find latest active/unfinished record for this user
+            $latestActive = BongkarMuat::where('created_by', auth()->id())
+                ->whereIn('status', ['draft', 'submitted', 'approved'])
                 ->latest()
                 ->first();
 
-            if (!$latestDraft) {
-                // If no drafts exist at all, create one
-                $latestDraft = BongkarMuat::create([
-                    'created_by' => auth()->id(),
-                    'status' => 'draft',
-                    'tanggal' => date('Y-m-d'),
-                ]);
+            if ($latestActive) {
+                if ($latestActive->status === 'draft') {
+                    return redirect()->route('wfg.bongkar_muat.form', ['draft_id' => $latestActive->id]);
+                } else {
+                    return redirect()->route('wfg.bongkar_muat.show', $latestActive->id);
+                }
             }
-            return redirect()->route('wfg.bongkar_muat.form', ['draft_id' => $latestDraft->id]);
+
+            // If no active records exist at all, create a new draft
+            $newDraft = BongkarMuat::create([
+                'created_by' => auth()->id(),
+                'status' => 'draft',
+                'tanggal' => date('Y-m-d'),
+            ]);
+            return redirect()->route('wfg.bongkar_muat.form', ['draft_id' => $newDraft->id]);
         }
 
         // We have a draft_id, retrieve it
