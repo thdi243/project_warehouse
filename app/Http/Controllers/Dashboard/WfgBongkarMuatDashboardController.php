@@ -295,7 +295,8 @@ class WfgBongkarMuatDashboardController extends Controller
             'details.material:id,mid_barang,nama_barang',
             'forkliftDriver:id,nama_lengkap,username',
         ])
-            ->where('status', 'draft');
+            ->where('status', 'draft')
+            ->whereNotNull('jam_muat');
 
         if ($request->start_date) {
             $query->whereDate('tanggal', '>=', $request->start_date);
