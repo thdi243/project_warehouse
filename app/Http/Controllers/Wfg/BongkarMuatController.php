@@ -129,23 +129,55 @@ class BongkarMuatController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        // Check for draft
+        // Check if create_new is requested
+        if ($request->query('create_new')) {
+            $draft = BongkarMuat::create([
+                'created_by' => auth()->id(),
+                'status' => 'draft',
+                'tanggal' => date('Y-m-d'),
+            ]);
+            return redirect()->route('wfg.bongkar_muat.form', ['draft_id' => $draft->id]);
+        }
+
+        $draftId = $request->query('draft_id');
+
+        if (!$draftId) {
+            // Find latest active draft for this user
+            $latestDraft = BongkarMuat::where('created_by', auth()->id())
+                ->where('status', 'draft')
+                ->latest()
+                ->first();
+
+            if (!$latestDraft) {
+                // If no drafts exist at all, create one
+                $latestDraft = BongkarMuat::create([
+                    'created_by' => auth()->id(),
+                    'status' => 'draft',
+                    'tanggal' => date('Y-m-d'),
+                ]);
+            }
+            return redirect()->route('wfg.bongkar_muat.form', ['draft_id' => $latestDraft->id]);
+        }
+
+        // We have a draft_id, retrieve it
         $draft = BongkarMuat::with('details.material')
+            ->where('id', $draftId)
             ->where('created_by', auth()->id())
             ->where('status', 'draft')
             ->first();
 
-        // Check if user has incomplete loading order (submitted/approved)
-        $incompleteOrder = BongkarMuat::where('created_by', auth()->id())
-            ->whereIn('status', ['submitted', 'approved'])
-            ->first();
-
-        if ($incompleteOrder) {
-            return redirect()->route('wfg.bongkar_muat.show', $incompleteOrder->id)
-                ->with('info', 'Anda memiliki Bongkar Muat yang belum diselesaikan (Approval Checker/Driver). Silahkan selesaikan terlebih dahulu.');
+        if (!$draft) {
+            return redirect()->route('wfg.bongkar_muat.form')
+                ->with('error', 'Draft tidak ditemukan atau bukan milik Anda.');
         }
+
+        // Load all active drafts for tabs
+        $allDrafts = BongkarMuat::where('created_by', auth()->id())
+            ->where('status', 'draft')
+            ->latest()
+            ->get();
 
         $forkliftDrivers = UserForkliftAssignmentModel::with('user')
             ->where('is_active', true)
@@ -160,11 +192,12 @@ class BongkarMuatController extends Controller
 
         // Gates currently in use (released when status, verified, or rejected)
         $bookedGates = BongkarMuat::whereIn('status', ['draft', 'submitted', 'approved'])
+            ->where('id', '!=', $draftId)
             ->whereNotNull('gate')
             ->pluck('gate')
             ->toArray();
 
-        return view('wfg.bongkar_muat.form', compact('forkliftDrivers', 'checkers', 'destinations', 'draft', 'bookedGates'));
+        return view('wfg.bongkar_muat.form', compact('forkliftDrivers', 'checkers', 'destinations', 'draft', 'bookedGates', 'allDrafts'));
     }
 
     private function generateNoDokumen()
@@ -208,10 +241,21 @@ class BongkarMuatController extends Controller
         try {
             DB::beginTransaction();
 
-            $order = BongkarMuat::updateOrCreate([
-                'created_by' => auth()->id(),
-                'status' => 'draft',
-            ], [
+            $draftId = $request->input('id');
+            if (!$draftId) {
+                return response()->json(['status' => false, 'message' => 'Draft ID is required.'], 400);
+            }
+
+            $order = BongkarMuat::where('id', $draftId)
+                ->where('created_by', auth()->id())
+                ->where('status', 'draft')
+                ->first();
+
+            if (!$order) {
+                return response()->json(['status' => false, 'message' => 'Draft tidak ditemukan atau bukan milik Anda.'], 404);
+            }
+
+            $order->update([
                 'tanggal' => $request->tanggal,
                 'no_dokumen' => null,
                 'shipment_smu' => $request->shipment_smu,
@@ -302,12 +346,18 @@ class BongkarMuatController extends Controller
         }
     }
 
-    public function cancelDraft()
+    public function cancelDraft(Request $request)
     {
         try {
             DB::beginTransaction();
 
-            $existingDraft = BongkarMuat::where('created_by', auth()->id())
+            $draftId = $request->input('id');
+            if (!$draftId) {
+                return response()->json(['status' => false, 'message' => 'Draft ID is required.'], 400);
+            }
+
+            $existingDraft = BongkarMuat::where('id', $draftId)
+                ->where('created_by', auth()->id())
                 ->where('status', 'draft')
                 ->first();
 
@@ -390,9 +440,23 @@ class BongkarMuatController extends Controller
             }
 
             // Find existing draft or create new
-            $order = BongkarMuat::where('created_by', auth()->id())->where('status', 'draft')->first();
+            $draftId = $request->input('id');
+            $order = null;
+            if ($draftId) {
+                $order = BongkarMuat::where('id', $draftId)
+                    ->where('created_by', auth()->id())
+                    ->where('status', 'draft')
+                    ->first();
+            }
 
-            if (!$order || $order->no_dokumen === null || $order->no_dokumen === '') {
+            if (!$order) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Draft tidak ditemukan atau bukan milik Anda.'
+                ], 404);
+            }
+
+            if ($order->no_dokumen === null || $order->no_dokumen === '') {
                 $noDok = $this->generateNoDokumen();
             } else {
                 $noDok = $order->no_dokumen;
@@ -550,7 +614,7 @@ class BongkarMuatController extends Controller
             ],
             [
                 'message' => 'Form Bongkar Muat Anda belum disubmit, tolong segera disubmit, dari Admin.',
-                'url' => route('wfg.bongkar_muat.form'),
+                'url' => route('wfg.bongkar_muat.form', ['draft_id' => $order->id]),
                 'is_read' => false,
             ]
         );
@@ -683,7 +747,7 @@ class BongkarMuatController extends Controller
                     $detail = $order->details()->find($detailData['id']);
                     if ($detail) {
                         $updateFields = [];
-                        if ($detail->double_po || $detail->cancel_to) {
+                        if ($detail->double_po || $detail->cancel_to || $detail->manual_picking) {
                             $updateFields['no_to'] = $this->cleanNull($detailData['no_to'] ?? null);
                         }
                         if ($detail->cancel_to) {
@@ -960,6 +1024,9 @@ class BongkarMuatController extends Controller
     {
         if (is_null($val)) return null;
         $val = trim($val);
+        if ($val === '0' || $val === 0 || preg_match('/^0+$/', $val)) {
+            return $val;
+        }
         if ($val === '' || strtolower($val) === 'null' || strtolower($val) === 'undefined') {
             return null;
         }

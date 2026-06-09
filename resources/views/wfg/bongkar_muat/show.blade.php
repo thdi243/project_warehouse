@@ -221,8 +221,7 @@
                                                         </td>
                                                         <td class="text-center">
                                                             @if ($detail->double_po)
-                                                                <span
-                                                                    class="badge bg-soft-warning text-warning mb-1">Double
+                                                                <span class="badge bg-soft-warning text-warning mb-1">2
                                                                     PO</span>
                                                             @endif
                                                             @if ($detail->cancel_to)
@@ -237,7 +236,7 @@
                                                         <td class="text-center" style="min-width: 150px;">
                                                             @if ($order->status == 'finished' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
                                                                 @if ($detail->double_po || $detail->cancel_to || $detail->manual_picking)
-                                                                    <input type="text"
+                                                                    <input type="number"
                                                                         name="details[{{ $index }}][no_to]"
                                                                         class="form-control form-control-sm text-center border-warning fw-bold"
                                                                         placeholder="No. TO" value="{{ $detail->no_to }}"

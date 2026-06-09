@@ -90,8 +90,34 @@
                 </div>
             </div>
 
+            {{-- Tabs for Active Drafts --}}
+            <div class="row mb-3">
+                <div class="col-12">
+                    <ul class="nav nav-tabs nav-tabs-custom nav-success" role="tablist">
+                        @foreach ($allDrafts as $d)
+                            <li class="nav-item">
+                                <a class="nav-link {{ $draft->id == $d->id ? 'active' : '' }} d-flex align-items-center gap-2" 
+                                   href="{{ route('wfg.bongkar_muat.form', ['draft_id' => $d->id]) }}">
+                                    <i class="ri-draft-line"></i>
+                                    <span>Draft #{{ $d->id }}</span>
+                                    @if($d->no_mobil)
+                                        <span class="badge bg-info-subtle text-info rounded-pill">{{ $d->no_mobil }}</span>
+                                    @endif
+                                </a>
+                            </li>
+                        @endforeach
+                        <li class="nav-item">
+                            <a class="nav-link d-flex align-items-center text-primary fw-medium" href="{{ route('wfg.bongkar_muat.form', ['create_new' => 1]) }}">
+                                <i class="ri-add-line me-1"></i> Baru
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
             <form id="form-bongkar-muat">
                 @csrf
+                <input type="hidden" name="id" value="{{ $draft->id }}">
                 <div class="row">
                     {{-- Header Section --}}
                     <div class="col-lg-6">
@@ -1000,11 +1026,12 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.post("{{ route('wfg.bongkar_muat.cancel_draft') }}", {
-                            _token: "{{ csrf_token() }}"
+                            _token: "{{ csrf_token() }}",
+                            id: "{{ $draft->id }}"
                         }, function(res) {
                             if (res.status) {
                                 Swal.fire('Berhasil', res.message, 'success').then(() => {
-                                    window.location.reload();
+                                    window.location.href = "{{ route('wfg.bongkar_muat.form') }}";
                                 });
                             } else {
                                 Swal.fire('Gagal', res.message, 'error');

@@ -494,18 +494,20 @@
 
                                 // Store order data for modal
                                 const orderJson = encodeURIComponent(JSON.stringify(order));
+                                const editUrl = "{{ route('wfg.bongkar_muat.form') }}?draft_id=" + order.id;
 
                                 const showUrl = "{{ url('wfg/bongkar-muat/show') }}/" +
-                                    order.id;
+                                     order.id;
 
                                 let actions = `
                                     <button type="button" class="btn btn-soft-info btn-sm btn-detail" data-order="${orderJson}" title="Quick View Items">
                                         <i class="ri-eye-line"></i>
                                     </button>
                                     @can('permission', 'bongkar-muat-plus')
-                                        <button type="button" class="btn btn-soft-primary btn-sm btn-edit" data-order="${orderJson}" title="Edit Items">
-                                            <i class="ri-edit-line"></i>
-                                        </button>
+                                        ${order.status === 'draft' ? 
+                                            `<a href="${editUrl}" class="btn btn-soft-primary btn-sm" title="Resume Draft"><i class="ri-edit-line"></i></a>` : 
+                                            `<button type="button" class="btn btn-soft-primary btn-sm btn-edit" data-order="${orderJson}" title="Edit Items"><i class="ri-edit-line"></i></button>`
+                                        }
                                         <button type="button" class="btn btn-soft-danger btn-sm btn-delete" data-id="${order.id}" title="Delete">
                                             <i class="ri-delete-bin-line"></i>
                                         </button>
@@ -513,6 +515,9 @@
                                             <i class="ri-notification-3-line"></i>
                                         </button>
                                     @endcan 
+                                    <a href="${showUrl}" class="btn btn-soft-success btn-sm" title="View Detail">
+                                        <i class="ri-file-list-3-line"></i>
+                                    </a>
                                     <button type="button" class="btn btn-soft-success btn-sm btn-download" data-id="${order.id}" title="Download">
                                         <i class="ri-download-line"></i>
                                     </button>
