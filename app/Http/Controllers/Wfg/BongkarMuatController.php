@@ -35,7 +35,8 @@ class BongkarMuatController extends Controller
         $status = $request->input('status');
         $flags = $request->input('flags');
 
-        $query = BongkarMuat::with(['forkliftDriver', 'checker', 'destinasi', 'details.material', 'verificator']);
+        $query = BongkarMuat::with(['forkliftDriver', 'checker', 'destinasi', 'details.material', 'verificator'])
+            ->whereNotNull('jam_muat');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
