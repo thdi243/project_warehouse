@@ -577,22 +577,42 @@
 
                 if (!data || data.last_page <= 1) return;
 
+                let current = data.current_page;
+                let last = data.last_page;
+
                 let paginationHtml =
                     '<nav aria-label="Page navigation"><ul class="pagination pagination-separated justify-content-center mb-0">';
 
-                const prevDisabled = data.current_page === 1 ? 'disabled' : '';
+                const prevDisabled = current === 1 ? 'disabled' : '';
                 paginationHtml +=
-                    `<li class="page-item ${prevDisabled}"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
+                    `<li class="page-item ${prevDisabled}"><a class="page-link" href="#" data-page="${current - 1}">Previous</a></li>`;
 
-                for (let i = 1; i <= data.last_page; i++) {
-                    const activeClass = data.current_page === i ? 'active' : '';
+                let start = Math.max(1, current - 2);
+                let end = Math.min(last, current + 2);
+
+                if (start > 1) {
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
+                    if (start > 2) {
+                        paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    }
+                }
+
+                for (let i = start; i <= end; i++) {
+                    const activeClass = current === i ? 'active' : '';
                     paginationHtml +=
                         `<li class="page-item ${activeClass}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
                 }
 
-                const nextDisabled = data.current_page === data.last_page ? 'disabled' : '';
+                if (end < last) {
+                    if (end < last - 1) {
+                        paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    }
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${last}">${last}</a></li>`;
+                }
+
+                const nextDisabled = current === last ? 'disabled' : '';
                 paginationHtml +=
-                    `<li class="page-item ${nextDisabled}"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
+                    `<li class="page-item ${nextDisabled}"><a class="page-link" href="#" data-page="${current + 1}">Next</a></li>`;
 
                 paginationHtml += '</ul></nav>';
                 container.append(paginationHtml);

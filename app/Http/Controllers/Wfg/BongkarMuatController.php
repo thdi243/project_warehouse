@@ -28,7 +28,7 @@ class BongkarMuatController extends Controller
 
     public function data(Request $request)
     {
-        $perPage = 10;
+        $perPage = 25;
         $search = $request->input('search');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
