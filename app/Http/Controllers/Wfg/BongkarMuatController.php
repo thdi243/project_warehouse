@@ -579,12 +579,6 @@ class BongkarMuatController extends Controller
             'status' => 'approved' // Moves to next step: Driver Approval
         ]);
 
-        NotificationsModel::where('user_id', $request->checker_id)
-            ->where('notifiable_type', BongkarMuat::class)
-            ->where('notifiable_id', $order->id)
-            ->whereIn('title', ['Info Bongkar Muat', 'Follow Up Checker Bongkar Muat'])
-            ->delete();
-
         return back()->with('success', 'Checker approved successfully.');
     }
 
