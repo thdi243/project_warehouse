@@ -582,7 +582,7 @@ class BongkarMuatController extends Controller
         NotificationsModel::where('user_id', $request->checker_id)
             ->where('notifiable_type', BongkarMuat::class)
             ->where('notifiable_id', $order->id)
-            ->where('title', 'Follow Up Checker Bongkar Muat')
+            ->whereIn('title', ['Info Bongkar Muat', 'Follow Up Checker Bongkar Muat'])
             ->delete();
 
         return back()->with('success', 'Checker approved successfully.');
@@ -657,6 +657,12 @@ class BongkarMuatController extends Controller
             'driver_approved_at' => Carbon::now(),
             'status' => 'finished' // Final status before verification
         ]);
+
+        // Delete checker follow-up notifications
+        NotificationsModel::where('notifiable_type', BongkarMuat::class)
+            ->where('notifiable_id', $order->id)
+            ->whereIn('title', ['Info Bongkar Muat', 'Follow Up Checker Bongkar Muat'])
+            ->delete();
 
         // Kirim notifikasi ke semua verificator
         $verificators = User::role('verificator-bongkar-muat-wfg')->get();
