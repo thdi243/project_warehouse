@@ -1720,4 +1720,152 @@ class P2HController extends Controller
             default => ucwords(str_replace('_', ' ', (string)$section))
         };
     }
+
+    public function summaryView()
+    {
+        $forklifts = ForkliftModel::where('status', 'active')->orderBy('nomor_unit')->get(['id', 'nomor_unit']);
+        $palletMovers = PalletMoverModel::where('status', 'active')->orderBy('nomor_unit')->get(['id', 'nomor_unit']);
+        return view('wrm.p2h.summary_p2h', compact('forklifts', 'palletMovers'));
+    }
+
+    public function summaryData(Request $request)
+    {
+        $startDate = $request->get('start_date') ?: \Carbon\Carbon::now()->toDateString();
+        $endDate = $request->get('end_date') ?: \Carbon\Carbon::now()->toDateString();
+
+        // 1. Fetch P2H Forklift logs
+        $forkliftsQuery = P2HForklfitModel::whereBetween('tanggal', [$startDate, $endDate]);
+        $forkliftLogs = $forkliftsQuery->get();
+
+        // 2. Fetch P2H Pallet Mover logs
+        $palletMoversQuery = P2HPalletMoverModel::whereBetween('tanggal', [$startDate, $endDate]);
+        $palletMoverLogs = $palletMoversQuery->get();
+
+        $records = [];
+
+        foreach ($forkliftLogs as $item) {
+            $records[] = [
+                'tanggal' => \Carbon\Carbon::parse($item->tanggal)->format('Y-m-d'),
+                'nomor_unit' => $item->nomor_unit,
+                'jenis_p2h' => 'Forklift',
+                'shift' => $item->shift,
+                'operator_name' => $item->operator_name,
+                'persentase' => floatval($item->persentase),
+                'status' => $item->persentase > 80 ? 'Layak' : ($item->persentase >= 70 ? 'Perlu Perhatian' : 'Tidak Layak'),
+                'catatan' => $item->catatan ?: '-',
+            ];
+        }
+
+        foreach ($palletMoverLogs as $item) {
+            $kelayakan = $item->calculateKelayakan();
+            $records[] = [
+                'tanggal' => \Carbon\Carbon::parse($item->tanggal)->format('Y-m-d'),
+                'nomor_unit' => $item->nomor_unit,
+                'jenis_p2h' => 'Pallet Mover',
+                'shift' => $item->shift,
+                'operator_name' => $item->operator_name,
+                'persentase' => floatval($kelayakan['persentase']),
+                'status' => $kelayakan['status'],
+                'catatan' => $item->catatan ?: '-',
+            ];
+        }
+
+        // Sort by health percentage ascending (lowest health first)
+        usort($records, function ($a, $b) {
+            return $a['persentase'] <=> $b['persentase'];
+        });
+
+        // 3. Find units that have NOT done P2H (daily only, using start_date as the target date)
+        $targetDate = $startDate;
+        $activeForklifts = ForkliftModel::where('status', 'active')->orderBy('nomor_unit')->get();
+        $activePalletMovers = PalletMoverModel::where('status', 'active')->orderBy('nomor_unit')->get();
+
+        $forkliftInspected = P2HForklfitModel::whereDate('tanggal', $targetDate)->pluck('nomor_unit')->unique()->toArray();
+        $palletMoverInspected = P2HPalletMoverModel::whereDate('tanggal', $targetDate)->pluck('nomor_unit')->unique()->toArray();
+
+        $belumP2H = [];
+
+        foreach ($activeForklifts as $f) {
+            if (!in_array($f->nomor_unit, $forkliftInspected)) {
+                $belumP2H[] = [
+                    'nomor_unit' => $f->nomor_unit,
+                    'jenis_p2h' => 'Forklift',
+                    'departemen' => $f->departemen,
+                    'section' => $this->formatSection($f->section),
+                ];
+            }
+        }
+
+        foreach ($activePalletMovers as $p) {
+            if (!in_array($p->nomor_unit, $palletMoverInspected)) {
+                $belumP2H[] = [
+                    'nomor_unit' => $p->nomor_unit,
+                    'jenis_p2h' => 'Pallet Mover',
+                    'departemen' => $p->departemen,
+                    'section' => $this->formatSection($p->section),
+                ];
+            }
+        }
+
+        return response()->json([
+            'records' => $records,
+            'belum_p2h' => $belumP2H,
+            'target_date' => $targetDate
+        ]);
+    }
+
+    public function historyData(Request $request)
+    {
+        $nomorUnit = $request->get('nomor_unit');
+        $jenisP2h = $request->get('jenis_p2h');
+        $startDate = $request->get('start_date') ?: \Carbon\Carbon::now()->startOfMonth()->toDateString();
+        $endDate = $request->get('end_date') ?: \Carbon\Carbon::now()->toDateString();
+
+        if (empty($nomorUnit) || empty($jenisP2h)) {
+            return response()->json(['error' => 'Nomor unit dan jenis P2H wajib dipilih.'], 400);
+        }
+
+        $records = [];
+
+        if ($jenisP2h === 'Forklift') {
+            $logs = P2HForklfitModel::where('nomor_unit', $nomorUnit)
+                ->whereBetween('tanggal', [$startDate, $endDate])
+                ->orderBy('tanggal', 'desc')
+                ->orderBy('shift', 'desc')
+                ->get();
+
+            foreach ($logs as $item) {
+                $records[] = [
+                    'tanggal' => \Carbon\Carbon::parse($item->tanggal)->format('Y-m-d'),
+                    'shift' => $item->shift,
+                    'operator_name' => $item->operator_name,
+                    'persentase' => floatval($item->persentase),
+                    'status' => $item->persentase > 80 ? 'Layak' : ($item->persentase >= 70 ? 'Perlu Perhatian' : 'Tidak Layak'),
+                    'catatan' => $item->catatan ?: '-',
+                ];
+            }
+        } elseif ($jenisP2h === 'Pallet Mover') {
+            $logs = P2HPalletMoverModel::where('nomor_unit', $nomorUnit)
+                ->whereBetween('tanggal', [$startDate, $endDate])
+                ->orderBy('tanggal', 'desc')
+                ->orderBy('shift', 'desc')
+                ->get();
+
+            foreach ($logs as $item) {
+                $kelayakan = $item->calculateKelayakan();
+                $records[] = [
+                    'tanggal' => \Carbon\Carbon::parse($item->tanggal)->format('Y-m-d'),
+                    'shift' => $item->shift,
+                    'operator_name' => $item->operator_name,
+                    'persentase' => floatval($kelayakan['persentase']),
+                    'status' => $kelayakan['status'],
+                    'catatan' => $item->catatan ?: '-',
+                ];
+            }
+        }
+
+        return response()->json([
+            'records' => $records
+        ]);
+    }
 }

@@ -217,6 +217,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/store/forklift/assignment', [P2HController::class, 'storeForkliftAssignment']);
             Route::post('/update/forklift/assignment', [P2HController::class, 'updateForkliftAssignment']);
             Route::get('/online/data', [WarehouseController::class, 'p2hData'])->name('p2h.online.data');
+            Route::get('/online/summary', [P2HController::class, 'summaryView'])->name('p2h.online.summary');
+            Route::get('/online/summary/data', [P2HController::class, 'summaryData'])->name('p2h.online.summary.data');
+            Route::get('/online/summary/history', [P2HController::class, 'historyData'])->name('p2h.online.summary.history');
             Route::get('/registration/forklift', [WarehouseController::class, 'showRegForklift'])->name('p2h.registration.forklift')
                 ->middleware(['permission:p2h-unit-regis']);
             Route::post('/update/multi', [P2HController::class, 'updateMultiShiftP2H']);
