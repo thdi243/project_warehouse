@@ -95,14 +95,28 @@
                 <div class="col-12">
                     <ul class="nav nav-tabs nav-tabs-custom nav-success" role="tablist">
                         @foreach ($allDrafts as $d)
+                            @php
+                                $isCurrent = ($draft && $draft->id == $d->id);
+                                $tabUrl = $d->status === 'draft'
+                                    ? route('wfg.bongkar_muat.form', ['draft_id' => $d->id])
+                                    : route('wfg.bongkar_muat.show', $d->id);
+                                
+                                $statusBadge = '';
+                                if ($d->status === 'submitted') {
+                                    $statusBadge = '<span class="badge bg-warning-subtle text-warning rounded-pill">Submitted</span>';
+                                } elseif ($d->status === 'approved') {
+                                    $statusBadge = '<span class="badge bg-primary-subtle text-primary rounded-pill">Approved</span>';
+                                }
+                            @endphp
                             <li class="nav-item">
-                                <a class="nav-link {{ $draft->id == $d->id ? 'active' : '' }} d-flex align-items-center gap-2"
-                                    href="{{ route('wfg.bongkar_muat.form', ['draft_id' => $d->id]) }}">
+                                <a class="nav-link {{ $isCurrent ? 'active' : '' }} d-flex align-items-center gap-2"
+                                    href="{{ $tabUrl }}">
                                     <i class="ri-draft-line"></i>
                                     <span>Draft #{{ $d->id }}</span>
                                     @if ($d->no_mobil)
                                         <span class="badge bg-info-subtle text-info rounded-pill">{{ $d->no_mobil }}</span>
                                     @endif
+                                    {!! $statusBadge !!}
                                 </a>
                             </li>
                         @endforeach

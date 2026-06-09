@@ -176,7 +176,7 @@ class BongkarMuatController extends Controller
 
         // Load all active drafts for tabs
         $allDrafts = BongkarMuat::where('created_by', auth()->id())
-            ->where('status', 'draft')
+            ->whereIn('status', ['draft', 'submitted', 'approved'])
             ->latest()
             ->get();
 
@@ -606,6 +606,14 @@ class BongkarMuatController extends Controller
             ], 422);
         }
 
+        $url = $order->status === 'draft'
+            ? route('wfg.bongkar_muat.form', ['draft_id' => $order->id])
+            : route('wfg.bongkar_muat.show', $order->id);
+
+        $message = $order->status === 'draft'
+            ? 'Form Bongkar Muat Anda belum disubmit, tolong segera disubmit, dari Admin.'
+            : 'Bongkar Muat ' . ($order->no_mobil ?? '') . ' menunggu approval Checker Anda.';
+
         NotificationsModel::updateOrCreate(
             [
                 'user_id' => $order->checker_id,
@@ -614,8 +622,8 @@ class BongkarMuatController extends Controller
                 'title' => 'Info Bongkar Muat',
             ],
             [
-                'message' => 'Form Bongkar Muat Anda belum disubmit, tolong segera disubmit, dari Admin.',
-                'url' => route('wfg.bongkar_muat.form', ['draft_id' => $order->id]),
+                'message' => $message,
+                'url' => $url,
                 'is_read' => false,
             ]
         );
