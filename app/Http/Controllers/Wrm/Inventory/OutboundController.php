@@ -124,10 +124,11 @@ class OutboundController extends Controller
                 ->whereDate('reservasi_date', Carbon::parse($request->tgl_reservasi)->toDateString())
                 ->first();
 
+            $batchId = uniqid('batch_');
+
             if ($header) {
                 $header->update([
                     'shift'             => $request->shift,
-                    'qty_request'       => $request->qty_request,
                     'catatan'           => $request->catatan,
                     'checklist_kondisi' => $request->checklist_kondisi ? json_encode($request->checklist_kondisi) : null,
                     'updated_by'        => Auth::id(),
@@ -158,6 +159,8 @@ class OutboundController extends Controller
                     'incoming_date' => $detail->incoming_date,
                     'group'        => $detail->group ?? null,
                     'qty'          => $detail->qty,
+                    'qty_request'  => $request->qty_request,
+                    'batch_id'     => $batchId,
                     'loc_id'       => $detail->loc_id,
                     'status'       => $status,
                     'expired_date' => $detail->expired_date, // Store Expired Date in detail
@@ -170,6 +173,8 @@ class OutboundController extends Controller
                     'status' => $status
                 ]);
             }
+
+            $header->recalculateQtyRequest();
 
             $this->syncHeaderStatusTransfer($header);
 
@@ -452,7 +457,7 @@ class OutboundController extends Controller
                 $outbound->delete();
                 $deletedHeader = true;
             } else {
-                $outbound->decrement('qty_request', $detail->qty);
+                $outbound->recalculateQtyRequest();
                 $deletedHeader = false;
             }
 
@@ -553,9 +558,7 @@ class OutboundController extends Controller
                         $outbound->delete();
                         $deletedHeaders[] = (int) $outboundId;
                     } else {
-                        // Decrement qty_request by the sum of deleted details in this outbound
-                        $deletedQty = $details->where('outbound_id', $outboundId)->sum('qty');
-                        $outbound->decrement('qty_request', $deletedQty);
+                        $outbound->recalculateQtyRequest();
                     }
                 }
             }

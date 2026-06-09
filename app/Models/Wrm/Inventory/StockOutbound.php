@@ -30,6 +30,26 @@ class StockOutbound extends Model
         return $this->hasMany(StockOutboundDetail::class, 'outbound_id');
     }
 
+    public function recalculateQtyRequest()
+    {
+        $hasBatches = $this->details()->whereNotNull('batch_id')->exists();
+        if (!$hasBatches) {
+            return;
+        }
+
+        $totalRequest = $this->details()
+            ->whereNotNull('batch_id')
+            ->select('batch_id', 'qty_request')
+            ->get()
+            ->groupBy('batch_id')
+            ->map(function ($group) {
+                return $group->first()->qty_request ?? 0;
+            })
+            ->sum();
+
+        $this->update(['qty_request' => $totalRequest]);
+    }
+
 
     public function creator()
     {

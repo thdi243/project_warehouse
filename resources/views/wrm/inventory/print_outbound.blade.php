@@ -76,7 +76,7 @@
                 align-items: flex-start;
                 border-bottom: 2px solid #0f172a;
                 padding-bottom: 20px;
-                margin-bottom: 30px;
+                margin-bottom: 20px;
             }
 
             .doc-title h1 {
@@ -358,6 +358,62 @@
                 </div>
             </div>
 
+            <!-- Summary Request per MID -->
+            <div class="table-wrapper" style="margin-bottom: 20px;">
+                <div
+                    style="font-weight: 700; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a;">
+                    Summary Qty Request per MID
+                </div>
+                <table style="margin-bottom: 10px;">
+                    <thead>
+                        <tr>
+                            <th>MID</th>
+                            <th>Nama Barang</th>
+                            <th class="text-end" style="width: 150px;">Qty Request (KG)</th>
+                            <th class="text-end" style="width: 150px;">Qty Picked (KG)</th>
+                            <th class="text-center" style="width: 80px;">UoM</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @php
+                            $groupedDetails = $outbound->details->groupBy('barang.mid');
+                        @endphp
+                        @forelse($groupedDetails as $mid => $group)
+                            @php
+                                $firstItem = $group->first();
+                                $totalPicked = $group->sum('qty');
+                                $uniqueBatches = $group->groupBy('batch_id');
+                                $totalRequest = $uniqueBatches
+                                    ->map(function ($batchGroup) use ($outbound) {
+                                        if (is_null($batchGroup->first()->batch_id)) {
+                                            return $outbound->qty_request;
+                                        }
+                                        return $batchGroup->first()->qty_request ?? 0;
+                                    })
+                                    ->sum();
+                            @endphp
+                            <tr>
+                                <td class="fw-bold">{{ $mid }}</td>
+                                <td>{{ $firstItem->barang->nama_barang ?? '-' }}</td>
+                                <td class="text-end fw-bold" style="color: #0284c7;">
+                                    {{ $totalRequest > 0 ? rtrim(rtrim(number_format($totalRequest, 2, ',', '.'), '0'), ',') : '-' }}
+                                </td>
+                                <td class="text-end fw-bold" style="color: #16a34a;">
+                                    {{ rtrim(rtrim(number_format($totalPicked, 2, ',', '.'), '0'), ',') }}
+                                </td>
+                                <td class="text-center">{{ $firstItem->barang->uom ?? '-' }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="text-center" style="color: #64748b; font-style: italic;">
+                                    Tidak ada data permintaan.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
             <!-- Table Content -->
             <div class="table-wrapper">
                 <table>
@@ -386,7 +442,8 @@
                                     {{ rtrim(rtrim(number_format($detail->qty, 2, ',', '.'), '0'), ',') }}</td>
                                 <td>{{ $detail->no_spb ?? '-' }}</td>
                                 <td>{{ $detail->supplier }}</td>
-                                <td>{{ $detail->driver ? ($detail->driver->nama_lengkap ?? $detail->driver->username) : '-' }}</td>
+                                <td>{{ $detail->driver ? $detail->driver->nama_lengkap ?? $detail->driver->username : '-' }}
+                                </td>
                                 <td>
                                     @if ($detail->bin && $detail->bin->location)
                                         {{ $detail->bin->location->plant }} - {{ $detail->bin->location->s_loc }} -

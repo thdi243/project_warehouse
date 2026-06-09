@@ -128,6 +128,22 @@
                         <div id="checklistContent" class="d-flex flex-wrap gap-2"></div>
                     </div>
 
+                    <div class="mb-3 bg-light rounded" id="summaryRequestSection" style="display: none;">
+                        <h6 class="fw-bold mb-2">Summary Qty Request per MID:</h6>
+                        <table class="table table-bordered table-md mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>MID</th>
+                                    <th>Nama Barang</th>
+                                    <th class="text-end">Qty Request (KG)</th>
+                                    <th class="text-end">Qty Picked (KG)</th>
+                                    <th class="text-center">UoM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summaryRequestContent"></tbody>
+                        </table>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-bordered table-md align-middle text-nowrap">
                             <thead class="table-light">
@@ -142,7 +158,8 @@
                                     <th>MID</th>
                                     <th>Nama Barang</th>
                                     <th>Group</th>
-                                    <th>Qty (KG)</th>
+                                    <th>Qty Picked (KG)</th>
+                                    <th>Qty Request (KG)</th>
                                     <th>Status</th>
                                     <th>Driver Forklift</th>
                                     <th>Lokasi</th>
@@ -150,7 +167,7 @@
                                 </tr>
                             </thead>
 
-                            <tbody>
+                            <tbody id="modalDetailItemsBody">
                                 <!-- isi dari ajax -->
                             </tbody>
                         </table>
@@ -478,6 +495,55 @@
                         $('#checklistSection').hide();
                     }
 
+                    // Tampilkan Summary Qty Request per MID
+                    if (res.data && res.data.length > 0) {
+                        let midGroups = {};
+                        res.data.forEach(d => {
+                            let mid = d.barang ? d.barang.mid : '-';
+                            let name = d.barang ? d.barang.nama_barang : '-';
+                            let uom = d.barang ? d.barang.uom : '-';
+
+                            if (!midGroups[mid]) {
+                                midGroups[mid] = {
+                                    mid: mid,
+                                    name: name,
+                                    uom: uom,
+                                    batches: {},
+                                    qty_picked: 0
+                                };
+                            }
+                            midGroups[mid].qty_picked += parseFloat(d.qty) || 0;
+
+                            let batchKey = d.batch_id || 'legacy';
+                            let req = parseFloat(d.qty_request) || 0;
+                            if (batchKey === 'legacy') {
+                                req = parseFloat(res.header.qty_request) || 0;
+                            }
+                            midGroups[mid].batches[batchKey] = req;
+                        });
+
+                        let summaryHtml = '';
+                        Object.values(midGroups).forEach(g => {
+                            let totalRequest = Object.values(g.batches).reduce((a, b) => a + b, 0);
+                            let requestText = totalRequest > 0 ? numberFormat(totalRequest) : '-';
+
+                            summaryHtml += `
+                                <tr>
+                                    <td><b>${g.mid}</b></td>
+                                    <td>${g.name}</td>
+                                    <td class="text-end fw-bold text-primary">${requestText} KG</td>
+                                    <td class="text-end fw-bold text-success">${numberFormat(g.qty_picked)} KG</td>
+                                    <td class="text-center">${g.uom}</td>
+                                </tr>
+                            `;
+                        });
+
+                        $('#summaryRequestContent').html(summaryHtml);
+                        $('#summaryRequestSection').show();
+                    } else {
+                        $('#summaryRequestSection').hide();
+                    }
+
                     res.data.forEach((d, i) => {
                         let driverName = d.driver ? d.driver.nama_lengkap || d.driver.username :
                             '<span class="text-muted">Belum di-assign</span>';
@@ -503,6 +569,7 @@
                                 <td style="font-size: 11px;">${d.barang.nama_barang}</td>
                                 <td>${d.group ?? '-'}</td>
                                 <td>${numberFormat(d.qty)}</td>
+                                <td>${d.qty_request ? numberFormat(d.qty_request) : '-'}</td>
                                 <td>${statusBadge}</td>
                                 <td>${driverName}</td>
                                 <td style="font-size: 11px;">${d.bin.location.plant} - ${d.bin.location.gudang} - ${d.bin.location.bin} - (${d.bin.kolom}.${d.bin.level})</td>
@@ -518,7 +585,7 @@
                         `;
                     });
 
-                    $('#modalDetail tbody').html(html);
+                    $('#modalDetailItemsBody').html(html);
 
                     $('#modalDetail').modal('show');
 

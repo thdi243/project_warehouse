@@ -25,6 +25,8 @@ class StockOutboundDetail extends Model
         'incoming_date',
         'group',
         'qty',
+        'qty_request',
+        'batch_id',
         'status',
         'expired_date',
         'loc_id',
