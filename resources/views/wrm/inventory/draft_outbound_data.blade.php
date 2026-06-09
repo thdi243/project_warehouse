@@ -272,9 +272,6 @@
                     } else {
 
                         data.forEach((d, index) => {
-                            let driverName = d.driver ? d.driver.nama_lengkap || d.driver.username :
-                                '<span class="text-muted">Belum di-assign</span>';
-
                             let statusBadge = '';
                             if (d.status_transfer === 'PENDING') {
                                 statusBadge = '<span class="badge bg-warning">PENDING</span>';

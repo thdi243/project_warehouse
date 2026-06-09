@@ -193,7 +193,6 @@ class OutboundController extends Controller
     public function getData(Request $request)
     {
         $query = StockOutbound::with([
-            'driver:id,nama_lengkap,username',
             'details' => function ($q) {
                 $q->whereIn('status', ['RESERVED', 'BA WAITING'])->with([
                     'barang:id,mid,nama_barang,uom',
@@ -726,18 +725,8 @@ class OutboundController extends Controller
             }
         }
 
-        // Determine header's driver_id (if all RESERVED details share one driver, set it; otherwise null)
-        $reservedDetails = $details->where('status', 'RESERVED');
-        $uniqueDrivers = $reservedDetails->pluck('driver_id')->filter()->unique();
-
-        $headerDriverId = null;
-        if ($uniqueDrivers->count() === 1) {
-            $headerDriverId = $uniqueDrivers->first();
-        }
-
         $outbound->update([
             'status_transfer' => $statusTransfer,
-            'driver_id' => $headerDriverId,
             'updated_by' => Auth::id()
         ]);
     }
