@@ -158,8 +158,7 @@
                                     <th>MID</th>
                                     <th>Nama Barang</th>
                                     <th>Group</th>
-                                    <th>Qty Picked (KG)</th>
-                                    <th>Qty Request (KG)</th>
+                                    <th>Qty (KG)</th>
                                     <th>Status</th>
                                     <th>Driver Forklift</th>
                                     <th>Lokasi</th>
@@ -569,7 +568,6 @@
                                 <td style="font-size: 11px;">${d.barang.nama_barang}</td>
                                 <td>${d.group ?? '-'}</td>
                                 <td>${numberFormat(d.qty)}</td>
-                                <td>${d.qty_request ? numberFormat(d.qty_request) : '-'}</td>
                                 <td>${statusBadge}</td>
                                 <td>${driverName}</td>
                                 <td style="font-size: 11px;">${d.bin.location.plant} - ${d.bin.location.gudang} - ${d.bin.location.bin} - (${d.bin.kolom}.${d.bin.level})</td>
