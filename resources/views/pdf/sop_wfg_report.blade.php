@@ -262,7 +262,7 @@
             <tr>
                 <td colspan="3" style="padding: 6px;">
                     <strong>Note:</strong>
-                    <div style="min-height: 80px; margin-top: 5px; padding: 5px;">
+                    <div style="margin-top: 5px; padding: 5px;">
                         @foreach ($approvers as $app)
                             @if (!empty($app['catatan']))
                                 <p style="margin: 0 0 4px 0;">
