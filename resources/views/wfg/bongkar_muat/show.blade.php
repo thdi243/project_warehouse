@@ -575,6 +575,55 @@
                 return signaturePad;
             }
 
+            function trimCanvas(canvas) {
+                const ctx = canvas.getContext('2d');
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                const imageData = ctx.getImageData(0, 0, imgWidth, imgHeight);
+                const data = imageData.data;
+
+                let minX = imgWidth;
+                let minY = imgHeight;
+                let maxX = -1;
+                let maxY = -1;
+
+                for (let y = 0; y < imgHeight; y++) {
+                    for (let x = 0; x < imgWidth; x++) {
+                        const alphaIndex = ((y * imgWidth) + x) * 4 + 3;
+                        const alpha = data[alphaIndex];
+
+                        if (alpha > 0) {
+                            if (x < minX) minX = x;
+                            if (y < minY) minY = y;
+                            if (x > maxX) maxX = x;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+
+                if (maxX === -1) {
+                    return canvas.toDataURL();
+                }
+
+                const padding = 25;
+                minX = Math.max(0, minX - padding);
+                minY = Math.max(0, minY - padding);
+                maxX = Math.min(imgWidth - 1, maxX + padding);
+                maxY = Math.min(imgHeight - 1, maxY + padding);
+
+                const croppedWidth = maxX - minX + 1;
+                const croppedHeight = maxY - minY + 1;
+
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = croppedWidth;
+                tempCanvas.height = croppedHeight;
+
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(canvas, minX, minY, croppedWidth, croppedHeight, 0, 0, croppedWidth, croppedHeight);
+
+                return tempCanvas.toDataURL();
+            }
+
             @if ($order->status == 'submitted')
                 const checkerPad = initSignature('checker-signature-pad', 'checker-signature-data',
                     'clear-checker-sig');
@@ -583,7 +632,7 @@
                         e.preventDefault();
                         Swal.fire('Error', 'Signature is required.', 'error');
                     } else {
-                        document.getElementById('checker-signature-data').value = checkerPad.toDataURL();
+                        document.getElementById('checker-signature-data').value = trimCanvas(document.getElementById('checker-signature-pad'));
                     }
                 });
             @elseif ($order->status == 'approved')
@@ -594,7 +643,7 @@
                         e.preventDefault();
                         Swal.fire('Error', 'Signature is required.', 'error');
                     } else {
-                        document.getElementById('driver-signature-data').value = driverPad.toDataURL();
+                        document.getElementById('driver-signature-data').value = trimCanvas(document.getElementById('driver-signature-pad'));
                     }
                 });
             @elseif ($order->status == 'finished' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
@@ -629,8 +678,7 @@
                             e.preventDefault();
                             Swal.fire('Peringatan', 'Tanda tangan wajib diisi.', 'warning');
                         } else {
-                            document.getElementById('verificator-signature-data').value = verificatorPad
-                                .toDataURL();
+                            document.getElementById('verificator-signature-data').value = trimCanvas(document.getElementById('verificator-signature-pad'));
                         }
                     }
                 });
