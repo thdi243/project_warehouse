@@ -262,7 +262,15 @@
                         <td class="text-center">{{ $index + 1 }}</td>
                         <td class="text-center">{{ $detail->material->mid_barang ?? '-' }}</td>
                         <td class="text-center">{{ $detail->batch_number ?? '-' }}</td>
-                        <td class="text-center">{{ $detail->jenis ?? '-' }}</td>
+                        <td class="text-center">
+                            @if (($detail->jenis ?? '') === 'P')
+                                <span style="background-color: #d1e7dd; color: #0f5132; padding: 2px 6px; border-radius: 4px; font-weight: bold;">P</span>
+                            @elseif (($detail->jenis ?? '') === 'R')
+                                <span style="background-color: #f8d7da; color: #842029; padding: 2px 6px; border-radius: 4px; font-weight: bold;">R</span>
+                            @else
+                                {{ $detail->jenis ?? '-' }}
+                            @endif
+                        </td>
                         <td class="text-center">
                             {{ number_format($detail->qty ?? 0, 0, ',', '.') }}
                         </td>

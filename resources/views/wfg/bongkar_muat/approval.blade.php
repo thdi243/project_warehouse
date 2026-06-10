@@ -399,7 +399,7 @@
                         <tr>
                             <td>${materialCode}<br><small class="text-muted">${materialName}</small></td>
                             <td>${detail.batch_number || '-'}</td>
-                            <td>${detail.jenis || '-'}</td>
+                            <td class="text-center">${detail.jenis === 'P' ? '<span class="badge badge-soft-success">P</span>' : (detail.jenis === 'R' ? '<span class="badge badge-soft-danger">R</span>' : (detail.jenis || '-'))}</td>
                             <td>${detail.qty || 0}</td>
                             <td>${detail.to_dummy || '-'}</td>
                             <td>${detail.to_sap || '-'}</td>

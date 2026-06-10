@@ -592,7 +592,7 @@
 
                 if (start > 1) {
                     paginationHtml +=
-                    `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
+                        `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
                     if (start > 2) {
                         paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
                     }
@@ -684,7 +684,7 @@
                             <tr>
                                 <td>${materialCode}<br><small class="text-muted">${materialName}</small></td>
                                 <td>${detail.batch_number || '-'}</td>
-                                <td class="text-center">${detail.jenis || '-'}</td>
+                                <td class="text-center">${detail.jenis === 'P' ? '<span class="badge badge-soft-success">P</span>' : (detail.jenis === 'R' ? '<span class="badge badge-soft-danger">R</span>' : (detail.jenis || '-'))}</td>
                                 <td class="text-center">${detail.qty || 0}</td>
                                 <td class="text-center small">${detail.to_dummy || '-'}</td>
                                 <td class="text-center small">${detail.to_sap || '-'}</td>

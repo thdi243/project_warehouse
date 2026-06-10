@@ -209,8 +209,15 @@
                                                                 value="{{ $detail->id }}">
                                                         </td>
                                                         <td class="text-center">{{ $detail->batch_number ?? '-' }}</td>
-                                                        <td class="text-center"><span
-                                                                class="badge bg-soft-primary text-primary">{{ $detail->jenis }}</span>
+                                                        <td class="text-center">
+                                                            @if ($detail->jenis === 'P')
+                                                                <span class="badge badge-soft-success">P</span>
+                                                            @elseif ($detail->jenis === 'R')
+                                                                <span class="badge badge-soft-danger">R</span>
+                                                            @else
+                                                                <span
+                                                                    class="badge badge-soft-primary">{{ $detail->jenis }}</span>
+                                                            @endif
                                                         </td>
                                                         <td class="text-center fw-medium">{{ $detail->qty }}</td>
                                                         <td class="text-center text-muted small">
