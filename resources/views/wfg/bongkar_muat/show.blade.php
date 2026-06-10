@@ -380,7 +380,7 @@
                                                         Saat Ini:</label>
                                                     <div class="p-2 border rounded bg-white d-inline-block shadow-sm mb-3">
                                                         <img src="{{ asset($sigPath) }}" alt="Saved Signature"
-                                                            style="max-height: 80px; filter: grayscale(1) contrast(2);">
+                                                            style="filter: grayscale(1) contrast(2);">
                                                     </div>
 
                                                     <div
