@@ -41,7 +41,7 @@ class MonitoringController extends Controller
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'QI' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_qi,
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'BLOCKED' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_blocked
             ")
-            ->whereNotIn('status', ['ISSUED', 'RESERVED']);
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
         if ($summaryType === 'spb') {
             $query->addSelect('wrm_stock_on_hand.no_spb', 'wrm_master_barang.uom')
@@ -116,7 +116,7 @@ class MonitoringController extends Controller
             'bin.location:id,plant,s_loc,gudang,zona,bin'
         ])
             ->where('no_spb', $noSpb)
-            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->get();
 
         return response()->json([
@@ -128,7 +128,7 @@ class MonitoringController extends Controller
     public function getSummaryPpic()
     {
         // On Hand (Physical)
-        $totalSoh = StockOnHand::whereNotIn('status', ['ISSUED'])->sum('qty');
+        $totalSoh = StockOnHand::whereNotIn('status', ['ISSUED', 'BA WAITING'])->sum('qty');
 
         // Reserved (Allocated for orders)
         $totalReserved = StockOnHand::where('status', 'RESERVED')->sum('qty');
@@ -182,7 +182,7 @@ class MonitoringController extends Controller
     public function getSohData(Request $request)
     {
         $query = StockOnHand::with(['barang', 'bin.location'])
-            ->whereNotIn('status', ['ISSUED', 'RESERVED']);
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
         $recordsTotal = $query->count();
 
@@ -350,7 +350,7 @@ class MonitoringController extends Controller
 
         $sohSummary = StockOnHand::select(
             'barang_id',
-            DB::raw("SUM(CASE WHEN status != 'ISSUED' THEN qty ELSE 0 END) as on_hand"),
+            DB::raw("SUM(CASE WHEN status NOT IN ('ISSUED', 'BA WAITING') THEN qty ELSE 0 END) as on_hand"),
             DB::raw("SUM(CASE WHEN status = 'RESERVED' THEN qty ELSE 0 END) as reserved")
         )
             ->groupBy('barang_id')
@@ -414,7 +414,7 @@ class MonitoringController extends Controller
 
         $sohSummary = StockOnHand::select(
             'barang_id',
-            DB::raw("SUM(CASE WHEN status != 'ISSUED' THEN qty ELSE 0 END) as on_hand"),
+            DB::raw("SUM(CASE WHEN status NOT IN ('ISSUED', 'BA WAITING') THEN qty ELSE 0 END) as on_hand"),
             DB::raw("SUM(CASE WHEN status = 'RESERVED' THEN qty ELSE 0 END) as reserved")
         )
             ->groupBy('barang_id')
@@ -495,7 +495,7 @@ class MonitoringController extends Controller
 
         // Query total stock on hand for these materials (available stock = not ISSUED or RESERVED)
         $soh = StockOnHand::whereIn('barang_id', $materialIds)
-            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->select('barang_id', DB::raw('SUM(qty) as available_qty'))
             ->groupBy('barang_id')
             ->get()

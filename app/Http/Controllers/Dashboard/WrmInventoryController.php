@@ -26,7 +26,7 @@ class WrmInventoryController extends Controller
         $mid = MasterBarangModel::select('mid', 'nama_barang')->distinct()->get();
         $noSpb = StockOnHand::select('no_spb')
             ->whereNotNull('no_spb')
-            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->distinct()
             ->get();
 
@@ -75,8 +75,8 @@ class WrmInventoryController extends Controller
             $inboundDetailQuery->where('no_spb', $request->spb);
         }
 
-        $totalStock = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->sum('qty');
-        $activePalletCount = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED'])->count();
+        $totalStock = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])->sum('qty');
+        $activePalletCount = (clone $inboundDetailQuery)->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])->count();
 
         // Draft Outbound (Today) - Only count items still in RESERVED status
         $draftOutboundToday = StockOutbound::join('wrm_stock_draft_outbound_details', 'wrm_stock_draft_outbound.id', '=', 'wrm_stock_draft_outbound_details.outbound_id')
@@ -252,7 +252,7 @@ class WrmInventoryController extends Controller
     public function getChartPie(Request $request)
     {
         $query = StockOnHand::query()
-            ->whereNotIn('status', ['ISSUED', 'RESERVED']);
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
         if ($request->gudang) {
             $query->whereHas('bin.location', function ($q) use ($request) {
@@ -297,7 +297,7 @@ class WrmInventoryController extends Controller
     public function getChartBar(Request $request)
     {
         $query = clone StockOnHand::query();
-        $query->where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED']);
+        $query->where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
         if ($request->gudang) {
             $query->whereHas('bin.location', function ($q) use ($request) {
@@ -352,7 +352,7 @@ class WrmInventoryController extends Controller
     // --- 5. Donut Chart: Aging Stock (replacing Space Utilization) ---
     public function getChartCapacity(Request $request)
     {
-        $query = StockOnHand::where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED']);
+        $query = StockOnHand::where('qty', '>', 0)->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
         if ($request->gudang) {
             $query->whereHas('bin.location', function ($q) use ($request) {
@@ -439,7 +439,7 @@ class WrmInventoryController extends Controller
             'bin.location:id,plant,s_loc,gudang,zona,bin',
         ])
             ->where('qty', '>', 0)
-            ->whereNotIn('status', ['ISSUED', 'RESERVED']);
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
         if ($request->gudang) {
             $query->whereHas('bin.location', function ($q) use ($request) {

@@ -148,11 +148,11 @@ class InboundController extends Controller
             ->distinct('no_spb')
             ->count('no_spb');
 
-        $usedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id')->toArray();
+        $usedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])->pluck('loc_id')->toArray();
 
         // 1. Get database column owners to prevent mixing
         $usedDetails = StockOnHand::with(['barang:id,mid', 'bin:id,loc_id,kolom'])
-            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->get();
         $dbColumnOwners = [];
         foreach ($usedDetails as $d) {
@@ -268,7 +268,7 @@ class InboundController extends Controller
         $currentMidId = $request->mid_id;
 
         // Get IDs of bins that are currently occupied
-        $occupiedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])
+        $occupiedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->when($currentId, function ($q) use ($currentId) {
                 $q->where('id', '!=', $currentId);
             })
@@ -282,7 +282,7 @@ class InboundController extends Controller
                 $q->select(DB::raw(1))
                     ->from('wrm_stock_on_hand')
                     ->join('wrm_master_bin as b_occ', 'wrm_stock_on_hand.loc_id', '=', 'b_occ.id')
-                    ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED'])
+                    ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                     ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
                     ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom')
                     ->when($currentId, function ($q) use ($currentId) {
@@ -366,7 +366,7 @@ class InboundController extends Controller
 
                 // Cek apakah lokasi ini sudah terpakai
                 $isOccupied = StockOnHand::where('loc_id', $locId)
-                    ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+                    ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                     ->exists();
 
                 if ($isOccupied) {
@@ -573,7 +573,7 @@ class InboundController extends Controller
                 'bin.location:id,plant,s_loc,gudang,zona,bin',
             ])
             ->select('wrm_stock_on_hand.*')
-            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED']);
+            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
         // Clone query for summary calculation (before sorting)
         $summaryQuery = clone $query;
@@ -615,7 +615,7 @@ class InboundController extends Controller
             'barang:id,mid,nama_barang',
             'bin.location'
         ])
-            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->get();
 
         // Helper to filter collection
@@ -709,7 +709,7 @@ class InboundController extends Controller
             // Cek apakah lokasi baru sudah terpakai oleh ID lain
             $isOccupied = StockOnHand::where('loc_id', $request->loc_id)
                 ->where('id', '!=', $id) // Kecuali dirinya sendiri
-                ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+                ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                 ->exists();
 
             if ($isOccupied) {
@@ -836,8 +836,8 @@ class InboundController extends Controller
                 $query = StockOnHand::whereIn('id', $request->ids);
             }
 
-            // Update only if not ISSUED or RESERVED
-            $query->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            // Update only if not ISSUED, RESERVED or BA WAITING
+            $query->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                 ->update([
                     'status' => $request->status,
                     'updated_by' => Auth::id()
@@ -873,8 +873,8 @@ class InboundController extends Controller
                 $query = StockOnHand::whereIn('id', $request->ids);
             }
 
-            // Update only if not ISSUED or RESERVED
-            $query->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            // Update only if not ISSUED, RESERVED or BA WAITING
+            $query->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                 ->update([
                     'group' => $request->group,
                     'updated_by' => Auth::id()
@@ -910,12 +910,12 @@ class InboundController extends Controller
             }
 
             // Get unique no_spbs of items that ARE NOT protected
-            $affectedNoSpbs = (clone $query)->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            $affectedNoSpbs = (clone $query)->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                 ->pluck('no_spb')
                 ->unique();
 
             // Delete non-protected items
-            $deletedCount = $query->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            $deletedCount = $query->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                 ->delete();
 
             // Cleanup empty headers
@@ -1339,10 +1339,10 @@ class InboundController extends Controller
             })
             ->get();
 
-        $usedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])->pluck('loc_id')->toArray();
+        $usedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])->pluck('loc_id')->toArray();
 
         $usedDetails = StockOnHand::with(['barang:id,mid', 'bin:id,loc_id,kolom'])
-            ->whereNotIn('status', ['ISSUED', 'RESERVED'])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->get();
 
         $dbColumnOwners = [];
@@ -1373,7 +1373,7 @@ class InboundController extends Controller
                 $q->select(DB::raw(1))
                     ->from('wrm_stock_on_hand')
                     ->join('wrm_master_bin as b_occ', 'wrm_stock_on_hand.loc_id', '=', 'b_occ.id')
-                    ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED'])
+                    ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                     ->whereColumn('b_occ.loc_id', 'wrm_master_bin.loc_id')
                     ->whereColumn('b_occ.kolom', 'wrm_master_bin.kolom');
             })
@@ -1421,7 +1421,7 @@ class InboundController extends Controller
     private function getOccupiedColumnKeys()
     {
         // Get all bins that are currently occupied
-        $occupiedBins = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED'])
+        $occupiedBins = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->join('wrm_master_bin', 'wrm_stock_on_hand.loc_id', '=', 'wrm_master_bin.id')
             ->select('wrm_master_bin.loc_id as rack_id', 'wrm_master_bin.kolom')
             ->distinct()
@@ -1588,7 +1588,7 @@ class InboundController extends Controller
                 'bin:id,loc_id,kolom,level',
                 'bin.location:id,plant,s_loc,gudang,zona,bin',
             ])
-            ->whereNotIn('status', ['ISSUED', 'RESERVED']);
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
         // Apply mids filter
         if ($request->filled('mids')) {
