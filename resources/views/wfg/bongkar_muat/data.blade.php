@@ -513,7 +513,7 @@
                                         <button type="button" class="btn btn-soft-danger btn-sm btn-delete" data-id="${order.id}" title="Delete">
                                             <i class="ri-delete-bin-line"></i>
                                         </button>
-                                        <button type="button" class="btn btn-soft-warning btn-sm btn-follow-up-checker" data-id="${order.id}" title="Follow Up Checker" ${(order.status === 'submitted' || order.status === 'draft') && order.checker_id ? '' : 'disabled'}>
+                                        <button type="button" class="btn btn-soft-warning btn-sm btn-follow-up-checker" data-id="${order.id}" title="Follow Up Checker" ${(order.status === 'submitted' || order.status === 'draft' || order.status === 'approved') && order.checker_id ? '' : 'disabled'}>
                                             <i class="ri-notification-3-line"></i>
                                         </button>
                                     @endcan
@@ -591,7 +591,8 @@
                 let end = Math.min(last, current + 2);
 
                 if (start > 1) {
-                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
+                    paginationHtml +=
+                    `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
                     if (start > 2) {
                         paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
                     }
@@ -607,7 +608,8 @@
                     if (end < last - 1) {
                         paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
                     }
-                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${last}">${last}</a></li>`;
+                    paginationHtml +=
+                        `<li class="page-item"><a class="page-link" href="#" data-page="${last}">${last}</a></li>`;
                 }
 
                 const nextDisabled = current === last ? 'disabled' : '';
