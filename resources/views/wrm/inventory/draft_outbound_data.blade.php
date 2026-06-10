@@ -96,8 +96,10 @@
                                     <th>Qty Request (KG)</th>
                                     <th>Status Transfer</th>
                                     <th>Catatan</th>
-                                    <th class="text-center">Aksi</th>
-                                    <th class="text-center">Assign Driver</th>
+                                    @can('permission', 'wrm-inventory-data-draft-outbound-plus')
+                                        <th class="text-center">Aksi</th>
+                                        <th class="text-center">Assign Driver</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -356,12 +358,14 @@
                                     <td>${numberFormat(d.qty_request)}</td>
                                     <td>${statusBadge}</td>
                                     <td>${d.catatan ?? '-'}</td>
-                                    <td class="text-center">
-                                        ${actionButtons}
-                                    </td>
-                                    <td class="text-start">
-                                        ${actionButtonsAssign}
-                                    </td>
+                                    @can('permission', 'wrm-inventory-data-draft-outbound-plus')
+                                        <td class="text-center">
+                                            ${actionButtons}
+                                        </td>
+                                        <td class="text-start">
+                                            ${actionButtonsAssign}
+                                        </td>
+                                    @endcan
                                 </tr>
                             `;
                         });
