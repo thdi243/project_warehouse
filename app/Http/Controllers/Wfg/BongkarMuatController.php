@@ -262,6 +262,21 @@ class BongkarMuatController extends Controller
                 return response()->json(['status' => false, 'message' => 'Draft tidak ditemukan atau bukan milik Anda.'], 404);
             }
 
+            // Validasi gate bentrok
+            // if ($request->filled('gate')) {
+            //     $gateCollision = BongkarMuat::whereIn('status', ['draft', 'submitted', 'approved'])
+            //         ->where('id', '!=', $draftId)
+            //         ->where('gate', $request->gate)
+            //         ->exists();
+
+            //     if ($gateCollision) {
+            //         return response()->json([
+            //             'status' => false,
+            //             'message' => 'Gate ' . $request->gate . ' sudah digunakan oleh draft/order lain.'
+            //         ], 422);
+            //     }
+            // }
+
             $order->update([
                 'tanggal' => $request->tanggal,
                 'no_dokumen' => null,
@@ -397,6 +412,22 @@ class BongkarMuatController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['status' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        // Validasi gate bentrok
+        $draftId = $request->input('id');
+        if ($request->filled('gate')) {
+            $gateCollision = BongkarMuat::whereIn('status', ['draft', 'submitted', 'approved'])
+                ->where('id', '!=', $draftId)
+                ->where('gate', $request->gate)
+                ->exists();
+
+            if ($gateCollision) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Gate ' . $request->gate . ' sudah digunakan oleh draft/order lain.'
+                ], 422);
+            }
         }
 
         // Check for duplicate barcodes in the request

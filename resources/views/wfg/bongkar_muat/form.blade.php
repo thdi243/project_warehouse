@@ -211,7 +211,7 @@
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Gate</label>
-                                        <select name="gate" class="form-select select2">
+                                        <select name="gate" id="gate" class="form-select select2">
                                             <option value="">-- Select Gate --</option>
 
                                             @foreach (range(1, 30) as $g)
@@ -499,6 +499,8 @@
         }
 
         let currentSaveRequest = null;
+        let previousGate = '';
+        let isReverting = false;
 
         function saveProgress() {
             let formData = $('#form-bongkar-muat').serializeArray();
@@ -550,9 +552,23 @@
             }
 
             currentSaveRequest = $.post("{{ route('wfg.bongkar_muat.save_draft') }}", formData, function(res) {
-                if (res.status && res.jam_muat) {
-                    $('#jam').val(res.jam_muat);
+                if (res.status) {
+                    if (res.jam_muat) {
+                        $('#jam').val(res.jam_muat);
+                    }
+                    previousGate = $('#gate').val();
                     console.log('Progress saved automatically');
+                }
+            }).fail(function(xhr) {
+                if (xhr.statusText === 'abort') return;
+
+                let msg = xhr.responseJSON ? xhr.responseJSON.message : 'Gagal menyimpan draft.';
+                Swal.fire('Bongkar Muat', msg, 'error');
+
+                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.message && xhr.responseJSON.message.includes('Gate')) {
+                    isReverting = true;
+                    $('#gate').val(previousGate).trigger('change');
+                    isReverting = false;
                 }
             }).always(function() {
                 currentSaveRequest = null;
@@ -878,9 +894,12 @@
                 width: '100%'
             });
 
+            previousGate = $('#gate').val();
+
             let saveTimeout;
             $('#form-bongkar-muat input, #form-bongkar-muat select').on('change input', function() {
                 if ($(this).closest('#table-items').length) return;
+                if (isReverting) return;
 
                 clearTimeout(saveTimeout);
                 saveTimeout = setTimeout(function() {
