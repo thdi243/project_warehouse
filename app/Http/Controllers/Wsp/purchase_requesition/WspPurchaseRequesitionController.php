@@ -277,6 +277,14 @@ class WspPurchaseRequesitionController extends Controller
     {
         $query = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval');
 
+        if ($request->filled('start_date')) {
+            $query->whereDate('pr_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('pr_date', '<=', $request->end_date);
+        }
+
         if ($request->filled('departemen') && $request->departemen !== 'all') {
             $query->where('department', $request->departemen);
         }
@@ -300,11 +308,24 @@ class WspPurchaseRequesitionController extends Controller
             });
         }
 
+        // Calculate summary statistics
+        $subquery = (clone $query)->select('wsp_purchase_requesition.id');
+        $totalDocs = (clone $query)->count();
+        $totalPendingDocs = (clone $query)->where('status', 'pending')->count();
+        $totalItemPR = DB::table('wsp_purchase_requesition_items')->whereIn('pr_id', $subquery)->where('jenis', 'pr')->sum('qty') ?? 0;
+        $totalItemReservasi = DB::table('wsp_purchase_requesition_items')->whereIn('pr_id', $subquery)->where('jenis', 'blocked')->sum('qty') ?? 0;
+
         $pr = $query->orderBy('created_at', 'desc')->paginate(15);
 
         return response()->json([
             'success' => true,
-            'data'   => $pr
+            'data'   => $pr,
+            'summary' => [
+                'total_docs' => $totalDocs,
+                'total_pending_docs' => $totalPendingDocs,
+                'total_item_pr' => (int)$totalItemPR,
+                'total_item_reservasi' => (int)$totalItemReservasi,
+            ]
         ], 200);
     }
 

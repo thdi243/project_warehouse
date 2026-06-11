@@ -17,58 +17,136 @@
     <div class="page-content">
         <div class="container-fluid">
             <!-- Page Header -->
-            <div class="page-header mb-2" data-aos="fade-down">
-                <div class="row align-items-center">
+            <div class="page-header mb-3">
+                <div class="row d-flex ">
                     <div class="col-md-6">
-                        <h3 class="fw-bold fs-3">Purchase Requesition</h3>
-                        <p class="fw-normal fs-6">Kelola Data Purchase Requesition Perusahaan</p>
-                    </div>
-                    <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                        <div class="justify-content-md-end">
-                            <a href="{{ url('/app/purchase-requesition/form') }}" target="_blank" class="btn btn-primary">
-                                <i class="mdi mdi-file-document-edit me-2"></i>
-                                <span>Form PR</span>
-                            </a>
-                            <button class="btn btn-outline-primary" id="btnRefresh">
-                                <i class="mdi mdi-refresh me-2"></i>
-                                <span>Refresh</span>
-                            </button>
+                        <label class="form-label mb-1 small text-muted">Periode Tanggal</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i class="mdi mdi-calendar-range"></i>
+                            </span>
+                            <input type="date" id="filterStartDate" class="form-control" title="Tanggal Mulai">
+                            <span class="input-group-text bg-light border-start-0 border-end-0">s/d</span>
+                            <input type="date" id="filterEndDate" class="form-control" title="Tanggal Akhir">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card shadow-sm mb-3" data-aos="fade-up">
+            <!-- Summary Cards -->
+            <div class="row g-3 mb-3">
+                <!-- Card 1: Total Pengajuan -->
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 h-100 overflow-hidden"
+                        style="border-left: 4px solid #3b82f6 !important;">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <p class="text-muted mb-1 small fw-semibold text-uppercase tracking-wider">Total
+                                        Pengajuan</p>
+                                    <h3 class="mb-0 fw-bold text-dark" id="summaryTotalDocs">0</h3>
+                                </div>
+                                <div class="bg-light-blue p-2.5 rounded-3 d-flex align-items-center justify-content-center"
+                                    style="background-color: #dbeafe; width: 44px; height: 44px;">
+                                    <i class="mdi mdi-file-document-multiple text-primary fs-3"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Menunggu Approval -->
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 h-100 overflow-hidden"
+                        style="border-left: 4px solid #f59e0b !important;">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <p class="text-muted mb-1 small fw-semibold text-uppercase tracking-wider">Menunggu
+                                        Approval</p>
+                                    <h3 class="mb-0 fw-bold text-dark" id="summaryPendingDocs">0</h3>
+                                </div>
+                                <div class="bg-light-warning p-2.5 rounded-3 d-flex align-items-center justify-content-center"
+                                    style="background-color: #fef3c7; width: 44px; height: 44px;">
+                                    <i class="mdi mdi-clock-alert text-warning fs-3"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Total Item PR -->
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 h-100 overflow-hidden"
+                        style="border-left: 4px solid #10b981 !important;">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <p class="text-muted mb-1 small fw-semibold text-uppercase tracking-wider">Item Naik PR
+                                    </p>
+                                    <h3 class="mb-0 fw-bold text-dark" id="summaryItemPR">0</h3>
+                                </div>
+                                <div class="bg-light-success p-2.5 rounded-3 d-flex align-items-center justify-content-center"
+                                    style="background-color: #d1fae5; width: 44px; height: 44px;">
+                                    <i class="mdi mdi-cube-send text-success fs-3"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Total Item Reservasi -->
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 h-100 overflow-hidden"
+                        style="border-left: 4px solid #06b6d4 !important;">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <p class="text-muted mb-1 small fw-semibold text-uppercase tracking-wider">Item
+                                        Reservasi</p>
+                                    <h3 class="mb-0 fw-bold text-dark" id="summaryItemReservasi">0</h3>
+                                </div>
+                                <div class="bg-light-info p-2.5 rounded-3 d-flex align-items-center justify-content-center"
+                                    style="background-color: #ecfeff; width: 44px; height: 44px;">
+                                    <i class="mdi mdi-bookmark-box-multiple text-info fs-3"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
                 <div class="card-body p-auto">
                     <div class="row g-2 align-items-center">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label mb-1 small text-muted">Departemen</label>
                             <select id="filterDepartemen" class="form-select">
-                                <option value="all">Semua Departemen</option>
+                                <option value="all">All Departement</option>
                                 @foreach ($departemen as $dept)
                                     <option value="{{ $dept }}">{{ $dept }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label mb-1 small text-muted">Jenis Item</label>
                             <select id="filterJenisPR" class="form-select">
-                                <option value="all">Semua Jenis Item</option>
+                                <option value="all">All Item</option>
                                 <option value="pr">PR</option>
                                 <option value="blocked">Blocked/Reservasi</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label mb-1 small text-muted">Status</label>
                             <select id="filterStatusPR" class="form-select">
-                                <option value="all">Semua Status</option>
+                                <option value="all">All Status</option>
                                 <option value="pending">Pending</option>
                                 <option value="approved">Approved</option>
                                 <option value="rejected">Rejected</option>
                                 <option value="finished">Finished</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label mb-1 small text-muted">Pencarian</label>
                             <div class="input-group">
                                 <span class="input-group-text">
@@ -78,12 +156,18 @@
                                     placeholder="Cari User / No Doc ...">
                             </div>
                         </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-1 small invisible">Action</label>
+                            <button class="btn btn-outline-primary w-100" id="btnRefresh">
+                                <i class="mdi mdi-refresh me-1"></i> Refresh
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {{-- Table --}}
-            <div class="card shadow-sm" data-aos="fade-up">
+            <div class="card shadow-sm">
                 <div class="card-header bg-light py-3">
                     <div class="row align-items-center">
                         <div class="col-md-5">
@@ -339,6 +423,8 @@
                 const jenis = $('#filterJenisPR').val();
                 const status = $('#filterStatusPR').val();
                 const departemen = $('#filterDepartemen').val();
+                const startDate = $('#filterStartDate').val();
+                const endDate = $('#filterEndDate').val();
 
                 currentPage = page;
 
@@ -350,7 +436,9 @@
                         search: search,
                         jenis: jenis,
                         status: status,
-                        departemen: departemen
+                        departemen: departemen,
+                        start_date: startDate,
+                        end_date: endDate
                     },
                     dataType: "json",
                     beforeSend: function() {
@@ -366,10 +454,36 @@
                         `);
                     },
                     success: function(res) {
-                        if (res.success && res.data && Array.isArray(res.data.data) && res.data.data
-                            .length > 0) {
-                            allPR = res.data.data;
-                            renderTable(res.data);
+                        if (res.success) {
+                            if (res.summary) {
+                                $('#summaryTotalDocs').text(res.summary.total_docs);
+                                $('#summaryPendingDocs').text(res.summary.total_pending_docs);
+                                $('#summaryItemPR').text(res.summary.total_item_pr);
+                                $('#summaryItemReservasi').text(res.summary.total_item_reservasi);
+                            }
+
+                            if (res.data && Array.isArray(res.data.data) && res.data.data.length >
+                                0) {
+                                allPR = res.data.data;
+                                renderTable(res.data);
+                            } else {
+                                allPR = [];
+                                $('#tableBody').html(
+                                    `<tr class="empty-state-row">
+                                        <td colspan="16" class="text-center py-5">
+                                            <div class="d-flex flex-column align-items-center">
+                                                <i class="mdi mdi-package-variant-closed fs-1 text-muted mb-2"></i>
+                                                <h6 class="fw-bold">Belum Ada Data</h6>
+                                                <p class="text-muted mb-0">
+                                                    Data tidak ditemukan.
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `);
+                                updatePaginationInfo(0, 0, 0);
+                                $('#pagination').empty();
+                            }
                         } else {
                             allPR = [];
                             $('#tableBody').html(
@@ -379,7 +493,7 @@
                                             <i class="mdi mdi-package-variant-closed fs-1 text-muted mb-2"></i>
                                             <h6 class="fw-bold">Belum Ada Data</h6>
                                             <p class="text-muted mb-0">
-                                                Data tidak ditemukan.
+                                                Gagal memproses data.
                                             </p>
                                         </div>
                                     </td>
@@ -387,6 +501,10 @@
                             `);
                             updatePaginationInfo(0, 0, 0);
                             $('#pagination').empty();
+                            $('#summaryTotalDocs').text(0);
+                            $('#summaryPendingDocs').text(0);
+                            $('#summaryItemPR').text(0);
+                            $('#summaryItemReservasi').text(0);
                         }
                     },
                     error: function(xhr) {
@@ -398,6 +516,10 @@
                                 </td>
                             </tr>
                         `);
+                        $('#summaryTotalDocs').text(0);
+                        $('#summaryPendingDocs').text(0);
+                        $('#summaryItemPR').text(0);
+                        $('#summaryItemReservasi').text(0);
                     }
                 });
             }
@@ -593,6 +715,7 @@
             $('#filterJenisPR').on('change', () => loadPRData(1));
             $('#filterStatusPR').on('change', () => loadPRData(1));
             $('#filterDepartemen').on('change', () => loadPRData(1));
+            $('#filterStartDate, #filterEndDate').on('change', () => loadPRData(1));
 
             // Refresh button
             $('#btnRefresh').on('click', function() {
@@ -600,6 +723,8 @@
                 $('#filterJenisPR').val('all');
                 $('#filterStatusPR').val('all');
                 $('#filterDepartemen').val('all');
+                $('#filterStartDate').val('');
+                $('#filterEndDate').val('');
                 loadPRData(1);
             });
 
@@ -702,17 +827,17 @@
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td>
                                     ${item.keterangan ? `
-                                                    <div class="d-flex align-items-center justify-content-between gap-2">
-                                                        <span>${item.keterangan}</span>
-                                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0" 
-                                                                style="flex-shrink: 0;"
-                                                                onclick="copyToClipboard(this.getAttribute('data-text'))"
-                                                                data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                                title="Copy Keterangan">
-                                                            <i class="mdi mdi-content-copy"></i>
-                                                        </button>
-                                                    </div>
-                                                ` : '-'}
+                                                                                                                                                                                        <div class="d-flex align-items-center justify-content-between gap-2">
+                                                                                                                                                                                            <span>${item.keterangan}</span>
+                                                                                                                                                                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0" 
+                                                                                                                                                                                                    style="flex-shrink: 0;"
+                                                                                                                                                                                                    onclick="copyToClipboard(this.getAttribute('data-text'))"
+                                                                                                                                                                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                                                                                                                                                    title="Copy Keterangan">
+                                                                                                                                                                                                <i class="mdi mdi-content-copy"></i>
+                                                                                                                                                                                            </button>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    ` : '-'}
                                 </td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
@@ -834,10 +959,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                             </div>
 
                         </div>
