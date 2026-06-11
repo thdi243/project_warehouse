@@ -760,7 +760,7 @@ class OutboundController extends Controller
             $ba_waiting_mids = ['20000812', '20000860', '20001270'];
 
             foreach ($detailsToProcess as $detail) {
-                $status = in_array($detail->barang->mid, $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
+                $status = in_array(trim((string)$detail->barang->mid), $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
 
                 // Update status in draft outbound detail
                 $detail->update([
@@ -778,59 +778,61 @@ class OutboundController extends Controller
                     'updated_by' => Auth::id()
                 ]);
 
-                // Create or find StockTransfer header
-                if (!$transferHeader) {
-                    $transferHeader = StockTransfer::where('no_reservasi', $outbound->no_reservasi)->first();
-
+                if ($status === 'ISSUED') {
+                    // Create or find StockTransfer header
                     if (!$transferHeader) {
-                        $transferHeader = StockTransfer::create([
-                            'no_reservasi'  => $outbound->no_reservasi,
-                            'tgl_reservasi' => Carbon::parse($outbound->reservasi_date),
-                            'tgl_gi'        => now(),
-                            'created_by'    => Auth::id(),
+                        $transferHeader = StockTransfer::where('no_reservasi', $outbound->no_reservasi)->first();
+
+                        if (!$transferHeader) {
+                            $transferHeader = StockTransfer::create([
+                                'no_reservasi'  => $outbound->no_reservasi,
+                                'tgl_reservasi' => Carbon::parse($outbound->reservasi_date),
+                                'tgl_gi'        => now(),
+                                'created_by'    => Auth::id(),
+                            ]);
+                        }
+                    }
+
+                    // Create StockTransferDetail
+                    $transferDetail = StockTransferDetail::create([
+                        'transfer_id' => $transferHeader->id,
+                        'no_spb'      => $detail->no_spb,
+                        'plant'       => $detail->bin->location->plant ?? null,
+                        'sloc'        => $detail->bin->location->s_loc ?? null,
+                        'barang_id'   => $detail->barang_id,
+                        'no_barcode'  => $detail->barcode,
+                        'qty_barcode' => $detail->qty,
+                        'qty_actual'  => $detail->qty,
+                        'uom'         => $detail->barang->uom,
+                        'created_by'  => Auth::id(),
+                    ]);
+
+                    // Decrement Stock Balance
+                    $bin = $detail->bin;
+                    if ($bin) {
+                        $locId = $bin->loc_id;
+
+                        $balance = StockBalance::where('barang_id', $detail->barang_id)
+                            ->where('loc_id', $locId)
+                            ->first();
+
+                        if ($balance) {
+                            $balance->decrement('qty', $detail->qty);
+                            $balance->update(['updated_by' => Auth::id()]);
+                        }
+
+                        // Record Stock Movement (out)
+                        StockMovement::create([
+                            'barang_id'  => $detail->barang_id,
+                            'loc_id'     => $locId,
+                            'tanggal'    => now(),
+                            'qty'        => $detail->qty,
+                            'jenis'      => 'out',
+                            'ref_type'   => 'stock_transfer',
+                            'ref_id'     => $transferDetail->id,
+                            'created_by' => Auth::id(),
                         ]);
                     }
-                }
-
-                // Create StockTransferDetail
-                $transferDetail = StockTransferDetail::create([
-                    'transfer_id' => $transferHeader->id,
-                    'no_spb'      => $detail->no_spb,
-                    'plant'       => $detail->bin->location->plant ?? null,
-                    'sloc'        => $detail->bin->location->s_loc ?? null,
-                    'barang_id'   => $detail->barang_id,
-                    'no_barcode'  => $detail->barcode,
-                    'qty_barcode' => $detail->qty,
-                    'qty_actual'  => $detail->qty,
-                    'uom'         => $detail->barang->uom,
-                    'created_by'  => Auth::id(),
-                ]);
-
-                // Decrement Stock Balance
-                $bin = $detail->bin;
-                if ($bin) {
-                    $locId = $bin->loc_id;
-
-                    $balance = StockBalance::where('barang_id', $detail->barang_id)
-                        ->where('loc_id', $locId)
-                        ->first();
-
-                    if ($balance) {
-                        $balance->decrement('qty', $detail->qty);
-                        $balance->update(['updated_by' => Auth::id()]);
-                    }
-
-                    // Record Stock Movement (out)
-                    StockMovement::create([
-                        'barang_id'  => $detail->barang_id,
-                        'loc_id'     => $locId,
-                        'tanggal'    => now(),
-                        'qty'        => $detail->qty,
-                        'jenis'      => 'out',
-                        'ref_type'   => 'stock_transfer',
-                        'ref_id'     => $transferDetail->id,
-                        'created_by' => Auth::id(),
-                    ]);
                 }
             }
 
