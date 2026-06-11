@@ -128,6 +128,8 @@
                                     <th>Group</th>
                                     <th>Status</th>
                                     <th>Qty (KG)</th>
+                                    <th>Supplier</th>
+                                    <th>Catatan</th>
                                     <th>Location</th>
                                     <th>Incoming Date</th>
                                     <th width="120" class="text-center">Action</th>
@@ -235,15 +237,17 @@
                             <tr>
 
                                 <td class="text-center">${no++}</td>
-                                <td>${v.no_spb}</td>
-                                <td>${v.pallet_id}</td>
-                                <td>${v.barang.mid}</td>
-                                <td>${v.barang.nama_barang}</td>
-                                <td>${v.group}</td>
-                                <td>${v.status}</td>
+                                <td>${v.no_spb ?? '-'}</td>
+                                <td>${v.pallet_id ?? '-'}</td>
+                                <td>${v.barang.mid ?? '-'}</td>
+                                <td>${v.barang.nama_barang ??'-'}</td>
+                                <td>${v.group ?? '-'}</td>
+                                <td>${v.status ?? '-'}</td>
                                 <td>${numberFormat(v.qty)}</td>
-                                <td class="text-primary fw-bold">${v.bin.location.plant} - ${v.bin.location.gudang} - ${v.bin.location.bin} - ${v.bin.kolom}.${v.bin.level}</td>
-                                <td>${v.incoming_date}</td>
+                                <td>${v.supplier ??'-'}</td>
+                                <td>${v.catatan ?? '-'}</td>
+                                <td class="fw-bold">${v.bin.location.plant} - ${v.bin.location.gudang} - ${v.bin.location.bin} - ${v.bin.kolom}.${v.bin.level}</td>
+                                <td>${v.incoming_date ??'-'}</td>
                                 <td class="text-center">
                                     <input type="checkbox"
                                         class="form-check-input pickItem"
