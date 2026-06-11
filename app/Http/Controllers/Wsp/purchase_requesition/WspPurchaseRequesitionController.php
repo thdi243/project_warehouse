@@ -736,8 +736,10 @@ class WspPurchaseRequesitionController extends Controller
 
         $deptMap = [
             'ite' => 'engineering',
+            'it' => 'engineering',
             'quality control' => 'quality_control',
-            'qc' => 'quality_control'
+            'qc' => 'quality_control',
+            'production' => 'produksi'
         ];
 
         $approvalDept = $deptMap[$pr->department] ?? $pr->department;
@@ -1037,7 +1039,7 @@ class WspPurchaseRequesitionController extends Controller
                 $pr->update(['status' => 'approved']);
             } else if ($currentLevel == 4) {
                 $pr->update(['status' => 'finished']);
-                
+
                 // Set all 'blocked' (reservasi) items to true because they are confirmed automatically
                 $pr->items()->where('jenis', 'blocked')->update(['status' => true]);
 
