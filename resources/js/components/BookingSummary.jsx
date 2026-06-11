@@ -68,8 +68,17 @@ export default function BookingSummary({
                                     <p className="font-medium truncate">
                                         {item.mid} – {item.nama_barang}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Qty: {item.qty} {item.uom || ""}
+                                    <p className="text-xs text-muted-foreground flex items-center flex-wrap gap-2">
+                                        <span>Qty: {item.qty} {item.uom || ""}</span>
+                                        {item.jenis === "blocked" ? (
+                                            <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/20">
+                                                Reservasi
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-700/10">
+                                                Menaikkan PR
+                                            </span>
+                                        )}
                                     </p>
                                     {item.keterangan && (
                                         <p className="text-xs text-muted-foreground truncate">

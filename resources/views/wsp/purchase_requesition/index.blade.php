@@ -124,7 +124,7 @@
                                     <th>DEPARTEMEN</th>
                                     <th>STATUS</th>
                                     <th>FLAG</th>
-                                    <th class="text-center">AKSI</th>
+                                    <th class="text-center text-nowrap">AKSI</th>
                                     @can('permission', 'wsp-data-pr-plus')
                                         <th class="text-center">AKSI WSP</th>
                                     @endcan
@@ -248,17 +248,21 @@
                                     <th>Department</th>
                                     <td id="d_department">-</td>
                                 </tr>
+                                <tr>
+                                    <th>Jenis</th>
+                                    <td id="d_jenis">-</td>
+                                </tr>
                             </table>
                         </div>
                         <div class="col-md-6">
                             <table class="table table-sm table-borderless">
                                 <tr>
-                                    <th>Jenis</th>
-                                    <td id="d_jenis">-</td>
-                                </tr>
-                                <tr>
                                     <th>Detail Jenis</th>
                                     <td id="d_detail_jenis">-</td>
+                                </tr>
+                                <tr>
+                                    <th>No Io</th>
+                                    <td id="d_no_io">-</td>
                                 </tr>
                                 <tr>
                                     <th>Status</th>
@@ -271,7 +275,7 @@
                     <!-- TABLE ITEMS -->
                     <h6 class="mb-2">Detail Items</h6>
                     <div class="table-responsive">
-                        <table class="table table-borderedless table-sm">
+                        <table class="table table-borderedless">
                             <thead class="table-light align-middle">
                                 <tr>
                                     <th>No</th>
@@ -458,8 +462,8 @@
                                 </span>
                             </td>
                             <td>${flagText}</td>
-                            <td>
-                                <div class="d-flex justify-content-center flex-wrap gap-1">
+                            <td class="text-nowrap">
+                                <div class="d-flex justify-content-center gap-1">
 
                                     <!-- Detail -->
                                     <button 
@@ -642,6 +646,7 @@
                 $('#d_department').text(pr.department ?? '-');
                 $('#d_jenis').text(pr.jenis ?? '-');
                 $('#d_detail_jenis').text(pr.detail_jenis ?? '-');
+                $('#d_no_io').text(pr.no_io ?? '-');
                 $('#d_status').html(
                     `<span class="badge bg-warning text-dark">${pr.status}</span>`
                 );
@@ -695,7 +700,20 @@
                                 <td>${item.barang?.nama_barang ?? '-'}</td>
                                 <td>${item.qty}</td>
                                 <td>${item.barang?.uom ?? '-'}</td>
-                                <td>${item.keterangan ?? '-'}</td>
+                                <td>
+                                    ${item.keterangan ? `
+                                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                                        <span>${item.keterangan}</span>
+                                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0" 
+                                                                style="flex-shrink: 0;"
+                                                                onclick="copyToClipboard(this.getAttribute('data-text'))"
+                                                                data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                title="Copy Keterangan">
+                                                            <i class="mdi mdi-content-copy"></i>
+                                                        </button>
+                                                    </div>
+                                                ` : '-'}
+                                </td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
@@ -704,6 +722,60 @@
                         `);
                     });
                 }
+            }
+
+            window.escapeHtmlAttribute = function(str) {
+                if (!str) return '';
+                return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            };
+
+            window.copyToClipboard = function(text) {
+                if (!text) return;
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showCopySuccessToast();
+                    }).catch(err => {
+                        console.error('Failed to copy: ', err);
+                        fallbackCopyText(text);
+                    });
+                } else {
+                    fallbackCopyText(text);
+                }
+            };
+
+            function fallbackCopyText(text) {
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                textarea.style.position = "fixed";
+                textarea.style.top = "0";
+                textarea.style.left = "0";
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    document.execCommand("copy");
+                    showCopySuccessToast();
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                document.body.removeChild(textarea);
+            }
+
+            function showCopySuccessToast() {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Keterangan berhasil disalin',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
             }
 
             window.printPR = function(id) {
@@ -762,10 +834,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div class="small mt-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Catatan: ${a.catatan}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                             </div>
 
                         </div>
@@ -826,6 +898,7 @@
                     const sLoc = item.barang?.s_loc ?? '';
                     const plant = item.barang?.plant ?? '';
                     const prNumber = pr.pr_number ?? '';
+                    const noIo = pr.no_io ?? '';
 
                     const row = [
                         mid,
@@ -840,7 +913,7 @@
                         '',
                         deptCode,
                         '',
-                        prNumber
+                        noIo,
                     ].join('\t');
 
                     rows.push(row);
@@ -852,11 +925,12 @@
                     navigator.clipboard.writeText(textToCopy)
                         .then(() => {
                             Swal.fire({
+                                toast: true,
+                                position: 'top-end',
                                 icon: 'success',
-                                title: 'Berhasil!',
-                                text: 'Format SAP berhasil disalin ke clipboard',
-                                timer: 1500,
-                                showConfirmButton: false
+                                title: 'Format SAP berhasil disalin',
+                                showConfirmButton: false,
+                                timer: 1500
                             });
                         })
                         .catch(err => {
@@ -873,11 +947,12 @@
                     document.body.removeChild(textarea);
 
                     Swal.fire({
+                        toast: true,
+                        position: 'top-end',
                         icon: 'success',
-                        title: 'Berhasil!',
-                        text: 'Format SAP berhasil disalin ke clipboard',
-                        timer: 1500,
-                        showConfirmButton: false
+                        title: 'Format SAP berhasil disalin',
+                        showConfirmButton: false,
+                        timer: 1500
                     });
                 }
             }

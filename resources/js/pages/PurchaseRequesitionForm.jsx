@@ -5,6 +5,7 @@ import BookingSummary from "../components/BookingSummary";
 import { useBookingManager } from "../hooks/useBookingManager";
 import SignatureModal from "@/components/SignatureModal";
 import Swal from "sweetalert2";
+import { useAuth } from "@/context/AuthContext";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
 import { CalendarDays } from "lucide-react";
 
 export default function PurchaseRequisitionForm() {
+    const { user } = useAuth();
     const {
         items,
         expiredAt,
@@ -59,14 +61,7 @@ export default function PurchaseRequisitionForm() {
         return `${y}-${m}-${d}`;
     };
 
-    const DEPARTEMEN_OPTIONS = [
-        "ITE",
-        "Engineering",
-        "Warehouse",
-        "HRGA",
-        "Produksi",
-        "Quality Control",
-    ];
+
 
     const handleAddItem = async () => {
         if (!currentItem.mid || !currentItem.qty || !currentItem.keterangan) {
@@ -80,60 +75,221 @@ export default function PurchaseRequisitionForm() {
             return;
         }
 
-        let type = "pr";
-        let alasan = "";
-        
-        if (currentItem.available_qty > 0) {
-            const result = await Swal.fire({
-                title: "Stok Tersedia!",
-                text: `Barang ini memiliki stok ${currentItem.available_qty}. Apakah Anda ingin melanjutkan PR (Menaikkan PR) atau hanya Block Stok?`,
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonText: "Naikkan PR",
-                cancelButtonText: "Reservasi",
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#10b981",
-                allowOutsideClick: false,
-            });
+        const requestedQty = parseInt(currentItem.qty) || 0;
+        const availableQty = parseInt(currentItem.available_qty) || 0;
 
-            if (result.isConfirmed) {
-                type = "pr";
-            } else if (result.dismiss === Swal.DismissReason.cancel) {
-                type = "blocked";
-            } else {
-                return; // User clicked outside or closed (though allowOutsideClick: false)
-            }
+        let itemsToAdd = [];
 
-            if (type === "pr") {
-                const reasonResult = await Swal.fire({
-                    title: "Alasan Naik PR",
-                    input: "text",
-                    inputPlaceholder: "Wajib mengisi alasan...",
-                    inputValidator: (value) => {
-                        if (!value) {
-                            return "Alasan wajib diisi!";
-                        }
-                    },
+        if (availableQty > 0) {
+            if (requestedQty > availableQty) {
+                const result = await Swal.fire({
+                    title: "Stok Tersedia!",
+                    html: `
+                        <div class="mb-4">
+                            Barang ini memiliki stok ${availableQty}, sedangkan Anda meminta ${requestedQty}. Pilih tindakan yang diinginkan:
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button id="btn-option-pr" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition duration-150">
+                                Naikkan PR (Semua Qty)
+                            </button>
+                            <button id="btn-option-both" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-md transition duration-150">
+                                Reservasi + Naikkan PR
+                            </button>
+                            <button id="btn-option-reserve" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition duration-150">
+                                Hanya Reservasi (Sesuai Stok)
+                            </button>
+                            <button id="btn-option-cancel" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition duration-150 mt-2">
+                                Batal
+                            </button>
+                        </div>
+                    `,
+                    icon: "question",
+                    showConfirmButton: false,
+                    showDenyButton: false,
+                    showCancelButton: false,
                     allowOutsideClick: false,
-                    showCancelButton: true,
+                    didOpen: () => {
+                        const content = Swal.getHtmlContainer();
+                        if (content) {
+                            content.querySelector('#btn-option-pr').addEventListener('click', () => {
+                                Swal.clickConfirm();
+                            });
+                            content.querySelector('#btn-option-both').addEventListener('click', () => {
+                                Swal.clickDeny();
+                            });
+                            content.querySelector('#btn-option-reserve').addEventListener('click', () => {
+                                Swal.clickCancel();
+                            });
+                            content.querySelector('#btn-option-cancel').addEventListener('click', () => {
+                                Swal.close();
+                            });
+                        }
+                    }
                 });
 
-                if (reasonResult.isConfirmed && reasonResult.value) {
-                    alasan = reasonResult.value;
+                if (result.isConfirmed) {
+                    // Option 1: Naikkan PR (Semua Qty)
+                    const reasonResult = await Swal.fire({
+                        title: "Alasan Naik PR",
+                        input: "text",
+                        inputPlaceholder: "Wajib mengisi alasan...",
+                        inputValidator: (value) => {
+                            if (!value) {
+                                return "Alasan wajib diisi!";
+                            }
+                        },
+                        allowOutsideClick: false,
+                        showCancelButton: true,
+                    });
+
+                    if (reasonResult.isConfirmed && reasonResult.value) {
+                        itemsToAdd.push({
+                            ...currentItem,
+                            qty: requestedQty,
+                            jenis: "pr",
+                            alasan: reasonResult.value,
+                        });
+                    } else {
+                        return;
+                    }
+                } else if (result.isDenied) {
+                    // Option 2: Reservasi + Naikkan PR
+                    const reasonResult = await Swal.fire({
+                        title: "Alasan Naik PR",
+                        text: `Masukkan alasan PR untuk sisa barang (${requestedQty - availableQty} Qty):`,
+                        input: "text",
+                        inputPlaceholder: "Wajib mengisi alasan...",
+                        inputValidator: (value) => {
+                            if (!value) {
+                                return "Alasan wajib diisi!";
+                            }
+                        },
+                        allowOutsideClick: false,
+                        showCancelButton: true,
+                    });
+
+                    if (reasonResult.isConfirmed && reasonResult.value) {
+                        itemsToAdd.push({
+                            ...currentItem,
+                            qty: availableQty,
+                            jenis: "blocked",
+                            alasan: "",
+                        });
+                        itemsToAdd.push({
+                            ...currentItem,
+                            qty: requestedQty - availableQty,
+                            jenis: "pr",
+                            alasan: reasonResult.value,
+                        });
+                    } else {
+                        return;
+                    }
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    // Option 3: Hanya Reservasi (Sesuai Stok)
+                    itemsToAdd.push({
+                        ...currentItem,
+                        qty: availableQty,
+                        jenis: "blocked",
+                        alasan: "",
+                    });
                 } else {
-                    return; // User canceled reason input
+                    return;
                 }
+            } else {
+                // requestedQty <= availableQty
+                const result = await Swal.fire({
+                    title: "Stok Tersedia!",
+                    html: `
+                        <div class="mb-4">
+                            Barang ini memiliki stok ${availableQty}. Apakah Anda ingin melanjutkan PR (Menaikkan PR) atau hanya Block Stok?
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button id="btn-option-pr" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition duration-150">
+                                Naikkan PR
+                            </button>
+                            <button id="btn-option-reserve" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition duration-150">
+                                Reservasi
+                            </button>
+                            <button id="btn-option-cancel" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition duration-150 mt-2">
+                                Batal
+                            </button>
+                        </div>
+                    `,
+                    icon: "question",
+                    showConfirmButton: false,
+                    showCancelButton: false,
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        const content = Swal.getHtmlContainer();
+                        if (content) {
+                            content.querySelector('#btn-option-pr').addEventListener('click', () => {
+                                Swal.clickConfirm();
+                            });
+                            content.querySelector('#btn-option-reserve').addEventListener('click', () => {
+                                Swal.clickCancel();
+                            });
+                            content.querySelector('#btn-option-cancel').addEventListener('click', () => {
+                                Swal.close();
+                            });
+                        }
+                    }
+                });
+
+                if (result.isConfirmed) {
+                    const reasonResult = await Swal.fire({
+                        title: "Alasan Naik PR",
+                        input: "text",
+                        inputPlaceholder: "Wajib mengisi alasan...",
+                        inputValidator: (value) => {
+                            if (!value) {
+                                return "Alasan wajib diisi!";
+                            }
+                        },
+                        allowOutsideClick: false,
+                        showCancelButton: true,
+                    });
+
+                    if (reasonResult.isConfirmed && reasonResult.value) {
+                        itemsToAdd.push({
+                            ...currentItem,
+                            qty: requestedQty,
+                            jenis: "pr",
+                            alasan: reasonResult.value,
+                        });
+                    } else {
+                        return;
+                    }
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    itemsToAdd.push({
+                        ...currentItem,
+                        qty: requestedQty,
+                        jenis: "blocked",
+                        alasan: "",
+                    });
+                } else {
+                    return;
+                }
+            }
+        } else {
+            // availableQty <= 0
+            itemsToAdd.push({
+                ...currentItem,
+                qty: requestedQty,
+                jenis: "pr",
+                alasan: "",
+            });
+        }
+
+        let allSuccess = true;
+        for (const item of itemsToAdd) {
+            const success = await addItem(item, item.jenis);
+            if (!success) {
+                allSuccess = false;
+                break;
             }
         }
 
-        const itemToPass = {
-            ...currentItem,
-            jenis: type,
-            alasan: alasan,
-        };
-
-        const success = await addItem(itemToPass, type);
-        if (success) {
+        if (allSuccess) {
             setCurrentItem({
                 mid: "",
                 nama_barang: "",
@@ -148,8 +304,8 @@ export default function PurchaseRequisitionForm() {
     const resetForm = () => {
         setForm({
             pr_date: getTodayDate(),
-            requested_by: "",
-            department: "",
+            requested_by: user?.nama_lengkap || "",
+            department: user?.departemen || "",
             jenis: "",
             detail_jenis: "",
             no_io: "",
@@ -208,14 +364,13 @@ export default function PurchaseRequisitionForm() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
 
-            Swal.fire({
+            await Swal.fire({
                 icon: "success",
                 title: "Berhasil!",
-                text: "PR berhasil disubmit.",
+                html: `PR berhasil disubmit.<br><strong>No. Dokumen: ${data.no_doc}</strong>`,
                 confirmButtonText: "OK",
                 confirmButtonColor: "#10b981",
-                timer: 4000,
-                timerProgressBar: true,
+                allowOutsideClick: false,
             });
 
             resetForm();
@@ -247,8 +402,10 @@ export default function PurchaseRequisitionForm() {
         setForm((prev) => ({
             ...prev,
             pr_date: getTodayDate(),
+            department: user?.departemen || prev.department,
+            requested_by: user?.nama_lengkap || prev.requested_by,
         }));
-    }, []);
+    }, [user]);
 
     return (
         <form
@@ -296,23 +453,11 @@ export default function PurchaseRequisitionForm() {
                             </Field>
 
                             <Field label="Departemen" required>
-                                <Select
+                                <Input
                                     value={form.department}
-                                    onValueChange={(value) =>
-                                        setForm({ ...form, department: value })
-                                    }
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Pilih departemen" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {DEPARTEMEN_OPTIONS.map((dept) => (
-                                            <SelectItem key={dept} value={dept}>
-                                                {dept}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    disabled
+                                    className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                                />
                             </Field>
 
                             <Field label="Jenis" required>
@@ -389,6 +534,7 @@ export default function PurchaseRequisitionForm() {
                             <Field label="Search MID" required>
                                 <MidSearch
                                     value={currentItem.mid}
+                                    namaBarang={currentItem.nama_barang}
                                     onChange={(item) =>
                                         setCurrentItem({
                                             ...currentItem,

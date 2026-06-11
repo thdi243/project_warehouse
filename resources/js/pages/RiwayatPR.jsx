@@ -147,6 +147,7 @@ export default function RiwayatPR() {
                                         <TableRow>
                                             <TableHead>MID</TableHead>
                                             <TableHead>Nama Barang</TableHead>
+                                            <TableHead>Jenis</TableHead>
                                             <TableHead>UoM</TableHead>
                                             <TableHead>Qty</TableHead>
                                             <TableHead>Keterangan</TableHead>
@@ -160,6 +161,17 @@ export default function RiwayatPR() {
                                                 </TableCell>
                                                 <TableCell>
                                                     {item.barang.nama_barang}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {item.jenis === "blocked" ? (
+                                                        <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/20">
+                                                            Reservasi
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-700/10">
+                                                            Menaikkan PR
+                                                        </span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     {item.barang.uom}
@@ -210,6 +222,7 @@ export default function RiwayatPR() {
                                 <TableHead>No Doc</TableHead>
                                 <TableHead>No PR</TableHead>
                                 <TableHead>Departemen</TableHead>
+                                <TableHead>Jenis</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">
                                     Aksi
@@ -221,7 +234,7 @@ export default function RiwayatPR() {
                             {data.length === 0 ? (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={5}
+                                        colSpan={7}
                                         className="text-center text-muted-foreground"
                                     >
                                         Belum ada PR
@@ -241,6 +254,14 @@ export default function RiwayatPR() {
                                         </TableCell>
                                         <TableCell>
                                             {pr.department ?? "-"}
+                                        </TableCell>
+                                        <TableCell className="capitalize">
+                                            {pr.jenis ?? "-"}
+                                            {pr.detail_jenis && (
+                                                <span className="text-xs text-muted-foreground block">
+                                                    {pr.detail_jenis.replace("_", " ")}
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Badge

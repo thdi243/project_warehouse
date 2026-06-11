@@ -343,8 +343,9 @@
                     tbody.html('<tr><td colspan="10" class="text-center">Tidak ada item.</td></tr>');
                 } else {
                     $.each(pr.items, function(i, item) {
-                        const badgeClass = item.jenis === 'blocked' ? 'bg-danger' : 'bg-success';
-                        const jenisText = item.jenis === 'blocked' ? 'Blocked' : 'PR';
+                        const badgeClass = item.jenis === 'blocked' ? 'badge-soft-primary' :
+                            'badge-soft-success';
+                        const jenisText = item.jenis === 'blocked' ? 'Reservasi' : 'PR';
 
                         let statusUser = '-';
                         let statusWrh = '-';
@@ -374,7 +375,20 @@
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
-                                <td>${item.keterangan ?? '-'}</td>
+                                <td>
+                                    ${item.keterangan ? `
+                                        <div class="d-flex align-items-center justify-content-between gap-2">
+                                            <span>${item.keterangan}</span>
+                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0" 
+                                                    style="flex-shrink: 0;"
+                                                    onclick="copyToClipboard(this.getAttribute('data-text'))"
+                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                    title="Copy Keterangan">
+                                                <i class="mdi mdi-content-copy"></i>
+                                            </button>
+                                        </div>
+                                    ` : '-'}
+                                </td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
                                 <td class="text-center">${formatBadge(statusWrh)}</td>
                             </tr>
@@ -384,6 +398,60 @@
 
                 $('#modalDetailPR').modal('show');
             };
+
+            window.escapeHtmlAttribute = function(str) {
+                if (!str) return '';
+                return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            };
+
+            window.copyToClipboard = function(text) {
+                if (!text) return;
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showCopySuccessToast();
+                    }).catch(err => {
+                        console.error('Failed to copy: ', err);
+                        fallbackCopyText(text);
+                    });
+                } else {
+                    fallbackCopyText(text);
+                }
+            };
+
+            function fallbackCopyText(text) {
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                textarea.style.position = "fixed";
+                textarea.style.top = "0";
+                textarea.style.left = "0";
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    document.execCommand("copy");
+                    showCopySuccessToast();
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                document.body.removeChild(textarea);
+            }
+
+            function showCopySuccessToast() {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Keterangan berhasil disalin',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            }
 
             window.printPR = function(id) {
                 window.open(

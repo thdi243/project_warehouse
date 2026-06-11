@@ -5,19 +5,20 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle, Lock } from "lucide-react";
 
-export default function MidSearch({ value, onChange }) {
+export default function MidSearch({ value, namaBarang, onChange }) {
     const [keyword, setKeyword] = useState("");
-    const [selectedMid, setSelectedMid] = useState(value || "");
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const { getSessionId } = useBookingManager();
 
     useEffect(() => {
-        setSelectedMid(value || "");
+        if (value) {
+            setKeyword("");
+        }
     }, [value]);
 
     useEffect(() => {
-        if (selectedMid || keyword.length < 2) {
+        if (value || keyword.length < 2) {
             setResults([]);
             return;
         }
@@ -45,7 +46,7 @@ export default function MidSearch({ value, onChange }) {
         }, 400);
 
         return () => clearTimeout(delay);
-    }, [keyword, selectedMid]);
+    }, [keyword, value]);
 
     const getStockBadge = (item) => {
         if (!item.is_available) {
@@ -84,12 +85,17 @@ export default function MidSearch({ value, onChange }) {
         <div className="relative">
             <Input
                 placeholder="Cari MID atau nama barang (min. 2 karakter)..."
-                value={selectedMid || keyword}
+                value={value ? (namaBarang ? `${value} - ${namaBarang}` : value) : keyword}
                 onChange={(e) => {
-                    setSelectedMid("");
+                    onChange({
+                        mid: "",
+                        nama_barang: "",
+                        available_qty: 0,
+                        uom: "",
+                    });
                     setKeyword(e.target.value);
                 }}
-                className={selectedMid ? "border-green-500" : ""}
+                className={value ? "border-green-500" : ""}
             />
 
             {loading && (
@@ -118,7 +124,6 @@ export default function MidSearch({ value, onChange }) {
                                 onClick={() => {
                                     if (isDisabled) return;
 
-                                    setSelectedMid(item.barang.mid_barang);
                                     setKeyword("");
                                     setResults([]);
                                     onChange({

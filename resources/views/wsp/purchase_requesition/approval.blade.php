@@ -186,7 +186,8 @@
 
                     <div class="alert alert-info d-none mt-3" id="level4AlertInfo">
                         <i class="mdi mdi-information-outline me-2"></i>
-                        Jika item di-checklist, maka data terkonfirmasi naik PR. Jika tidak di-checklist, maka item tersebut dicancel/tidak naik PR.
+                        Jika item di-checklist, maka data terkonfirmasi naik PR. Jika tidak di-checklist, maka item tersebut
+                        dicancel/tidak naik PR.
                     </div>
 
                     <div class="mt-4">
@@ -474,10 +475,10 @@
                                     <i class="mdi mdi-check"></i> ${approveText}
                                 </button>
                                 ${!isLevel4 ? `
-                                <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
-                                    <i class="mdi mdi-close"></i> Reject
-                                </button>
-                                ` : ''}
+                                    <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
+                                        <i class="mdi mdi-close"></i> Reject
+                                    </button>
+                                    ` : ''}
                             </div>
                         </td>
                     </tr>
@@ -590,15 +591,21 @@
                 pr.items.forEach(item => {
                     let checkHtml = '';
                     if (isLevel2Or4) {
-                        const isBlocked = isLevel4 && item.jenis === 'blocked';
-                        const checkedAttr = isBlocked ? '' : 'checked';
-                        checkHtml = `
-                        <td class="item-check-col">
-                            <div class="form-check">
-                                <input class="form-check-input check-sub-item" type="checkbox" value="${item.id}" ${checkedAttr}>
-                            </div>
-                        </td>
-                    `;
+                        if (item.jenis === 'pr') {
+                            checkHtml = `
+                            <td class="item-check-col">
+                                <div class="form-check">
+                                    <input class="form-check-input check-sub-item" type="checkbox" value="${item.id}" checked>
+                                </div>
+                            </td>
+                            `;
+                        } else {
+                            checkHtml = `
+                            <td class="item-check-col text-center">
+                                <span class="text-muted">-</span>
+                            </td>
+                            `;
+                        }
                     }
                     let statusHtml = '';
                     if (item.approval && item.approval.length > 0) {
@@ -617,9 +624,22 @@
                         <td>${item.barang?.nama_barang || '-'}</td>
                         <td>${item.qty}</td>
                         <td>${item.barang?.uom || '-'}</td>
-                        <td>${item.keterangan || '-'}</td>
+                        <td>
+                            ${item.keterangan ? `
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <span>${item.keterangan}</span>
+                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0" 
+                                            style="flex-shrink: 0;"
+                                            onclick="copyToClipboard(this.getAttribute('data-text'))"
+                                            data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                            title="Copy Keterangan">
+                                        <i class="mdi mdi-content-copy"></i>
+                                    </button>
+                                </div>
+                            ` : '-'}
+                        </td>
                         <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
-                        <td class="level4-only-col">${item.jenis || '-'}</td>
+                        <td class="level4-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>
                         <td class="level4-only-col">${item.alasan || '-'}</td>
                     </tr>
                 `);
@@ -633,18 +653,22 @@
                     $('#level4AlertInfo').addClass('d-none');
                 }
 
-                const allChecked = $('.check-sub-item:not(:checked)').length === 0;
-                $('#checkAllItems').prop('checked', allChecked).off('change').on('change', function() {
+                const totalCheckboxes = $('.check-sub-item').length;
+                const allChecked = totalCheckboxes > 0 && $('.check-sub-item:not(:checked)').length === 0;
+                $('#checkAllItems').prop('checked', allChecked).prop('disabled', totalCheckboxes === 0);
+
+                $('#checkAllItems').off('change').on('change', function() {
                     $('.check-sub-item').prop('checked', $(this).is(':checked'));
                 });
 
                 $(document).off('change', '.check-sub-item').on('change', '.check-sub-item', function() {
                     const total = $('.check-sub-item').length;
                     const checked = $('.check-sub-item:checked').length;
-                    $('#checkAllItems').prop('checked', total === checked);
+                    $('#checkAllItems').prop('checked', total > 0 && total === checked);
                 });
 
-                const actionLabel = isLevel4 ? (action === 'approved' ? 'Confirm' : 'Reject') : (action === 'approved' ? 'Approve' : 'Reject');
+                const actionLabel = isLevel4 ? (action === 'approved' ? 'Confirm' : 'Reject') : (action ===
+                    'approved' ? 'Approve' : 'Reject');
 
                 $('#detailActionButtons').html(`
                     <button type="button" class="btn btn-${action === 'approved' ? 'success' : 'danger'} btn-lanjut-action">Lanjut ${actionLabel}</button>
@@ -714,10 +738,13 @@
                 currentAction = status;
                 const isLevel4 = currentFilterLevel == 4;
 
-                $('#actionModalTitle').text(isLevel4 ? (status === 'approved' ? 'Konfirmasi PR (Confirm)' : 'Konfirmasi Penolakan') : (status === 'approved' ? 'Konfirmasi Approval' : 'Konfirmasi Penolakan'));
+                $('#actionModalTitle').text(isLevel4 ? (status === 'approved' ? 'Konfirmasi PR (Confirm)' :
+                    'Konfirmasi Penolakan') : (status === 'approved' ? 'Konfirmasi Approval' :
+                    'Konfirmasi Penolakan'));
                 $('#btnSubmitAction').removeClass('btn-primary btn-success btn-danger')
                     .addClass(status === 'approved' ? 'btn-success' : 'btn-danger')
-                    .text(isLevel4 ? (status === 'approved' ? 'Confirm Sekarang' : 'Reject Sekarang') : (status === 'approved' ? 'Approve Sekarang' : 'Reject Sekarang'));
+                    .text(isLevel4 ? (status === 'approved' ? 'Confirm Sekarang' : 'Reject Sekarang') : (status ===
+                        'approved' ? 'Approve Sekarang' : 'Reject Sekarang'));
 
                 if (status === 'rejected') {
                     $('#signatureWrapper').addClass('d-none');
@@ -804,6 +831,60 @@
                     }
                 });
             });
+
+            window.escapeHtmlAttribute = function(str) {
+                if (!str) return '';
+                return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            };
+
+            window.copyToClipboard = function(text) {
+                if (!text) return;
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showCopySuccessToast();
+                    }).catch(err => {
+                        console.error('Failed to copy: ', err);
+                        fallbackCopyText(text);
+                    });
+                } else {
+                    fallbackCopyText(text);
+                }
+            };
+
+            function fallbackCopyText(text) {
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                textarea.style.position = "fixed";
+                textarea.style.top = "0";
+                textarea.style.left = "0";
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    document.execCommand("copy");
+                    showCopySuccessToast();
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                document.body.removeChild(textarea);
+            }
+
+            function showCopySuccessToast() {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Keterangan berhasil disalin',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            }
 
             $('#btnRefresh').on('click', loadData);
         });

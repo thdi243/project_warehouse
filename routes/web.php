@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
             'nama_lengkap' => $request->user()->nama_lengkap,
             'username' => $request->user()->username,
             'bagian' => $request->user()->bagian,
+            'departemen' => $request->user()->departemen,
             'image' => $request->user()->image
                 ? asset('storage/' . $request->user()->image)
                 : null,

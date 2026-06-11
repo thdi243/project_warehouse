@@ -241,8 +241,9 @@ class WspPurchaseRequesitionController extends Controller
             DB::commit();
 
             return response()->json([
-                'status'      => true,
+                'status'  => true,
                 'message' => 'Purchase Requisition berhasil dibuat.',
+                'no_doc'  => $noDoc,
             ], 200);
         } catch (\Exception $e) {
 
@@ -317,12 +318,14 @@ class WspPurchaseRequesitionController extends Controller
             ->selectRaw('MAX(last_update) as last_update')
             ->groupBy('barang_id');
 
-        // subquery: total qty_book_soh per barang (sekarang memakai jenis = 'blocked' dan sum qty)
-        $bookedSohSub = DB::table('wsp_purchase_requesition_items')
-            ->select('barang_id')
-            ->selectRaw('SUM(qty) as total_book_soh')
-            ->where('jenis', 'blocked')
-            ->groupBy('barang_id');
+        // subquery: total qty_book_soh per barang (sekarang memakai jenis = 'blocked' dan sum qty, difilter hanya PR aktif pending/approved)
+        $bookedSohSub = DB::table('wsp_purchase_requesition_items as items')
+            ->join('wsp_purchase_requesition as pr', 'items.pr_id', '=', 'pr.id')
+            ->select('items.barang_id')
+            ->selectRaw('SUM(items.qty) as total_book_soh')
+            ->where('items.jenis', 'blocked')
+            ->whereIn('pr.status', ['pending', 'approved'])
+            ->groupBy('items.barang_id');
 
         // START DARI MASTER BARANG
         $query = BarangModel::query()
@@ -364,16 +367,29 @@ class WspPurchaseRequesitionController extends Controller
 
             $reservedByOthers = $activeReservations
                 ->where('session_id', '!=', $currentSessionId)
+                ->where('type', 'reservation')
+                ->sum('qty');
+
+            $prByOthers = $activeReservations
+                ->where('session_id', '!=', $currentSessionId)
+                ->where('type', 'pr')
                 ->sum('qty');
 
             $reservedByMe = $activeReservations
                 ->where('session_id', '=', $currentSessionId)
+                ->where('type', 'reservation')
+                ->sum('qty');
+
+            $prByMe = $activeReservations
+                ->where('session_id', '=', $currentSessionId)
+                ->where('type', 'pr')
                 ->sum('qty');
 
             $totalReserved = $reservedByOthers + $reservedByMe;
             $qtySoh = max(0, (int)$item->unrest - (int)$item->total_book_soh);
             $availableQty = max(0, $qtySoh - $totalReserved);
-            $isBeingBooked = $activeReservations->count() > 0;
+
+            $isBeingBooked = $activeReservations->where('session_id', '!=', $currentSessionId)->count() > 0;
             // $isAvailable = $item->qty_soh > 0 && !$isBeingBooked;
             $isAvailable = !$isBeingBooked;
 
@@ -401,7 +417,9 @@ class WspPurchaseRequesitionController extends Controller
                 'booking_info' => $this->getBookingInfo(
                     $isBeingBooked,
                     $reservedByOthers,
+                    $prByOthers,
                     $reservedByMe,
+                    $prByMe,
                     $availableQty,
                     $qtySoh,
                     (int) $item->total_book_soh
@@ -415,13 +433,27 @@ class WspPurchaseRequesitionController extends Controller
         ]);
     }
 
-    private function getBookingInfo($isBeingBooked, $reservedByOthers, $reservedByMe, $available, $soh, $totalBookSoh = 0)
+    private function getBookingInfo($isBeingBooked, $reservedByOthers, $prByOthers, $reservedByMe, $prByMe, $available, $soh, $totalBookSoh = 0)
     {
         $info = "";
-        if ($reservedByMe > 0) {
-            $info = "Anda sedang booking {$reservedByMe} qty dari total {$soh}";
+        if ($reservedByMe > 0 || $prByMe > 0) {
+            $parts = [];
+            if ($reservedByMe > 0) {
+                $parts[] = "booking {$reservedByMe} qty";
+            }
+            if ($prByMe > 0) {
+                $parts[] = "PR {$prByMe} qty";
+            }
+            $info = "Anda sedang " . implode(" & ", $parts) . " dari total {$soh} qty";
         } else if ($isBeingBooked) {
-            $info = "Sedang dibooking orang lain ({$reservedByOthers} qty)";
+            $parts = [];
+            if ($reservedByOthers > 0) {
+                $parts[] = "booking {$reservedByOthers} qty";
+            }
+            if ($prByOthers > 0) {
+                $parts[] = "PR {$prByOthers} qty";
+            }
+            $info = "Sedang dibooking/PR orang lain (" . implode(" & ", $parts) . ")";
         } else if ($available <= 0) {
             $info = "Stok habis";
         } else {
@@ -475,10 +507,14 @@ class WspPurchaseRequesitionController extends Controller
     {
         $pr = WspPurchaseRequesitionModel::with([
             'user',
+            'items' => function ($query) {
+                $query->where('jenis', 'pr');
+            },
             'items.barang',
             'items.latestStock',
             'approval.approver.signature'
-        ])->findOrFail($id);
+        ])
+            ->findOrFail($id);
 
         // dd($pr);
 
@@ -571,9 +607,15 @@ class WspPurchaseRequesitionController extends Controller
             $requestedQty = $request->qty;
             $sessionId = $request->session_id;
 
+            $type = $request->type ?? 'pr';
+            if ($type === 'blocked') {
+                $type = 'reservation';
+            }
+
             // Lock query cek existing booked (ini pencegah race condition utama)
             $existingBooked = WspStockReservations::where('mid_barang', $mid)
                 ->where('status', 'booked')
+                ->where('session_id', '!=', $sessionId)
                 ->where('expired_at', '>', now())
                 ->lockForUpdate()  // <--- LOCK DI SINI, agar request lain tunggu
                 ->exists();  // Atau gunakan ->count() > 0 untuk lebih aman
@@ -625,7 +667,7 @@ class WspPurchaseRequesitionController extends Controller
             $reservation = WspStockReservations::create([
                 'mid_barang' => $mid,
                 'qty' => $requestedQty,
-                'type' => $request->type ?? 'pr',
+                'type' => $type,
                 'session_id' => $sessionId,
                 'user_id' => Auth::id(),
                 'status' => 'booked',
@@ -919,6 +961,17 @@ class WspPurchaseRequesitionController extends Controller
 
         // Update items if provided
         if (!empty($itemIds)) {
+            // First, update all 'blocked' (reservasi) items automatically since they are not checkable on the frontend
+            WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)
+                ->whereHas('prItem', function ($q) {
+                    $q->where('jenis', 'blocked');
+                })
+                ->update([
+                    'status' => $status,
+                    'catatan' => $comment
+                ]);
+
+            // Then, update the selected 'pr' items
             WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)
                 ->whereIn('pr_item_id', $itemIds)
                 ->update([
@@ -984,11 +1037,15 @@ class WspPurchaseRequesitionController extends Controller
                 $pr->update(['status' => 'approved']);
             } else if ($currentLevel == 4) {
                 $pr->update(['status' => 'finished']);
+                
+                // Set all 'blocked' (reservasi) items to true because they are confirmed automatically
+                $pr->items()->where('jenis', 'blocked')->update(['status' => true]);
+
                 if (!empty($itemIds)) {
-                    $pr->items()->whereIn('id', $itemIds)->update(['status' => true]);
-                    $pr->items()->whereNotIn('id', $itemIds)->update(['status' => false]);
+                    $pr->items()->where('jenis', 'pr')->whereIn('id', $itemIds)->update(['status' => true]);
+                    $pr->items()->where('jenis', 'pr')->whereNotIn('id', $itemIds)->update(['status' => false]);
                 } else {
-                    $pr->items()->update(['status' => false]);
+                    $pr->items()->where('jenis', 'pr')->update(['status' => false]);
                 }
             }
 

@@ -94,6 +94,22 @@ export function useBookingManager() {
     const removeItem = async (index) => {
         const item = items[index];
 
+        const confirmResult = await Swal.fire({
+            title: "Konfirmasi Hapus",
+            text: "Apakah Anda yakin ingin menghapus barang ini?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#6c757d",
+            confirmButtonText: "Ya, Hapus!",
+            cancelButtonText: "Batal",
+            allowOutsideClick: false,
+        });
+
+        if (!confirmResult.isConfirmed) {
+            return;
+        }
+
         try {
             await fetch(`/purchase-requesition/release/${item.reservation_id}`, {
                 method: "DELETE",
