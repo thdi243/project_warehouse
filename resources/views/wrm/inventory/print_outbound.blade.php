@@ -404,7 +404,7 @@
                             <th>No SPB</th>
                             <th>Supplier</th>
                             <th>Driver Forklift</th>
-                            <th>Lokasi <br> <span
+                            <th style="min-width: 150px;">Lokasi <br> <span
                                     style="font-size: 9px; font-weight: normal; text-transform: capitalize; font-style: italic;">(Plant
                                     - SLoc
                                     -Gudang - Zona - Bin)</span>
