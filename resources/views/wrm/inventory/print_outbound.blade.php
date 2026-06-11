@@ -215,7 +215,7 @@
                     padding: 0;
                     margin: 0;
                     color: #000000;
-                    font-size: 7.5pt;
+                    font-size: 7pt;
                 }
 
                 .container {
@@ -269,7 +269,7 @@
                 th {
                     background-color: #e2e8f0 !important;
                     color: #000000 !important;
-                    font-size: 7.5pt;
+                    font-size: 7pt;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
@@ -278,29 +278,6 @@
                     background-color: #ffffff !important;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
-                }
-
-                /* Compact signature boxes */
-                .signature-section {
-                    margin-top: 30px;
-                }
-
-                .sig-box {
-                    width: 160px;
-                }
-
-                .sig-title {
-                    font-size: 7.5pt;
-                    margin-bottom: 45px;
-                }
-
-                .sig-name {
-                    font-size: 7.5pt;
-                    border-bottom: 1px solid #000000 !important;
-                }
-
-                .sig-role {
-                    font-size: 8pt;
                 }
 
                 .doc-footer {
@@ -427,7 +404,11 @@
                             <th>No SPB</th>
                             <th>Supplier</th>
                             <th>Driver Forklift</th>
-                            <th>Lokasi (Plant - SLoc - Zona - Bin - Kolom.Lvl)</th>
+                            <th>Lokasi <br> <span
+                                    style="font-size: 9px; font-weight: normal; text-transform: capitalize; font-style: italic;">(Plant
+                                    - SLoc
+                                    -Gudang - Zona - Bin)</span>
+                            </th>
                             <th class="text-center">Group</th>
                         </tr>
                     </thead>
@@ -447,7 +428,9 @@
                                 <td>
                                     @if ($detail->bin && $detail->bin->location)
                                         {{ $detail->bin->location->plant }} - {{ $detail->bin->location->s_loc }} -
-                                        {{ $detail->bin->location->zona }} - <b>{{ $detail->bin->location->bin }}</b>
+                                        <b>{{ $detail->bin->location->gudang }}</b> -
+                                        {{ $detail->bin->location->zona }} -
+                                        <b>{{ $detail->bin->location->bin }}</b>
                                         ({{ $detail->bin->kolom }}.{{ $detail->bin->level }})
                                     @else
                                         -
