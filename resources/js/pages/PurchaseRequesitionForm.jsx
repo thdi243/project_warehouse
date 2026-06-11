@@ -531,7 +531,7 @@ export default function PurchaseRequisitionForm() {
                             <CardTitle>Tambah Barang</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Field label="Search MID" required>
+                            <Field label="Search Material" required>
                                 <MidSearch
                                     value={currentItem.mid}
                                     namaBarang={currentItem.nama_barang}

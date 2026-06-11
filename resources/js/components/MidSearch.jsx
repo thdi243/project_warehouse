@@ -3,7 +3,7 @@ import { useBookingManager } from "../hooks/useBookingManager";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle, Lock } from "lucide-react";
+import { AlertCircle, CheckCircle, Lock, X } from "lucide-react";
 
 export default function MidSearch({ value, namaBarang, onChange }) {
     const [keyword, setKeyword] = useState("");
@@ -95,8 +95,26 @@ export default function MidSearch({ value, namaBarang, onChange }) {
                     });
                     setKeyword(e.target.value);
                 }}
-                className={value ? "border-green-500" : ""}
+                className={`pr-10 ${value ? "border-green-500" : ""}`}
             />
+
+            {value && (
+                <button
+                    type="button"
+                    onClick={() => {
+                        onChange({
+                            mid: "",
+                            nama_barang: "",
+                            available_qty: 0,
+                            uom: "",
+                        });
+                        setKeyword("");
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-100 rounded-full"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            )}
 
             {loading && (
                 <div className="absolute right-3 top-3 text-muted-foreground text-sm">
