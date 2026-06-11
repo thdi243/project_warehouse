@@ -28,7 +28,9 @@ class StockGulaUploadRequest extends FormRequest
             'loc_id' => 'required|array',
             'loc_id.*' => 'required|exists:wrm_master_bin,id',
             'status' => 'required|array',
-            'status.*' => 'required|in:UNREST,QI,BLOCKED'
+            'status.*' => 'required|in:UNREST,QI,BLOCKED',
+            'catatan' => 'nullable|array',
+            'catatan.*' => 'nullable|string|max:500',
         ];
     }
 }

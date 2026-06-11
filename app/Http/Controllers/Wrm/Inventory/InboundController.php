@@ -427,7 +427,7 @@ class InboundController extends Controller
                     'status'     => $request->status[$tempId] ?? 'UNREST',
                     'loc_id'     => $binId,
                     'pallet'     => $request->pallet ?? $temp->pallet,
-                    'catatan'    => $temp->catatan,
+                    'catatan'    => $request->catatan[$tempId] ?? $temp->catatan,
                     'created_by' => Auth::id(),
                 ]);
 
@@ -444,7 +444,7 @@ class InboundController extends Controller
                     'status'     => $request->status[$tempId] ?? 'UNREST',
                     'loc_id'     => $binId,
                     'pallet'     => $request->pallet ?? $temp->pallet,
-                    'catatan'    => $temp->catatan,
+                    'catatan'    => $request->catatan[$tempId] ?? $temp->catatan,
                     'created_by' => Auth::id(),
                 ]);
 
@@ -457,7 +457,7 @@ class InboundController extends Controller
                     'jenis'      => 'in',
                     'ref_type'   => 'inbound',
                     'ref_id'     => $stockOnHand->id,
-                    'catatan'    => $temp->catatan,
+                    'catatan'    => $request->catatan[$tempId] ?? $temp->catatan,
                     'created_by' => Auth::id(),
                 ]);
 
