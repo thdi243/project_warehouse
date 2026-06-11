@@ -628,9 +628,8 @@
                             ${item.keterangan ? `
                                 <div class="d-flex align-items-center justify-content-between gap-2">
                                     <span>${item.keterangan}</span>
-                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0" 
+                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
                                             style="flex-shrink: 0;"
-                                            onclick="copyToClipboard(this.getAttribute('data-text'))"
                                             data-text="${escapeHtmlAttribute(item.keterangan)}"
                                             title="Copy Keterangan">
                                         <i class="mdi mdi-content-copy"></i>
@@ -860,10 +859,20 @@
             function fallbackCopyText(text) {
                 const textarea = document.createElement("textarea");
                 textarea.value = text;
-                textarea.style.position = "fixed";
-                textarea.style.top = "0";
-                textarea.style.left = "0";
-                document.body.appendChild(textarea);
+                textarea.style.position = "absolute";
+                textarea.style.left = "-9999px";
+                textarea.style.width = "2em";
+                textarea.style.height = "2em";
+                textarea.style.opacity = "0";
+                
+                // Append inside active modal to bypass Bootstrap modal focus trap
+                const activeModal = document.querySelector('.modal.show');
+                if (activeModal) {
+                    activeModal.appendChild(textarea);
+                } else {
+                    document.body.appendChild(textarea);
+                }
+                
                 textarea.focus();
                 textarea.select();
                 try {
@@ -872,7 +881,12 @@
                 } catch (err) {
                     console.error('Fallback copy failed', err);
                 }
-                document.body.removeChild(textarea);
+                
+                if (activeModal) {
+                    activeModal.removeChild(textarea);
+                } else {
+                    document.body.removeChild(textarea);
+                }
             }
 
             function showCopySuccessToast() {
@@ -885,6 +899,13 @@
                     timer: 1500
                 });
             }
+
+            // Delegated handler for copy button
+            $(document).on('click', '.btn-copy-keterangan', function(e) {
+                e.preventDefault();
+                const text = $(this).attr('data-text');
+                copyToClipboard(text);
+            });
 
             $('#btnRefresh').on('click', loadData);
         });

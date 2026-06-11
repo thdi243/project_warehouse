@@ -312,7 +312,7 @@ class WspPurchaseRequesitionController extends Controller
         $subquery = (clone $query)->select('wsp_purchase_requesition.id');
         $totalDocs = (clone $query)->count();
         $totalPendingDocs = (clone $query)->where('status', 'pending')->count();
-        $totalItemPR = DB::table('wsp_purchase_requesition_items')->whereIn('pr_id', $subquery)->where('jenis', 'pr')->sum('qty') ?? 0;
+        $totalItemPR = DB::table('wsp_purchase_requesition_items')->whereIn('pr_id', $subquery)->where('jenis', 'pr')->count('id') ?? 0;
         $totalItemReservasi = DB::table('wsp_purchase_requesition_items')->whereIn('pr_id', $subquery)->where('jenis', 'blocked')->sum('qty') ?? 0;
 
         $pr = $query->orderBy('created_at', 'desc')->paginate(15);
