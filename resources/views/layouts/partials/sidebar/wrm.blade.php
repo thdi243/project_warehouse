@@ -59,6 +59,15 @@
                     </li>
                 @endcan
 
+                @can('permission', 'wrm-inventory-forklift-jobs')
+                    <li class="nav-item">
+                        <a href="{{ route('wrm.inventory.forklift-jobs') }}"
+                            class="nav-link menu-link {{ request()->routeIs('wrm.inventory.forklift-jobs') ? 'active' : '' }}">
+                            <i class="bx bx-git-commit fs-12"></i>Forklift Jobs
+                        </a>
+                    </li>
+                @endcan
+
                 @can('permission', 'wrm-inventory-transfer-history')
                     <li class="nav-item">
                         <a href="{{ route('wrm.inventory.index-transfer') }}"

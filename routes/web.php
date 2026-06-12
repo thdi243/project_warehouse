@@ -235,7 +235,7 @@ Route::middleware('auth')->group(function () {
 
         Route::prefix('wrm')->middleware(['permission:wrm-menu'])->group(function () {
             // Inventory Raw Material
-            Route::prefix('inventory')->middleware(['permission:wrm-inventory-upload,wrm-inventory-soh,wrm-inventory-draft-outbound,wrm-inventory-data-draft-outbound,wrm-inventory-transfer-history'])->group(function () {
+            Route::prefix('inventory')->middleware(['permission:wrm-inventory-upload,wrm-inventory-soh,wrm-inventory-draft-outbound,wrm-inventory-data-draft-outbound,wrm-inventory-transfer-history,wrm-inventory-forklift-jobs'])->group(function () {
                 Route::get('/inbound', [InboundController::class, 'viewInbound'])->name('wrm.inventory.viewInbound');
                 Route::get('/data-inbound', [InboundController::class, 'dataInbound'])->name('wrm.inventory.dataInbound');
                 Route::get('/get-filter-inbound', [InboundController::class, 'getFilterInbound'])->name('wrm.inventory.getFilterInbound');
@@ -280,6 +280,11 @@ Route::middleware('auth')->group(function () {
                 Route::get('/draft-outbound/{id}/assign-driver', [OutboundController::class, 'assignDriverPage'])->name('wrm.inventory.assign-driver-page');
                 Route::post('/assign-driver-items', [OutboundController::class, 'assignDriverItems'])->name('wrm.inventory.assign-driver-items');
                 Route::post('/complete-transfer/{id}', [OutboundController::class, 'completeTransfer'])->name('wrm.inventory.complete-transfer');
+
+                // Forklift Self-Service Jobs
+                Route::get('/forklift-jobs', [OutboundController::class, 'forkliftJobs'])->name('wrm.inventory.forklift-jobs');
+                Route::get('/forklift-jobs/data', [OutboundController::class, 'forkliftJobsData'])->name('wrm.inventory.forklift-jobs-data');
+                Route::post('/forklift-jobs/complete', [OutboundController::class, 'forkliftJobsComplete'])->name('wrm.inventory.forklift-jobs-complete');
 
                 // Monitoring PPIC & Purchasing
                 Route::prefix('monitoring')->group(function () {
