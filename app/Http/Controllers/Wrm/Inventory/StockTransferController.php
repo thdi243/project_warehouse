@@ -123,7 +123,6 @@ class StockTransferController extends Controller
                     $headerTracker[$headerKey] = StockTransfer::create([
                         'no_ba' => $noBa,
                         'tgl_ba' => $tglBa,
-                        'tgl_gr' => $tglGr,
                         'no_reservasi' => $noReservasi,
                         'tgl_reservasi' => $tglRes,
                         'tgl_gi' => $tglGi,
@@ -143,6 +142,7 @@ class StockTransferController extends Controller
                     'sloc' => $sloc,
                     'barang_id' => $barang->id,
                     'no_barcode' => $noBarcode,
+                    'tgl_gr' => $tglGr,
                     'grade' => $grade,
                     'qty_barcode' => $qtyBarcode,
                     'qty_actual' => $qtyActual,

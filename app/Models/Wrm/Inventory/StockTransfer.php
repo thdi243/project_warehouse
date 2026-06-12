@@ -15,7 +15,6 @@ class StockTransfer extends Model
     protected $fillable = [
         'no_ba',
         'tgl_ba',
-        'tgl_gr',
         'no_reservasi',
         'tgl_reservasi',
         'tgl_gi',

@@ -22,6 +22,7 @@ class StockTransferDetail extends Model
         'barang_id',
         'no_barcode',
         'pallet_id',
+        'tgl_gr',
         'grade',
         'qty_barcode',
         'qty_actual',

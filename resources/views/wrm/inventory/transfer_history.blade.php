@@ -193,7 +193,7 @@
                                 <td>${d.no_barcode || '-'}</td>
                                 <td>${d.no_spb || '-'}</td>
                                 <td>${d.matdoc_scrup || '-'} <br><small class="text-muted">${d.matdoc_year || ''}</small></td>
-                                <td>${header.tgl_gr ? moment(header.tgl_gr).format('DD/MM/YYYY') : '-'}</td>
+                                <td>${d.tgl_gr ? moment(d.tgl_gr).format('DD/MM/YYYY') : '-'}</td>
                                 <td>${header.tgl_gi ? moment(header.tgl_gi).format('DD/MM/YYYY') : '-'}</td>
                                 <td>${header.matdoc_gi || '-'}</td>
                                 <td>${barang.mid || '-'}</td>
