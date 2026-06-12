@@ -19,6 +19,11 @@
                 } else {
                     document.documentElement.setAttribute('data-layout-mode', 'light');
                 }
+
+                // Restore sidebar collapsed status early to prevent flashing layout shifts
+                if (localStorage.getItem('custom-sidebar-collapsed') === 'true') {
+                    document.documentElement.classList.add('sidebar-collapsed');
+                }
             })();
         </script>
 
@@ -130,6 +135,74 @@
                     duration: 1200,
                 });
 
+                // --- CUSTOM PREMIUM SIDEBAR CONTROL LOGIC ---
+
+                // Toggle sidebar collapse state (Desktop/Mobile)
+                $('#topnav-hamburger-icon').on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const isMobile = window.innerWidth < 992;
+                    if (isMobile) {
+                        $('html').toggleClass('sidebar-mobile-show');
+                    } else {
+                        const html = $('html');
+                        html.toggleClass('sidebar-collapsed');
+                        const isCollapsed = html.hasClass('sidebar-collapsed');
+                        localStorage.setItem('custom-sidebar-collapsed', isCollapsed ? 'true' : 'false');
+                    }
+                });
+
+                // Close mobile sidebar when clicking overlay
+                $(document).on('click', '.custom-sidebar-overlay', function() {
+                    $('html').removeClass('sidebar-mobile-show');
+                });
+
+                // Close mobile sidebar on clicking any navigation link (except toggles)
+                $(document).on('click', '.custom-sidebar-nav .nav-link:not([data-bs-toggle="collapse"])', function() {
+                    if (window.innerWidth < 992) {
+                        $('html').removeClass('sidebar-mobile-show');
+                    }
+                });
+
+                // Custom Accordion logic for submenus in expanded state
+                $(document).on('click', '.custom-sidebar .nav-link[data-bs-toggle="collapse"]', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // If in collapsed mode, clicking shouldn't expand/collapse accordion style
+                    if ($('html').hasClass('sidebar-collapsed')) {
+                        return;
+                    }
+
+                    const $this = $(this);
+                    const targetSelector = $this.attr('href') || $this.attr('data-bs-target');
+                    const $target = $(targetSelector);
+
+                    if ($target.length === 0) return;
+
+                    const isOpening = !$target.is(':visible');
+
+                    // Toggle the clicked submenu with slide animation
+                    $target.slideToggle(250, function() {
+                        $this.attr('aria-expanded', isOpening ? 'true' : 'false');
+                        $target.toggleClass('show', isOpening);
+                        $this.toggleClass('collapsed', !isOpening);
+                    });
+
+                    // Accordion mode: Close other open menus
+                    if (isOpening) {
+                        $('.custom-sidebar .menu-dropdown').not($target).slideUp(250, function() {
+                            $(this).removeClass('show');
+                            const targetId = $(this).attr('id');
+                            const parentLink = $(
+                                `.custom-sidebar .nav-link[href="#${targetId}"], .custom-sidebar .nav-link[data-bs-target="#${targetId}"]`
+                            );
+                            parentLink.attr('aria-expanded', 'false').addClass('collapsed');
+                        });
+                    }
+                });
+
                 // Csrf Token setup
                 $.ajaxSetup({
                     headers: {
@@ -141,6 +214,11 @@
                     if (xhr.status === 401) {
                         window.location.href = '/login';
                     }
+                });
+
+                // number type input agar tidak ke trigger scroll
+                $(document).on('wheel', 'input[type=number]', function() {
+                    $(this).blur();
                 });
 
                 // Logout button functionality
