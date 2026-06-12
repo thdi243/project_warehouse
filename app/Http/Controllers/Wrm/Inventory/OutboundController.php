@@ -331,50 +331,18 @@ class OutboundController extends Controller
             $outbound = StockOutbound::with('details')->findOrFail($id);
 
             foreach ($outbound->details as $detail) {
-                if ($detail->status === 'ISSUED' || $detail->status === 'BA WAITING') {
-                    // Reverse inventory if it was auto-issued
-                    $transferDetail = StockTransferDetail::where('no_barcode', $detail->barcode)
-                        ->where('barang_id', $detail->barang_id)
-                        ->whereHas('header', function ($q) use ($outbound) {
-                            $q->where('no_reservasi', $outbound->no_reservasi);
-                        })
-                        ->first();
-
-                    if ($transferDetail) {
-                        $movement = StockMovement::where('ref_type', 'stock_transfer')
-                            ->where('ref_id', $transferDetail->id)
-                            ->first();
-
-                        if ($movement) {
-                            $balance = StockBalance::where('barang_id', $movement->barang_id)
-                                ->where('loc_id', $movement->loc_id)
-                                ->first();
-
-                            if ($balance) {
-                                $balance->increment('qty', abs($movement->qty));
-                                $balance->update(['updated_by' => Auth::id()]);
-                            }
-
-                            $movement->delete();
-                        }
-
-                        $header = $transferDetail->header;
-                        $transferDetail->delete();
-
-                        if ($header && $header->details()->count() === 0) {
-                            $header->delete();
-                        }
-                    }
+                // Return inbound status to UNREST (available again) only if RESERVED or BA WAITING
+                if ($detail->status === 'RESERVED' || $detail->status === 'BA WAITING') {
+                    StockOnHand::where([
+                        'barang_id' => $detail->barang_id,
+                        'pallet_id' => $detail->pallet_id,
+                        'status'    => $detail->status,
+                        'no_spb'    => $detail->no_spb
+                    ])->update([
+                        'status' => 'UNREST',
+                        'updated_by' => Auth::id()
+                    ]);
                 }
-
-                // Return inbound status to UNREST (available again)
-                StockOnHand::where([
-                    'barang_id' => $detail->barang_id,
-                    'pallet_id' => $detail->pallet_id
-                ])->update([
-                    'status' => 'UNREST',
-                    'updated_by' => Auth::id()
-                ]);
             }
 
             $outbound->details()->delete();
@@ -405,50 +373,17 @@ class OutboundController extends Controller
             $detail = StockOutboundDetail::findOrFail($id);
             $outbound = StockOutbound::findOrFail($detail->outbound_id);
 
-            if ($detail->status === 'ISSUED' || $detail->status === 'BA WAITING') {
-                // Reverse inventory if it was auto-issued
-                $transferDetail = StockTransferDetail::where('no_barcode', $detail->barcode)
-                    ->where('barang_id', $detail->barang_id)
-                    ->whereHas('header', function ($q) use ($outbound) {
-                        $q->where('no_reservasi', $outbound->no_reservasi);
-                    })
-                    ->first();
-
-                if ($transferDetail) {
-                    $movement = StockMovement::where('ref_type', 'stock_transfer')
-                        ->where('ref_id', $transferDetail->id)
-                        ->first();
-
-                    if ($movement) {
-                        $balance = StockBalance::where('barang_id', $movement->barang_id)
-                            ->where('loc_id', $movement->loc_id)
-                            ->first();
-
-                        if ($balance) {
-                            $balance->increment('qty', abs($movement->qty));
-                            $balance->update(['updated_by' => Auth::id()]);
-                        }
-
-                        $movement->delete();
-                    }
-
-                    $header = $transferDetail->header;
-                    $transferDetail->delete();
-
-                    if ($header && $header->details()->count() === 0) {
-                        $header->delete();
-                    }
-                }
+            // Return inbound status to UNREST (available again) only if RESERVED or BA WAITING
+            if ($detail->status === 'RESERVED' || $detail->status === 'BA WAITING') {
+                StockOnHand::where([
+                    'barang_id' => $detail->barang_id,
+                    'pallet_id' => $detail->pallet_id,
+                    'status'    => $detail->status
+                ])->update([
+                    'status' => 'UNREST',
+                    'updated_by' => Auth::id()
+                ]);
             }
-
-            // Return inbound status to UNREST (available again)
-            StockOnHand::where([
-                'barang_id' => $detail->barang_id,
-                'pallet_id' => $detail->pallet_id
-            ])->update([
-                'status' => 'UNREST',
-                'updated_by' => Auth::id()
-            ]);
 
             $detail->delete();
 
@@ -499,50 +434,17 @@ class OutboundController extends Controller
                 $outbound = StockOutbound::findOrFail($detail->outbound_id);
                 $outboundIdsToUpdate[$outbound->id] = true;
 
-                if ($detail->status === 'ISSUED' || $detail->status === 'BA WAITING') {
-                    // Reverse inventory if it was auto-issued
-                    $transferDetail = StockTransferDetail::where('no_barcode', $detail->barcode)
-                        ->where('barang_id', $detail->barang_id)
-                        ->whereHas('header', function ($q) use ($outbound) {
-                            $q->where('no_reservasi', $outbound->no_reservasi);
-                        })
-                        ->first();
-
-                    if ($transferDetail) {
-                        $movement = StockMovement::where('ref_type', 'stock_transfer')
-                            ->where('ref_id', $transferDetail->id)
-                            ->first();
-
-                        if ($movement) {
-                            $balance = StockBalance::where('barang_id', $movement->barang_id)
-                                ->where('loc_id', $movement->loc_id)
-                                ->first();
-
-                            if ($balance) {
-                                $balance->increment('qty', abs($movement->qty));
-                                $balance->update(['updated_by' => Auth::id()]);
-                            }
-
-                            $movement->delete();
-                        }
-
-                        $header = $transferDetail->header;
-                        $transferDetail->delete();
-
-                        if ($header && $header->details()->count() === 0) {
-                            $header->delete();
-                        }
-                    }
+                // Return inbound status to UNREST (available again) only if RESERVED or BA WAITING
+                if ($detail->status === 'RESERVED' || $detail->status === 'BA WAITING') {
+                    StockOnHand::where([
+                        'barang_id' => $detail->barang_id,
+                        'pallet_id' => $detail->pallet_id,
+                        'status'    => $detail->status
+                    ])->update([
+                        'status' => 'UNREST',
+                        'updated_by' => Auth::id()
+                    ]);
                 }
-
-                // Return inbound status to UNREST (available again)
-                StockOnHand::where([
-                    'barang_id' => $detail->barang_id,
-                    'pallet_id' => $detail->pallet_id
-                ])->update([
-                    'status' => 'UNREST',
-                    'updated_by' => Auth::id()
-                ]);
 
                 // Delete the detail item
                 $detail->delete();
@@ -838,6 +740,176 @@ class OutboundController extends Controller
 
             // Sync header status_transfer & driver_id
             $this->syncHeaderStatusTransfer($outbound);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Proses pemindahan selesai dan inventory berhasil diperbarui.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function forkliftJobs(Request $request)
+    {
+        return view('wrm.inventory.forklift_jobs');
+    }
+
+    public function forkliftJobsData(Request $request)
+    {
+        $driverId = Auth::id();
+
+        // Fetch details assigned to the current driver with status RESERVED
+        $query = StockOutboundDetail::with([
+            'outbound:id,no_reservasi,reservasi_date,shift,catatan',
+            'barang:id,mid,nama_barang,uom',
+            'bin:id,loc_id,kolom,level',
+            'bin.location:id,plant,s_loc,gudang,zona,bin'
+        ])
+            ->where('driver_id', $driverId)
+            ->where('status', 'RESERVED');
+
+        // Optional search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('no_spb', 'like', "%{$search}%")
+                    ->orWhere('pallet_id', 'like', "%{$search}%")
+                    ->orWhereHas('barang', function ($qb) use ($search) {
+                        $qb->where('mid', 'like', "%{$search}%")
+                            ->orWhere('nama_barang', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('outbound', function ($qo) use ($search) {
+                        $qo->where('no_reservasi', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $jobs = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $jobs
+        ]);
+    }
+
+    public function forkliftJobsComplete(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:wrm_stock_draft_outbound_details,id'
+        ]);
+
+        $detailIds = $request->ids;
+
+        DB::beginTransaction();
+        try {
+            // Fetch the details that are assigned to the current user and are RESERVED
+            $details = StockOutboundDetail::with(['barang', 'bin.location', 'outbound'])
+                ->whereIn('id', $detailIds)
+                ->where('driver_id', Auth::id())
+                ->where('status', 'RESERVED')
+                ->get();
+
+            if ($details->isEmpty()) {
+                throw new \Exception('Tidak ada item valid yang dipilih.');
+            }
+
+            $ba_waiting_mids = ['20000812', '20000860', '20001270'];
+            $detailsGrouped = $details->groupBy('outbound_id');
+
+            foreach ($detailsGrouped as $outboundId => $outboundDetails) {
+                $outbound = StockOutbound::find($outboundId);
+                if (!$outbound) continue;
+
+                $transferHeader = null;
+
+                foreach ($outboundDetails as $detail) {
+                    $status = in_array(trim((string)$detail->barang->mid), $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
+
+                    // Update status in draft outbound detail
+                    $detail->update([
+                        'status' => $status,
+                        'updated_by' => Auth::id()
+                    ]);
+
+                    // Update status in StockOnHand
+                    StockOnHand::where([
+                        'barang_id' => $detail->barang_id,
+                        'pallet_id' => $detail->pallet_id,
+                        'status' => 'RESERVED'
+                    ])->update([
+                        'status' => $status,
+                        'updated_by' => Auth::id()
+                    ]);
+
+                    if ($status === 'ISSUED') {
+                        // Create or find StockTransfer header
+                        if (!$transferHeader) {
+                            $transferHeader = StockTransfer::where('no_reservasi', $outbound->no_reservasi)->first();
+
+                            if (!$transferHeader) {
+                                $transferHeader = StockTransfer::create([
+                                    'no_reservasi'  => $outbound->no_reservasi,
+                                    'tgl_reservasi' => Carbon::parse($outbound->reservasi_date),
+                                    'tgl_gi'        => now(),
+                                    'created_by'    => Auth::id(),
+                                ]);
+                            }
+                        }
+
+                        // Create StockTransferDetail
+                        $transferDetail = StockTransferDetail::create([
+                            'transfer_id' => $transferHeader->id,
+                            'no_spb'      => $detail->no_spb,
+                            'plant'       => $detail->bin->location->plant ?? null,
+                            'sloc'        => $detail->bin->location->s_loc ?? null,
+                            'barang_id'   => $detail->barang_id,
+                            'no_barcode'  => $detail->barcode,
+                            'qty_barcode' => $detail->qty,
+                            'qty_actual'  => $detail->qty,
+                            'uom'         => $detail->barang->uom,
+                            'created_by'  => Auth::id(),
+                        ]);
+
+                        // Decrement Stock Balance
+                        $bin = $detail->bin;
+                        if ($bin) {
+                            $locId = $bin->loc_id;
+
+                            $balance = StockBalance::where('barang_id', $detail->barang_id)
+                                ->where('loc_id', $locId)
+                                ->first();
+
+                            if ($balance) {
+                                $balance->decrement('qty', $detail->qty);
+                                $balance->update(['updated_by' => Auth::id()]);
+                            }
+
+                            // Record Stock Movement (out)
+                            StockMovement::create([
+                                'barang_id'  => $detail->barang_id,
+                                'loc_id'     => $locId,
+                                'tanggal'    => now(),
+                                'qty'        => $detail->qty,
+                                'jenis'      => 'out',
+                                'ref_type'   => 'stock_transfer',
+                                'ref_id'     => $transferDetail->id,
+                                'created_by' => Auth::id(),
+                            ]);
+                        }
+                    }
+                }
+
+                // Sync header status_transfer & driver_id
+                $this->syncHeaderStatusTransfer($outbound);
+            }
 
             DB::commit();
 
