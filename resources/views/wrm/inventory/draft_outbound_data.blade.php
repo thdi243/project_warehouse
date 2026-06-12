@@ -561,7 +561,8 @@
                                     <input type="checkbox" class="form-check-input select-item" 
                                         data-id="${d.id}" 
                                         data-outbound-id="${d.outbound_id}" 
-                                        data-status="${d.status}">
+                                        data-status="${d.status}"
+                                        ${d.status === 'ISSUED' ? 'disabled' : ''}>
                                 </td>
                                 <td>${i+1}</td>
                                 <td>${d.barcode ?? '-'}</td>
@@ -579,7 +580,8 @@
                                     <button class="btn btn-sm btn-danger btnCancelItem"
                                         data-id="${d.id}"
                                         data-outbound-id="${d.outbound_id}"
-                                        title="Cancel Item draft ini">
+                                        title="Cancel Item draft ini"
+                                        ${d.status === 'ISSUED' ? 'disabled' : ''}>
                                         <i class="mdi mdi-close"></i> Cancel
                                     </button>
                                 </td>
@@ -754,13 +756,15 @@
             // Check/Uncheck all items
             $(document).on('change', '#checkAllItems', function() {
                 let checked = $(this).prop('checked');
-                $('.select-item').prop('checked', checked);
+                $('.select-item:not(:disabled)').prop('checked', checked);
                 updateBulkCancelButton();
             });
 
             // Single item checkbox change
             $(document).on('change', '.select-item', function() {
-                if ($('.select-item:checked').length === $('.select-item').length) {
+                let checkableCount = $('.select-item:not(:disabled)').length;
+                let checkedCount = $('.select-item:checked').length;
+                if (checkedCount > 0 && checkedCount === checkableCount) {
                     $('#checkAllItems').prop('checked', true);
                 } else {
                     $('#checkAllItems').prop('checked', false);

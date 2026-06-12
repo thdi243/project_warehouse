@@ -30,7 +30,22 @@ class OutboundController extends Controller
 {
     public function formOutbound()
     {
-        return view('wrm.inventory.draft_outbound');
+        $mids = StockOnHand::where('wrm_stock_on_hand.status', 'UNREST')
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->select('wrm_master_barang.mid', 'wrm_master_barang.nama_barang')
+            ->distinct()
+            ->orderBy('wrm_master_barang.mid', 'asc')
+            ->get();
+
+        $groups = StockOnHand::where('status', 'UNREST')
+            ->whereNotNull('group')
+            ->where('group', '<>', '')
+            ->select('group')
+            ->distinct()
+            ->orderBy('group', 'asc')
+            ->pluck('group');
+
+        return view('wrm.inventory.draft_outbound', compact('mids', 'groups'));
     }
 
     public function dataOutbound()
@@ -333,20 +348,39 @@ class OutboundController extends Controller
             foreach ($outbound->details as $detail) {
                 // Return inbound status to UNREST (available again) only if RESERVED or BA WAITING
                 if ($detail->status === 'RESERVED' || $detail->status === 'BA WAITING') {
-                    StockOnHand::where([
-                        'barang_id' => $detail->barang_id,
-                        'pallet_id' => $detail->pallet_id,
-                        'status'    => $detail->status,
-                        'no_spb'    => $detail->no_spb
-                    ])->update([
-                        'status' => 'UNREST',
-                        'updated_by' => Auth::id()
-                    ]);
+                    if ($detail->barcode) {
+                        StockOnHand::where('barcode', $detail->barcode)
+                            ->whereIn('status', ['RESERVED', 'BA WAITING'])
+                            ->update([
+                                'status' => 'UNREST',
+                                'updated_by' => Auth::id()
+                            ]);
+                    } else {
+                        StockOnHand::where([
+                            'barang_id' => $detail->barang_id,
+                            'pallet_id' => $detail->pallet_id,
+                            'no_spb'    => $detail->no_spb
+                        ])
+                            ->whereIn('status', ['RESERVED', 'BA WAITING'])
+                            ->update([
+                                'status' => 'UNREST',
+                                'updated_by' => Auth::id()
+                            ]);
+                    }
+
+                    // Delete the draft detail item
+                    $detail->delete();
                 }
             }
 
-            $outbound->details()->delete();
-            $outbound->delete();
+            // Check if there are any remaining details (e.g. ISSUED items)
+            $remainingCount = $outbound->details()->count();
+            if ($remainingCount === 0) {
+                $outbound->delete();
+            } else {
+                $outbound->recalculateQtyRequest();
+                $this->syncHeaderStatusTransfer($outbound);
+            }
 
             DB::commit();
 
@@ -375,25 +409,39 @@ class OutboundController extends Controller
 
             // Return inbound status to UNREST (available again) only if RESERVED or BA WAITING
             if ($detail->status === 'RESERVED' || $detail->status === 'BA WAITING') {
-                StockOnHand::where([
-                    'barang_id' => $detail->barang_id,
-                    'pallet_id' => $detail->pallet_id,
-                    'status'    => $detail->status
-                ])->update([
-                    'status' => 'UNREST',
-                    'updated_by' => Auth::id()
-                ]);
-            }
+                if ($detail->barcode) {
+                    StockOnHand::where('barcode', $detail->barcode)
+                        ->whereIn('status', ['RESERVED', 'BA WAITING'])
+                        ->update([
+                            'status' => 'UNREST',
+                            'updated_by' => Auth::id()
+                        ]);
+                } else {
+                    StockOnHand::where([
+                        'barang_id' => $detail->barang_id,
+                        'pallet_id' => $detail->pallet_id,
+                        'no_spb'    => $detail->no_spb
+                    ])
+                        ->whereIn('status', ['RESERVED', 'BA WAITING'])
+                        ->update([
+                            'status' => 'UNREST',
+                            'updated_by' => Auth::id()
+                        ]);
+                }
 
-            $detail->delete();
+                $detail->delete();
 
-            $remainingCount = StockOutboundDetail::where('outbound_id', $outbound->id)->count();
-            if ($remainingCount === 0) {
-                $outbound->delete();
-                $deletedHeader = true;
+                $remainingCount = StockOutboundDetail::where('outbound_id', $outbound->id)->count();
+                if ($remainingCount === 0) {
+                    $outbound->delete();
+                    $deletedHeader = true;
+                } else {
+                    $outbound->recalculateQtyRequest();
+                    $this->syncHeaderStatusTransfer($outbound);
+                    $deletedHeader = false;
+                }
             } else {
-                $outbound->recalculateQtyRequest();
-                $deletedHeader = false;
+                throw new \Exception('Item yang sudah ISSUED tidak bisa dibatalkan dari draft.');
             }
 
             DB::commit();
@@ -431,23 +479,35 @@ class OutboundController extends Controller
             $outboundIdsToUpdate = [];
 
             foreach ($details as $detail) {
-                $outbound = StockOutbound::findOrFail($detail->outbound_id);
-                $outboundIdsToUpdate[$outbound->id] = true;
-
-                // Return inbound status to UNREST (available again) only if RESERVED or BA WAITING
                 if ($detail->status === 'RESERVED' || $detail->status === 'BA WAITING') {
-                    StockOnHand::where([
-                        'barang_id' => $detail->barang_id,
-                        'pallet_id' => $detail->pallet_id,
-                        'status'    => $detail->status
-                    ])->update([
-                        'status' => 'UNREST',
-                        'updated_by' => Auth::id()
-                    ]);
-                }
+                    $outbound = StockOutbound::findOrFail($detail->outbound_id);
+                    $outboundIdsToUpdate[$outbound->id] = true;
 
-                // Delete the detail item
-                $detail->delete();
+                    if ($detail->barcode) {
+                        StockOnHand::where('barcode', $detail->barcode)
+                            ->whereIn('status', ['RESERVED', 'BA WAITING'])
+                            ->update([
+                                'status' => 'UNREST',
+                                'updated_by' => Auth::id()
+                            ]);
+                    } else {
+                        StockOnHand::where([
+                            'barang_id' => $detail->barang_id,
+                            'pallet_id' => $detail->pallet_id,
+                            'no_spb'    => $detail->no_spb
+                        ])
+                            ->whereIn('status', ['RESERVED', 'BA WAITING'])
+                            ->update([
+                                'status' => 'UNREST',
+                                'updated_by' => Auth::id()
+                            ]);
+                    }
+
+                    // Delete the detail item
+                    $detail->delete();
+                } else {
+                    throw new \Exception('Beberapa item yang dipilih sudah ISSUED dan tidak bisa dibatalkan.');
+                }
             }
 
             // Post-deletion update for headers
@@ -461,6 +521,8 @@ class OutboundController extends Controller
                         $deletedHeaders[] = (int) $outboundId;
                     } else {
                         $outbound->recalculateQtyRequest();
+                        $this->syncHeaderStatusTransfer($outbound);
+                        $deletedHeaders = false;
                     }
                 }
             }
@@ -670,15 +732,23 @@ class OutboundController extends Controller
                     'updated_by' => Auth::id()
                 ]);
 
-                // Update status in StockOnHand
-                StockOnHand::where([
-                    'barang_id' => $detail->barang_id,
-                    'pallet_id' => $detail->pallet_id,
-                    'status' => 'RESERVED'
-                ])->update([
-                    'status' => $status,
-                    'updated_by' => Auth::id()
-                ]);
+                // Delete or Update status in StockOnHand
+                if ($status === 'ISSUED') {
+                    StockOnHand::where([
+                        'barang_id' => $detail->barang_id,
+                        'pallet_id' => $detail->pallet_id,
+                        'status'    => 'RESERVED'
+                    ])->delete();
+                } else {
+                    StockOnHand::where([
+                        'barang_id' => $detail->barang_id,
+                        'pallet_id' => $detail->pallet_id,
+                        'status'    => 'RESERVED'
+                    ])->update([
+                        'status' => $status,
+                        'updated_by' => Auth::id()
+                    ]);
+                }
 
                 if ($status === 'ISSUED') {
                     // Create or find StockTransfer header
@@ -841,15 +911,23 @@ class OutboundController extends Controller
                         'updated_by' => Auth::id()
                     ]);
 
-                    // Update status in StockOnHand
-                    StockOnHand::where([
-                        'barang_id' => $detail->barang_id,
-                        'pallet_id' => $detail->pallet_id,
-                        'status' => 'RESERVED'
-                    ])->update([
-                        'status' => $status,
-                        'updated_by' => Auth::id()
-                    ]);
+                    // Delete or Update status in StockOnHand
+                    if ($status === 'ISSUED') {
+                        StockOnHand::where([
+                            'barang_id' => $detail->barang_id,
+                            'pallet_id' => $detail->pallet_id,
+                            'status'    => 'RESERVED'
+                        ])->delete();
+                    } else {
+                        StockOnHand::where([
+                            'barang_id' => $detail->barang_id,
+                            'pallet_id' => $detail->pallet_id,
+                            'status'    => 'RESERVED'
+                        ])->update([
+                            'status' => $status,
+                            'updated_by' => Auth::id()
+                        ]);
+                    }
 
                     if ($status === 'ISSUED') {
                         // Create or find StockTransfer header

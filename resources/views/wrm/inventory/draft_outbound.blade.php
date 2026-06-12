@@ -45,7 +45,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">No Reservasi <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="no_reservasi" placeholder="Contoh: 204506143">
+                            <input type="number" class="form-control" id="no_reservasi" placeholder="Contoh: 204506143">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Qty Request (KG) <span class="text-danger">*</span></label>
@@ -72,31 +72,33 @@
                     <div class="rounded border border-2 border-primary p-3 mb-4 bg-soft-info shadow-sm">
                         <div class="row g-3">
                             <div class="col-md-3">
-                                <label class="form-label fw-bold"><i class="mdi mdi-filter-variant me-1"></i> Filter
-                                    Pencarian</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="mdi mdi-magnify"></i></span>
-                                    <input type="text" class="form-control" id="filterMid" placeholder="Cari MID ...">
-                                </div>
+                                <label class="form-label fw-bold"><i class="mdi mdi-barcode-scan me-1 text-primary"></i>
+                                    MID</label>
+                                <select class="form-select select2" id="filterMid" data-placeholder="Pilih MID ...">
+                                    <option value=""></option>
+                                    @foreach ($mids as $m)
+                                        <option value="{{ $m->mid }}">{{ $m->mid }} - {{ $m->nama_barang }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">&nbsp;</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="mdi mdi-tag-outline"></i></span>
-                                    <input type="text" class="form-control" id="filterGroup"
-                                        placeholder="Cari Group ...">
-                                </div>
+                                <label class="form-label fw-bold"><i class="mdi mdi-tag-outline me-1 text-primary"></i>
+                                    Group</label>
+                                <select class="form-select select2" id="filterGroup" data-placeholder="Pilih Group ...">
+                                    <option value=""></option>
+                                    @foreach ($groups as $g)
+                                        <option value="{{ $g }}">{{ $g }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">&nbsp;</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light"><i
-                                            class="mdi mdi-map-marker-outline"></i></span>
-                                    <input type="text" class="form-control" id="filterLocation"
-                                        placeholder="Cari Location ...">
-                                </div>
+                                <label class="form-label fw-bold"><i
+                                        class="mdi mdi-map-marker-outline me-1 text-primary"></i> Location</label>
+                                <input type="text" class="form-control" id="filterLocation"
+                                    placeholder="Cari Location ...">
                             </div>
-                            <div class="col-md-3 d-flex align-items-end gap-2">
+                            <div class="col-md-3 d-flex align-items-end">
                                 <button class="btn btn-light w-100 border" id="btnReset">
                                     <i class="mdi mdi-refresh me-2"></i> Reset
                                 </button>
@@ -161,6 +163,15 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            // Initialize Select2
+            $('#filterMid, #filterGroup').select2({
+                theme: 'bootstrap-5',
+                allowClear: true,
+                placeholder: function() {
+                    return $(this).data('placeholder');
+                }
+            });
+
             function numberFormat(x) {
                 if (x === null || x === undefined) return '0';
                 let val = parseFloat(x);
@@ -190,14 +201,9 @@
                 loadData();
             }
 
-            let searchTimer;
-
-            $('#filterMid, #filterGroup, #filterLocation').on('keyup', function() {
-
-                clearTimeout(searchTimer);
-
-                searchTimer = setTimeout(runSearch, 500);
-
+            // Search triggers on filter changes
+            $('#filterMid, #filterGroup, #filterLocation').on('change', function() {
+                runSearch();
             });
 
             function loadData() {
@@ -435,8 +441,8 @@
             function resetForm() {
 
                 // reset filter
-                $('#filterMid').val('');
-                $('#filterGroup').val('');
+                $('#filterMid').val(null).trigger('change');
+                $('#filterGroup').val(null).trigger('change');
                 $('#filterLocation').val('');
                 $('#qty').val('');
                 $('#no_reservasi').val('');

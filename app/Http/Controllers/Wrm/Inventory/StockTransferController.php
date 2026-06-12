@@ -181,11 +181,18 @@ class StockTransferController extends Controller
                             'created_by' => Auth::id(),
                         ]);
 
-                        // Update Inbound Status and Qty
-                        $stockOnHand->update([
-                            'status' => 'ISSUED',
-                            'updated_by' => Auth::id(),
-                        ]);
+                        // Delete or Update Inbound Status based on MID exceptions
+                        $ba_waiting_mids = ['20000812', '20000860', '20001270'];
+                        $calculatedStatus = in_array(trim((string)$barang->mid), $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
+
+                        if ($calculatedStatus === 'ISSUED') {
+                            $stockOnHand->delete();
+                        } else {
+                            $stockOnHand->update([
+                                'status' => 'BA WAITING',
+                                'updated_by' => Auth::id(),
+                            ]);
+                        }
                     }
                 }
                 // ----------------------------------------------
@@ -203,8 +210,11 @@ class StockTransferController extends Controller
                     ->first();
 
                 if ($draftDetail) {
+                    $ba_waiting_mids = ['20000812', '20000860', '20001270'];
+                    $calculatedStatus = in_array(trim((string)$barang->mid), $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
+
                     $draftDetail->update([
-                        'status' => 'ISSUED',
+                        'status' => $calculatedStatus,
                         'updated_by' => Auth::id(),
                     ]);
 
