@@ -21,6 +21,7 @@ class StockTransferDetail extends Model
         'sloc',
         'barang_id',
         'no_barcode',
+        'pallet_id',
         'grade',
         'qty_barcode',
         'qty_actual',
