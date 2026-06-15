@@ -765,6 +765,14 @@
 
                         data.forEach((d, index) => {
 
+                            const badgeStatus = d.status === 'UNREST' ?
+                                `<span class="badge badge-soft-success">${d.status}</span>` :
+                                d.status === 'QI' ?
+                                `<span class="badge badge-soft-info">${d.status}</span>` :
+                                d.status === 'BLOCKED' ?
+                                `<span class="badge badge-soft-danger">${d.status}</span>` :
+                                `<span class="badge badge-soft-warning">${d.status}</span>`;
+
                             html += `
                                 <tr>
                                     @can('permission', 'wrm-inventory-soh-plus')
@@ -781,7 +789,7 @@
                                     <td>${d.group ?? '-'}</td>
                                     <td>${d.pallet_id}</td>
                                     <td>${numberFormat(d.qty)}</td>
-                                    <td>${d.status.toUpperCase()}</td>
+                                    <td class='text-center'>${badgeStatus}</td>
                                     <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>
                                     <td>${d.supplier}</td>
                                     <td>${d.incoming_date}</td>
