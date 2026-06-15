@@ -561,7 +561,7 @@ class WrmInventoryController extends Controller
         }
         $occupiedIds = array_keys($occupiedMap);
 
-        $reservedIdsQuery = clone StockOnHand::where('status', 'RESERVED')->where('qty', '>', 0);
+        $reservedIdsQuery = clone StockOnHand::whereIn('status', ['RESERVED', 'BA WAITING'])->where('qty', '>', 0);
         if ($request->mid) {
             $reservedIdsQuery->whereHas('barang', function ($q) use ($request) {
                 $q->where('mid', $request->mid);
