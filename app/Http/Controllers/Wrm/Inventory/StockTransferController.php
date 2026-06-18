@@ -203,9 +203,9 @@ class StockTransferController extends Controller
                     ->where('barang_id', $barang->id)
                     ->whereHas('outbound', function ($q) use ($noReservasi, $tglRes) {
                         $q->where('no_reservasi', $noReservasi);
-                        if ($tglRes) {
-                            $q->whereDate('reservasi_date', $tglRes);
-                        }
+                        // if ($tglRes) {
+                        //     $q->whereDate('reservasi_date', $tglRes);
+                        // }
                     })
                     ->first();
 
@@ -250,7 +250,7 @@ class StockTransferController extends Controller
 
             return response()->json([
                 'status' => false,
-                'message' => 'Gagal memproses upload: '.$e->getMessage(),
+                'message' => 'Gagal memproses upload: ' . $e->getMessage(),
                 'errors' => explode("\n", $e->getMessage()),
             ], 422);
         }
@@ -265,14 +265,14 @@ class StockTransferController extends Controller
 
         if ($request->no_reservasi) {
             $query->whereHas('header', function ($q) use ($request) {
-                $q->where('no_reservasi', 'like', '%'.$request->no_reservasi.'%')
-                    ->orWhere('no_ba', 'like', '%'.$request->no_reservasi.'%');
+                $q->where('no_reservasi', 'like', '%' . $request->no_reservasi . '%')
+                    ->orWhere('no_ba', 'like', '%' . $request->no_reservasi . '%');
             });
         }
 
         if ($request->mid) {
             $query->whereHas('barang', function ($q) use ($request) {
-                $q->where('mid', 'like', '%'.$request->mid.'%');
+                $q->where('mid', 'like', '%' . $request->mid . '%');
             });
         }
 
@@ -352,7 +352,7 @@ class StockTransferController extends Controller
 
             return response()->json([
                 'status' => false,
-                'message' => 'Gagal menghapus data: '.$e->getMessage(),
+                'message' => 'Gagal menghapus data: ' . $e->getMessage(),
             ], 500);
         }
     }
