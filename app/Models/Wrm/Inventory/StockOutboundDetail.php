@@ -33,6 +33,7 @@ class StockOutboundDetail extends Model
         'catatan',
         'pallet',
         'driver_id',
+        'soh_id',
         'created_by',
         'updated_by',
     ];
@@ -41,6 +42,11 @@ class StockOutboundDetail extends Model
     public function outbound()
     {
         return $this->belongsTo(StockOutbound::class, 'outbound_id');
+    }
+
+    public function soh()
+    {
+        return $this->belongsTo(StockOnHand::class, 'soh_id');
     }
 
     public function driver()
