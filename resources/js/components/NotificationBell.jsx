@@ -52,14 +52,19 @@ export default function NotificationBell() {
                 console.log("Real-time notification received (React):", data);
                 if (data && parseInt(data.user_id) === parseInt(user.id)) {
                     setNotifications((prev) => {
-                        if (prev.some((n) => n.id === data.id)) return prev;
+                        const exists = prev.some((n) => n.id === data.id);
+                        if (exists) {
+                            return prev.map((n) => n.id === data.id ? data : n);
+                        }
                         return [data, ...prev];
                     });
 
-                    toast({
-                        title: data.title,
-                        description: data.message,
-                    });
+                    if (!data.is_read) {
+                        toast({
+                            title: data.title,
+                            description: data.message,
+                        });
+                    }
                 }
             });
 

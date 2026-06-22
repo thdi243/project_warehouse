@@ -29,7 +29,7 @@ class NotificationsModel extends Model
 
     protected static function booted()
     {
-        static::created(function ($notification) {
+        static::saved(function ($notification) {
             try {
                 event(new ShowPortalNotification([
                     'id'         => $notification->id,
