@@ -12,8 +12,12 @@ import {
     DropdownMenuTrigger,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function NotificationBell() {
+    const { user } = useAuth();
+    const { toast } = useToast();
     const [notifications, setNotifications] = useState([]);
 
     const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -34,10 +38,36 @@ export default function NotificationBell() {
 
         const interval = setInterval(() => {
             fetchNotifications();
-        }, 30000);
+        }, 180000);
 
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        if (window.Echo && user) {
+            console.log("Setting up Reverb channel listener for user:", user.id);
+            const channel = window.Echo.channel("portal-notifications");
+
+            channel.listen(".new-notification", (data) => {
+                console.log("Real-time notification received (React):", data);
+                if (data && parseInt(data.user_id) === parseInt(user.id)) {
+                    setNotifications((prev) => {
+                        if (prev.some((n) => n.id === data.id)) return prev;
+                        return [data, ...prev];
+                    });
+
+                    toast({
+                        title: data.title,
+                        description: data.message,
+                    });
+                }
+            });
+
+            return () => {
+                channel.stopListening(".new-notification");
+            };
+        }
+    }, [user, toast]);
 
     const handleOpenNotification = async (notif) => {
         try {

@@ -206,15 +206,6 @@ class NotificationController extends Controller
                 'url'     => $request->input('url'),
                 'is_read' => false,
             ]);
-
-            // Kirim realtime via Reverb (channel per user)
-            event(new ShowPortalNotification([
-                'id'      => $notif->id,
-                'user_id' => $user->id,
-                'title'   => $notif->title,
-                'message' => $notif->message,
-                'url'     => $notif->url,
-            ]));
         }
 
         return response()->json(['status' => 'success']);

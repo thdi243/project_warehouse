@@ -67,6 +67,8 @@
 
         @yield('styles')
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
     </head>
 
     <body class="dark">
@@ -567,6 +569,38 @@
                 setInterval(() => {
                     fetchNotifications(true);
                 }, 180000);
+
+                function setupRealtimeNotifications() {
+                    // Check if Echo is loaded from CDN and not yet initialized
+                    if (typeof window.Echo === 'function') {
+                        window.Echo = new window.Echo({
+                            broadcaster: 'pusher',
+                            key: '{{ env("REVERB_APP_KEY") }}',
+                            wsHost: '{{ env("REVERB_HOST", "127.0.0.1") }}',
+                            wsPort: {{ env("REVERB_PORT", 8080) }},
+                            wssPort: {{ env("REVERB_PORT", 8080) }},
+                            forceTLS: '{{ env("REVERB_SCHEME", "http") }}' === 'https',
+                            disableStats: true,
+                            enabledTransports: ['ws', 'wss'],
+                        });
+                    }
+
+                    if (window.Echo && typeof window.Echo.channel === 'function') {
+                        const currentUserId = $('meta[name="current-user-id"]').attr('content');
+                        if (!currentUserId) return;
+
+                        window.Echo.channel('portal-notifications')
+                            .listen('.new-notification', (data) => {
+                                console.log('Realtime notification received (Blade):', data);
+                                if (data && parseInt(data.user_id) === parseInt(currentUserId)) {
+                                    fetchNotifications(true);
+                                }
+                            });
+                    } else {
+                        setTimeout(setupRealtimeNotifications, 100);
+                    }
+                }
+                setupRealtimeNotifications();
             });
         </script>
 
