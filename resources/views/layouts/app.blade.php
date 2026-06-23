@@ -578,10 +578,10 @@
                         window.Echo = new window.Echo({
                             broadcaster: 'reverb',
                             key: '{{ config('broadcasting.connections.reverb.key') }}',
-                            wsHost: window.location.hostname,
-                            wsPort: 8080,
-                            wssPort: 8080,
-                            forceTLS: false,
+                            wsHost: '{{ config('broadcasting.connections.reverb.options.host') }}' || window.location.hostname,
+                            wsPort: {{ config('broadcasting.connections.reverb.options.port', 8080) }},
+                            wssPort: {{ config('broadcasting.connections.reverb.options.port', 8080) }},
+                            forceTLS: '{{ config('broadcasting.connections.reverb.options.scheme', 'http') }}' === 'https',
                             enabledTransports: ['ws', 'wss'],
                         });
                     }
