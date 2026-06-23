@@ -23,6 +23,7 @@ class ShowPortalNotification implements ShouldBroadcastNow
      */
     public function __construct($data)
     {
+        Log::info('Event ShowPortalNotification triggered', $data);
         $this->data = $data;
     }
 
@@ -40,5 +41,10 @@ class ShowPortalNotification implements ShouldBroadcastNow
     public function broadcastAs(): string
     {
         return 'new-notification';
+    }
+
+    public function broadcastWith(): array
+    {
+        return $this->data;
     }
 }

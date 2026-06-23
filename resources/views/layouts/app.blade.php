@@ -573,14 +573,15 @@
                 function setupRealtimeNotifications() {
                     // Check if Echo is loaded from CDN and not yet initialized
                     if (typeof window.Echo === 'function') {
+                        window.Pusher = Pusher;
+
                         window.Echo = new window.Echo({
-                            broadcaster: 'pusher',
-                            key: '{{ env("REVERB_APP_KEY") }}',
-                            wsHost: '{{ env("REVERB_HOST", "127.0.0.1") }}',
-                            wsPort: {{ env("REVERB_PORT", 8080) }},
-                            wssPort: {{ env("REVERB_PORT", 8080) }},
-                            forceTLS: '{{ env("REVERB_SCHEME", "http") }}' === 'https',
-                            disableStats: true,
+                            broadcaster: 'reverb',
+                            key: '{{ config('broadcasting.connections.reverb.key') }}',
+                            wsHost: window.location.hostname,
+                            wsPort: 8080,
+                            wssPort: 8080,
+                            forceTLS: false,
                             enabledTransports: ['ws', 'wss'],
                         });
                     }
@@ -589,11 +590,85 @@
                         const currentUserId = $('meta[name="current-user-id"]').attr('content');
                         if (!currentUserId) return;
 
+                        console.log('connecting to channel...');
+
                         window.Echo.channel('portal-notifications')
-                            .listen('.new-notification', (data) => {
-                                console.log('Realtime notification received (Blade):', data);
-                                if (data && parseInt(data.user_id) === parseInt(currentUserId)) {
-                                    fetchNotifications(true);
+                            .subscribed(() => {
+                                console.log('SUBSCRIBED SUCCESS');
+                            })
+                            .error((err) => {
+                                console.log('SUBSCRIBE ERROR:', err);
+                            })
+                            .listen('.new-notification', (payload) => {
+                                console.log('REVERB TRIGGERED:', payload);
+                                console.log('Realtime notification received (Blade):', payload);
+                                console.log('RAW PAYLOAD:', payload);
+                                const userId = payload.user_id || (payload.data && payload.data.user_id);
+                                if (userId && parseInt(userId) === parseInt(currentUserId)) {
+                                    // Parse notification object from payload
+                                    const n = {
+                                        id: payload.id || (payload.data && payload.data.id),
+                                        title: payload.title || (payload.data && payload.data.title),
+                                        message: payload.message || (payload.data && payload.data.message),
+                                        url: payload.url || (payload.data && payload.data.url),
+                                        created_at: payload.created_at || (payload.data && payload.data
+                                            .created_at) || moment().format('DD MMMM YYYY, HH:mm'),
+                                        is_read: payload.is_read || (payload.data && payload.data.is_read) ||
+                                            false
+                                    };
+
+                                    // 1. Show Toast if not read and not already toasted
+                                    if (!n.is_read && n.id !== lastNotificationId) {
+                                        toastr.info(n.message, n.title);
+                                        lastNotificationId = n.id;
+                                    }
+
+                                    // 2. Trigger Checker Follow Up Swal if applicable
+                                    const isCheckerFollowUp = !n.is_read && n.title === 'Info Bongkar Muat' && n
+                                        .url;
+                                    if (isCheckerFollowUp) {
+                                        showCheckerFollowUpSwal(n);
+                                    }
+
+                                    // 3. Build UI item and insert into UI
+                                    const notifList = $('#notifList');
+                                    const template = $('#notifTemplate .notif-item');
+                                    const notifBadge = $('#notifBadge');
+
+                                    // Remove empty message if present
+                                    notifList.find('p.text-center').remove();
+
+                                    // Check if this notification already exists in the DOM to avoid duplication
+                                    if (notifList.find(`[data-id="${n.id}"]`).length === 0) {
+                                        const clone = template.clone();
+                                        clone.attr('data-id', n.id);
+                                        clone.attr('data-url', n.url);
+
+                                        clone.find('.notif-title').text(n.title);
+                                        clone.find('.notif-message').text(n.message);
+                                        clone.find('.notif-time').text(n.created_at);
+
+                                        const icon = clone.find('.notif-icon');
+                                        if (n.is_read) {
+                                            icon.removeClass().addClass('bx bx-check-circle text-success');
+                                            clone.removeClass('bg-white fw-semibold').addClass(
+                                                'bg-light text-muted');
+                                        } else {
+                                            icon.removeClass().addClass('bx bx-bell text-warning');
+                                            clone.removeClass('bg-light text-muted').addClass(
+                                                'bg-white fw-semibold');
+                                        }
+
+                                        // Prepend to show the newest at the top
+                                        notifList.prepend(clone);
+
+                                        // Update badge count
+                                        if (!n.is_read) {
+                                            const currentCount = parseInt(notifBadge.text()) || 0;
+                                            const newCount = currentCount + 1;
+                                            notifBadge.text(newCount).show();
+                                        }
+                                    }
                                 }
                             });
                     } else {
@@ -602,6 +677,8 @@
                 }
                 setupRealtimeNotifications();
             });
+
+            // window.Echo.channel('test-channel')
         </script>
 
         @yield('scripts')
