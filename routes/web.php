@@ -38,6 +38,7 @@ use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
+use App\Http\Controllers\Vehicle\VehicleTrackingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -48,7 +49,7 @@ Route::get('/', function () {
     return view('auth.login');
 });
 
-Route::get('/temp-login', function() {
+Route::get('/temp-login', function () {
     Auth::loginUsingId(3);
     return redirect('/wrm/inventory/draft-outbound/15/assign-driver');
 });
@@ -104,6 +105,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/ikat-terpal', [IkatTerpalDashboardController::class, 'index'])->name('dashboard.ikat-terpal');
             Route::get('/wrm/index', [WrmInventoryController::class, 'index'])->name('dashboard.wrm.index')->middleware(['permission:dashboard-wrm']);
             Route::get('/wfg/bongkar-muat', [WfgBongkarMuatDashboardController::class, 'index'])->name('dashboard.wfg.bongkar-muat');
+
+            // Vehicle Monitoring Dashboard
+            Route::get('/vehicle', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'dashboard'])->name('dashboard.vehicle')
+                ->middleware(['permission:vehicle-monitoring-menu']);
+            Route::get('/vehicle/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'dashboardData'])->name('dashboard.vehicle.data')
+                ->middleware(['permission:vehicle-monitoring-menu']);
         });
     });
 
@@ -302,9 +309,14 @@ Route::middleware('auth')->group(function () {
                     Route::get('/data/transfer', [MonitoringController::class, 'getTransferData'])->name('wrm.inventory.monitoring.transfer');
                     Route::get('/data/ppic-stock', [MonitoringController::class, 'getPpicStockData'])->name('wrm.inventory.monitoring.ppic.stock-data');
                     Route::get('/data/purchasing-stock', [MonitoringController::class, 'getPurchasingStockData'])->name('wrm.inventory.monitoring.purchasing.stock-data');
-                    Route::get('/data/summary-stock', [MonitoringController::class, 'getSummaryStockData'])->name('wrm.inventory.monitoring.summary-stock.data');
+                    Route::get('/data/summary-stock/item', [MonitoringController::class, 'getSummaryStockItemData'])->name('wrm.inventory.monitoring.summary-stock.item-data');
+                    Route::get('/data/summary-stock/spb', [MonitoringController::class, 'getSummaryStockSpbData'])->name('wrm.inventory.monitoring.summary-stock.spb-data');
+                    Route::get('/data/summary-stock/group', [MonitoringController::class, 'getSummaryStockGroupData'])->name('wrm.inventory.monitoring.summary-stock.group-data');
+                    Route::get('/data/summary-stock/group-meta', [MonitoringController::class, 'getSummaryStockGroupMeta'])->name('wrm.inventory.monitoring.summary-stock.group-meta');
                     Route::get('/data/spb-detail', [MonitoringController::class, 'getSpbDetailData'])->name('wrm.inventory.monitoring.spb-detail.data');
                     Route::get('/data/moving-average', [MonitoringController::class, 'getMovingAverageData'])->name('wrm.inventory.monitoring.moving-average.data');
+                    Route::get('/data/summary-stock/inbound-monthly', [MonitoringController::class, 'getSummaryStockInboundMonthlyData'])->name('wrm.inventory.monitoring.summary-stock.inbound-monthly-data');
+                    Route::get('/data/summary-stock/inbound-monthly-meta', [MonitoringController::class, 'getSummaryStockInboundMonthlyMeta'])->name('wrm.inventory.monitoring.summary-stock.inbound-monthly-meta');
                 });
             });
         });
@@ -559,5 +571,62 @@ Route::middleware('auth')->group(function () {
         Route::get('/users-roles/data', [RoleController::class, 'getUsersData'])->name('user.data');
         Route::get('/user-roles/{userId}', [RoleController::class, 'getUserRoles'])->name('user.roles');
         Route::post('/user-roles/assign/{userId}', [RoleController::class, 'assignUserRoles'])->name('user.assign_roles');
+    });
+
+    // Vehicle Monitoring & Tracking
+    Route::prefix('vehicle-monitoring')->name('vehicle.monitoring.')->middleware(['auth', 'permission:vehicle-monitoring-menu'])->group(function () {
+        // Laporan History Page
+        Route::get('/history', [VehicleTrackingController::class, 'historyIndex'])->name('history');
+
+        // Timbangan (Scales)
+        Route::middleware(['permission:vehicle-monitoring-timbangan'])->group(function () {
+            Route::get('/timbangan', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganIndex'])->name('timbangan');
+            Route::get('/timbangan/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganData'])->name('timbangan.data');
+            Route::post('/timbangan/check-in', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganCheckIn'])->name('timbangan.check_in');
+            Route::put('/timbangan/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganUpdate'])->name('timbangan.update');
+            Route::delete('/timbangan/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganDestroy'])->name('timbangan.delete');
+            Route::post('/timbangan/check-out/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganCheckOut'])->name('timbangan.check_out');
+            Route::get('/timbangan/autocomplete-vehicle', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'autocompleteVehicle'])->name('timbangan.autocomplete_vehicle');
+        });
+
+        // WPM (QC Area)
+        Route::middleware(['permission:vehicle-monitoring-wpm'])->group(function () {
+            Route::get('/wpm', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmIndex'])->name('wpm');
+            Route::get('/wpm/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmData'])->name('wpm.data');
+            Route::post('/wpm/update-qc/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmUpdateQC'])->name('wpm.update_qc');
+            Route::post('/wpm/update-queue/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmUpdateQueueNumber'])->name('wpm.update_queue');
+        });
+
+        // WRM (Unloading Area)
+        Route::middleware(['permission:vehicle-monitoring-wrm'])->group(function () {
+            Route::get('/wrm', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wrmIndex'])->name('wrm');
+            Route::get('/wrm/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wrmData'])->name('wrm.data');
+            Route::post('/wrm/update-unloading/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wrmUpdateUnloading'])->name('wrm.update_unloading');
+        });
+
+        // WFG (Bongkar Muat Finished Goods Area)
+        Route::middleware(['permission:vehicle-monitoring-wfg'])->group(function () {
+            Route::get('/wfg', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wfgIndex'])->name('wfg');
+            Route::get('/wfg/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wfgData'])->name('wfg.data');
+            Route::post('/wfg/update-loading/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wfgUpdateLoading'])->name('wfg.update_loading');
+        });
+
+        // SMU Area
+        Route::middleware(['permission:vehicle-monitoring-smu'])->group(function () {
+            Route::get('/smu', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'smuIndex'])->name('smu');
+            Route::get('/smu/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'smuData'])->name('smu.data');
+            Route::post('/smu/complete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'smuComplete'])->name('smu.complete');
+        });
+
+        // Master Items CRUD (SKUs)
+        Route::middleware(['permission:vehicle-monitoring-master'])->group(function () {
+            Route::get('/master/items', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsIndex'])->name('master.items');
+            Route::post('/master/items/store', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsStore'])->name('master.items.store');
+            Route::put('/master/items/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsUpdate'])->name('master.items.update');
+            Route::delete('/master/items/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsDestroy'])->name('master.items.delete');
+        });
+
+        // General Report/History Data
+        Route::get('/history/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'historyData'])->name('history.data');
     });
 });

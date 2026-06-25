@@ -27,13 +27,77 @@ class MonitoringController extends Controller
 
     public function indexSummaryStock()
     {
-        return view('wrm.inventory.summary_stock');
+        $mids = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->select('wrm_master_barang.mid', 'wrm_master_barang.nama_barang')
+            ->distinct()
+            ->orderBy('wrm_master_barang.mid', 'asc')
+            ->get();
+
+        $groups = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->whereNotNull('group')
+            ->where('group', '<>', '')
+            ->select('group')
+            ->distinct()
+            ->orderBy('group', 'asc')
+            ->pluck('group');
+
+        $spbs = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->whereNotNull('no_spb')
+            ->where('no_spb', '<>', '')
+            ->select('no_spb')
+            ->distinct()
+            ->orderBy('no_spb', 'asc')
+            ->pluck('no_spb');
+
+        // Dynamic list of years from wrm_stock_inbound
+        $inboundYears = DB::table('wrm_stock_inbound')
+            ->whereNotNull('incoming_date')
+            ->selectRaw('YEAR(incoming_date) as year')
+            ->distinct()
+            ->orderBy('year', 'desc')
+            ->pluck('year')
+            ->toArray();
+
+        if (empty($inboundYears)) {
+            $inboundYears = [intval(date('Y'))];
+        }
+
+        // List of Indonesian months
+        $inboundMonths = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        // Default to last 3 months
+        $defaultMonths = [];
+        $defaultYears = [];
+        for ($i = 0; $i < 3; $i++) {
+            $t = strtotime("-$i months");
+            $defaultMonths[] = intval(date('n', $t));
+            $defaultYears[] = intval(date('Y', $t));
+        }
+        $defaultMonths = array_unique($defaultMonths);
+        $defaultYears = array_unique($defaultYears);
+
+        return view('wrm.inventory.summary_stock', compact(
+            'mids', 'groups', 'spbs',
+            'inboundYears', 'inboundMonths', 'defaultMonths', 'defaultYears'
+        ));
     }
 
-    public function getSummaryStockData(Request $request)
+    public function getSummaryStockItemData(Request $request)
     {
-        $summaryType = $request->get('summary_type', 'item');
-
         $query = StockOnHand::query()
             ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
             ->selectRaw("
@@ -41,31 +105,14 @@ class MonitoringController extends Controller
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'QI' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_qi,
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'BLOCKED' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_blocked
             ")
-            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
+            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
-        if ($summaryType === 'spb') {
-            $query->addSelect('wrm_stock_on_hand.no_spb', 'wrm_master_barang.uom')
-                ->whereNotNull('wrm_stock_on_hand.no_spb')
-                ->groupBy('wrm_stock_on_hand.no_spb', 'wrm_master_barang.uom');
-            $sortColumn = 'wrm_stock_on_hand.no_spb';
-        } else {
-            $query->addSelect('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom')
-                ->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
-            $sortColumn = 'wrm_master_barang.mid';
-        }
+        $query->addSelect('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom')
+            ->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
+        $sortColumn = 'wrm_master_barang.mid';
 
-        if ($summaryType === 'item' && $request->mid) {
-            $query->where('wrm_master_barang.mid', 'like', $request->mid . '%');
-        }
-
-        if ($summaryType === 'spb' && $request->no_spb) {
-            $query->where('wrm_stock_on_hand.no_spb', 'like', $request->no_spb . '%');
-        }
-
-        if ($summaryType === 'spb' && $request->mid) {
-            $query->whereHas('barang', function ($q) use ($request) {
-                $q->where('wrm_master_barang.mid', 'like', $request->mid . '%');
-            });
+        if ($request->filled('mids')) {
+            $query->whereIn('wrm_master_barang.mid', (array)$request->mids);
         }
 
         // Count for pagination and grand totals
@@ -85,7 +132,7 @@ class MonitoringController extends Controller
             ->get();
 
         $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $length = $request->length ?? 15;
 
         $data = $query->orderBy($sortColumn)->skip($start)->take($length)->get();
 
@@ -103,6 +150,192 @@ class MonitoringController extends Controller
                     'all' => ($item->total_unrest ?? 0) + ($item->total_qi ?? 0) + ($item->total_blocked ?? 0)
                 ];
             })
+        ]);
+    }
+
+    public function getSummaryStockSpbData(Request $request)
+    {
+        $query = StockOnHand::query()
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->selectRaw("
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'UNREST' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_unrest,
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'QI' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_qi,
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'BLOCKED' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_blocked
+            ")
+            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING']);
+
+        $query->addSelect('wrm_stock_on_hand.no_spb', 'wrm_master_barang.uom')
+            ->whereNotNull('wrm_stock_on_hand.no_spb')
+            ->groupBy('wrm_stock_on_hand.no_spb', 'wrm_master_barang.uom');
+        $sortColumn = 'wrm_stock_on_hand.no_spb';
+
+        if ($request->filled('no_spbs')) {
+            $query->whereIn('wrm_stock_on_hand.no_spb', (array)$request->no_spbs);
+        }
+
+        if ($request->filled('mids')) {
+            $query->whereIn('wrm_master_barang.mid', (array)$request->mids);
+        }
+
+        // Count for pagination and grand totals
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select(
+                'uom',
+                DB::raw("SUM(qty_unrest) as total_unrest"),
+                DB::raw("SUM(qty_qi) as total_qi"),
+                DB::raw("SUM(qty_blocked) as total_blocked")
+            )
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $data = $query->orderBy($sortColumn)->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom->map(function ($item) {
+                return [
+                    'uom' => $item->uom,
+                    'unrest' => $item->total_unrest ?? 0,
+                    'qi' => $item->total_qi ?? 0,
+                    'blocked' => $item->total_blocked ?? 0,
+                    'all' => ($item->total_unrest ?? 0) + ($item->total_qi ?? 0) + ($item->total_blocked ?? 0)
+                ];
+            })
+        ]);
+    }
+
+    public function getSummaryStockGroupMeta(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+
+        $groupsQuery = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->whereNotNull('wrm_stock_on_hand.group')
+            ->where('wrm_stock_on_hand.group', '<>', '')
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->whereIn('wrm_master_barang.mid', $mids);
+
+        if ($request->filled('groups')) {
+            $groupsQuery->whereIn('wrm_stock_on_hand.group', (array)$request->groups);
+        }
+
+        $activeGroups = $groupsQuery->select('wrm_stock_on_hand.group')
+            ->distinct()
+            ->orderBy('wrm_stock_on_hand.group', 'asc')
+            ->pluck('wrm_stock_on_hand.group')
+            ->toArray();
+
+        $hasNoGroup = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->whereIn('wrm_master_barang.mid', $mids)
+            ->where(function ($q) {
+                $q->whereNull('wrm_stock_on_hand.group')->orWhere('wrm_stock_on_hand.group', '');
+            })
+            ->exists();
+
+        return response()->json([
+            'active_groups' => $activeGroups,
+            'has_no_group' => $hasNoGroup
+        ]);
+    }
+
+    public function getSummaryStockGroupData(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+
+        // First fetch the active groups to build dynamic selects
+        $groupsQuery = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->whereNotNull('wrm_stock_on_hand.group')
+            ->where('wrm_stock_on_hand.group', '<>', '')
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->whereIn('wrm_master_barang.mid', $mids);
+
+        if ($request->filled('groups')) {
+            $groupsQuery->whereIn('wrm_stock_on_hand.group', (array)$request->groups);
+        }
+
+        $activeGroups = $groupsQuery->select('wrm_stock_on_hand.group')
+            ->distinct()
+            ->orderBy('wrm_stock_on_hand.group', 'asc')
+            ->pluck('wrm_stock_on_hand.group')
+            ->toArray();
+
+        $hasNoGroup = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->whereIn('wrm_master_barang.mid', $mids)
+            ->where(function ($q) {
+                $q->whereNull('wrm_stock_on_hand.group')->orWhere('wrm_stock_on_hand.group', '');
+            })
+            ->exists();
+
+        $selects = [
+            'wrm_master_barang.mid',
+            'wrm_master_barang.nama_barang',
+            'wrm_master_barang.uom',
+        ];
+
+        foreach ($activeGroups as $group) {
+            $alias = 'group_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $group);
+            $selects[] = DB::raw("SUM(CASE WHEN wrm_stock_on_hand.group = '{$group}' THEN wrm_stock_on_hand.qty ELSE 0 END) as `{$alias}`");
+        }
+
+        if ($hasNoGroup) {
+            $selects[] = DB::raw("SUM(CASE WHEN wrm_stock_on_hand.group IS NULL OR wrm_stock_on_hand.group = '' THEN wrm_stock_on_hand.qty ELSE 0 END) as `group_none`");
+        }
+
+        $selects[] = DB::raw("SUM(wrm_stock_on_hand.qty) as total_qty");
+
+        $query = StockOnHand::query()
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->select($selects)
+            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
+
+        $query->whereIn('wrm_master_barang.mid', $mids);
+
+        // Count for pagination
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        // Total per UOM for dynamic groups
+        $totalsSelect = ['uom'];
+        foreach ($activeGroups as $group) {
+            $alias = 'group_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $group);
+            $totalsSelect[] = DB::raw("SUM(`{$alias}`) as `{$alias}`");
+        }
+        if ($hasNoGroup) {
+            $totalsSelect[] = DB::raw("SUM(group_none) as group_none");
+        }
+        $totalsSelect[] = DB::raw("SUM(total_qty) as total_qty");
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select($totalsSelect)
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $data = $query->orderBy('wrm_master_barang.mid')->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom
         ]);
     }
 
@@ -201,7 +434,7 @@ class MonitoringController extends Controller
         $recordsFiltered = $query->count();
 
         $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $length = $request->length ?? 15;
         $data = $query->skip($start)->take($length)->get();
 
         $formattedData = $data->map(function ($row) {
@@ -242,7 +475,7 @@ class MonitoringController extends Controller
         $recordsFiltered = $query->count();
 
         $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $length = $request->length ?? 15;
         $data = $query->latest()->skip($start)->take($length)->get();
 
         $formattedData = $data->map(function ($row) {
@@ -282,7 +515,7 @@ class MonitoringController extends Controller
         $recordsFiltered = $query->count();
 
         $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $length = $request->length ?? 15;
         $data = $query->latest()->skip($start)->take($length)->get();
 
         $formattedData = $data->map(function ($row) {
@@ -321,7 +554,7 @@ class MonitoringController extends Controller
         $recordsFiltered = $query->count();
 
         $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $length = $request->length ?? 15;
         $data = $query->latest()->skip($start)->take($length)->get();
 
         $formattedData = $data->map(function ($row) {
@@ -390,7 +623,7 @@ class MonitoringController extends Controller
         });
 
         $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $length = $request->length ?? 15;
         $paginatedData = $data->slice($start, $length)->values();
 
         return response()->json([
@@ -456,7 +689,7 @@ class MonitoringController extends Controller
         });
 
         $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $length = $request->length ?? 15;
         $paginatedData = $data->slice($start, $length)->values();
 
         return response()->json([
@@ -474,21 +707,16 @@ class MonitoringController extends Controller
             $days = 30;
         }
 
-        $search = $request->get('search_mid');
-
         $query = MasterBarangModel::select('id', 'mid', 'nama_barang', 'uom');
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('mid', 'like', '%' . $search . '%')
-                  ->orWhere('nama_barang', 'like', '%' . $search . '%');
-            });
+        if ($request->filled('mids')) {
+            $query->whereIn('mid', (array)$request->mids);
         }
 
         $recordsTotal = $query->count();
 
         $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $length = $request->length ?? 15;
         $materials = $query->orderBy('mid')->skip($start)->take($length)->get();
 
         $materialIds = $materials->pluck('id')->toArray();
@@ -534,6 +762,162 @@ class MonitoringController extends Controller
             'recordsTotal' => $recordsTotal,
             'recordsFiltered' => $recordsTotal,
             'data' => $data
+        ]);
+    }
+
+    public function getSummaryStockInboundMonthlyMeta(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+
+        $defaultMonths = [];
+        $defaultYears = [];
+        for ($i = 0; $i < 3; $i++) {
+            $t = strtotime("-$i months");
+            $defaultMonths[] = intval(date('n', $t));
+            $defaultYears[] = intval(date('Y', $t));
+        }
+        $defaultMonths = array_unique($defaultMonths);
+        $defaultYears = array_unique($defaultYears);
+
+        $years = $request->filled('years') ? (array)$request->years : $defaultYears;
+        $months = $request->filled('months') ? (array)$request->months : $defaultMonths;
+
+        // Generate combinations directly from filters!
+        $combinations = [];
+        foreach ($years as $yr) {
+            foreach ($months as $mo) {
+                $yr = intval($yr);
+                $mo = intval($mo);
+                $ym = sprintf('%04d-%02d', $yr, $mo);
+                $combinations[$ym] = [
+                    'ym' => $ym,
+                    'year' => $yr,
+                    'month' => $mo
+                ];
+            }
+        }
+        ksort($combinations);
+
+        $monthNames = [
+            1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
+            7 => 'Jul', 8 => 'Ags', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
+        ];
+
+        $meta = [];
+        foreach ($combinations as $ym => $comb) {
+            $meta[] = [
+                'ym' => $ym,
+                'year' => $comb['year'],
+                'month' => $comb['month'],
+                'label' => ($monthNames[$comb['month']] ?? '') . ' ' . $comb['year']
+            ];
+        }
+
+        return response()->json([
+            'active_month_years' => $meta
+        ]);
+    }
+
+    public function getSummaryStockInboundMonthlyData(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+
+        $defaultMonths = [];
+        $defaultYears = [];
+        for ($i = 0; $i < 3; $i++) {
+            $t = strtotime("-$i months");
+            $defaultMonths[] = intval(date('n', $t));
+            $defaultYears[] = intval(date('Y', $t));
+        }
+        $defaultMonths = array_unique($defaultMonths);
+        $defaultYears = array_unique($defaultYears);
+
+        $years = $request->filled('years') ? (array)$request->years : $defaultYears;
+        $months = $request->filled('months') ? (array)$request->months : $defaultMonths;
+
+        // Generate combinations directly from filters!
+        $combinations = [];
+        foreach ($years as $yr) {
+            foreach ($months as $mo) {
+                $yr = intval($yr);
+                $mo = intval($mo);
+                $ym = sprintf('%04d-%02d', $yr, $mo);
+                $combinations[$ym] = [
+                    'ym' => $ym,
+                    'year' => $yr,
+                    'month' => $mo
+                ];
+            }
+        }
+        ksort($combinations);
+
+        $activeMonthYears = [];
+        foreach ($combinations as $ym => $comb) {
+            $activeMonthYears[] = (object)[
+                'ym' => $ym,
+                'year' => $comb['year'],
+                'month' => $comb['month']
+            ];
+        }
+
+        $selects = [
+            'wrm_master_barang.mid',
+            'wrm_master_barang.nama_barang',
+            'wrm_master_barang.uom',
+        ];
+
+        foreach ($activeMonthYears as $my) {
+            $alias = 'ym_' . $my->year . '_' . sprintf('%02d', $my->month);
+            $selects[] = DB::raw("SUM(CASE WHEN YEAR(wrm_stock_inbound.incoming_date) = {$my->year} AND MONTH(wrm_stock_inbound.incoming_date) = {$my->month} THEN wrm_stock_inbound_details.qty ELSE 0 END) as `{$alias}`");
+        }
+
+        $selects[] = DB::raw("SUM(wrm_stock_inbound_details.qty) as total_qty");
+
+        $query = DB::table('wrm_stock_inbound_details')
+            ->join('wrm_stock_inbound', 'wrm_stock_inbound_details.inbound_id', '=', 'wrm_stock_inbound.id')
+            ->join('wrm_master_barang', 'wrm_stock_inbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->select($selects)
+            ->whereIn('wrm_master_barang.mid', $mids);
+
+        if (!empty($years)) {
+            $query->whereIn(DB::raw('YEAR(wrm_stock_inbound.incoming_date)'), $years);
+        }
+        if (!empty($months)) {
+            $query->whereIn(DB::raw('MONTH(wrm_stock_inbound.incoming_date)'), $months);
+        }
+
+        $query->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
+
+        // Count for pagination
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        // Totals per UOM for dynamic month columns
+        $totalsSelect = ['uom'];
+        foreach ($activeMonthYears as $my) {
+            $alias = 'ym_' . $my->year . '_' . sprintf('%02d', $my->month);
+            $totalsSelect[] = DB::raw("SUM(`{$alias}`) as `{$alias}`");
+        }
+        $totalsSelect[] = DB::raw("SUM(total_qty) as total_qty");
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select($totalsSelect)
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $data = $query->orderBy('wrm_master_barang.mid')->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom
         ]);
     }
 }

@@ -176,6 +176,9 @@ Route::prefix('purchase-requesition')->middleware('web')->group(function () {
     Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action']);
 });
 
-Route::get('/data/summary-stock', [MonitoringController::class, 'getSummaryStockData'])->name('wrm.inventory.monitoring.summary-stock.data');
+Route::get('/data/summary-stock/item', [MonitoringController::class, 'getSummaryStockItemData'])->name('wrm.inventory.monitoring.summary-stock.item-data');
+Route::get('/data/summary-stock/spb', [MonitoringController::class, 'getSummaryStockSpbData'])->name('wrm.inventory.monitoring.summary-stock.spb-data');
+Route::get('/data/summary-stock/group', [MonitoringController::class, 'getSummaryStockGroupData'])->name('wrm.inventory.monitoring.summary-stock.group-data');
+Route::get('/data/summary-stock/group-meta', [MonitoringController::class, 'getSummaryStockGroupMeta'])->name('wrm.inventory.monitoring.summary-stock.group-meta');
 // SSO callback is now in web.php as a GET request
 // Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);
