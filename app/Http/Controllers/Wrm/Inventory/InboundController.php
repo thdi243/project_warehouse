@@ -1565,17 +1565,37 @@ class InboundController extends Controller
             });
         }
 
+        // Clone query for summary calculation (before sorting and pagination)
+        $summaryQuery = clone $query;
+
         // Apply Sorting
         $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
         $query->join('wrm_stock_inbound', 'wrm_stock_inbound_details.inbound_id', '=', 'wrm_stock_inbound.id')
             ->orderBy('wrm_stock_inbound.incoming_date', $sortDir);
+
+        $statusBreakdown = $summaryQuery->setEagerLoads([])
+            ->select('wrm_stock_inbound_details.status', DB::raw('count(*) as count'), DB::raw('sum(wrm_stock_inbound_details.qty) as total_qty'))
+            ->groupBy('wrm_stock_inbound_details.status')
+            ->reorder()
+            ->get()
+            ->keyBy('status');
+
+        $totalPallet = $statusBreakdown->sum('count');
+        $totalQty = $statusBreakdown->sum('total_qty');
+
+        $summary = [
+            'total_pallet' => $totalPallet,
+            'total_qty' => $totalQty,
+            'status_breakdown' => $statusBreakdown
+        ];
 
         $data = $query->paginate(25);
 
         return response()->json([
             'status' => true,
             'message' => 'Data inbound berhasil diambil',
-            'data' => $data
+            'data' => $data,
+            'summary' => $summary
         ]);
     }
 

@@ -65,7 +65,7 @@
         #tableInbound tbody tr:hover {
             background-color: rgba(0, 0, 0, 0.02);
         }
-        
+
         /* Custom dropdown styles */
         .custom-filter-dropdown .dropdown-toggle {
             border: 1px solid #ced4da;
@@ -73,13 +73,16 @@
             padding: 0.47rem 0.75rem;
             font-size: 0.875rem;
         }
+
         .custom-filter-dropdown .dropdown-menu {
             border-radius: 0.4rem;
             font-size: 0.875rem;
         }
+
         .custom-filter-dropdown .option-item:hover {
             background-color: #f8f9fa;
         }
+
         .custom-filter-dropdown .options-list {
             padding-right: 5px;
         }
@@ -91,6 +94,92 @@
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
+
+            {{-- Card Summary --}}
+            <div class="row g-3 mb-3" id="summarySection">
+                <div class="col-md">
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-primary">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-2 text-primary"
+                                        style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Total
+                                        Inbound</h6>
+                                    <h3 class="mb-1 fw-bold text-primary" id="totalQty">0</h3>
+                                    <div class="small text-primary">
+                                        <i class="mdi mdi-layers-outline me-1"></i> <span id="totalPalletsDisplay">0</span>
+                                        Pallets
+                                    </div>
+                                </div>
+                                <div class="bg-soft-primary rounded-3 p-2">
+                                    <i class="mdi mdi-database-outline text-primary mdi-36px"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md">
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-success">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-2 text-success"
+                                        style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Unrest
+                                    </h6>
+                                    <h3 class="mb-1 fw-bold text-success" id="unrestQty">0</h3>
+                                    <div class="small text-success">
+                                        <i class="mdi mdi-layers-outline me-1"></i> <span id="unrestPallets">0</span>
+                                        Pallets
+                                    </div>
+                                </div>
+                                <div class="bg-soft-success rounded-3 p-2">
+                                    <i class="mdi mdi-check-circle-outline mdi-36px text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md">
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-info">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-2 text-info"
+                                        style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">QI</h6>
+                                    <h3 class="mb-1 fw-bold text-info" id="qiQty">0</h3>
+                                    <div class="small text-info">
+                                        <i class="mdi mdi-layers-outline me-1"></i> <span id="qiPallets">0</span> Pallets
+                                    </div>
+                                </div>
+                                <div class="bg-soft-info rounded-3 p-2">
+                                    <i class="mdi mdi-flask-outline text-info mdi-36px"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md">
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden bg-soft-danger">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-2 text-danger"
+                                        style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Blocked
+                                    </h6>
+                                    <h3 class="mb-1 fw-bold text-danger" id="blockedQty">0</h3>
+                                    <div class="small text-danger">
+                                        <i class="mdi mdi-layers-outline me-1"></i> <span id="blockedPallets">0</span>
+                                        Pallets
+                                    </div>
+                                </div>
+                                <div class="bg-soft-danger rounded-3 p-2">
+                                    <i class="mdi mdi-alert-octagon-outline text-danger mdi-36px"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {{-- Card Filter --}}
             <div class="card shadow-sm border-0 mb-3">
@@ -108,18 +197,27 @@
                         <div class="col-md-3">
                             <label class="form-label fw-semibold text-muted mb-2">No SPB</label>
                             <div class="dropdown custom-filter-dropdown" id="dropdown-no-spb">
-                                <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
-                                    type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                    <span class="dropdown-placeholder text-muted" data-placeholder="Pilih No SPB...">Pilih No SPB...</span>
+                                <button
+                                    class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                    type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                    aria-expanded="false">
+                                    <span class="dropdown-placeholder text-muted" data-placeholder="Pilih No SPB...">Pilih
+                                        No SPB...</span>
                                     <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                 </button>
-                                <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                <div class="dropdown-menu p-3 shadow-lg border-0"
+                                    style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                     <div class="mb-2">
-                                        <input type="text" class="form-control form-control-sm search-options" placeholder="Cari No SPB...">
+                                        <input type="text" class="form-control form-control-sm search-options"
+                                            placeholder="Cari No SPB...">
                                     </div>
                                     <div class="d-flex justify-content-between mb-2">
-                                        <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
-                                        <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                        <button type="button"
+                                            class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                            All</button>
+                                        <button type="button"
+                                            class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                            All</button>
                                     </div>
                                     <hr class="dropdown-divider my-2">
                                     <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
@@ -129,18 +227,27 @@
                         <div class="col-md-3">
                             <label class="form-label fw-semibold text-muted mb-2">MID</label>
                             <div class="dropdown custom-filter-dropdown" id="dropdown-mid">
-                                <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
-                                    type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                    <span class="dropdown-placeholder text-muted" data-placeholder="Pilih MID...">Pilih MID...</span>
+                                <button
+                                    class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                    type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                    aria-expanded="false">
+                                    <span class="dropdown-placeholder text-muted" data-placeholder="Pilih MID...">Pilih
+                                        MID...</span>
                                     <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                 </button>
-                                <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                <div class="dropdown-menu p-3 shadow-lg border-0"
+                                    style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                     <div class="mb-2">
-                                        <input type="text" class="form-control form-control-sm search-options" placeholder="Cari MID...">
+                                        <input type="text" class="form-control form-control-sm search-options"
+                                            placeholder="Cari MID...">
                                     </div>
                                     <div class="d-flex justify-content-between mb-2">
-                                        <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
-                                        <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                        <button type="button"
+                                            class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                            All</button>
+                                        <button type="button"
+                                            class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                            All</button>
                                     </div>
                                     <hr class="dropdown-divider my-2">
                                     <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
@@ -168,18 +275,27 @@
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Supplier</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-supplier">
-                                        <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
-                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                            <span class="dropdown-placeholder text-muted" data-placeholder="Pilih Supplier...">Pilih Supplier...</span>
+                                        <button
+                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                            aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted"
+                                                data-placeholder="Pilih Supplier...">Pilih Supplier...</span>
                                             <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                         </button>
-                                        <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                            style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                             <div class="mb-2">
-                                                <input type="text" class="form-control form-control-sm search-options" placeholder="Cari Supplier...">
+                                                <input type="text" class="form-control form-control-sm search-options"
+                                                    placeholder="Cari Supplier...">
                                             </div>
                                             <div class="d-flex justify-content-between mb-2">
-                                                <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
-                                                <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                    All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                    All</button>
                                             </div>
                                             <hr class="dropdown-divider my-2">
                                             <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
@@ -190,18 +306,27 @@
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Group</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-group">
-                                        <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
-                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                            <span class="dropdown-placeholder text-muted" data-placeholder="Pilih Group...">Pilih Group...</span>
+                                        <button
+                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                            aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted"
+                                                data-placeholder="Pilih Group...">Pilih Group...</span>
                                             <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                         </button>
-                                        <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                            style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                             <div class="mb-2">
-                                                <input type="text" class="form-control form-control-sm search-options" placeholder="Cari Group...">
+                                                <input type="text" class="form-control form-control-sm search-options"
+                                                    placeholder="Cari Group...">
                                             </div>
                                             <div class="d-flex justify-content-between mb-2">
-                                                <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
-                                                <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                    All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                    All</button>
                                             </div>
                                             <hr class="dropdown-divider my-2">
                                             <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
@@ -212,36 +337,56 @@
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Status</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-status">
-                                        <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
-                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                            <span class="dropdown-placeholder text-muted" data-placeholder="Pilih Status...">Pilih Status...</span>
+                                        <button
+                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                            aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted"
+                                                data-placeholder="Pilih Status...">Pilih Status...</span>
                                             <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                         </button>
-                                        <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                            style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                             <div class="mb-2">
-                                                <input type="text" class="form-control form-control-sm search-options" placeholder="Cari Status...">
+                                                <input type="text" class="form-control form-control-sm search-options"
+                                                    placeholder="Cari Status...">
                                             </div>
                                             <div class="d-flex justify-content-between mb-2">
-                                                <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
-                                                <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                    All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                    All</button>
                                             </div>
                                             <hr class="dropdown-divider my-2">
                                             <div class="options-list" style="max-height: 250px; overflow-y: auto;">
-                                                <div class="form-check mb-2 option-item" data-value="UNREST" data-text="UNREST">
-                                                    <input class="form-check-input option-checkbox" type="checkbox" value="UNREST" id="chk-status-UNREST">
-                                                    <label class="form-check-label text-truncate w-100" for="chk-status-UNREST">UNREST</label>
+                                                <div class="form-check mb-2 option-item" data-value="UNREST"
+                                                    data-text="UNREST">
+                                                    <input class="form-check-input option-checkbox" type="checkbox"
+                                                        value="UNREST" id="chk-status-UNREST">
+                                                    <label class="form-check-label text-truncate w-100"
+                                                        for="chk-status-UNREST">UNREST</label>
                                                 </div>
                                                 <div class="form-check mb-2 option-item" data-value="QI" data-text="QI">
-                                                    <input class="form-check-input option-checkbox" type="checkbox" value="QI" id="chk-status-QI">
-                                                    <label class="form-check-label text-truncate w-100" for="chk-status-QI">QI</label>
+                                                    <input class="form-check-input option-checkbox" type="checkbox"
+                                                        value="QI" id="chk-status-QI">
+                                                    <label class="form-check-label text-truncate w-100"
+                                                        for="chk-status-QI">QI</label>
                                                 </div>
-                                                <div class="form-check mb-2 option-item" data-value="BLOCKED" data-text="BLOCKED">
-                                                    <input class="form-check-input option-checkbox" type="checkbox" value="BLOCKED" id="chk-status-BLOCKED">
-                                                    <label class="form-check-label text-truncate w-100" for="chk-status-BLOCKED">BLOCKED</label>
+                                                <div class="form-check mb-2 option-item" data-value="BLOCKED"
+                                                    data-text="BLOCKED">
+                                                    <input class="form-check-input option-checkbox" type="checkbox"
+                                                        value="BLOCKED" id="chk-status-BLOCKED">
+                                                    <label class="form-check-label text-truncate w-100"
+                                                        for="chk-status-BLOCKED">BLOCKED</label>
                                                 </div>
-                                                <div class="form-check mb-2 option-item" data-value="ISSUED" data-text="ISSUED">
-                                                    <input class="form-check-input option-checkbox" type="checkbox" value="ISSUED" id="chk-status-ISSUED">
-                                                    <label class="form-check-label text-truncate w-100" for="chk-status-ISSUED">ISSUED</label>
+                                                <div class="form-check mb-2 option-item" data-value="ISSUED"
+                                                    data-text="ISSUED">
+                                                    <input class="form-check-input option-checkbox" type="checkbox"
+                                                        value="ISSUED" id="chk-status-ISSUED">
+                                                    <label class="form-check-label text-truncate w-100"
+                                                        for="chk-status-ISSUED">ISSUED</label>
                                                 </div>
                                             </div>
                                         </div>
@@ -251,18 +396,27 @@
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Lokasi</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-location">
-                                        <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
-                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                            <span class="dropdown-placeholder text-muted" data-placeholder="Pilih Lokasi...">Pilih Lokasi...</span>
+                                        <button
+                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                            aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted"
+                                                data-placeholder="Pilih Lokasi...">Pilih Lokasi...</span>
                                             <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                         </button>
-                                        <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                            style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                             <div class="mb-2">
-                                                <input type="text" class="form-control form-control-sm search-options" placeholder="Cari Lokasi...">
+                                                <input type="text" class="form-control form-control-sm search-options"
+                                                    placeholder="Cari Lokasi...">
                                             </div>
                                             <div class="d-flex justify-content-between mb-2">
-                                                <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
-                                                <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                    All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                    All</button>
                                             </div>
                                             <hr class="dropdown-divider my-2">
                                             <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
@@ -365,11 +519,11 @@
 
             function initDynamicDropdown(id, placeholder, onChange) {
                 const $dropdown = $('#' + id);
-                
+
                 // Search options
-                $dropdown.off('input', '.search-options').on('input', '.search-options', function () {
+                $dropdown.off('input', '.search-options').on('input', '.search-options', function() {
                     const query = $(this).val().toLowerCase();
-                    $dropdown.find('.option-item').each(function () {
+                    $dropdown.find('.option-item').each(function() {
                         const text = $(this).data('text').toString().toLowerCase();
                         const val = $(this).data('value').toString().toLowerCase();
                         if (text.indexOf(query) > -1 || val.indexOf(query) > -1) {
@@ -381,19 +535,19 @@
                 });
 
                 // Checkbox changes
-                $dropdown.off('change', '.option-checkbox').on('change', '.option-checkbox', function () {
+                $dropdown.off('change', '.option-checkbox').on('change', '.option-checkbox', function() {
                     updateLabel();
                 });
 
                 // Select All
-                $dropdown.off('click', '.select-all-options').on('click', '.select-all-options', function (e) {
+                $dropdown.off('click', '.select-all-options').on('click', '.select-all-options', function(e) {
                     e.preventDefault();
                     $dropdown.find('.option-item:not(.d-none) .option-checkbox').prop('checked', true);
                     updateLabel();
                 });
 
                 // Clear All
-                $dropdown.off('click', '.clear-all-options').on('click', '.clear-all-options', function (e) {
+                $dropdown.off('click', '.clear-all-options').on('click', '.clear-all-options', function(e) {
                     e.preventDefault();
                     $dropdown.find('.option-checkbox').prop('checked', false);
                     updateLabel();
@@ -401,7 +555,7 @@
 
                 function updateLabel() {
                     const selected = [];
-                    $dropdown.find('.option-checkbox:checked').each(function () {
+                    $dropdown.find('.option-checkbox:checked').each(function() {
                         selected.push($(this).val());
                     });
 
@@ -421,15 +575,15 @@
                 }
 
                 // Attach methods
-                $dropdown.data('getValues', function () {
+                $dropdown.data('getValues', function() {
                     const selected = [];
-                    $dropdown.find('.option-checkbox:checked').each(function () {
+                    $dropdown.find('.option-checkbox:checked').each(function() {
                         selected.push($(this).val());
                     });
                     return selected;
                 });
 
-                $dropdown.data('reset', function () {
+                $dropdown.data('reset', function() {
                     $dropdown.find('.option-checkbox').prop('checked', false);
                     $dropdown.find('.search-options').val('').trigger('input');
                     updateLabel();
@@ -487,14 +641,19 @@
             function loadData(page = 1) {
                 let params = {
                     page: page,
-                    group: $('#dropdown-group').data('getValues') ? $('#dropdown-group').data('getValues')() : [],
+                    group: $('#dropdown-group').data('getValues') ? $('#dropdown-group').data('getValues')() :
+                    [],
                     mid: $('#dropdown-mid').data('getValues') ? $('#dropdown-mid').data('getValues')() : [],
                     start_date: $('#filterStartDate').val(),
                     end_date: $('#filterEndDate').val(),
-                    supplier: $('#dropdown-supplier').data('getValues') ? $('#dropdown-supplier').data('getValues')() : [],
-                    status: $('#dropdown-status').data('getValues') ? $('#dropdown-status').data('getValues')() : [],
-                    no_spb: $('#dropdown-no-spb').data('getValues') ? $('#dropdown-no-spb').data('getValues')() : [],
-                    location: $('#dropdown-location').data('getValues') ? $('#dropdown-location').data('getValues')() : [],
+                    supplier: $('#dropdown-supplier').data('getValues') ? $('#dropdown-supplier').data(
+                        'getValues')() : [],
+                    status: $('#dropdown-status').data('getValues') ? $('#dropdown-status').data('getValues')
+                    () : [],
+                    no_spb: $('#dropdown-no-spb').data('getValues') ? $('#dropdown-no-spb').data('getValues')
+                    () : [],
+                    location: $('#dropdown-location').data('getValues') ? $('#dropdown-location').data(
+                        'getValues')() : [],
                     catatan: $('#filterCatatan').val(),
                     sort_dir: currentSortDir,
                 };
@@ -547,6 +706,7 @@
 
                     $('#tableInbound tbody').html(html);
                     renderPagination(res.data);
+                    updateSummary(res.summary);
                 });
             }
 
@@ -565,13 +725,45 @@
                 }
             }
 
+            function updateSummary(summary) {
+                const unrest = summary.status_breakdown.UNREST || {
+                    count: 0,
+                    total_qty: 0
+                };
+                const qi = summary.status_breakdown.QI || {
+                    count: 0,
+                    total_qty: 0
+                };
+                const blocked = summary.status_breakdown.BLOCKED || {
+                    count: 0,
+                    total_qty: 0
+                };
+                const issued = summary.status_breakdown.ISSUED || {
+                    count: 0,
+                    total_qty: 0
+                };
+
+                $('#totalQty').text(numberFormat(summary.total_qty));
+                $('#totalPalletsDisplay').text(numberFormat(summary.total_pallet));
+
+                $('#unrestQty').text(numberFormat(unrest.total_qty));
+                $('#unrestPallets').text(numberFormat(unrest.count));
+
+                $('#qiQty').text(numberFormat(qi.total_qty));
+                $('#qiPallets').text(numberFormat(qi.count));
+
+                $('#blockedQty').text(numberFormat(blocked.total_qty));
+                $('#blockedPallets').text(numberFormat(blocked.count));
+            }
+
             function loadFilter() {
                 $.get("{{ route('wrm.inventory.getFilterInbound') }}", function(res) {
                     updateDropdownOptions('dropdown-no-spb', res.no_spbs, 'Pilih No SPB...');
                     updateDropdownOptions('dropdown-mid', res.mids, 'Pilih MID...', true);
                     updateDropdownOptions('dropdown-supplier', res.suppliers, 'Pilih Supplier...');
                     updateDropdownOptions('dropdown-group', res.groups, 'Pilih Group...');
-                    updateDropdownOptions('dropdown-location', res.locations, 'Pilih Lokasi...', false, true);
+                    updateDropdownOptions('dropdown-location', res.locations, 'Pilih Lokasi...', false,
+                        true);
                 });
             }
 
