@@ -139,6 +139,7 @@
             border-radius: 0.25rem;
             padding: 0.47rem 0.75rem;
             font-size: 0.875rem;
+            box-shadow: 0 0 0 0 !important;
         }
 
         .custom-filter-dropdown .dropdown-menu {
@@ -585,8 +586,8 @@
                         <a href="javascript:void(0)" class="ms-2 fw-bold" id="btnClearTotalSelection">Clear selection</a>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped text-nowrap" id="tableStock">
+                    <div class="table-responsive p-2">
+                        <table class="table table-striped table-nowrap align-middle p-2" id="tableStock">
                             <thead class="table-light">
                                 <tr>
                                     @can('permission', 'wrm-inventory-soh-plus')

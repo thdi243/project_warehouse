@@ -72,6 +72,7 @@
             border-radius: 0.25rem;
             padding: 0.47rem 0.75rem;
             font-size: 0.875rem;
+            box-shadow: 0 0 0 0 !important;
         }
 
         .custom-filter-dropdown .dropdown-menu {
@@ -205,7 +206,7 @@
                                         No SPB...</span>
                                     <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                 </button>
-                                <div class="dropdown-menu p-3 shadow-lg border-0"
+                                <div class="dropdown-menu p-3 border-0"
                                     style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                     <div class="mb-2">
                                         <input type="text" class="form-control form-control-sm search-options"
@@ -235,7 +236,7 @@
                                         MID...</span>
                                     <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                 </button>
-                                <div class="dropdown-menu p-3 shadow-lg border-0"
+                                <div class="dropdown-menu p-3 border-0"
                                     style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                     <div class="mb-2">
                                         <input type="text" class="form-control form-control-sm search-options"
@@ -283,7 +284,7 @@
                                                 data-placeholder="Pilih Supplier...">Pilih Supplier...</span>
                                             <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                         </button>
-                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                        <div class="dropdown-menu p-3 border-0"
                                             style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                             <div class="mb-2">
                                                 <input type="text" class="form-control form-control-sm search-options"
@@ -314,7 +315,7 @@
                                                 data-placeholder="Pilih Group...">Pilih Group...</span>
                                             <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                         </button>
-                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                        <div class="dropdown-menu p-3 border-0"
                                             style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                             <div class="mb-2">
                                                 <input type="text" class="form-control form-control-sm search-options"
@@ -345,7 +346,7 @@
                                                 data-placeholder="Pilih Status...">Pilih Status...</span>
                                             <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                         </button>
-                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                        <div class="dropdown-menu p-3 border-0"
                                             style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                             <div class="mb-2">
                                                 <input type="text" class="form-control form-control-sm search-options"
@@ -404,7 +405,7 @@
                                                 data-placeholder="Pilih Lokasi...">Pilih Lokasi...</span>
                                             <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                         </button>
-                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                        <div class="dropdown-menu p-3 border-0"
                                             style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
                                             <div class="mb-2">
                                                 <input type="text" class="form-control form-control-sm search-options"
@@ -449,8 +450,8 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped text-nowrap" id="tableInbound">
+                    <div class="table-responsive py-2">
+                        <table class="table table-striped align-middle text-nowrap" id="tableInbound">
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center">No</th>
@@ -649,9 +650,9 @@
                     supplier: $('#dropdown-supplier').data('getValues') ? $('#dropdown-supplier').data(
                         'getValues')() : [],
                     status: $('#dropdown-status').data('getValues') ? $('#dropdown-status').data('getValues')
-                    () : [],
+                        () : [],
                     no_spb: $('#dropdown-no-spb').data('getValues') ? $('#dropdown-no-spb').data('getValues')
-                    () : [],
+                        () : [],
                     location: $('#dropdown-location').data('getValues') ? $('#dropdown-location').data(
                         'getValues')() : [],
                     catatan: $('#filterCatatan').val(),
