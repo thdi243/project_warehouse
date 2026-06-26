@@ -33,47 +33,49 @@ class VehicleTrackingController extends Controller
     {
         $locations = Location::all();
 
-        // Active transactions (not completed)
-        $activeTransactions = VehicleTransaction::with(['vehicle', 'item', 'currentLocation', 'targetLocation', 'activeTracking'])
+        // Get raw collection of active transactions
+        $txCollection = VehicleTransaction::with(['vehicle', 'item', 'currentLocation', 'targetLocation', 'activeTracking'])
             ->where('status', '!=', 'completed')
-            ->get()
-            ->map(function ($tx) {
-                // Calculate current duration
-                $currentTracking = $tx->activeTracking;
+            ->get();
 
-                $durationSeconds = 0;
-                $isBottleneck = false;
-                $limitMinutes = 0;
+        // Map active transactions for rendering
+        $activeTransactions = $txCollection->map(function ($tx) {
+            // Calculate current duration
+            $currentTracking = $tx->activeTracking;
 
-                if ($currentTracking) {
-                    $durationSeconds = Carbon::now()->diffInSeconds($currentTracking->arrival_time);
-                }
+            $durationSeconds = 0;
+            $isBottleneck = false;
+            $limitMinutes = 0;
 
-                return [
-                    'id' => $tx->id,
-                    'no_transaction' => $tx->no_transaction,
-                    'no_pol' => $tx->vehicle->no_pol,
-                    'vendor' => $tx->vendor,
-                    'jenis' => $tx->jenis,
-                    'item' => $tx->item ? $tx->item->name : 'N/A',
-                    'sku' => $tx->item ? $tx->item->sku : 'N/A',
-                    'no_spb' => $tx->no_spb,
-                    'qty_spb' => $tx->qty_spb,
-                    'current_location_code' => $tx->currentLocation->s_loc,
-                    'current_location_name' => $tx->currentLocation->name,
-                    'target_location_code' => $tx->targetLocation->s_loc,
-                    'target_location_name' => $tx->targetLocation->name,
-                    'status' => $tx->status,
-                    'qc_status' => $tx->qc_status,
-                    'unloading_status' => $tx->unloading_status,
-                    'no_antrian' => $tx->no_antrian,
-                    'check_in_time' => $tx->check_in_time->format('Y-m-d H:i:s'),
-                    'arrival_time' => $currentTracking ? $currentTracking->arrival_time->format('Y-m-d H:i:s') : $tx->check_in_time->format('Y-m-d H:i:s'),
-                    'duration_seconds' => $durationSeconds,
-                    'limit_minutes' => $limitMinutes,
-                    'is_bottleneck' => $isBottleneck,
-                ];
-            });
+            if ($currentTracking) {
+                $durationSeconds = Carbon::now()->diffInSeconds($currentTracking->arrival_time);
+            }
+
+            return [
+                'id' => $tx->id,
+                'no_transaction' => $tx->no_transaction,
+                'no_pol' => $tx->vehicle->no_pol,
+                'vendor' => $tx->vendor,
+                'jenis' => $tx->jenis,
+                'item' => $tx->item ? $tx->item->name : 'N/A',
+                'sku' => $tx->item ? $tx->item->sku : 'N/A',
+                'no_spb' => $tx->no_spb,
+                'qty_spb' => $tx->qty_spb,
+                'current_location_code' => $tx->currentLocation->s_loc,
+                'current_location_name' => $tx->currentLocation->name,
+                'target_location_code' => $tx->targetLocation->s_loc,
+                'target_location_name' => $tx->targetLocation->name,
+                'status' => $tx->status,
+                'qc_status' => $tx->qc_status,
+                'unloading_status' => $tx->unloading_status,
+                'no_antrian' => $tx->no_antrian,
+                'check_in_time' => $tx->check_in_time->format('Y-m-d H:i:s'),
+                'arrival_time' => $currentTracking ? $currentTracking->arrival_time->format('Y-m-d H:i:s') : $tx->check_in_time->format('Y-m-d H:i:s'),
+                'duration_seconds' => $durationSeconds,
+                'limit_minutes' => $limitMinutes,
+                'is_bottleneck' => $isBottleneck,
+            ];
+        });
 
         // Split into queues for the dashboard tables (WPM includes antri_sampling and wpm_qc)
         $queues = [
@@ -83,6 +85,70 @@ class VehicleTrackingController extends Controller
             'SMU' => $activeTransactions->where('status', 'smu')->values(),
         ];
 
+        // New KPIs Calculations for Gula & Import (Active transactions only)
+        $itemKPIs = [
+            'gula_tebu' => ['ton' => 0, 'truck' => 0],
+            'gula_kelapa' => ['ton' => 0, 'truck' => 0],
+            'gula_kelapa_grade_b' => ['ton' => 0, 'truck' => 0],
+            'gula_pasir' => ['ton' => 0, 'truck' => 0],
+            'import' => ['ton' => 0, 'truck' => 0],
+        ];
+
+        foreach ($txCollection as $tx) {
+            if ($tx->item) {
+                $itemName = strtoupper(trim($tx->item->name));
+                if ($itemName === 'GULA TEBU') {
+                    $itemKPIs['gula_tebu']['ton'] += floatval($tx->qty_spb);
+                    $itemKPIs['gula_tebu']['truck']++;
+                } elseif ($itemName === 'GULA KELAPA') {
+                    $itemKPIs['gula_kelapa']['ton'] += floatval($tx->qty_spb);
+                    $itemKPIs['gula_kelapa']['truck']++;
+                } elseif ($itemName === 'GULA KELAPA GRADE B') {
+                    $itemKPIs['gula_kelapa_grade_b']['ton'] += floatval($tx->qty_spb);
+                    $itemKPIs['gula_kelapa_grade_b']['truck']++;
+                } elseif ($itemName === 'GULA PASIR') {
+                    $itemKPIs['gula_pasir']['ton'] += floatval($tx->qty_spb);
+                    $itemKPIs['gula_pasir']['truck']++;
+                } elseif ($itemName === 'IMPORT') {
+                    $itemKPIs['import']['ton'] += floatval($tx->qty_spb);
+                    $itemKPIs['import']['truck']++;
+                }
+            }
+        }
+
+        // Completed transactions today (for "Out" counters)
+        $todayCompletedTransactions = VehicleTransaction::with(['targetLocation'])
+            ->where('status', 'completed')
+            ->whereDate('check_out_time', Carbon::today())
+            ->get();
+
+        $slipsheetIn = $txCollection->where('jenis', 'slipsheet')->count();
+        $slipsheetOut = $todayCompletedTransactions->where('jenis', 'slipsheet')->count();
+
+        $curahIn = $txCollection->where('jenis', 'curah')->count();
+        $curahOut = $todayCompletedTransactions->where('jenis', 'curah')->count();
+
+        $smuIn = $txCollection->filter(function ($tx) {
+            return $tx->targetLocation && $tx->targetLocation->s_loc === 'SMU';
+        })->count();
+        $smuOut = $todayCompletedTransactions->filter(function ($tx) {
+            return $tx->targetLocation && $tx->targetLocation->s_loc === 'SMU';
+        })->count();
+
+        $wpmIn = $txCollection->filter(function ($tx) {
+            return $tx->targetLocation && $tx->targetLocation->s_loc === 'C001';
+        })->count();
+        $wpmOut = $todayCompletedTransactions->filter(function ($tx) {
+            return $tx->targetLocation && $tx->targetLocation->s_loc === 'C001';
+        })->count();
+
+        $wrmIn = $txCollection->filter(function ($tx) {
+            return $tx->targetLocation && $tx->targetLocation->s_loc === 'B006';
+        })->count();
+        $wrmOut = $todayCompletedTransactions->filter(function ($tx) {
+            return $tx->targetLocation && $tx->targetLocation->s_loc === 'B006';
+        })->count();
+
         // Area counts
         $counts = [
             'total' => $activeTransactions->count(),
@@ -91,6 +157,14 @@ class VehicleTrackingController extends Controller
             'wfg' => $queues['WFG']->count(),
             'smu' => $queues['SMU']->count(),
             'bottlenecks' => 0,
+
+            // New granular counters
+            'item_kpis' => $itemKPIs,
+            'slipsheet' => ['in' => $slipsheetIn, 'out' => $slipsheetOut],
+            'curah' => ['in' => $curahIn, 'out' => $curahOut],
+            'smu_details' => ['in' => $smuIn, 'out' => $smuOut],
+            'wpm_details' => ['in' => $wpmIn, 'out' => $wpmOut],
+            'wrm_details' => ['in' => $wrmIn, 'out' => $wrmOut],
         ];
 
         // Recent activity feed (last 10 movements)

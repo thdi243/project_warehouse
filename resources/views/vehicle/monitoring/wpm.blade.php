@@ -222,7 +222,7 @@
                         let waitingHtml = '';
                         if (response.antriSampling.length === 0) {
                             waitingHtml = `<tr>
-                                <td colspan="7" class="text-center py-4 text-muted">Tidak ada kendaraan yang menunggu dokumen.</td>
+                                <td colspan="8" class="text-center py-4 text-muted">Tidak ada kendaraan yang menunggu dokumen.</td>
                             </tr>`;
                         } else {
                             response.antriSampling.forEach(function(tx) {
@@ -254,7 +254,7 @@
                         let wpmHtml = '';
                         if (response.prosesSample.length === 0) {
                             wpmHtml = `<tr>
-                                <td colspan="8" class="text-center py-4 text-muted">Tidak ada kendaraan dalam proses sampling QC.</td>
+                                <td colspan="9" class="text-center py-4 text-muted">Tidak ada kendaraan dalam proses sampling QC.</td>
                             </tr>`;
                         } else {
                             response.prosesSample.forEach(function(tx) {
