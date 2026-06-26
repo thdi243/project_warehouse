@@ -65,6 +65,24 @@
         #tableInbound tbody tr:hover {
             background-color: rgba(0, 0, 0, 0.02);
         }
+        
+        /* Custom dropdown styles */
+        .custom-filter-dropdown .dropdown-toggle {
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            padding: 0.47rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        .custom-filter-dropdown .dropdown-menu {
+            border-radius: 0.4rem;
+            font-size: 0.875rem;
+        }
+        .custom-filter-dropdown .option-item:hover {
+            background-color: #f8f9fa;
+        }
+        .custom-filter-dropdown .options-list {
+            padding-right: 5px;
+        }
     </style>
 @endsection
 
@@ -89,13 +107,45 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-semibold text-muted mb-2">No SPB</label>
-                            <select class="form-select select2-filter" id="filterNoSpb" multiple>
-                            </select>
+                            <div class="dropdown custom-filter-dropdown" id="dropdown-no-spb">
+                                <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                    type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                    <span class="dropdown-placeholder text-muted" data-placeholder="Pilih No SPB...">Pilih No SPB...</span>
+                                    <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                </button>
+                                <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                    <div class="mb-2">
+                                        <input type="text" class="form-control form-control-sm search-options" placeholder="Cari No SPB...">
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                        <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                    </div>
+                                    <hr class="dropdown-divider my-2">
+                                    <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-semibold text-muted mb-2">MID</label>
-                            <select class="form-select select2-filter" id="filterMid" multiple>
-                            </select>
+                            <div class="dropdown custom-filter-dropdown" id="dropdown-mid">
+                                <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                    type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                    <span class="dropdown-placeholder text-muted" data-placeholder="Pilih MID...">Pilih MID...</span>
+                                    <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                </button>
+                                <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                    <div class="mb-2">
+                                        <input type="text" class="form-control form-control-sm search-options" placeholder="Cari MID...">
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                        <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                    </div>
+                                    <hr class="dropdown-divider my-2">
+                                    <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <div class="d-flex gap-2">
@@ -117,30 +167,107 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Supplier</label>
-                                    <select class="form-select select2-filter" id="filterSupplier" multiple>
-                                    </select>
+                                    <div class="dropdown custom-filter-dropdown" id="dropdown-supplier">
+                                        <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted" data-placeholder="Pilih Supplier...">Pilih Supplier...</span>
+                                            <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                        </button>
+                                        <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control form-control-sm search-options" placeholder="Cari Supplier...">
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                                <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                            </div>
+                                            <hr class="dropdown-divider my-2">
+                                            <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Group</label>
-                                    <select class="form-select select2-filter" id="filterGroup" multiple>
-                                    </select>
+                                    <div class="dropdown custom-filter-dropdown" id="dropdown-group">
+                                        <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted" data-placeholder="Pilih Group...">Pilih Group...</span>
+                                            <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                        </button>
+                                        <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control form-control-sm search-options" placeholder="Cari Group...">
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                                <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                            </div>
+                                            <hr class="dropdown-divider my-2">
+                                            <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Status</label>
-                                    <select class="form-select select2-filter" id="filterStatus" multiple>
-                                        <option value="UNREST">UNREST</option>
-                                        <option value="QI">QI</option>
-                                        <option value="BLOCKED">BLOCKED</option>
-                                        <option value="ISSUED">ISSUED</option>
-                                    </select>
+                                    <div class="dropdown custom-filter-dropdown" id="dropdown-status">
+                                        <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted" data-placeholder="Pilih Status...">Pilih Status...</span>
+                                            <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                        </button>
+                                        <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control form-control-sm search-options" placeholder="Cari Status...">
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                                <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                            </div>
+                                            <hr class="dropdown-divider my-2">
+                                            <div class="options-list" style="max-height: 250px; overflow-y: auto;">
+                                                <div class="form-check mb-2 option-item" data-value="UNREST" data-text="UNREST">
+                                                    <input class="form-check-input option-checkbox" type="checkbox" value="UNREST" id="chk-status-UNREST">
+                                                    <label class="form-check-label text-truncate w-100" for="chk-status-UNREST">UNREST</label>
+                                                </div>
+                                                <div class="form-check mb-2 option-item" data-value="QI" data-text="QI">
+                                                    <input class="form-check-input option-checkbox" type="checkbox" value="QI" id="chk-status-QI">
+                                                    <label class="form-check-label text-truncate w-100" for="chk-status-QI">QI</label>
+                                                </div>
+                                                <div class="form-check mb-2 option-item" data-value="BLOCKED" data-text="BLOCKED">
+                                                    <input class="form-check-input option-checkbox" type="checkbox" value="BLOCKED" id="chk-status-BLOCKED">
+                                                    <label class="form-check-label text-truncate w-100" for="chk-status-BLOCKED">BLOCKED</label>
+                                                </div>
+                                                <div class="form-check mb-2 option-item" data-value="ISSUED" data-text="ISSUED">
+                                                    <input class="form-check-input option-checkbox" type="checkbox" value="ISSUED" id="chk-status-ISSUED">
+                                                    <label class="form-check-label text-truncate w-100" for="chk-status-ISSUED">ISSUED</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Lokasi</label>
-                                    <select class="form-select select2-filter" id="filterLocation" multiple>
-                                    </select>
+                                    <div class="dropdown custom-filter-dropdown" id="dropdown-location">
+                                        <button class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted" data-placeholder="Pilih Lokasi...">Pilih Lokasi...</span>
+                                            <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                        </button>
+                                        <div class="dropdown-menu p-3 shadow-lg border-0" style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control form-control-sm search-options" placeholder="Cari Lokasi...">
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <button type="button" class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                                <button type="button" class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                            </div>
+                                            <hr class="dropdown-divider my-2">
+                                            <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="col-md-4">
@@ -213,31 +340,161 @@
         }
 
         $(document).ready(function() {
-            // Filter selects
-            $('.select2-filter').select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                placeholder: 'Pilih...',
-                allowClear: true,
-                closeOnSelect: false
-            });
-
             let currentSortDir = 'desc';
+            let isResetting = false;
+            let filterTimeout;
+
+            // Initialize custom dropdowns
+            const onFilterChange = function() {
+                if (isResetting) return;
+                clearTimeout(filterTimeout);
+                filterTimeout = setTimeout(() => {
+                    loadData(1);
+                }, 300);
+            };
+
+            initDynamicDropdown('dropdown-no-spb', 'Pilih No SPB...', onFilterChange);
+            initDynamicDropdown('dropdown-mid', 'Pilih MID...', onFilterChange);
+            initDynamicDropdown('dropdown-supplier', 'Pilih Supplier...', onFilterChange);
+            initDynamicDropdown('dropdown-group', 'Pilih Group...', onFilterChange);
+            initDynamicDropdown('dropdown-status', 'Pilih Status...', onFilterChange);
+            initDynamicDropdown('dropdown-location', 'Pilih Lokasi...', onFilterChange);
 
             loadData();
             loadFilter();
 
+            function initDynamicDropdown(id, placeholder, onChange) {
+                const $dropdown = $('#' + id);
+                
+                // Search options
+                $dropdown.off('input', '.search-options').on('input', '.search-options', function () {
+                    const query = $(this).val().toLowerCase();
+                    $dropdown.find('.option-item').each(function () {
+                        const text = $(this).data('text').toString().toLowerCase();
+                        const val = $(this).data('value').toString().toLowerCase();
+                        if (text.indexOf(query) > -1 || val.indexOf(query) > -1) {
+                            $(this).removeClass('d-none');
+                        } else {
+                            $(this).addClass('d-none');
+                        }
+                    });
+                });
+
+                // Checkbox changes
+                $dropdown.off('change', '.option-checkbox').on('change', '.option-checkbox', function () {
+                    updateLabel();
+                });
+
+                // Select All
+                $dropdown.off('click', '.select-all-options').on('click', '.select-all-options', function (e) {
+                    e.preventDefault();
+                    $dropdown.find('.option-item:not(.d-none) .option-checkbox').prop('checked', true);
+                    updateLabel();
+                });
+
+                // Clear All
+                $dropdown.off('click', '.clear-all-options').on('click', '.clear-all-options', function (e) {
+                    e.preventDefault();
+                    $dropdown.find('.option-checkbox').prop('checked', false);
+                    updateLabel();
+                });
+
+                function updateLabel() {
+                    const selected = [];
+                    $dropdown.find('.option-checkbox:checked').each(function () {
+                        selected.push($(this).val());
+                    });
+
+                    const $placeholderSpan = $dropdown.find('.dropdown-placeholder');
+                    const $badge = $dropdown.find('.selected-count');
+                    if (selected.length === 0) {
+                        $placeholderSpan.text(placeholder);
+                        $badge.addClass('d-none').text('0');
+                    } else {
+                        $placeholderSpan.text(`${selected.length} Terpilih`);
+                        $badge.removeClass('d-none').text(selected.length);
+                    }
+
+                    if (onChange && !isResetting) {
+                        onChange(selected);
+                    }
+                }
+
+                // Attach methods
+                $dropdown.data('getValues', function () {
+                    const selected = [];
+                    $dropdown.find('.option-checkbox:checked').each(function () {
+                        selected.push($(this).val());
+                    });
+                    return selected;
+                });
+
+                $dropdown.data('reset', function () {
+                    $dropdown.find('.option-checkbox').prop('checked', false);
+                    $dropdown.find('.search-options').val('').trigger('input');
+                    updateLabel();
+                });
+            }
+
+            function updateDropdownOptions(id, data, placeholder, isMid = false, isLocation = false) {
+                const $dropdown = $('#' + id);
+                const currentValues = $dropdown.data('getValues') ? $dropdown.data('getValues')() : [];
+                let html = '';
+
+                data.forEach(item => {
+                    let val, text;
+                    if (isMid || isLocation) {
+                        val = item.id ?? item.mid;
+                        text = item.text;
+                    } else {
+                        val = item;
+                        text = item;
+                    }
+
+                    let safeVal = val ?? '';
+                    let safeText = text ?? '';
+                    if (safeText === '') {
+                        safeText = safeVal === '' ? '-' : safeVal;
+                    }
+
+                    let isSelected = currentValues.includes(safeVal.toString());
+                    let checkedAttr = isSelected ? 'checked' : '';
+                    html += `
+                        <div class="form-check mb-2 option-item" data-value="${safeVal}" data-text="${safeText}">
+                            <input class="form-check-input option-checkbox" type="checkbox" value="${safeVal}" id="chk-${id}-${safeVal}" ${checkedAttr}>
+                            <label class="form-check-label text-truncate w-100" for="chk-${id}-${safeVal}">
+                                ${safeText}
+                            </label>
+                        </div>
+                    `;
+                });
+
+                $dropdown.find('.options-list').html(html);
+
+                // Update the label and selected count badge
+                const selectedCount = $dropdown.find('.option-checkbox:checked').length;
+                const $placeholderSpan = $dropdown.find('.dropdown-placeholder');
+                const $badge = $dropdown.find('.selected-count');
+                if (selectedCount === 0) {
+                    $placeholderSpan.text(placeholder);
+                    $badge.addClass('d-none').text('0');
+                } else {
+                    $placeholderSpan.text(`${selectedCount} Terpilih`);
+                    $badge.removeClass('d-none').text(selectedCount);
+                }
+            }
+
             function loadData(page = 1) {
                 let params = {
                     page: page,
-                    group: $('#filterGroup').val(),
-                    mid: $('#filterMid').val(),
+                    group: $('#dropdown-group').data('getValues') ? $('#dropdown-group').data('getValues')() : [],
+                    mid: $('#dropdown-mid').data('getValues') ? $('#dropdown-mid').data('getValues')() : [],
                     start_date: $('#filterStartDate').val(),
                     end_date: $('#filterEndDate').val(),
-                    supplier: $('#filterSupplier').val(),
-                    status: $('#filterStatus').val(),
-                    no_spb: $('#filterNoSpb').val(),
-                    location: $('#filterLocation').val(),
+                    supplier: $('#dropdown-supplier').data('getValues') ? $('#dropdown-supplier').data('getValues')() : [],
+                    status: $('#dropdown-status').data('getValues') ? $('#dropdown-status').data('getValues')() : [],
+                    no_spb: $('#dropdown-no-spb').data('getValues') ? $('#dropdown-no-spb').data('getValues')() : [],
+                    location: $('#dropdown-location').data('getValues') ? $('#dropdown-location').data('getValues')() : [],
                     catatan: $('#filterCatatan').val(),
                     sort_dir: currentSortDir,
                 };
@@ -310,30 +567,11 @@
 
             function loadFilter() {
                 $.get("{{ route('wrm.inventory.getFilterInbound') }}", function(res) {
-                    // No SPB
-                    let optSpb = '';
-                    res.no_spbs.forEach(v => optSpb += `<option value="${v}">${v}</option>`);
-                    $('#filterNoSpb').html(optSpb);
-
-                    // MID
-                    let optMid = '';
-                    res.mids.forEach(v => optMid += `<option value="${v.mid}">${v.text}</option>`);
-                    $('#filterMid').html(optMid);
-
-                    // Supplier
-                    let optSup = '';
-                    res.suppliers.forEach(v => optSup += `<option value="${v}">${v}</option>`);
-                    $('#filterSupplier').html(optSup);
-
-                    // Group
-                    let optGroup = '';
-                    res.groups.forEach(v => optGroup += `<option value="${v}">${v}</option>`);
-                    $('#filterGroup').html(optGroup);
-
-                    // Location
-                    let optLoc = '';
-                    res.locations.forEach(v => optLoc += `<option value="${v.id}">${v.text}</option>`);
-                    $('#filterLocation').html(optLoc);
+                    updateDropdownOptions('dropdown-no-spb', res.no_spbs, 'Pilih No SPB...');
+                    updateDropdownOptions('dropdown-mid', res.mids, 'Pilih MID...', true);
+                    updateDropdownOptions('dropdown-supplier', res.suppliers, 'Pilih Supplier...');
+                    updateDropdownOptions('dropdown-group', res.groups, 'Pilih Group...');
+                    updateDropdownOptions('dropdown-location', res.locations, 'Pilih Lokasi...', false, true);
                 });
             }
 
@@ -420,12 +658,8 @@
                 if (page) loadData(page);
             });
 
-            // Trigger filters
-            let filterTimeout;
-            $('.select2-filter, #filterStartDate, #filterEndDate').on('change', function() {
-                clearTimeout(filterTimeout);
-                filterTimeout = setTimeout(() => loadData(1), 500);
-            });
+            // Trigger dates
+            $('#filterStartDate, #filterEndDate').on('change', onFilterChange);
 
             $('#filterCatatan').on('keyup', function() {
                 clearTimeout(filterTimeout);
@@ -433,9 +667,16 @@
             });
 
             $('#btnReset').click(function() {
-                $('.select2-filter').val(null).trigger('change');
+                isResetting = true;
+                $('#dropdown-no-spb').data('reset')();
+                $('#dropdown-mid').data('reset')();
+                $('#dropdown-supplier').data('reset')();
+                $('#dropdown-group').data('reset')();
+                $('#dropdown-status').data('reset')();
+                $('#dropdown-location').data('reset')();
                 $('#filterStartDate, #filterEndDate').val('');
                 $('#filterCatatan').val('');
+                isResetting = false;
                 loadData(1);
             });
 

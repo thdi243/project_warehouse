@@ -12,7 +12,8 @@
         "laravel/reverb": "^1.10",
         "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.9",
-        "phpoffice/phpspreadsheet": "^5.0"
+        "phpoffice/phpspreadsheet": "^5.0",
+        "predis/predis": "^3.5"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

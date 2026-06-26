@@ -21,6 +21,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class InboundController extends Controller
@@ -610,76 +611,149 @@ class InboundController extends Controller
 
     public function getFilter(Request $request)
     {
-        // Get all active records once to process in memory
-        $all = StockOnHand::with([
-            'barang:id,mid,nama_barang',
-            'bin.location'
-        ])
-            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
-            ->get();
+        $all = Cache::store('redis')->remember('wrm_stock_on_hand_all_array', 3600, function () {
+            return StockOnHand::with([
+                'barang:id,mid,nama_barang',
+                'bin.location'
+            ])
+                ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+                ->get()
+                ->map(function ($item) {
 
-        // Helper to filter collection
-        $filterCollection = function ($items, $excludeField = null) use ($request) {
-            return $items->filter(function ($item) use ($request, $excludeField) {
-                $match = true;
+                    $location = $item->bin?->location;
 
-                if ($excludeField !== 'group' && $request->group) {
-                    $match = $match && in_array($item->group, (array)$request->group);
-                }
-                if ($excludeField !== 'status' && $request->status) {
-                    $match = $match && in_array($item->status, (array)$request->status);
-                }
-                if ($excludeField !== 'jenis_bahan' && $request->jenis_bahan) {
-                    $match = $match && in_array($item->barang->nama_barang, (array)$request->jenis_bahan);
-                }
-                if ($excludeField !== 'mid' && $request->mid) {
-                    $match = $match && in_array($item->barang->mid, (array)$request->mid);
-                }
-                if ($excludeField !== 'supplier' && $request->supplier) {
-                    $match = $match && in_array($item->supplier, (array)$request->supplier);
-                }
-                if ($excludeField !== 'no_spb' && $request->no_spb) {
-                    $match = $match && in_array($item->no_spb, (array)$request->no_spb);
-                }
-                if ($excludeField !== 'location' && $request->location) {
-                    $match = $match && in_array($item->bin->loc_id, (array)$request->location);
-                }
+                    return [
+                        'group'         => $item->group,
+                        'status'        => $item->status,
+                        'mid'           => $item->barang?->mid,
+                        'nama_barang'   => $item->barang?->nama_barang,
+                        'supplier'      => $item->supplier,
+                        'no_spb'        => $item->no_spb,
+                        'loc_id'        => $item->bin?->loc_id,
+                        'location_id'   => $location?->id,
+                        'location_text' => $location
+                            ? "{$location->plant} - {$location->s_loc} - {$location->gudang} - {$location->bin}"
+                            : '',
+                    ];
+                });
+        });
 
-                return $match;
-            });
-        };
+        $groups = [];
+        $jenisBahan = [];
+        $mids = [];
+        $noSpbs = [];
+        $suppliers = [];
+        $statuses = [];
+        $locations = [];
 
-        // Extract options for each field
-        $groups = $filterCollection($all, 'group')->pluck('group')->unique()->sort()->values();
-        $jenisBahan = $filterCollection($all, 'jenis_bahan')->pluck('barang.nama_barang')->unique()->sort()->values();
-        $mids = $filterCollection($all, 'mid')->map(function ($item) {
-            return [
-                'mid' => $item->barang->mid,
-                'nama' => $item->barang->nama_barang,
-                'text' => "{$item->barang->mid} - {$item->barang->nama_barang}"
-            ];
-        })->unique('mid')->sortBy('mid')->values();
+        foreach ($all as $item) {
 
-        $noSpbs = $filterCollection($all, 'no_spb')->pluck('no_spb')->unique()->sort()->values();
-        $suppliers = $filterCollection($all, 'supplier')->pluck('supplier')->whereNotNull()->unique()->sort()->values();
-        $statuses = $filterCollection($all, 'status')->pluck('status')->unique()->sort()->values();
+            // GROUP
+            if (
+                $request->filled('group')
+                && !in_array($item['group'], (array)$request->group)
+            ) {
+                continue;
+            }
 
-        $locations = $filterCollection($all, 'location')->map(function ($item) {
-            $loc = $item->bin->location;
-            return [
-                'id' => $loc->id,
-                'text' => "{$loc->plant} - {$loc->s_loc} - {$loc->gudang} - {$loc->bin}"
-            ];
-        })->unique('id')->sortBy('text')->values();
+            // STATUS
+            if (
+                $request->filled('status')
+                && !in_array($item['status'], (array)$request->status)
+            ) {
+                continue;
+            }
+
+            // JENIS BAHAN
+            if (
+                $request->filled('jenis_bahan')
+                && !in_array($item['nama_barang'], (array)$request->jenis_bahan)
+            ) {
+                continue;
+            }
+
+            // MID
+            if (
+                $request->filled('mid')
+                && !in_array($item['mid'], (array)$request->mid)
+            ) {
+                continue;
+            }
+
+            // SUPPLIER
+            if (
+                $request->filled('supplier')
+                && !in_array($item['supplier'], (array)$request->supplier)
+            ) {
+                continue;
+            }
+
+            // NO SPB
+            if (
+                $request->filled('no_spb')
+                && !in_array($item['no_spb'], (array)$request->no_spb)
+            ) {
+                continue;
+            }
+
+            // LOCATION
+            if (
+                $request->filled('location')
+                && !in_array($item['loc_id'], (array)$request->location)
+            ) {
+                continue;
+            }
+
+            $groups[$item['group']] = true;
+
+            if ($item['nama_barang']) {
+                $jenisBahan[$item['nama_barang']] = true;
+            }
+
+            if ($item['mid']) {
+                $mids[$item['mid']] = [
+                    'mid' => $item['mid'],
+                    'nama' => $item['nama_barang'],
+                    'text' => "{$item['mid']} - {$item['nama_barang']}",
+                ];
+            }
+
+            if ($item['no_spb']) {
+                $noSpbs[$item['no_spb']] = true;
+            }
+
+            if ($item['supplier']) {
+                $suppliers[$item['supplier']] = true;
+            }
+
+            if ($item['status']) {
+                $statuses[$item['status']] = true;
+            }
+
+            if ($item['location_id']) {
+                $locations[$item['location_id']] = [
+                    'id' => $item['location_id'],
+                    'text' => $item['location_text'],
+                ];
+            }
+        }
+
+        ksort($groups);
+        ksort($jenisBahan);
+        ksort($mids);
+        ksort($noSpbs);
+        ksort($suppliers);
+        ksort($statuses);
+        uasort($locations, fn($a, $b) => strcmp($a['text'], $b['text']));
 
         return response()->json([
-            'groups' => $groups,
-            'jenis_bahan' => $jenisBahan,
-            'mids' => $mids,
-            'no_spbs' => $noSpbs,
-            'suppliers' => $suppliers,
-            'statuses' => $statuses,
-            'locations' => $locations
+            'groups'       => array_keys($groups),
+            'jenis_bahan'  => array_keys($jenisBahan),
+            'mids'         => array_values($mids),
+            'no_spbs'      => array_keys($noSpbs),
+            'suppliers'    => array_keys($suppliers),
+            'statuses'     => array_keys($statuses),
+            'locations'    => array_values($locations),
         ]);
     }
 
@@ -1507,76 +1581,145 @@ class InboundController extends Controller
 
     public function getFilterInbound(Request $request)
     {
-        // Get all inbound detail records
-        $all = StockInboundDetail::with([
-            'inbound',
-            'barang:id,mid,nama_barang',
-            'bin.location'
-        ])->get();
+        $all = Cache::store('redis')->remember('wrm_stock_inbound_detail_all_array', 3600, function () {
 
-        // Helper to filter collection (optional for now, but good for UX consistency)
-        $filterCollection = function ($items, $excludeField = null) use ($request) {
-            return $items->filter(function ($item) use ($request, $excludeField) {
-                $match = true;
-                if (!$item->inbound || !$item->barang || !$item->bin || !$item->bin->location) return false;
+            return StockInboundDetail::with([
+                'inbound',
+                'barang:id,mid,nama_barang',
+                'bin.location'
+            ])
+                ->get()
+                ->map(function ($item) {
 
-                if ($excludeField !== 'group' && $request->group) {
-                    $match = $match && in_array($item->group, (array)$request->group);
-                }
-                if ($excludeField !== 'status' && $request->status) {
-                    $match = $match && in_array($item->status, (array)$request->status);
-                }
-                if ($excludeField !== 'jenis_bahan' && $request->jenis_bahan) {
-                    $match = $match && in_array($item->barang->nama_barang, (array)$request->jenis_bahan);
-                }
-                if ($excludeField !== 'mid' && $request->mid) {
-                    $match = $match && in_array($item->barang->mid, (array)$request->mid);
-                }
-                if ($excludeField !== 'supplier' && $request->supplier) {
-                    $match = $match && in_array($item->inbound->supplier, (array)$request->supplier);
-                }
-                if ($excludeField !== 'no_spb' && $request->no_spb) {
-                    $match = $match && in_array($item->inbound->no_spb, (array)$request->no_spb);
-                }
-                if ($excludeField !== 'location' && $request->location) {
-                    $match = $match && in_array($item->bin->loc_id, (array)$request->location);
+                    $location = $item->bin?->location;
+
+                    return [
+                        'group'         => $item->group,
+                        'status'        => $item->status,
+
+                        'mid'           => $item->barang?->mid,
+                        'nama_barang'   => $item->barang?->nama_barang,
+
+                        'supplier'      => $item->inbound?->supplier,
+                        'no_spb'        => $item->inbound?->no_spb,
+
+                        'loc_id'        => $item->bin?->loc_id,
+                        'location_id'   => $location?->id,
+
+                        'location_text' => $location
+                            ? "{$location->plant} - {$location->s_loc} - {$location->gudang} - {$location->bin}"
+                            : '',
+                    ];
+                });
+        });
+
+        $filterCollection = function ($items, $exclude = null) use ($request) {
+
+            return $items->filter(function ($item) use ($exclude, $request) {
+
+                if ($exclude !== 'group' && $request->filled('group')) {
+                    if (!in_array($item['group'], (array)$request->group)) {
+                        return false;
+                    }
                 }
 
-                return $match;
+                if ($exclude !== 'status' && $request->filled('status')) {
+                    if (!in_array($item['status'], (array)$request->status)) {
+                        return false;
+                    }
+                }
+
+                if ($exclude !== 'jenis_bahan' && $request->filled('jenis_bahan')) {
+                    if (!in_array($item['nama_barang'], (array)$request->jenis_bahan)) {
+                        return false;
+                    }
+                }
+
+                if ($exclude !== 'mid' && $request->filled('mid')) {
+                    if (!in_array($item['mid'], (array)$request->mid)) {
+                        return false;
+                    }
+                }
+
+                if ($exclude !== 'supplier' && $request->filled('supplier')) {
+                    if (!in_array($item['supplier'], (array)$request->supplier)) {
+                        return false;
+                    }
+                }
+
+                if ($exclude !== 'no_spb' && $request->filled('no_spb')) {
+                    if (!in_array($item['no_spb'], (array)$request->no_spb)) {
+                        return false;
+                    }
+                }
+
+                if ($exclude !== 'location' && $request->filled('location')) {
+                    if (!in_array($item['loc_id'], (array)$request->location)) {
+                        return false;
+                    }
+                }
+
+                return true;
             });
         };
 
-        // Extract options
-        $groups = $filterCollection($all, 'group')->pluck('group')->unique()->sort()->values();
-        $jenisBahan = $filterCollection($all, 'jenis_bahan')->pluck('barang.nama_barang')->unique()->sort()->values();
-        $mids = $filterCollection($all, 'mid')->map(function ($item) {
-            return [
-                'mid' => $item->barang->mid,
-                'nama' => $item->barang->nama_barang,
-                'text' => "{$item->barang->mid} - {$item->barang->nama_barang}"
-            ];
-        })->unique('mid')->sortBy('mid')->values();
-
-        $noSpbs = $filterCollection($all, 'no_spb')->pluck('inbound.no_spb')->unique()->sort()->values();
-        $suppliers = $filterCollection($all, 'supplier')->pluck('inbound.supplier')->whereNotNull()->unique()->sort()->values();
-        $statuses = $filterCollection($all, 'status')->pluck('status')->unique()->sort()->values();
-
-        $locations = $filterCollection($all, 'location')->map(function ($item) {
-            $loc = $item->bin->location;
-            return [
-                'id' => $loc->id,
-                'text' => "{$loc->plant} - {$loc->s_loc} - {$loc->gudang} - {$loc->bin}"
-            ];
-        })->unique('id')->sortBy('text')->values();
-
         return response()->json([
-            'groups' => $groups,
-            'jenis_bahan' => $jenisBahan,
-            'mids' => $mids,
-            'no_spbs' => $noSpbs,
-            'suppliers' => $suppliers,
-            'statuses' => $statuses,
-            'locations' => $locations
+
+            'groups' => $filterCollection($all, 'group')
+                ->pluck('group')
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values(),
+
+            'jenis_bahan' => $filterCollection($all, 'jenis_bahan')
+                ->pluck('nama_barang')
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values(),
+
+            'mids' => $filterCollection($all, 'mid')
+                ->map(fn($x) => [
+                    'mid' => $x['mid'],
+                    'nama' => $x['nama_barang'],
+                    'text' => "{$x['mid']} - {$x['nama_barang']}"
+                ])
+                ->unique('mid')
+                ->sortBy('mid')
+                ->values(),
+
+            'no_spbs' => $filterCollection($all, 'no_spb')
+                ->pluck('no_spb')
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values(),
+
+            'suppliers' => $filterCollection($all, 'supplier')
+                ->pluck('supplier')
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values(),
+
+            'statuses' => $filterCollection($all, 'status')
+                ->pluck('status')
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values(),
+
+            'locations' => $filterCollection($all, 'location')
+                ->map(fn($x) => [
+                    'id' => $x['location_id'],
+                    'text' => $x['location_text']
+                ])
+                ->filter(fn($x) => $x['id'])
+                ->unique('id')
+                ->sortBy('text')
+                ->values(),
+
         ]);
     }
 
