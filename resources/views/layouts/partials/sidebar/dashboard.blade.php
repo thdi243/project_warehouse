@@ -7,8 +7,7 @@
             <i class="mdi mdi-view-dashboard"></i>
             <span data-key="main-dashboard">Dashboard</span>
         </a>
-        <div class="collapse menu-dropdown {{ request()->routeIs('dashboard.*') ? 'show' : '' }}"
-            id="sideBarDashboard">
+        <div class="collapse menu-dropdown {{ request()->routeIs('dashboard.*') ? 'show' : '' }}" id="sideBarDashboard">
             <ul class="nav nav-sm flex-column">
                 @can('permission', 'dashboard-p2h')
                     <li class="nav-item">
@@ -54,9 +53,9 @@
                 @endcan
                 @can('permission', 'vehicle-monitoring-menu')
                     <li class="nav-item">
-                        <a href="{{ route('dashboard.vehicle') }}"
+                        <a href="{{ route('dashboard.vehicle') }}" target="_blank"
                             class="nav-link {{ request()->routeIs('dashboard.vehicle') ? 'active' : '' }}">
-                            <i class="mdi mdi-truck-delivery"></i> Monitoring Kendaraan </a>
+                            <i class="mdi mdi-truck-delivery"></i> Vehicle Monitoring </a>
                     </li>
                 @endcan
             </ul>

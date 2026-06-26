@@ -193,7 +193,7 @@
                                         <tr>
                                             <th>No. Transaksi</th>
                                             <th>No. Polisi</th>
-                                            <th>Jenis / SKU</th>
+                                            <th>Jenis</th>
                                             <th>Vendor</th>
                                             <th>No. SPB / Qty</th>
                                             <th>Tujuan Sloc</th>
@@ -403,7 +403,7 @@
 
                     tbody.html(`
                         <tr>
-                            <td colspan="9" class="text-center py-4 text-muted">Belum ada transaksi pada tanggal ${formattedDate}.</td>
+                            <td colspan="10" class="text-center py-4 text-muted">Belum ada transaksi pada tanggal ${formattedDate}.</td>
                         </tr>
                     `);
                     return;
@@ -418,10 +418,7 @@
                         <tr>
                             <td><small class="fw-bold">${tx.no_transaction}</small></td>
                             <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
-                            <td>
-                                <strong>${tx.jenis}</strong><br>
-                                <small class="text-muted">${tx.sku}</small>
-                            </td>
+                            <td>${tx.jenis}</td>
                             <td>${tx.vendor || '-'}</td>
                             <td>
                                 <strong>${tx.no_spb || '-'}</strong><br>
