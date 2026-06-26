@@ -31,7 +31,6 @@ return new class extends Migration
         // 3. vehicle_items (Master Item/SKU)
         Schema::create('vehicle_items', function (Blueprint $table) {
             $table->id();
-            $table->string('sku')->unique();
             $table->string('name');
             $table->timestamps();
         });

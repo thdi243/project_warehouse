@@ -1,11 +1,13 @@
 @can('permission', 'vehicle-monitoring-menu')
     <li class="nav-item">
-        <a class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.*') ? '' : 'collapsed' }}" href="#sidebarVehicleMonitoring"
-            data-bs-toggle="collapse" role="button" aria-expanded="{{ request()->routeIs('vehicle.monitoring.*') ? 'true' : 'false' }}"
+        <a class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.*') ? '' : 'collapsed' }}"
+            href="#sidebarVehicleMonitoring" data-bs-toggle="collapse" role="button"
+            aria-expanded="{{ request()->routeIs('vehicle.monitoring.*') ? 'true' : 'false' }}"
             aria-controls="sidebarVehicleMonitoring">
             <i class="ri-truck-line"></i> <span data-key="t-vm">Vehicle Monitoring</span>
         </a>
-        <div class="collapse menu-dropdown {{ request()->routeIs('vehicle.monitoring.*') ? 'show' : '' }}" id="sidebarVehicleMonitoring">
+        <div class="collapse menu-dropdown {{ request()->routeIs('vehicle.monitoring.*') ? 'show' : '' }}"
+            id="sidebarVehicleMonitoring">
             <ul class="nav nav-sm flex-column">
                 <li class="nav-item">
                     <a href="{{ route('vehicle.monitoring.history') }}"
@@ -57,7 +59,7 @@
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.master.items') }}"
                             class="nav-link {{ request()->routeIs('vehicle.monitoring.master.items') ? 'active' : '' }}">
-                            <i class="ri-price-tag-3-line fs-12"></i> Master SKU/Item
+                            <i class="ri-price-tag-3-line fs-12"></i> Master Item & Sloc
                         </a>
                     </li>
                 @endcan

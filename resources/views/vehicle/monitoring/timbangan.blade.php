@@ -128,10 +128,10 @@
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="vendor" class="form-label">Nama Vendor</label>
-                                        <select class="form-select select2" id="vendor" name="vendor">
+                                        <select class="form-select" id="vendor" name="vendor">
                                             <option value="" selected disabled>Pilih Vendor</option>
                                             @foreach ($vendors as $vendor)
-                                                <option value="{{ $vendor->nama }}">{{ $vendor->nama }}</option>
+                                                <option value="{{ $vendor->name }}">{{ $vendor->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -144,8 +144,7 @@
                                         <select class="form-select select2" id="item_id" name="item_id" required>
                                             <option value="" selected disabled>Pilih Item</option>
                                             @foreach ($items as $item)
-                                                <option value="{{ $item->id }}">{{ $item->sku }} -
-                                                    {{ $item->name }}</option>
+                                                <option value="{{ $item->id }}">{{ $item->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -270,10 +269,10 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="edit_vendor" class="form-label">Nama Vendor</label>
-                                <select class="form-select select2-edit" id="edit_vendor" name="vendor">
+                                <select class="form-select" id="edit_vendor" name="vendor">
                                     <option value="" selected disabled>Pilih Vendor</option>
                                     @foreach ($vendors as $vendor)
-                                        <option value="{{ $vendor->nama }}">{{ $vendor->nama }}</option>
+                                        <option value="{{ $vendor->name }}">{{ $vendor->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -306,17 +305,54 @@
     <script>
         $(document).ready(function() {
             // Initialize Select2 for Check-In Form
-            $('.select2').select2({
+            $('#item_id').select2({
+                width: '100%'
+            });
+
+            $('#vendor').select2({
+                tags: true,
+                placeholder: 'Pilih atau Ketik Vendor Baru',
+                allowClear: true,
                 width: '100%'
             });
 
             // Initialize Select2 for Edit Modal
-            $('.select2-edit').select2({
+            $('#edit_item_id').select2({
                 theme: 'bootstrap-5',
                 dropdownParent: $('#editModal'),
                 allowClear: true,
                 width: '100%'
             });
+
+            $('#edit_vendor').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#editModal'),
+                tags: true,
+                placeholder: 'Pilih atau Ketik Vendor Baru',
+                allowClear: true,
+                width: '100%'
+            });
+
+            function updateVendorDropdowns(vendors) {
+                if (!vendors || !Array.isArray(vendors)) return;
+
+                // Save currently selected values
+                const currentVal = $('#vendor').val();
+                const currentEditVal = $('#edit_vendor').val();
+
+                // Clear and rebuild options
+                $('#vendor').empty().append('<option value="" selected disabled>Pilih Vendor</option>');
+                $('#edit_vendor').empty().append('<option value="" selected disabled>Pilih Vendor</option>');
+
+                vendors.forEach(function(vendor) {
+                    $('#vendor').append(new Option(vendor.name, vendor.name));
+                    $('#edit_vendor').append(new Option(vendor.name, vendor.name));
+                });
+
+                // Restore selected values
+                if (currentVal) $('#vendor').val(currentVal).trigger('change');
+                if (currentEditVal) $('#edit_vendor').val(currentEditVal).trigger('change');
+            }
 
             // Autocomplete plate numbers
             $("#no_pol").autocomplete({
@@ -435,6 +471,10 @@
                     type: 'POST',
                     data: form.serialize(),
                     success: function(response) {
+                        if (response.vendors) {
+                            updateVendorDropdowns(response.vendors);
+                        }
+
                         // Clear form inputs
                         $('#no_pol').val('');
                         $('#jenis').val('').trigger('change');
@@ -510,6 +550,10 @@
                         const modalEl = document.getElementById('editModal');
                         const modal = bootstrap.Modal.getInstance(modalEl);
                         if (modal) modal.hide();
+
+                        if (response.vendors) {
+                            updateVendorDropdowns(response.vendors);
+                        }
 
                         Swal.fire('Berhasil!', response.message, 'success');
                         fetchTransactions();

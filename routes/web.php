@@ -624,6 +624,16 @@ Route::middleware('auth')->group(function () {
             Route::post('/master/items/store', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsStore'])->name('master.items.store');
             Route::put('/master/items/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsUpdate'])->name('master.items.update');
             Route::delete('/master/items/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsDestroy'])->name('master.items.delete');
+
+            // Sloc CRUD
+            Route::post('/master/sloc/store', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterSlocStore'])->name('master.sloc.store');
+            Route::put('/master/sloc/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterSlocUpdate'])->name('master.sloc.update');
+            Route::delete('/master/sloc/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterSlocDestroy'])->name('master.sloc.delete');
+
+            // Vendor CRUD
+            Route::post('/master/vendor/store', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterVendorStore'])->name('master.vendor.store');
+            Route::put('/master/vendor/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterVendorUpdate'])->name('master.vendor.update');
+            Route::delete('/master/vendor/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterVendorDestroy'])->name('master.vendor.delete');
         });
 
         // General Report/History Data

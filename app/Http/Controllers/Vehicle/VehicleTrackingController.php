@@ -9,6 +9,7 @@ use App\Models\Vehicle\Vehicle;
 use App\Models\Vehicle\VehicleItem;
 use App\Models\Vehicle\VehicleTracking;
 use App\Models\Vehicle\VehicleTransaction;
+use App\Models\Vehicle\VehicleVendor;
 use App\Models\Wrm\MasterSupplierModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -125,7 +126,7 @@ class VehicleTrackingController extends Controller
     {
         $items = VehicleItem::orderBy('name')->get();
         $targetLocations = Location::where('s_loc', '!=', 'TMB')->get();
-        $vendors = MasterSupplierModel::orderBy('nama')->get();
+        $vendors = VehicleVendor::orderBy('name')->get();
 
         $filterDate = $request->input('date', Carbon::today()->format('Y-m-d'));
 
@@ -209,6 +210,11 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
+
+            $vendorName = trim($request->vendor);
+            if ($vendorName) {
+                VehicleVendor::firstOrCreate(['name' => $vendorName]);
+            }
 
             // Find or create vehicle
             $vehicle = Vehicle::updateOrCreate(
@@ -311,7 +317,8 @@ class VehicleTrackingController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Truk berhasil Check-In dan diarahkan ke ' . $targetLoc->name
+                    'message' => 'Truk berhasil Check-In dan diarahkan ke ' . $targetLoc->name,
+                    'vendors' => VehicleVendor::orderBy('name')->get()
                 ]);
             }
             return redirect()->route('vehicle.monitoring.timbangan')->with('success', 'Truk berhasil Check-In dan diarahkan ke ' . $targetLoc->name);
@@ -920,6 +927,11 @@ class VehicleTrackingController extends Controller
 
             $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
 
+            $vendorName = trim($request->vendor);
+            if ($vendorName) {
+                VehicleVendor::firstOrCreate(['name' => $vendorName]);
+            }
+
             // Find or create vehicle
             $vehicle = Vehicle::updateOrCreate(
                 ['no_pol' => $noPol],
@@ -975,7 +987,8 @@ class VehicleTrackingController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Data transaksi berhasil diperbarui.'
+                    'message' => 'Data transaksi berhasil diperbarui.',
+                    'vendors' => VehicleVendor::orderBy('name')->get()
                 ]);
             }
             $redirectUrl = route('vehicle.monitoring.timbangan');
@@ -1039,7 +1052,9 @@ class VehicleTrackingController extends Controller
     public function masterItemsIndex()
     {
         $items = VehicleItem::orderBy('id')->get();
-        return view('vehicle.monitoring.master_items', compact('items'));
+        $locations = Location::orderBy('id')->get();
+        $vendors = VehicleVendor::orderBy('id')->get();
+        return view('vehicle.monitoring.master_items', compact('items', 'locations', 'vendors'));
     }
 
     /**
@@ -1090,6 +1105,128 @@ class VehicleTrackingController extends Controller
             return redirect()->route('vehicle.monitoring.master.items')->with('success', 'Item SKU berhasil dihapus.');
         } catch (\Exception $e) {
             return redirect()->route('vehicle.monitoring.master.items')->with('error', 'Gagal menghapus Item SKU: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Store Master Sloc.
+     */
+    public function masterSlocStore(Request $request)
+    {
+        $request->validate([
+            's_loc' => 'required|string|max:50|unique:locations,s_loc',
+            'name' => 'required|string|max:100',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        Location::create([
+            's_loc' => strtoupper($request->s_loc),
+            'name' => $request->name,
+            'description' => $request->description,
+        ]);
+
+        return redirect()->route('vehicle.monitoring.master.items')
+            ->with('success', 'Sloc berhasil ditambahkan.')
+            ->with('tab', 'sloc');
+    }
+
+    /**
+     * Update Master Sloc.
+     */
+    public function masterSlocUpdate(Request $request, $id)
+    {
+        $request->validate([
+            's_loc' => 'required|string|max:50|unique:locations,s_loc,' . $id,
+            'name' => 'required|string|max:100',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $location = Location::findOrFail($id);
+        $location->update([
+            's_loc' => strtoupper($request->s_loc),
+            'name' => $request->name,
+            'description' => $request->description,
+        ]);
+
+        return redirect()->route('vehicle.monitoring.master.items')
+            ->with('success', 'Sloc berhasil diperbarui.')
+            ->with('tab', 'sloc');
+    }
+
+    /**
+     * Delete Master Sloc.
+     */
+    public function masterSlocDestroy($id)
+    {
+        try {
+            $location = Location::findOrFail($id);
+            $location->delete();
+            return redirect()->route('vehicle.monitoring.master.items')
+                ->with('success', 'Sloc berhasil dihapus.')
+                ->with('tab', 'sloc');
+        } catch (\Exception $e) {
+            return redirect()->route('vehicle.monitoring.master.items')
+                ->with('error', 'Gagal menghapus Sloc: ' . $e->getMessage())
+                ->with('tab', 'sloc');
+        }
+    }
+
+    /**
+     * Store Master Vendor.
+     */
+    public function masterVendorStore(Request $request)
+    {
+        $request->validate([
+            'vendor_name' => 'required|string|max:100|unique:vehicle_vendors,name',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        VehicleVendor::create([
+            'name' => $request->vendor_name,
+            'description' => $request->description,
+        ]);
+
+        return redirect()->route('vehicle.monitoring.master.items')
+            ->with('success', 'Vendor berhasil ditambahkan.')
+            ->with('tab', 'vendor');
+    }
+
+    /**
+     * Update Master Vendor.
+     */
+    public function masterVendorUpdate(Request $request, $id)
+    {
+        $request->validate([
+            'vendor_name' => 'required|string|max:100|unique:vehicle_vendors,name,' . $id,
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $vendor = VehicleVendor::findOrFail($id);
+        $vendor->update([
+            'name' => $request->vendor_name,
+            'description' => $request->description,
+        ]);
+
+        return redirect()->route('vehicle.monitoring.master.items')
+            ->with('success', 'Vendor berhasil diperbarui.')
+            ->with('tab', 'vendor');
+    }
+
+    /**
+     * Delete Master Vendor.
+     */
+    public function masterVendorDestroy($id)
+    {
+        try {
+            $vendor = VehicleVendor::findOrFail($id);
+            $vendor->delete();
+            return redirect()->route('vehicle.monitoring.master.items')
+                ->with('success', 'Vendor berhasil dihapus.')
+                ->with('tab', 'vendor');
+        } catch (\Exception $e) {
+            return redirect()->route('vehicle.monitoring.master.items')
+                ->with('error', 'Gagal menghapus Vendor: ' . $e->getMessage())
+                ->with('tab', 'vendor');
         }
     }
 
