@@ -209,6 +209,13 @@
                                 <span id="pendingApprovalBadge" class="badge bg-warning text-dark ms-1">0</span>
                             </button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pallet-counter-tab" data-bs-toggle="pill"
+                                data-bs-target="#tabPalletCounter" type="button" role="tab"
+                                aria-controls="tabPalletCounter" aria-selected="false">
+                                <i class="mdi mdi-counter me-1"></i> Pallet Counter
+                            </button>
+                        </li>
                     </ul>
 
                     <div class="tab-content">
@@ -303,6 +310,49 @@
                             <div id="approval_empty_state" class="text-center py-5" style="display:none;">
                                 <i class="mdi mdi-check-circle-outline text-success" style="font-size: 56px;"></i>
                                 <p class="text-muted mb-0">Tidak ada approval yang masih pending.</p>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tabPalletCounter" role="tabpanel"
+                            aria-labelledby="pallet-counter-tab">
+                            <div class="row g-3 mb-3" id="palletCounterStats">
+                                <div class="col-md-3 col-6">
+                                    <div class="approval-stat bg-soft-primary">
+                                        <div class="text-primary small mb-2 fw-semibold">Total Pallet Terhitung</div>
+                                        <div class="stat-value text-primary" id="sumPalletCount">0</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <div class="approval-stat bg-soft-success">
+                                        <div class="text-success small mb-2 fw-semibold">Total Box</div>
+                                        <div class="stat-value text-success" id="sumBoxCount">0</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle shadow-sm rounded-3 text-nowrap"
+                                    id="tablePalletCounter">
+                                    <thead class="bg-soft-info text-dark border-bottom">
+                                        <tr>
+                                            <th class="text-center" style="width: 70px;">No</th>
+                                            <th>MID Barang</th>
+                                            <th>Nama Barang</th>
+                                            <th>UOM</th>
+                                            <th class="text-end">Total Pallet</th>
+                                            <th class="text-end">Total Box</th>
+                                            <th class="text-center" style="width: 100px;">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="palletCounterBody">
+                                        <!-- Data akan dimuat di sini -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div id="pallet_counter_empty_state" class="text-center py-5" style="display:none;">
+                                <i class="mdi mdi-database-off-outline text-muted" style="font-size: 56px;"></i>
+                                <p class="text-muted mb-0">Tidak ada data pallet counter (UOM BOX) untuk opname ini.</p>
                             </div>
                         </div>
                     </div>
@@ -493,13 +543,16 @@
 
                         if (!response.summaries || response.summaries.length === 0) {
                             $('#empty_state').show();
+                            renderPalletCounter(null);
                         } else {
                             renderTable(response);
+                            renderPalletCounter(response);
                         }
                     },
                     error: function(xhr, status, error) {
                         $('#loading_state').hide();
                         renderApprovalSummary(null);
+                        renderPalletCounter(null);
                         $('#tableBody').html(`
                             <tr>
                                 <td colspan="9" class="text-center text-danger py-4">
@@ -915,6 +968,94 @@
 
                 $('#tableBody').html(html);
 
+            }
+
+            function renderPalletCounter(response) {
+                if (!response || !response.details || response.details.length === 0) {
+                    $('#palletCounterBody').html('');
+                    $('#sumPalletCount').text('0');
+                    $('#sumBoxCount').text('0');
+                    $('#tablePalletCounter').closest('.table-responsive').hide();
+                    $('#pallet_counter_empty_state').show();
+                    return;
+                }
+
+                // Filter details for UOM BOX only (case-insensitive)
+                const boxDetails = response.details.filter(item => {
+                    return item.barang && item.barang.uom && item.barang.uom.trim().toUpperCase() === 'BOX';
+                });
+
+                if (boxDetails.length === 0) {
+                    $('#palletCounterBody').html('');
+                    $('#sumPalletCount').text('0');
+                    $('#sumBoxCount').text('0');
+                    $('#tablePalletCounter').closest('.table-responsive').hide();
+                    $('#pallet_counter_empty_state').show();
+                    return;
+                }
+
+                $('#pallet_counter_empty_state').hide();
+                $('#tablePalletCounter').closest('.table-responsive').show();
+
+                // Group by barang_id
+                const grouped = {};
+                boxDetails.forEach(item => {
+                    const barangId = item.barang_id;
+                    const qtyFull = parseFloat(item.qty_full || 0);
+                    const qtyReceh = parseFloat(item.qty_receh || 0);
+                    const qtyBox = parseFloat(item.barang.qty_box || 0);
+
+                    // Pallet used = qty_full + (qty_receh > 0 ? 1 : 0)
+                    const palletCount = qtyFull + (qtyReceh > 0 ? 1 : 0);
+                    // Total boxes = (qty_full * qty_box) + qty_receh
+                    const totalBoxes = (qtyFull * qtyBox) + qtyReceh;
+
+                    if (!grouped[barangId]) {
+                        grouped[barangId] = {
+                            mid_barang: item.barang.mid_barang,
+                            nama_barang: item.barang.nama_barang,
+                            uom: item.barang.uom || '-',
+                            total_pallet: 0,
+                            total_box: 0
+                        };
+                    }
+                    grouped[barangId].total_pallet += palletCount;
+                    grouped[barangId].total_box += totalBoxes;
+                });
+
+                let html = '';
+                let totalPalletSum = 0;
+                let totalBoxSum = 0;
+                let index = 1;
+
+                for (const barangId in grouped) {
+                    const group = grouped[barangId];
+                    totalPalletSum += group.total_pallet;
+                    totalBoxSum += group.total_box;
+
+                    const matchedSummary = response.summaries ? response.summaries.find(s => s.barang_id == barangId) : null;
+                    const summaryId = matchedSummary ? matchedSummary.id : null;
+                    const detailButton = summaryId ? 
+                        `<button class="btn btn-outline-primary btn-sm" onclick="showDetail(${summaryId})">
+                            <i class="mdi mdi-eye-outline"></i> Detail
+                         </button>` : '';
+
+                    html += `
+                        <tr>
+                            <td class="text-center">${index++}</td>
+                            <td><strong>${escapeHtml(group.mid_barang)}</strong></td>
+                            <td>${escapeHtml(group.nama_barang)}</td>
+                            <td>${escapeHtml(group.uom)}</td>
+                            <td class="text-end fw-semibold text-primary">${formatNumber(group.total_pallet)}</td>
+                            <td class="text-end fw-semibold text-success">${formatNumber(group.total_box)}</td>
+                            <td class="text-center">${detailButton}</td>
+                        </tr>
+                    `;
+                }
+
+                $('#palletCounterBody').html(html);
+                $('#sumPalletCount').text(formatNumber(totalPalletSum));
+                $('#sumBoxCount').text(formatNumber(totalBoxSum));
             }
 
             window.showDetail = function(summaryId) {
