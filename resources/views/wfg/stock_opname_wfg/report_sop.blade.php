@@ -1005,8 +1005,8 @@
                     const qtyReceh = parseFloat(item.qty_receh || 0);
                     const qtyBox = parseFloat(item.barang.qty_box || 0);
 
-                    // Pallet used = 1 row counts as 1 pallet
-                    const palletCount = 1;
+                    // Pallet used = sum of qty_full + (1 if qty_receh > 0)
+                    const palletCount = qtyFull + (qtyReceh > 0 ? 1 : 0);
                     // Total boxes = (qty_full * qty_box) + qty_receh
                     const totalBoxes = (qtyFull * qtyBox) + qtyReceh;
 

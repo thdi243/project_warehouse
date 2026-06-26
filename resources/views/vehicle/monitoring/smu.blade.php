@@ -23,7 +23,8 @@
                 <div class="col-12">
                     <div class="card shadow-sm border-0">
                         <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
-                            <h4 class="card-title mb-0 flex-grow-1"><i class="ri-database-2-line me-2 align-middle text-warning"></i>Antrian Data SMU Area</h4>
+                            <h4 class="card-title mb-0 flex-grow-1"><i
+                                    class="ri-database-2-line me-2 align-middle text-warning"></i>Antrian Data SMU Area</h4>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -33,7 +34,7 @@
                                             <th>Antrian</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            <th>Item / SKU</th>
+                                            <th>Item</th>
                                             <th>No. SPB / Qty</th>
                                             <th>Waktu Tiba</th>
                                             <th>Durasi Aktivitas</th>
@@ -64,28 +65,30 @@
                     const startTimestamp = parseInt($(this).data('start'));
                     const nowTimestamp = Math.floor(Date.now() / 1000);
                     const diffSeconds = nowTimestamp - startTimestamp;
-                    
+
                     const hours = Math.floor(diffSeconds / 3600);
                     const minutes = Math.floor((diffSeconds % 3600) / 60);
                     const seconds = diffSeconds % 60;
-                    
+
                     let timeStr = '';
                     if (hours > 0) {
                         timeStr += hours + 'j ';
                     }
                     timeStr += minutes + 'm ' + seconds + 'd';
-                    
+
                     $(this).text(timeStr);
-                    
+
                     // Highlight if waiting too long (e.g. over 30 mins limit in SMU)
                     if (minutes >= 30) {
-                        $(this).removeClass('bg-soft-light text-muted').addClass('bg-soft-danger text-danger border border-danger-subtle');
+                        $(this).removeClass('bg-soft-light text-muted').addClass(
+                            'bg-soft-danger text-danger border border-danger-subtle');
                     } else if (minutes >= 20) {
-                        $(this).removeClass('bg-soft-light text-muted').addClass('bg-soft-warning text-warning');
+                        $(this).removeClass('bg-soft-light text-muted').addClass(
+                            'bg-soft-warning text-warning');
                     }
                 });
             }
-            
+
             // AJAX Data Loader
             function loadSmuData() {
                 $.ajax({
@@ -103,10 +106,7 @@
                                     <td class="text-center fw-bold" width="80">#${index + 1}</td>
                                     <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
                                     <td>${tx.vendor || '-'}</td>
-                                    <td>
-                                        <strong>${tx.item_name}</strong><br>
-                                        <small class="text-muted">${tx.sku}</small>
-                                    </td>
+                                    <td>${tx.item_name}</td>
                                     <td>
                                         <strong>${tx.no_spb}</strong><br>
                                         <small class="text-muted">${tx.qty_spb}</small>
@@ -164,7 +164,7 @@
             $(document).on('click', '.btn-complete-smu', function() {
                 const id = $(this).data('id');
                 const nopol = $(this).data('nopol');
-                
+
                 Swal.fire({
                     title: 'Selesai di SMU?',
                     text: `Apakah truk ${nopol} telah menyelesaikan proses di SMU?`,
@@ -183,14 +183,16 @@
                                 _token: "{{ csrf_token() }}"
                             },
                             success: function(response) {
-                                Swal.fire('Selesai!', response.message, 'success').then(() => {
-                                    $(`#row-${id}`).fadeOut(300, function() {
-                                        loadSmuData();
+                                Swal.fire('Selesai!', response.message, 'success').then(
+                                    () => {
+                                        $(`#row-${id}`).fadeOut(300, function() {
+                                            loadSmuData();
+                                        });
                                     });
-                                });
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal memproses permintaan.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal memproses permintaan.', 'error');
                             }
                         });
                     }
