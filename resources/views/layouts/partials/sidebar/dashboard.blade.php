@@ -52,6 +52,13 @@
                             <i class="mdi mdi-truck-cargo-container"></i>Bongkar Muat WFG </a>
                     </li>
                 @endcan
+                @can('permission', 'vehicle-monitoring-menu')
+                    <li class="nav-item">
+                        <a href="{{ route('dashboard.vehicle') }}"
+                            class="nav-link {{ request()->routeIs('dashboard.vehicle') ? 'active' : '' }}">
+                            <i class="mdi mdi-truck-delivery"></i> Monitoring Kendaraan </a>
+                    </li>
+                @endcan
             </ul>
         </div>
     </li>

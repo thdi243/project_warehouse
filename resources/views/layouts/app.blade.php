@@ -564,11 +564,11 @@
                     });
                 });
 
-                fetchNotifications(true);
+                // fetchNotifications(true);
 
-                setInterval(() => {
-                    fetchNotifications(true);
-                }, 180000);
+                // setInterval(() => {
+                //     fetchNotifications(true);
+                // }, 180000);
 
                 function setupRealtimeNotifications() {
                     // Check if Echo is loaded from CDN and not yet initialized
@@ -578,10 +578,12 @@
                         window.Echo = new window.Echo({
                             broadcaster: 'reverb',
                             key: '{{ config('broadcasting.connections.reverb.key') }}',
-                            wsHost: '{{ config('broadcasting.connections.reverb.options.host') }}' || window.location.hostname,
+                            wsHost: '{{ config('broadcasting.connections.reverb.options.host') }}' || window
+                                .location.hostname,
                             wsPort: {{ config('broadcasting.connections.reverb.options.port', 8080) }},
                             wssPort: {{ config('broadcasting.connections.reverb.options.port', 8080) }},
-                            forceTLS: '{{ config('broadcasting.connections.reverb.options.scheme', 'http') }}' === 'https',
+                            forceTLS: '{{ config('broadcasting.connections.reverb.options.scheme', 'http') }}' ===
+                                'https',
                             enabledTransports: ['ws', 'wss'],
                         });
                     }
@@ -590,7 +592,7 @@
                         const currentUserId = $('meta[name="current-user-id"]').attr('content');
                         if (!currentUserId) return;
 
-                        console.log('connecting to channel...');
+                        // console.log('connecting to channel...');
 
                         window.Echo.channel('portal-notifications')
                             .subscribed(() => {
@@ -600,9 +602,9 @@
                                 console.log('SUBSCRIBE ERROR:', err);
                             })
                             .listen('.new-notification', (payload) => {
-                                console.log('REVERB TRIGGERED:', payload);
-                                console.log('Realtime notification received (Blade):', payload);
-                                console.log('RAW PAYLOAD:', payload);
+                                // console.log('REVERB TRIGGERED:', payload);
+                                // console.log('Realtime notification received (Blade):', payload);
+                                // console.log('RAW PAYLOAD:', payload);
                                 const userId = payload.user_id || (payload.data && payload.data.user_id);
                                 if (userId && parseInt(userId) === parseInt(currentUserId)) {
                                     // Parse notification object from payload

@@ -60,6 +60,7 @@
 
                         @if (auth()->user()->hasAnyPermission(['tkbm', 'wsp-menu', 'p2h', 'wfg-menu', 'wrm-menu']))
                             <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
+                            @include('layouts.partials.sidebar.vehicle_monitoring')
                             @include('layouts.partials.sidebar.tkbm')
                             @include('layouts.partials.sidebar.wsp')
                             @include('layouts.partials.sidebar.p2h')
@@ -85,7 +86,7 @@
                         @include('layouts.partials.sidebar.dashboard')
 
                         <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
-
+                        @include('layouts.partials.sidebar.vehicle_monitoring')
                         @include('layouts.partials.sidebar.tkbm')
                         @include('layouts.partials.sidebar.wsp')
                         @include('layouts.partials.sidebar.p2h')
