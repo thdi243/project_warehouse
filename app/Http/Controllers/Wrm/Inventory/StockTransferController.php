@@ -35,223 +35,187 @@ class StockTransferController extends Controller
             $sheet = IOFactory::load($request->file('file'))->getActiveSheet();
             $rows = $sheet->toArray();
 
-            unset($rows[0]); // remove header
+            unset($rows[0]); // remove header row
 
             $errors = [];
-            $headerTracker = []; // To keep track of created headers by No. Reservasi
+            $headerTracker = []; // track created StockTransfer headers per reservasi key
             $processedCount = 0;
+
+            // MIDs yang memerlukan BA sebelum dianggap ISSUED
+            $ba_waiting_mids = ['20000812', '20000860', '20001270'];
 
             foreach ($rows as $i => $row) {
                 $line = $i + 1;
 
-                // Template Mapping (22 columns)
-                $noUrut = trim($row[0] ?? '');
-                $noBa = trim($row[1] ?? '');
-                $tglBaRaw = trim($row[2] ?? '');
-                $matdocScrup = trim($row[3] ?? '');
-                $matdocYear = trim($row[4] ?? '');
-                $tglGrRaw = trim($row[5] ?? '');
-                $tglResRaw = trim($row[6] ?? '');
-                $noReservasi = trim($row[7] ?? '');
-                $tglGiRaw = trim($row[8] ?? '');
-                $matdocGi = trim($row[9] ?? '');
-                $plant = trim($row[10] ?? '');
-                $sloc = trim($row[11] ?? '');
-                $matId = trim($row[12] ?? '');
+                // --- Template Mapping (22 columns) ---
+                $noUrut      = trim($row[0]  ?? '');
+                $noBa        = trim($row[1]  ?? '');
+                $tglBaRaw    = trim($row[2]  ?? '');
+                $matdocScrup = trim($row[3]  ?? '');
+                $matdocYear  = trim($row[4]  ?? '');
+                $tglGrRaw    = trim($row[5]  ?? '');
+                $tglResRaw   = trim($row[6]  ?? '');
+                $noReservasi = trim($row[7]  ?? '');
+                $tglGiRaw    = trim($row[8]  ?? '');
+                $matdocGi    = trim($row[9]  ?? '');
+                $plant       = trim($row[10] ?? '');
+                $sloc        = trim($row[11] ?? '');
+                $matId       = trim($row[12] ?? '');
                 // $matDesc  = trim($row[13] ?? '');
-                $noBarcode = trim($row[14] ?? '');
-                $grade = trim($row[15] ?? '');
-                $qtyBarcode = $row[16] ?? 0;
-                $qtyActual = $row[17] ?? 0;
-                $qtySusut = $row[18] ?? 0;
-                $uom = trim($row[19] ?? '');
-                $lamaSimpan = (int) ($row[20] ?? 0);
+                $noBarcode   = trim($row[14] ?? '');
+                $grade       = trim($row[15] ?? '');
+                $qtyBarcode  = $row[16] ?? 0;
+                $qtyActual   = $row[17] ?? 0;
+                $qtySusut    = $row[18] ?? 0;
+                $uom         = trim($row[19] ?? '');
+                $lamaSimpan  = (int) ($row[20] ?? 0);
                 $persenSusut = $row[21] ?? 0;
 
+                // Skip baris kosong
                 if (empty($noBarcode) || empty($matId)) {
-                    continue; // skip empty rows
+                    continue;
                 }
 
-                // Parse Dates
+                // Parse tanggal dan angka
                 $tglBa = $this->parseDate($tglBaRaw);
                 $tglGr = $this->parseDate($tglGrRaw);
                 $tglRes = $this->parseDate($tglResRaw);
                 $tglGi = $this->parseDate($tglGiRaw);
 
-                // Parse Numbers
-                $qtyBarcode = $this->parseNumber($qtyBarcode);
-                $qtyActual = $this->parseNumber($qtyActual);
-                $qtySusut = $this->parseNumber($qtySusut);
+                $qtyBarcode  = $this->parseNumber($qtyBarcode);
+                $qtyActual   = $this->parseNumber($qtyActual);
+                $qtySusut    = $this->parseNumber($qtySusut);
                 $persenSusut = $this->parseNumber($persenSusut);
 
-                // Find Material
+                // 1. Cari material di master barang
                 $barang = MasterBarangModel::where('mid', $matId)->first();
-                if (! $barang) {
-                    $errors[] = "Baris {$line}: Material ID {$matId} tidak ditemukan";
-
+                if (!$barang) {
+                    $errors[] = "Baris {$line}: Material ID {$matId} tidak ditemukan.";
                     continue;
                 }
 
-                // 0. Check if this barcode already exists in History
-                $exists = StockTransferDetail::where('no_barcode', $noBarcode)->exists();
-                if ($exists) {
-                    $errors[] = "Baris {$line}: No. Barcode {$noBarcode} sudah pernah diproses/disimpan dalam history transfer.";
-
+                // 2. Cek duplikat barcode di history transfer
+                $alreadyInTransfer = StockTransferDetail::where('no_barcode', $noBarcode)->exists();
+                if ($alreadyInTransfer) {
+                    $errors[] = "Baris {$line}: Barcode {$noBarcode} sudah pernah diproses dalam history transfer.";
                     continue;
                 }
 
-                // --- INTEGRATION WITH SOH (INBOUND) ---
-                // 1. Find the Inbound Detail to see current status
-                $stockOnHand = StockOnHand::where('barcode', $noBarcode)
-                    ->where('barang_id', $barang->id)
-                    ->first();
+                // 3. Cari Draft Outbound Detail yang cocok (BA WAITING)
+                //    Normalize no_reservasi: hapus leading zero agar '0204539418' == '204539418'
+                $noReservasiNormalized = ltrim((string) $noReservasi, '0') ?: $noReservasi;
 
-                if (! $stockOnHand) {
-                    $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Stock On Hand.";
-
-                    continue;
-                }
-
-                // --- HEADER AND DERIVATIONS ---
-                // Derive no_spb from barcode (first 10 chars)
-                $noSpbFromBarcode = substr($noBarcode, 0, 10);
-
-                $headerKey = "{$matdocGi}|{$noBa}|{$noReservasi}";
-
-                // 1. Get or Create Header
-                if (! isset($headerTracker[$headerKey])) {
-                    $headerTracker[$headerKey] = StockTransfer::create([
-                        'no_ba' => $noBa,
-                        'tgl_ba' => $tglBa,
-                        'no_reservasi' => $noReservasi,
-                        'tgl_reservasi' => $tglRes,
-                        'tgl_gi' => $tglGi,
-                        'matdoc_gi' => $matdocGi,
-                        'created_by' => Auth::id(),
-                    ]);
-                }
-                $header = $headerTracker[$headerKey];
-
-                // 2. Create Detail
-                $detail = StockTransferDetail::create([
-                    'transfer_id' => $header->id,
-                    'matdoc_scrup' => $matdocScrup,
-                    'matdoc_year' => $matdocYear,
-                    'no_spb' => $noSpbFromBarcode,
-                    'plant' => $plant,
-                    'sloc' => $sloc,
-                    'barang_id' => $barang->id,
-                    'no_barcode' => $noBarcode,
-                    'tgl_gr' => $tglGr,
-                    'grade' => $grade,
-                    'qty_barcode' => $qtyBarcode,
-                    'qty_actual' => $qtyActual,
-                    'qty_susut_simpan' => $qtySusut,
-                    'uom' => $uom,
-                    'lama_simpan' => $lamaSimpan,
-                    'persen_susut' => $persenSusut,
-                    'created_by' => Auth::id(),
-                ]);
-
-                // --- INVENTORY UPDATES (MOVEMENT & BALANCE) ---
-                if ($stockOnHand) {
-                    $bin = $stockOnHand->bin;
-                    if ($bin) {
-                        $locId = $bin->loc_id;
-
-                        // Decrement Stock Balance
-                        $balance = StockBalance::where('barang_id', $barang->id)
-                            ->where('loc_id', $locId)
-                            ->first();
-
-                        if ($balance) {
-                            $balance->decrement('qty', $qtyActual);
-                            $balance->update(['updated_by' => Auth::id()]);
-                        }
-
-                        // Record Stock Movement (out)
-                        StockMovement::create([
-                            'barang_id' => $barang->id,
-                            'loc_id' => $locId,
-                            'tanggal' => $tglGi ?? now(),
-                            'qty' => $qtyActual, // Dashboard uses positive sums
-                            'jenis' => 'out',
-                            'ref_type' => 'stock_transfer',
-                            'ref_id' => $detail->id,
-                            'created_by' => Auth::id(),
-                        ]);
-
-                        // Delete or Update Inbound Status based on MID exceptions
-                        $ba_waiting_mids = ['20000812', '20000860', '20001270'];
-                        $calculatedStatus = in_array(trim((string)$barang->mid), $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
-
-                        if ($calculatedStatus === 'ISSUED') {
-                            $stockOnHand->delete();
-                        } else {
-                            $stockOnHand->update([
-                                'status' => 'BA WAITING',
-                                'updated_by' => Auth::id(),
-                            ]);
-                        }
-                    }
-                }
-                // ----------------------------------------------
-
-                // --- INTEGRATION WITH DRAFT OUTBOUND ---
-                // Find matching draft outbound detail
                 $draftDetail = StockOutboundDetail::where('barcode', $noBarcode)
                     ->where('barang_id', $barang->id)
-                    ->whereHas('outbound', function ($q) use ($noReservasi, $tglRes) {
-                        $q->where('no_reservasi', $noReservasi);
-                        // if ($tglRes) {
-                        //     $q->whereDate('reservasi_date', $tglRes);
-                        // }
+                    ->where('status', 'BA WAITING')
+                    ->whereHas('outbound', function ($q) use ($noReservasiNormalized) {
+                        $q->whereRaw("CAST(no_reservasi AS SIGNED) = ?", [(int) $noReservasiNormalized]);
                     })
                     ->first();
 
-                if ($draftDetail) {
-                    $ba_waiting_mids = ['20000812', '20000860', '20001270'];
-                    $calculatedStatus = in_array(trim((string)$barang->mid), $ba_waiting_mids) ? 'BA WAITING' : 'ISSUED';
-
-                    $draftDetail->update([
-                        'status' => $calculatedStatus,
-                        'updated_by' => Auth::id(),
-                    ]);
-
-                    $outboundHeader = $draftDetail->outbound;
-                    if ($outboundHeader) {
-                        $hasReserved = $outboundHeader->details()->where('status', 'RESERVED')->exists();
-                        if (!$hasReserved) {
-                            $outboundHeader->update([
-                                'status_transfer' => 'COMPLETED',
-                                'updated_by' => Auth::id(),
-                            ]);
-                        }
-                    }
+                if (!$draftDetail) {
+                    $errors[] = "Baris {$line}: Barcode {$noBarcode} tidak ditemukan di Draft Outbound dengan status BA WAITING untuk No. Reservasi {$noReservasi}.";
+                    continue;
                 }
-                // ----------------------------------------------
+
+                // 4. Buat / ambil header StockTransfer (dari file Excel ini)
+                $noSpbFromBarcode = substr($noBarcode, 0, 10);
+                $headerKey = "{$matdocGi}|{$noBa}|{$noReservasi}";
+
+                if (!isset($headerTracker[$headerKey])) {
+                    $headerTracker[$headerKey] = StockTransfer::create([
+                        'no_ba'        => $noBa,
+                        'tgl_ba'       => $tglBa,
+                        'no_reservasi' => $noReservasi,
+                        'tgl_reservasi' => $tglRes,
+                        'tgl_gi'       => $tglGi,
+                        'matdoc_gi'    => $matdocGi,
+                        'created_by'   => Auth::id(),
+                    ]);
+                }
+                $transferHeader = $headerTracker[$headerKey];
+
+                // 5. Buat StockTransferDetail (record dari BA/Excel SAP)
+                $transferDetail = StockTransferDetail::create([
+                    'transfer_id'      => $transferHeader->id,
+                    'matdoc_scrup'     => $matdocScrup,
+                    'matdoc_year'      => $matdocYear,
+                    'no_spb'           => $noSpbFromBarcode,
+                    'plant'            => $plant,
+                    'sloc'             => $sloc,
+                    'barang_id'        => $barang->id,
+                    'no_barcode'       => $noBarcode,
+                    'tgl_gr'           => $tglGr,
+                    'grade'            => $grade,
+                    'qty_barcode'      => $qtyBarcode,
+                    'qty_actual'       => $qtyActual,
+                    'qty_susut_simpan' => $qtySusut,
+                    'uom'              => $uom,
+                    'lama_simpan'      => $lamaSimpan,
+                    'persen_susut'     => $persenSusut,
+                    'created_by'       => Auth::id(),
+                ]);
+
+                // 6. Update StockBalance (kurangi qty) & catat StockMovement (OUT)
+                //    loc_id di draft detail adalah BIN ID, bukan Location ID.
+                //    Harus ambil dari bin->loc_id (sama seperti completeTransfer)
+                $bin   = $draftDetail->bin;
+                $locId = $bin ? $bin->loc_id : null;
+                if ($locId) {
+                    $balance = StockBalance::where('barang_id', $barang->id)
+                        ->where('loc_id', $locId)
+                        ->first();
+
+                    if ($balance) {
+                        $balance->decrement('qty', $qtyActual);
+                        $balance->update(['updated_by' => Auth::id()]);
+                    }
+
+                    StockMovement::create([
+                        'barang_id'  => $barang->id,
+                        'loc_id'     => $locId,
+                        'tanggal'    => $tglGi ?? now(),
+                        'qty'        => $qtyActual,
+                        'jenis'      => 'out',
+                        'ref_type'   => 'stock_transfer',
+                        'ref_id'     => $transferDetail->id,
+                        'created_by' => Auth::id(),
+                    ]);
+                }
+
+                // 7. Update Draft Outbound Detail: BA WAITING → ISSUED
+                $draftDetail->update([
+                    'status'     => 'ISSUED',
+                    'updated_by' => Auth::id(),
+                ]);
+
+                // 8. Hapus SOH via soh_id (yang saat completeTransfer hanya diupdate ke BA WAITING)
+                //    Sekarang BA sudah diterima, SOH bisa dihapus
+                if ($draftDetail->soh_id) {
+                    StockOnHand::where('id', $draftDetail->soh_id)->delete();
+                }
 
                 $processedCount++;
             }
 
-            if (! empty($errors)) {
+            if (!empty($errors)) {
                 throw new \Exception(implode("\n", $errors));
             }
 
             DB::commit();
 
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => "Stock Transfer berhasil diunggah. {$processedCount} data diproses.",
-                'total' => $processedCount,
+                'total'   => $processedCount,
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Gagal memproses upload: ' . $e->getMessage(),
-                'errors' => explode("\n", $e->getMessage()),
+                'errors'  => explode("\n", $e->getMessage()),
             ], 422);
         }
     }
