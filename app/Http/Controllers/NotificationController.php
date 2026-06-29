@@ -287,7 +287,8 @@ class NotificationController extends Controller
 
     public function destroyAll()
     {
-        NotificationsModel::truncate();
+        $userId = Auth::id();
+        NotificationsModel::where('user_id', $userId)->delete();
 
         return response()->json(['status' => 'success', 'message' => 'Semua notifikasi berhasil dihapus']);
     }
