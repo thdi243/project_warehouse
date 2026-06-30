@@ -1,15 +1,13 @@
 @can('permission', 'master-wpm')
     <li class="nav-item">
-        <a class="nav-link menu-link {{ request()->routeIs('wpm.master.*') ? 'collapsed' : '' }}"
-            href="#sidebarMasterWpm" data-bs-toggle="collapse" role="button"
-            aria-expanded="{{ request()->routeIs('wpm.master.*') ? 'true' : 'false' }}"
-            aria-controls="sidebarMasterWpm">
-            <i class="mdi mdi-store-settings"></i>
+        <a class="nav-link menu-link {{ request()->routeIs('wpm.master.*') ? 'collapsed' : '' }}" href="#sidebarMasterWpm"
+            data-bs-toggle="collapse" role="button"
+            aria-expanded="{{ request()->routeIs('wpm.master.*') ? 'true' : 'false' }}" aria-controls="sidebarMasterWpm">
+            <i class="bx bx-package"></i>
             <span data-key="t-stock_op_wpm">Master WPM</span>
         </a>
 
-        <div class="collapse menu-dropdown {{ request()->routeIs('wpm.master.*') ? 'show' : '' }}"
-            id="sidebarMasterWpm">
+        <div class="collapse menu-dropdown {{ request()->routeIs('wpm.master.*') ? 'show' : '' }}" id="sidebarMasterWpm">
             <ul class="nav nav-sm flex-column">
                 @can('permission', 'wpm-master-barang')
                     <li class="nav-item">
