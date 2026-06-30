@@ -2314,10 +2314,11 @@ class StockOpnameWfgController extends Controller
                 throw $e;
             }
 
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Gagal mengekspor data: ' . $e->getMessage(),
-            ], 500);
+            return redirect()->back()->with('error', 'Gagal mengekspor data ' . $e->getMessage());
+            // return response()->json([
+            //     'status' => 'error',
+            //     'message' => 'Gagal mengekspor data: ' . $e->getMessage(),
+            // ], 500);
         }
     }
 

@@ -6,7 +6,7 @@
         <title>Laporan SO WFG</title>
         <style>
             @page {
-                margin: 50px 30px 50px 30px;
+                margin: 30px 30px 30px 30px;
             }
 
             body {
@@ -129,6 +129,14 @@
                     page-break-inside: avoid;
                 }
             }
+
+            .page-number::after {
+                content: counter(page);
+            }
+
+            .page-count::after {
+                content: counter(pages);
+            }
         </style>
     </head>
 
@@ -167,7 +175,7 @@
             <tr>
                 <td class="no-border text-left border-bottom-only">Hal</td>
                 <td class="no-border text-left border-bottom-only" id="page-info">
-                    : 1 of 1</td>
+                    : <span class="page-number"></span> of <span class="page-count"></span></td>
             </tr>
 
             <tr>
