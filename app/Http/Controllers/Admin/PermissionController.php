@@ -32,18 +32,29 @@ class PermissionController extends Controller
 
     public function data(Request $request)
     {
-        $perPage = $request->input('per_page', 15); // default 5 seperti kamu set
+        $perPage = $request->input('per_page', 15);
         $page = $request->input('page', 1);
+        $search = $request->input('search');
 
-        $permissions = Permission::latest()->paginate($perPage, ['*'], 'page', $page);
+        $query = Permission::query();
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('section', 'like', '%' . $search . '%')
+                  ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        $permissions = $query->latest()->paginate($perPage, ['*'], 'page', $page)->withQueryString();
 
         return response()->json([
-            'data' => $permissions->items(),              // array permission
+            'data' => $permissions->items(),
             'current_page' => $permissions->currentPage(),
             'last_page' => $permissions->lastPage(),
             'per_page' => $permissions->perPage(),
             'total' => $permissions->total(),
-            'links' => $permissions->links('pagination::bootstrap-5')->toHtml(), // <-- INI KUNCI! Render jadi HTML string
+            'links' => $permissions->links('pagination::bootstrap-5')->toHtml(),
         ]);
     }
 

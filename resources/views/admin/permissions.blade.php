@@ -13,8 +13,11 @@
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Daftar Permission</h5>
-                    <div id="table-loading" class="spinner-border spinner-border-sm text-primary d-none" role="status">
-                        <span class="visually-hidden">Memuat...</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <div id="table-loading" class="spinner-border spinner-border-sm text-primary d-none" role="status">
+                            <span class="visually-hidden">Memuat...</span>
+                        </div>
+                        <input type="text" id="search-input" class="form-control form-control-sm" placeholder="Cari permission..." style="width: 250px;">
                     </div>
                 </div>
 
@@ -114,11 +117,20 @@
 
             loadTable();
 
+            let searchTimeout = null;
+            $('#search-input').on('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    loadTable(1);
+                }, 300);
+            });
+
             function loadTable(page = 1) {
                 currentPage = page;
                 $('#table-loading').removeClass('d-none');
 
-                let url = "{{ route('admin.permissions.data') }}?page=" + page;
+                let search = $('#search-input').val() || '';
+                let url = "{{ route('admin.permissions.data') }}?page=" + page + "&search=" + encodeURIComponent(search);
 
                 $.get(url, function(response) {
                     let tbody = $('#permission-tbody');
