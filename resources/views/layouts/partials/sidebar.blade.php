@@ -38,7 +38,7 @@
         <div class="container-fluid">
             <div id="two-column-menu">
             </div>
-            @if ($departemen != 'warehouse' && $jabatan != 'admin')
+            @if (!in_array($departemen, ['produksi', 'quality_control', 'engineering', 'warehouse', 'it']))
                 <ul class="navbar-nav" id="navbar-nav">
                     @include('layouts.partials.sidebar-no-warehouse.sidebar_no_warehouse')
 
@@ -50,15 +50,17 @@
                                 'p2h',
                                 'wfg-menu',
                                 'wrm-menu',
+                                'wpm-menu',
                                 'master-wfg',
                                 'master-wsp',
                                 'master-wrm',
+                                'master-wpm',
                                 'manage-users',
                                 'manage-permissions',
                             ]))
                         @include('layouts.partials.sidebar.dashboard')
 
-                        @if (auth()->user()->hasAnyPermission(['tkbm', 'wsp-menu', 'p2h', 'wfg-menu', 'wrm-menu']))
+                        @if (auth()->user()->hasAnyPermission(['tkbm', 'wsp-menu', 'p2h', 'wfg-menu', 'wrm-menu', 'wpm-menu']))
                             <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
                             @include('layouts.partials.sidebar.vehicle_monitoring')
                             @include('layouts.partials.sidebar.tkbm')
@@ -66,13 +68,16 @@
                             @include('layouts.partials.sidebar.p2h')
                             @include('layouts.partials.sidebar.wfg')
                             @include('layouts.partials.sidebar.wrm')
+                            @include('layouts.partials.sidebar.wpm')
+                            @include('layouts.partials.sidebar.wcp')
                         @endif
 
-                        @if (auth()->user()->hasAnyPermission(['master-wfg', 'master-wsp', 'master-wrm']))
+                        @if (auth()->user()->hasAnyPermission(['master-wfg', 'master-wsp', 'master-wrm', 'master-wpm']))
                             <li class="menu-title"><span data-key="t-menu">Data Master</span></li>
                             @include('layouts.partials.sidebar.master_wfg')
                             @include('layouts.partials.sidebar.master_wsp')
                             @include('layouts.partials.sidebar.master_wrm')
+                            @include('layouts.partials.sidebar.master_wpm')
                         @endif
 
                         @include('layouts.partials.sidebar.user')
@@ -92,12 +97,15 @@
                         @include('layouts.partials.sidebar.p2h')
                         @include('layouts.partials.sidebar.wfg')
                         @include('layouts.partials.sidebar.wrm')
+                        @include('layouts.partials.sidebar.wpm')
+                        @include('layouts.partials.sidebar.wcp')
 
                         <li class="menu-title"><span data-key="t-menu">Data Master</span></li>
 
                         @include('layouts.partials.sidebar.master_wfg')
                         @include('layouts.partials.sidebar.master_wsp')
                         @include('layouts.partials.sidebar.master_wrm')
+                        @include('layouts.partials.sidebar.master_wpm')
 
                         @include('layouts.partials.sidebar.user')
                         @include('layouts.partials.sidebar.permissions')
