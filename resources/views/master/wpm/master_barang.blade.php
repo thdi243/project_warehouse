@@ -110,7 +110,7 @@
                 <div class="modal-body">
                     <div class="d-grid gap-2 mb-3">
                         <small class="fst-italic">Belum punya template?</small>
-                        <a href="{{ route('wpm.master.barang.template') }}" class="btn btn-outline-success">
+                        <a href="{{ route('master.wpm.barang.template') }}" class="btn btn-outline-success">
                             <i class="mdi mdi-download"></i> Download Template
                         </a>
                     </div>
@@ -141,7 +141,7 @@
 
             function loadData(page = 1, search = '') {
                 currentPage = page;
-                $.get(`{{ route('wpm.master.barang.get-data') }}`, {
+                $.get(`{{ route('master.wpm.barang.get-data') }}`, {
                     page: page,
                     search: search
                 }, function(res) {
@@ -181,20 +181,24 @@
 
                 if (data.current_page > 1) {
                     html += `<li class="page-item"><a class="page-link" href="#" data-page="1">First</a></li>`;
-                    html += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
+                    html +=
+                        `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
                 }
 
                 for (let i = 1; i <= data.last_page; i++) {
                     if (i === data.current_page) {
                         html += `<li class="page-item active"><a class="page-link" href="#">${i}</a></li>`;
                     } else if (i >= data.current_page - 2 && i <= data.current_page + 2) {
-                        html += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+                        html +=
+                        `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
                     }
                 }
 
                 if (data.current_page < data.last_page) {
-                    html += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
-                    html += `<li class="page-item"><a class="page-link" href="#" data-page="${data.last_page}">Last</a></li>`;
+                    html +=
+                        `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
+                    html +=
+                        `<li class="page-item"><a class="page-link" href="#" data-page="${data.last_page}">Last</a></li>`;
                 }
 
                 $('#pagination').html(html);
@@ -234,7 +238,7 @@
                 e.preventDefault();
 
                 let id = $('#id').val();
-                let url = `{{ route('wpm.master.barang.store') }}`;
+                let url = `{{ route('master.wpm.barang.store') }}`;
                 let method = 'POST';
 
                 if (id) {
@@ -311,7 +315,7 @@
                     });
 
                     $.ajax({
-                        url: `{{ route('wpm.master.barang.upload') }}`,
+                        url: `{{ route('master.wpm.barang.upload') }}`,
                         method: 'POST',
                         data: formData,
                         processData: false,

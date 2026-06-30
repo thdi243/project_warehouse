@@ -179,13 +179,13 @@
             <thead>
                 <tr>
                     <th style="width: 5%;">No</th>
-                    <th style="width: 15%;">MID</th>
-                    <th style="width: 35%;">Nama Barang</th>
+                    <th style="width: 13%;">MID</th>
+                    <th style="width: 30%;">Nama Barang</th>
                     <th style="width: 5%;">Uom</th>
-                    <th style="width: 10%;">SAP</th>
-                    <th style="width: 10%;">Fisik</th>
-                    <th style="width: 10%;">Selisih</th>
-                    <th style="width: 15%;">Keterangan</th>
+                    <th style="width: 8%;">SAP</th>
+                    <th style="width: 8%;">Fisik</th>
+                    <th style="width: 8%;">Selisih</th>
+                    <th style="width: 28%;">Keterangan</th>
                 </tr>
             </thead>
 
