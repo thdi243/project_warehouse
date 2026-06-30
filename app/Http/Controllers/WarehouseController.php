@@ -15,6 +15,10 @@ use App\Models\Wfg\stock_opname\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
 use App\Models\Wfg\stock_opname\WfgSopModel;
 use App\Models\Wfg\stock_opname\WfgSopStatusModel;
+use App\Models\Wrm\StockOpname\WrmSohModel;
+use App\Models\Wrm\StockOpname\WrmSoModel;
+use App\Models\Wrm\StockOpname\WrmSoStatusModel;
+use App\Models\Wrm\MasterBarangModel;
 
 class WarehouseController extends Controller
 {
@@ -336,6 +340,58 @@ class WarehouseController extends Controller
             return view('stock_opname_wfg.report_sop', compact('principals', 'warning_message', 'url'));
         }
         return view('wfg.stock_opname_wfg.report_sop', compact('principals'));
+    }
+
+    public function uploadSOHWRM()
+    {
+        $barangCount = MasterBarangModel::count();
+        $error_message = session('error');
+
+        return view('wrm.stock_opname.upload_soh', compact('barangCount', 'error_message'));
+    }
+
+    public function formSOWRM()
+    {
+        $today = Carbon::today()->format('Y-m-d');
+        $sohExists = WrmSohModel::whereDate('created_at', $today)->exists();
+
+        if (!$sohExists) {
+            return redirect()->route('wrm.stock_opname.soh')
+                ->with('error', "Data Stock On Hand (SOH) WRM pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
+        }
+
+        return view('wrm.stock_opname.form');
+    }
+
+    public function reportSOWRM()
+    {
+        return view('wrm.stock_opname.report');
+    }
+
+    public function uploadSOHWPM()
+    {
+        $barangCount = \App\Models\Wpm\WpmMasterBarangModel::count();
+        $error_message = session('error');
+
+        return view('wpm.stock_opname.upload_soh', compact('barangCount', 'error_message'));
+    }
+
+    public function formSOWPM()
+    {
+        $today = Carbon::today()->format('Y-m-d');
+        $sohExists = \App\Models\Wpm\StockOpname\WpmSohModel::whereDate('created_at', $today)->exists();
+
+        if (!$sohExists) {
+            return redirect()->route('wpm.stock_opname.soh')
+                ->with('error', "Data Stock On Hand (SOH) WPM pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
+        }
+
+        return view('wpm.stock_opname.form');
+    }
+
+    public function reportSOWPM()
+    {
+        return view('wpm.stock_opname.report');
     }
 
     public function viewStockMove()

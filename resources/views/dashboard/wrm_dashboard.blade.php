@@ -483,7 +483,7 @@
             </div>
 
             {{-- Tables Row --}}
-            <div class="row mb-4">
+            {{-- <div class="row mb-4">
                 <div class="col-12">
                     <div class="card dashboard-card h-100 p-0 overflow-hidden">
                         <div class="card-header border-bottom p-3 d-flex align-items-center gap-2">
@@ -513,7 +513,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> --}}
 
             {{-- Warehouse Location Map --}}
             <div class="row mt-2" id="sectionLocationMap">
@@ -628,9 +628,10 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Pagination Container -->
-                    <div class="d-flex justify-content-between align-items-center mt-3 d-none" id="agingPaginationContainer">
+                    <div class="d-flex justify-content-between align-items-center mt-3 d-none"
+                        id="agingPaginationContainer">
                         <div class="text-muted small" id="agingPaginationInfo">
                             Showing 0 to 0 of 0 entries
                         </div>
@@ -1299,7 +1300,7 @@
                 fetchChartPie(params);
                 fetchChartBar(params);
                 fetchChartAging(params);
-                fetchTableRecent(params);
+                // fetchTableRecent(params);
                 fetchLocationLayout(params);
             }
 
@@ -1320,6 +1321,7 @@
             });
 
             var modalAgingDetailInstance = null;
+
             function openAgingDetail(range, page = 1) {
                 $('#agingRangeTitle').text(range);
                 const $tbody = $('#tableAgingDetail tbody');
@@ -1412,7 +1414,8 @@
                 const $info = $('#agingPaginationInfo');
                 const $pagination = $('#agingPagination');
 
-                $info.text(`Showing ${paginator.from || 0} to ${paginator.to || 0} of ${paginator.total || 0} entries`);
+                $info.text(
+                    `Showing ${paginator.from || 0} to ${paginator.to || 0} of ${paginator.total || 0} entries`);
                 $pagination.empty();
 
                 if (paginator.last_page <= 1) {
@@ -1442,7 +1445,8 @@
                         </li>
                     `);
                     if (startPage > 2) {
-                        $pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                        $pagination.append(
+                        `<li class="page-item disabled"><span class="page-link">...</span></li>`);
                     }
                 }
 
@@ -1457,7 +1461,8 @@
 
                 if (endPage < paginator.last_page) {
                     if (endPage < paginator.last_page - 1) {
-                        $pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                        $pagination.append(
+                        `<li class="page-item disabled"><span class="page-link">...</span></li>`);
                     }
                     $pagination.append(`
                         <li class="page-item">
@@ -1468,7 +1473,8 @@
 
                 // Next button
                 let nextDisabled = paginator.current_page === paginator.last_page ? 'disabled' : '';
-                let nextPage = paginator.current_page < paginator.last_page ? paginator.current_page + 1 : paginator.last_page;
+                let nextPage = paginator.current_page < paginator.last_page ? paginator.current_page + 1 : paginator
+                    .last_page;
                 $pagination.append(`
                     <li class="page-item ${nextDisabled}">
                         <a class="page-link" href="#" data-page="${nextPage}">&raquo;</a>

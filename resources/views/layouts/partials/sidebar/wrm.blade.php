@@ -1,11 +1,11 @@
 @can('permission', 'wrm-menu')
     <li class="nav-item">
-        <a class="nav-link menu-link {{ request()->routeIs('wrm.inventory.*') ? '' : 'collapsed' }}" href="#sideBarWrmStock"
-            data-bs-toggle="collapse" role="button"
-            aria-expanded="{{ request()->routeIs('wrm.inventory.*') ? 'true' : 'false' }}" aria-controls="sideBarWrmStock">
-            <i class="mdi mdi-cube-outline"></i><span data-key="t-wrm.inventory">WRM</span>
+        <a class="nav-link menu-link {{ request()->routeIs('wrm.*') ? '' : 'collapsed' }}" href="#sideBarWrmStock"
+            data-bs-toggle="collapse" role="button" aria-expanded="{{ request()->routeIs('wrm.*') ? 'true' : 'false' }}"
+            aria-controls="sideBarWrmStock">
+            <i class="mdi mdi-cube-outline"></i><span data-key="t-wrm">WRM</span>
         </a>
-        <div class="collapse menu-dropdown {{ request()->routeIs('wrm.inventory.*') ? 'show' : '' }}" id="sideBarWrmStock">
+        <div class="collapse menu-dropdown {{ request()->routeIs('wrm.*') ? 'show' : '' }}" id="sideBarWrmStock">
             <ul class="nav nav-sm flex-column">
                 @can('permission', 'wrm-inventory-upload')
                     <li class="nav-item">
@@ -91,6 +91,46 @@
                             class="nav-link menu-link {{ request()->routeIs('wrm.inventory.monitoring.purchasing.index') ? 'active' : '' }}">
                             <i class="bx bx-git-commit fs-12"></i>Monitoring Purchasing
                         </a>
+                    </li>
+                @endcan
+
+                @can('permission', 'stock-opname-wrm')
+                    <li class="nav-item">
+                        <a href="#sidebarWRMSO" data-bs-toggle="collapse" role="button"
+                            class="nav-link {{ request()->routeIs('wrm.stock_opname.*') ? '' : 'collapsed' }}"
+                            aria-expanded="{{ request()->routeIs('wrm.stock_opname.*') ? 'true' : 'false' }}"
+                            aria-controls="sidebarWRMSO">
+                            <i class="bx bx-git-commit fs-12"></i> Stock Opname
+                        </a>
+                        <div class="collapse menu-dropdown {{ request()->routeIs('wrm.stock_opname.*') ? 'show' : '' }}"
+                            id="sidebarWRMSO">
+                            <ul class="nav nav-sm flex-column">
+                                @can('permission', 'stock-opname-wrm-upload')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wrm.stock_opname.soh') }}"
+                                            class="nav-link {{ request()->routeIs('wrm.stock_opname.soh') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i>SOH Upload
+                                        </a>
+                                    </li>
+                                @endcan
+                                @can('permission', 'stock-opname-wrm-form')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wrm.stock_opname.form') }}"
+                                            class="nav-link {{ request()->routeIs('wrm.stock_opname.form') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> SO Form
+                                        </a>
+                                    </li>
+                                @endcan
+                                @can('permission', 'stock-opname-wrm-report')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wrm.stock_opname.report') }}"
+                                            class="nav-link {{ request()->routeIs('wrm.stock_opname.report') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> SO Report
+                                        </a>
+                                    </li>
+                                @endcan
+                            </ul>
+                        </div>
                     </li>
                 @endcan
             </ul>
