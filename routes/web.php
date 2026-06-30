@@ -33,6 +33,8 @@ use App\Http\Controllers\Wrm\MasterLocationController;
 use App\Http\Controllers\Wrm\MasterPalletController;
 use App\Http\Controllers\Wrm\MasterSupplierController;
 use App\Http\Controllers\Wrm\P2HController;
+use App\Http\Controllers\Wcp\StockOpname\WcpStockOnHandController;
+use App\Http\Controllers\Wcp\StockOpname\WcpStockOpnameController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
 use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
@@ -450,55 +452,95 @@ Route::middleware('auth')->group(function () {
     });
 
     // Warehouse Packaging Material
-    Route::middleware(['auth'])
-        ->prefix('wpm')
-        ->name('wpm.')
-        ->group(function () {
-            // Stock Opname WPM
-            Route::prefix('stock_opname')->middleware(['permission:stock-opname-wpm'])->name('stock_opname.')->group(function () {
-                Route::post('/start', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'startOpname'])->name('startOpname');
-                Route::get('/status', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getStatusOpname'])->name('getStatusOpname');
-                Route::get('/form', [WarehouseController::class, 'formSOWPM'])->name('form');
-                Route::get('/getData', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getData'])->name('getData');
-                Route::post('/save-temp', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'saveTemp'])->name('save-temp');
-                Route::post('/save-new-temp', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'saveTempNew'])->name('save-temp-new');
-                Route::post('/save-final', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'processOpname'])->name('process');
-                Route::delete('/reset-temp-row', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'resetTempRow'])->name('reset-temp-row');
-                Route::get('/getDataTempBatch', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getDataTempBatch'])->name('getTempBatch');
-                Route::get('/getDataTempEdit/{sohId}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getDataTempEdit'])->name('getDataTempEdit');
-                Route::post('/update-temp', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'updateTempBatch'])->name('update-temp');
-                Route::delete('/delete-temp/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'destroyTemp'])->name('delete-temp');
-                Route::get('/report', [WarehouseController::class, 'reportSOWPM'])->name('report');
-                Route::get('/report/getData', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getDataReport'])->name('report.getData');
-                Route::get('/report/pending-approval', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getPendingApprovalReport'])->name('report.pending-approval');
-                Route::get('/report/detail/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getReportDetail'])->name('report.detail');
-                Route::post('/report/update/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'updateReportRow'])->name('report.update');
-                Route::delete('/report/delete/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'deleteReportRow'])->name('report.delete');
-                Route::delete('/report/detail/delete/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'deleteReportDetail'])->name('report.detail.delete');
-                Route::get('/export', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'exportPdfSOWPM'])->name('export');
-                Route::post('/send-approval', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'sendApproval'])->name('send-approval');
-                Route::post('/update/status-approval', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'updateStatus'])->name('update.status-approval');
-                Route::get('/approval/show/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'showApproval'])->name('approval.show');
-                Route::get('/getDataApproval', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getDataApproval'])->name('getDataApproval');
+    Route::middleware(['auth'])->prefix('wpm')->name('wpm.')->group(function () {
+        // Stock Opname WPM
+        Route::prefix('stock_opname')->middleware(['permission:stock-opname-wpm'])->name('stock_opname.')->group(function () {
+            Route::post('/start', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'startOpname'])->name('startOpname');
+            Route::get('/status', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getStatusOpname'])->name('getStatusOpname');
+            Route::get('/form', [WarehouseController::class, 'formSOWPM'])->name('form');
+            Route::get('/getData', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getData'])->name('getData');
+            Route::post('/save-temp', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'saveTemp'])->name('save-temp');
+            Route::post('/save-new-temp', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'saveTempNew'])->name('save-temp-new');
+            Route::post('/save-final', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'processOpname'])->name('process');
+            Route::delete('/reset-temp-row', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'resetTempRow'])->name('reset-temp-row');
+            Route::get('/getDataTempBatch', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getDataTempBatch'])->name('getTempBatch');
+            Route::get('/getDataTempEdit/{sohId}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getDataTempEdit'])->name('getDataTempEdit');
+            Route::post('/update-temp', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'updateTempBatch'])->name('update-temp');
+            Route::delete('/delete-temp/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'destroyTemp'])->name('delete-temp');
+            Route::get('/report', [WarehouseController::class, 'reportSOWPM'])->name('report');
+            Route::get('/report/getData', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getDataReport'])->name('report.getData');
+            Route::get('/report/pending-approval', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getPendingApprovalReport'])->name('report.pending-approval');
+            Route::get('/report/detail/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getReportDetail'])->name('report.detail');
+            Route::post('/report/update/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'updateReportRow'])->name('report.update');
+            Route::delete('/report/delete/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'deleteReportRow'])->name('report.delete');
+            Route::delete('/report/detail/delete/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'deleteReportDetail'])->name('report.detail.delete');
+            Route::get('/export', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'exportPdfSOWPM'])->name('export');
+            Route::post('/send-approval', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'sendApproval'])->name('send-approval');
+            Route::post('/update/status-approval', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'updateStatus'])->name('update.status-approval');
+            Route::get('/approval/show/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'showApproval'])->name('approval.show');
+            Route::get('/getDataApproval', [App\Http\Controllers\Wpm\StockOpname\WpmStockOpnameController::class, 'getDataApproval'])->name('getDataApproval');
 
-                // Stock on Hand SO WPM
-                Route::get('/soh', [WarehouseController::class, 'uploadSOHWPM'])->name('soh');
-                Route::post('/soh/store', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'store'])->name('soh.store');
-                Route::delete('/soh/delete/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'destroy'])->name('soh.delete');
-                Route::post('/soh/update/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'update'])->name('soh.update');
-                Route::post('/soh/import', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'importExcel'])->name('soh.import');
-                Route::get('/soh/template', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'downloadTemplate'])->name('soh.template');
-                Route::get('/soh/list', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'getList'])->name('soh.list');
-                Route::get('/soh/getBarang', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'getBarang'])->name('soh.getBarang');
-                Route::get('/soh/show/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'show'])->name('soh.show');
-                Route::delete('/soh/reset-all', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'resetAll'])->name('soh.reset_all');
-            });
+            // Stock on Hand SO WPM
+            Route::get('/soh', [WarehouseController::class, 'uploadSOHWPM'])->name('soh');
+            Route::post('/soh/store', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'store'])->name('soh.store');
+            Route::delete('/soh/delete/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'destroy'])->name('soh.delete');
+            Route::post('/soh/update/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'update'])->name('soh.update');
+            Route::post('/soh/import', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'importExcel'])->name('soh.import');
+            Route::get('/soh/template', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'downloadTemplate'])->name('soh.template');
+            Route::get('/soh/list', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'getList'])->name('soh.list');
+            Route::get('/soh/getBarang', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'getBarang'])->name('soh.getBarang');
+            Route::get('/soh/show/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'show'])->name('soh.show');
+            Route::delete('/soh/reset-all', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'resetAll'])->name('soh.reset_all');
         });
+    });
+
+    // Warehouse Co Product (WCP)
+    Route::middleware(['auth'])->prefix('wcp')->name('wcp.')->group(function () {
+        // Stock Opname WCP
+        Route::prefix('stock_opname')->middleware(['permission:stock-opname-wcp'])->name('stock_opname.')->group(function () {
+            Route::post('/start', [WcpStockOpnameController::class, 'startOpname'])->name('startOpname');
+            Route::get('/status', [WcpStockOpnameController::class, 'getStatusOpname'])->name('getStatusOpname');
+            Route::get('/form', [WarehouseController::class, 'formSOWCP'])->name('form');
+            Route::get('/getData', [WcpStockOpnameController::class, 'getData'])->name('getData');
+            Route::post('/save-temp', [WcpStockOpnameController::class, 'saveTemp'])->name('save-temp');
+            Route::post('/save-new-temp', [WcpStockOpnameController::class, 'saveTempNew'])->name('save-temp-new');
+            Route::post('/save-final', [WcpStockOpnameController::class, 'processOpname'])->name('process');
+            Route::delete('/reset-temp-row', [WcpStockOpnameController::class, 'resetTempRow'])->name('reset-temp-row');
+            Route::get('/getDataTempBatch', [WcpStockOpnameController::class, 'getDataTempBatch'])->name('getTempBatch');
+            Route::get('/getDataTempEdit/{sohId}', [WcpStockOpnameController::class, 'getDataTempEdit'])->name('getDataTempEdit');
+            Route::post('/update-temp', [WcpStockOpnameController::class, 'updateTempBatch'])->name('update-temp');
+            Route::delete('/delete-temp/{id}', [WcpStockOpnameController::class, 'destroyTemp'])->name('delete-temp');
+            Route::get('/report', [WarehouseController::class, 'reportSOWCP'])->name('report');
+            Route::get('/report/getData', [WcpStockOpnameController::class, 'getDataReport'])->name('report.getData');
+            Route::get('/report/pending-approval', [WcpStockOpnameController::class, 'getPendingApprovals'])->name('report.pending-approval');
+            Route::get('/report/detail/{id}', [WcpStockOpnameController::class, 'getReportDetail'])->name('report.detail');
+            Route::post('/report/update/{id}', [WcpStockOpnameController::class, 'updateReportRow'])->name('report.update');
+            Route::delete('/report/delete/{id}', [WcpStockOpnameController::class, 'deleteReportRow'])->name('report.delete');
+            Route::delete('/report/detail/delete/{id}', [WcpStockOpnameController::class, 'deleteReportDetail'])->name('report.detail.delete');
+            Route::get('/export', [WcpStockOpnameController::class, 'exportPdfSOWCP'])->name('export');
+            Route::post('/send-approval', [WcpStockOpnameController::class, 'sendApproval'])->name('send-approval');
+            Route::post('/update/status-approval', [WcpStockOpnameController::class, 'updateStatus'])->name('update.status-approval');
+            Route::get('/approval/show/{id}', [WcpStockOpnameController::class, 'showApproval'])->name('approval.show');
+            Route::get('/getDataApproval', [WcpStockOpnameController::class, 'getDataApproval'])->name('getDataApproval');
+
+            // Stock on Hand SO WCP
+            Route::get('/soh', [WarehouseController::class, 'uploadSOHWCP'])->name('soh');
+            Route::post('/soh/store', [WcpStockOnHandController::class, 'store'])->name('soh.store');
+            Route::delete('/soh/delete/{id}', [WcpStockOnHandController::class, 'destroy'])->name('soh.delete');
+            Route::post('/soh/update/{id}', [WcpStockOnHandController::class, 'update'])->name('soh.update');
+            Route::post('/soh/import', [WcpStockOnHandController::class, 'importExcel'])->name('soh.import');
+            Route::get('/soh/template', [WcpStockOnHandController::class, 'downloadTemplate'])->name('soh.template');
+            Route::get('/soh/list', [WcpStockOnHandController::class, 'getList'])->name('soh.list');
+            Route::get('/soh/getBarang', [WcpStockOnHandController::class, 'getBarang'])->name('soh.getBarang');
+            Route::get('/soh/show/{id}', [WcpStockOnHandController::class, 'show'])->name('soh.show');
+            Route::delete('/soh/reset-all', [WcpStockOnHandController::class, 'resetAll'])->name('soh.reset_all');
+        });
+    });
 
     // Master Data Management
     Route::middleware(['auth'])->group(function () {
-        // Master WSP
         Route::prefix('master')->group(function () {
+            // Master WSP
             Route::prefix('wsp')->middleware(['permission:master-wsp'])->group(function () {
                 // TKBM
                 Route::get('/fee', [WarehouseController::class, 'feeTkbm'])->name('wsp.master.fee');
@@ -612,13 +654,26 @@ Route::middleware('auth')->group(function () {
             // Master WPM
             Route::prefix('wpm')->middleware(['permission:master-wpm'])->group(function () {
                 Route::prefix('barang')->group(function () {
-                    Route::get('/index', [App\Http\Controllers\Wpm\MasterBarangController::class, 'index'])->name('wpm.master.barang.index');
-                    Route::get('/get-data', [App\Http\Controllers\Wpm\MasterBarangController::class, 'getData'])->name('wpm.master.barang.get-data');
-                    Route::post('/store', [App\Http\Controllers\Wpm\MasterBarangController::class, 'store'])->name('wpm.master.barang.store');
-                    Route::put('/update/{id}', [App\Http\Controllers\Wpm\MasterBarangController::class, 'update'])->name('wpm.master.barang.update');
-                    Route::delete('/delete/{id}', [App\Http\Controllers\Wpm\MasterBarangController::class, 'destroy'])->name('wpm.master.barang.delete');
-                    Route::get('/template', [App\Http\Controllers\Wpm\MasterBarangController::class, 'downloadTemplate'])->name('wpm.master.barang.template');
-                    Route::post('/upload', [App\Http\Controllers\Wpm\MasterBarangController::class, 'upload'])->name('wpm.master.barang.upload');
+                    Route::get('/index', [App\Http\Controllers\Wpm\MasterBarangController::class, 'index'])->name('master.wpm.barang.index');
+                    Route::get('/get-data', [App\Http\Controllers\Wpm\MasterBarangController::class, 'getData'])->name('master.wpm.barang.get-data');
+                    Route::post('/store', [App\Http\Controllers\Wpm\MasterBarangController::class, 'store'])->name('master.wpm.barang.store');
+                    Route::put('/update/{id}', [App\Http\Controllers\Wpm\MasterBarangController::class, 'update'])->name('master.wpm.barang.update');
+                    Route::delete('/delete/{id}', [App\Http\Controllers\Wpm\MasterBarangController::class, 'destroy'])->name('master.wpm.barang.delete');
+                    Route::get('/template', [App\Http\Controllers\Wpm\MasterBarangController::class, 'downloadTemplate'])->name('master.wpm.barang.template');
+                    Route::post('/upload', [App\Http\Controllers\Wpm\MasterBarangController::class, 'upload'])->name('master.wpm.barang.upload');
+                });
+            });
+
+            // Master WCP
+            Route::prefix('wcp')->middleware(['permission:master-wcp'])->group(function () {
+                Route::prefix('barang')->group(function () {
+                    Route::get('/index', [App\Http\Controllers\Wcp\MasterBarangController::class, 'index'])->name('master.wcp.barang.index');
+                    Route::get('/get-data', [App\Http\Controllers\Wcp\MasterBarangController::class, 'getData'])->name('master.wcp.barang.get-data');
+                    Route::post('/store', [App\Http\Controllers\Wcp\MasterBarangController::class, 'store'])->name('master.wcp.barang.store');
+                    Route::put('/update/{id}', [App\Http\Controllers\Wcp\MasterBarangController::class, 'update'])->name('master.wcp.barang.update');
+                    Route::delete('/delete/{id}', [App\Http\Controllers\Wcp\MasterBarangController::class, 'destroy'])->name('master.wcp.barang.delete');
+                    Route::get('/template', [App\Http\Controllers\Wcp\MasterBarangController::class, 'downloadTemplate'])->name('master.wcp.barang.template');
+                    Route::post('/upload', [App\Http\Controllers\Wcp\MasterBarangController::class, 'upload'])->name('master.wcp.barang.upload');
                 });
             });
 

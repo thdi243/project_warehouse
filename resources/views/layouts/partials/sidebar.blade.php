@@ -51,10 +51,12 @@
                                 'wfg-menu',
                                 'wrm-menu',
                                 'wpm-menu',
+                                'wcp-menu',
                                 'master-wfg',
                                 'master-wsp',
                                 'master-wrm',
                                 'master-wpm',
+                                'master-wcp',
                                 'manage-users',
                                 'manage-permissions',
                             ]))
@@ -72,12 +74,13 @@
                             @include('layouts.partials.sidebar.wcp')
                         @endif
 
-                        @if (auth()->user()->hasAnyPermission(['master-wfg', 'master-wsp', 'master-wrm', 'master-wpm']))
+                        @if (auth()->user()->hasAnyPermission(['master-wfg', 'master-wsp', 'master-wrm', 'master-wpm', 'master-wcp']))
                             <li class="menu-title"><span data-key="t-menu">Data Master</span></li>
                             @include('layouts.partials.sidebar.master_wfg')
                             @include('layouts.partials.sidebar.master_wsp')
                             @include('layouts.partials.sidebar.master_wrm')
                             @include('layouts.partials.sidebar.master_wpm')
+                            @include('layouts.partials.sidebar.master_wcp')
                         @endif
 
                         @include('layouts.partials.sidebar.user')
@@ -106,6 +109,7 @@
                         @include('layouts.partials.sidebar.master_wsp')
                         @include('layouts.partials.sidebar.master_wrm')
                         @include('layouts.partials.sidebar.master_wpm')
+                        @include('layouts.partials.sidebar.master_wcp')
 
                         @include('layouts.partials.sidebar.user')
                         @include('layouts.partials.sidebar.permissions')
