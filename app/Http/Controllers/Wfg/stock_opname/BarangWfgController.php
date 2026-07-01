@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\Wfg\stock_opname;
 
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Wfg\stock_opname\BarangWfgModel;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Illuminate\Validation\ValidationException;
-use App\Models\Wfg\stock_opname\BarangWfgModel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BarangWfgController extends Controller
@@ -37,6 +38,9 @@ class BarangWfgController extends Controller
             $perPage = 50;
 
             $query = BarangWfgModel::query();
+            $query->with('createdBy:id,username,nama_lengkap');
+
+            // dd($query->get());
 
             $query->where('is_new', 0);
 
@@ -75,6 +79,7 @@ class BarangWfgController extends Controller
                     'principal'   => $item->principal,
                     'uom'         => $item->uom,
                     'status'      => $currentStatus,
+                    'created_by'  => $item->createdBy,
                 ];
             });
 
@@ -152,6 +157,7 @@ class BarangWfgController extends Controller
                 'principal'     => strtoupper($request->principal),
                 'status'        => 'aktif',
                 'uom'           => strtoupper($request->uom),
+                'created_by'    => Auth::id(),
             ]);
 
             return response()->json([

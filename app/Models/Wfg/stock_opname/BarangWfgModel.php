@@ -2,9 +2,11 @@
 
 namespace App\Models\Wfg\stock_opname;
 
+use App\Models\User;
+use App\Models\Wfg\stock_opname\StockOnHandModel;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BarangWfgModel extends Model
 {
@@ -19,11 +21,17 @@ class BarangWfgModel extends Model
         'principal',
         'status',
         'uom',
-        'is_new'
+        'is_new',
+        'created_by',
     ];
 
     public function stockOnHand()
     {
         return $this->hasOne(StockOnHandModel::class, 'barang_id');
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }
