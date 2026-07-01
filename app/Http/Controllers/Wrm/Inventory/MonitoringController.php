@@ -7,6 +7,7 @@ use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Wrm\Inventory\StockMovement;
 use App\Models\Wrm\Inventory\StockOutboundDetail;
+use App\Models\Wrm\Inventory\StockOutbound;
 use App\Models\Wrm\Inventory\StockTransferDetail;
 use App\Models\Wrm\MasterBarangModel;
 use Carbon\Carbon;
@@ -884,6 +885,530 @@ class MonitoringController extends Controller
         }
         if (!empty($months)) {
             $query->whereIn(DB::raw('MONTH(wrm_stock_inbound.incoming_date)'), $months);
+        }
+
+        $query->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
+
+        // Count for pagination
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        // Totals per UOM for dynamic month columns
+        $totalsSelect = ['uom'];
+        foreach ($activeMonthYears as $my) {
+            $alias = 'ym_' . $my->year . '_' . sprintf('%02d', $my->month);
+            $totalsSelect[] = DB::raw("SUM(`{$alias}`) as `{$alias}`");
+        }
+        $totalsSelect[] = DB::raw("SUM(total_qty) as total_qty");
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select($totalsSelect)
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $data = $query->orderBy('wrm_master_barang.mid')->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom
+        ]);
+    }
+
+    public function indexSummaryTransfer()
+    {
+        $mids = StockOutboundDetail::join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->select('wrm_master_barang.mid', 'wrm_master_barang.nama_barang')
+            ->distinct()
+            ->orderBy('wrm_master_barang.mid', 'asc')
+            ->get();
+
+        $groups = StockOutboundDetail::whereNotNull('group')
+            ->where('group', '<>', '')
+            ->select('group')
+            ->distinct()
+            ->orderBy('group', 'asc')
+            ->pluck('group');
+
+        $spbs = StockOutboundDetail::whereNotNull('no_spb')
+            ->where('no_spb', '<>', '')
+            ->select('no_spb')
+            ->distinct()
+            ->orderBy('no_spb', 'asc')
+            ->pluck('no_spb');
+
+        // Dynamic list of years from wrm_stock_draft_outbound
+        $outboundYears = DB::table('wrm_stock_draft_outbound')
+            ->whereNotNull('reservasi_date')
+            ->selectRaw('YEAR(reservasi_date) as year')
+            ->distinct()
+            ->orderBy('year', 'desc')
+            ->pluck('year')
+            ->toArray();
+
+        if (empty($outboundYears)) {
+            $outboundYears = [intval(date('Y'))];
+        }
+
+        // List of Indonesian months
+        $outboundMonths = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        // Default to last 3 months
+        $defaultMonths = [];
+        $defaultYears = [];
+        for ($i = 0; $i < 3; $i++) {
+            $t = strtotime("-$i months");
+            $defaultMonths[] = intval(date('n', $t));
+            $defaultYears[] = intval(date('Y', $t));
+        }
+        $defaultMonths = array_unique($defaultMonths);
+        $defaultYears = array_unique($defaultYears);
+
+        return view('wrm.inventory.summary_transfer', compact(
+            'mids', 'groups', 'spbs',
+            'outboundYears', 'outboundMonths', 'defaultMonths', 'defaultYears'
+        ));
+    }
+
+    public function getSummaryTransferItemData(Request $request)
+    {
+        $query = StockOutboundDetail::query()
+            ->join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->join('wrm_stock_draft_outbound', 'wrm_stock_draft_outbound_details.outbound_id', '=', 'wrm_stock_draft_outbound.id')
+            ->selectRaw("
+                SUM(CASE WHEN wrm_stock_draft_outbound_details.status = 'RESERVED' THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as qty_reserved,
+                SUM(CASE WHEN wrm_stock_draft_outbound_details.status = 'BA WAITING' THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as qty_ba_waiting,
+                SUM(CASE WHEN wrm_stock_draft_outbound_details.status = 'ISSUED' THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as qty_issued
+            ");
+
+        $query->addSelect('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom')
+            ->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
+        $sortColumn = 'wrm_master_barang.mid';
+
+        if ($request->filled('mids')) {
+            $query->whereIn('wrm_master_barang.mid', (array)$request->mids);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->where('wrm_stock_draft_outbound.reservasi_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->where('wrm_stock_draft_outbound.reservasi_date', '<=', $request->end_date);
+        }
+
+        // Count for pagination and grand totals
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select(
+                'uom',
+                DB::raw("SUM(qty_reserved) as total_reserved"),
+                DB::raw("SUM(qty_ba_waiting) as total_ba_waiting"),
+                DB::raw("SUM(qty_issued) as total_issued")
+            )
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $data = $query->orderBy($sortColumn)->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom->map(function ($item) {
+                return [
+                    'uom' => $item->uom,
+                    'reserved' => $item->total_reserved ?? 0,
+                    'ba_waiting' => $item->total_ba_waiting ?? 0,
+                    'issued' => $item->total_issued ?? 0,
+                    'all' => ($item->total_reserved ?? 0) + ($item->total_ba_waiting ?? 0) + ($item->total_issued ?? 0)
+                ];
+            })
+        ]);
+    }
+
+    public function getSummaryTransferSpbData(Request $request)
+    {
+        $query = StockOutboundDetail::query()
+            ->join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->join('wrm_stock_draft_outbound', 'wrm_stock_draft_outbound_details.outbound_id', '=', 'wrm_stock_draft_outbound.id')
+            ->selectRaw("
+                SUM(CASE WHEN wrm_stock_draft_outbound_details.status = 'RESERVED' THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as qty_reserved,
+                SUM(CASE WHEN wrm_stock_draft_outbound_details.status = 'BA WAITING' THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as qty_ba_waiting,
+                SUM(CASE WHEN wrm_stock_draft_outbound_details.status = 'ISSUED' THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as qty_issued
+            ");
+
+        $query->addSelect('wrm_stock_draft_outbound_details.no_spb', 'wrm_master_barang.uom')
+            ->whereNotNull('wrm_stock_draft_outbound_details.no_spb')
+            ->groupBy('wrm_stock_draft_outbound_details.no_spb', 'wrm_master_barang.uom');
+        $sortColumn = 'wrm_stock_draft_outbound_details.no_spb';
+
+        if ($request->filled('no_spbs')) {
+            $query->whereIn('wrm_stock_draft_outbound_details.no_spb', (array)$request->no_spbs);
+        }
+
+        if ($request->filled('mids')) {
+            $query->whereIn('wrm_master_barang.mid', (array)$request->mids);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->where('wrm_stock_draft_outbound.reservasi_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->where('wrm_stock_draft_outbound.reservasi_date', '<=', $request->end_date);
+        }
+
+        // Count for pagination and grand totals
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select(
+                'uom',
+                DB::raw("SUM(qty_reserved) as total_reserved"),
+                DB::raw("SUM(qty_ba_waiting) as total_ba_waiting"),
+                DB::raw("SUM(qty_issued) as total_issued")
+            )
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $data = $query->orderBy($sortColumn)->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom->map(function ($item) {
+                return [
+                    'uom' => $item->uom,
+                    'reserved' => $item->total_reserved ?? 0,
+                    'ba_waiting' => $item->total_ba_waiting ?? 0,
+                    'issued' => $item->total_issued ?? 0,
+                    'all' => ($item->total_reserved ?? 0) + ($item->total_ba_waiting ?? 0) + ($item->total_issued ?? 0)
+                ];
+            })
+        ]);
+    }
+
+    public function getSummaryTransferGroupMeta(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+
+        $groupsQuery = StockOutboundDetail::whereNotNull('wrm_stock_draft_outbound_details.group')
+            ->where('wrm_stock_draft_outbound_details.group', '<>', '')
+            ->join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->join('wrm_stock_draft_outbound', 'wrm_stock_draft_outbound_details.outbound_id', '=', 'wrm_stock_draft_outbound.id')
+            ->whereIn('wrm_master_barang.mid', $mids);
+
+        if ($request->filled('groups')) {
+            $groupsQuery->whereIn('wrm_stock_draft_outbound_details.group', (array)$request->groups);
+        }
+
+        if ($request->filled('start_date')) {
+            $groupsQuery->where('wrm_stock_draft_outbound.reservasi_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $groupsQuery->where('wrm_stock_draft_outbound.reservasi_date', '<=', $request->end_date);
+        }
+
+        $activeGroups = $groupsQuery->select('wrm_stock_draft_outbound_details.group')
+            ->distinct()
+            ->orderBy('wrm_stock_draft_outbound_details.group', 'asc')
+            ->pluck('wrm_stock_draft_outbound_details.group')
+            ->toArray();
+
+        $hasNoGroupQuery = StockOutboundDetail::join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->join('wrm_stock_draft_outbound', 'wrm_stock_draft_outbound_details.outbound_id', '=', 'wrm_stock_draft_outbound.id')
+            ->whereIn('wrm_master_barang.mid', $mids)
+            ->where(function ($q) {
+                $q->whereNull('wrm_stock_draft_outbound_details.group')->orWhere('wrm_stock_draft_outbound_details.group', '');
+            });
+
+        if ($request->filled('start_date')) {
+            $hasNoGroupQuery->where('wrm_stock_draft_outbound.reservasi_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $hasNoGroupQuery->where('wrm_stock_draft_outbound.reservasi_date', '<=', $request->end_date);
+        }
+
+        $hasNoGroup = $hasNoGroupQuery->exists();
+
+        return response()->json([
+            'active_groups' => $activeGroups,
+            'has_no_group' => $hasNoGroup
+        ]);
+    }
+
+    public function getSummaryTransferGroupData(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+
+        $groupsQuery = StockOutboundDetail::whereNotNull('wrm_stock_draft_outbound_details.group')
+            ->where('wrm_stock_draft_outbound_details.group', '<>', '')
+            ->join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->join('wrm_stock_draft_outbound', 'wrm_stock_draft_outbound_details.outbound_id', '=', 'wrm_stock_draft_outbound.id')
+            ->whereIn('wrm_master_barang.mid', $mids);
+
+        if ($request->filled('groups')) {
+            $groupsQuery->whereIn('wrm_stock_draft_outbound_details.group', (array)$request->groups);
+        }
+
+        if ($request->filled('start_date')) {
+            $groupsQuery->where('wrm_stock_draft_outbound.reservasi_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $groupsQuery->where('wrm_stock_draft_outbound.reservasi_date', '<=', $request->end_date);
+        }
+
+        $activeGroups = $groupsQuery->select('wrm_stock_draft_outbound_details.group')
+            ->distinct()
+            ->orderBy('wrm_stock_draft_outbound_details.group', 'asc')
+            ->pluck('wrm_stock_draft_outbound_details.group')
+            ->toArray();
+
+        $hasNoGroupQuery = StockOutboundDetail::join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->join('wrm_stock_draft_outbound', 'wrm_stock_draft_outbound_details.outbound_id', '=', 'wrm_stock_draft_outbound.id')
+            ->whereIn('wrm_master_barang.mid', $mids)
+            ->where(function ($q) {
+                $q->whereNull('wrm_stock_draft_outbound_details.group')->orWhere('wrm_stock_draft_outbound_details.group', '');
+            });
+
+        if ($request->filled('start_date')) {
+            $hasNoGroupQuery->where('wrm_stock_draft_outbound.reservasi_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $hasNoGroupQuery->where('wrm_stock_draft_outbound.reservasi_date', '<=', $request->end_date);
+        }
+
+        $hasNoGroup = $hasNoGroupQuery->exists();
+
+        $selects = [
+            'wrm_master_barang.mid',
+            'wrm_master_barang.nama_barang',
+            'wrm_master_barang.uom',
+        ];
+
+        foreach ($activeGroups as $group) {
+            $alias = 'group_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $group);
+            $selects[] = DB::raw("SUM(CASE WHEN wrm_stock_draft_outbound_details.group = '{$group}' THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as `{$alias}`");
+        }
+
+        if ($hasNoGroup) {
+            $selects[] = DB::raw("SUM(CASE WHEN wrm_stock_draft_outbound_details.group IS NULL OR wrm_stock_draft_outbound_details.group = '' THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as `group_none`");
+        }
+
+        $selects[] = DB::raw("SUM(wrm_stock_draft_outbound_details.qty) as total_qty");
+
+        $query = StockOutboundDetail::query()
+            ->join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->join('wrm_stock_draft_outbound', 'wrm_stock_draft_outbound_details.outbound_id', '=', 'wrm_stock_draft_outbound.id')
+            ->select($selects)
+            ->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
+
+        $query->whereIn('wrm_master_barang.mid', $mids);
+
+        if ($request->filled('start_date')) {
+            $query->where('wrm_stock_draft_outbound.reservasi_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->where('wrm_stock_draft_outbound.reservasi_date', '<=', $request->end_date);
+        }
+
+        // Count for pagination
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        // Total per UOM for dynamic groups
+        $totalsSelect = ['uom'];
+        foreach ($activeGroups as $group) {
+            $alias = 'group_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $group);
+            $totalsSelect[] = DB::raw("SUM(`{$alias}`) as `{$alias}`");
+        }
+        if ($hasNoGroup) {
+            $totalsSelect[] = DB::raw("SUM(group_none) as group_none");
+        }
+        $totalsSelect[] = DB::raw("SUM(total_qty) as total_qty");
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select($totalsSelect)
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $data = $query->orderBy('wrm_master_barang.mid')->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom
+        ]);
+    }
+
+    public function getSummaryTransferMonthlyMeta(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+
+        $defaultMonths = [];
+        $defaultYears = [];
+        for ($i = 0; $i < 3; $i++) {
+            $t = strtotime("-$i months");
+            $defaultMonths[] = intval(date('n', $t));
+            $defaultYears[] = intval(date('Y', $t));
+        }
+        $defaultMonths = array_unique($defaultMonths);
+        $defaultYears = array_unique($defaultYears);
+
+        $years = $request->filled('years') ? (array)$request->years : $defaultYears;
+        $months = $request->filled('months') ? (array)$request->months : $defaultMonths;
+
+        // Generate combinations directly from filters!
+        $combinations = [];
+        foreach ($years as $yr) {
+            foreach ($months as $mo) {
+                $yr = intval($yr);
+                $mo = intval($mo);
+                $ym = sprintf('%04d-%02d', $yr, $mo);
+                $combinations[$ym] = [
+                    'ym' => $ym,
+                    'year' => $yr,
+                    'month' => $mo
+                ];
+            }
+        }
+        ksort($combinations);
+
+        $monthNames = [
+            1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
+            7 => 'Jul', 8 => 'Ags', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
+        ];
+
+        $meta = [];
+        foreach ($combinations as $ym => $comb) {
+            $meta[] = [
+                'ym' => $ym,
+                'year' => $comb['year'],
+                'month' => $comb['month'],
+                'label' => ($monthNames[$comb['month']] ?? '') . ' ' . $comb['year']
+            ];
+        }
+
+        return response()->json([
+            'active_month_years' => $meta
+        ]);
+    }
+
+    public function getSummaryTransferMonthlyData(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+
+        $defaultMonths = [];
+        $defaultYears = [];
+        for ($i = 0; $i < 3; $i++) {
+            $t = strtotime("-$i months");
+            $defaultMonths[] = intval(date('n', $t));
+            $defaultYears[] = intval(date('Y', $t));
+        }
+        $defaultMonths = array_unique($defaultMonths);
+        $defaultYears = array_unique($defaultYears);
+
+        $years = $request->filled('years') ? (array)$request->years : $defaultYears;
+        $months = $request->filled('months') ? (array)$request->months : $defaultMonths;
+
+        // Generate combinations directly from filters!
+        $combinations = [];
+        foreach ($years as $yr) {
+            foreach ($months as $mo) {
+                $yr = intval($yr);
+                $mo = intval($mo);
+                $ym = sprintf('%04d-%02d', $yr, $mo);
+                $combinations[$ym] = [
+                    'ym' => $ym,
+                    'year' => $yr,
+                    'month' => $mo
+                ];
+            }
+        }
+        ksort($combinations);
+
+        $activeMonthYears = [];
+        foreach ($combinations as $ym => $comb) {
+            $activeMonthYears[] = (object)[
+                'ym' => $ym,
+                'year' => $comb['year'],
+                'month' => $comb['month']
+            ];
+        }
+
+        $selects = [
+            'wrm_master_barang.mid',
+            'wrm_master_barang.nama_barang',
+            'wrm_master_barang.uom',
+        ];
+
+        foreach ($activeMonthYears as $my) {
+            $alias = 'ym_' . $my->year . '_' . sprintf('%02d', $my->month);
+            $selects[] = DB::raw("SUM(CASE WHEN YEAR(wrm_stock_draft_outbound.reservasi_date) = {$my->year} AND MONTH(wrm_stock_draft_outbound.reservasi_date) = {$my->month} THEN wrm_stock_draft_outbound_details.qty ELSE 0 END) as `{$alias}`");
+        }
+
+        $selects[] = DB::raw("SUM(wrm_stock_draft_outbound_details.qty) as total_qty");
+
+        $query = DB::table('wrm_stock_draft_outbound_details')
+            ->join('wrm_stock_draft_outbound', 'wrm_stock_draft_outbound_details.outbound_id', '=', 'wrm_stock_draft_outbound.id')
+            ->join('wrm_master_barang', 'wrm_stock_draft_outbound_details.barang_id', '=', 'wrm_master_barang.id')
+            ->select($selects)
+            ->whereIn('wrm_master_barang.mid', $mids);
+
+        if ($request->filled('start_date')) {
+            $query->where('wrm_stock_draft_outbound.reservasi_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->where('wrm_stock_draft_outbound.reservasi_date', '<=', $request->end_date);
+        }
+
+        if (!empty($years)) {
+            $query->whereIn(DB::raw('YEAR(wrm_stock_draft_outbound.reservasi_date)'), $years);
+        }
+        if (!empty($months)) {
+            $query->whereIn(DB::raw('MONTH(wrm_stock_draft_outbound.reservasi_date)'), $months);
         }
 
         $query->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');

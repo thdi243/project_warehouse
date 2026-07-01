@@ -41,6 +41,15 @@
                     </li>
                 @endcan
 
+                @can('permission', 'wrm-inventory-summary-stock')
+                    <li class="nav-item">
+                        <a href="{{ route('wrm.inventory.summary.transfer') }}"
+                            class="nav-link menu-link sub-menu {{ request()->routeIs('wrm.inventory.summary.transfer') ? 'active' : '' }}">
+                            <i class="bx bx-git-commit fs-12"></i>Summary Stock Transfer
+                        </a>
+                    </li>
+                @endcan
+
                 @can('permission', 'wrm-inventory-draft-outbound')
                     <li class="nav-item">
                         <a href="{{ route('wrm.inventory.draft-outbound') }}"

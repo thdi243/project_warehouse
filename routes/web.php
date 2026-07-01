@@ -322,6 +322,15 @@ Route::middleware('auth')->group(function () {
                     Route::get('/data/moving-average', [MonitoringController::class, 'getMovingAverageData'])->name('wrm.inventory.monitoring.moving-average.data');
                     Route::get('/data/summary-stock/inbound-monthly', [MonitoringController::class, 'getSummaryStockInboundMonthlyData'])->name('wrm.inventory.monitoring.summary-stock.inbound-monthly-data');
                     Route::get('/data/summary-stock/inbound-monthly-meta', [MonitoringController::class, 'getSummaryStockInboundMonthlyMeta'])->name('wrm.inventory.monitoring.summary-stock.inbound-monthly-meta');
+
+                    // Summary Stock Transfer
+                    Route::get('/summary-transfer', [MonitoringController::class, 'indexSummaryTransfer'])->name('wrm.inventory.summary.transfer');
+                    Route::get('/data/summary-transfer/item', [MonitoringController::class, 'getSummaryTransferItemData'])->name('wrm.inventory.monitoring.summary-transfer.item-data');
+                    Route::get('/data/summary-transfer/spb', [MonitoringController::class, 'getSummaryTransferSpbData'])->name('wrm.inventory.monitoring.summary-transfer.spb-data');
+                    Route::get('/data/summary-transfer/group-meta', [MonitoringController::class, 'getSummaryTransferGroupMeta'])->name('wrm.inventory.monitoring.summary-transfer.group-meta');
+                    Route::get('/data/summary-transfer/group', [MonitoringController::class, 'getSummaryTransferGroupData'])->name('wrm.inventory.monitoring.summary-transfer.group-data');
+                    Route::get('/data/summary-transfer/monthly-meta', [MonitoringController::class, 'getSummaryTransferMonthlyMeta'])->name('wrm.inventory.monitoring.summary-transfer.monthly-meta');
+                    Route::get('/data/summary-transfer/monthly', [MonitoringController::class, 'getSummaryTransferMonthlyData'])->name('wrm.inventory.monitoring.summary-transfer.monthly-data');
                 });
             });
 
