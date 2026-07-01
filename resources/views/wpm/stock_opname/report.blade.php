@@ -348,7 +348,7 @@
 @endsection
 
 @section('scripts')
-    <script src="{{ asset('js/app.js') }}"></script>
+    {{-- <script src="{{ asset('js/app.js') }}"></script> --}}
     <script>
         $(document).ready(function() {
             @if (session('error'))
@@ -1151,7 +1151,6 @@
                             Swal.close();
                             toastr.success(res.message);
                             loadReport();
-                            fetchNotifications(false);
                         },
                         error: function(xhr) {
                             Swal.close();

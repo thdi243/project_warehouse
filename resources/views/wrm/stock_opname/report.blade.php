@@ -99,10 +99,10 @@
                                     </button>
 
                                     @can('permission', 'stock-opname-wrm-form')
-                                    <button type="button" class="btn btn-success d-none" id="btnSendApproval">
-                                        <i class="mdi mdi-send me-1"></i>
-                                        Kirim Approval
-                                    </button>
+                                        <button type="button" class="btn btn-success d-none" id="btnSendApproval">
+                                            <i class="mdi mdi-send me-1"></i>
+                                            Kirim Approval
+                                        </button>
                                     @endcan
                                 </div>
                             </div>
@@ -356,7 +356,7 @@
 @endsection
 
 @section('scripts')
-    <script src="{{ asset('js/app.js') }}"></script>
+    {{-- <script src="{{ asset('js/app.js') }}"></script> --}}
     <script>
         $(document).ready(function() {
             @if (session('error'))
@@ -1124,7 +1124,7 @@
                             Swal.close();
                             toastr.success(res.message);
                             loadReport();
-                            fetchNotifications(false);
+                            // fetchNotifications(false);
                         },
                         error: function(xhr) {
                             Swal.close();
