@@ -62,7 +62,7 @@
                             ]))
                         @include('layouts.partials.sidebar.dashboard')
 
-                        @if (auth()->user()->hasAnyPermission(['tkbm', 'wsp-menu', 'p2h', 'wfg-menu', 'wrm-menu', 'wpm-menu']))
+                        @if (auth()->user()->hasAnyPermission(['tkbm', 'wsp-menu', 'p2h', 'wfg-menu', 'wrm-menu', 'wpm-menu', 'wcp-menu']))
                             <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
                             @include('layouts.partials.sidebar.vehicle_monitoring')
                             @include('layouts.partials.sidebar.tkbm')
