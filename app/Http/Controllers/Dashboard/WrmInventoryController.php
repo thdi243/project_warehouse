@@ -41,18 +41,7 @@ class WrmInventoryController extends Controller
         return [$startDate, $endDate];
     }
 
-    private function getBaseStockBalanceQuery(Request $request)
-    {
-        $gudang = $request->gudang;
-        $query = clone StockBalance::query();
-        if ($gudang) {
-            $query->whereHas('location', function ($q) use ($gudang) {
-                $q->where('gudang', $gudang);
-            });
-        }
 
-        return $query;
-    }
 
     // --- 1. KPI Cards ---
     public function getKpi(Request $request)

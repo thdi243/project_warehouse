@@ -820,19 +820,13 @@ class OutboundController extends Controller
                         'created_by'  => Auth::id(),
                     ]);
 
-                    // Decrement Stock Balance
                     $bin = $detail->bin;
                     if ($bin) {
                         $locId = $bin->loc_id;
 
-                        $balance = StockBalance::where('barang_id', $detail->barang_id)
-                            ->where('loc_id', $locId)
-                            ->first();
-
-                        if ($balance) {
-                            $balance->decrement('qty', $detail->qty);
-                            $balance->update(['updated_by' => Auth::id()]);
-                        }
+                        // Recalculate Stock Balance and update StockByDate
+                        \App\Models\Wrm\Inventory\StockBalance::recalculate($detail->barang_id);
+                        \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($detail->barang_id, now());
 
                         // Record Stock Movement (out)
                         StockMovement::create([
@@ -1010,19 +1004,13 @@ class OutboundController extends Controller
                             'created_by'  => Auth::id(),
                         ]);
 
-                        // Decrement Stock Balance
                         $bin = $detail->bin;
                         if ($bin) {
                             $locId = $bin->loc_id;
 
-                            $balance = StockBalance::where('barang_id', $detail->barang_id)
-                                ->where('loc_id', $locId)
-                                ->first();
-
-                            if ($balance) {
-                                $balance->decrement('qty', $detail->qty);
-                                $balance->update(['updated_by' => Auth::id()]);
-                            }
+                            // Recalculate Stock Balance and update StockByDate
+                            \App\Models\Wrm\Inventory\StockBalance::recalculate($detail->barang_id);
+                            \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($detail->barang_id, now());
 
                             // Record Stock Movement (out)
                             StockMovement::create([

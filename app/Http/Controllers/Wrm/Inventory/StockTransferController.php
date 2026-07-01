@@ -162,14 +162,8 @@ class StockTransferController extends Controller
                 $bin   = $draftDetail->bin;
                 $locId = $bin ? $bin->loc_id : null;
                 if ($locId) {
-                    $balance = StockBalance::where('barang_id', $barang->id)
-                        ->where('loc_id', $locId)
-                        ->first();
-
-                    if ($balance) {
-                        $balance->decrement('qty', $qtyActual);
-                        $balance->update(['updated_by' => Auth::id()]);
-                    }
+                    \App\Models\Wrm\Inventory\StockBalance::recalculate($barang->id);
+                    \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barang->id, $tglGi ?? now());
 
                     StockMovement::create([
                         'barang_id'  => $barang->id,
@@ -268,18 +262,7 @@ class StockTransferController extends Controller
                 ->first();
 
             if ($movement) {
-                // 2. Reverse Stock Balance
-                $balance = StockBalance::where('barang_id', $movement->barang_id)
-                    ->where('loc_id', $movement->loc_id)
-                    ->first();
-
-                if ($balance) {
-                    // Qty in movement was stored as absolute positive value for 'out'
-                    $balance->increment('qty', abs($movement->qty));
-                    $balance->update(['updated_by' => Auth::id()]);
-                }
-
-                // 3. Restore Stock Inbound Detail
+                // 2. Restore Stock Inbound Detail
                 $inbound = StockOnHand::where('barcode', $detail->no_barcode)
                     ->where('barang_id', $detail->barang_id)
                     ->first();
@@ -292,8 +275,14 @@ class StockTransferController extends Controller
                     ]);
                 }
 
-                // 4. Delete Movement
+                $movDate = $movement->tanggal;
+
+                // 3. Delete Movement
                 $movement->delete();
+
+                // 4. Sync Balances
+                \App\Models\Wrm\Inventory\StockBalance::recalculate($detail->barang_id);
+                \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($detail->barang_id, $movDate);
             }
 
             // 6. Delete Transfer Detail

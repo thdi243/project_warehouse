@@ -386,9 +386,9 @@ class InboundController extends Controller
             $bins = MasterBinModel::whereIn('id', $binIds)->get()->keyBy('id');
 
             $headers = [];
+            $processedBarangs = [];
 
             foreach ($request->loc_id as $tempId => $binId) {
-
                 $temp = $temps->firstWhere('id', $tempId);
 
                 $barang = $barangs[$temp->mid] ?? null;
@@ -462,23 +462,13 @@ class InboundController extends Controller
                     'created_by' => Auth::id(),
                 ]);
 
-                // Use location_id for StockBalance (still refers to location)
-                $balance = StockBalance::where('barang_id', $barang->id)
-                    ->where('loc_id', $locationId)
-                    ->first();
+                $processedBarangs[$barang->id] = $incomingDateWithTime;
+            }
 
-                if ($balance) {
-
-                    $balance->increment('qty', $temp->qty);
-                } else {
-
-                    StockBalance::create([
-                        'barang_id'  => $barang->id,
-                        'loc_id'     => $locationId,
-                        'qty'        => $temp->qty,
-                        'created_by' => Auth::id(),
-                    ]);
-                }
+            // Recalculate StockBalance and update StockByDate for all processed items
+            foreach ($processedBarangs as $barangId => $date) {
+                \App\Models\Wrm\Inventory\StockBalance::recalculate($barangId);
+                \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $date);
             }
 
             // Delete ONLY temp data untuk no_spb ini
@@ -837,44 +827,12 @@ class InboundController extends Controller
             }
 
             // Sync Balances
-            if ($oldLocationId == $newLocationId) {
-                $qtyDiff = $request->qty - $oldQty;
-                $balance = StockBalance::where('barang_id', $barangId)
-                    ->where('loc_id', $oldLocationId)
-                    ->first();
-
-                if ($balance) {
-                    $balance->increment('qty', $qtyDiff);
-                } else {
-                    StockBalance::create([
-                        'barang_id'  => $barangId,
-                        'loc_id'     => $oldLocationId,
-                        'qty'        => $request->qty,
-                        'created_by' => Auth::id(),
-                    ]);
-                }
-            } else {
-                // Location changed: decrease old, increase new
-                $oldBalance = StockBalance::where('barang_id', $barangId)
-                    ->where('loc_id', $oldLocationId)
-                    ->first();
-                if ($oldBalance) {
-                    $oldBalance->decrement('qty', $oldQty);
-                }
-
-                $newBalance = StockBalance::where('barang_id', $barangId)
-                    ->where('loc_id', $newLocationId)
-                    ->first();
-                if ($newBalance) {
-                    $newBalance->increment('qty', $request->qty);
-                } else {
-                    StockBalance::create([
-                        'barang_id'  => $barangId,
-                        'loc_id'     => $newLocationId,
-                        'qty'        => $request->qty,
-                        'created_by' => Auth::id(),
-                    ]);
-                }
+            \App\Models\Wrm\Inventory\StockBalance::recalculate($barangId);
+            \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $incomingDateWithTime);
+            
+            $oldDate = $detail->getOriginal('incoming_date') ?? $incomingDateWithTime;
+            if ($oldDate !== $incomingDateWithTime) {
+                \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $oldDate);
             }
 
             DB::commit();
@@ -910,12 +868,23 @@ class InboundController extends Controller
                 $query = StockOnHand::whereIn('id', $request->ids);
             }
 
+            // Get unique barang_id and incoming_date before updating status
+            $affectedData = (clone $query)->select('barang_id', 'incoming_date')->get();
+
             // Update only if not ISSUED, RESERVED or BA WAITING
             $query->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                 ->update([
                     'status' => $request->status,
                     'updated_by' => Auth::id()
                 ]);
+
+            // Sync balances
+            foreach ($affectedData as $item) {
+                \App\Models\Wrm\Inventory\StockBalance::recalculate($item->barang_id);
+                if ($item->incoming_date) {
+                    \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($item->barang_id, $item->incoming_date);
+                }
+            }
 
             DB::commit();
 
@@ -983,6 +952,11 @@ class InboundController extends Controller
                 $query = StockOnHand::whereIn('id', $request->ids);
             }
 
+            // Get unique barang_id and incoming_date before deleting
+            $affectedData = (clone $query)->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+                ->select('barang_id', 'incoming_date')
+                ->get();
+
             // Get unique no_spbs of items that ARE NOT protected
             $affectedNoSpbs = (clone $query)->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                 ->pluck('no_spb')
@@ -997,6 +971,14 @@ class InboundController extends Controller
                 $hasDetails = StockOnHand::where('no_spb', $noSpb)->exists();
                 if (!$hasDetails) {
                     StockInbound::where('no_spb', $noSpb)->delete();
+                }
+            }
+
+            // Sync balances
+            foreach ($affectedData as $item) {
+                \App\Models\Wrm\Inventory\StockBalance::recalculate($item->barang_id);
+                if ($item->incoming_date) {
+                    \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($item->barang_id, $item->incoming_date);
                 }
             }
 
@@ -1018,21 +1000,38 @@ class InboundController extends Controller
     public function destroy($id)
     {
         $detail = StockOnHand::findOrFail($id);
+        $barangId = $detail->barang_id;
+        $incomingDate = $detail->incoming_date;
 
-        $noSpb = $detail->no_spb;
+        DB::beginTransaction();
+        try {
+            $noSpb = $detail->no_spb;
 
-        $detail->delete();
+            $detail->delete();
 
-        $remainingDetail = StockOnHand::where('no_spb', $noSpb)->exists();
+            $remainingDetail = StockOnHand::where('no_spb', $noSpb)->exists();
 
-        if (!$remainingDetail) {
-            StockInbound::where('no_spb', $noSpb)->delete();
+            if (!$remainingDetail) {
+                StockInbound::where('no_spb', $noSpb)->delete();
+            }
+
+            // Sync balances
+            \App\Models\Wrm\Inventory\StockBalance::recalculate($barangId);
+            \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $incomingDate);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Data inventory berhasil dihapus',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal menghapus data: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'status'  => true,
-            'message' => 'Data inventory berhasil dihapus',
-        ]);
     }
 
     public function upload(Request $request)

@@ -3,7 +3,6 @@
 namespace App\Models\Wrm\Inventory;
 
 use App\Models\Wrm\MasterBarangModel;
-use App\Models\Wrm\MasterLocationModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,7 +14,6 @@ class StockBalance extends Model
 
     protected $fillable = [
         'barang_id',
-        'loc_id',
         'qty',
         'created_by',
         'updated_by',
@@ -26,8 +24,32 @@ class StockBalance extends Model
         return $this->belongsTo(MasterBarangModel::class, 'barang_id');
     }
 
-    public function location()
+    /**
+     * Recalculates the current stock balance of a specific item based on active StockOnHand records
+     */
+    public static function recalculate($barangId)
     {
-        return $this->belongsTo(MasterLocationModel::class, 'loc_id');
+        $qty = StockOnHand::where('barang_id', $barangId)
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->sum('qty');
+
+        return self::updateOrCreate(
+            ['barang_id' => $barangId],
+            [
+                'qty' => $qty,
+                'created_by' => 1, // default system user
+            ]
+        );
+    }
+
+    /**
+     * Recalculates stock balances for all master barang items
+     */
+    public static function syncAll()
+    {
+        $barangIds = MasterBarangModel::pluck('id');
+        foreach ($barangIds as $barangId) {
+            self::recalculate($barangId);
+        }
     }
 }
