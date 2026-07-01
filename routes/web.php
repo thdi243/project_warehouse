@@ -653,7 +653,7 @@ Route::middleware('auth')->group(function () {
             Route::prefix('wrm')->middleware(['permission:master-wrm'])->group(function () {
                 // Route::prefix('master')->group(function () {
                 Route::prefix('barang')->group(function () {
-                    Route::get('/index', [MasterBarangController::class, 'index'])->name('wrm.master.barang.index');
+                    Route::get('/index', [MasterBarangController::class, 'index'])->name('master.wrm.barang.index');
                     Route::get('/get-data', [MasterBarangController::class, 'getData'])->name('wrm.master.barang.get-data');
                     Route::post('/store', [MasterBarangController::class, 'store'])->name('wrm.master.barang.store');
                     Route::put('/update/{id}', [MasterBarangController::class, 'update'])->name('wrm.master.barang.update');
@@ -663,7 +663,7 @@ Route::middleware('auth')->group(function () {
                 });
 
                 Route::prefix('ikat-terpal')->group(function () {
-                    Route::get('/index', [MasterIkatTerpalController::class, 'index'])->name('wrm.master.ikat-terpal.index');
+                    Route::get('/index', [MasterIkatTerpalController::class, 'index'])->name('master.wrm.ikat-terpal.index');
                     Route::post('/store/fee', [MasterIkatTerpalController::class, 'storeFee']);
                     Route::post('/store/produk', [MasterIkatTerpalController::class, 'storeProduk']);
                     Route::get('/fee-aktif', [MasterIkatTerpalController::class, 'getFeeAktif']);
@@ -671,7 +671,7 @@ Route::middleware('auth')->group(function () {
                 });
 
                 Route::prefix('location')->group(function () {
-                    Route::get('/index', [MasterLocationController::class, 'index'])->name('wrm.master.location.index');
+                    Route::get('/index', [MasterLocationController::class, 'index'])->name('master.wrm.location.index');
                     Route::get('/get-data', [MasterLocationController::class, 'getData'])->name('wrm.master.location.get-data');
                     Route::post('/store', [MasterLocationController::class, 'store'])->name('wrm.master.location.store');
                     Route::put('/update/{id}', [MasterLocationController::class, 'update'])->name('wrm.master.location.update');
@@ -680,7 +680,7 @@ Route::middleware('auth')->group(function () {
                 });
 
                 Route::prefix('bin')->group(function () {
-                    Route::get('/index', [MasterBinController::class, 'index'])->name('wrm.master.bin.index');
+                    Route::get('/index', [MasterBinController::class, 'index'])->name('master.wrm.bin.index');
                     Route::get('/get-data', [MasterBinController::class, 'getData'])->name('wrm.master.bin.get-data');
                     Route::post('/store', [MasterBinController::class, 'store'])->name('wrm.master.bin.store');
                     Route::delete('/delete/{id}', [MasterBinController::class, 'destroy'])->name('wrm.master.bin.delete');
@@ -688,7 +688,7 @@ Route::middleware('auth')->group(function () {
                 });
 
                 Route::prefix('pallet')->group(function () {
-                    Route::get('/index', [MasterPalletController::class, 'index'])->name('wrm.master.pallet.index');
+                    Route::get('/index', [MasterPalletController::class, 'index'])->name('master.wrm.pallet.index');
                     Route::post('/store', [MasterPalletController::class, 'store'])->name('wrm.master.pallet.store');
                     Route::put('/update/{id}', [MasterPalletController::class, 'update'])->name('wrm.master.pallet.update');
                     Route::delete('/destroy/{id}', [MasterPalletController::class, 'destroy'])->name('wrm.master.pallet.destroy');
@@ -696,7 +696,7 @@ Route::middleware('auth')->group(function () {
                 });
 
                 Route::prefix('supplier')->group(function () {
-                    Route::get('/index', [MasterSupplierController::class, 'index'])->name('wrm.master.supplier.index');
+                    Route::get('/index', [MasterSupplierController::class, 'index'])->name('master.wrm.supplier.index');
                     Route::get('/get-data', [MasterSupplierController::class, 'getData'])->name('wrm.master.supplier.get-data');
                     Route::get('/get-all', [MasterSupplierController::class, 'getAll'])->name('wrm.master.supplier.get-all');
                     Route::post('/store', [MasterSupplierController::class, 'store'])->name('wrm.master.supplier.store');
