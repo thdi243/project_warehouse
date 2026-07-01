@@ -2,10 +2,12 @@
 
 namespace App\Models\Wrm\Inventory;
 
+use App\Models\Wrm\Inventory\StockMovement;
 use App\Models\Wrm\MasterBarangModel;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class StockByDate extends Model
 {
@@ -26,23 +28,32 @@ class StockByDate extends Model
 
     /**
      * Recalculates and saves the cumulative stock balance for a specific date (and propagates to any newer dates)
+     * using the active StockOnHand (UNREST, QI, BLOCKED) as the anchor point.
      */
     public static function updateStockByDate($barangId, $date)
     {
         $dateStr = Carbon::parse($date)->toDateString();
+        $endOfDay = $dateStr . ' 23:59:59';
 
-        // Calculate cumulative stock up to target date from movements
-        $inQty = StockMovement::where('barang_id', $barangId)
-            ->where('jenis', 'in')
-            ->whereDate('tanggal', '<=', $dateStr)
+        // Current active stock on hand (ground truth - UNREST, QI, BLOCKED only)
+        $currentSoh = DB::table('wrm_stock_on_hand')
+            ->where('barang_id', $barangId)
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->sum('qty');
 
-        $outQty = StockMovement::where('barang_id', $barangId)
+        // Sum of all outbound movements after this date
+        $outAfter = StockMovement::where('barang_id', $barangId)
             ->where('jenis', 'out')
-            ->whereDate('tanggal', '<=', $dateStr)
+            ->where('tanggal', '>', $endOfDay)
             ->sum('qty');
 
-        $qty = $inQty - $outQty;
+        // Sum of all inbound movements after this date
+        $inAfter = StockMovement::where('barang_id', $barangId)
+            ->where('jenis', 'in')
+            ->where('tanggal', '>', $endOfDay)
+            ->sum('qty');
+
+        $qty = $currentSoh + $outAfter - $inAfter;
 
         self::updateOrCreate(
             ['barang_id' => $barangId, 'tanggal' => $dateStr],
@@ -55,24 +66,28 @@ class StockByDate extends Model
             ->pluck('tanggal');
 
         foreach ($subsequentDates as $subDate) {
-            $inQtySub = StockMovement::where('barang_id', $barangId)
-                ->where('jenis', 'in')
-                ->whereDate('tanggal', '<=', $subDate)
+            $subDateStr = Carbon::parse($subDate)->toDateString();
+            $subEndOfDay = $subDateStr . ' 23:59:59';
+
+            $outAfterSub = StockMovement::where('barang_id', $barangId)
+                ->where('jenis', 'out')
+                ->where('tanggal', '>', $subEndOfDay)
                 ->sum('qty');
 
-            $outQtySub = StockMovement::where('barang_id', $barangId)
-                ->where('jenis', 'out')
-                ->whereDate('tanggal', '<=', $subDate)
+            $inAfterSub = StockMovement::where('barang_id', $barangId)
+                ->where('jenis', 'in')
+                ->where('tanggal', '>', $subEndOfDay)
                 ->sum('qty');
 
             self::where('barang_id', $barangId)
-                ->where('tanggal', $subDate)
-                ->update(['qty' => $inQtySub - $outQtySub]);
+                ->where('tanggal', $subDateStr)
+                ->update(['qty' => $currentSoh + $outAfterSub - $inAfterSub]);
         }
     }
 
     /**
      * Reconstructs all daily history records for all items from the movements table
+     * using the active StockOnHand (UNREST, QI, BLOCKED) as the anchor point.
      */
     public static function syncAllHistory()
     {
@@ -80,26 +95,37 @@ class StockByDate extends Model
 
         $barangIds = MasterBarangModel::pluck('id');
         foreach ($barangIds as $barangId) {
+            // Current Active SOH (UNREST, QI, BLOCKED only)
+            $currentSoh = DB::table('wrm_stock_on_hand')
+                ->where('barang_id', $barangId)
+                ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+                ->sum('qty');
+
+            // Find all dates where movements occurred for this item
             $dates = StockMovement::where('barang_id', $barangId)
                 ->selectRaw('DATE(tanggal) as date')
                 ->distinct()
                 ->pluck('date');
 
             foreach ($dates as $date) {
-                $inQty = StockMovement::where('barang_id', $barangId)
-                    ->where('jenis', 'in')
-                    ->whereDate('tanggal', '<=', $date)
+                $endOfDay = $date . ' 23:59:59';
+
+                $outAfter = StockMovement::where('barang_id', $barangId)
+                    ->where('jenis', 'out')
+                    ->where('tanggal', '>', $endOfDay)
                     ->sum('qty');
 
-                $outQty = StockMovement::where('barang_id', $barangId)
-                    ->where('jenis', 'out')
-                    ->whereDate('tanggal', '<=', $date)
+                $inAfter = StockMovement::where('barang_id', $barangId)
+                    ->where('jenis', 'in')
+                    ->where('tanggal', '>', $endOfDay)
                     ->sum('qty');
+
+                $qty = $currentSoh + $outAfter - $inAfter;
 
                 self::create([
                     'barang_id' => $barangId,
                     'tanggal'   => $date,
-                    'qty'       => $inQty - $outQty,
+                    'qty'       => $qty
                 ]);
             }
         }
