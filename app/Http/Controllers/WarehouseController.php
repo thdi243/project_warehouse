@@ -420,6 +420,32 @@ class WarehouseController extends Controller
         return view('wcp.stock_opname.report');
     }
 
+    public function uploadSOHWSP()
+    {
+        $barangCount = \App\Models\Wsp\BarangModel::count();
+        $error_message = session('error');
+
+        return view('wsp.stock_opname.upload_soh', compact('barangCount', 'error_message'));
+    }
+
+    public function formSOWSP()
+    {
+        $today = Carbon::today()->format('Y-m-d');
+        $sohExists = \App\Models\Wsp\StockOpname\WspSohModel::whereDate('created_at', $today)->exists();
+
+        if (!$sohExists) {
+            return redirect()->route('wsp.stock_opname.soh')
+                ->with('error', "Data Stock On Hand (SOH) WSP pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
+        }
+
+        return view('wsp.stock_opname.form');
+    }
+
+    public function reportSOWSP()
+    {
+        return view('wsp.stock_opname.report');
+    }
+
     public function viewStockMove()
     {
         return view('wsp.wsp_stock.home_stock_move');

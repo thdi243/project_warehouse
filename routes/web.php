@@ -40,6 +40,8 @@ use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
 use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wsp\stock\StockLocationController;
 use App\Http\Controllers\Wsp\stock\StockOnHandController;
+use App\Http\Controllers\Wsp\StockOpname\WspStockOpnameController;
+use App\Http\Controllers\Wsp\StockOpname\WspStockOnHandController as WspStockOnHandSOController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
@@ -544,6 +546,49 @@ Route::middleware('auth')->group(function () {
             Route::get('/soh/getBarang', [WcpStockOnHandController::class, 'getBarang'])->name('soh.getBarang');
             Route::get('/soh/show/{id}', [WcpStockOnHandController::class, 'show'])->name('soh.show');
             Route::delete('/soh/reset-all', [WcpStockOnHandController::class, 'resetAll'])->name('soh.reset_all');
+        });
+    });
+
+    // Warehouse Sparepart (WSP) - Stock Opname
+    Route::middleware(['auth'])->prefix('wsp')->name('wsp.')->group(function () {
+        // Stock Opname WSP
+        Route::prefix('stock_opname')->middleware(['permission:stock-opname-wsp'])->name('stock_opname.')->group(function () {
+            Route::post('/start', [WspStockOpnameController::class, 'startOpname'])->name('startOpname');
+            Route::get('/status', [WspStockOpnameController::class, 'getStatusOpname'])->name('getStatusOpname');
+            Route::get('/form', [WarehouseController::class, 'formSOWSP'])->name('form');
+            Route::get('/getData', [WspStockOpnameController::class, 'getData'])->name('getData');
+            Route::post('/save-temp', [WspStockOpnameController::class, 'saveTemp'])->name('save-temp');
+            Route::post('/save-new-temp', [WspStockOpnameController::class, 'saveTempNew'])->name('save-temp-new');
+            Route::post('/save-final', [WspStockOpnameController::class, 'processOpname'])->name('process');
+            Route::delete('/reset-temp-row', [WspStockOpnameController::class, 'resetTempRow'])->name('reset-temp-row');
+            Route::get('/getDataTempBatch', [WspStockOpnameController::class, 'getDataTempBatch'])->name('getTempBatch');
+            Route::get('/getDataTempEdit/{sohId}', [WspStockOpnameController::class, 'getDataTempEdit'])->name('getDataTempEdit');
+            Route::post('/update-temp', [WspStockOpnameController::class, 'updateTempBatch'])->name('update-temp');
+            Route::delete('/delete-temp/{id}', [WspStockOpnameController::class, 'destroyTemp'])->name('delete-temp');
+            Route::get('/report', [WarehouseController::class, 'reportSOWSP'])->name('report');
+            Route::get('/report/getData', [WspStockOpnameController::class, 'getDataReport'])->name('report.getData');
+            Route::get('/report/pending-approval', [WspStockOpnameController::class, 'getPendingApprovals'])->name('report.pending-approval');
+            Route::get('/report/detail/{id}', [WspStockOpnameController::class, 'getReportDetail'])->name('report.detail');
+            Route::post('/report/update/{id}', [WspStockOpnameController::class, 'updateReportRow'])->name('report.update');
+            Route::delete('/report/delete/{id}', [WspStockOpnameController::class, 'deleteReportRow'])->name('report.delete');
+            Route::delete('/report/detail/delete/{id}', [WspStockOpnameController::class, 'deleteReportDetail'])->name('report.detail.delete');
+            Route::get('/export', [WspStockOpnameController::class, 'exportPdfSOWSP'])->name('export');
+            Route::post('/send-approval', [WspStockOpnameController::class, 'sendApproval'])->name('send-approval');
+            Route::post('/update/status-approval', [WspStockOpnameController::class, 'updateStatus'])->name('update.status-approval');
+            Route::get('/approval/show/{id}', [WspStockOpnameController::class, 'showApproval'])->name('approval.show');
+            Route::get('/getDataApproval', [WspStockOpnameController::class, 'getDataApproval'])->name('getDataApproval');
+
+            // Stock on Hand SO WSP
+            Route::get('/soh', [WarehouseController::class, 'uploadSOHWSP'])->name('soh');
+            Route::post('/soh/store', [WspStockOnHandSOController::class, 'store'])->name('soh.store');
+            Route::delete('/soh/delete/{id}', [WspStockOnHandSOController::class, 'destroy'])->name('soh.delete');
+            Route::post('/soh/update/{id}', [WspStockOnHandSOController::class, 'update'])->name('soh.update');
+            Route::post('/soh/import', [WspStockOnHandSOController::class, 'importExcel'])->name('soh.import');
+            Route::get('/soh/template', [WspStockOnHandSOController::class, 'downloadTemplate'])->name('soh.template');
+            Route::get('/soh/list', [WspStockOnHandSOController::class, 'getList'])->name('soh.list');
+            Route::get('/soh/getBarang', [WspStockOnHandSOController::class, 'getBarang'])->name('soh.getBarang');
+            Route::get('/soh/show/{id}', [WspStockOnHandSOController::class, 'show'])->name('soh.show');
+            Route::delete('/soh/reset-all', [WspStockOnHandSOController::class, 'resetAll'])->name('soh.reset_all');
         });
     });
 

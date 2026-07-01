@@ -46,6 +46,7 @@
                                 <th>Mid Barang</th>
                                 <th>Nama Barang</th>
                                 <th>Uom</th>
+                                <th>Qty Pallet</th>
                                 <th>SLoc</th>
                                 <th>Plant</th>
                                 @if (Session::get('jabatan') !== 'operator')
@@ -131,6 +132,10 @@
                             <input type="text" class="form-control" id="uom" name="uom">
                         </div>
                         <div class="col-xxl-4 col-md-6">
+                            <label for="qty_pallet" class="form-label">Qty Pallet</label>
+                            <input type="number" step="0.01" class="form-control" id="qty_pallet" name="qty_pallet" value="1">
+                        </div>
+                        <div class="col-xxl-4 col-md-6">
                             <label for="s_loc" class="form-label">Storage Location</label>
                             <input type="text" class="form-control" id="s_loc" name="s_loc">
                         </div>
@@ -186,6 +191,10 @@
                         <div class="col-xxl-3 col-md-6">
                             <label for="uomEdit" class="form-label">Uom</label>
                             <input type="text" class="form-control" id="uomEdit" name="uomEdit">
+                        </div>
+                        <div class="col-xxl-3 col-md-6">
+                            <label for="qtyPalletEdit" class="form-label">Qty Pallet</label>
+                            <input type="number" step="0.01" class="form-control" id="qtyPalletEdit" name="qtyPalletEdit">
                         </div>
                         <div class="col-xxl-3 col-md-6">
                             <label for="sLocEdit" class="form-label">Storage Location</label>
@@ -250,6 +259,10 @@
                         <p id="detailUom"></p>
                     </div>
                     <div class="col-md-4">
+                        <strong>Qty Pallet:</strong>
+                        <p id="detailQtyPallet"></p>
+                    </div>
+                    <div class="col-md-4">
                         <strong>SLoc:</strong>
                         <p id="detailSLoc"></p>
                     </div>
@@ -309,6 +322,12 @@
                     data: 'uom',
                     render: function(data, type, row) {
                         return data || '-';
+                    }
+                },
+                {
+                    data: 'qty_pallet',
+                    render: function(data, type, row) {
+                        return data || '1';
                     }
                 },
                 {
@@ -461,6 +480,7 @@
                     $('#midBarangEdit').val(res.data.mid_barang);
                     $('#namaBarangEdit').val(res.data.nama_barang);
                     $('#uomEdit').val(res.data.uom);
+                    $('#qtyPalletEdit').val(res.data.qty_pallet);
                     $('#sLocEdit').val(res.data.s_loc);
                     $('#plantEdit').val(res.data.plant);
                 },
@@ -644,6 +664,7 @@
                     $('#detailMid').text(res.data.mid_barang);
                     $('#detailNama').text(res.data.nama_barang);
                     $('#detailUom').text(res.data.uom);
+                    $('#detailQtyPallet').text(res.data.qty_pallet || '1');
                     $('#detailSLoc').text(res.data.s_loc);
                     $('#detailPlant').text(res.data.plant);
                     if (res.data.image) {
