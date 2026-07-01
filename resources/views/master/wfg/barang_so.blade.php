@@ -512,7 +512,7 @@
                     </div>
 
                     <div class="modal-footer p-2 d-flex justify-content-between">
-                        <a href="{{ route('wfg.master.barang.template') }}" target="_blank"
+                        <a href="{{ route('master.wfg.barang.template') }}" target="_blank"
                             class="btn btn-soft-warning flex-fill ms-0 me-1">
                             <i class="mdi mdi-download me-1"></i> Unduh Template
                         </a>

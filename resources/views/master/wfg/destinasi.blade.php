@@ -127,7 +127,7 @@
                 $("#paginationContainer").empty();
 
                 $.ajax({
-                    url: "{{ route('wfg.master.destinasi.data') }}",
+                    url: "{{ route('master.wfg.destinasi.data') }}",
                     method: 'GET',
                     data: {
                         search: searchTerm,
@@ -282,7 +282,7 @@
                 e.preventDefault();
                 var id = $('#id-field').val();
                 var url = id ? "{{ url('master/wfg/destinasi/update') }}/" + id :
-                    "{{ route('wfg.master.destinasi.store') }}";
+                    "{{ route('master.wfg.destinasi.store') }}";
                 var method = id ? 'PUT' : 'POST';
 
                 $.ajax({

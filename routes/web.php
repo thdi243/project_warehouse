@@ -580,27 +580,27 @@ Route::middleware('auth')->group(function () {
             Route::prefix('wfg')->middleware(['permission:master-wfg'])->group(function () {
                 // Route::prefix('master')->group(function () {
                 Route::prefix('barang')->group(function () {
-                    Route::get('/index', [BarangWfgController::class, 'index'])->name('wfg.barang.barang.index');
-                    Route::get('/new', [BarangWfgController::class, 'getNewItems'])->name('wfg.master.barang.new');
-                    Route::post('/new/approve/{id}', [BarangWfgController::class, 'approve'])->name('wfg.master.barang.new.approve');
-                    Route::post('/new/reject/{id}', [BarangWfgController::class, 'reject'])->name('wfg.master.barang.new.reject');
-                    Route::post('/store', [BarangWfgController::class, 'store'])->name('wfg.master.barang.store');
-                    Route::get('/data', [BarangWfgController::class, 'data'])->name('wfg.master.barang.data');
-                    Route::put('/update/{id}', [BarangWfgController::class, 'update'])->name('wfg.master.barang.update');
-                    Route::delete('/delete/{id}', [BarangWfgController::class, 'destroy'])->name('wfg.master.barang.delete');
-                    Route::post('/restore/{id}', [BarangWfgController::class, 'restore'])->name('wfg.master.barang.restore');
-                    Route::delete('/force-delete/{id}', [BarangWfgController::class, 'forceDelete'])->name('wfg.master.barang.forceDelete');
-                    Route::post('/import', [BarangWfgController::class, 'import'])->name('wfg.master.barang.import');
-                    Route::get('/template', [BarangWfgController::class, 'downloadTemplate'])->name('wfg.master.barang.template');
+                    Route::get('/index', [BarangWfgController::class, 'index'])->name('master.wfg.barang.index');
+                    Route::get('/new', [BarangWfgController::class, 'getNewItems'])->name('master.wfg.barang.new');
+                    Route::post('/new/approve/{id}', [BarangWfgController::class, 'approve'])->name('master.wfg.barang.new.approve');
+                    Route::post('/new/reject/{id}', [BarangWfgController::class, 'reject'])->name('master.wfg.barang.new.reject');
+                    Route::post('/store', [BarangWfgController::class, 'store'])->name('master.wfg.barang.store');
+                    Route::get('/data', [BarangWfgController::class, 'data'])->name('master.wfg.barang.data');
+                    Route::put('/update/{id}', [BarangWfgController::class, 'update'])->name('master.wfg.barang.update');
+                    Route::delete('/delete/{id}', [BarangWfgController::class, 'destroy'])->name('master.wfg.barang.delete');
+                    Route::post('/restore/{id}', [BarangWfgController::class, 'restore'])->name('master.wfg.barang.restore');
+                    Route::delete('/force-delete/{id}', [BarangWfgController::class, 'forceDelete'])->name('master.wfg.barang.forceDelete');
+                    Route::post('/import', [BarangWfgController::class, 'import'])->name('master.wfg.barang.import');
+                    Route::get('/template', [BarangWfgController::class, 'downloadTemplate'])->name('master.wfg.barang.template');
                 });
 
                 Route::prefix('destinasi')->group(function () {
-                    Route::get('/index', [MasterDestinasiController::class, 'index'])->name('wfg.master.destinasi.index');
-                    Route::get('/data', [MasterDestinasiController::class, 'data'])->name('wfg.master.destinasi.data');
-                    Route::post('/store', [MasterDestinasiController::class, 'store'])->name('wfg.master.destinasi.store');
-                    Route::put('/update/{id}', [MasterDestinasiController::class, 'update'])->name('wfg.master.destinasi.update');
-                    Route::patch('/toggle-status/{id}', [MasterDestinasiController::class, 'toggleStatus'])->name('wfg.master.destinasi.toggleStatus');
-                    Route::delete('/delete/{id}', [MasterDestinasiController::class, 'destroy'])->name('wfg.master.destinasi.delete');
+                    Route::get('/index', [MasterDestinasiController::class, 'index'])->name('master.wfg.destinasi.index');
+                    Route::get('/data', [MasterDestinasiController::class, 'data'])->name('master.wfg.destinasi.data');
+                    Route::post('/store', [MasterDestinasiController::class, 'store'])->name('master.wfg.destinasi.store');
+                    Route::put('/update/{id}', [MasterDestinasiController::class, 'update'])->name('master.wfg.destinasi.update');
+                    Route::patch('/toggle-status/{id}', [MasterDestinasiController::class, 'toggleStatus'])->name('master.wfg.destinasi.toggleStatus');
+                    Route::delete('/delete/{id}', [MasterDestinasiController::class, 'destroy'])->name('master.wfg.destinasi.delete');
                 });
             });
 
