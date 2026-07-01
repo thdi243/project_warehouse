@@ -1975,4 +1975,256 @@ class InboundController extends Controller
         $writer->save('php://output');
         exit;
     }
+
+    private function getZakDrumQty($item)
+    {
+        $mid = $item->barang?->mid;
+        $qty = $item->qty ?? 0;
+
+        $conversion = 1;
+
+        if ($mid) {
+            switch ($mid) {
+                case '20000812': // GULA KELAPA
+                case '20001270': // GULA KELAPA GRADE B
+                    $conversion = 25; // 25 kg per zak (900 kg / 36 = 25)
+                    break;
+                case '20000860': // GULA TEBU
+                    $conversion = 50; // 50 kg per zak (1000 kg / 20 = 50)
+                    break;
+                case '20000156': // GARAM HALUS
+                    $conversion = 25; // 25 kg per zak
+                    break;
+                case '20000057': // MSG
+                    $conversion = 25; // 25 kg per zak (625 kg / 25 = 25)
+                    break;
+                case '20001351': // LIQUID CARAMEL COLOR CLASS III
+                    $conversion = 280; // 280 kg per drum (560 kg / 2 = 280)
+                    break;
+                case '20001400': // LIQUID CARAMEL COLOR CLASS IV
+                    $conversion = 260; // 260 kg per drum (520 kg / 2 = 260)
+                    break;
+                case '20000097': // ND 08505
+                    $conversion = 25; // 25 kg per zak (250 / 10 = 25)
+                    break;
+                case '20000311': // ND 17103
+                    $conversion = 25; // 25 kg per zak
+                    break;
+                case '20001730': // PREMIUM BLACK BEAN SOY SAUCE
+                case '20001731': // PREMIUM YELLOW BEAN SOY SAUCE
+                    $conversion = 230; // 230 kg per drum (920 / 4 = 230)
+                    break;
+                case '20000813': // SKM KIM LAN
+                    $conversion = 237; // (474 / 2 = 237)
+                    break;
+                case '20001571': // SKM QIANHE
+                    $conversion = 250; // (500 / 2 = 250)
+                    break;
+                default:
+                    $conversion = 25; // default to 25
+                    break;
+            }
+        }
+
+        return $qty / $conversion;
+    }
+
+    public function exportListExcel(Request $request)
+    {
+        $query = StockOnHand::query()
+            ->with([
+                'barang:id,mid,nama_barang,uom',
+                'bin:id,loc_id,kolom,level',
+                'bin.location:id,plant,s_loc,gudang,zona,bin',
+            ])
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
+
+        // Apply mids filter
+        if ($request->filled('mids')) {
+            $query->whereHas('barang', function ($q) use ($request) {
+                $q->whereIn('mid', $request->mids);
+            });
+        }
+
+        // Helper to apply other filters
+        $applyFilter = function ($query, $inputKey, $columnName) use ($request) {
+            if ($request->filled($inputKey)) {
+                $raw = $request->input($inputKey);
+                if ($raw === 'null' || $raw === null) {
+                    return;
+                }
+                $vals = json_decode($raw, true);
+                if ($vals === null) {
+                    $vals = (array) $raw;
+                }
+                $vals = array_filter((array)$vals, function ($v) {
+                    return $v !== null && $v !== '' && $v !== 'null';
+                });
+                if (!empty($vals)) {
+                    $query->whereIn($columnName, $vals);
+                }
+            }
+        };
+
+        $applyFilter($query, 'group', 'wrm_stock_on_hand.group');
+        $applyFilter($query, 'status', 'wrm_stock_on_hand.status');
+        $applyFilter($query, 'supplier', 'wrm_stock_on_hand.supplier');
+        $applyFilter($query, 'no_spb', 'wrm_stock_on_hand.no_spb');
+
+        if ($request->filled('jenis_bahan')) {
+            $raw = $request->input('jenis_bahan');
+            if ($raw !== 'null' && $raw !== null) {
+                $vals = json_decode($raw, true);
+                if ($vals === null) {
+                    $vals = (array) $raw;
+                }
+                $vals = array_filter((array)$vals, function ($v) {
+                    return $v !== null && $v !== '' && $v !== 'null';
+                });
+                if (!empty($vals)) {
+                    $query->whereHas('barang', function ($q) use ($vals) {
+                        $q->whereIn('nama_barang', $vals);
+                    });
+                }
+            }
+        }
+
+        if ($request->filled('location')) {
+            $raw = $request->input('location');
+            if ($raw !== 'null' && $raw !== null) {
+                $vals = json_decode($raw, true);
+                if ($vals === null) {
+                    $vals = (array) $raw;
+                }
+                $vals = array_filter((array)$vals, function ($v) {
+                    return $v !== null && $v !== '' && $v !== 'null';
+                });
+                if (!empty($vals)) {
+                    $query->whereHas('bin', function ($q) use ($vals) {
+                        $q->whereIn('loc_id', $vals);
+                    });
+                }
+            }
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('wrm_stock_on_hand.incoming_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('wrm_stock_on_hand.incoming_date', '<=', $request->end_date);
+        }
+
+        if ($request->filled('catatan')) {
+            $query->where('wrm_stock_on_hand.catatan', 'like', '%' . $request->catatan . '%');
+        }
+
+        $items = $query->get();
+
+        // Sort: First by zona, then by warehouse order, then by bin name, kolom, and level.
+        $sorted = $items->sort(function ($a, $b) {
+            $zonaA = $a->bin?->location?->zona ?? '';
+            $zonaB = $b->bin?->location?->zona ?? '';
+
+            if ($zonaA !== $zonaB) {
+                return strnatcmp($zonaA, $zonaB);
+            }
+
+            $gudangA = $a->bin?->location?->gudang ?? '';
+            $gudangB = $b->bin?->location?->gudang ?? '';
+
+            $orderMap = [
+                'WRM 3' => 1,
+                'WRM 5' => 2,
+                'WRM 6' => 3
+            ];
+
+            $orderA = $orderMap[$gudangA] ?? 99;
+            $orderB = $orderMap[$gudangB] ?? 99;
+
+            if ($orderA !== $orderB) {
+                return $orderA <=> $orderB;
+            }
+
+            $binA = $a->bin?->location?->bin ?? '';
+            $binB = $b->bin?->location?->bin ?? '';
+            if ($binA !== $binB) {
+                return strnatcmp($binA, $binB);
+            }
+
+            $kolomA = intval($a->bin?->kolom ?? 0);
+            $kolomB = intval($b->bin?->kolom ?? 0);
+            if ($kolomA !== $kolomB) {
+                return $kolomA <=> $kolomB;
+            }
+
+            $levelA = intval($a->bin?->level ?? 0);
+            $levelB = intval($b->bin?->level ?? 0);
+            return $levelA <=> $levelB;
+        })->values();
+
+        $templatePath = public_path('assets/templates/excel/list_inventory.xlsx');
+        if (!file_exists($templatePath)) {
+            return back()->with('error', 'Template excel tidak ditemukan.');
+        }
+
+        $spreadsheet = IOFactory::load($templatePath);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $currentRow = 2;
+
+        foreach ($sorted as $item) {
+            // Prepare location string (A)
+            $locText = '-';
+            if ($item->bin && $item->bin->location) {
+                $loc = $item->bin->location;
+                $locText = "{$loc->bin}";
+            }
+
+            $sheet->setCellValue("A{$currentRow}", $locText);
+            $sheet->setCellValue("B{$currentRow}", $item->no_spb ?? '-');
+            $sheet->setCellValue("C{$currentRow}", $item->pallet_id ?? '-');
+            $sheet->setCellValue("D{$currentRow}", $item->barang?->mid ?? '-');
+            $sheet->setCellValue("E{$currentRow}", $item->barang?->nama_barang ?? '-');
+            $sheet->setCellValue("F{$currentRow}", $item->group ?? '-');
+            $sheet->setCellValue("G{$currentRow}", $item->qty ?? 0);
+            $sheet->setCellValue("H{$currentRow}", $item->barang?->uom ?? '-');
+            $sheet->setCellValue("I{$currentRow}", $this->getZakDrumQty($item));
+            $sheet->setCellValue("J{$currentRow}", $item->incoming_date ? Carbon::parse($item->incoming_date)->format('Y-m-d') : '-');
+            $sheet->setCellValue("K{$currentRow}", $item->supplier ?? '-');
+            $sheet->setCellValue("L{$currentRow}", $item->status ?? '-');
+            $sheet->setCellValue("M{$currentRow}", $item->bin?->location?->gudang ?? '-');
+            $sheet->setCellValue("N{$currentRow}", $item->catatan ?? '-');
+
+            // Set row height to 20 for data rows
+            $sheet->getRowDimension($currentRow)->setRowHeight(20);
+
+            // Apply borders to data row
+            $styleArray = [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '00000000'],
+                    ],
+                ],
+            ];
+            $sheet->getStyle("A{$currentRow}:N{$currentRow}")->applyFromArray($styleArray);
+
+            $currentRow++;
+        }
+
+        // Clear output buffer
+        if (ob_get_contents()) {
+            ob_end_clean();
+        }
+
+        // Headers for Excel file download
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="List_Inventory_' . date('Ymd_His') . '.xlsx"');
+        header('Cache-Control: max-age=0');
+
+        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer->save('php://output');
+        exit;
+    }
 }

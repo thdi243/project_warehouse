@@ -515,7 +515,10 @@
                     @can('permission', 'wrm-inventory-soh-plus')
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-outline-success" id="btnExportExcel">
-                                <i class="mdi mdi-file-excel"></i> Export Excel
+                                <i class="mdi mdi-file-excel"></i> Akunting
+                            </button>
+                            <button type="button" class="btn btn-outline-success" id="btnExcelList">
+                                <i class="mdi mdi-file-excel"></i> List
                             </button>
                             <a href="{{ route('wrm.inventory.index-upload') }}" class="btn btn-outline-primary"
                                 id="btnUpload">
@@ -759,10 +762,19 @@
 
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Pilih MID yang ingin di-export</label>
-                            <select class="form-select" name="mids[]" id="exportMids" multiple style="width: 100%;">
-                                <!-- Dynamically populated -->
-                            </select>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-semibold mb-0">Pilih MID yang ingin di-export</label>
+                                <div class="d-flex gap-2">
+                                    <button type="button" id="btnSelectAllMids" class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold">Select All</button>
+                                    <button type="button" id="btnClearAllMids" class="btn btn-link btn-sm p-0 text-danger text-decoration-none fw-semibold">Clear All</button>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <input type="text" class="form-control form-control-sm" id="searchExportMids" placeholder="Cari MID...">
+                            </div>
+                            <div id="exportMidsList" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px; background-color: #f8f9fa;">
+                                <!-- Dynamically populated checkboxes -->
+                            </div>
                             <div class="form-text">Biarkan kosong untuk mengekspor seluruh MID.</div>
                         </div>
                     </div>
@@ -800,8 +812,11 @@
 
             let isResetting = false;
 
-            // Export Excel click handler
-            $('#btnExportExcel').click(function() {
+            // Helper function for both exports
+            function setupExportModal(actionUrl, modalTitle) {
+                $('#exportExcelForm').attr('action', actionUrl);
+                $('#exportExcelModalLabel').html('<i class="mdi mdi-file-excel me-1 text-success"></i> ' + modalTitle);
+
                 // Copy filter values from page to hidden inputs
                 const getFilterVal = (sel) => {
                     const $el = $(sel);
@@ -827,29 +842,60 @@
                 $('#exportEndDate').val($('#filterEndDate').val() || '');
                 $('#exportCatatan').val($('#filterCatatan').val() || '');
 
-                // Populate modal select options from filterMid options
-                const exportSelect = $('#exportMids');
-                exportSelect.empty();
+                // Populate checkboxes
+                const listContainer = $('#exportMidsList');
+                listContainer.empty();
+                $('#searchExportMids').val(''); // Reset search input
 
                 $('#dropdown-mid .option-checkbox').each(function() {
                     const opt = $(this);
                     const labelText = opt.next('label').text().trim();
-                    if (opt.val()) {
-                        exportSelect.append(new Option(labelText, opt.val(), false, false));
+                    const optVal = opt.val();
+                    if (optVal) {
+                        listContainer.append(`
+                            <div class="form-check mb-2 export-mid-item" data-text="${labelText}" data-value="${optVal}">
+                                <input class="form-check-input export-mid-checkbox" type="checkbox" name="mids[]" value="${optVal}" id="chk-export-mid-${optVal}">
+                                <label class="form-check-label text-truncate w-100" for="chk-export-mid-${optVal}">
+                                    ${labelText}
+                                </label>
+                            </div>
+                        `);
                     }
-                });
-
-                // Initialize select2 inside modal
-                exportSelect.select2({
-                    theme: 'bootstrap-5',
-                    dropdownParent: $('#exportExcelModal'),
-                    placeholder: 'Pilih MID (kosongkan untuk semua)',
-                    allowClear: true,
-                    closeOnSelect: false
                 });
 
                 // Show modal
                 $('#exportExcelModal').modal('show');
+            }
+
+            // Search functionality for MIDs in export modal
+            $('#searchExportMids').on('input', function() {
+                const query = $(this).val().toLowerCase();
+                $('#exportMidsList .export-mid-item').each(function() {
+                    const text = $(this).data('text').toString().toLowerCase();
+                    const val = $(this).data('value').toString().toLowerCase();
+                    if (text.indexOf(query) > -1 || val.indexOf(query) > -1) {
+                        $(this).removeClass('d-none');
+                    } else {
+                        $(this).addClass('d-none');
+                    }
+                });
+            });
+
+            // Export Excel click handlers
+            $('#btnExportExcel').click(function() {
+                setupExportModal("{{ route('wrm.inventory.export-excel') }}", "Export Excel Opname");
+            });
+
+            $('#btnExcelList').click(function() {
+                setupExportModal("{{ route('wrm.inventory.export-list-excel') }}", "Export List Inventory");
+            });
+
+            $('#btnSelectAllMids').click(function() {
+                $('#exportMidsList .export-mid-item:not(.d-none) .export-mid-checkbox').prop('checked', true);
+            });
+
+            $('#btnClearAllMids').click(function() {
+                $('#exportMidsList .export-mid-checkbox').prop('checked', false);
             });
 
             $('#locEdit').select2({
