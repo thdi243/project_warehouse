@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Wrm\Inventory;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Wrm\SubmitOutboundRequest;
+use App\Models\P2h\UserForkliftAssignmentModel;
 use App\Models\Wrm\Inventory\StockBalance;
+use App\Models\Wrm\Inventory\StockByDate;
 use App\Models\Wrm\Inventory\StockInboundDetail;
 use App\Models\Wrm\Inventory\StockMovement;
 use App\Models\Wrm\Inventory\StockOnHand;
@@ -12,19 +14,18 @@ use App\Models\Wrm\Inventory\StockOutbound;
 use App\Models\Wrm\Inventory\StockOutboundDetail;
 use App\Models\Wrm\Inventory\StockTransfer;
 use App\Models\Wrm\Inventory\StockTransferDetail;
+use App\Models\Wrm\MasterBarangModel;
 use App\Models\Wrm\MasterBinModel;
 use App\Models\Wrm\MasterSupplierModel;
-use App\Models\Wrm\MasterBarangModel;
-use App\Models\P2h\UserForkliftAssignmentModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class OutboundController extends Controller
 {
@@ -825,8 +826,8 @@ class OutboundController extends Controller
                         $locId = $bin->loc_id;
 
                         // Recalculate Stock Balance and update StockByDate
-                        \App\Models\Wrm\Inventory\StockBalance::recalculate($detail->barang_id);
-                        \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($detail->barang_id, now());
+                        StockBalance::recalculate($detail->barang_id);
+                        StockByDate::updateStockByDate($detail->barang_id, now());
 
                         // Record Stock Movement (out)
                         StockMovement::create([
@@ -840,6 +841,9 @@ class OutboundController extends Controller
                             'created_by' => Auth::id(),
                         ]);
                     }
+                } else if ($status === 'BA WAITING') {
+                    StockBalance::recalculate($detail->barang_id);
+                    StockByDate::updateStockByDate($detail->barang_id, now());
                 }
             }
 
@@ -1009,8 +1013,8 @@ class OutboundController extends Controller
                             $locId = $bin->loc_id;
 
                             // Recalculate Stock Balance and update StockByDate
-                            \App\Models\Wrm\Inventory\StockBalance::recalculate($detail->barang_id);
-                            \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($detail->barang_id, now());
+                            StockBalance::recalculate($detail->barang_id);
+                            StockByDate::updateStockByDate($detail->barang_id, now());
 
                             // Record Stock Movement (out)
                             StockMovement::create([

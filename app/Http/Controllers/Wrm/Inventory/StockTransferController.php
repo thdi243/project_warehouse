@@ -162,8 +162,8 @@ class StockTransferController extends Controller
                 $bin   = $draftDetail->bin;
                 $locId = $bin ? $bin->loc_id : null;
                 if ($locId) {
-                    \App\Models\Wrm\Inventory\StockBalance::recalculate($barang->id);
-                    \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barang->id, $tglGi ?? now());
+                    // StockBalance::recalculate($barang->id);
+                    // StockByDate::updateStockByDate($barang->id, $tglGi ?? now());
 
                     StockMovement::create([
                         'barang_id'  => $barang->id,
@@ -281,8 +281,8 @@ class StockTransferController extends Controller
                 $movement->delete();
 
                 // 4. Sync Balances
-                \App\Models\Wrm\Inventory\StockBalance::recalculate($detail->barang_id);
-                \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($detail->barang_id, $movDate);
+                // StockBalance::recalculate($detail->barang_id);
+                // StockByDate::updateStockByDate($detail->barang_id, $movDate);
             }
 
             // 6. Delete Transfer Detail
