@@ -108,8 +108,8 @@
                 border-radius: 12px;
                 overflow: hidden;
                 border: 1px solid var(--border-color);
-                min-height: 230px;
-                max-height: 230px !important;
+                min-height: 280px;
+                max-height: 280px !important;
             }
 
             .premium-table {
@@ -519,10 +519,10 @@
                 <!-- Gula Tebu -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">Gula Tebu</span>
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">Gula Tebu</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-primary" id="kpi-gulatebu-ton">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-gulatebu-ton">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> TON</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -535,10 +535,10 @@
                 <!-- Gula Kelapa -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">Gula Kelapa</span>
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">Gula Kelapa</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-primary" id="kpi-gulakelapa-ton">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-gulakelapa-ton">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> TON</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -551,10 +551,10 @@
                 <!-- Gula Kelapa Grade B -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">Gula Kelapa B</span>
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">Gula Kelapa B</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-primary" id="kpi-gulakelapab-ton">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-gulakelapab-ton">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> TON</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -567,10 +567,10 @@
                 <!-- Gula Pasir -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">Gula Pasir</span>
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">Gula Pasir</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-primary" id="kpi-gulapasir-ton">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-gulapasir-ton">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> TON</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -583,10 +583,10 @@
                 <!-- Import -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">Import</span>
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">Import</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-primary" id="kpi-import-ton">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-import-ton">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> TON</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -603,11 +603,11 @@
                 <!-- Slipsheet -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">Slipsheet
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">Slipsheet
                             (Truck)</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-info" id="kpi-slipsheet-in">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-slipsheet-in">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> IN</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -620,10 +620,10 @@
                 <!-- Curah -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">Curah (Truck)</span>
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">Curah (Truck)</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-info" id="kpi-curah-in">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-curah-in">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> IN</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -636,11 +636,11 @@
                 <!-- SMU -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">SMU Area
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">SMU Area
                             (Truck)</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-info" id="kpi-smu-in">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-smu-in">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> IN</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -653,11 +653,11 @@
                 <!-- WPM -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">WPM Area
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">WPM Area
                             (Truck)</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-info" id="kpi-wpm-in">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-wpm-in">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> IN</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -670,11 +670,11 @@
                 <!-- WRM -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">WRM Area
+                        <span class="text-uppercase fw-semibold fs-10 tracking-wider">WRM Area
                             (Truck)</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
-                                <span class="fs-16 fw-bold text-info" id="kpi-wrm-in">0</span>
+                                <span class="fs-16 fw-bold" id="kpi-wrm-in">0</span>
                                 <span class="text-muted" style="font-size: 9px;"> IN</span>
                             </div>
                             <div class="border-start ps-2 border-secondary-subtle">
@@ -692,7 +692,7 @@
                 <div class="col-xl-6">
                     <div class="premium-card h-100">
                         <div class="card-hdr wpm d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fw-bold fs-15 text-primary"><span class="status-dot text-primary"
+                            <h5 class="mb-0 fw-bold fs-15"><span class="status-dot text-primary"
                                     style="color: var(--primary);"></span>WPM AREA (BONGKAR)</h5>
                             <span
                                 class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 fs-12 rounded-pill"
@@ -728,7 +728,7 @@
                 <div class="col-xl-6">
                     <div class="premium-card h-100">
                         <div class="card-hdr wrm d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fw-bold fs-15 text-warning"><span class="status-dot text-warning"
+                            <h5 class="mb-0 fw-bold fs-15"><span class="status-dot text-warning"
                                     style="color: var(--warning);"></span>WRM (UNLOAD BONGKAR)</h5>
                             <span
                                 class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 fs-12 rounded-pill"
@@ -766,7 +766,7 @@
                 <div class="col-xl-6">
                     <div class="premium-card h-100">
                         <div class="card-hdr wfg d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fw-bold fs-15 text-info"><span class="status-dot text-info"
+                            <h5 class="mb-0 fw-bold fs-15"><span class="status-dot text-info"
                                     style="color: var(--info);"></span>WFG (BONGKAR MUAT)</h5>
                             <span
                                 class="badge bg-info-subtle text-info border border-info-subtle px-3 py-1 fs-12 rounded-pill"
@@ -803,7 +803,7 @@
                 <div class="col-xl-6">
                     <div class="premium-card h-100">
                         <div class="card-hdr smu d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fw-bold fs-15 text-secondary"><span class="status-dot text-secondary"
+                            <h5 class="mb-0 fw-bold fs-15"><span class="status-dot text-secondary"
                                     style="color: #94a3b8;"></span>SMU AREA</h5>
                             <span
                                 class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 fs-12 rounded-pill"
