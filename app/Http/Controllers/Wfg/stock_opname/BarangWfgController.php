@@ -136,16 +136,21 @@ class BarangWfgController extends Controller
                 'uom'       => 'nullable|string|max:50',
             ]);
 
-            // Cek duplikat MID barang
-            $midSoftDeleted = BarangWfgModel::withTrashed()
+            $barang = BarangWfgModel::withTrashed()
                 ->where('mid_barang', $request->mid_barang)
-                ->whereNotNull('deleted_at')
                 ->first();
 
-            if ($midSoftDeleted) {
+            if ($barang) {
+                if ($barang->trashed()) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'MID Barang sudah ada pada data nonaktif. Aktifkan kembali barang tersebut jika ingin digunakan.',
+                    ], 400);
+                }
+
                 return response()->json([
                     'status'  => false,
-                    'message' => 'MID Barang sudah ada pada data nonaktif. Aktifkan kembali barang tersebut jika ingin digunakan.',
+                    'message' => 'MID Barang sudah terdaftar.',
                 ], 400);
             }
 
