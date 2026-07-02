@@ -25,8 +25,8 @@ class VehicleMonitoringSeeder extends Seeder
             ],
             [
                 's_loc' => 'C001',
-                'name' => 'WPM (QC Area)',
-                'description' => 'Area Warehouse Raw Material QC untuk pengambilan sampel awal.',
+                'name' => 'WPM Area',
+                'description' => 'Area Warehouse Raw Material WPM untuk bongkar.',
             ],
             [
                 's_loc' => 'B006',
@@ -66,8 +66,8 @@ class VehicleMonitoringSeeder extends Seeder
 
         foreach ($items as $item) {
             VehicleItem::updateOrCreate(
-                ['sku' => $item['sku']],
-                ['name' => $item['name']]
+                ['name' => $item['name']],
+                []
             );
         }
 
@@ -84,9 +84,14 @@ class VehicleMonitoringSeeder extends Seeder
                 'description' => 'Akses ke Timbangan Check-In/Check-Out.'
             ],
             [
+                'name' => 'vehicle-monitoring-qc',
+                'section' => 'Vehicle Monitoring',
+                'description' => 'Akses ke QC Queue & sampel status.'
+            ],
+            [
                 'name' => 'vehicle-monitoring-wpm',
                 'section' => 'Vehicle Monitoring',
-                'description' => 'Akses ke WPM QC Queue & sampel status.'
+                'description' => 'Akses ke WPM Unloading.'
             ],
             [
                 'name' => 'vehicle-monitoring-wrm',

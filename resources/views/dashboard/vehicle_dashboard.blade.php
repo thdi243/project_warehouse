@@ -653,7 +653,7 @@
                 <!-- WPM -->
                 <div class="col">
                     <div class="premium-card kpi-box h-100 py-2 px-3">
-                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">WPM (QC)
+                        <span class="text-muted text-uppercase fw-semibold fs-10 tracking-wider">WPM Area
                             (Truck)</span>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <div>
@@ -688,14 +688,14 @@
 
             <!-- Tables Grid -->
             <div class="row g-4">
-                <!-- WPM QC Area -->
+                <!-- WPM Area -->
                 <div class="col-xl-6">
                     <div class="premium-card h-100">
                         <div class="card-hdr wpm d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fw-bold fs-15 text-success"><span class="status-dot text-success"
-                                    style="color: var(--success);"></span>WPM (QC AREA) </h5>
+                            <h5 class="mb-0 fw-bold fs-15 text-primary"><span class="status-dot text-primary"
+                                    style="color: var(--primary);"></span>WPM AREA (BONGKAR)</h5>
                             <span
-                                class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 fs-12 rounded-pill"
+                                class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 fs-12 rounded-pill"
                                 id="badge-wpm">0</span>
                         </div>
                         <div class="p-3">
@@ -706,14 +706,13 @@
                                             <th>Check In</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            <th>QC Status</th>
-                                            <th>Status</th>
+                                            <th>Item</th>
                                             <th>Durasi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="body-wpm">
                                         <tr>
-                                            <td colspan="6" class="text-center text-muted py-4">Mengambil data...
+                                            <td colspan="5" class="text-center text-muted py-4">Mengambil data...
                                             </td>
                                         </tr>
                                     </tbody>
@@ -863,7 +862,8 @@
                 $('[data-toggle="fullscreen"]').on('click', function(e) {
                     e.preventDefault();
                     if (!document.fullscreenElement &&
-                        !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                        !document.mozFullScreenElement && !document.webkitFullscreenElement && !document
+                        .msFullscreenElement) {
                         if (document.documentElement.requestFullscreen) {
                             document.documentElement.requestFullscreen();
                         } else if (document.documentElement.msRequestFullscreen) {
@@ -889,7 +889,8 @@
                 function exitHandler() {
                     const icon = $('[data-toggle="fullscreen"] i');
                     const text = $('[data-toggle="fullscreen"] .fullscreen-text');
-                    if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                    if (document.fullscreenElement || document.webkitFullscreenElement || document
+                        .mozFullScreenElement || document.msFullscreenElement) {
                         icon.removeClass('bx-fullscreen').addClass('bx-exit-fullscreen');
                         text.text('Exit Fullscreen');
                     } else {
@@ -1030,7 +1031,7 @@
 
                         if (totalCount === 0) {
                             let colsCount = 5;
-                            if (key === 'WPM') colsCount = 6;
+                            if (key === 'WPM') colsCount = 5;
                             if (key === 'WRM') colsCount = 7;
                             if (key === 'WFG') colsCount = 6;
                             tbody.html(
@@ -1063,24 +1064,6 @@
 
                             let rowHtml = '';
                             if (key === 'WPM') {
-                                let qcStatusBadge = '';
-                                if (tx.qc_status === 'waiting_dokumen') {
-                                    qcStatusBadge =
-                                        `<span class="badge-status waiting">Waiting Dokumen</span>`;
-                                } else {
-                                    qcStatusBadge =
-                                        `<span class="badge-status process">On Check</span>`;
-                                }
-
-                                let statusBadge = '';
-                                if (tx.status === 'antri_sampling') {
-                                    statusBadge =
-                                        `<span class="badge bg-soft-warning text-warning text-uppercase">Antri Sampling</span>`;
-                                } else if (tx.status === 'wpm_qc') {
-                                    statusBadge =
-                                        `<span class="badge bg-soft-info text-info text-uppercase">Proses Sampling</span>`;
-                                }
-
                                 rowHtml = `
                                     <tr class="${warningRow}" id="row-tx-${tx.id}">
                                         <td>
@@ -1089,10 +1072,9 @@
                                                 <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
                                             </div>
                                         </td>
-                                        <td><span class="text-primary fw-semibold">${tx.no_pol}</span></td>
+                                        <td><span class="fw-semibold">${tx.no_pol}</span></td>
                                         <td>${tx.vendor}</td>
-                                        <td>${qcStatusBadge}</td>
-                                        <td>${statusBadge}</td>
+                                        <td><strong>${tx.item}</strong></td>
                                         <td>
                                             <span class="dashboard-timer ${durationClass}" data-start="${tx.arrival_time}" data-limit="${tx.limit_minutes}">
                                                 Calculated...
@@ -1101,10 +1083,38 @@
                                     </tr>
                                 `;
                             } else if (key === 'WRM') {
-                                let qcStatusBadge =
-                                    `<span class="badge-status success">${tx.qc_status}</span>`;
-                                let unloadingStatusBadge =
-                                    `<span class="badge-status process">${tx.unloading_status}</span>`;
+                                let qcStatusBadge = '';
+                                if (tx.qc_status === 'waiting_dokumen') {
+                                    qcStatusBadge =
+                                        `<span class="badge-status waiting">Waiting Dokumen</span>`;
+                                } else if (tx.qc_status === 'on_check') {
+                                    qcStatusBadge =
+                                        `<span class="badge-status process">On Check</span>`;
+                                } else if (tx.qc_status === 'released') {
+                                    qcStatusBadge =
+                                        `<span class="badge-status success">Released</span>`;
+                                } else if (tx.qc_status === 'rejected') {
+                                    qcStatusBadge = `<span class="badge-status danger">Rejected</span>`;
+                                } else {
+                                    qcStatusBadge =
+                                        `<span class="badge bg-soft-secondary text-secondary">${tx.qc_status}</span>`;
+                                }
+
+                                let unloadingStatusBadge = '';
+                                if (tx.status === 'antri_sampling') {
+                                    unloadingStatusBadge =
+                                        `<span class="badge-status waiting">Menunggu QC</span>`;
+                                } else if (tx.status === 'sampling') {
+                                    unloadingStatusBadge =
+                                        `<span class="badge-status process">Proses Sampling</span>`;
+                                } else if (tx.status === 'wrm_bongkar') {
+                                    unloadingStatusBadge =
+                                        `<span class="badge-status process">Proses Bongkar</span>`;
+                                } else {
+                                    unloadingStatusBadge =
+                                        `<span class="badge bg-soft-secondary text-secondary">${tx.unloading_status}</span>`;
+                                }
+
                                 rowHtml = `
                                     <tr class="${warningRow}" id="row-tx-${tx.id}">
                                         <td>
@@ -1113,8 +1123,8 @@
                                                 <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
                                             </div>
                                         </td>
-                                        <td><span class="text-muted fw-semibold">${tx.no_spb}</span></td>
-                                        <td><span class="text-primary fw-semibold">${tx.no_pol}</span></td>
+                                        <td><span class="fw-semibold">${tx.no_spb}</span></td>
+                                        <td><span class="fw-semibold">${tx.no_pol}</span></td>
                                         <td>${tx.vendor}</td>
                                         <td>${qcStatusBadge}</td>
                                         <td>${unloadingStatusBadge}</td>
@@ -1142,7 +1152,7 @@
                                                 <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
                                             </div>
                                         </td>
-                                        <td><span class="text-primary fw-semibold">${tx.no_pol}</span></td>
+                                        <td><span class="fw-semibold">${tx.no_pol}</span></td>
                                         <td>${tx.vendor}</td>
                                         <td><strong>${tx.item}</strong></td>
                                         <td>${statusWfgBadge}</td>
@@ -1162,7 +1172,7 @@
                                                 <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
                                             </div>
                                         </td>
-                                        <td><span class="text-primary fw-semibold">${tx.no_pol}</span></td>
+                                        <td><span class="fw-semibold">${tx.no_pol}</span></td>
                                         <td>${tx.vendor}</td>
                                         <td><strong>${tx.item}</strong></td>
                                         <td>
@@ -1182,7 +1192,7 @@
                         if (currentRenderedRows < itemsPerPage) {
                             const paddingRowsNeeded = itemsPerPage - currentRenderedRows;
                             let colsCount = 5;
-                            if (key === 'WPM') colsCount = 6;
+                            if (key === 'WPM') colsCount = 5;
                             if (key === 'WRM') colsCount = 7;
                             if (key === 'WFG') colsCount = 6;
                             for (let i = 0; i < paddingRowsNeeded; i++) {

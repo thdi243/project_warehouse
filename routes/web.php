@@ -801,12 +801,19 @@ Route::middleware('auth')->group(function () {
             Route::get('/timbangan/autocomplete-vehicle', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'autocompleteVehicle'])->name('timbangan.autocomplete_vehicle');
         });
 
-        // WPM (QC Area)
+        // QC Area
+        Route::middleware(['permission:vehicle-monitoring-qc'])->group(function () {
+            Route::get('/qc', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'qcIndex'])->name('qc');
+            Route::get('/qc/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'qcData'])->name('qc.data');
+            Route::post('/qc/update-qc/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'qcUpdateQC'])->name('qc.update_qc');
+            Route::post('/qc/update-queue/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'qcUpdateQueueNumber'])->name('qc.update_queue');
+        });
+
+        // WPM (Unloading Area)
         Route::middleware(['permission:vehicle-monitoring-wpm'])->group(function () {
             Route::get('/wpm', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmIndex'])->name('wpm');
             Route::get('/wpm/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmData'])->name('wpm.data');
-            Route::post('/wpm/update-qc/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmUpdateQC'])->name('wpm.update_qc');
-            Route::post('/wpm/update-queue/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmUpdateQueueNumber'])->name('wpm.update_queue');
+            Route::post('/wpm/complete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmComplete'])->name('wpm.complete');
         });
 
         // WRM (Unloading Area)

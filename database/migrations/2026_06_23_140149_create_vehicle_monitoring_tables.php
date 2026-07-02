@@ -47,8 +47,8 @@ return new class extends Migration
             $table->decimal('qty_spb', 12, 2)->nullable();
             $table->foreignId('target_location_id')->constrained('locations')->onDelete('restrict');
             $table->foreignId('current_location_id')->constrained('locations')->onDelete('restrict');
-            $table->string('status'); // timbangan_in, wpm_qc, wrm_bongkar, wfg_muat, smu, timbangan_out, completed
-            $table->string('qc_status')->default('pending'); // pending, released, rejected
+            $table->string('status'); // timbangan_in, sampling, wrm_bongkar, wfg_muat, smu, timbangan_out, completed
+            $table->string('qc_status')->default('waiting_dokumen'); // waiting_dokumen, on_check, released, rejected
             $table->string('unloading_status')->default('pending'); // pending, unloading, completed
             $table->string('no_antrian')->nullable();
             $table->dateTime('check_in_time');

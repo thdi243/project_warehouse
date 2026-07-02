@@ -77,10 +77,10 @@ class VehicleTrackingController extends Controller
             ];
         });
 
-        // Split into queues for the dashboard tables (WPM includes antri_sampling and wpm_qc)
+        // Split into queues for the dashboard tables
         $queues = [
-            'WPM' => $activeTransactions->whereIn('status', ['antri_sampling', 'wpm_qc'])->values(),
-            'WRM' => $activeTransactions->where('status', 'wrm_bongkar')->values(),
+            'WPM' => $activeTransactions->where('status', 'wpm')->values(),
+            'WRM' => $activeTransactions->whereIn('status', ['antri_sampling', 'sampling', 'wrm_bongkar'])->values(),
             'WFG' => $activeTransactions->where('status', 'wfg_muat')->values(),
             'SMU' => $activeTransactions->where('status', 'smu')->values(),
         ];
@@ -356,15 +356,24 @@ class VehicleTrackingController extends Controller
             // Map target location to transaction status
             $newStatus = 'smu';
             $initialQcStatus = 'pending';
+            $currentLocId = $targetLoc->id;
+
             if ($targetLoc->s_loc === 'C001') {
+                // WPM is standalone unloading
+                $newStatus = 'wpm';
+                $initialQcStatus = 'pending';
+            } elseif ($targetLoc->s_loc === 'B006') {
+                // WRM goes to QC first
                 $newStatus = 'antri_sampling';
                 $initialQcStatus = 'waiting_dokumen';
-            } elseif ($targetLoc->s_loc === 'B006') $newStatus = 'wrm_bongkar';
-            elseif ($targetLoc->s_loc === 'A001') $newStatus = 'wfg_muat';
+                $currentLocId = $targetLoc->id;
+            } elseif ($targetLoc->s_loc === 'A001') {
+                $newStatus = 'wfg_muat';
+            }
 
             // Update transaction to target location
             $transaction->update([
-                'current_location_id' => $targetLoc->id,
+                'current_location_id' => $currentLocId,
                 'status' => $newStatus,
                 'qc_status' => $initialQcStatus
             ]);
@@ -372,7 +381,7 @@ class VehicleTrackingController extends Controller
             // Create new tracking log for target location
             VehicleTracking::create([
                 'vehicle_transaction_id' => $transaction->id,
-                'location_id' => $targetLoc->id,
+                'location_id' => $currentLocId,
                 'arrival_time' => Carbon::now(),
                 'created_by' => Auth::id(),
             ]);
@@ -383,7 +392,7 @@ class VehicleTrackingController extends Controller
                 'no_pol' => $noPol,
                 'current_location' => $targetLoc->s_loc,
                 'status' => $newStatus,
-                'message' => "Truk {$noPol} diarahkan dari Timbangan menuju {$targetLoc->name}.",
+                'message' => "Truk {$noPol} diarahkan dari Timbangan menuju " . ($targetLoc->s_loc === 'B006' ? "WRM (QC)" : $targetLoc->name) . ".",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
@@ -414,9 +423,101 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Get JSON data for WPM QC Area.
+     * Get JSON data for WPM Unloading Area.
      */
     public function wpmData()
+    {
+        $queue = VehicleTransaction::with(['vehicle', 'item', 'activeTracking'])
+            ->where('status', 'wpm')
+            ->orderBy('check_in_time', 'asc')
+            ->get()
+            ->map(function ($tx) {
+                $tracking = $tx->activeTracking;
+                $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
+                return [
+                    'id' => $tx->id,
+                    'no_pol' => $tx->vehicle->no_pol,
+                    'vendor' => $tx->vendor,
+                    'item_name' => $tx->item ? $tx->item->name : 'N/A',
+                    'no_spb' => $tx->no_spb ?? '-',
+                    'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 2) : '-',
+                    'arrival_time' => $arrivalTime->format('d-m-Y H:i'),
+                    'arrival_timestamp' => $arrivalTime->timestamp,
+                ];
+            });
+
+        return response()->json([
+            'queue' => $queue
+        ]);
+    }
+
+    /**
+     * Complete WPM unloading activity.
+     */
+    public function wpmComplete(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction = VehicleTransaction::findOrFail($id);
+
+            // Conclude WPM tracking
+            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                ->where('location_id', $transaction->current_location_id)
+                ->whereNull('departure_time')
+                ->latest()
+                ->first();
+
+            $now = Carbon::now();
+            $duration = $activeTrack ? $now->diffInSeconds($activeTrack->arrival_time) : 0;
+
+            if ($activeTrack) {
+                $activeTrack->update([
+                    'departure_time' => $now,
+                    'duration_seconds' => $duration,
+                    'status_notes' => 'Aktivitas WPM Selesai. Transaksi selesai dan keluar area.'
+                ]);
+            }
+
+            $noPol = $transaction->vehicle->no_pol;
+
+            // Update transaction to completed
+            $transaction->update([
+                'unloading_status' => 'completed',
+                'status' => 'completed',
+                'check_out_time' => $now,
+                'updated_by' => Auth::id()
+            ]);
+
+            event(new VehicleStatusUpdated([
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'current_location' => 'OUT',
+                'status' => 'completed',
+                'message' => "Proses Truk {$noPol} di WPM selesai. Selesai dan keluar area.",
+                'time' => $now->format('H:i:s')
+            ]));
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di WPM. Transaksi selesai.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal memproses WPM: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * QC Area View.
+     */
+    public function qcIndex()
+    {
+        return view('vehicle.monitoring.qc');
+    }
+
+    /**
+     * Get JSON data for QC Area.
+     */
+    public function qcData()
     {
         $antriSampling = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
             ->where('status', 'antri_sampling')
@@ -424,9 +525,7 @@ class VehicleTrackingController extends Controller
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
-
                 $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
-
                 return [
                     'id' => $tx->id,
                     'no_pol' => $tx->vehicle->no_pol,
@@ -440,14 +539,12 @@ class VehicleTrackingController extends Controller
             });
 
         $prosesSample = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
-            ->where('status', 'wpm_qc')
+            ->where('status', 'sampling')
             ->orderBy('no_antrian', 'asc')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
-
                 $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
-
                 return [
                     'id' => $tx->id,
                     'no_antrian' => $tx->no_antrian,
@@ -468,9 +565,9 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Update Queue Number for WPM QC Area.
+     * Update Queue Number for QC Area.
      */
-    public function wpmUpdateQueueNumber(Request $request, $id)
+    public function qcUpdateQueueNumber(Request $request, $id)
     {
         $request->validate([
             'no_antrian' => 'required|string|max:50',
@@ -483,7 +580,7 @@ class VehicleTrackingController extends Controller
 
             // cek no antrian apakah sudah ada
             $existingAntrian = VehicleTransaction::where('no_antrian', $request->no_antrian)
-                ->where('qc_status', 'pending')
+                ->where('qc_status', 'on_check')
                 ->first();
 
             if ($existingAntrian) {
@@ -494,7 +591,7 @@ class VehicleTrackingController extends Controller
             }
 
             // Ambil no antrian terbesar yang masih pending
-            $maxAntrian = VehicleTransaction::where('qc_status', 'pending')
+            $maxAntrian = VehicleTransaction::where('qc_status', 'on_check')
                 ->max('no_antrian');
 
             if ($maxAntrian && $request->no_antrian <= $maxAntrian) {
@@ -507,8 +604,8 @@ class VehicleTrackingController extends Controller
             // Update transaction to Proses Sampling status
             $transaction->update([
                 'no_antrian' => $request->no_antrian,
-                'status' => 'wpm_qc',
-                'qc_status' => 'pending',
+                'status' => 'sampling',
+                'qc_status' => 'on_check',
                 'updated_by' => Auth::id()
             ]);
 
@@ -530,8 +627,8 @@ class VehicleTrackingController extends Controller
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'C001',
-                'status' => 'wpm_qc',
+                'current_location' => 'B006',
+                'status' => 'sampling',
                 'message' => "Truk {$noPol} dokumen telah diterima. No Antrian: {$request->no_antrian}. Masuk Proses Sampling.",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
@@ -545,9 +642,9 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Update QC Sample Status in WPM QC Area.
+     * Update QC Sample Status in QC Area.
      */
-    public function wpmUpdateQC(Request $request, $id)
+    public function qcUpdateQC(Request $request, $id)
     {
         $request->validate([
             'qc_status' => 'required|in:released,rejected',
@@ -558,9 +655,8 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
-            $wpmLoc = Location::where('s_loc', 'C001')->first();
 
-            // Find active WPM tracking log
+            // Find active QC tracking log
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
                 ->where('location_id', $transaction->current_location_id)
                 ->whereNull('departure_time')
@@ -570,7 +666,7 @@ class VehicleTrackingController extends Controller
             $now = Carbon::now();
             $duration = $activeTrack ? $now->diffInSeconds($activeTrack->arrival_time) : 0;
 
-            // Conclude WPM tracking
+            // Conclude QC tracking
             if ($activeTrack) {
                 $activeTrack->update([
                     'departure_time' => $now,
@@ -609,7 +705,7 @@ class VehicleTrackingController extends Controller
                     'no_pol' => $noPol,
                     'current_location' => 'B006',
                     'status' => 'wrm_bongkar',
-                    'message' => "Truk {$noPol} lolos QC WPM (Released) -> Menuju WRM Bongkar.",
+                    'message' => "Truk {$noPol} lolos QC (Released) -> Menuju WRM Bongkar.",
                     'time' => $now->format('H:i:s')
                 ]));
 
@@ -628,7 +724,7 @@ class VehicleTrackingController extends Controller
                     'no_pol' => $noPol,
                     'current_location' => 'OUT',
                     'status' => 'completed',
-                    'message' => "Truk {$noPol} ditolak QC WPM (Rejected) -> Selesai dan keluar area.",
+                    'message' => "Truk {$noPol} ditolak QC (Rejected) -> Selesai dan keluar area.",
                     'time' => $now->format('H:i:s')
                 ]));
 
@@ -1029,6 +1125,24 @@ class VehicleTrackingController extends Controller
             if ($oldTargetId != $request->target_location_id && $transaction->status !== 'completed') {
                 $targetLoc = Location::findOrFail($request->target_location_id);
 
+                // Map target location to transaction status
+                $newStatus = 'smu';
+                $initialQcStatus = $transaction->qc_status;
+                $currentLocId = $targetLoc->id;
+
+                if ($targetLoc->s_loc === 'C001') {
+                    // WPM is standalone unloading
+                    $newStatus = 'wpm';
+                    $initialQcStatus = 'pending';
+                } elseif ($targetLoc->s_loc === 'B006') {
+                    // WRM goes to QC first
+                    $newStatus = 'antri_sampling';
+                    $initialQcStatus = 'waiting_dokumen';
+                    $currentLocId = $targetLoc->id;
+                } elseif ($targetLoc->s_loc === 'A001') {
+                    $newStatus = 'wfg_muat';
+                }
+
                 // Conclude current target tracking log (if active is at target, or update the active tracking)
                 $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
                     ->whereNull('departure_time')
@@ -1037,21 +1151,12 @@ class VehicleTrackingController extends Controller
 
                 if ($activeTrack && $activeTrack->location_id == $oldTargetId) {
                     $activeTrack->update([
-                        'location_id' => $targetLoc->id
+                        'location_id' => $currentLocId
                     ]);
                 }
 
-                // Map target location to transaction status
-                $newStatus = 'smu';
-                $initialQcStatus = $transaction->qc_status;
-                if ($targetLoc->s_loc === 'C001') {
-                    $newStatus = 'antri_sampling';
-                    $initialQcStatus = 'waiting_dokumen';
-                } elseif ($targetLoc->s_loc === 'B006') $newStatus = 'wrm_bongkar';
-                elseif ($targetLoc->s_loc === 'A001') $newStatus = 'wfg_muat';
-
                 $transaction->update([
-                    'current_location_id' => $targetLoc->id,
+                    'current_location_id' => $currentLocId,
                     'status' => $newStatus,
                     'qc_status' => $initialQcStatus
                 ]);

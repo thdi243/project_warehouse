@@ -23,11 +23,19 @@
                         </a>
                     </li>
                 @endcan
+                @can('permission', 'vehicle-monitoring-qc')
+                    <li class="nav-item">
+                        <a href="{{ route('vehicle.monitoring.qc') }}"
+                            class="nav-link {{ request()->routeIs('vehicle.monitoring.qc') ? 'active' : '' }}">
+                            <i class="ri-flask-line fs-12"></i> QC Area
+                        </a>
+                    </li>
+                @endcan
                 @can('permission', 'vehicle-monitoring-wpm')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.wpm') }}"
                             class="nav-link {{ request()->routeIs('vehicle.monitoring.wpm') ? 'active' : '' }}">
-                            <i class="ri-flask-line fs-12"></i> WPM (QC Area)
+                            <i class="ri-download-2-line fs-12"></i> WPM Area (Bongkar)
                         </a>
                     </li>
                 @endcan
