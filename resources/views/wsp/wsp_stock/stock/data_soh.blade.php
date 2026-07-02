@@ -379,7 +379,8 @@
                         <div class="col-md-6 mt-3 mt-md-0">
                             <div class="search-box ms-auto">
                                 <i class="mdi mdi-magnify"></i>
-                                <input type="text" class="form-control" id="searchInput" placeholder="Cari Mid...">
+                                <input type="text" class="form-control" id="searchInput"
+                                    placeholder="Cari Mid atau desc...">
                             </div>
                         </div>
                     </div>
@@ -718,7 +719,9 @@
                 } else {
                     filteredSoh = allSoh.filter(item =>
                         item.mid_barang &&
-                        item.mid_barang.toLowerCase().includes(keyword)
+                        item.mid_barang.toLowerCase().includes(keyword) ||
+                        item.nama_barang &&
+                        item.nama_barang.toLowerCase().includes(keyword)
                     );
                 }
 
