@@ -150,6 +150,15 @@ class WspBarangController extends Controller
         $search = $request->q;
 
         $data = BarangModel::select('id', 'mid_barang', 'nama_barang', 'uom')
+            ->with([
+                'latestStock' => function ($q) {
+                    $q->select(
+                        'wsp_stock_on_hand.id',
+                        'wsp_stock_on_hand.barang_id',
+                        'wsp_stock_on_hand.qty_soh'
+                    );
+                }
+            ])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('mid_barang', 'like', '%' . $search . '%')

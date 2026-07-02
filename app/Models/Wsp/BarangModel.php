@@ -28,6 +28,12 @@ class BarangModel extends Model
         return $this->hasMany(StockOnHandWspModel::class, 'barang_id');
     }
 
+    public function latestStock()
+    {
+        return $this->hasOne(StockOnHandWspModel::class, 'barang_id')
+            ->latestOfMany('last_update');
+    }
+
     public function transaksi()
     {
         return $this->hasMany(TransaksiModel::class);
