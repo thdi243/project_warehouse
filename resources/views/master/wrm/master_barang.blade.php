@@ -31,6 +31,7 @@
                                     <th>UOM</th>
                                     {{-- <th>Loc</th> --}}
                                     <th>Qty KG/Pallet</th>
+                                    <th>Dibuat</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -143,6 +144,9 @@
             function loadData() {
                 $.get(`/master/wrm/barang/get-data`, function(res) {
                     let html = '';
+                    let formNum = new Intl.NumberFormat('id-ID', {
+                        maximumFractionDigits: 8
+                    });
                     $.each(res.data, function(i, v) {
                         html += `
                             <tr>
@@ -150,7 +154,8 @@
                                 <td>${v.mid}</td>
                                 <td>${v.nama_barang}</td>
                                 <td>${v.uom}</td>
-                                <td>${v.qty_kg ?? '-'}</td>
+                                <td>${v.qty_kg ? formNum.format(v.qty_kg) : '-'}</td>
+                                <td>${v.created_by?.nama_lengkap ?? '-'}</td>
                                 <td class="text-center">
                                     <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>
                                     <button class="btn btn-danger btn-sm btnHapus" data-id="${v.id}">Hapus</button>

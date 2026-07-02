@@ -36,6 +36,7 @@
                                     <th>Nama Barang</th>
                                     <th>UOM</th>
                                     <th>Qty Pallet</th>
+                                    <th>Dibuat</th>
                                     <th class="text-center" style="width: 150px;">Aksi</th>
                                 </tr>
                             </thead>
@@ -145,6 +146,9 @@
                     page: page,
                     search: search
                 }, function(res) {
+                    let formNum = new Intl.NumberFormat('id-ID', {
+                        maximumFractionDigits: 8
+                    });
                     let html = '';
                     let data = res.data.data;
                     if (data && data.length > 0) {
@@ -156,7 +160,8 @@
                                 <td>${v.mid}</td>
                                 <td>${v.nama_barang}</td>
                                 <td>${v.uom}</td>
-                                <td>${v.qty_pallet}</td>
+                                <td>${formNum.format(v.qty_pallet)}</td>
+                                <td>${v.created_by?.nama_lengkap ?? '-'}</td>
                                 <td class="text-center">
                                     <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>
                                     <button class="btn btn-danger btn-sm btnHapus" data-id="${v.id}">Hapus</button>
@@ -190,7 +195,7 @@
                         html += `<li class="page-item active"><a class="page-link" href="#">${i}</a></li>`;
                     } else if (i >= data.current_page - 2 && i <= data.current_page + 2) {
                         html +=
-                        `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+                            `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
                     }
                 }
 
