@@ -30,7 +30,7 @@
                                     <th>Nama Barang</th>
                                     <th>UOM</th>
                                     {{-- <th>Loc</th> --}}
-                                    <th>Qty KG/Pallet</th>
+                                    <th class="text-end">Qty KG/Pallet</th>
                                     <th>Dibuat</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
@@ -154,7 +154,7 @@
                                 <td>${v.mid}</td>
                                 <td>${v.nama_barang}</td>
                                 <td>${v.uom}</td>
-                                <td>${v.qty_kg ? formNum.format(v.qty_kg) : '-'}</td>
+                                <td class="text-end">${v.qty_kg ? formNum.format(v.qty_kg) : '-'}</td>
                                 <td>${v.created_by?.nama_lengkap ?? '-'}</td>
                                 <td class="text-center">
                                     <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>

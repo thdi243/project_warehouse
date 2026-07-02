@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('mid')->unique();
             $table->string('nama_barang');
             $table->string('uom');
-            $table->decimal('qty_pallet', 12, 2)->default(0);
+            $table->decimal('qty_pallet', 12, 2)->nullable()->default(1);
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();

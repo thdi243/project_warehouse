@@ -20,7 +20,7 @@ class MasterBarangRequest extends FormRequest
             ],
             'nama_barang' => 'required|string|max:255',
             'uom'         => 'required|string|max:50',
-            'qty_pallet'  => 'required|numeric|min:0.001',
+            'qty_pallet'  => 'nullable|numeric|min:0.001',
         ];
     }
 

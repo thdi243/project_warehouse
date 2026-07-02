@@ -35,7 +35,7 @@
                                     <th>MID</th>
                                     <th>Nama Barang</th>
                                     <th>UOM</th>
-                                    <th>Qty Pallet</th>
+                                    <th class="text-end">Qty Pallet</th>
                                     <th>Dibuat</th>
                                     <th class="text-center" style="width: 150px;">Aksi</th>
                                 </tr>
@@ -160,7 +160,7 @@
                                 <td>${v.mid}</td>
                                 <td>${v.nama_barang}</td>
                                 <td>${v.uom}</td>
-                                <td>${formNum.format(v.qty_pallet)}</td>
+                                <td class="text-end">${formNum.format(v.qty_pallet)}</td>
                                 <td>${v.created_by?.nama_lengkap ?? '-'}</td>
                                 <td class="text-center">
                                     <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>

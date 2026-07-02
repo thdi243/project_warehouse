@@ -26,7 +26,7 @@ class MasterBarangController extends Controller
             'mid' => $request->mid,
             'nama_barang' => $request->nama_barang,
             'uom' => $request->uom,
-            'qty_pallet' => $request->qty_pallet,
+            'qty_pallet' => $request->qty_pallet ?? 1,
             'created_by' => Auth::id(),
         ]);
 
@@ -141,7 +141,7 @@ class MasterBarangController extends Controller
                 'mid' => $mid,
                 'nama_barang' => $namaBarang,
                 'uom' => $uom,
-                'qty_pallet' => floatval($qtyPallet),
+                'qty_pallet' => floatval($qtyPallet) ?? 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
