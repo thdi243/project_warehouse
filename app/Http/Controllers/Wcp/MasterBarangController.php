@@ -27,6 +27,7 @@ class MasterBarangController extends Controller
             'nama_barang' => $request->nama_barang,
             'uom' => $request->uom,
             'qty_pallet' => $request->qty_pallet,
+            'created_by' => Auth::id(),
         ]);
 
         return response()->json([
@@ -39,6 +40,7 @@ class MasterBarangController extends Controller
     public function getData(Request $request)
     {
         $query = WcpMasterBarangModel::query();
+        $query->with(['createdBy:id,username,nama_lengkap', 'updatedBy:id,username,nama_lengkap']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -65,6 +67,7 @@ class MasterBarangController extends Controller
             'nama_barang' => $request->nama_barang,
             'uom' => $request->uom,
             'qty_pallet' => $request->qty_pallet,
+            'updated_by' => Auth::id(),
         ]);
 
         return response()->json([

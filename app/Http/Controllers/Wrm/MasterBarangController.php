@@ -45,7 +45,11 @@ class MasterBarangController extends Controller
 
     public function getData()
     {
-        $barang = MasterBarangModel::with('location:id,s_loc,plant')->get();
+        $barang = MasterBarangModel::with([
+            'location:id,s_loc,plant',
+            'createdBy:id,username,nama_lengkap',
+            'updatedBy:id,username,nama_lengkap'
+        ])->get();
 
         return response()->json([
             'status' => true,
