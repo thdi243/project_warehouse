@@ -20,14 +20,13 @@ class MasterBarangRequest extends FormRequest
             ],
             'nama_barang' => 'required|string|max:255',
             'uom'         => 'required|string|max:50',
-            'qty_pallet'  => 'required|numeric|min:0.001',
+            'qty_pallet'  => 'nullable|numeric|min:0.001',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'mid.required'         => 'MID wajib diisi.',
             'mid.string'           => 'MID harus berupa teks.',
             'mid.unique'           => 'MID sudah digunakan.',
             'nama_barang.required' => 'Nama barang wajib diisi.',
