@@ -355,7 +355,7 @@
                             <button type="button" class="btn btn-action btn-upload" id="btnUpload" data-bs-toggle="modal"
                                 data-bs-target="#modalUpload">
                                 <i class="mdi mdi-file-upload"></i>
-                                <span>Upload</span>
+                                <span>Upload Data</span>
                             </button>
 
                             <!-- Button Tambah Data tetap -->

@@ -142,17 +142,7 @@ class WarehouseController extends Controller
 
     public function stockOnHandView()
     {
-        $today = Carbon::today();
-
-        // Cek apakah ada data StockOnHand dengan tanggal hari ini
-        $dataHariIni = StockOnHandWspModel::whereDate('last_update', $today)->exists();
-
-        if ($dataHariIni) {
-            // Jika ada data hari ini → arahkan ke view lain
-            return view('wsp.wsp_stock.stock.data_soh');
-        }
-
-        return view('wsp.wsp_stock.stock.upload_soh');
+        return view('wsp.wsp_stock.stock.data_soh');
     }
 
     public function stockLocView()
