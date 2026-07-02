@@ -246,6 +246,7 @@
                                         <option value="warehouse_finish_goods">Warehouse Finish Good</option>
                                         <option value="warehouse_raw_material">Warehouse Raw Material</option>
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
+                                        <option value="warehouse_packaging_material">Warehouse Packaging Material</option>
                                         <option value="engineering">Engineering</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="produksi">Produksi</option>
@@ -376,6 +377,7 @@
                                         <option value="warehouse_finish_goods">Warehouse Finish Good</option>
                                         <option value="warehouse_raw_material">Warehouse Raw Material</option>
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
+                                        <option value="warehouse_packaging_material">Warehouse Packaging Material</option>
                                         <option value="engineering">Engineering</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="produksi">Produksi</option>
