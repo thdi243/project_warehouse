@@ -22,6 +22,7 @@ class P2HPalletMoverModel extends Model
         'check_kebersihan_unit',
         'check_kunci_pm',
         'check_hydraulic',
+        'foto_kondisi_accu',
         'shift',
         'operator_name',
         'catatan',

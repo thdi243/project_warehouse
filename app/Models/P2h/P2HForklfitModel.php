@@ -34,6 +34,7 @@ class P2HForklfitModel extends Model
         'kaca_spion',
         'kondisi_ban',
         'fungsi_rem',
+        'foto_kondisi_accu',
         'shift',
         'operator_name',
         'catatan',

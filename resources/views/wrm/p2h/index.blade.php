@@ -218,7 +218,8 @@
                             <h5 id="form-title-forklift">Form Pemeriksaan - Forklift</h5>
                         </div>
                         <div class="card-body">
-                            <form id="formP2HForklift" data-url="{{ url('api/p2h/store/forklift') }}">
+                            <form id="formP2HForklift" data-url="{{ url('api/p2h/store/forklift') }}"
+                                enctype="multipart/form-data">
                                 @csrf
                                 <input type="hidden" name="jenis_p2h" value="Forklift" />
 
@@ -291,10 +292,6 @@
                                         <input type="text" class="form-control" value="{{ Auth::user()->username }}"
                                             name="operator_name" readonly>
                                     </div>
-                                    <!-- <div class="col-md-12 mb-3">
-                                                                                                                                                                                                                                                                                            <label>Catatan</label>
-                                                                                                                                                                                                                                                                                            <textarea class="form-control" name="catatan"></textarea>
-                                                                                                                                                                                                                                                                                        </div> -->
                                 </div>
 
                                 <hr>
@@ -394,8 +391,7 @@
                                             <small class="text-muted d-block">{{ $item['desc'] }}</small>
                                             <div class="d-flex gap-2">
                                                 <label class="me-2 radio-label">
-                                                    <input type="radio" name="{{ $key }}" value="1"
-                                                        required> OK
+                                                    <input type="radio" name="{{ $key }}" value="1"> OK
                                                 </label>
                                                 <label class="radio-label">
                                                     <input type="radio" name="{{ $key }}" value="0">
@@ -408,6 +404,12 @@
                                                 style="display:none;">
                                         </div>
                                     @endforeach
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Foto Kondisi Accu</label>
+                                        <input type="file" class="form-control" name="foto_kondisi_accu"
+                                            accept="image/*">
+                                        <small class="text-muted d-block">Unggah foto kondisi accu saat ini</small>
+                                    </div>
                                 </div>
                                 <textarea name="catatan" id="catatan-hidden" hidden></textarea>
 
@@ -430,7 +432,8 @@
                         </div>
                         <div class="card-body">
 
-                            <form id="formP2HPalletMover" data-url="{{ url('api/p2h/store/pallet-mover') }}">
+                            <form id="formP2HPalletMover" data-url="{{ url('api/p2h/store/pallet-mover') }}"
+                                enctype="multipart/form-data">
                                 @csrf
                                 <input type="hidden" name="jenis_p2h" value="Pallet Mover" />
 
@@ -549,8 +552,7 @@
                                             <small class="text-muted d-block">{{ $item['desc'] }}</small>
                                             <div class="d-flex gap-2">
                                                 <label class="me-2 radio-label">
-                                                    <input type="radio" name="{{ $key }}" value="1"
-                                                        required> OK
+                                                    <input type="radio" name="{{ $key }}" value="1"> OK
                                                 </label>
                                                 <label class="radio-label">
                                                     <input type="radio" name="{{ $key }}" value="0">
@@ -563,6 +565,12 @@
                                                 style="display:none;">
                                         </div>
                                     @endforeach
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Foto Kondisi Accu</label>
+                                        <input type="file" class="form-control" name="foto_kondisi_accu"
+                                            accept="image/*">
+                                        <small class="text-muted d-block">Unggah foto kondisi accu saat ini</small>
+                                    </div>
                                 </div>
                                 <textarea name="catatan" id="catatan-hidden" hidden></textarea>
 
@@ -584,6 +592,64 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+
+            // Auto compress any uploaded foto_kondisi_accu to JPEG under 2MB
+            $(document).on('change', 'input[type="file"][name*="foto_kondisi_accu"]', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (!file.type.startsWith('image/')) {
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        const MAX_WIDTH = 1200;
+                        const MAX_HEIGHT = 1200;
+
+                        if (width > height) {
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+                        } else {
+                            if (height > MAX_HEIGHT) {
+                                width *= MAX_HEIGHT / height;
+                                height = MAX_HEIGHT;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob(function(blob) {
+                            if (!blob) return;
+
+                            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(compressedFile);
+                            e.target.files = dataTransfer.files;
+
+                            console.log('Frontend Compressed:', (file.size / 1024 / 1024).toFixed(2), 'MB ->', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
+                        }, 'image/jpeg', 0.7);
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
 
             const $select = $('#forkliftSelect');
             const $selectpallet = $('#palletselect');
@@ -816,10 +882,14 @@
                 const gabungan = notes.join(' | ');
                 $(`#${formId} [name="catatan"]`).val(gabungan);
 
+                const formData = new FormData(form);
+
                 $.ajax({
                     url: actionUrl,
                     method: "POST",
-                    data: $(form).serialize(),
+                    data: formData,
+                    processData: false,
+                    contentType: false,
                     success: function(response) {
                         const persen = response.persentase ?? '-';
                         const status = response.status_unit ?? '-';

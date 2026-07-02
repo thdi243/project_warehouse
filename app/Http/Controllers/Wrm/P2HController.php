@@ -115,6 +115,7 @@ class P2HController extends Controller
             'kaca_spion'                => 'required|in:0,1',
             'kondisi_ban'               => 'required|in:0,1',
             'fungsi_rem'                => 'required|in:0,1',
+            'foto_kondisi_accu'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         // Cek duplikasi
@@ -151,7 +152,7 @@ class P2HController extends Controller
             'buzzer_mundur',
             'kaca_spion',
             'kondisi_ban',
-            'fungsi_rem'
+            'fungsi_rem',
         ];
 
         $labelMap = [
@@ -174,7 +175,7 @@ class P2HController extends Controller
             'buzzer_mundur' => 'Buzzer Mundur',
             'kaca_spion' => 'Kaca Spion',
             'kondisi_ban' => 'Kondisi Ban',
-            'fungsi_rem' => 'Fungsi Rem'
+            'fungsi_rem' => 'Fungsi Rem',
         ];
 
         // === LOGIC CATATAN: SAMA DENGAN UPDATE (tapi lebih sederhana) ===
@@ -183,7 +184,9 @@ class P2HController extends Controller
         $notes = [];
 
         foreach ($checklistFields as $field) {
-            if ($request->$field == 0) {
+            $fieldValue = $request->input($field);
+
+            if ($this->isChecklistNok($fieldValue)) {
                 $hasNok = true;
                 $nokFields[] = $labelMap[$field];
 
@@ -279,6 +282,11 @@ class P2HController extends Controller
         }
         $statusUnit = $isRusakBerat ? 'Rusak Berat' : 'Normal';
 
+        $fotoPath = null;
+        if ($request->hasFile('foto_kondisi_accu')) {
+            $fotoPath = $request->file('foto_kondisi_accu')->store('p2h/accu', 'public');
+        }
+
         try {
             P2HForklfitModel::create([
                 'tanggal'         => $request->tanggal,
@@ -311,6 +319,7 @@ class P2HController extends Controller
                 'kaca_spion'                => $request->kaca_spion,
                 'kondisi_ban'               => $request->kondisi_ban,
                 'fungsi_rem'                => $request->fungsi_rem,
+                'foto_kondisi_accu'         => $fotoPath,
             ]);
 
             return response()->json([
@@ -347,6 +356,7 @@ class P2HController extends Controller
             'check_kebersihan_unit' => 'required|in:0,1',
             'check_kunci_pm' => 'required|in:0,1',
             'check_hydraulic' => 'required|in:0,1',
+            'foto_kondisi_accu' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         // Cek apakah data dengan kombinasi unik sudah ada
@@ -367,11 +377,20 @@ class P2HController extends Controller
         }
 
         try {
-            $batch = P2HPalletMoverModel::create($request->all());
+            $data = $request->all();
+            if ($request->hasFile('foto_kondisi_accu')) {
+                $data['foto_kondisi_accu'] = $request->file('foto_kondisi_accu')->store('p2h/accu', 'public');
+            }
+            $batch = P2HPalletMoverModel::create($data);
+
+            // Hitung persentase dan kelayakan untuk ditampilkan di modal sukses
+            $kelayakan = $batch->calculateKelayakan();
 
             return response()->json([
                 'success' => true,
-                'data' => $batch
+                'data' => $batch,
+                'persentase' => $kelayakan['persentase'],
+                'status_unit' => $kelayakan['status']
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -982,7 +1001,7 @@ class P2HController extends Controller
                 'buzzer_mundur',
                 'kaca_spion',
                 'kondisi_ban',
-                'fungsi_rem'
+                'fungsi_rem',
             ];
 
             $labelMap = [
@@ -1005,7 +1024,7 @@ class P2HController extends Controller
                 'buzzer_mundur' => 'Buzzer Mundur',
                 'kaca_spion' => 'Kaca Spion',
                 'kondisi_ban' => 'Kondisi Ban',
-                'fungsi_rem' => 'Fungsi Rem'
+                'fungsi_rem' => 'Fungsi Rem',
             ];
 
             $allowedFields = array_merge(
@@ -1040,7 +1059,7 @@ class P2HController extends Controller
 
                 // **Validasi checklist HANYA field yang dikirim**
                 foreach ($checklistFields as $field) {
-                    if (!isset($data[$field])) {
+                    if (!array_key_exists($field, $data)) {
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
@@ -1065,7 +1084,9 @@ class P2HController extends Controller
                 // Kumpulin dulu semua note per item yang terisi
                 $perItemNotes = [];
                 foreach ($checklistFields as $field) {
-                    if (($data[$field] ?? 1) == 0) {
+                    $fieldValue = $data[$field] ?? null;
+
+                    if ($this->isChecklistNok($fieldValue)) {
                         $hasNok = true;
                         $nokFields[] = $labelMap[$field];
 
@@ -1175,6 +1196,10 @@ class P2HController extends Controller
                         'updated_by' => Auth::id() ?? 53,
                     ])
                     ->toArray();
+
+                if ($request->hasFile("shifts.{$shiftNumber}.foto_kondisi_accu")) {
+                    $payload['foto_kondisi_accu'] = $request->file("shifts.{$shiftNumber}.foto_kondisi_accu")->store('p2h/accu', 'public');
+                }
 
                 if ($id) {
                     P2HForklfitModel::where('id', $id)->update($payload);
@@ -1512,7 +1537,7 @@ class P2HController extends Controller
                 'check_sistem_kemudi',
                 'check_kebersihan_unit',
                 'check_kunci_pm',
-                'check_hydraulic'
+                'check_hydraulic',
             ];
 
             $labelMap = [
@@ -1549,11 +1574,19 @@ class P2HController extends Controller
                 }
 
                 foreach ($checklistFields as $field) {
-                    if (!isset($data[$field]) || !in_array($data[$field], ['0', '1'])) {
+                    if (!array_key_exists($field, $data)) {
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
                             'message' => "Checklist {$labelMap[$field]} Shift {$shiftNumber} wajib diisi"
+                        ], 422);
+                    }
+
+                    if (!in_array($data[$field], ['0', '1'])) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Checklist {$labelMap[$field]} Shift {$shiftNumber} harus 0 atau 1"
                         ], 422);
                     }
                 }
@@ -1565,7 +1598,9 @@ class P2HController extends Controller
                 $perItemNotes = [];
 
                 foreach ($checklistFields as $field) {
-                    if (($data[$field] ?? 1) == 0) {
+                    $fieldValue = $data[$field] ?? null;
+
+                    if ($this->isChecklistNok($fieldValue)) {
                         $hasNok = true;
                         $nokFields[] = $labelMap[$field];
 
@@ -1624,10 +1659,14 @@ class P2HController extends Controller
                     ])
                     ->toArray();
 
+                if ($request->hasFile("shifts.{$shiftNumber}.foto_kondisi_accu")) {
+                    $payload['foto_kondisi_accu'] = $request->file("shifts.{$shiftNumber}.foto_kondisi_accu")->store('p2h/accu', 'public');
+                }
+
                 if ($id) {
-                    P2HForklfitModel::where('id', $id)->update($payload);
+                    P2HPalletMoverModel::where('id', $id)->update($payload);
                 } else {
-                    P2HForklfitModel::create($payload);
+                    P2HPalletMoverModel::create($payload);
                 }
             }
 
@@ -1719,6 +1758,11 @@ class P2HController extends Controller
             'warehouse_co_product'   => 'Warehouse Co Product',
             default => ucwords(str_replace('_', ' ', (string)$section))
         };
+    }
+
+    private function isChecklistNok($value): bool
+    {
+        return in_array($value, [0, '0'], true);
     }
 
     public function summaryView()
