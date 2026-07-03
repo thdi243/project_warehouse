@@ -211,7 +211,7 @@ class WfgBongkarMuatDashboardController extends Controller
             'data' => [
                 'categories' => $categories,
                 'series' => [
-                    ['name' => 'Bongkar Muat', 'data' => $seriesOrder, 'color' => '#6366f1', 'type' => 'spline', 'yAxis' => 1],
+                    ['name' => 'Truck', 'data' => $seriesOrder, 'color' => '#6366f1', 'type' => 'spline', 'yAxis' => 1],
                     ['name' => 'QTY Full (Box)',  'data' => $seriesFull,  'color' => '#22c55e', 'type' => 'column', 'yAxis' => 0],
                     ['name' => 'QTY Receh (Pcs)', 'data' => $seriesReceh, 'color' => '#f59e0b', 'type' => 'column', 'yAxis' => 0],
                 ]
@@ -308,14 +308,14 @@ class WfgBongkarMuatDashboardController extends Controller
         $orders = $query->latest('id')->limit(15)->get()->map(function ($o) {
             $totalFull  = $o->details->where('jenis', 'P')->sum('qty');
             $totalReceh = $o->details->where('jenis', 'R')->sum('qty');
-            
+
             $startTime = null;
             if ($o->jam_muat) {
                 try {
                     $now = Carbon::now();
                     $jamMuat = Carbon::createFromFormat('H:i:s', $o->jam_muat);
                     $jamMuat->setDate($now->year, $now->month, $now->day);
-                    
+
                     if ($jamMuat->gt($now)) {
                         $jamMuat->subDay();
                     }
