@@ -9,6 +9,7 @@ use App\Http\Controllers\Dashboard\BpsDashboardController;
 use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
 use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
 use App\Http\Controllers\Dashboard\WrmInventoryController;
+use App\Http\Controllers\Dashboard\StockOpnameDashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
@@ -117,6 +118,12 @@ Route::middleware('auth')->group(function () {
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
             Route::get('/vehicle/data', [VehicleTrackingController::class, 'dashboardData'])->name('dashboard.vehicle.data')
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
+
+            // Stock Opname Dashboard
+            Route::get('/stock-opname', [StockOpnameDashboardController::class, 'index'])->name('dashboard.stock-opname')
+                ->middleware(['permission:dashboard']);
+            Route::get('/stock-opname/data', [StockOpnameDashboardController::class, 'getData'])->name('dashboard.stock-opname.data')
+                ->middleware(['permission:dashboard']);
         });
     });
 

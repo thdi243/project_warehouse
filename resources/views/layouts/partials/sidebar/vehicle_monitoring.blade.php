@@ -12,7 +12,7 @@
                 <li class="nav-item">
                     <a href="{{ route('vehicle.monitoring.history') }}"
                         class="nav-link {{ request()->routeIs('vehicle.monitoring.history') ? 'active' : '' }}">
-                        <i class="ri-history-line fs-12"></i> Laporan History
+                        <i class="ri-history-line fs-12"></i>History
                     </a>
                 </li>
                 @can('permission', 'vehicle-monitoring-timbangan')

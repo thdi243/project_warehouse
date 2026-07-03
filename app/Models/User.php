@@ -123,7 +123,7 @@ class User extends Authenticatable
 
     public function scopeRole($query, $roleName)
     {
-        return $query->whereHas('roles', function($q) use ($roleName) {
+        return $query->whereHas('roles', function ($q) use ($roleName) {
             $q->where('name', $roleName);
         });
     }
