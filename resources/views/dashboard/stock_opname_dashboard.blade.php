@@ -278,9 +278,9 @@
 
                         <!-- 3. PIC / Operator -->
                         <div>
-                            <label class="filter-label">PIC / Operator</label>
+                            <label class="filter-label">Stock Control</label>
                             <select class="form-select form-select-custom" id="filterPic">
-                                <option value="all">Semua PIC</option>
+                                <option value="all">Semua SC</option>
                                 @foreach ($pics as $p)
                                     <option value="{{ $p->id }}">{{ $p->nama_lengkap ?? $p->username }}</option>
                                 @endforeach
@@ -460,7 +460,7 @@
                                         <th class="text-end">Qty Sistem</th>
                                         <th class="text-end">Qty Fisik</th>
                                         <th class="text-center">Selisih Qty</th>
-                                        <th>Keterangan / Alasan Operator</th>
+                                        <th>Keterangan / Alasan SC</th>
                                     </tr>
                                 </thead>
                                 <tbody>
