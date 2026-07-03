@@ -685,18 +685,21 @@
         }
 
         function attachRowEvents() {
-            let timeout = null;
+            // Enter key triggers blur (which triggers change)
+            $('.qty-full, .qty-receh, .notes-field').on('keypress', function(e) {
+                if (e.which === 13) {
+                    $(this).blur();
+                }
+            });
 
+            // Live validation & preview on input
             $('.qty-full, .qty-receh, .notes-field').on('input', function() {
                 const row = $(this).closest('tr');
-                const sohId = row.data('id');
                 const qtyPallet = parseFloat(row.data('qty-pallet')) || 1;
-                const qtySoh = parseInt(row.data('qty-soh')) || 0;
                 const dbSummary = parseFloat(row.attr('data-summary-db')) || 0;
 
                 const fullValStr = row.find('.qty-full').val();
                 const recehValStr = row.find('.qty-receh').val();
-                const noteVal = row.find('.notes-field').val();
 
                 if ((fullValStr !== '' && parseInt(fullValStr) < 0) || (recehValStr !== '' && parseInt(
                         recehValStr) < 0)) {
@@ -705,12 +708,20 @@
                     return;
                 }
 
+                if (recehValStr !== '') {
+                    const recehVal = parseInt(recehValStr) || 0;
+                    if (recehVal >= qtyPallet) {
+                        toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
+                        row.find('.qty-receh').val('');
+                        return;
+                    }
+                }
+
                 const full = parseInt(fullValStr) || 0;
                 const receh = parseInt(recehValStr) || 0;
 
                 if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
-                    toastr.warning(
-                        'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
+                    toastr.warning('Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
                     row.find('.qty-full').val('');
                     row.find('.qty-receh').val('');
                     return;
@@ -720,34 +731,63 @@
                 const physicalSummary = dbSummary + (full * qtyPallet) + receh;
                 row.find('.physical-summary').text(physicalSummary > 0 ? physicalSummary.toLocaleString('id-ID') :
                     '-');
+            });
 
-                // Debounce auto-save to temp
-                clearTimeout(timeout);
-                timeout = setTimeout(function() {
-                    $.ajax({
-                        url: "{{ route('wcp.stock_opname.save-temp') }}",
-                        type: "POST",
-                        data: {
-                            _token: "{{ csrf_token() }}",
-                            soh_id: sohId,
-                            qty_full: fullValStr !== '' ? full : null,
-                            qty_receh: recehValStr !== '' ? receh : null,
-                            keterangan: noteVal
-                        },
-                        success: function(res) {
-                            if (res.status === 'success') {
-                                toastr.success('Perubahan draft disimpan.', '', {
-                                    timeOut: 800
-                                });
-                                if (fullValStr !== '' || recehValStr !== '') {
-                                    row.find('.qty-full').val('');
-                                    row.find('.qty-receh').val('');
-                                }
-                                loadAllTempData();
+            // Save on change (blur / enter)
+            $('.qty-full, .qty-receh, .notes-field').on('change', function() {
+                const row = $(this).closest('tr');
+                const sohId = row.data('id');
+                const qtyPallet = parseFloat(row.data('qty-pallet')) || 1;
+
+                const fullValStr = row.find('.qty-full').val();
+                const recehValStr = row.find('.qty-receh').val();
+                const noteVal = row.find('.notes-field').val();
+
+                // Don't save if all are empty
+                if (fullValStr === '' && recehValStr === '' && noteVal === '') {
+                    return;
+                }
+
+                const full = parseInt(fullValStr) || 0;
+                const receh = parseInt(recehValStr) || 0;
+
+                // Double check validation before sending
+                if (recehValStr !== '' && receh >= qtyPallet) {
+                    toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
+                    row.find('.qty-receh').val('');
+                    return;
+                }
+
+                if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
+                    return;
+                }
+
+                $.ajax({
+                    url: "{{ route('wcp.stock_opname.save-temp') }}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        soh_id: sohId,
+                        qty_full: fullValStr !== '' ? full : null,
+                        qty_receh: recehValStr !== '' ? receh : null,
+                        keterangan: noteVal
+                    },
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            toastr.success('Perubahan draft disimpan.', '', {
+                                timeOut: 800
+                            });
+                            if (fullValStr !== '' || recehValStr !== '') {
+                                row.find('.qty-full').val('');
+                                row.find('.qty-receh').val('');
                             }
+                            loadAllTempData();
                         }
-                    });
-                }, 1000);
+                    },
+                    error: function(xhr) {
+                        toastr.error(xhr.responseJSON?.message || 'Gagal menyimpan data.');
+                    }
+                });
             });
         }
 
@@ -955,8 +995,10 @@
                                 timeStyle: 'short'
                             });
 
+                            const qtyPallet = item.barang?.qty_pallet ?? 1;
+
                             html += `
-                                <div class="mb-3 border border-info p-3 rounded temp-item bg-light" data-id="${item.id}">
+                                <div class="mb-3 border border-info p-3 rounded temp-item bg-light" data-id="${item.id}" data-qty-pallet="${qtyPallet}">
                                     <input type="hidden" class="temp_id" value="${item.id}">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <p class="mb-0 fw-semibold text-dark">
@@ -1089,11 +1131,22 @@
             });
         });
 
-        // Live check for negative inputs in edit modal
+        // Live check for negative inputs & exceeding qty_pallet in edit modal
         $(document).on('input', '#editModal .qty_full, #editModal .qty_receh', function() {
-            if ($(this).val() !== '' && parseInt($(this).val()) < 0) {
+            const val = $(this).val();
+            if (val !== '' && parseInt(val) < 0) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                 $(this).val('');
+                return;
+            }
+
+            if ($(this).hasClass('qty_receh') && val !== '') {
+                const tempItem = $(this).closest('.temp-item');
+                const qtyPallet = parseFloat(tempItem.data('qty-pallet')) || 1;
+                if (parseInt(val) >= qtyPallet) {
+                    toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
+                    $(this).val('');
+                }
             }
         });
 
@@ -1102,11 +1155,14 @@
             const updates = [];
             let hasNegative = false;
             let hasZeroBoth = false;
+            let hasExceededAcuan = false;
+            let acuanLimit = 1;
 
             $('#editModal .temp-item').each(function() {
                 const tempId = $(this).find('.temp_id').val();
                 const qtyFull = $(this).find('.qty_full').val();
                 const qtyReceh = $(this).find('.qty_receh').val();
+                const qtyPallet = parseFloat($(this).data('qty-pallet')) || 1;
 
                 const qtyFullVal = parseInt(qtyFull) || 0;
                 const qtyRecehVal = parseInt(qtyReceh) || 0;
@@ -1119,6 +1175,11 @@
                     hasZeroBoth = true;
                 }
 
+                if (qtyRecehVal >= qtyPallet) {
+                    hasExceededAcuan = true;
+                    acuanLimit = qtyPallet;
+                }
+
                 updates.push({
                     id: tempId,
                     qty_full: qtyFull,
@@ -1128,6 +1189,11 @@
 
             if (hasNegative) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
+                return;
+            }
+
+            if (hasExceededAcuan) {
+                toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
                 return;
             }
 

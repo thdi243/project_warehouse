@@ -583,7 +583,7 @@
                                 statusText = 'Waiting';
                             } else if (item.status === 'read') {
                                 badgeClass = 'bg-info';
-                                statusText = 'Dibaca';
+                                statusText = 'Not Send';
                             } else if (item.status === 'rejected') {
                                 badgeClass = 'bg-danger';
                                 statusText = 'Rejected';

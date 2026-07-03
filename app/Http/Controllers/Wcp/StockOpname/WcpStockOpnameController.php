@@ -152,6 +152,14 @@ class WcpStockOpnameController extends Controller
             $qtyFullVal = (int)($qtyFull ?? 0);
             $qtyRecehVal = (int)($qtyReceh ?? 0);
             $qtyPallet = (float)($barang->qty_pallet ?? 1);
+            
+            if ($qtyRecehVal >= $qtyPallet) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Qty Receh ({$qtyRecehVal}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!"
+                ], 422);
+            }
+
             $summary = ($qtyFullVal * $qtyPallet) + $qtyRecehVal;
 
             $temp = WcpSoTempModel::create([
@@ -325,6 +333,11 @@ class WcpStockOpnameController extends Controller
                 $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
                 $qtyPallet = (float)($temp->barang->qty_pallet ?? 1);
+                
+                if ($qtyReceh >= $qtyPallet) {
+                    throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid} tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!");
+                }
+
                 $summary = ($qtyFull * $qtyPallet) + $qtyReceh;
 
                 $temp->qty_full = $qtyFull;
@@ -444,6 +457,14 @@ class WcpStockOpnameController extends Controller
         }
 
         $qtyPallet = (float)($barang->qty_pallet ?? 1);
+        
+        if ((int)$request->qty_receh >= $qtyPallet) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Qty Receh ({$request->qty_receh}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!"
+            ], 422);
+        }
+
         $summary = ($request->qty_full * $qtyPallet) + $request->qty_receh;
 
         // Create new SOH entry for today

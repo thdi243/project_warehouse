@@ -159,6 +159,14 @@ class WrmStockOpnameController extends Controller
             $qtyFullVal = (int)($qtyFull ?? 0);
             $qtyRecehVal = (int)($qtyReceh ?? 0);
             $qtyKg = (float)($barang->qty_kg ?? 1);
+            
+            if ($qtyRecehVal >= $qtyKg) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Qty Receh ({$qtyRecehVal}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyKg})!"
+                ], 422);
+            }
+
             $summary = ($qtyFullVal * $qtyKg) + $qtyRecehVal;
 
             $temp = WrmSoTempModel::create([
@@ -334,6 +342,11 @@ class WrmStockOpnameController extends Controller
                 $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
                 $qtyKg = (float)($temp->barang->qty_kg ?? 1);
+                
+                if ($qtyReceh >= $qtyKg) {
+                    throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid} tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyKg})!");
+                }
+
                 $summary = ($qtyFull * $qtyKg) + $qtyReceh;
 
                 $temp->qty_full = $qtyFull;
@@ -457,6 +470,14 @@ class WrmStockOpnameController extends Controller
         }
 
         $qtyKg = (float)($barang->qty_kg ?? 1);
+        
+        if ((int)$request->qty_receh >= $qtyKg) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Qty Receh ({$request->qty_receh}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyKg})!"
+            ], 422);
+        }
+
         $summary = ($request->qty_full * $qtyKg) + $request->qty_receh;
 
         // Create new SOH entry for today

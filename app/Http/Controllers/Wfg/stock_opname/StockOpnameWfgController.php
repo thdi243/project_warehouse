@@ -235,6 +235,14 @@ class StockOpnameWfgController extends Controller
             $qtyFull = $request->qty_full ?? 0;
             $qtyReceh = $request->qty_receh ?? 0;
             $qtyBox = $barang->qty_box ?? 0;
+
+            if ($qtyReceh >= $qtyBox) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Qty Receh ({$qtyReceh}) tidak boleh melebihi atau sama dengan acuan full box ({$qtyBox})!"
+                ], 422);
+            }
+
             $summary = ($qtyFull * $qtyBox) + $qtyReceh;
 
             if (
@@ -354,6 +362,13 @@ class StockOpnameWfgController extends Controller
                 'is_new' => true, // tandai barang baru
             ]
         );
+
+        if ((int)$request->qty_receh >= $barang->qty_box) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Qty Receh ({$request->qty_receh}) tidak boleh melebihi atau sama dengan acuan full box ({$barang->qty_box})!"
+            ], 422);
+        }
 
         // 🔹 Hitung summary
         $summary = ($request->qty_full * $barang->qty_box) + $request->qty_receh;
@@ -1609,6 +1624,10 @@ class StockOpnameWfgController extends Controller
                 $qtyFull = isset($it['qty_full']) ? (int) $it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int) $it['qty_receh'] : 0;
                 $qtyBox = $temp->barang->qty_box ?? 0;
+
+                if ($qtyReceh >= $qtyBox) {
+                    throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid_barang} tidak boleh melebihi atau sama dengan acuan full box ({$qtyBox})!");
+                }
 
                 $summary = ($qtyFull * $qtyBox) + $qtyReceh;
 
