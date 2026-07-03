@@ -27,12 +27,6 @@
             overflow: hidden;
         }
 
-        .dashboard-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--hover-shadow);
-            border-color: rgba(99, 102, 241, 0.2);
-        }
-
         .kpi-icon-box {
             width: 52px;
             height: 52px;
@@ -136,9 +130,6 @@
             border-bottom: none;
         }
 
-        .table-custom tbody tr:hover td {
-            background: #f8fafc;
-        }
 
         .progress-bar-custom {
             height: 6px;
@@ -502,6 +493,20 @@
             $('#filterForm').on('submit', function(e) {
                 e.preventDefault();
                 loadDashboardData();
+            });
+
+            Highcharts.setOptions({
+                lang: {
+                    thousandsSep: '.'
+                },
+                credits: {
+                    enabled: false
+                },
+                chart: {
+                    style: {
+                        fontFamily: "'Inter', sans-serif"
+                    }
+                }
             });
         });
 

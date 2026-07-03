@@ -993,7 +993,7 @@
                                 gridLineColor: '#f1f5f9'
                             },
                             tooltip: {
-                                valueSuffix: ' LO'
+                                valueSuffix: ' Truck'
                             },
                             legend: {
                                 enabled: false
