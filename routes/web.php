@@ -113,10 +113,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/wfg/bongkar-muat', [WfgBongkarMuatDashboardController::class, 'index'])->name('dashboard.wfg.bongkar-muat');
 
             // Vehicle Monitoring Dashboard
-            Route::get('/vehicle', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'dashboard'])->name('dashboard.vehicle')
-                ->middleware(['permission:vehicle-monitoring-menu']);
-            Route::get('/vehicle/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'dashboardData'])->name('dashboard.vehicle.data')
-                ->middleware(['permission:vehicle-monitoring-menu']);
+            Route::get('/vehicle', [VehicleTrackingController::class, 'dashboard'])->name('dashboard.vehicle')
+                ->middleware(['permission:dashboard-vehicle-monitoring']);
+            Route::get('/vehicle/data', [VehicleTrackingController::class, 'dashboardData'])->name('dashboard.vehicle.data')
+                ->middleware(['permission:dashboard-vehicle-monitoring']);
         });
     });
 
