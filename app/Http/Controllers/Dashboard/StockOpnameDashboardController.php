@@ -67,9 +67,9 @@ class StockOpnameDashboardController extends Controller
                 $query->whereHas('permissions', function ($q) use ($permissions) {
                     $q->whereIn('name', $permissions);
                 })
-                ->orWhereHas('roles.permissions', function ($q) use ($permissions) {
-                    $q->whereIn('name', $permissions);
-                });
+                    ->orWhereHas('roles.permissions', function ($q) use ($permissions) {
+                        $q->whereIn('name', $permissions);
+                    });
             })
             ->get();
 
@@ -169,7 +169,7 @@ class StockOpnameDashboardController extends Controller
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
-                
+
                 if ($sectionFilter) {
                     if ($sectionFilter === 'WFG_BAS') {
                         $q->where('principal', 'BAS');
@@ -291,7 +291,7 @@ class StockOpnameDashboardController extends Controller
             } elseif ($key === 'WFG_SMU') {
                 $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists()
                     || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->exists();
-                
+
                 $hasStartedSMU = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->exists()
                     || WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists();
 
@@ -362,7 +362,7 @@ class StockOpnameDashboardController extends Controller
 
         // 5. Gather Top 10 Selisih Terbesar
         $allSummaries = collect();
-        
+
         foreach ($wspSummaries as $s) {
             $allSummaries->push($this->formatSummaryRow('WSP', $s));
         }
@@ -398,7 +398,7 @@ class StockOpnameDashboardController extends Controller
         // 6. Accuracy Harian Trend Chart (Last 15 days ending in $tglOpname)
         $trendCategories = [];
         $trendAccuracy = [];
-        
+
         $endDateObj = Carbon::parse($tglOpname);
         for ($i = 14; $i >= 0; $i--) {
             $dateObj = (clone $endDateObj)->subDays($i);
@@ -468,7 +468,7 @@ class StockOpnameDashboardController extends Controller
                 if ($picFilter && $picFilter !== 'all') {
                     $wfgSop->where('user_id', $picFilter);
                 }
-                
+
                 if (!empty($wfgPrincipalsInFilter)) {
                     if (in_array('BAS', $wfgPrincipalsInFilter) && in_array('SMU', $wfgPrincipalsInFilter)) {
                         // Both BAS and SMU are allowed
@@ -478,7 +478,7 @@ class StockOpnameDashboardController extends Controller
                         $wfgSop->where('principal', '!=', 'BAS');
                     }
                 }
-                
+
                 $sopIds = $wfgSop->pluck('id');
                 $diopname += WfgSopSummariesModel::whereIn('sop_id', $sopIds)->count();
                 $matched += WfgSopSummariesModel::whereIn('sop_id', $sopIds)->where('status', 'match')->count();
@@ -517,10 +517,10 @@ class StockOpnameDashboardController extends Controller
     private function getAllSectionsList()
     {
         return [
-            'WSP' => 'Warehouse Sparepart (WSP)',
-            'WRM' => 'Warehouse Raw Material (WRM)',
-            'WPM' => 'Warehouse Packaging Material (WPM)',
-            'WCP' => 'Warehouse Co Product (WCP)',
+            'WSP' => 'WSP',
+            'WRM' => 'WRM',
+            'WPM' => 'WPM',
+            'WCP' => 'WCP',
             'WFG_BAS' => 'WFG - BAS',
             'WFG_SMU' => 'WFG - SMU',
         ];
