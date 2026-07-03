@@ -891,7 +891,7 @@
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <label class="form-label fw-bold">Update Foto Kondisi Accu</label>
-                            <input type="file" class="form-control" name="shifts[${shift}][foto_kondisi_accu]" accept="image/*">
+                            <input type="file" class="form-control" name="shifts[${shift}][foto_kondisi_accu]" accept="image/*" capture="camera">
                             ${currentPhotoHtml}
                         </div>
                     </div>

@@ -407,8 +407,8 @@
                                     <div class="col-md-12 mb-3">
                                         <label class="form-label">Foto Kondisi Accu</label>
                                         <input type="file" class="form-control" name="foto_kondisi_accu"
-                                            accept="image/*">
-                                        <small class="text-muted d-block">Unggah foto kondisi accu saat ini</small>
+                                            accept="image/*" capture="camera">
+                                        <small class="text-muted d-block">Ambil foto kondisi accu saat ini</small>
                                     </div>
                                 </div>
                                 <textarea name="catatan" id="catatan-hidden" hidden></textarea>
@@ -568,8 +568,8 @@
                                     <div class="col-md-12 mb-3">
                                         <label class="form-label">Foto Kondisi Accu</label>
                                         <input type="file" class="form-control" name="foto_kondisi_accu"
-                                            accept="image/*">
-                                        <small class="text-muted d-block">Unggah foto kondisi accu saat ini</small>
+                                            accept="image/*" capture="camera">
+                                        <small class="text-muted d-block">Ambil foto kondisi accu saat ini</small>
                                     </div>
                                 </div>
                                 <textarea name="catatan" id="catatan-hidden" hidden></textarea>
