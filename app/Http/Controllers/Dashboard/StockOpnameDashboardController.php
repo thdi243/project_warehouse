@@ -67,9 +67,9 @@ class StockOpnameDashboardController extends Controller
                 $query->whereHas('permissions', function ($q) use ($permissions) {
                     $q->whereIn('name', $permissions);
                 })
-                    ->orWhereHas('roles.permissions', function ($q) use ($permissions) {
-                        $q->whereIn('name', $permissions);
-                    });
+                ->orWhereHas('roles.permissions', function ($q) use ($permissions) {
+                    $q->whereIn('name', $permissions);
+                });
             })
             ->get();
 
@@ -82,7 +82,7 @@ class StockOpnameDashboardController extends Controller
     public function getData(Request $request)
     {
         $tglOpname = $request->input('tgl_opname', Carbon::now()->format('Y-m-d'));
-        $sectionFilter = $request->input('section'); // WSP, WRM, WPM, WCP, or WFG_principal
+        $sectionFilter = $request->input('section'); // WSP, WRM, WPM, WCP, WFG_BAS, WFG_SMU
         $picFilter = $request->input('pic'); // user_id
         $statusFilter = $request->input('status'); // belum, progress, selesai
         $barangFilter = $request->input('barang'); // search text for MID or Nama Barang
@@ -169,8 +169,13 @@ class StockOpnameDashboardController extends Controller
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
-                if ($sectionFilter && strpos($sectionFilter, 'WFG_') === 0) {
-                    $q->where('principal', substr($sectionFilter, 4));
+                
+                if ($sectionFilter) {
+                    if ($sectionFilter === 'WFG_BAS') {
+                        $q->where('principal', 'BAS');
+                    } elseif ($sectionFilter === 'WFG_SMU') {
+                        $q->where('principal', '!=', 'BAS');
+                    }
                 }
             });
             if ($barangFilter) {
@@ -262,11 +267,10 @@ class StockOpnameDashboardController extends Controller
                 $selisihCount = $wcpSummaries->where('status', '!=', 'match')->count();
                 $qtyLebih = $wcpSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wcpSummaries->where('selisih', '<', 0)->sum('selisih');
-            } elseif (strpos($key, 'WFG_') === 0) {
-                $principalName = substr($key, 4);
-                $hasDoc = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', $principalName)->exists();
-                $statusRecord = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', $principalName)->first();
-                $hasTemp = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', $principalName)->exists();
+            } elseif ($key === 'WFG_BAS') {
+                $hasDoc = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->exists();
+                $statusRecord = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->first();
+                $hasTemp = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->exists();
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -275,8 +279,31 @@ class StockOpnameDashboardController extends Controller
                     $status = 'started';
                 }
 
-                $filteredWfg = $wfgSummaries->filter(function ($s) use ($principalName) {
-                    return optional($s->sop)->principal === $principalName;
+                $filteredWfg = $wfgSummaries->filter(function ($s) {
+                    return optional($s->sop)->principal === 'BAS';
+                });
+
+                $diopnameCount = $filteredWfg->count();
+                $matchCount = $filteredWfg->where('status', 'match')->count();
+                $selisihCount = $filteredWfg->where('status', '!=', 'match')->count();
+                $qtyLebih = $filteredWfg->where('selisih', '>', 0)->sum('selisih');
+                $qtyKurang = $filteredWfg->where('selisih', '<', 0)->sum('selisih');
+            } elseif ($key === 'WFG_SMU') {
+                $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists()
+                    || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->exists();
+                
+                $hasStartedSMU = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->exists()
+                    || WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists();
+
+                if ($hasFinishedSMU && !$hasStartedSMU) {
+                    $status = 'finished';
+                    $sectionSelesaiCount++;
+                } elseif ($hasStartedSMU || $hasFinishedSMU) {
+                    $status = 'started';
+                }
+
+                $filteredWfg = $wfgSummaries->filter(function ($s) {
+                    return optional($s->sop)->principal !== 'BAS';
                 });
 
                 $diopnameCount = $filteredWfg->count();
@@ -311,13 +338,12 @@ class StockOpnameDashboardController extends Controller
 
         if ($statusFilter && $statusFilter !== 'all') {
             $ringkasanSections = collect($ringkasanSections)->filter(function ($s) use ($statusFilter) {
-                $statusLower = strtolower($s['status']);
-                if ($statusFilter === 'belum' || $statusFilter === 'idle') {
-                    return str_contains($statusLower, 'belum') || str_contains($statusLower, 'idle');
-                } elseif ($statusFilter === 'progress' || $statusFilter === 'started') {
-                    return str_contains($statusLower, 'proses') || str_contains($statusLower, 'started');
-                } elseif ($statusFilter === 'selesai' || $statusFilter === 'finished') {
-                    return str_contains($statusLower, 'selesai') || str_contains($statusLower, 'finished');
+                if ($statusFilter === 'idle') {
+                    return $s['status'] === 'Belum';
+                } elseif ($statusFilter === 'started') {
+                    return $s['status'] === 'started';
+                } elseif ($statusFilter === 'finished') {
+                    return $s['status'] === 'finished';
                 }
                 return true;
             })->values()->all();
@@ -336,7 +362,7 @@ class StockOpnameDashboardController extends Controller
 
         // 5. Gather Top 10 Selisih Terbesar
         $allSummaries = collect();
-
+        
         foreach ($wspSummaries as $s) {
             $allSummaries->push($this->formatSummaryRow('WSP', $s));
         }
@@ -350,7 +376,9 @@ class StockOpnameDashboardController extends Controller
             $allSummaries->push($this->formatSummaryRow('WCP', $s));
         }
         foreach ($wfgSummaries as $s) {
-            $allSummaries->push($this->formatSummaryRow('WFG - ' . optional($s->sop)->principal, $s));
+            $principalName = optional($s->sop)->principal;
+            $sectionLabel = ($principalName === 'BAS') ? 'WFG - BAS' : 'WFG - SMU';
+            $allSummaries->push($this->formatSummaryRow($sectionLabel, $s));
         }
 
         $allowedSectionNames = collect($ringkasanSections)->pluck('name')->toArray();
@@ -370,7 +398,7 @@ class StockOpnameDashboardController extends Controller
         // 6. Accuracy Harian Trend Chart (Last 15 days ending in $tglOpname)
         $trendCategories = [];
         $trendAccuracy = [];
-
+        
         $endDateObj = Carbon::parse($tglOpname);
         for ($i = 14; $i >= 0; $i--) {
             $dateObj = (clone $endDateObj)->subDays($i);
@@ -435,14 +463,22 @@ class StockOpnameDashboardController extends Controller
                 return substr($k, 4);
             })->toArray();
 
-            if (!empty($wfgPrincipalsInFilter) || in_array('WFG', $allowedKeys) || empty($sectionFilter) || $sectionFilter === 'all') {
+            if (!empty($wfgPrincipalsInFilter) || in_array('WFG_BAS', $allowedKeys) || in_array('WFG_SMU', $allowedKeys) || empty($sectionFilter) || $sectionFilter === 'all') {
                 $wfgSop = WfgSopModel::whereDate('tgl_opname', $dStr);
                 if ($picFilter && $picFilter !== 'all') {
                     $wfgSop->where('user_id', $picFilter);
                 }
+                
                 if (!empty($wfgPrincipalsInFilter)) {
-                    $wfgSop->whereIn('principal', $wfgPrincipalsInFilter);
+                    if (in_array('BAS', $wfgPrincipalsInFilter) && in_array('SMU', $wfgPrincipalsInFilter)) {
+                        // Both BAS and SMU are allowed
+                    } elseif (in_array('BAS', $wfgPrincipalsInFilter)) {
+                        $wfgSop->where('principal', 'BAS');
+                    } elseif (in_array('SMU', $wfgPrincipalsInFilter)) {
+                        $wfgSop->where('principal', '!=', 'BAS');
+                    }
                 }
+                
                 $sopIds = $wfgSop->pluck('id');
                 $diopname += WfgSopSummariesModel::whereIn('sop_id', $sopIds)->count();
                 $matched += WfgSopSummariesModel::whereIn('sop_id', $sopIds)->where('status', 'match')->count();
@@ -480,29 +516,14 @@ class StockOpnameDashboardController extends Controller
 
     private function getAllSectionsList()
     {
-        $sections = [
+        return [
             'WSP' => 'Warehouse Sparepart (WSP)',
             'WRM' => 'Warehouse Raw Material (WRM)',
             'WPM' => 'Warehouse Packaging Material (WPM)',
             'WCP' => 'Warehouse Co Product (WCP)',
+            'WFG_BAS' => 'WFG - BAS',
+            'WFG_SMU' => 'WFG - SMU',
         ];
-
-        try {
-            $wfgPrincipals = DB::table('wfg_barang')
-                ->whereNotNull('principal')
-                ->where('principal', '!=', '')
-                ->distinct()
-                ->pluck('principal')
-                ->toArray();
-
-            foreach ($wfgPrincipals as $p) {
-                $sections['WFG_' . $p] = 'WFG - ' . $p;
-            }
-        } catch (\Exception $e) {
-            // Fallback
-        }
-
-        return $sections;
     }
 
     private function formatSummaryRow($sectionName, $s)
