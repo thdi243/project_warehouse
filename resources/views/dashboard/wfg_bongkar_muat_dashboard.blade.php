@@ -268,6 +268,49 @@
             background: #cbd5e1;
             margin-right: 5px;
         }
+
+        /* Timer badge */
+        .timer-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .timer-badge.warning-limit {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: #b45309;
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+        }
+
+        .timer-badge.danger-limit {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #b91c1c;
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+            animation: pulse-badge 2s infinite;
+        }
+
+        @keyframes pulse-badge {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
     </style>
 @endsection
 
@@ -697,12 +740,16 @@
                                     <div class="text-muted mb-1"><i class="bx bx-map-pin me-1"></i>${o.destinasi}</div>
                                     <div class="text-muted mb-2"><i class="bx bx-user me-1"></i>Checker: <span class="text-dark fw-medium">${o.checker}</span></div>
                                     <div class="text-muted mb-2"><i class="bx bx-user me-1"></i>Forklift Driver: <span class="text-dark fw-medium">${o.forklift_driver}</span></div>
+                                    <div class="text-muted mb-2"><i class="bx bx-time-five me-1"></i>Durasi: <span class="dashboard-timer timer-badge" data-start="${o.start_time || ''}" data-limit="120">
+                                            Calculated...
+                                        </span>
+                                    </div>
                                     
                                     <div class="d-flex gap-2 mb-2">
                                         <div class="badge bg-light text-dark border w-50 py-2">Full: ${fmt(o.total_full)}</div>
                                         <div class="badge bg-light text-dark border w-50 py-2">Receh: ${fmt(o.total_receh)}</div>
                                     </div>
-
+                                    
                                     <div class="item-list-mini">
                                         <div class="fw-semibold mb-1 text-uppercase" style="font-size:9px">
                                             Items Sample:
@@ -714,6 +761,49 @@
                         `;
                     });
                     $('#loadingVisualContainer').html(html);
+                    updateDashboardTimers();
+                });
+            }
+
+            // ---- Timer update logic for WFG loading duration ----
+            function updateDashboardTimers() {
+                $('.dashboard-timer').each(function() {
+                    const startString = $(this).data('start'); // Format: Y-m-d H:i:s
+                    if (!startString) {
+                        $(this).text('-');
+                        return;
+                    }
+                    const limitMinutes = parseInt($(this).data('limit')) || 0;
+
+                    const startTime = moment(startString, "YYYY-MM-DD HH:mm:ss");
+                    const diffSeconds = moment().diff(startTime, 'seconds');
+
+                    if (diffSeconds < 0) {
+                        $(this).text('0m 0d');
+                        return;
+                    }
+
+                    const hours = Math.floor(diffSeconds / 3600);
+                    const minutes = Math.floor((diffSeconds % 3600) / 60);
+                    const seconds = diffSeconds % 60;
+
+                    let timeStr = '';
+                    if (hours > 0) {
+                        timeStr += hours + 'j ';
+                    }
+                    timeStr += minutes + 'm ' + seconds + 'd';
+
+                    $(this).text(timeStr);
+
+                    // Check if it's exceeded limits (e.g. 120 minutes = 2 hours)
+                    const totalMinutes = Math.floor(diffSeconds / 60);
+                    if (limitMinutes > 0 && totalMinutes >= limitMinutes) {
+                        $(this).removeClass('warning-limit').addClass('danger-limit');
+                    } else if (limitMinutes > 0 && totalMinutes >= Math.floor(limitMinutes / 2)) {
+                        $(this).removeClass('danger-limit').addClass('warning-limit');
+                    } else {
+                        $(this).removeClass('danger-limit warning-limit');
+                    }
                 });
             }
 
@@ -942,6 +1032,9 @@
             }
 
             loadAll();
+
+            // Auto-update timers every second
+            setInterval(updateDashboardTimers, 1000);
 
             setInterval(() => {
                 loadAll();

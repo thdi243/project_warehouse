@@ -308,6 +308,22 @@ class WfgBongkarMuatDashboardController extends Controller
         $orders = $query->latest('id')->limit(15)->get()->map(function ($o) {
             $totalFull  = $o->details->where('jenis', 'P')->sum('qty');
             $totalReceh = $o->details->where('jenis', 'R')->sum('qty');
+            
+            $startTime = null;
+            if ($o->jam_muat) {
+                try {
+                    $now = Carbon::now();
+                    $jamMuat = Carbon::createFromFormat('H:i:s', $o->jam_muat);
+                    $jamMuat->setDate($now->year, $now->month, $now->day);
+                    
+                    if ($jamMuat->gt($now)) {
+                        $jamMuat->subDay();
+                    }
+                    $startTime = $jamMuat->format('Y-m-d H:i:s');
+                } catch (\Exception $e) {
+                    $startTime = null;
+                }
+            }
 
             return [
                 'id'              => $o->id,
@@ -321,6 +337,7 @@ class WfgBongkarMuatDashboardController extends Controller
                 'total_receh'     => (int) $totalReceh,
                 'total_qty'       => (int) ($totalFull + $totalReceh),
                 'total_items'     => $o->details->count(),
+                'start_time'      => $startTime,
                 'items' => $o->details
                     ->sortByDesc('id')
                     ->map(fn($d) => [
