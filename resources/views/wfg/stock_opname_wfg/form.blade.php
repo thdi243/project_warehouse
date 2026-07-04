@@ -600,7 +600,8 @@
                                     data-id="${id}"
                                     data-sohid="${sohid}"
                                     data-barangid="${barangId}"
-                                    data-qtybox="${qtyBox}">
+                                    data-qtybox="${qtyBox}"
+                                    data-uom="${item.uom ?? ''}">
                                     
                                     <td class="text-center fw-semibold">${index + 1 + ((currentPage - 1) * response.per_page)}</td>
                                     <td>
@@ -837,8 +838,9 @@
                 // tentukan mode otomatis
                 const qty_full = parseInt(qty_full_raw || 0, 10);
                 const qty_receh = parseInt(qty_receh_raw || 0, 10);
+                const uom = (row.data('uom') || '').toString().toUpperCase();
 
-                if (qty_receh_raw !== '' && qty_receh >= qty_box) {
+                if (uom === 'BOX' && qty_receh_raw !== '' && qty_receh >= qty_box) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Kuantitas Receh Berlebih',
@@ -1263,8 +1265,9 @@
                                 });
 
                                 const qtyBox = item.barang?.qty_box ?? 1;
+                                const uom = item.barang?.uom ?? '';
                                 html += `
-                                    <div class="mb-3 border border-info p-2 rounded temp-item" data-tempid="${item.id}" data-qtybox="${qtyBox}">
+                                    <div class="mb-3 border border-info p-2 rounded temp-item" data-tempid="${item.id}" data-qtybox="${qtyBox}" data-uom="${uom}">
                                         <input type="hidden" class="temp_id" value="${item.id}">
                                         <div class="d-flex align-items-center justify-content-between mb-1">
                                             <p class="mb-0 fw-semibold">
@@ -1353,8 +1356,9 @@
                 const val = $(this).val();
                 if (val !== '') {
                     const tempItem = $(this).closest('.temp-item');
+                    const uom = (tempItem.data('uom') || '').toString().toUpperCase();
                     const qtyBox = parseInt(tempItem.data('qtybox'), 10) || 1;
-                    if (parseInt(val, 10) >= qtyBox) {
+                    if (uom === 'BOX' && parseInt(val, 10) >= qtyBox) {
                         toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full box (${qtyBox})!`);
                         $(this).val('');
                     }
@@ -1371,9 +1375,10 @@
                     const qtyFull = $(this).find('.qty_full').val();
                     const qtyReceh = $(this).find('.qty_receh').val();
                     const qtyBox = parseInt($(this).data('qtybox'), 10) || 1;
+                    const uom = ($(this).data('uom') || '').toString().toUpperCase();
 
                     const qtyRecehVal = parseInt(qtyReceh, 10) || 0;
-                    if (qtyRecehVal >= qtyBox) {
+                    if (uom === 'BOX' && qtyRecehVal >= qtyBox) {
                         hasExceededAcuan = true;
                         acuanLimit = qtyBox;
                     }
@@ -1587,7 +1592,7 @@
                     return;
                 }
 
-                if (data.qty_receh >= data.qty_box) {
+                if (data.uom.toUpperCase() === 'BOX' && data.qty_receh >= data.qty_box) {
                     Swal.fire('Peringatan', `Qty Receh tidak boleh melebihi atau sama dengan acuan full box (${data.qty_box}).`, 'warning');
                     return;
                 }

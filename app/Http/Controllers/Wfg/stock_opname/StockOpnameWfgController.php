@@ -236,7 +236,7 @@ class StockOpnameWfgController extends Controller
             $qtyReceh = $request->qty_receh ?? 0;
             $qtyBox = $barang->qty_box ?? 0;
 
-            if ($qtyReceh >= $qtyBox) {
+            if (strtoupper($barang->uom) === 'BOX' && $qtyReceh >= $qtyBox) {
                 return response()->json([
                     'status' => 'error',
                     'message' => "Qty Receh ({$qtyReceh}) tidak boleh melebihi atau sama dengan acuan full box ({$qtyBox})!"
@@ -363,7 +363,7 @@ class StockOpnameWfgController extends Controller
             ]
         );
 
-        if ((int)$request->qty_receh >= $barang->qty_box) {
+        if (strtoupper($barang->uom) === 'BOX' && (int)$request->qty_receh >= $barang->qty_box) {
             return response()->json([
                 'status' => 'error',
                 'message' => "Qty Receh ({$request->qty_receh}) tidak boleh melebihi atau sama dengan acuan full box ({$barang->qty_box})!"
@@ -1092,6 +1092,7 @@ class StockOpnameWfgController extends Controller
                 'wfg_barang.mid_barang',
                 'wfg_barang.nama_barang',
                 'wfg_barang.qty_box',
+                'wfg_barang.uom',
                 'wfg_barang.principal',
                 DB::raw("COALESCE(temp_sum.total_summary, 0) AS total_summary"),
                 $selisihSelect,
@@ -1177,6 +1178,7 @@ class StockOpnameWfgController extends Controller
                 'mid_barang' => $item->mid_barang,
                 'nama_barang' => $item->nama_barang,
                 'qty_box' => $item->qty_box,
+                'uom' => $item->uom,
                 'principal' => $item->principal,
             ];
         });
@@ -1321,7 +1323,7 @@ class StockOpnameWfgController extends Controller
 
     public function getDataTempEdit(String $id)
     {
-        $dataQty = WfgSopTempModel::with('barang:id,mid_barang,nama_barang,qty_box')
+        $dataQty = WfgSopTempModel::with('barang:id,mid_barang,nama_barang,qty_box,uom')
             ->where('barang_id', $id)
             ->whereDate('tgl_opname', now()->toDateString()) // optional: hanya hari ini
             ->orderBy('updated_at', 'asc')
@@ -1625,7 +1627,7 @@ class StockOpnameWfgController extends Controller
                 $qtyReceh = isset($it['qty_receh']) ? (int) $it['qty_receh'] : 0;
                 $qtyBox = $temp->barang->qty_box ?? 0;
 
-                if ($qtyReceh >= $qtyBox) {
+                if (strtoupper($temp->barang->uom) === 'BOX' && $qtyReceh >= $qtyBox) {
                     throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid_barang} tidak boleh melebihi atau sama dengan acuan full box ({$qtyBox})!");
                 }
 
