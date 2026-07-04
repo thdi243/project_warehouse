@@ -292,9 +292,9 @@
                             <label class="filter-label">Status</label>
                             <select class="form-select form-select-custom" id="filterStatus">
                                 <option value="all">Semua Status</option>
-                                <option value="belum">Belum Mulai</option>
-                                <option value="progress">On Progress</option>
-                                <option value="selesai">Selesai</option>
+                                <option value="idle">Belum Mulai</option>
+                                <option value="started">On Progress</option>
+                                <option value="finished">Selesai</option>
                             </select>
                         </div>
 
