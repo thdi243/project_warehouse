@@ -488,6 +488,129 @@ class StockOpnameDashboardController extends Controller
             $trendAccuracy[] = $acc;
         }
 
+        // 7. Get Approval Tracking for each section
+        $approvalTracking = [];
+
+        foreach ($allSections as $key => $name) {
+            $soDoc = null;
+
+            if ($key === 'WSP') {
+                $soDoc = WspSoModel::with(['user', 'approvals.approver'])
+                    ->whereDate('tgl_opname', $tglOpname)
+                    ->first();
+            } elseif ($key === 'WRM') {
+                $soDoc = WrmSoModel::with(['user', 'approvals.approver'])
+                    ->whereDate('tgl_opname', $tglOpname)
+                    ->first();
+            } elseif ($key === 'WPM') {
+                $soDoc = WpmSoModel::with(['user', 'approvals.approver'])
+                    ->whereDate('tgl_opname', $tglOpname)
+                    ->first();
+            } elseif ($key === 'WCP') {
+                $soDoc = WcpSoModel::with(['user', 'approvals.approver'])
+                    ->whereDate('tgl_opname', $tglOpname)
+                    ->first();
+            } elseif ($key === 'WFG_BAS') {
+                $soDoc = WfgSopModel::with(['user', 'approvals.approver'])
+                    ->whereDate('tgl_opname', $tglOpname)
+                    ->where('principal', 'BAS')
+                    ->first();
+            } elseif ($key === 'WFG_SMU') {
+                $soDoc = WfgSopModel::with(['user', 'approvals.approver'])
+                    ->whereDate('tgl_opname', $tglOpname)
+                    ->where('principal', '!=', 'BAS')
+                    ->first();
+            }
+
+            $statusApproval = 'Belum Mulai';
+            $noDoc = '-';
+            $operatorName = '-';
+            $approvedBy = [];
+            $pendingBy = [];
+            $rejectedBy = [];
+
+            if ($soDoc) {
+                $noDoc = $soDoc->no_doc ?? '-';
+                $operatorName = $soDoc->user->nama_lengkap ?? $soDoc->user->username ?? '-';
+
+                $dbStatus = strtolower($soDoc->status ?? '');
+                if ($dbStatus === 'approved') {
+                    $statusApproval = 'Approved';
+                } elseif ($dbStatus === 'rejected') {
+                    $statusApproval = 'Rejected';
+                } elseif ($dbStatus === 'pending' || $dbStatus === 'waiting') {
+                    $statusApproval = 'Pending';
+                } else {
+                    $statusApproval = ucfirst($dbStatus ?: 'Draft');
+                }
+
+                foreach ($soDoc->approvals as $app) {
+                    $appUser = $app->approver->nama_lengkap ?? $app->approver->username ?? 'Unknown';
+                    $appStatus = strtolower($app->status ?? '');
+
+                    if ($appStatus === 'approved') {
+                        $approvedBy[] = $appUser;
+                    } elseif ($appStatus === 'rejected') {
+                        $rejectedBy[] = $appUser . ($app->catatan ? " ({$app->catatan})" : "");
+                    } else {
+                        $pendingBy[] = $appUser;
+                    }
+                }
+            } else {
+                $hasStarted = false;
+                if ($key === 'WSP') {
+                    $hasStarted = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->exists()
+                        || WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->exists();
+                } elseif ($key === 'WRM') {
+                    $hasStarted = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->exists()
+                        || WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->exists();
+                } elseif ($key === 'WPM') {
+                    $hasStarted = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->exists()
+                        || WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->exists();
+                } elseif ($key === 'WCP') {
+                    $hasStarted = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->exists()
+                        || WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->exists();
+                } elseif ($key === 'WFG_BAS') {
+                    $hasStarted = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->exists()
+                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('status', 'started')->exists();
+                } elseif ($key === 'WFG_SMU') {
+                    $hasStarted = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists()
+                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->exists();
+                }
+
+                $statusApproval = $hasStarted ? 'On Progress' : 'Belum Mulai';
+            }
+
+            $approvalTracking[] = [
+                'key' => $key,
+                'name' => $name,
+                'no_doc' => $noDoc,
+                'operator' => $operatorName,
+                'status' => $statusApproval,
+                'approved_by' => $approvedBy,
+                'pending_by' => $pendingBy,
+                'rejected_by' => $rejectedBy
+            ];
+        }
+
+        // Apply filters
+        if ($sectionFilter && $sectionFilter !== 'all') {
+            $approvalTracking = collect($approvalTracking)->where('key', $sectionFilter)->values()->all();
+        }
+
+        if ($statusFilter && $statusFilter !== 'all') {
+            $approvalTracking = collect($approvalTracking)->filter(function ($s) use ($statusFilter) {
+                if ($statusFilter === 'idle') {
+                    return $s['status'] === 'Belum Mulai';
+                } elseif ($statusFilter === 'started') {
+                    return $s['status'] === 'On Progress';
+                } elseif ($statusFilter === 'finished') {
+                    return in_array($s['status'], ['Pending', 'Approved', 'Rejected']);
+                }
+                return true;
+            })->values()->all();
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -503,6 +626,7 @@ class StockOpnameDashboardController extends Controller
                     'selisih_qty_neg' => $totalQtyKurang < 0 ? number_format($totalQtyKurang, 0, ',', '.') : '0',
                 ],
                 'ringkasanSections' => $ringkasanSections,
+                'approvalTracking' => $approvalTracking,
                 'top10' => $top10,
                 'charts' => [
                     'accuracy' => [

@@ -442,6 +442,36 @@
                 </div>
             </div>
 
+            <!-- Tracking Approval per Section Table -->
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <div class="card dashboard-card p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h5 class="card-title fw-bold mb-0">Tracking Approval Stock Opname per Section</h5>
+                            <span class="text-muted small">Memantau status approval dan siapa saja yang belum approve</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table-custom" id="tableApprovalTracking">
+                                <thead>
+                                    <tr>
+                                        <th>Nama Section / Gudang</th>
+                                        <th>No. Dokumen</th>
+                                        <th>Operator (SC)</th>
+                                        <th class="text-center">Status Approval</th>
+                                        <th>Sudah Approve</th>
+                                        <th>Belum Approve (Pending)</th>
+                                        <th>Ditolak (Rejected)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Top 10 Selisih Terbesar -->
             <div class="row">
                 <div class="col-12">
@@ -533,6 +563,7 @@
                         renderAccuracyChart(res.data.charts.accuracy);
                         renderSectionAccuracyChart(res.data.ringkasanSections);
                         renderSectionSummaryTable(res.data.ringkasanSections);
+                        renderApprovalTrackingTable(res.data.approvalTracking);
                         renderTop10Table(res.data.top10);
                     }
                 },
@@ -690,6 +721,65 @@
             }
             $('#tableSectionSummary tbody').html(html);
         }
+
+        function renderApprovalTrackingTable(data) {
+            let html = '';
+            if (!data || data.length === 0) {
+                html =
+                    `<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data tracking approval ditemukan.</td></tr>`;
+            } else {
+                data.forEach(function(row) {
+                    let badgeClass = 'bg-light text-muted border border-secondary-subtle';
+                    if (row.status === 'On Progress') badgeClass = 'bg-info-subtle text-info border border-info-subtle';
+                    if (row.status === 'Pending') badgeClass = 'bg-warning-subtle text-warning border border-warning-subtle';
+                    if (row.status === 'Approved') badgeClass = 'bg-success-subtle text-success border border-success-subtle';
+                    if (row.status === 'Rejected') badgeClass = 'bg-danger-subtle text-danger border border-danger-subtle';
+
+                    let approvedBadges = '';
+                    if (row.approved_by && row.approved_by.length > 0) {
+                        row.approved_by.forEach(function(name) {
+                            approvedBadges += `<span class="badge bg-success-subtle text-success me-1 mb-1 border border-success-subtle px-2 py-1"><i class="mdi mdi-check-circle me-1"></i>${name}</span>`;
+                        });
+                    } else {
+                        approvedBadges = '<span class="text-muted small">-</span>';
+                    }
+
+                    let pendingBadges = '';
+                    if (row.pending_by && row.pending_by.length > 0) {
+                        row.pending_by.forEach(function(name) {
+                            pendingBadges += `<span class="badge bg-warning-subtle text-warning me-1 mb-1 border border-warning-subtle px-2 py-1"><i class="mdi mdi-clock-outline me-1"></i>${name}</span>`;
+                        });
+                    } else {
+                        pendingBadges = '<span class="text-muted small">-</span>';
+                    }
+
+                    let rejectedBadges = '';
+                    if (row.rejected_by && row.rejected_by.length > 0) {
+                        row.rejected_by.forEach(function(name) {
+                            rejectedBadges += `<span class="badge bg-danger-subtle text-danger me-1 mb-1 border border-danger-subtle px-2 py-1"><i class="mdi mdi-close-circle me-1"></i>${name}</span>`;
+                        });
+                    } else {
+                        rejectedBadges = '<span class="text-muted small">-</span>';
+                    }
+
+                    html += `
+                        <tr>
+                            <td><strong>${row.name}</strong></td>
+                            <td><code>${row.no_doc}</code></td>
+                            <td>${row.operator}</td>
+                            <td class="text-center">
+                                <span class="status-badge ${badgeClass}">${row.status}</span>
+                            </td>
+                            <td>${approvedBadges}</td>
+                            <td>${pendingBadges}</td>
+                            <td>${rejectedBadges}</td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#tableApprovalTracking tbody').html(html);
+        }
+
 
         function renderTop10Table(data) {
             let html = '';
