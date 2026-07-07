@@ -237,7 +237,7 @@
                 $('#mid').val(data.mid);
                 $('#nama_barang').val(data.nama_barang);
                 $('#uom').val(data.uom);
-                $('#qty_pallet').val(data.qty_pallet);
+                $('#qty_pallet').val(parseFloat(data.qty_pallet));
 
                 $('#modalBarang').modal('show');
             });
