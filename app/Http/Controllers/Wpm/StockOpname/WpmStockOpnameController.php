@@ -153,13 +153,6 @@ class WpmStockOpnameController extends Controller
             $qtyRecehVal = (int)($qtyReceh ?? 0);
             $qtyPallet = (float)($barang->qty_pallet ?? 1);
             
-            if ($qtyRecehVal >= $qtyPallet) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => "Qty Receh ({$qtyRecehVal}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!"
-                ], 422);
-            }
-
             $summary = ($qtyFullVal * $qtyPallet) + $qtyRecehVal;
 
             $temp = WpmSoTempModel::create([
@@ -333,10 +326,6 @@ class WpmStockOpnameController extends Controller
                 $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
                 $qtyPallet = (float)($temp->barang->qty_pallet ?? 1);
-                
-                if ($qtyReceh >= $qtyPallet) {
-                    throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid} tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!");
-                }
 
                 $summary = ($qtyFull * $qtyPallet) + $qtyReceh;
 
@@ -457,13 +446,6 @@ class WpmStockOpnameController extends Controller
         }
 
         $qtyPallet = (float)($barang->qty_pallet ?? 1);
-        
-        if ((int)$request->qty_receh >= $qtyPallet) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "Qty Receh ({$request->qty_receh}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!"
-            ], 422);
-        }
 
         $summary = ($request->qty_full * $qtyPallet) + $request->qty_receh;
 

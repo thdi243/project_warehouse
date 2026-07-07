@@ -684,14 +684,7 @@
                     return;
                 }
 
-                if (recehValStr !== '') {
-                    const recehVal = parseInt(recehValStr) || 0;
-                    if (recehVal >= qtyPallet) {
-                        toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
-                        row.find('.qty-receh').val('');
-                        return;
-                    }
-                }
+
 
                 const full = parseInt(fullValStr) || 0;
                 const receh = parseInt(recehValStr) || 0;
@@ -726,10 +719,7 @@
                 const full = parseInt(fullValStr) || 0;
                 const receh = parseInt(recehValStr) || 0;
 
-                // Double check validation before sending
-                if (recehValStr !== '' && receh >= qtyPallet) {
-                    return;
-                }
+
 
                 if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
                     return;
@@ -1103,22 +1093,13 @@
             });
         });
 
-        // Live check for negative inputs & exceeding qty_pallet in edit modal
+        // Live check for negative inputs in edit modal
         $(document).on('input', '#editModal .qty_full, #editModal .qty_receh', function() {
             const val = $(this).val();
             if (val !== '' && parseInt(val) < 0) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                 $(this).val('');
                 return;
-            }
-
-            if ($(this).hasClass('qty_receh') && val !== '') {
-                const tempItem = $(this).closest('.temp-item');
-                const qtyPallet = parseFloat(tempItem.data('qty-pallet')) || 1;
-                if (parseInt(val) >= qtyPallet) {
-                    toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
-                    $(this).val('');
-                }
             }
         });
 
@@ -1127,8 +1108,6 @@
             const updates = [];
             let hasNegative = false;
             let hasZeroBoth = false;
-            let hasExceededAcuan = false;
-            let acuanLimit = 1;
 
             $('#editModal .temp-item').each(function() {
                 const tempId = $(this).find('.temp_id').val();
@@ -1147,11 +1126,6 @@
                     hasZeroBoth = true;
                 }
 
-                if (qtyRecehVal >= qtyPallet) {
-                    hasExceededAcuan = true;
-                    acuanLimit = qtyPallet;
-                }
-
                 updates.push({
                     id: tempId,
                     qty_full: qtyFull,
@@ -1161,11 +1135,6 @@
 
             if (hasNegative) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
-                return;
-            }
-
-            if (hasExceededAcuan) {
-                toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
                 return;
             }
 
