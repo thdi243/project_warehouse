@@ -540,11 +540,26 @@
         function checkSessionStatus() {
             $.get("{{ route('wcp.stock_opname.getStatusOpname') }}", function(res) {
                 if (res.status === 'started') {
-                    $('#btnStartOpname').addClass('d-none');
-                    $('#btnSaveFinal').removeClass('d-none');
-                    $('#btnAddRow').removeClass('d-none');
-                    $('#searchContainer').removeClass('d-none');
-                    loadItems();
+                    if (!res.is_owner) {
+                        $('#btnStartOpname').removeClass('d-none').prop('disabled', true).addClass('btn-secondary')
+                            .html('<i class="mdi mdi-clock-outline me-1"></i> Sedang Opname');
+                        $('#btnSaveFinal').addClass('d-none');
+                        $('#btnAddRow').addClass('d-none');
+                        $('#searchContainer').addClass('d-none');
+                        $('#soInputTableContainer').html(`
+                            <div class="text-center py-5">
+                                <i class="mdi mdi-clock-outline text-warning display-3 mb-3 d-block"></i>
+                                <h4>Stock Opname Sedang Berjalan</h4>
+                                <p>Proses stock opname hari ini sedang dilakukan oleh <strong>${res.started_by}</strong>.</p>
+                            </div>
+                        `);
+                    } else {
+                        $('#btnStartOpname').addClass('d-none');
+                        $('#btnSaveFinal').removeClass('d-none');
+                        $('#btnAddRow').removeClass('d-none');
+                        $('#searchContainer').removeClass('d-none');
+                        loadItems();
+                    }
                 } else if (res.status === 'finished') {
                     $('#btnStartOpname').removeClass('d-none').prop('disabled', true).addClass('btn-secondary')
                         .html('<i class="mdi mdi-check-circle-outline me-1"></i> Opname Selesai');

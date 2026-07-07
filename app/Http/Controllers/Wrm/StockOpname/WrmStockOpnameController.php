@@ -50,16 +50,36 @@ class WrmStockOpnameController extends Controller
         ]);
     }
 
-    public function getStatusOpname(Request $request)
+    private function checkSoWriteAccess()
     {
         $today = now()->toDateString();
         $status = WrmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($status && $status->status === 'started' && Auth::id() != $status->user_id) {
+            return false;
+        }
+        return true;
+    }
+
+    public function getStatusOpname(Request $request)
+    {
+        $today = now()->toDateString();
+        $status = WrmSoStatusModel::with('user')->whereDate('tgl_opname', $today)->first();
+        $currentUser = Auth::user();
 
         if ($status) {
-            return response()->json(['status' => $status->status]);
+            $isOwner = $currentUser && ($currentUser->id == $status->user_id);
+            return response()->json([
+                'status' => $status->status,
+                'is_owner' => $isOwner,
+                'started_by' => $status->user->nama_lengkap ?? $status->user->username ?? 'Stock Control'
+            ]);
         }
 
-        return response()->json(['status' => 'idle']);
+        return response()->json([
+            'status' => 'idle',
+            'is_owner' => true,
+            'started_by' => $status->user->nama_lengkap ?? $status->user->username ?? 'Stock Control'
+        ]);
     }
 
     public function getData(Request $request)
@@ -137,6 +157,13 @@ class WrmStockOpnameController extends Controller
 
     public function saveTemp(Request $request)
     {
+        if (!$this->checkSoWriteAccess()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
+
         $request->validate([
             'soh_id' => 'required|exists:wrm_soh,id',
             'qty_full' => 'nullable|integer|min:0',
@@ -159,7 +186,7 @@ class WrmStockOpnameController extends Controller
             $qtyFullVal = (int)($qtyFull ?? 0);
             $qtyRecehVal = (int)($qtyReceh ?? 0);
             $qtyKg = (float)($barang->qty_kg ?? 1);
-            
+
             if ($qtyRecehVal >= $qtyKg) {
                 return response()->json([
                     'status' => 'error',
@@ -320,6 +347,13 @@ class WrmStockOpnameController extends Controller
 
     public function updateTempBatch(Request $request)
     {
+        if (!$this->checkSoWriteAccess()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
+
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
@@ -342,7 +376,7 @@ class WrmStockOpnameController extends Controller
                 $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
                 $qtyKg = (float)($temp->barang->qty_kg ?? 1);
-                
+
                 if ($qtyReceh >= $qtyKg) {
                     throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid} tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyKg})!");
                 }
@@ -403,6 +437,13 @@ class WrmStockOpnameController extends Controller
 
     public function destroyTemp($id, Request $request)
     {
+        if (!$this->checkSoWriteAccess()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
+
         try {
             $type = $request->input('tipe', 'qty');
 
@@ -442,6 +483,13 @@ class WrmStockOpnameController extends Controller
 
     public function saveTempNew(Request $request)
     {
+        if (!$this->checkSoWriteAccess()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
+
         $request->validate([
             'mid_barang' => 'required|exists:wrm_master_barang,mid',
             'no_spb' => 'nullable|integer',
@@ -470,7 +518,7 @@ class WrmStockOpnameController extends Controller
         }
 
         $qtyKg = (float)($barang->qty_kg ?? 1);
-        
+
         if ((int)$request->qty_receh >= $qtyKg) {
             return response()->json([
                 'status' => 'error',
@@ -525,6 +573,13 @@ class WrmStockOpnameController extends Controller
 
     public function resetTempRow(Request $request)
     {
+        if (!$this->checkSoWriteAccess()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
+
         $request->validate([
             'soh_id' => 'required|exists:wrm_soh,id'
         ]);
@@ -541,6 +596,13 @@ class WrmStockOpnameController extends Controller
 
     public function processOpname(Request $request)
     {
+        if (!$this->checkSoWriteAccess()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
+
         $request->validate([
             'tgl_opname' => 'required|date',
             'mode' => 'required|in:check,final_prepare,final_submit',
