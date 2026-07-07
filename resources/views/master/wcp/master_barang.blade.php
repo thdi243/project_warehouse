@@ -229,15 +229,15 @@
 
             $(document).on('click', '.btnEdit', function() {
                 let data = $(this).data('data');
-                let formNum = new Intl.NumberFormat('id-ID', {
-                    maximumFractionDigits: 8
-                });
+                // let formNum = new Intl.NumberFormat('id-ID', {
+                //     maximumFractionDigits: 8
+                // });
 
                 $('#id').val(data.id);
                 $('#mid').val(data.mid);
                 $('#nama_barang').val(data.nama_barang);
                 $('#uom').val(data.uom);
-                $('#qty_pallet').val(formNum.format(data.qty_pallet));
+                $('#qty_pallet').val(data.qty_pallet);
 
                 $('#modalBarang').modal('show');
             });
