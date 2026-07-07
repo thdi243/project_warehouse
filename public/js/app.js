@@ -109,6 +109,11 @@ $(document).ready(function () {
     // Pada input tipe number agar trigger keyboard numeric di mobile/tab
     $('input[type="number"]').attr("inputmode", "numeric");
 
+    // Replace comma with dot on blur for number inputs
+    $(document).on("blur", 'input[type="number"]', function () {
+        $(this).val($(this).val().replace(",", "."));
+    });
+
     // Logout button functionality
     $("#logoutButton").on("click", function (e) {
         // e.preventDefault();
