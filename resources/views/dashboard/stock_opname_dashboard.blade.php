@@ -448,7 +448,8 @@
                     <div class="card dashboard-card p-4">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <h5 class="card-title fw-bold mb-0">Tracking Approval Stock Opname per Section</h5>
-                            <span class="text-muted small">Memantau status approval dan siapa saja yang belum approve</span>
+                            <span class="text-muted small">Memantau status approval dan siapa saja yang belum
+                                approve</span>
                         </div>
                         <div class="table-responsive">
                             <table class="table-custom" id="tableApprovalTracking">
@@ -622,6 +623,16 @@
                 tooltip: {
                     valueSuffix: '%'
                 },
+                plotOptions: {
+                    series: {
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function() {
+                                return parseFloat(this.y) + '%';
+                            }
+                        }
+                    }
+                },
                 series: [{
                     name: 'Akurasi Total',
                     data: chartData.data,
@@ -670,6 +681,14 @@
                         borderRadius: 6,
                         colorByPoint: true,
                         colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#22c55e', '#ec4899', '#f59e0b', '#10b981']
+                    },
+                    series: {
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function() {
+                                return parseFloat(this.y) + '%';
+                            }
+                        }
                     }
                 },
                 series: [{
@@ -730,15 +749,20 @@
             } else {
                 data.forEach(function(row) {
                     let badgeClass = 'bg-light text-muted border border-secondary-subtle';
-                    if (row.status === 'On Progress') badgeClass = 'bg-info-subtle text-info border border-info-subtle';
-                    if (row.status === 'Pending') badgeClass = 'bg-warning-subtle text-warning border border-warning-subtle';
-                    if (row.status === 'Approved') badgeClass = 'bg-success-subtle text-success border border-success-subtle';
-                    if (row.status === 'Rejected') badgeClass = 'bg-danger-subtle text-danger border border-danger-subtle';
+                    if (row.status === 'On Progress') badgeClass =
+                        'bg-info-subtle text-info border border-info-subtle';
+                    if (row.status === 'Pending') badgeClass =
+                        'bg-warning-subtle text-warning border border-warning-subtle';
+                    if (row.status === 'Approved') badgeClass =
+                        'bg-success-subtle text-success border border-success-subtle';
+                    if (row.status === 'Rejected') badgeClass =
+                        'bg-danger-subtle text-danger border border-danger-subtle';
 
                     let approvedBadges = '';
                     if (row.approved_by && row.approved_by.length > 0) {
                         row.approved_by.forEach(function(name) {
-                            approvedBadges += `<span class="badge bg-success-subtle text-success me-1 mb-1 border border-success-subtle px-2 py-1"><i class="mdi mdi-check-circle me-1"></i>${name}</span>`;
+                            approvedBadges +=
+                                `<span class="badge bg-success-subtle text-success me-1 mb-1 border border-success-subtle px-2 py-1"><i class="mdi mdi-check-circle me-1"></i>${name}</span>`;
                         });
                     } else {
                         approvedBadges = '<span class="text-muted small">-</span>';
@@ -747,7 +771,8 @@
                     let pendingBadges = '';
                     if (row.pending_by && row.pending_by.length > 0) {
                         row.pending_by.forEach(function(name) {
-                            pendingBadges += `<span class="badge bg-warning-subtle text-warning me-1 mb-1 border border-warning-subtle px-2 py-1"><i class="mdi mdi-clock-outline me-1"></i>${name}</span>`;
+                            pendingBadges +=
+                                `<span class="badge bg-warning-subtle text-warning me-1 mb-1 border border-warning-subtle px-2 py-1"><i class="mdi mdi-clock-outline me-1"></i>${name}</span>`;
                         });
                     } else {
                         pendingBadges = '<span class="text-muted small">-</span>';
@@ -756,7 +781,8 @@
                     let rejectedBadges = '';
                     if (row.rejected_by && row.rejected_by.length > 0) {
                         row.rejected_by.forEach(function(name) {
-                            rejectedBadges += `<span class="badge bg-danger-subtle text-danger me-1 mb-1 border border-danger-subtle px-2 py-1"><i class="mdi mdi-close-circle me-1"></i>${name}</span>`;
+                            rejectedBadges +=
+                                `<span class="badge bg-danger-subtle text-danger me-1 mb-1 border border-danger-subtle px-2 py-1"><i class="mdi mdi-close-circle me-1"></i>${name}</span>`;
                         });
                     } else {
                         rejectedBadges = '<span class="text-muted small">-</span>';
