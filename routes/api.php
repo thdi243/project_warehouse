@@ -10,7 +10,7 @@ use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\Dashboard\WspManRakController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
-use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
+use App\Http\Controllers\Wfg\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wrm\Inventory\MonitoringController;

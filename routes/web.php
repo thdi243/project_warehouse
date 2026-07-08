@@ -19,7 +19,7 @@ use App\Http\Controllers\Vehicle\VehicleTrackingController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wfg\BongkarMuatController;
 use App\Http\Controllers\Wfg\MasterDestinasiController;
-use App\Http\Controllers\Wfg\stock_opname\BarangWfgController;
+use App\Http\Controllers\Wfg\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
