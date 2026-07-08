@@ -638,7 +638,8 @@ class WrmStockOpnameController extends Controller
                 $uncountedItems[] = [
                     'mid' => $soh->barang->mid,
                     'nama_barang' => $soh->barang->nama_barang,
-                    'no_spb' => $soh->no_spb
+                    'no_spb' => $soh->no_spb,
+                    'qty_system' => $soh->qty_soh
                 ];
             }
         }

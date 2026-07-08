@@ -66,13 +66,16 @@
         .collapsing {
             transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
+
         .collapse {
             transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
+
         .history-card {
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             border-left: 4px solid #3b82f6 !important;
         }
+
         .history-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
@@ -378,7 +381,9 @@
                 }
 
                 if (qtyFullVal === 0 && qtyRecehVal === 0) {
-                    toastr.warning('Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
+                    toastr.warning(
+                        'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!'
+                        );
                     return;
                 }
 
@@ -442,8 +447,9 @@
                                     const dot = row.find('.diff-indicator-dot');
                                     dot.removeClass(
                                         'bg-secondary bg-success bg-danger bg-warning'
-                                        );
-                                    if (item.selisih === 0 || (item.keterangan && item.keterangan.trim() !== '')) {
+                                    );
+                                    if (item.selisih === 0 || (item.keterangan && item
+                                            .keterangan.trim() !== '')) {
                                         dot.addClass('bg-success');
                                     } else if (item.status === 'lebih') {
                                         dot.addClass('bg-warning');
@@ -519,7 +525,8 @@
                                             mode: 'final_prepare'
                                         },
                                         success: function(finalRes) {
-                                            if (finalRes.status === 'need_comment') {
+                                            if (finalRes.status ===
+                                                'need_comment') {
                                                 Swal.fire({
                                                     title: "Tambahkan Komentar",
                                                     input: "textarea",
@@ -531,15 +538,24 @@
                                                     showCancelButton: true,
                                                     confirmButtonText: "Lanjutkan Submit"
                                                 }).then(resComment => {
-                                                    if (!resComment.isConfirmed) return;
-                                                    submitFinal(resComment.value);
+                                                    if (!resComment
+                                                        .isConfirmed
+                                                        ) return;
+                                                    submitFinal(
+                                                        resComment
+                                                        .value);
                                                 });
                                             } else {
-                                                Swal.fire('Error', finalRes.message, 'error');
+                                                Swal.fire('Error', finalRes
+                                                    .message, 'error');
                                             }
                                         },
                                         error: function(xhr) {
-                                            Swal.fire('Error', xhr.responseJSON?.message || 'Gagal menyiapkan data final.', 'error');
+                                            Swal.fire('Error', xhr
+                                                .responseJSON
+                                                ?.message ||
+                                                'Gagal menyiapkan data final.',
+                                                'error');
                                         }
                                     });
                                 }
@@ -547,7 +563,7 @@
                         } else if (res.status === 'warning') {
                             // Uncounted items
                             let list = res.uncounted.map(item =>
-                                `<li>MID: ${item.mid} | SPB: ${item.no_spb ? item.no_spb : '-'}</li>`
+                                `<li>MID: ${item.mid} | SPB: ${item.no_spb ? item.no_spb : '-'} | SOH: ${item.qty_system}</li>`
                             ).join('');
                             Swal.fire({
                                 title: 'Ada item belum di-opname!',
@@ -759,7 +775,8 @@
                 const fullValStr = row.find('.qty-full').val();
                 const recehValStr = row.find('.qty-receh').val();
 
-                if ((fullValStr !== '' && parseInt(fullValStr) < 0) || (recehValStr !== '' && parseInt(recehValStr) < 0)) {
+                if ((fullValStr !== '' && parseInt(fullValStr) < 0) || (recehValStr !== '' && parseInt(
+                        recehValStr) < 0)) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                     $(this).val('');
                     return;
@@ -768,7 +785,8 @@
                 if (recehValStr !== '') {
                     const recehVal = parseInt(recehValStr) || 0;
                     if (recehVal >= qtyKg) {
-                        toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyKg})!`);
+                        toastr.warning(
+                            `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyKg})!`);
                         row.find('.qty-receh').val('');
                         return;
                     }
@@ -778,7 +796,8 @@
                 const receh = parseInt(recehValStr) || 0;
 
                 if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
-                    toastr.warning('Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
+                    toastr.warning(
+                    'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
                     row.find('.qty-full').val('');
                     row.find('.qty-receh').val('');
                     return;
@@ -786,7 +805,8 @@
 
                 // Calculate preview values
                 const physicalSummary = dbSummary + (full * qtyKg) + receh;
-                row.find('.physical-summary').text(physicalSummary > 0 ? physicalSummary.toLocaleString('id-ID') : '-');
+                row.find('.physical-summary').text(physicalSummary > 0 ? physicalSummary.toLocaleString('id-ID') :
+                    '-');
             });
 
             // Save on change (blur / enter)
@@ -1246,7 +1266,8 @@
             }
 
             if (hasExceededAcuan) {
-                toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
+                toastr.warning(
+                `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
                 return;
             }
 

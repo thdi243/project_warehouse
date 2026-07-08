@@ -603,6 +603,7 @@ class WpmStockOpnameController extends Controller
                 $uncountedItems[] = [
                     'mid' => $soh->barang->mid,
                     'nama_barang' => $soh->barang->nama_barang,
+                    'qty_system' => $soh->qty_soh,
                 ];
             }
         }
@@ -662,7 +663,8 @@ class WpmStockOpnameController extends Controller
                     'status' => 'warning',
                     'message' => 'Ada item yang belum di-opname!',
                     'uncounted' => $uncountedItems,
-                    'analysis' => $analysis
+                    'analysis' => $analysis,
+                    'soh' => $qtySystem
                 ]);
             }
 

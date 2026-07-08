@@ -66,13 +66,16 @@
         .collapsing {
             transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
+
         .collapse {
             transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
+
         .history-card {
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             border-left: 4px solid #3b82f6 !important;
         }
+
         .history-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
@@ -172,7 +175,8 @@
                     <form id="formAddItem">
                         @csrf
                         <div class="p-3 rounded-3 mb-3 bg-light">
-                            <h6 class="fw-bold mb-3 text-secondary"><i class="mdi mdi-database-outline me-1"></i> Data Barang</h6>
+                            <h6 class="fw-bold mb-3 text-secondary"><i class="mdi mdi-database-outline me-1"></i> Data
+                                Barang</h6>
                             <div class="row g-3">
                                 <div class="col-md-12">
                                     <label class="form-label fw-semibold">Pilih MID Barang</label>
@@ -184,12 +188,13 @@
                             </div>
                         </div>
                         <div class="p-3 rounded-3 mb-3 bg-light-subtle border">
-                            <h6 class="fw-bold mb-3 text-danger"><i class="mdi mdi-file-document-outline me-1"></i> Saldo System (SOH)</h6>
+                            <h6 class="fw-bold mb-3 text-danger"><i class="mdi mdi-file-document-outline me-1"></i> Saldo
+                                System (SOH)</h6>
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="form-label">UNREST</label>
-                                    <input type="number" class="form-control" name="unrest" value="0"
-                                        min="0" required>
+                                    <input type="number" class="form-control" name="unrest" value="0" min="0"
+                                        required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">QI</label>
@@ -204,7 +209,8 @@
                             </div>
                         </div>
                         <div class="p-3 rounded-3 bg-light border-warning border">
-                            <h6 class="fw-bold mb-3 text-warning"><i class="mdi mdi-checkbox-marked-circle-outline me-1"></i> Perhitungan Fisik</h6>
+                            <h6 class="fw-bold mb-3 text-warning"><i
+                                    class="mdi mdi-checkbox-marked-circle-outline me-1"></i> Perhitungan Fisik</h6>
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Qty Full Pallet</label>
@@ -304,7 +310,8 @@
             $('#btnAddRow').on('click', function() {
                 loadBarangOptions(() => {
                     const modalEl = document.getElementById('modalAddItem');
-                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(
+                        modalEl);
                     modal.show();
                 });
             });
@@ -319,7 +326,9 @@
                 }
 
                 if (qtyFullVal === 0 && qtyRecehVal === 0) {
-                    toastr.warning('Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
+                    toastr.warning(
+                        'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!'
+                    );
                     return;
                 }
 
@@ -337,7 +346,8 @@
                         if (res.status === 'success') {
                             toastr.success(res.message);
                             const modalEl = document.getElementById('modalAddItem');
-                            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap
+                                .Modal(modalEl);
                             modal.hide();
                             $('#formAddItem')[0].reset();
                             loadItems();
@@ -349,7 +359,8 @@
                         btn.prop('disabled', false).html(
                             '<i class="mdi mdi-content-save-outline me-1"></i> Tambahkan');
                         const err = xhr.responseJSON;
-                        Swal.fire('Gagal', err.message || 'Gagal menambahkan barang baru', 'error');
+                        Swal.fire('Gagal', err.message || 'Gagal menambahkan barang baru',
+                            'error');
                     }
                 });
             });
@@ -379,8 +390,11 @@
                                 const row = $(`.soh-row[data-id="${item.soh_id}"]`);
                                 if (row.length) {
                                     const dot = row.find('.diff-indicator-dot');
-                                    dot.removeClass('bg-secondary bg-success bg-danger bg-warning');
-                                    if (item.selisih === 0 || (item.keterangan && item.keterangan.trim() !== '')) {
+                                    dot.removeClass(
+                                        'bg-secondary bg-success bg-danger bg-warning'
+                                    );
+                                    if (item.selisih === 0 || (item.keterangan && item
+                                            .keterangan.trim() !== '')) {
                                         dot.addClass('bg-success');
                                     } else if (item.status === 'lebih') {
                                         dot.addClass('bg-warning');
@@ -454,7 +468,8 @@
                                             mode: 'final_prepare'
                                         },
                                         success: function(finalRes) {
-                                            if (finalRes.status === 'need_comment') {
+                                            if (finalRes.status ===
+                                                'need_comment') {
                                                 Swal.fire({
                                                     title: "Tambahkan Komentar",
                                                     input: "textarea",
@@ -466,15 +481,24 @@
                                                     showCancelButton: true,
                                                     confirmButtonText: "Lanjutkan Submit"
                                                 }).then(resComment => {
-                                                    if (!resComment.isConfirmed) return;
-                                                    submitFinal(resComment.value);
+                                                    if (!resComment
+                                                        .isConfirmed
+                                                    ) return;
+                                                    submitFinal(
+                                                        resComment
+                                                        .value);
                                                 });
                                             } else {
-                                                Swal.fire('Error', finalRes.message, 'error');
+                                                Swal.fire('Error', finalRes
+                                                    .message, 'error');
                                             }
                                         },
                                         error: function(xhr) {
-                                            Swal.fire('Error', xhr.responseJSON?.message || 'Gagal menyiapkan data final.', 'error');
+                                            Swal.fire('Error', xhr
+                                                .responseJSON
+                                                ?.message ||
+                                                'Gagal menyiapkan data final.',
+                                                'error');
                                         }
                                     });
                                 }
@@ -482,7 +506,7 @@
                         } else if (res.status === 'warning') {
                             // Uncounted items
                             let list = res.uncounted.map(item =>
-                                `<li>MID: ${item.mid}</li>`
+                                `<li>MID: ${item.mid} | SOH: ${item.qty_system}</li>`
                             ).join('');
                             Swal.fire({
                                 title: 'Ada item belum di-opname!',
@@ -705,7 +729,8 @@
                 const receh = parseInt(recehValStr) || 0;
 
                 if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
-                    toastr.warning('Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
+                    toastr.warning(
+                        'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
                     row.find('.qty-full').val('');
                     row.find('.qty-receh').val('');
                     return;
@@ -713,7 +738,8 @@
 
                 // Calculate preview values
                 const physicalSummary = dbSummary + (full * qtyPallet) + receh;
-                row.find('.physical-summary').text(physicalSummary > 0 ? physicalSummary.toLocaleString('id-ID') : '-');
+                row.find('.physical-summary').text(physicalSummary > 0 ? physicalSummary.toLocaleString('id-ID') :
+                    '-');
             });
 
             // Save on change (blur / enter)
@@ -752,14 +778,14 @@
                     },
                     success: function(res) {
                         if (res.status === 'success') {
-                          toastr.success('Perubahan draft disimpan.', '', {
-                              timeOut: 800
-                          });
-                          if (fullValStr !== '' || recehValStr !== '') {
-                              row.find('.qty-full').val('');
-                              row.find('.qty-receh').val('');
-                          }
-                          loadAllTempData();
+                            toastr.success('Perubahan draft disimpan.', '', {
+                                timeOut: 800
+                            });
+                            if (fullValStr !== '' || recehValStr !== '') {
+                                row.find('.qty-full').val('');
+                                row.find('.qty-receh').val('');
+                            }
+                            loadAllTempData();
                         }
                     },
                     error: function(xhr) {
@@ -1085,7 +1111,8 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.ajax({
-                        url: "{{ route('wpm.stock_opname.delete-temp', ':id') }}".replace(':id', id),
+                        url: "{{ route('wpm.stock_opname.delete-temp', ':id') }}".replace(':id',
+                            id),
                         type: 'DELETE',
                         data: {
                             _token: "{{ csrf_token() }}",
@@ -1172,7 +1199,8 @@
                     if (res.status === 'success') {
                         toastr.success(res.message, 'Berhasil');
                         const modalEl = document.getElementById('editModal');
-                        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(
+                            modalEl);
                         modal.hide();
                         loadAllTempData();
                     } else {

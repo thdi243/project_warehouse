@@ -621,6 +621,7 @@ class WcpStockOpnameController extends Controller
                 $uncountedItems[] = [
                     'mid' => $soh->barang->mid,
                     'nama_barang' => $soh->barang->nama_barang,
+                    'qty_system' => $soh->qty_soh,
                 ];
             }
         }

@@ -506,7 +506,7 @@
                         } else if (res.status === 'warning') {
                             // Uncounted items
                             let list = res.uncounted.map(item =>
-                                `<li>MID: ${item.mid}</li>`
+                                `<li>MID: ${item.mid} | SOH: ${item.qty_system}</li>`
                             ).join('');
                             Swal.fire({
                                 title: 'Ada item belum di-opname!',
@@ -726,7 +726,8 @@
                 if (recehValStr !== '') {
                     const recehVal = parseInt(recehValStr) || 0;
                     if (recehVal >= qtyPallet) {
-                        toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
+                        toastr.warning(
+                            `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
                         row.find('.qty-receh').val('');
                         return;
                     }
@@ -736,7 +737,8 @@
                 const receh = parseInt(recehValStr) || 0;
 
                 if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
-                    toastr.warning('Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
+                    toastr.warning(
+                        'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
                     row.find('.qty-full').val('');
                     row.find('.qty-receh').val('');
                     return;
@@ -768,7 +770,8 @@
 
                 // Double check validation before sending
                 if (recehValStr !== '' && receh >= qtyPallet) {
-                    toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
+                    toastr.warning(
+                        `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
                     row.find('.qty-receh').val('');
                     return;
                 }
@@ -1159,7 +1162,8 @@
                 const tempItem = $(this).closest('.temp-item');
                 const qtyPallet = parseFloat(tempItem.data('qty-pallet')) || 1;
                 if (parseInt(val) >= qtyPallet) {
-                    toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
+                    toastr.warning(
+                        `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
                     $(this).val('');
                 }
             }
@@ -1208,7 +1212,8 @@
             }
 
             if (hasExceededAcuan) {
-                toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
+                toastr.warning(
+                    `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
                 return;
             }
 
