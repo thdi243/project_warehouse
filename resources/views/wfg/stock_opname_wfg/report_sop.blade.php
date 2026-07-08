@@ -144,7 +144,7 @@
                             <div>
                                 <label class="form-label" for="filter_tanggal">Tanggal</label>
                                 <input type="date" id="filter_tanggal" class="form-control"
-                                    value="{{ now()->toDateString() }}">
+                                    value="{{ request('tanggal', now()->toDateString()) }}">
                             </div>
                         </div>
 
@@ -153,7 +153,7 @@
                             <div class="col-md-4 col-12">
                                 <select id="principal_filter" class="form-select">
                                     @foreach ($principals as $p)
-                                        <option value="{{ $p }}">{{ $p }}</option>
+                                        <option value="{{ $p }}" {{ request('principal') == $p ? 'selected' : '' }}>{{ $p }}</option>
                                     @endforeach
                                 </select>
                             </div>

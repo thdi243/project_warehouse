@@ -72,7 +72,7 @@
                             <div class="col-lg-3 col-md-6">
                                 <label for="tgl_opname" class="form-label fw-semibold">Pilih Tanggal Opname</label>
                                 <input type="date" id="tgl_opname" name="tgl_opname" class="form-control"
-                                    value="{{ now()->toDateString() }}" required>
+                                    value="{{ request('tgl_opname', now()->toDateString()) }}" required>
                             </div>
 
                             <div class="col-lg-4 col-md-6">

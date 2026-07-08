@@ -122,6 +122,8 @@ Route::prefix('wsp')->group(function () {
     Route::get('/data/rak', [WspBarangController::class, 'getDataRak']);
     Route::get('/rak/filters', [WspRakController::class, 'getFilters']);
     Route::delete('/delete/barang/{id}', [WspBarangController::class, 'destroy']);
+    Route::post('/restore/barang/{id}', [WspBarangController::class, 'restore']);
+    Route::delete('/force-delete/barang/{id}', [WspBarangController::class, 'forceDelete']);
     Route::get('/items/search', [WspBarangController::class, 'searchItems']);
     Route::get('/show/barang/{id}', [WspBarangController::class, 'show']);
     Route::post('/store/rak', [WspRakController::class, 'storeRak']);

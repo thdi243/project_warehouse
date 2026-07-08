@@ -5,11 +5,12 @@ namespace App\Models\Wsp;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Wsp\stock_manage\StockOnHandWspModel;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BarangModel extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
     protected $table = 'wsp_barang';
 
     protected $fillable = [

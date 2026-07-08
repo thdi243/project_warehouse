@@ -116,12 +116,20 @@ class WspBarangController extends Controller
         ]);
     }
 
-    public function getDataBarang()
+    public function getDataBarang(Request $request)
     {
-        $data = BarangModel::with([
+        $status = $request->input('status', 'active');
+        $query = BarangModel::with([
             'user:id,username'
-        ])
-            ->get()
+        ]);
+
+        if ($status === 'trashed') {
+            $query->onlyTrashed();
+        } elseif ($status === 'all') {
+            $query->withTrashed();
+        }
+
+        $data = $query->get()
             ->map(function ($barang) {
                 return [
                     'id'          => $barang->id,
@@ -232,7 +240,7 @@ class WspBarangController extends Controller
             'imageEdit'      => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
-        $barang = BarangModel::find($id);
+        $barang = BarangModel::withTrashed()->find($id);
         if (!$barang) {
             return response()->json([
                 'status' => false,
@@ -282,11 +290,6 @@ class WspBarangController extends Controller
             ], 404);
         }
 
-        // Hapus image dari storage jika ada
-        if ($barang->image && Storage::disk('public')->exists($barang->image)) {
-            Storage::disk('public')->delete($barang->image);
-        }
-
         // Hapus barang dari database (tidak menyentuh rak)
         $barang->delete();
 
@@ -295,6 +298,53 @@ class WspBarangController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Barang berhasil dihapus.',
+        ]);
+    }
+
+    public function restore(string $id)
+    {
+        $barang = BarangModel::withTrashed()->find($id);
+
+        if (!$barang) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Barang tidak ditemukan.',
+            ], 404);
+        }
+
+        $barang->restore();
+
+        Cache::store('redis')->forget('wsp_barang_list_soh');
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Barang berhasil direstore.',
+        ]);
+    }
+
+    public function forceDelete(string $id)
+    {
+        $barang = BarangModel::withTrashed()->find($id);
+
+        if (!$barang) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Barang tidak ditemukan.',
+            ], 404);
+        }
+
+        // Hapus image dari storage jika ada
+        if ($barang->image && Storage::disk('public')->exists($barang->image)) {
+            Storage::disk('public')->delete($barang->image);
+        }
+
+        $barang->forceDelete();
+
+        Cache::store('redis')->forget('wsp_barang_list_soh');
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Barang berhasil dihapus permanen.',
         ]);
     }
 

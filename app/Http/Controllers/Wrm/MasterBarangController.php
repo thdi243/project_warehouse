@@ -43,13 +43,22 @@ class MasterBarangController extends Controller
         ]);
     }
 
-    public function getData()
+    public function getData(Request $request)
     {
-        $barang = MasterBarangModel::with([
+        $status = $request->input('status', 'active');
+        $query = MasterBarangModel::query()->with([
             'location:id,s_loc,plant',
             'createdBy:id,username,nama_lengkap',
             'updatedBy:id,username,nama_lengkap'
-        ])->get();
+        ]);
+
+        if ($status === 'trashed') {
+            $query->onlyTrashed();
+        } elseif ($status === 'all') {
+            $query->withTrashed();
+        }
+
+        $barang = $query->get();
 
         return response()->json([
             'status' => true,
@@ -59,7 +68,7 @@ class MasterBarangController extends Controller
 
     public function update(MasterBarangRequest $request, $id)
     {
-        $barang = MasterBarangModel::findOrFail($id);
+        $barang = MasterBarangModel::withTrashed()->findOrFail($id);
 
         $barang->update([
             ...$request->validated(),
@@ -82,6 +91,29 @@ class MasterBarangController extends Controller
         return response()->json([
             'status'  => true,
             'message' => 'Master barang berhasil dihapus',
+        ]);
+    }
+
+    public function restore($id)
+    {
+        $barang = MasterBarangModel::withTrashed()->findOrFail($id);
+        $barang->restore();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Master barang berhasil direstore',
+            'data'    => $barang,
+        ]);
+    }
+
+    public function forceDelete($id)
+    {
+        $barang = MasterBarangModel::withTrashed()->findOrFail($id);
+        $barang->forceDelete();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Master barang berhasil dihapus permanen',
         ]);
     }
 

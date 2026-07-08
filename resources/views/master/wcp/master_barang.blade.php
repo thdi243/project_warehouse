@@ -9,7 +9,11 @@
             <div class="card">
                 <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                     <h5 class="mb-0">Master Barang Co Product (WCP)</h5>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 align-items-center">
+                        <select id="statusFilter" class="form-select w-auto">
+                            <option value="active">Barang Aktif</option>
+                            <option value="trashed">Barang Nonaktif</option>
+                        </select>
                         <button class="btn btn-outline-primary" id="btnUpload">
                             <i class="mdi mdi-upload"></i> Upload
                         </button>
@@ -140,11 +144,17 @@
 
             loadData();
 
+            $('#statusFilter').change(function() {
+                loadData(1, $('#searchInput').val());
+            });
+
             function loadData(page = 1, search = '') {
                 currentPage = page;
+                let status = $('#statusFilter').val();
                 $.get(`{{ route('master.wcp.barang.get-data') }}`, {
                     page: page,
-                    search: search
+                    search: search,
+                    status: status
                 }, function(res) {
                     let formNum = new Intl.NumberFormat('id-ID', {
                         maximumFractionDigits: 8
@@ -154,6 +164,18 @@
                     if (data && data.length > 0) {
                         $.each(data, function(i, v) {
                             let no = (res.data.current_page - 1) * res.data.per_page + i + 1;
+                            let btnAction = '';
+                            if (status === 'trashed') {
+                                btnAction = `
+                                    <button class="btn btn-success btn-sm btnRestore" data-id="${v.id}">Restore</button>
+                                    <button class="btn btn-danger btn-sm btnForceDelete" data-id="${v.id}">Hapus Permanen</button>
+                                `;
+                            } else {
+                                btnAction = `
+                                    <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>
+                                    <button class="btn btn-danger btn-sm btnHapus" data-id="${v.id}">Hapus</button>
+                                `;
+                            }
                             html += `
                             <tr>
                                 <td class="text-center">${no}</td>
@@ -162,17 +184,14 @@
                                 <td>${v.uom}</td>
                                 <td class="text-end">${formNum.format(v.qty_pallet)}</td>
                                 <td>${v.created_by?.nama_lengkap ?? '-'}</td>
-                                <td class="text-center">
-                                    <button class="btn btn-warning btn-sm btnEdit" data-data='${JSON.stringify(v)}'>Edit</button>
-                                    <button class="btn btn-danger btn-sm btnHapus" data-id="${v.id}">Hapus</button>
-                                </td>
+                                <td class="text-center">${btnAction}</td>
                             </tr>
                         `;
                         });
                     } else {
                         html = `
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-3">Tidak ada data master barang</td>
+                            <td colspan="7" class="text-center text-muted py-3">Tidak ada data master barang</td>
                         </tr>
                     `;
                     }
@@ -381,6 +400,74 @@
                                 icon: 'success',
                                 title: 'Terhapus',
                                 text: res.message || 'Data berhasil dihapus',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        }
+                    });
+                });
+            });
+
+            $(document).on('click', '.btnRestore', function() {
+                let id = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Pulihkan data?',
+                    text: 'Master barang WCP ini akan diaktifkan kembali.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, pulihkan'
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    $.ajax({
+                        url: `{{ url('/master/wcp/barang/restore') }}/${id}`,
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(res) {
+                            loadData(currentPage, $('#searchInput').val());
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: res.message || 'Data berhasil dipulihkan',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        }
+                    });
+                });
+            });
+
+            $(document).on('click', '.btnForceDelete', function() {
+                let id = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Hapus permanen?',
+                    text: 'Data yang dihapus permanen tidak dapat dikembalikan!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus permanen',
+                    confirmButtonColor: '#ef4444'
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    $.ajax({
+                        url: `{{ url('/master/wcp/barang/force-delete') }}/${id}`,
+                        type: 'DELETE',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(res) {
+                            loadData(currentPage, $('#searchInput').val());
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Terhapus permanen',
+                                text: res.message ||
+                                    'Data berhasil dihapus permanen',
                                 timer: 1500,
                                 showConfirmButton: false
                             });

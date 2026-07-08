@@ -14,7 +14,12 @@
 
                 <!-- Tombol Aksi -->
                 <div class="col-12 col-md-6">
-                    <div class="d-flex flex-column flex-sm-row justify-content-md-end gap-2">
+                    <div class="d-flex flex-column flex-sm-row justify-content-md-end gap-2 align-items-center">
+                        <select id="statusFilter" class="form-select w-auto flex-fill flex-sm-none">
+                            <option value="active">Barang Aktif</option>
+                            <option value="trashed">Barang Nonaktif</option>
+                        </select>
+
                         <button class="btn btn-success flex-fill d-flex justify-content-center align-items-center"
                             data-bs-toggle="modal" data-bs-target="#modalImport">
                             <i class="mdi mdi-database-import-outline me-1"></i> Import
@@ -292,7 +297,7 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            $('#wspTable').DataTable({
+            let table = $('#wspTable').DataTable({
                 processing: true,
                 serverSide: false,
                 responsive: true,
@@ -300,6 +305,9 @@
                 ajax: {
                     url: `/api/wsp/data/barang`,
                     type: 'GET',
+                    data: function(d) {
+                        d.status = $('#statusFilter').val();
+                    },
                     dataSrc: 'data'
                 },
                 columns: [{
@@ -348,8 +356,19 @@
                         {
                             data: null,
                             orderable: false,
-                            className: 'text-center',
+                            className: 'text-center text-wrap',
                             render: function(data, type, row) {
+                                let status = $('#statusFilter').val();
+                                if (status === 'trashed') {
+                                    return `
+                                        <button class="btn btn-sm btn-success restore-btn" data-id="${row.id}" title="Restore">
+                                            <i class="mdi mdi-restore me-2"></i>Restore
+                                        </button>
+                                        <button class="btn btn-sm btn-danger force-delete-btn" data-id="${row.id}" title="Hapus Permanen">
+                                            <i class="mdi mdi-delete-forever me-2"></i>Hapus Permanen
+                                        </button>
+                                    `;
+                                }
                                 return `
                                     <button class="btn btn-sm btn-primary detail-btn" data-id="${row.id}" title="Detail Data">
                                         <i class="mdi mdi-eye me-2"></i>Detail
@@ -371,6 +390,10 @@
                 language: {
                     lengthMenu: "Show _MENU_ entries",
                 }
+            });
+
+            $('#statusFilter').change(function() {
+                table.ajax.reload();
             });
 
             // kode preview gambar registrasi
@@ -556,6 +579,88 @@
                             },
                             error: function(xhr) {
                                 toastr.error('Gagal menghapus data');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Restore Barang
+            $(document).on('click', '.restore-btn', function() {
+                let id = $(this).data('id');
+                Swal.fire({
+                    title: 'Restore Barang?',
+                    text: 'Barang ini akan diaktifkan kembali.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Ya, Restore!'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `/api/wsp/restore/barang/${id}`,
+                            method: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function(res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Restored!',
+                                    text: res.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                                table.ajax.reload();
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal!',
+                                    text: xhr.responseJSON?.message ?? 'Terjadi kesalahan saat merestore data'
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Force Delete Barang
+            $(document).on('click', '.force-delete-btn', function() {
+                let id = $(this).data('id');
+                Swal.fire({
+                    title: 'Hapus Permanen?',
+                    text: 'Data yang dihapus permanen tidak dapat dikembalikan!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Ya, Hapus Permanen!'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `/api/wsp/force-delete/barang/${id}`,
+                            method: 'DELETE',
+                            data: {
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function(res) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: res.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                                table.ajax.reload();
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal!',
+                                    text: xhr.responseJSON?.message ?? 'Terjadi kesalahan saat menghapus permanen'
+                                });
                             }
                         });
                     }

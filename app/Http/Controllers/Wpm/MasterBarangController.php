@@ -39,8 +39,15 @@ class MasterBarangController extends Controller
 
     public function getData(Request $request)
     {
+        $status = $request->input('status', 'active');
         $query = WpmMasterBarangModel::query();
         $query->with(['createdBy:id,username,nama_lengkap', 'updatedBy:id,username,nama_lengkap']);
+
+        if ($status === 'trashed') {
+            $query->onlyTrashed();
+        } elseif ($status === 'all') {
+            $query->withTrashed();
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -60,7 +67,7 @@ class MasterBarangController extends Controller
 
     public function update(MasterBarangRequest $request, $id)
     {
-        $barang = WpmMasterBarangModel::findOrFail($id);
+        $barang = WpmMasterBarangModel::withTrashed()->findOrFail($id);
 
         $barang->update([
             'mid' => $request->mid,
@@ -85,6 +92,29 @@ class MasterBarangController extends Controller
         return response()->json([
             'status'  => true,
             'message' => 'Master barang WPM berhasil dihapus',
+        ]);
+    }
+
+    public function restore($id)
+    {
+        $barang = WpmMasterBarangModel::withTrashed()->findOrFail($id);
+        $barang->restore();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Master barang WPM berhasil direstore',
+            'data'    => $barang,
+        ]);
+    }
+
+    public function forceDelete($id)
+    {
+        $barang = WpmMasterBarangModel::withTrashed()->findOrFail($id);
+        $barang->forceDelete();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Master barang WPM berhasil dihapus permanen',
         ]);
     }
 
@@ -142,6 +172,7 @@ class MasterBarangController extends Controller
                 'nama_barang' => $namaBarang,
                 'uom' => $uom,
                 'qty_pallet' => floatval($qtyPallet) ?? 1,
+                'created_by' => Auth::id(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];

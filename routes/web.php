@@ -665,6 +665,8 @@ Route::middleware('auth')->group(function () {
                     Route::post('/store', [MasterBarangController::class, 'store'])->name('wrm.master.barang.store');
                     Route::put('/update/{id}', [MasterBarangController::class, 'update'])->name('wrm.master.barang.update');
                     Route::delete('/delete/{id}', [MasterBarangController::class, 'destroy'])->name('wrm.master.barang.delete');
+                    Route::post('/restore/{id}', [MasterBarangController::class, 'restore'])->name('wrm.master.barang.restore');
+                    Route::delete('/force-delete/{id}', [MasterBarangController::class, 'forceDelete'])->name('wrm.master.barang.forceDelete');
                     Route::get('/template', [MasterBarangController::class, 'downloadTemplate'])->name('wrm.master.barang.template');
                     Route::post('/upload', [MasterBarangController::class, 'upload'])->name('wrm.master.barang.upload');
                 });
@@ -721,6 +723,8 @@ Route::middleware('auth')->group(function () {
                     Route::post('/store', [App\Http\Controllers\Wpm\MasterBarangController::class, 'store'])->name('master.wpm.barang.store');
                     Route::put('/update/{id}', [App\Http\Controllers\Wpm\MasterBarangController::class, 'update'])->name('master.wpm.barang.update');
                     Route::delete('/delete/{id}', [App\Http\Controllers\Wpm\MasterBarangController::class, 'destroy'])->name('master.wpm.barang.delete');
+                    Route::post('/restore/{id}', [App\Http\Controllers\Wpm\MasterBarangController::class, 'restore'])->name('master.wpm.barang.restore');
+                    Route::delete('/force-delete/{id}', [App\Http\Controllers\Wpm\MasterBarangController::class, 'forceDelete'])->name('master.wpm.barang.forceDelete');
                     Route::get('/template', [App\Http\Controllers\Wpm\MasterBarangController::class, 'downloadTemplate'])->name('master.wpm.barang.template');
                     Route::post('/upload', [App\Http\Controllers\Wpm\MasterBarangController::class, 'upload'])->name('master.wpm.barang.upload');
                 });
@@ -734,6 +738,8 @@ Route::middleware('auth')->group(function () {
                     Route::post('/store', [App\Http\Controllers\Wcp\MasterBarangController::class, 'store'])->name('master.wcp.barang.store');
                     Route::put('/update/{id}', [App\Http\Controllers\Wcp\MasterBarangController::class, 'update'])->name('master.wcp.barang.update');
                     Route::delete('/delete/{id}', [App\Http\Controllers\Wcp\MasterBarangController::class, 'destroy'])->name('master.wcp.barang.delete');
+                    Route::post('/restore/{id}', [App\Http\Controllers\Wcp\MasterBarangController::class, 'restore'])->name('master.wcp.barang.restore');
+                    Route::delete('/force-delete/{id}', [App\Http\Controllers\Wcp\MasterBarangController::class, 'forceDelete'])->name('master.wcp.barang.forceDelete');
                     Route::get('/template', [App\Http\Controllers\Wcp\MasterBarangController::class, 'downloadTemplate'])->name('master.wcp.barang.template');
                     Route::post('/upload', [App\Http\Controllers\Wcp\MasterBarangController::class, 'upload'])->name('master.wcp.barang.upload');
                 });
