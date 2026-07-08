@@ -628,122 +628,125 @@ class InboundController extends Controller
                 });
         });
 
-        $groups = [];
-        $jenisBahan = [];
-        $mids = [];
-        $noSpbs = [];
-        $suppliers = [];
-        $statuses = [];
-        $locations = [];
+        $filterCollection = function ($items, $exclude = null) use ($request) {
+            return $items->filter(function ($item) use ($exclude, $request) {
+                if ($exclude !== 'group' && $request->filled('group')) {
+                    if (!in_array($item['group'], (array)$request->group)) {
+                        return false;
+                    }
+                }
 
-        foreach ($all as $item) {
+                if ($exclude !== 'status' && $request->filled('status')) {
+                    if (!in_array($item['status'], (array)$request->status)) {
+                        return false;
+                    }
+                }
 
-            // GROUP
-            if (
-                $request->filled('group')
-                && !in_array($item['group'], (array)$request->group)
-            ) {
-                continue;
-            }
+                if ($exclude !== 'jenis_bahan' && $request->filled('jenis_bahan')) {
+                    if (!in_array($item['nama_barang'], (array)$request->jenis_bahan)) {
+                        return false;
+                    }
+                }
 
-            // STATUS
-            if (
-                $request->filled('status')
-                && !in_array($item['status'], (array)$request->status)
-            ) {
-                continue;
-            }
+                if ($exclude !== 'mid' && $request->filled('mid')) {
+                    if (!in_array($item['mid'], (array)$request->mid)) {
+                        return false;
+                    }
+                }
 
-            // JENIS BAHAN
-            if (
-                $request->filled('jenis_bahan')
-                && !in_array($item['nama_barang'], (array)$request->jenis_bahan)
-            ) {
-                continue;
-            }
+                if ($exclude !== 'supplier' && $request->filled('supplier')) {
+                    if (!in_array($item['supplier'], (array)$request->supplier)) {
+                        return false;
+                    }
+                }
 
-            // MID
-            if (
-                $request->filled('mid')
-                && !in_array($item['mid'], (array)$request->mid)
-            ) {
-                continue;
-            }
+                if ($exclude !== 'no_spb' && $request->filled('no_spb')) {
+                    if (!in_array($item['no_spb'], (array)$request->no_spb)) {
+                        return false;
+                    }
+                }
 
-            // SUPPLIER
-            if (
-                $request->filled('supplier')
-                && !in_array($item['supplier'], (array)$request->supplier)
-            ) {
-                continue;
-            }
+                if ($exclude !== 'location' && $request->filled('location')) {
+                    if (!in_array($item['loc_id'], (array)$request->location)) {
+                        return false;
+                    }
+                }
 
-            // NO SPB
-            if (
-                $request->filled('no_spb')
-                && !in_array($item['no_spb'], (array)$request->no_spb)
-            ) {
-                continue;
-            }
+                return true;
+            });
+        };
 
-            // LOCATION
-            if (
-                $request->filled('location')
-                && !in_array($item['loc_id'], (array)$request->location)
-            ) {
-                continue;
-            }
+        $groups = $filterCollection($all, 'group')
+            ->pluck('group')
+            ->filter(fn($val) => !is_null($val) && $val !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
 
-            $groups[$item['group']] = true;
+        $jenisBahan = $filterCollection($all, 'jenis_bahan')
+            ->pluck('nama_barang')
+            ->filter(fn($val) => !is_null($val) && $val !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
 
-            if ($item['nama_barang']) {
-                $jenisBahan[$item['nama_barang']] = true;
-            }
+        $mids = $filterCollection($all, 'mid')
+            ->filter(fn($item) => !is_null($item['mid']) && $item['mid'] !== '')
+            ->map(fn($item) => [
+                'mid' => $item['mid'],
+                'nama' => $item['nama_barang'],
+                'text' => "{$item['mid']} - {$item['nama_barang']}",
+            ])
+            ->unique('mid')
+            ->sortBy('mid')
+            ->values()
+            ->toArray();
 
-            if ($item['mid']) {
-                $mids[$item['mid']] = [
-                    'mid' => $item['mid'],
-                    'nama' => $item['nama_barang'],
-                    'text' => "{$item['mid']} - {$item['nama_barang']}",
-                ];
-            }
+        $noSpbs = $filterCollection($all, 'no_spb')
+            ->pluck('no_spb')
+            ->filter(fn($val) => !is_null($val) && $val !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
 
-            if ($item['no_spb']) {
-                $noSpbs[$item['no_spb']] = true;
-            }
+        $suppliers = $filterCollection($all, 'supplier')
+            ->pluck('supplier')
+            ->filter(fn($val) => !is_null($val) && $val !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
 
-            if ($item['supplier']) {
-                $suppliers[$item['supplier']] = true;
-            }
+        $statuses = $filterCollection($all, 'status')
+            ->pluck('status')
+            ->filter(fn($val) => !is_null($val) && $val !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
 
-            if ($item['status']) {
-                $statuses[$item['status']] = true;
-            }
-
-            if ($item['location_id']) {
-                $locations[$item['location_id']] = [
-                    'id' => $item['location_id'],
-                    'text' => $item['location_text'],
-                ];
-            }
-        }
-
-        ksort($groups);
-        ksort($jenisBahan);
-        ksort($mids);
-        ksort($noSpbs);
-        ksort($suppliers);
-        ksort($statuses);
-        uasort($locations, fn($a, $b) => strcmp($a['text'], $b['text']));
+        $locations = $filterCollection($all, 'location')
+            ->filter(fn($item) => !is_null($item['location_id']) && $item['location_id'] !== '')
+            ->map(fn($item) => [
+                'id' => $item['location_id'],
+                'text' => $item['location_text'],
+            ])
+            ->unique('id')
+            ->sortBy('text')
+            ->values()
+            ->toArray();
 
         return response()->json([
-            'groups'       => array_keys($groups),
-            'jenis_bahan'  => array_keys($jenisBahan),
-            'mids'         => array_values($mids),
-            'no_spbs'      => array_keys($noSpbs),
-            'suppliers'    => array_keys($suppliers),
-            'statuses'     => array_keys($statuses),
-            'locations'    => array_values($locations),
+            'groups'       => $groups,
+            'jenis_bahan'  => $jenisBahan,
+            'mids'         => $mids,
+            'no_spbs'      => $noSpbs,
+            'suppliers'    => $suppliers,
+            'statuses'     => $statuses,
+            'locations'    => $locations,
         ]);
     }
 
