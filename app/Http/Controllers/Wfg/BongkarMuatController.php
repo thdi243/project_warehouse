@@ -3,21 +3,25 @@
 namespace App\Http\Controllers\Wfg;
 
 use App\Http\Controllers\Controller;
+use App\Models\NotificationsModel;
+use App\Models\P2h\UserForkliftAssignmentModel;
 use App\Models\User;
+use App\Models\UserSignatureModel;
+use App\Models\Wfg\BarangWfgModel;
 use App\Models\Wfg\BongkarMuat;
 use App\Models\Wfg\BongkarMuatDetail;
-use App\Models\Wrm\Inventory\StockOnHand;
-use App\Models\Wfg\stock_opname\BarangWfgModel;
-use App\Models\P2h\UserForkliftAssignmentModel;
 use App\Models\Wfg\MasterDestinasi;
-use App\Models\NotificationsModel;
+use App\Models\Wrm\Inventory\StockOnHand;
+// use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class BongkarMuatController extends Controller
 {
@@ -135,7 +139,7 @@ class BongkarMuatController extends Controller
         // Check if create_new is requested
         if ($request->query('create_new')) {
             $draft = BongkarMuat::create([
-                'created_by' => auth()->id(),
+                'created_by' => Auth::id(),
                 'status' => 'draft',
                 'tanggal' => date('Y-m-d'),
             ]);
@@ -146,7 +150,7 @@ class BongkarMuatController extends Controller
 
         if (!$draftId) {
             // Find latest active/unfinished record for this user
-            $latestActive = BongkarMuat::where('created_by', auth()->id())
+            $latestActive = BongkarMuat::where('created_by', Auth::id())
                 ->whereIn('status', ['draft', 'submitted', 'approved'])
                 ->latest()
                 ->first();
@@ -161,7 +165,7 @@ class BongkarMuatController extends Controller
 
             // If no active records exist at all, create a new draft
             $newDraft = BongkarMuat::create([
-                'created_by' => auth()->id(),
+                'created_by' => Auth::id(),
                 'status' => 'draft',
                 'tanggal' => date('Y-m-d'),
             ]);
@@ -171,7 +175,7 @@ class BongkarMuatController extends Controller
         // We have a draft_id, retrieve it
         $draft = BongkarMuat::with('details.material')
             ->where('id', $draftId)
-            ->where('created_by', auth()->id())
+            ->where('created_by', Auth::id())
             ->where('status', 'draft')
             ->first();
 
@@ -181,7 +185,7 @@ class BongkarMuatController extends Controller
         }
 
         // Load all active drafts for tabs
-        $allDrafts = BongkarMuat::where('created_by', auth()->id())
+        $allDrafts = BongkarMuat::where('created_by', Auth::id())
             ->whereIn('status', ['draft', 'submitted', 'approved'])
             ->latest()
             ->get();
@@ -254,7 +258,7 @@ class BongkarMuatController extends Controller
             }
 
             $order = BongkarMuat::where('id', $draftId)
-                ->where('created_by', auth()->id())
+                ->where('created_by', Auth::id())
                 ->where('status', 'draft')
                 ->first();
 
@@ -292,8 +296,8 @@ class BongkarMuatController extends Controller
                 'no_segel_bas' => $request->no_segel_bas,
                 'no_segel_vendor' => $request->no_segel_vendor,
                 'jumlah_slipsheet' => $request->jumlah_slipsheet ?? 0,
-                'updated_by' => auth()->id(),
-                'checker_id' => auth()->id(),
+                'updated_by' => Auth::id(),
+                'checker_id' => Auth::id(),
             ]);
 
             // Jam muat otomatis ketika item pertama disimpan
@@ -379,7 +383,7 @@ class BongkarMuatController extends Controller
             }
 
             $existingDraft = BongkarMuat::where('id', $draftId)
-                ->where('created_by', auth()->id())
+                ->where('created_by', Auth::id())
                 ->where('status', 'draft')
                 ->first();
 
@@ -448,7 +452,7 @@ class BongkarMuatController extends Controller
             DB::beginTransaction();
 
             $query = BongkarMuat::where('status', '!=', 'draft')
-                ->where('created_by', '!=', auth()->id());
+                ->where('created_by', '!=', Auth::id());
 
             $query->where(function ($q) use ($request) {
 
@@ -482,7 +486,7 @@ class BongkarMuatController extends Controller
             $order = null;
             if ($draftId) {
                 $order = BongkarMuat::where('id', $draftId)
-                    ->where('created_by', auth()->id())
+                    ->where('created_by', Auth::id())
                     ->where('status', 'draft')
                     ->first();
             }
@@ -508,7 +512,7 @@ class BongkarMuatController extends Controller
                 'shipment_bas' => $request->shipment_bas,
                 'wavepick_bas' => $request->wavepick_bas,
                 'forklift_driver_id' => $request->forklift_driver_id,
-                'checker_id' => $order->checker_id ?? auth()->id(),
+                'checker_id' => $order->checker_id ?? Auth::id(),
                 'destinasi_id' => $request->destinasi_id,
                 'no_mobil' => $request->no_mobil,
                 'gate' => $request->gate,
@@ -519,7 +523,7 @@ class BongkarMuatController extends Controller
                 'jam_muat' => $request->jam_muat ?? Carbon::now()->format('H:i:s'),
                 'jam_selesai' => Carbon::now()->format('H:i:s'),
                 'status' => 'submitted',
-                'created_by' => auth()->id(),
+                'created_by' => Auth::id(),
             ];
 
             if ($order) {
@@ -601,7 +605,7 @@ class BongkarMuatController extends Controller
             return back()->with('error', 'Order is not in submitted status.');
         }
 
-        if ($order->checker_id && (int) $order->checker_id !== (int) auth()->id()) {
+        if ($order->checker_id && (int) $order->checker_id !== (int) Auth::id()) {
             return back()->with('error', 'Anda bukan checker yang ditugaskan untuk Bongkar Muat ini.');
         }
 
@@ -739,7 +743,7 @@ class BongkarMuatController extends Controller
 
             return 'storage/' . $path;
         } catch (\Exception $e) {
-            \Log::error('Signature save error: ' . $e->getMessage());
+            Log::error('Signature save error: ' . $e->getMessage());
             return null;
         }
     }
@@ -776,7 +780,7 @@ class BongkarMuatController extends Controller
 
             // Save signature as profile default if not already exists
             \App\Models\UserSignatureModel::firstOrCreate(
-                ['user_id' => auth()->id()],
+                ['user_id' => Auth::id()],
                 ['signature' => $signaturePath]
             );
         }
@@ -815,7 +819,7 @@ class BongkarMuatController extends Controller
         if ($isValid) {
             $order->update([
                 'status' => 'verified',
-                'verified_by' => auth()->id(),
+                'verified_by' => Auth::id(),
                 'verified_at' => Carbon::now(),
                 'verified_signature' => $signaturePath,
                 'verified_note' => $request->verified_note ?? null
@@ -948,13 +952,7 @@ class BongkarMuatController extends Controller
             }
         }
 
-        $pdf = PDF::loadView('pdf.wfg_bongkar_muat', compact(
-            'order',
-            'totalFullPallet',
-            'totalReceh',
-            'summarySMU',
-            'summaryBAS'
-        ));
+        $pdf = PDF::loadView('pdf.wfg_bongkar_muat', compact('order', 'totalFullPallet', 'totalReceh', 'summarySMU', 'summaryBAS'));
 
         $filename = preg_replace('/[\/\\\\]/', '-', $order->no_dokumen) . '.pdf';
 

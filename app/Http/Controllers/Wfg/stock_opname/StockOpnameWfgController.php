@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 use App\Jobs\GenerateAndSendSopReportJob;
 use App\Models\Wfg\stock_opname\WfgSopModel;
-use App\Models\Wfg\stock_opname\BarangWfgModel;
+use App\Models\Wfg\BarangWfgModel;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Wfg\stock_opname\WfgSopTempModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;

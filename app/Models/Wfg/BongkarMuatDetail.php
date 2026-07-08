@@ -2,7 +2,7 @@
 
 namespace App\Models\Wfg;
 
-use App\Models\Wfg\stock_opname\BarangWfgModel;
+use App\Models\Wfg\BarangWfgModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

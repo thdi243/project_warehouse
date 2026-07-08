@@ -12,7 +12,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use App\Models\Wfg\stock_opname\WfgSopModel;
 use Illuminate\Validation\ValidationException;
-use App\Models\Wfg\stock_opname\BarangWfgModel;
+use App\Models\Wfg\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
 use App\Models\Wfg\stock_opname\WfgSopDetailModel;
 use App\Models\Wfg\stock_opname\WfgSopStatusModel;

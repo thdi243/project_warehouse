@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Wfg\stock_opname;
+namespace App\Http\Controllers\Wfg;
 
 use App\Http\Controllers\Controller;
-use App\Models\Wfg\stock_opname\BarangWfgModel;
+use App\Models\Wfg\BarangWfgModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;

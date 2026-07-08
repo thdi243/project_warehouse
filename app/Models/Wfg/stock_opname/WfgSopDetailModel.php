@@ -2,8 +2,10 @@
 
 namespace App\Models\Wfg\stock_opname;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Wfg\BarangWfgModel;
+use App\Models\Wfg\stock_opname\WfgSopModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class WfgSopDetailModel extends Model
 {

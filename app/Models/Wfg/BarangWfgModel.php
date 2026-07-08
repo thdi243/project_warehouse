@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Wfg\stock_opname;
+namespace App\Models\Wfg;
 
 use App\Models\User;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
