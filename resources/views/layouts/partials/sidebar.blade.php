@@ -38,7 +38,7 @@
         <div class="container-fluid">
             <div id="two-column-menu">
             </div>
-            @if ($departemen != 'warehouse')
+            @if (!in_array($departemen, ['warehouse', 'it', 'IT']))
                 <ul class="navbar-nav" id="navbar-nav">
                     @include('layouts.partials.sidebar-no-warehouse.sidebar_no_warehouse')
 
