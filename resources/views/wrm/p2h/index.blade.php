@@ -407,7 +407,7 @@
                                     <div class="col-md-12 mb-3">
                                         <label class="form-label">Foto Kondisi Accu</label>
                                         <input type="file" class="form-control" name="foto_kondisi_accu"
-                                            accept="image/*" capture="camera">
+                                            accept="image/*" capture="camera" required>
                                         <small class="text-muted d-block">Ambil foto kondisi accu saat ini</small>
                                     </div>
                                 </div>
@@ -568,7 +568,7 @@
                                     <div class="col-md-12 mb-3">
                                         <label class="form-label">Foto Kondisi Accu</label>
                                         <input type="file" class="form-control" name="foto_kondisi_accu"
-                                            accept="image/*" capture="camera">
+                                            accept="image/*" capture="camera" required>
                                         <small class="text-muted d-block">Ambil foto kondisi accu saat ini</small>
                                     </div>
                                 </div>
@@ -634,7 +634,8 @@
                         canvas.toBlob(function(blob) {
                             if (!blob) return;
 
-                            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                            const compressedFile = new File([blob], file.name.replace(
+                                /\.[^/.]+$/, "") + ".jpg", {
                                 type: 'image/jpeg',
                                 lastModified: Date.now()
                             });
@@ -643,7 +644,9 @@
                             dataTransfer.items.add(compressedFile);
                             e.target.files = dataTransfer.files;
 
-                            console.log('Frontend Compressed:', (file.size / 1024 / 1024).toFixed(2), 'MB ->', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
+                            console.log('Frontend Compressed:', (file.size / 1024 / 1024)
+                                .toFixed(2), 'MB ->', (compressedFile.size / 1024 /
+                                    1024).toFixed(2), 'MB');
                         }, 'image/jpeg', 0.7);
                     };
                     img.src = event.target.result;
