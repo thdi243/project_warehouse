@@ -16,7 +16,8 @@ class WfgSopModel extends Model
         'tgl_opname',
         'user_id',
         'status',
-        'principal'
+        'principal',
+        'no_doc'
     ];
 
     public function details()

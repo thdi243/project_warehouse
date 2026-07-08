@@ -33,108 +33,128 @@ use App\Models\Wfg\stock_opname\WfgSopSummariesModel;
 
 class StockOpnameWfgController extends Controller
 {
-    public function store(Request $request)
-    {
-        $request->validate([
-            'mid' => 'required|exists:wfg_barang,mid_barang',
-            'tgl_opname' => 'required|date',
-            'qty_full' => 'required|array',
-            'qty_receh' => 'required|array',
-            // 'keterangan' => 'nullable|string|max:255',
-        ], [
-            'tgl_opname.required' => 'Tanggal opname wajib diisi.',
-            'mid.required' => 'MID barang wajib dipilih.',
-        ]);
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'mid' => 'required|exists:wfg_barang,mid_barang',
+    //         'tgl_opname' => 'required|date',
+    //         'qty_full' => 'required|array',
+    //         'qty_receh' => 'required|array',
+    //         // 'keterangan' => 'nullable|string|max:255',
+    //     ], [
+    //         'tgl_opname.required' => 'Tanggal opname wajib diisi.',
+    //         'mid.required' => 'MID barang wajib dipilih.',
+    //     ]);
 
-        $qtyFull = $request->input('qty_full', []);
-        $qtyReceh = $request->input('qty_receh', []);
+    //     $qtyFull = $request->input('qty_full', []);
+    //     $qtyReceh = $request->input('qty_receh', []);
 
-        $hasQty = false;
-        foreach ($qtyFull as $index => $full) {
-            $fullVal = $full ?? null;
-            $recehVal = $qtyReceh[$index] ?? null;
+    //     $hasQty = false;
+    //     foreach ($qtyFull as $index => $full) {
+    //         $fullVal = $full ?? null;
+    //         $recehVal = $qtyReceh[$index] ?? null;
 
-            if (!empty($fullVal) || !empty($recehVal)) {
-                $hasQty = true;
-                break;
-            }
-        }
+    //         if (!empty($fullVal) || !empty($recehVal)) {
+    //             $hasQty = true;
+    //             break;
+    //         }
+    //     }
 
-        if (!$hasQty) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Minimal isi salah satu Qty Full atau Qty Receh sebelum menyimpan.'
-            ], 422);
-        }
+    //     if (!$hasQty) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Minimal isi salah satu Qty Full atau Qty Receh sebelum menyimpan.'
+    //         ], 422);
+    //     }
 
-        try {
-            $barang = BarangWfgModel::where('mid_barang', $request->mid)->firstOrFail();
+    //     try {
+    //         $barang = BarangWfgModel::where('mid_barang', $request->mid)->firstOrFail();
 
-            // Cek existing data (Cek apakah SOP sudah ada untuk tanggal dan barang ini)
-            $existing = WfgSopSummariesModel::whereHas('sop', function ($q) use ($request) {
-                $q->where('tgl_opname', $request->tgl_opname);
-            })->where('barang_id', $barang->id)->first();
+    //         // Cek existing data (Cek apakah SOP sudah ada untuk tanggal dan barang ini)
+    //         $existing = WfgSopSummariesModel::whereHas('sop', function ($q) use ($request) {
+    //             $q->where('tgl_opname', $request->tgl_opname);
+    //         })->where('barang_id', $barang->id)->first();
 
-            if ($existing) {
-                return response()->json([
-                    'status' => 'warning',
-                    'message' => 'Stock opname sudah ada. Lanjutkan update?',
-                    'sop_id' => $existing->sop_id,
-                ], 200);
-            }
+    //         if ($existing) {
+    //             return response()->json([
+    //                 'status' => 'warning',
+    //                 'message' => 'Stock opname sudah ada. Lanjutkan update?',
+    //                 'sop_id' => $existing->sop_id,
+    //             ], 200);
+    //         }
 
-            // --- HAPUS LOGIKA PERHITUNGAN DAN SOH/SUMMARY DI SINI ---
+    //         // --- HAPUS LOGIKA PERHITUNGAN DAN SOH/SUMMARY DI SINI ---
 
-            // Hanya hitung total fisik untuk tujuan validasi (minimal terisi), tetapi tidak perlu $totalFisik
-            // Logika $totalFisik tetap dipertahankan hanya untuk memastikan validasi 'hasQty' bekerja
-            $entriesCount = count($request->qty_full);
-            /* // Baris kode perhitungan $totalFisik, $qty_sistem, dan $selisih dihilangkan 
-        // karena akan dilakukan di fungsi import SOH.
-        */
+    //         // Hanya hitung total fisik untuk tujuan validasi (minimal terisi), tetapi tidak perlu $totalFisik
+    //         // Logika $totalFisik tetap dipertahankan hanya untuk memastikan validasi 'hasQty' bekerja
+    //         $entriesCount = count($request->qty_full);
+    //         /* // Baris kode perhitungan $totalFisik, $qty_sistem, dan $selisih dihilangkan 
+    //     // karena akan dilakukan di fungsi import SOH.
+    //     */
 
-            DB::beginTransaction();
+    //         DB::beginTransaction();
 
-            // 4. Proses Simpan SOP
-            $sop = WfgSopModel::create([
-                'tgl_opname' => $request->tgl_opname,
-                'user_id' => Auth::id() ?? 1,
-            ]);
+    //         $principal = $barang->principal;
 
-            // Simpan Detail
-            for ($i = 0; $i < $entriesCount; $i++) {
-                $qty_full = $request->qty_full[$i] ?? 0;
-                $qty_receh = $request->qty_receh[$i] ?? 0;
+    //         // Generate nomor dokumen
+    //         $tanggalCarbon = \Carbon\Carbon::parse($request->tgl_opname);
+    //         $jumlahDataPrincipal = WfgSopModel::where('principal', $principal)
+    //             ->whereMonth('tgl_opname', $tanggalCarbon->month)
+    //             ->whereYear('tgl_opname', $tanggalCarbon->year)
+    //             ->count();
 
-                WfgSopDetailModel::create([
-                    'sop_id' => $sop->id,
-                    'barang_id' => $barang->id,
-                    'qty_full' => $qty_full,
-                    'qty_receh' => $qty_receh,
-                ]);
-            }
+    //         $lastNumber = $jumlahDataPrincipal + 1;
+    //         $nomor = str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
+    //         $prefix = $principal === 'BAS' ? 'WFG' : ($principal === 'SMU' ? 'SMU' : 'WFG');
 
-            // Simpan summary (HAPUS/DIHILANGKAN)
-            /*
-        // WfgSopSummariesModel::create(...) 
-        // Logika ini dihilangkan karena akan dilakukan di fungsi import SOH.
-        */
+    //         $bulanRomawi = $this->bulanRomawi($tanggalCarbon->month);
+    //         $tahun = $tanggalCarbon->year;
 
-            DB::commit();
+    //         $nomorDokumen = "{$nomor}/{$prefix}/{$bulanRomawi}/{$tahun}";
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Stock opname berhasil disimpan',
-                'sop_id' => $sop->id
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
+    //         // 4. Proses Simpan SOP
+    //         $sop = WfgSopModel::create([
+    //             'tgl_opname' => $request->tgl_opname,
+    //             'user_id' => Auth::id() ?? 1,
+    //             'principal' => $principal,
+    //             'no_doc' => $nomorDokumen,
+    //         ]);
 
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Gagal menyimpan stock opname: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
+    //         // Simpan Detail
+    //         for ($i = 0; $i < $entriesCount; $i++) {
+    //             $qty_full = $request->qty_full[$i] ?? 0;
+    //             $qty_receh = $request->qty_receh[$i] ?? 0;
+
+    //             WfgSopDetailModel::create([
+    //                 'sop_id' => $sop->id,
+    //                 'barang_id' => $barang->id,
+    //                 'qty_full' => $qty_full,
+    //                 'qty_receh' => $qty_receh,
+    //             ]);
+    //         }
+
+    //         // Simpan summary (HAPUS/DIHILANGKAN)
+    //         /*
+    //     // WfgSopSummariesModel::create(...) 
+    //     // Logika ini dihilangkan karena akan dilakukan di fungsi import SOH.
+    //     */
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'Stock opname berhasil disimpan',
+    //             'sop_id' => $sop->id
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Gagal menyimpan stock opname: ' . $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 
     public function startOpname(Request $request)
     {
@@ -641,11 +661,28 @@ class StockOpnameWfgController extends Controller
                     ]
                 );
 
+                // Generate nomor dokumen
+                $tanggalCarbon = \Carbon\Carbon::parse($tglOpname);
+                $jumlahDataPrincipal = WfgSopModel::where('principal', $principalFilter)
+                    ->whereMonth('tgl_opname', $tanggalCarbon->month)
+                    ->whereYear('tgl_opname', $tanggalCarbon->year)
+                    ->count();
+
+                $lastNumber = $jumlahDataPrincipal + 1;
+                $nomor = str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
+                $prefix = $principalFilter === 'BAS' ? 'WFG' : ($principalFilter === 'SMU' ? 'SMU' : 'WFG');
+
+                $bulanRomawi = $this->bulanRomawi($tanggalCarbon->month);
+                $tahun = $tanggalCarbon->year;
+
+                $nomorDokumen = "{$nomor}/{$prefix}/{$bulanRomawi}/{$tahun}";
+
                 $sop = WfgSopModel::create([
                     'tgl_opname' => $tglOpname,
                     'user_id' => $user->id,
                     'status' => 'draft',
                     'principal' => $principalFilter,
+                    'no_doc' => $nomorDokumen,
                 ]);
 
                 foreach ($grouped as $g) {
@@ -2292,21 +2329,24 @@ class StockOpnameWfgController extends Controller
 
             $tanggalCarbon = \Carbon\Carbon::parse($tanggal);
 
-            // 1. Hitung nomor urut berdasarkan jumlah data di WfgSopModel
-            $jumlahDataPrincipal = WfgSopModel::where('principal', $activePrincipal)
-                ->whereMonth('tgl_opname', $tanggalCarbon->month)
-                ->whereYear('tgl_opname', $tanggalCarbon->year)
-                ->count();
+            $nomorDokumen = $sop->no_doc;
 
-            $lastNumber = $jumlahDataPrincipal;
-            $nomor = str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
-            $prefix = $activePrincipal === 'BAS' ? 'WFG' : ($activePrincipal === 'SMU' ? 'SMU' : 'WFG');
+            if (empty($nomorDokumen)) {
+                // Fallback untuk data lama yang belum memiliki no_doc di database
+                $jumlahDataPrincipal = WfgSopModel::where('principal', $activePrincipal)
+                    ->whereMonth('tgl_opname', $tanggalCarbon->month)
+                    ->whereYear('tgl_opname', $tanggalCarbon->year)
+                    ->count();
 
-            $bulanRomawi = $this->bulanRomawi($tanggalCarbon->month);
-            $tahun = $tanggalCarbon->year;
+                $lastNumber = $jumlahDataPrincipal;
+                $nomor = str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
+                $prefix = $activePrincipal === 'BAS' ? 'WFG' : ($activePrincipal === 'SMU' ? 'SMU' : 'WFG');
 
-            // 4. Nomor dokumen final
-            $nomorDokumen = "{$nomor}/{$prefix}/{$bulanRomawi}/{$tahun}";
+                $bulanRomawi = $this->bulanRomawi($tanggalCarbon->month);
+                $tahun = $tanggalCarbon->year;
+
+                $nomorDokumen = "{$nomor}/{$prefix}/{$bulanRomawi}/{$tahun}";
+            }
 
             $pdf = Pdf::loadView('pdf.sop_wfg_report', [
                 'data'       => $sop,
