@@ -504,6 +504,7 @@
                 if (isResetting) return;
                 clearTimeout(filterTimeout);
                 filterTimeout = setTimeout(() => {
+                    loadFilter();
                     loadData(1);
                 }, 300);
             };
@@ -639,25 +640,46 @@
                 }
             }
 
-            function loadData(page = 1) {
-                let params = {
-                    page: page,
-                    group: $('#dropdown-group').data('getValues') ? $('#dropdown-group').data('getValues')() :
-                    [],
-                    mid: $('#dropdown-mid').data('getValues') ? $('#dropdown-mid').data('getValues')() : [],
-                    start_date: $('#filterStartDate').val(),
-                    end_date: $('#filterEndDate').val(),
-                    supplier: $('#dropdown-supplier').data('getValues') ? $('#dropdown-supplier').data(
-                        'getValues')() : [],
-                    status: $('#dropdown-status').data('getValues') ? $('#dropdown-status').data('getValues')
-                        () : [],
-                    no_spb: $('#dropdown-no-spb').data('getValues') ? $('#dropdown-no-spb').data('getValues')
-                        () : [],
-                    location: $('#dropdown-location').data('getValues') ? $('#dropdown-location').data(
-                        'getValues')() : [],
-                    catatan: $('#filterCatatan').val(),
-                    sort_dir: currentSortDir,
+            function getQueryParams() {
+                let params = {};
+
+                const addFilter = (key, selector) => {
+                    let val;
+                    const $el = $(selector);
+                    if ($el.hasClass('custom-filter-dropdown') || $el.closest('.custom-filter-dropdown').length > 0) {
+                        const dropdownId = $el.hasClass('custom-filter-dropdown') ? $el.attr('id') : $el.closest('.custom-filter-dropdown').attr('id');
+                        val = $('#' + dropdownId).data('getValues') ? $('#' + dropdownId).data('getValues')() : [];
+                    } else {
+                        val = $el.val();
+                    }
+
+                    if (val) {
+                        if (Array.isArray(val)) {
+                            val = val.filter(v => v !== null && v !== undefined && String(v).trim() !== "");
+                            if (val.length > 0) params[key] = val;
+                        } else if (String(val).trim() !== "") {
+                            params[key] = val;
+                        }
+                    }
                 };
+
+                addFilter('group', '#dropdown-group');
+                addFilter('mid', '#dropdown-mid');
+                addFilter('supplier', '#dropdown-supplier');
+                addFilter('status', '#dropdown-status');
+                addFilter('no_spb', '#dropdown-no-spb');
+                addFilter('location', '#dropdown-location');
+
+                return params;
+            }
+
+            function loadData(page = 1) {
+                let params = getQueryParams();
+                params.page = page;
+                params.start_date = $('#filterStartDate').val();
+                params.end_date = $('#filterEndDate').val();
+                params.catatan = $('#filterCatatan').val();
+                params.sort_dir = currentSortDir;
 
                 $.get("{{ route('wrm.inventory.dataInbound') }}", params, function(res) {
                     let html = '';
@@ -758,7 +780,8 @@
             }
 
             function loadFilter() {
-                $.get("{{ route('wrm.inventory.getFilterInbound') }}", function(res) {
+                let params = getQueryParams();
+                $.get("{{ route('wrm.inventory.getFilterInbound') }}", params, function(res) {
                     updateDropdownOptions('dropdown-no-spb', res.no_spbs, 'Pilih No SPB...');
                     updateDropdownOptions('dropdown-mid', res.mids, 'Pilih MID...', true);
                     updateDropdownOptions('dropdown-supplier', res.suppliers, 'Pilih Supplier...');

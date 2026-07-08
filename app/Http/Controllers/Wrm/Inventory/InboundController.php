@@ -542,8 +542,10 @@ class InboundController extends Controller
         });
 
         $query->when($request->filled('catatan'), function ($q) use ($request) {
-            $q->where('wrm_stock_on_hand.catatan', 'like', '%' . $request->catatan . '%')
-                ->orWhere('wrm_stock_on_hand.barcode', 'like', '%' . $request->catatan . '%');
+            $q->where(function ($sub) use ($request) {
+                $sub->where('wrm_stock_on_hand.catatan', 'like', '%' . $request->catatan . '%')
+                    ->orWhere('wrm_stock_on_hand.barcode', 'like', '%' . $request->catatan . '%');
+            });
         });
 
         $query->when($request->filled('location'), function ($q) use ($request) {
@@ -1557,8 +1559,10 @@ class InboundController extends Controller
         }
 
         if ($request->catatan) {
-            $query->where('wrm_stock_inbound_details.catatan', 'like', '%' . $request->catatan . '%')
-                ->orWhere('wrm_stock_inbound_details.barcode', 'like', '%' . $request->catatan . '%');
+            $query->where(function ($sub) use ($request) {
+                $sub->where('wrm_stock_inbound_details.catatan', 'like', '%' . $request->catatan . '%')
+                    ->orWhere('wrm_stock_inbound_details.barcode', 'like', '%' . $request->catatan . '%');
+            });
         }
 
         if ($request->location) {
