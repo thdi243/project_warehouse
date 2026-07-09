@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Wpm\StockOpname;
 use App\Http\Controllers\Controller;
 use App\Models\Wpm\StockOpname\WpmSohModel;
 use App\Models\Wpm\StockOpname\WpmSoModel;
+use App\Models\Wpm\StockOpname\WpmSoStatusModel;
 use App\Models\Wpm\StockOpname\WpmSoSummariesModel;
 use App\Models\Wpm\WpmMasterBarangModel;
 use Carbon\Carbon;
@@ -84,12 +85,21 @@ class WpmStockOnHandController extends Controller
             'block' => 'nullable|numeric|min:0',
         ]);
 
+        $today = now()->toDateString();
+        $soStatus = WpmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak dapat menambah data SOH karena Stock Opname hari ini telah selesai (finished).'
+            ], 422);
+        }
+
         try {
             $today = now()->toDateString();
             $barangId = $request->barang_id;
 
             $barang = WpmMasterBarangModel::findOrFail($barangId);
-            
+
             // Validasi jika MID sudah ada hari ini
             $exists = WpmSohModel::where('barang_id', $barangId)
                 ->whereDate('created_at', $today)
@@ -152,7 +162,6 @@ class WpmStockOnHandController extends Controller
                 'message' => 'Stock On Hand berhasil dibuat',
                 'data' => $soh
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -235,8 +244,16 @@ class WpmStockOnHandController extends Controller
 
     public function resetAll()
     {
+        $today = now()->toDateString();
+        $soStatus = WpmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak dapat mengosongkan data SOH karena Stock Opname hari ini telah selesai (finished).'
+            ], 422);
+        }
+
         try {
-            $today = now()->toDateString();
             $deleted = WpmSohModel::whereDate('created_at', $today)->delete();
 
             return response()->json([
@@ -256,6 +273,15 @@ class WpmStockOnHandController extends Controller
         $request->validate([
             'file' => 'required|mimes:xlsx,xls'
         ]);
+
+        $today = now()->toDateString();
+        $soStatus = WpmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak dapat mengunggah file Excel karena Stock Opname hari ini telah selesai (finished).'
+            ], 422);
+        }
 
         try {
             $file = $request->file('file');
