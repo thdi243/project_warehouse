@@ -350,6 +350,14 @@
 @section('scripts')
     {{-- <script src="{{ asset('js/app.js') }}"></script> --}}
     <script>
+        function formatDecimal(val) {
+            if (val === null || val === undefined || val === '') return '0';
+            let num = parseFloat(val);
+            if (isNaN(num)) return '0';
+            let formatted = num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return formatted.replace(/,00$/, '');
+        }
+
         $(document).ready(function() {
             @if (session('error'))
                 toastr.error("{{ session('error') }}", "Peringatan!");
@@ -475,9 +483,9 @@
                             const barangName = item.barang ? item.barang.nama_barang : 'N/A';
                             const barangMid = item.barang ? item.barang.mid : 'N/A';
                             const uom = item.barang ? item.barang.uom : '';
-                            const qtySistem = item.qty_sistem.toLocaleString('id-ID');
-                            const qtyFisik = item.qty_fisik.toLocaleString('id-ID');
-                            const selisih = item.selisih.toLocaleString('id-ID');
+                            const qtySistem = formatDecimal(item.qty_sistem);
+                            const qtyFisik = formatDecimal(item.qty_fisik);
+                            const selisih = formatDecimal(item.selisih);
                             const note = item.keterangan ? item.keterangan : '-';
 
                             let statusBadge = '';
@@ -640,7 +648,7 @@
 
                         $('#detailMid').text(sum.barang ? sum.barang.mid : '-');
                         $('#detailNamaBarang').text(sum.barang ? sum.barang.nama_barang : '-');
-                        $('#detailQtySistem').text(sum.qty_sistem.toLocaleString('id-ID') + ' ' + uom);
+                        $('#detailQtySistem').text(formatDecimal(sum.qty_sistem) + ' ' + uom);
 
                         let detailRowsHtml = '';
                         if (res.details && res.details.length > 0) {
@@ -651,8 +659,8 @@
                                     <tr>
                                         <td class="text-center fw-semibold">${idx + 1}</td>
                                         <td class="text-center">${inputTime}</td>
-                                        <td class="text-end">${det.qty_full.toLocaleString('id-ID')}</td>
-                                        <td class="text-end">${det.qty_receh.toLocaleString('id-ID')}</td>
+                                        <td class="text-end">${formatDecimal(det.qty_full)}</td>
+                                        <td class="text-end">${formatDecimal(det.qty_receh)}</td>
                                     </tr>
                                 `;
                             });
@@ -667,8 +675,8 @@
                         }
                         $('#detailInputsList').html(detailRowsHtml);
 
-                        $('#detailQtyFisik').text(sum.qty_fisik.toLocaleString('id-ID') + ' ' + uom);
-                        $('#detailSelisih').text(sum.selisih.toLocaleString('id-ID') + ' ' + uom);
+                        $('#detailQtyFisik').text(formatDecimal(sum.qty_fisik) + ' ' + uom);
+                        $('#detailSelisih').text(formatDecimal(sum.selisih) + ' ' + uom);
 
                         let badge = '';
                         if (sum.status === 'lebih') {
@@ -728,11 +736,11 @@
                                         <div class="row g-2">
                                             <div class="col-md-6">
                                                 <label class="form-label small mb-1">Qty Full Pallet</label>
-                                                <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" required>
+                                                <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" step="any" required>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label small mb-1">Qty Receh</label>
-                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh}" min="0" required>
+                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh}" min="0" step="any" required>
                                             </div>
                                         </div>
                                         <button type="button" class="btn btn-danger btn-sm mt-2" onclick="deleteReportDetail(${det.id}, this)">
@@ -766,7 +774,7 @@
         // Live check for negative inputs in edit report modal
         $(document).on('input', '#editReportModal .qty_full, #editReportModal .qty_receh',
             function() {
-                if ($(this).val() !== '' && parseInt($(this).val()) < 0) {
+                if ($(this).val() !== '' && parseFloat($(this).val()) < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                     $(this).val('');
                 }
@@ -780,9 +788,9 @@
             let hasZeroBoth = false;
 
             $('#editReportItemsList .report-detail-item').each(function() {
-                const qtyFullVal = parseInt($(this).find('.qty_full')
+                const qtyFullVal = parseFloat($(this).find('.qty_full')
                     .val()) || 0;
-                const qtyRecehVal = parseInt($(this).find('.qty_receh')
+                const qtyRecehVal = parseFloat($(this).find('.qty_receh')
                     .val()) || 0;
 
                 if (qtyFullVal < 0 || qtyRecehVal < 0) {

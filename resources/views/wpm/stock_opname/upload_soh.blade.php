@@ -235,17 +235,17 @@
                             <div class="col-md-4">
                                 <label for="unrest" class="form-label fw-semibold">UNREST</label>
                                 <input type="number" class="form-control" id="unrest" name="unrest" value="0"
-                                    min="0" required>
+                                    min="0" step="any" required>
                             </div>
                             <div class="col-md-4">
                                 <label for="qi" class="form-label fw-semibold">QI</label>
                                 <input type="number" class="form-control" id="qi" name="qi" value="0"
-                                    min="0" required>
+                                    min="0" step="any" required>
                             </div>
                             <div class="col-md-4">
                                 <label for="block" class="form-label fw-semibold">BLOCKED</label>
                                 <input type="number" class="form-control" id="block" name="block" value="0"
-                                    min="0" required>
+                                    min="0" step="any" required>
                             </div>
                         </div>
                     </div>
@@ -428,7 +428,7 @@
                             const barangName = item.barang ? item.barang.nama_barang : 'N/A';
                             const barangMid = item.barang ? item.barang.mid : 'N/A';
                             const uom = item.barang ? item.barang.uom : '';
-                            const qtySoh = item.qty_soh.toLocaleString('id-ID');
+                            const qtySoh = parseFloat(item.qty_soh).toLocaleString('id-ID');
 
                             tableBody.append(`
                                 <tr>
@@ -529,7 +529,7 @@
                 <div class="p-4">
                     <div class="bg-primary bg-gradient rounded-3 p-3 mb-4 text-center shadow">
                         <h6 class="d-block mb-1 text-white text-uppercase small font-bold">Total Stock On Hand</h6>
-                        <h1 class="mb-0 fw-bold display-4 text-white">${item.qty_soh.toLocaleString('id-ID')} ${uom}</h1>
+                        <h1 class="mb-0 fw-bold display-4 text-white">${parseFloat(item.qty_soh).toLocaleString('id-ID')} ${uom}</h1>
                     </div>
                     
                     <div class="mb-4">
@@ -540,19 +540,19 @@
                             <div class="col-6">
                                 <div class="bg-light rounded-3 p-3 border">
                                     <div class="small text-muted mb-1 text-uppercase">UNREST</div>
-                                    <strong class="text-success fs-5">${item.qty_unrest.toLocaleString('id-ID')} ${uom}</strong>
+                                    <strong class="text-success fs-5">${parseFloat(item.qty_unrest).toLocaleString('id-ID')} ${uom}</strong>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="bg-light rounded-3 p-3 border">
                                     <div class="small text-muted mb-1 text-uppercase">QI</div>
-                                    <strong class="text-info fs-5">${item.qty_qi.toLocaleString('id-ID')} ${uom}</strong>
+                                    <strong class="text-info fs-5">${parseFloat(item.qty_qi).toLocaleString('id-ID')} ${uom}</strong>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="bg-light rounded-3 p-3 border">
                                     <div class="small text-muted mb-1 text-uppercase">BLOCKED</div>
-                                    <strong class="text-danger fs-5">${item.qty_block.toLocaleString('id-ID')} ${uom}</strong>
+                                    <strong class="text-danger fs-5">${parseFloat(item.qty_block).toLocaleString('id-ID')} ${uom}</strong>
                                 </div>
                             </div>
                         </div>

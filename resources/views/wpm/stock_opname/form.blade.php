@@ -193,18 +193,18 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="form-label">UNREST</label>
-                                    <input type="number" class="form-control" name="unrest" value="0" min="0"
+                                    <input type="number" class="form-control" name="unrest" value="0" min="0" step="any"
                                         required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">QI</label>
                                     <input type="number" class="form-control" name="qi" value="0"
-                                        min="0" required>
+                                        min="0" step="any" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">BLOCKED</label>
                                     <input type="number" class="form-control" name="blocked" value="0"
-                                        min="0" required>
+                                        min="0" step="any" required>
                                 </div>
                             </div>
                         </div>
@@ -215,12 +215,12 @@
                                 <div class="col-md-6">
                                     <label class="form-label">Qty Full Pallet</label>
                                     <input type="number" class="form-control" name="qty_full" value="0"
-                                        min="0" required>
+                                        min="0" step="any" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Qty Receh</label>
                                     <input type="number" class="form-control" name="qty_receh" value="0"
-                                        min="0" required>
+                                        min="0" step="any" required>
                                 </div>
                             </div>
                         </div>
@@ -258,6 +258,14 @@
 
 @section('scripts')
     <script>
+        function formatDecimal(val) {
+            if (val === null || val === undefined || val === '') return '0';
+            let num = parseFloat(val);
+            if (isNaN(num)) return '0';
+            let formatted = num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return formatted.replace(/,00$/, '');
+        }
+
         $(document).ready(function() {
             // Initialize select2 on modal elements
             $('#mid_barang').select2({
@@ -317,8 +325,8 @@
             });
 
             $('#btnSaveNewItem').on('click', function() {
-                const qtyFullVal = parseInt($('#formAddItem [name="qty_full"]').val()) || 0;
-                const qtyRecehVal = parseInt($('#formAddItem [name="qty_receh"]').val()) || 0;
+                const qtyFullVal = parseFloat($('#formAddItem [name="qty_full"]').val()) || 0;
+                const qtyRecehVal = parseFloat($('#formAddItem [name="qty_receh"]').val()) || 0;
 
                 if (qtyFullVal < 0 || qtyRecehVal < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
@@ -411,10 +419,10 @@
                                 item =>
                                 `<tr>
                                     <td class="font-monospace">${item.mid}</td>
-                                    <td class="text-end font-monospace">${item.qty_sistem.toLocaleString('id-ID')}</td>
-                                    <td class="text-end font-monospace">${item.qty_fisik.toLocaleString('id-ID')}</td>
+                                    <td class="text-end font-monospace">${formatDecimal(item.qty_sistem)}</td>
+                                    <td class="text-end font-monospace">${formatDecimal(item.qty_fisik)}</td>
                                     <td class="text-center font-monospace fw-bold ${item.selisih > 0 ? 'text-warning' : 'text-danger'}">
-                                        ${item.selisih > 0 ? '+' : ''}${item.selisih.toLocaleString('id-ID')}
+                                        ${item.selisih > 0 ? '+' : ''}${formatDecimal(item.selisih)}
                                     </td>
                                     <td>${item.keterangan ? item.keterangan : '-'}</td>
                                 </tr>`
@@ -647,14 +655,14 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <input type="number" class="form-control text-center qty-full" value="" min="0" placeholder="0">
+                                        <input type="number" class="form-control text-center qty-full" value="" min="0" step="any" placeholder="0">
                                     </td>
                                     <td class="text-center">
-                                        <input type="number" class="form-control text-center qty-receh" value="" min="0" placeholder="0">
+                                        <input type="number" class="form-control text-center qty-receh" value="" min="0" step="any" placeholder="0">
                                     </td>
-                                    <td class="text-end fw-bold physical-summary">${isCounted ? summaryVal.toLocaleString('id-ID') : '-'} ${item.uom}</td>
+                                    <td class="text-end fw-bold physical-summary">${isCounted ? formatDecimal(summaryVal) : '-'} ${item.uom}</td>
                                     <td class="text-center d-none">
-                                        <span class="badge ${badgeColor} px-2 py-1 diff-value">${isCounted ? diffVal.toLocaleString('id-ID') : '-'}</span>
+                                        <span class="badge ${badgeColor} px-2 py-1 diff-value">${isCounted ? formatDecimal(diffVal) : '-'}</span>
                                     </td>
                                     <td>
                                         <input type="text" class="form-control notes-field" value="${notesVal}" placeholder="Catatan selisih...">
@@ -716,7 +724,7 @@
                 const fullValStr = row.find('.qty-full').val();
                 const recehValStr = row.find('.qty-receh').val();
 
-                if ((fullValStr !== '' && parseInt(fullValStr) < 0) || (recehValStr !== '' && parseInt(
+                if ((fullValStr !== '' && parseFloat(fullValStr) < 0) || (recehValStr !== '' && parseFloat(
                         recehValStr) < 0)) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                     $(this).val('');
@@ -725,8 +733,8 @@
 
 
 
-                const full = parseInt(fullValStr) || 0;
-                const receh = parseInt(recehValStr) || 0;
+                const full = parseFloat(fullValStr) || 0;
+                const receh = parseFloat(recehValStr) || 0;
 
                 if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
                     toastr.warning(
@@ -738,7 +746,7 @@
 
                 // Calculate preview values
                 const physicalSummary = dbSummary + (full * qtyPallet) + receh;
-                row.find('.physical-summary').text(physicalSummary > 0 ? physicalSummary.toLocaleString('id-ID') :
+                row.find('.physical-summary').text(physicalSummary > 0 ? formatDecimal(physicalSummary) :
                     '-');
             });
 
@@ -757,8 +765,8 @@
                     return;
                 }
 
-                const full = parseInt(fullValStr) || 0;
-                const receh = parseInt(recehValStr) || 0;
+                const full = parseFloat(fullValStr) || 0;
+                const receh = parseFloat(recehValStr) || 0;
 
 
 
@@ -921,7 +929,7 @@
                                 }
                             } else {
                                 group.history.push(tempRecord);
-                                const summary = parseInt(tempRecord.summary) || 0;
+                                const summary = parseFloat(tempRecord.summary) || 0;
                                 group.total_summary += summary;
                             }
                         });
@@ -946,8 +954,7 @@
                             const row = $(`.soh-row[data-id="${sohId}"]`);
                             if (row.length) {
                                 const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
-                                row.find('.physical-summary').text(totalSummary > 0 ? totalSummary
-                                    .toLocaleString('id-ID') + ' ' + uom : '- ' + uom);
+                                row.find('.physical-summary').text(totalSummary > 0 ? formatDecimal(totalSummary) + ' ' + uom : '- ' + uom);
                                 row.attr('data-summary-db', totalSummary);
 
                                 if (latestNote) {
@@ -955,7 +962,7 @@
                                 }
 
                                 // Update indicator dot
-                                const qtySoh = parseInt(row.attr('data-qty-soh')) || 0;
+                                const qtySoh = parseFloat(row.attr('data-qty-soh')) || 0;
                                 const diff = totalSummary - qtySoh;
                                 const dot = row.find('.diff-indicator-dot');
                                 dot.removeClass('bg-secondary bg-success bg-danger bg-warning');
@@ -1013,11 +1020,11 @@
                                     <div class="row g-2">
                                         <div class="col-md-6">
                                             <label class="form-label small mb-1">Qty Full Pallet</label>
-                                            <input type="number" class="form-control qty_full" value="${item.qty_full}" min="0">
+                                            <input type="number" class="form-control qty_full" value="${item.qty_full}" min="0" step="any">
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small mb-1">Qty Receh</label>
-                                            <input type="number" class="form-control qty_receh" value="${item.qty_receh}" min="0">
+                                            <input type="number" class="form-control qty_receh" value="${item.qty_receh}" min="0" step="any">
                                         </div>
                                     </div>
                                     <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-2" data-type="qty" data-id="${item.id}">
@@ -1138,7 +1145,7 @@
         // Live check for negative inputs in edit modal
         $(document).on('input', '#editModal .qty_full, #editModal .qty_receh', function() {
             const val = $(this).val();
-            if (val !== '' && parseInt(val) < 0) {
+            if (val !== '' && parseFloat(val) < 0) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                 $(this).val('');
                 return;
@@ -1157,8 +1164,8 @@
                 const qtyReceh = $(this).find('.qty_receh').val();
                 const qtyPallet = parseFloat($(this).data('qty-pallet')) || 1;
 
-                const qtyFullVal = parseInt(qtyFull) || 0;
-                const qtyRecehVal = parseInt(qtyReceh) || 0;
+                const qtyFullVal = parseFloat(qtyFull) || 0;
+                const qtyRecehVal = parseFloat(qtyReceh) || 0;
 
                 if (qtyFullVal < 0 || qtyRecehVal < 0) {
                     hasNegative = true;

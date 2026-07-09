@@ -79,9 +79,9 @@ class WpmStockOnHandController extends Controller
     {
         $request->validate([
             'barang_id' => 'required|exists:wpm_master_barang,id',
-            'unrest' => 'nullable|integer|min:0',
-            'qi' => 'nullable|integer|min:0',
-            'block' => 'nullable|integer|min:0',
+            'unrest' => 'nullable|numeric|min:0',
+            'qi' => 'nullable|numeric|min:0',
+            'block' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -104,9 +104,9 @@ class WpmStockOnHandController extends Controller
 
             DB::beginTransaction();
 
-            $unrest = (int)($request->unrest ?? 0);
-            $qi     = (int)($request->qi ?? 0);
-            $block  = (int)($request->block ?? 0);
+            $unrest = (float)($request->unrest ?? 0);
+            $qi     = (float)($request->qi ?? 0);
+            $block  = (float)($request->block ?? 0);
             $qty_soh = $unrest + $qi + $block;
 
             $soh = WpmSohModel::updateOrCreate(
@@ -167,15 +167,15 @@ class WpmStockOnHandController extends Controller
         $soh = WpmSohModel::findOrFail($id);
 
         $request->validate([
-            'unrest' => 'nullable|integer|min:0',
-            'qi' => 'nullable|integer|min:0',
-            'block' => 'nullable|integer|min:0',
+            'unrest' => 'nullable|numeric|min:0',
+            'qi' => 'nullable|numeric|min:0',
+            'block' => 'nullable|numeric|min:0',
         ]);
 
         try {
-            $unrest = (int)($request->unrest ?? 0);
-            $qi = (int)($request->qi ?? 0);
-            $block = (int)($request->block ?? 0);
+            $unrest = (float)($request->unrest ?? 0);
+            $qi = (float)($request->qi ?? 0);
+            $block = (float)($request->block ?? 0);
             $qty_soh = $unrest + $qi + $block;
 
             $soh->update([
@@ -353,9 +353,9 @@ class WpmStockOnHandController extends Controller
                 $barang = $item['barang'];
                 $data = $item['data'];
 
-                $unrest = (int)($data['unrest'] ?? 0);
-                $qual_insp = (int)($data['qual_insp'] ?? 0);
-                $blocked = (int)($data['blocked'] ?? 0);
+                $unrest = (float)($data['unrest'] ?? 0);
+                $qual_insp = (float)($data['qual_insp'] ?? 0);
+                $blocked = (float)($data['blocked'] ?? 0);
                 $qty_soh = $unrest + $qual_insp + $blocked;
 
                 // Check if already exists for today. If so, update it, else create it.

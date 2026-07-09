@@ -28,10 +28,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('barang_id')->constrained('wpm_master_barang')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->integer('qty_soh')->default(0);
-            $table->integer('qty_unrest')->default(0);
-            $table->integer('qty_qi')->default(0);
-            $table->integer('qty_block')->default(0);
+            $table->decimal('qty_soh', 10, 2)->default(0);
+            $table->decimal('qty_unrest', 10, 2)->default(0);
+            $table->decimal('qty_qi', 10, 2)->default(0);
+            $table->decimal('qty_block', 10, 2)->default(0);
             $table->datetime('last_updated')->nullable();
             $table->timestamps();
         });
@@ -51,8 +51,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('so_id')->constrained('wpm_so')->onDelete('cascade');
             $table->foreignId('barang_id')->constrained('wpm_master_barang')->onDelete('cascade');
-            $table->integer('qty_full')->default(0);
-            $table->integer('qty_receh')->default(0);
+            $table->decimal('qty_full', 10, 2)->default(0);
+            $table->decimal('qty_receh', 10, 2)->default(0);
             $table->timestamps();
         });
 
@@ -61,9 +61,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('so_id')->constrained('wpm_so')->onDelete('cascade');
             $table->foreignId('barang_id')->constrained('wpm_master_barang')->onDelete('cascade');
-            $table->integer('qty_fisik')->default(0);
-            $table->integer('qty_sistem')->default(0);
-            $table->integer('selisih')->default(0);
+            $table->decimal('qty_fisik', 10, 2)->default(0);
+            $table->decimal('qty_sistem', 10, 2)->default(0);
+            $table->decimal('selisih', 10, 2)->default(0);
             $table->string('status')->nullable(); // 'lebih', 'kurang', 'match'
             $table->text('keterangan')->nullable();
             $table->timestamps();
@@ -76,9 +76,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('soh_id')->nullable()->constrained('wpm_soh')->onDelete('cascade');
             $table->foreignId('barang_id')->constrained('wpm_master_barang')->onDelete('cascade');
-            $table->integer('qty_full')->default(0);
-            $table->integer('qty_receh')->default(0);
-            $table->integer('summary')->default(0);
+            $table->decimal('qty_full', 10, 2)->default(0);
+            $table->decimal('qty_receh', 10, 2)->default(0);
+            $table->decimal('summary', 10, 2)->default(0);
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->date('tgl_opname');
             $table->timestamps();
