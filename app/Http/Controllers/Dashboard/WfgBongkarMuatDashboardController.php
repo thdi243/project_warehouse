@@ -310,19 +310,33 @@ class WfgBongkarMuatDashboardController extends Controller
             $totalReceh = $o->details->where('jenis', 'R')->sum('qty');
 
             $startTime = null;
-            if ($o->jam_muat) {
-                try {
-                    $now = Carbon::now();
-                    $jamMuat = Carbon::createFromFormat('H:i:s', $o->jam_muat);
-                    $jamMuat->setDate($now->year, $now->month, $now->day);
 
-                    if ($jamMuat->gt($now)) {
-                        $jamMuat->subDay();
-                    }
-                    $startTime = $jamMuat->format('Y-m-d H:i:s');
+            if ($o->tanggal && $o->jam_muat) {
+                try {
+                    $startTime = Carbon::createFromFormat(
+                        'Y-m-d H:i:s',
+                        $o->tanggal . ' ' . $o->jam_muat
+                    );
                 } catch (\Exception $e) {
                     $startTime = null;
                 }
+            }
+
+            $duration = null;
+
+            if ($startTime) {
+                $now = Carbon::now();
+
+                $diff = $startTime->diff($now);
+
+                $hours = ($diff->days * 24) + $diff->h;
+
+                $duration = sprintf(
+                    '%dj %dm %ds',
+                    $hours,
+                    $diff->i,
+                    $diff->s
+                );
             }
 
             return [
@@ -337,7 +351,7 @@ class WfgBongkarMuatDashboardController extends Controller
                 'total_receh'     => (int) $totalReceh,
                 'total_qty'       => (int) ($totalFull + $totalReceh),
                 'total_items'     => $o->details->count(),
-                'start_time'      => $startTime,
+                'start_time'      => $duration,
                 'items' => $o->details
                     ->sortByDesc('id')
                     ->map(fn($d) => [
