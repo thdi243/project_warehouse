@@ -313,30 +313,14 @@ class WfgBongkarMuatDashboardController extends Controller
 
             if ($o->tanggal && $o->jam_muat) {
                 try {
-                    $startTime = Carbon::createFromFormat(
-                        'Y-m-d H:i:s',
-                        $o->tanggal . ' ' . $o->jam_muat
-                    );
+                    $dateStr = $o->tanggal instanceof \Carbon\Carbon || $o->tanggal instanceof \DateTimeInterface
+                        ? $o->tanggal->format('Y-m-d')
+                        : $o->tanggal;
+
+                    $startTime = Carbon::parse($dateStr . ' ' . $o->jam_muat);
                 } catch (\Exception $e) {
                     $startTime = null;
                 }
-            }
-
-            $duration = null;
-
-            if ($startTime) {
-                $now = Carbon::now();
-
-                $diff = $startTime->diff($now);
-
-                $hours = ($diff->days * 24) + $diff->h;
-
-                $duration = sprintf(
-                    '%dj %dm %ds',
-                    $hours,
-                    $diff->i,
-                    $diff->s
-                );
             }
 
             return [
@@ -351,7 +335,7 @@ class WfgBongkarMuatDashboardController extends Controller
                 'total_receh'     => (int) $totalReceh,
                 'total_qty'       => (int) ($totalFull + $totalReceh),
                 'total_items'     => $o->details->count(),
-                'start_time'      => $duration,
+                'start_time'      => $startTime ? $startTime->format('Y-m-d H:i:s') : null,
                 'items' => $o->details
                     ->sortByDesc('id')
                     ->map(fn($d) => [
