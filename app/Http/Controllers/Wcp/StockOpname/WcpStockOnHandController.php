@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Wcp\StockOpname\WcpSohModel;
 use App\Models\Wcp\StockOpname\WcpSoModel;
 use App\Models\Wcp\StockOpname\WcpSoSummariesModel;
+use App\Models\Wcp\StockOpname\WcpSoStatusModel;
 use App\Models\Wcp\WcpMasterBarangModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -83,6 +84,15 @@ class WcpStockOnHandController extends Controller
             'qi' => 'nullable|integer|min:0',
             'block' => 'nullable|integer|min:0',
         ]);
+
+        $today = now()->toDateString();
+        $soStatus = WcpSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak dapat menambah data SOH karena Stock Opname hari ini telah selesai (finished).'
+            ], 422);
+        }
 
         try {
             $today = now()->toDateString();
@@ -235,8 +245,16 @@ class WcpStockOnHandController extends Controller
 
     public function resetAll()
     {
+        $today = now()->toDateString();
+        $soStatus = WcpSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak dapat mengosongkan data SOH karena Stock Opname hari ini telah selesai (finished).'
+            ], 422);
+        }
+
         try {
-            $today = now()->toDateString();
             $deleted = WcpSohModel::whereDate('created_at', $today)->delete();
 
             return response()->json([
@@ -256,6 +274,15 @@ class WcpStockOnHandController extends Controller
         $request->validate([
             'file' => 'required|mimes:xlsx,xls'
         ]);
+
+        $today = now()->toDateString();
+        $soStatus = WcpSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak dapat mengunggah file Excel karena Stock Opname hari ini telah selesai (finished).'
+            ], 422);
+        }
 
         try {
             $file = $request->file('file');

@@ -112,7 +112,7 @@ class WcpStockOpnameController extends Controller
             $note = $tempNotes->get($soh->barang_id);
 
             $isCounted = $temps && $temps->isNotEmpty();
-            $qtyFull = $isCounted ? $temps->sum('qty_full') : null;
+            $qtyFull = 0;
             $qtyReceh = $isCounted ? $temps->sum('qty_receh') : null;
             $summary = $isCounted ? $temps->sum('summary') : null;
 
@@ -134,7 +134,7 @@ class WcpStockOpnameController extends Controller
                 'qty_unrest' => $soh->qty_unrest,
                 'qty_qi' => $soh->qty_qi,
                 'qty_block' => $soh->qty_block,
-                'qty_full' => $qtyFull,
+                'qty_full' => 0,
                 'qty_receh' => $qtyReceh,
                 'summary' => $summary,
                 'catatan' => $note ? $note->catatan : null,
@@ -159,7 +159,6 @@ class WcpStockOpnameController extends Controller
 
         $request->validate([
             'soh_id' => 'required|exists:wcp_soh,id',
-            'qty_full' => 'nullable|integer|min:0',
             'qty_receh' => 'nullable|integer|min:0',
             'keterangan' => 'nullable|string|max:255'
         ]);
@@ -169,30 +168,19 @@ class WcpStockOpnameController extends Controller
         $user = Auth::user();
         $today = now()->toDateString();
 
-        $qtyFull = $request->qty_full;
         $qtyReceh = $request->qty_receh;
 
-        $hasQty = ($qtyFull !== null && $qtyFull !== '') || ($qtyReceh !== null && $qtyReceh !== '');
+        $hasQty = ($qtyReceh !== null && $qtyReceh !== '');
         $temp = null;
 
         if ($hasQty) {
-            $qtyFullVal = (int)($qtyFull ?? 0);
             $qtyRecehVal = (int)($qtyReceh ?? 0);
-            $qtyPallet = (float)($barang->qty_pallet ?? 1);
-
-            if ($qtyRecehVal >= $qtyPallet) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => "Qty Receh ({$qtyRecehVal}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!"
-                ], 422);
-            }
-
-            $summary = ($qtyFullVal * $qtyPallet) + $qtyRecehVal;
+            $summary = $qtyRecehVal;
 
             $temp = WcpSoTempModel::create([
                 'soh_id' => $soh->id,
                 'barang_id' => $soh->barang_id,
-                'qty_full' => $qtyFullVal,
+                'qty_full' => 0,
                 'qty_receh' => $qtyRecehVal,
                 'summary' => $summary,
                 'tgl_opname' => $today,
@@ -267,7 +255,7 @@ class WcpStockOpnameController extends Controller
                     'barang_id'   => $rec->barang_id,
                     'mid'         => $barang->mid,
                     'nama_barang' => $barang->nama_barang,
-                    'qty_full'    => $rec->qty_full,
+                    'qty_full'    => 0,
                     'qty_receh'   => $rec->qty_receh,
                     'summary'     => (int) $rec->summary,
                     'mode'        => 'qty',
@@ -348,7 +336,6 @@ class WcpStockOpnameController extends Controller
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
-            'items.*.qty_full' => 'nullable|integer|min:0',
             'items.*.qty_receh' => 'nullable|integer|min:0',
             'catatan' => 'nullable|string|max:1000',
         ]);
@@ -364,17 +351,10 @@ class WcpStockOpnameController extends Controller
                 $temp = WcpSoTempModel::with('barang', 'soh')->find($it['id']);
                 if (!$temp || !$temp->barang) continue;
 
-                $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
-                $qtyPallet = (float)($temp->barang->qty_pallet ?? 1);
+                $summary = $qtyReceh;
 
-                if ($qtyReceh >= $qtyPallet) {
-                    throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid} tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!");
-                }
-
-                $summary = ($qtyFull * $qtyPallet) + $qtyReceh;
-
-                $temp->qty_full = $qtyFull;
+                $temp->qty_full = 0;
                 $temp->qty_receh = $qtyReceh;
                 $temp->summary = $summary;
                 $temp->save();
@@ -484,7 +464,6 @@ class WcpStockOpnameController extends Controller
             'unrest' => 'required|integer|min:0',
             'qi' => 'nullable|integer|min:0',
             'blocked' => 'nullable|integer|min:0',
-            'qty_full' => 'required|integer|min:0',
             'qty_receh' => 'required|integer|min:0',
         ]);
 
@@ -504,16 +483,7 @@ class WcpStockOpnameController extends Controller
             ], 422);
         }
 
-        $qtyPallet = (float)($barang->qty_pallet ?? 1);
-
-        if ((int)$request->qty_receh >= $qtyPallet) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "Qty Receh ({$request->qty_receh}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!"
-            ], 422);
-        }
-
-        $summary = ($request->qty_full * $qtyPallet) + $request->qty_receh;
+        $summary = $request->qty_receh;
 
         // Create new SOH entry for today
         $soh = WcpSohModel::updateOrCreate(
@@ -539,7 +509,7 @@ class WcpStockOpnameController extends Controller
                 'tgl_opname' => $today
             ],
             [
-                'qty_full' => $request->qty_full,
+                'qty_full' => 0,
                 'qty_receh' => $request->qty_receh,
                 'summary' => $summary,
                 'created_by' => $user->id ?? 1,
@@ -633,7 +603,7 @@ class WcpStockOpnameController extends Controller
                 'soh_id' => $first->soh_id,
                 'barang_id' => $first->barang_id,
                 'barang' => $first->barang,
-                'qty_full' => $items->sum('qty_full'),
+                'qty_full' => 0,
                 'qty_receh' => $items->sum('qty_receh'),
                 'summary' => $items->sum('summary'),
             ];
@@ -670,7 +640,7 @@ class WcpStockOpnameController extends Controller
                 'selisih' => $diff,
                 'status' => $status,
                 'keterangan' => $comment,
-                'qty_full' => $temp['qty_full'],
+                'qty_full' => 0,
                 'qty_receh' => $temp['qty_receh'],
             ];
         }
@@ -1195,7 +1165,6 @@ class WcpStockOpnameController extends Controller
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
-            'items.*.qty_full' => 'nullable|integer|min:0',
             'items.*.qty_receh' => 'nullable|integer|min:0',
             'keterangan' => 'nullable|string|max:1000'
         ]);
@@ -1217,7 +1186,6 @@ class WcpStockOpnameController extends Controller
             }
 
             $totalQtyFisik = 0;
-            $qtyPallet = $summary->barang ? $summary->barang->qty_pallet : 1;
 
             foreach ($items as $it) {
                 $detail = WcpSoDetailModel::where('id', $it['id'])
@@ -1226,21 +1194,20 @@ class WcpStockOpnameController extends Controller
 
                 if (!$detail) continue;
 
-                $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
 
-                if ($qtyFull < 0 || $qtyReceh < 0) {
+                if ($qtyReceh < 0) {
                     return response()->json([
                         'status' => 'error',
                         'message' => 'Kuantitas tidak boleh negatif/minus!'
                     ], 422);
                 }
 
-                $detail->qty_full = $qtyFull;
+                $detail->qty_full = 0;
                 $detail->qty_receh = $qtyReceh;
                 $detail->save();
 
-                $totalQtyFisik += ($qtyFull * $qtyPallet) + $qtyReceh;
+                $totalQtyFisik += $qtyReceh;
             }
 
             // Calculate new summary values
@@ -1335,10 +1302,9 @@ class WcpStockOpnameController extends Controller
                     ->where('barang_id', $summary->barang_id)
                     ->get();
 
-                $qtyPallet = $summary->barang ? $summary->barang->qty_pallet : 1;
                 $totalQtyFisik = 0;
                 foreach ($remainingDetails as $det) {
-                    $totalQtyFisik += ($det->qty_full * $qtyPallet) + $det->qty_receh;
+                    $totalQtyFisik += $det->qty_receh;
                 }
 
                 if ($remainingDetails->isEmpty()) {

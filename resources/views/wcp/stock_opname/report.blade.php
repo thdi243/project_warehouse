@@ -268,8 +268,7 @@
                                                 <tr>
                                                     <th style="width: 50px;">No</th>
                                                     <th>Waktu Input</th>
-                                                    <th>Qty Full Pallet</th>
-                                                    <th>Qty Receh</th>
+                                                    <th>Qty Fisik</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="detailInputsList">
@@ -649,7 +648,6 @@
                                     <tr>
                                         <td class="text-center fw-semibold">${idx + 1}</td>
                                         <td class="text-center">${inputTime}</td>
-                                        <td class="text-end">${det.qty_full.toLocaleString('id-ID')}</td>
                                         <td class="text-end">${det.qty_receh.toLocaleString('id-ID')}</td>
                                     </tr>
                                 `;
@@ -657,7 +655,7 @@
                         } else {
                             detailRowsHtml += `
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-2">
+                                    <td colspan="3" class="text-center text-muted py-2">
                                         <em>Tidak ada detail input fisik</em>
                                     </td>
                                 </tr>
@@ -724,12 +722,8 @@
                                             <span class="badge bg-info">Detail Qty</span>
                                         </div>
                                         <div class="row g-2">
-                                            <div class="col-md-6">
-                                                <label class="form-label small mb-1">Qty Full Pallet</label>
-                                                <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label small mb-1">Qty Receh</label>
+                                            <div class="col-md-12">
+                                                <label class="form-label small mb-1">Qty Fisik</label>
                                                 <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh}" min="0" required>
                                             </div>
                                         </div>
@@ -762,7 +756,7 @@
         };
 
         // Live check for negative inputs in edit report modal
-        $(document).on('input', '#editReportModal .qty_full, #editReportModal .qty_receh',
+        $(document).on('input', '#editReportModal .qty_receh',
             function() {
                 if ($(this).val() !== '' && parseInt($(this).val()) < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
@@ -775,20 +769,18 @@
             e.preventDefault();
             const id = $('#editReportId').val();
             let hasNegative = false;
-            let hasZeroBoth = false;
+            let hasZero = false;
 
             $('#editReportItemsList .report-detail-item').each(function() {
-                const qtyFullVal = parseInt($(this).find('.qty_full')
-                    .val()) || 0;
                 const qtyRecehVal = parseInt($(this).find('.qty_receh')
                     .val()) || 0;
 
-                if (qtyFullVal < 0 || qtyRecehVal < 0) {
+                if (qtyRecehVal < 0) {
                     hasNegative = true;
                 }
 
-                if (qtyFullVal === 0 && qtyRecehVal === 0) {
-                    hasZeroBoth = true;
+                if (qtyRecehVal === 0) {
+                    hasZero = true;
                 }
             });
 
@@ -797,10 +789,8 @@
                 return;
             }
 
-            if (hasZeroBoth) {
-                toastr.warning(
-                    'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!'
-                );
+            if (hasZero) {
+                toastr.warning('Kuantitas tidak boleh 0!');
                 return;
             }
 
