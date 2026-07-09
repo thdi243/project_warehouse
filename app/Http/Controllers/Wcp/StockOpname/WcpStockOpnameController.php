@@ -651,7 +651,8 @@ class WcpStockOpnameController extends Controller
                     'status' => 'warning',
                     'message' => 'Ada item yang belum di-opname!',
                     'uncounted' => $uncountedItems,
-                    'analysis' => $analysis
+                    'analysis' => $analysis,
+                    'issues' => $varianceIssues,
                 ]);
             }
 

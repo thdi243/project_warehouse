@@ -93,19 +93,24 @@
         .history-list-wrapper::-webkit-scrollbar {
             width: 6px;
         }
+
         .history-list-wrapper::-webkit-scrollbar-track {
             background: transparent;
         }
+
         .history-list-wrapper::-webkit-scrollbar-thumb {
             background: rgba(0, 0, 0, 0.15);
             border-radius: 4px;
         }
+
         .history-list-wrapper::-webkit-scrollbar-thumb:hover {
             background: rgba(0, 0, 0, 0.3);
         }
+
         html[data-layout-mode="dark"] .history-list-wrapper::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.15);
         }
+
         html[data-layout-mode="dark"] .history-list-wrapper::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
         }
@@ -531,19 +536,22 @@
                             let list = res.uncounted.map(item =>
                                 `<li>MID: ${item.mid} | SOH: ${item.qty_system}</li>`
                             ).join('');
+                            let listSelisih = res.issues.map(item =>
+                                `<li>MID: ${item.mid} | <span class="text-danger fw-semibold">Selisih: ${item.selisih}</span></li>`
+                            ).join('');
                             Swal.fire({
                                 title: 'Ada item belum di-opname!',
-                                html: `<div class="text-start"><p>Berikut item yang belum diisi nilainya:</p><ul>${list}</ul><p>Semua item wajib diisi sebelum submit final.</p></div>`,
+                                html: `<div class="text-start"><p>Berikut item dengan selisih:</p><div class="d-block"><ul>${listSelisih}</ul></div><p>Berikut item yang belum diisi nilainya:</p><div class="d-block"><ul>${list}</ul></div><p>Semua item wajib diisi sebelum submit final.</p></div>`,
                                 icon: 'warning'
                             });
                         } else if (res.status === 'variance_unexplained') {
                             // Variance but missing explanation
                             let list = res.issues.map(item =>
-                                `<li>MID: ${item.mid} | Selisih: ${item.selisih}</li>`
+                                `<li><span class="text-danger fw-semibold">MID: ${item.mid} | Selisih: ${item.selisih}</span></li>`
                             ).join('');
                             Swal.fire({
                                 title: 'Catatan Selisih Diperlukan!',
-                                html: `<div class="text-start"><p>Ada item dengan selisih yang belum diberikan alasan:</p><ul>${list}</ul><p>Silakan isi kolom Catatan pada baris tersebut terlebih dahulu.</p></div>`,
+                                html: `<div class="text-start"><p>Ada item dengan selisih:</p><ul>${list}</ul><p>Silakan isi kolom Catatan pada baris tersebut terlebih dahulu.</p></div>`,
                                 icon: 'warning'
                             });
                         } else {
@@ -671,7 +679,7 @@
                                     <td class="text-center">
                                         <input type="number" class="form-control text-center qty-receh" value="" min="0" placeholder="0">
                                     </td>
-                                    <td class="text-end fw-bold physical-summary">${isCounted ? summaryVal.toLocaleString('id-ID') : '-'} ${item.uom}</td>
+                                    <td class="text-end fw-bold physical-summary">${isCounted ? summaryVal.toLocaleString('id-ID') : '-'}</td>
                                     <td class="text-center d-none">
                                         <span class="badge ${badgeColor} px-2 py-1 diff-value">${isCounted ? diffVal.toLocaleString('id-ID') : '-'}</span>
                                     </td>
@@ -1062,7 +1070,8 @@
             const container = $(this).find('.history-container');
 
             if (tempData?.history?.length > 0) {
-                let historyHtml = `<div class="border rounded-3 p-3 shadow-sm history-list-wrapper"><div class="row g-2">`;
+                let historyHtml =
+                    `<div class="border rounded-3 p-3 shadow-sm history-list-wrapper"><div class="row g-2">`;
                 tempData.history.forEach((h, index) => {
                     const created = new Date(h.updated_at).toLocaleString('id-ID', {
                         dateStyle: 'medium',

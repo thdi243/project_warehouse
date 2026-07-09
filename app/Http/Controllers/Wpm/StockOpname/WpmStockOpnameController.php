@@ -664,7 +664,7 @@ class WpmStockOpnameController extends Controller
                     'message' => 'Ada item yang belum di-opname!',
                     'uncounted' => $uncountedItems,
                     'analysis' => $analysis,
-                    'soh' => $qtySystem
+                    'issues' => $varianceIssues,
                 ]);
             }
 

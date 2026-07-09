@@ -193,8 +193,8 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="form-label">UNREST</label>
-                                    <input type="number" class="form-control" name="unrest" value="0" min="0" step="any"
-                                        required>
+                                    <input type="number" class="form-control" name="unrest" value="0" min="0"
+                                        step="any" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">QI</label>
@@ -262,7 +262,10 @@
             if (val === null || val === undefined || val === '') return '0';
             let num = parseFloat(val);
             if (isNaN(num)) return '0';
-            let formatted = num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            let formatted = num.toLocaleString('id-ID', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
             return formatted.replace(/,00$/, '');
         }
 
@@ -516,9 +519,12 @@
                             let list = res.uncounted.map(item =>
                                 `<li>MID: ${item.mid} | SOH: ${item.qty_system}</li>`
                             ).join('');
+                            let listSelisih = res.issues.map(item =>
+                                `<li>MID: ${item.mid} | <span class="text-danger">Selisih: ${item.selisih}</span></li>`
+                            ).join('');
                             Swal.fire({
                                 title: 'Ada item belum di-opname!',
-                                html: `<div class="text-start"><p>Berikut item yang belum diisi nilainya:</p><ul>${list}</ul><p>Semua item wajib diisi sebelum submit final.</p></div>`,
+                                html: `<div class="text-start"><p>Berikut item dengan selisih:</p><div class="d-block"><ul>${listSelisih}</ul></div><p>Berikut item yang belum diisi nilainya:</p><ul>${list}</ul><p>Semua item wajib diisi sebelum submit final.</p></div>`,
                                 icon: 'warning'
                             });
                         } else if (res.status === 'variance_unexplained') {
@@ -954,7 +960,8 @@
                             const row = $(`.soh-row[data-id="${sohId}"]`);
                             if (row.length) {
                                 const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
-                                row.find('.physical-summary').text(totalSummary > 0 ? formatDecimal(totalSummary) + ' ' + uom : '- ' + uom);
+                                row.find('.physical-summary').text(totalSummary > 0 ? formatDecimal(
+                                    totalSummary) + ' ' + uom : '- ' + uom);
                                 row.attr('data-summary-db', totalSummary);
 
                                 if (latestNote) {

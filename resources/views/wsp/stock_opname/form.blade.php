@@ -531,9 +531,12 @@
                             let list = res.uncounted.map(item =>
                                 `<li>MID: ${item.mid} | SOH: ${item.qty_system}</li>`
                             ).join('');
+                            let listSelisih = res.issues.map(item =>
+                                `<li>MID: ${item.mid} | <span class="text-danger">Selisih: ${item.selisih} Kg</span></li>`
+                            ).join('');
                             Swal.fire({
                                 title: 'Ada item belum di-opname!',
-                                html: `<div class="text-start"><p>Berikut item yang belum diisi nilainya:</p><ul>${list}</ul><p>Semua item wajib diisi sebelum submit final.</p></div>`,
+                                html: `<div class="text-start"><p>Berikut item dengan selisih:</p><ul>${listSelisih}</ul><p>Berikut item yang belum diisi nilainya:</p><ul>${list}</ul><p>Semua item wajib diisi sebelum submit final.</p></div>`,
                                 icon: 'warning'
                             });
                         } else if (res.status === 'variance_unexplained') {
@@ -761,7 +764,7 @@
 
                 if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
                     toastr.warning(
-                    'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
+                        'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
                     row.find('.qty-full').val('');
                     row.find('.qty-receh').val('');
                     return;
@@ -1216,7 +1219,7 @@
 
             if (hasExceededAcuan) {
                 toastr.warning(
-                `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
+                    `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
                 return;
             }
 
