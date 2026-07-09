@@ -363,7 +363,11 @@ class WarehouseController extends Controller
         $barangCount = \App\Models\Wpm\WpmMasterBarangModel::count();
         $error_message = session('error');
 
-        return view('wpm.stock_opname.upload_soh', compact('barangCount', 'error_message'));
+        $today = Carbon::today()->toDateString();
+        $soStatus = \App\Models\Wpm\StockOpname\WpmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        $isFinished = $soStatus && $soStatus->status === 'finished';
+
+        return view('wpm.stock_opname.upload_soh', compact('barangCount', 'error_message', 'isFinished'));
     }
 
     public function formSOWPM()
@@ -389,7 +393,11 @@ class WarehouseController extends Controller
         $barangCount = \App\Models\Wcp\WcpMasterBarangModel::count();
         $error_message = session('error');
 
-        return view('wcp.stock_opname.upload_soh', compact('barangCount', 'error_message'));
+        $today = Carbon::today()->toDateString();
+        $soStatus = \App\Models\Wcp\StockOpname\WcpSoStatusModel::whereDate('tgl_opname', $today)->first();
+        $isFinished = $soStatus && $soStatus->status === 'finished';
+
+        return view('wcp.stock_opname.upload_soh', compact('barangCount', 'error_message', 'isFinished'));
     }
 
     public function formSOWCP()

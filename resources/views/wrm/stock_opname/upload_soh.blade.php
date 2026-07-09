@@ -120,7 +120,7 @@
                                 </form>
                             </div>
 
-                            @if ($barangCount > 0 || empty($error_message))
+                             @if ($barangCount > 0)
                                 <div class="col-lg-6 col-md-12 d-flex gap-2 justify-content-lg-end">
                                     <button class="btn btn-success px-4 w-100" data-bs-toggle="modal"
                                         data-bs-target="#uploadModal">
@@ -132,6 +132,12 @@
                                     <button class="btn btn-danger px-4 w-100" id="btnDeleteAll">
                                         <i class="mdi mdi-delete me-1"></i> Kosongkan Hari Ini
                                     </button>
+                                </div>
+                            @else
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="alert alert-warning py-2 px-3 mb-0 w-100 text-center small border-0 shadow-none">
+                                        <i class="mdi mdi-alert-circle me-1"></i> Data Master Barang kosong. Silakan isi <a href="{{ route('master.wrm.barang.index') }}" class="alert-link text-decoration-underline fw-bold">Master Barang</a> terlebih dahulu.
+                                    </div>
                                 </div>
                             @endif
                         </div>

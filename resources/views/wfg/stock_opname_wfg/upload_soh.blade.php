@@ -182,7 +182,7 @@
                                 </div>
                             @endif
 
-                            @if ($barangCount > 0 || empty($error_message))
+                             @if ($barangCount > 0)
                                 <div
                                     class="@if (Auth::user()->jabatan != 'operator') col-lg-6 @else col-lg-6 @endif col-md-4 d-flex justify-content-between">
                                     <button class="btn btn-success w-100 me-2" data-bs-toggle="modal"
@@ -196,6 +196,12 @@
                                     <button class="btn btn-danger w-100 me-2" id="btnDeleteAll">
                                         <i class="mdi mdi-refresh me-1"></i> Delete All
                                     </button>
+                                </div>
+                            @else
+                                <div class="col-lg-6 col-md-4">
+                                    <div class="alert alert-warning py-2 px-3 mb-0 w-100 text-center small border-0 shadow-none">
+                                        <i class="mdi mdi-alert-circle me-1"></i> Data Master Barang kosong. Silakan isi <a href="{{ route('master.wfg.barang.index') }}" class="alert-link text-decoration-underline fw-bold">Master Barang</a> terlebih dahulu.
+                                    </div>
                                 </div>
                             @endif
                         </div>
