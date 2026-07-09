@@ -2,43 +2,6 @@
 
 @section('styles')
     <style>
-        .select2-container--bootstrap-5 .select2-selection {
-            font-size: 0.85rem !important;
-            min-height: 38px !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-
-        .select2-container--bootstrap-5 .select2-dropdown .select2-results__options {
-            font-size: 0.85rem !important;
-            max-height: 250px !important;
-        }
-
-        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-            line-height: normal !important;
-            padding-left: 0.75rem !important;
-        }
-
-        /* Style for Multiple Select choices */
-        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
-            background-color: #0d6efd !important;
-            color: #fff !important;
-            border: none !important;
-            font-size: 0.75rem !important;
-            padding: 2px 8px !important;
-            border-radius: 4px !important;
-        }
-
-        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
-            color: #fff !important;
-            margin-right: 5px !important;
-        }
-
-        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
-            color: #ffc107 !important;
-            background-color: transparent !important;
-        }
-
         /* Soft Buttons */
         .btn-soft-info {
             background-color: rgba(53, 185, 230, 0.1);
@@ -68,11 +31,15 @@
 
         /* Custom dropdown styles */
         .custom-filter-dropdown .dropdown-toggle {
-            border: 1px solid #ced4da;
+            /* border: 1px solid #c3c3c4; */
             border-radius: 0.25rem;
             padding: 0.47rem 0.75rem;
             font-size: 0.875rem;
             box-shadow: 0 0 0 0 !important;
+            background-color: var(--vz-input-bg) !important;
+            border: 1px solid var(--vz-border-color) !important;
+            color: var(--vz-body-color) !important;
+            min-height: calc(1.5em + .94rem + 2px);
         }
 
         .custom-filter-dropdown .dropdown-menu {
@@ -199,7 +166,7 @@
                             <label class="form-label fw-semibold text-muted mb-2">No SPB</label>
                             <div class="dropdown custom-filter-dropdown" id="dropdown-no-spb">
                                 <button
-                                    class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                    class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                     type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                     aria-expanded="false">
                                     <span class="dropdown-placeholder text-muted" data-placeholder="Pilih No SPB...">Pilih
@@ -229,7 +196,7 @@
                             <label class="form-label fw-semibold text-muted mb-2">MID</label>
                             <div class="dropdown custom-filter-dropdown" id="dropdown-mid">
                                 <button
-                                    class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                    class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                     type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                     aria-expanded="false">
                                     <span class="dropdown-placeholder text-muted" data-placeholder="Pilih MID...">Pilih
@@ -277,7 +244,7 @@
                                     <label class="form-label fw-semibold text-muted mb-2">Supplier</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-supplier">
                                         <button
-                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                             type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                             aria-expanded="false">
                                             <span class="dropdown-placeholder text-muted"
@@ -308,7 +275,7 @@
                                     <label class="form-label fw-semibold text-muted mb-2">Group</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-group">
                                         <button
-                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                             type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                             aria-expanded="false">
                                             <span class="dropdown-placeholder text-muted"
@@ -339,7 +306,7 @@
                                     <label class="form-label fw-semibold text-muted mb-2">Status</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-status">
                                         <button
-                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                             type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                             aria-expanded="false">
                                             <span class="dropdown-placeholder text-muted"
@@ -398,7 +365,7 @@
                                     <label class="form-label fw-semibold text-muted mb-2">Lokasi</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-location">
                                         <button
-                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                             type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                             aria-expanded="false">
                                             <span class="dropdown-placeholder text-muted"
@@ -646,9 +613,12 @@
                 const addFilter = (key, selector) => {
                     let val;
                     const $el = $(selector);
-                    if ($el.hasClass('custom-filter-dropdown') || $el.closest('.custom-filter-dropdown').length > 0) {
-                        const dropdownId = $el.hasClass('custom-filter-dropdown') ? $el.attr('id') : $el.closest('.custom-filter-dropdown').attr('id');
-                        val = $('#' + dropdownId).data('getValues') ? $('#' + dropdownId).data('getValues')() : [];
+                    if ($el.hasClass('custom-filter-dropdown') || $el.closest('.custom-filter-dropdown')
+                        .length > 0) {
+                        const dropdownId = $el.hasClass('custom-filter-dropdown') ? $el.attr('id') : $el
+                            .closest('.custom-filter-dropdown').attr('id');
+                        val = $('#' + dropdownId).data('getValues') ? $('#' + dropdownId).data('getValues')() :
+                            [];
                     } else {
                         val = $el.val();
                     }

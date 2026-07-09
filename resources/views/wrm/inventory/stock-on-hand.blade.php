@@ -1,42 +1,42 @@
 @extends('layouts.app')
 @section('styles')
     <style>
-        .select2-container--bootstrap-5 .select2-selection {
-            font-size: 0.85rem !important;
-            min-height: 38px !important;
-            display: flex !important;
-            align-items: center !important;
-        }
+        /* .select2-container--bootstrap-5 .select2-selection {
+                                    font-size: 0.85rem !important;
+                                    min-height: 38px !important;
+                                    display: flex !important;
+                                    align-items: center !important;
+                                }
 
-        .select2-container--bootstrap-5 .select2-dropdown .select2-results__options {
-            font-size: 0.85rem !important;
-            max-height: 250px !important;
-        }
+                                .select2-container--bootstrap-5 .select2-dropdown .select2-results__options {
+                                    font-size: 0.85rem !important;
+                                    max-height: 250px !important;
+                                }
 
-        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-            line-height: normal !important;
-            padding-left: 0.75rem !important;
-        }
+                                .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+                                    line-height: normal !important;
+                                    padding-left: 0.75rem !important;
+                                } */
 
         /* Style for Multiple Select choices */
-        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
-            background-color: #0d6efd !important;
-            color: #fff !important;
-            border: none !important;
-            font-size: 0.75rem !important;
-            padding: 2px 8px !important;
-            border-radius: 4px !important;
-        }
+        /* .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+                                    background-color: #0d6efd !important;
+                                    color: #fff !important;
+                                    border: none !important;
+                                    font-size: 0.75rem !important;
+                                    padding: 2px 8px !important;
+                                    border-radius: 4px !important;
+                                }
 
-        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
-            color: #fff !important;
-            margin-right: 5px !important;
-        }
+                                .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+                                    color: #fff !important;
+                                    margin-right: 5px !important;
+                                }
 
-        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
-            color: #ffc107 !important;
-            background-color: transparent !important;
-        }
+                                .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+                                    color: #ffc107 !important;
+                                    background-color: transparent !important;
+                                } */
 
         /* Modern Checkbox Style */
         .checkbox-xl {
@@ -135,11 +135,15 @@
 
         /* Custom dropdown styles */
         .custom-filter-dropdown .dropdown-toggle {
-            border: 1px solid #ced4da;
-            border-radius: 0.25rem;
+            /* border: 1px solid #ced4da;
+                        border-radius: 0.25rem; */
             padding: 0.47rem 0.75rem;
             font-size: 0.875rem;
             box-shadow: 0 0 0 0 !important;
+            background-color: var(--vz-input-bg) !important;
+            border: 1px solid var(--vz-border-color) !important;
+            color: var(--vz-body-color) !important;
+            min-height: calc(1.5em + .94rem + 2px);
         }
 
         .custom-filter-dropdown .dropdown-menu {
@@ -269,7 +273,7 @@
                             <label class="form-label fw-semibold text-muted mb-2">No SPB</label>
                             <div class="dropdown custom-filter-dropdown" id="dropdown-no-spb">
                                 <button
-                                    class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                    class="btn dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                     type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                     aria-expanded="false">
                                     <span class="dropdown-placeholder text-muted" data-placeholder="Pilih No SPB...">Pilih
@@ -300,7 +304,7 @@
                             <label class="form-label fw-semibold text-muted mb-2">MID</label>
                             <div class="dropdown custom-filter-dropdown" id="dropdown-mid">
                                 <button
-                                    class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                    class="btn dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                     type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                     aria-expanded="false">
                                     <span class="dropdown-placeholder text-muted" data-placeholder="Pilih MID...">Pilih
@@ -353,7 +357,7 @@
                                     <label class="form-label fw-semibold text-muted mb-2">Supplier</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-supplier">
                                         <button
-                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            class="btn dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                             type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                             aria-expanded="false">
                                             <span class="dropdown-placeholder text-muted"
@@ -384,7 +388,7 @@
                                     <label class="form-label fw-semibold text-muted mb-2">Group</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-group">
                                         <button
-                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            class="btn dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                             type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                             aria-expanded="false">
                                             <span class="dropdown-placeholder text-muted"
@@ -415,7 +419,7 @@
                                     <label class="form-label fw-semibold text-muted mb-2">Status</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-status">
                                         <button
-                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            class="btn form-control dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                             type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                             aria-expanded="false">
                                             <span class="dropdown-placeholder text-muted"
@@ -467,7 +471,7 @@
                                     <label class="form-label fw-semibold text-muted mb-2">Lokasi</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-location">
                                         <button
-                                            class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                            class="btn dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                             type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                             aria-expanded="false">
                                             <span class="dropdown-placeholder text-muted"
@@ -570,7 +574,7 @@
                                                     class="mdi mdi-delete-outline me-2"></i>Delete Selected</a></li>
                                     </ul>
                                 </div>
-                                <button class="btn btn-outline-secondary" id="clearSelection">
+                                <button class="btn" id="clearSelection">
                                     <i class="mdi mdi-close"></i> Clear
                                 </button>
                             </div>
@@ -765,14 +769,20 @@
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label fw-semibold mb-0">Pilih MID yang ingin di-export</label>
                                 <div class="d-flex gap-2">
-                                    <button type="button" id="btnSelectAllMids" class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold">Select All</button>
-                                    <button type="button" id="btnClearAllMids" class="btn btn-link btn-sm p-0 text-danger text-decoration-none fw-semibold">Clear All</button>
+                                    <button type="button" id="btnSelectAllMids"
+                                        class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold">Select
+                                        All</button>
+                                    <button type="button" id="btnClearAllMids"
+                                        class="btn btn-link btn-sm p-0 text-danger text-decoration-none fw-semibold">Clear
+                                        All</button>
                                 </div>
                             </div>
                             <div class="mb-2">
-                                <input type="text" class="form-control form-control-sm" id="searchExportMids" placeholder="Cari MID...">
+                                <input type="text" class="form-control form-control-sm" id="searchExportMids"
+                                    placeholder="Cari MID...">
                             </div>
-                            <div id="exportMidsList" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px; background-color: #f8f9fa;">
+                            <div id="exportMidsList"
+                                style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px; background-color: #f8f9fa;">
                                 <!-- Dynamically populated checkboxes -->
                             </div>
                             <div class="form-text">Biarkan kosong untuk mengekspor seluruh MID.</div>
@@ -815,7 +825,8 @@
             // Helper function for both exports
             function setupExportModal(actionUrl, modalTitle) {
                 $('#exportExcelForm').attr('action', actionUrl);
-                $('#exportExcelModalLabel').html('<i class="mdi mdi-file-excel me-1 text-success"></i> ' + modalTitle);
+                $('#exportExcelModalLabel').html('<i class="mdi mdi-file-excel me-1 text-success"></i> ' +
+                    modalTitle);
 
                 // Copy filter values from page to hidden inputs
                 const getFilterVal = (sel) => {
@@ -891,7 +902,8 @@
             });
 
             $('#btnSelectAllMids').click(function() {
-                $('#exportMidsList .export-mid-item:not(.d-none) .export-mid-checkbox').prop('checked', true);
+                $('#exportMidsList .export-mid-item:not(.d-none) .export-mid-checkbox').prop('checked',
+                    true);
             });
 
             $('#btnClearAllMids').click(function() {

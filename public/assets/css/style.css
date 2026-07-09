@@ -2,7 +2,7 @@
     --vz-vertical-menu-bg: #fff;
     --vz-vertical-menu-item-color: #4b38b3;
     --vz-vertical-menu-item-hover-color: #4b38b3;
-    --vz-vertical-menu-item-active-color: #4b38b3;        
+    --vz-vertical-menu-item-active-color: #4b38b3;
     --vz-vertical-menu-sub-item-color: #7c7f90;
     --vz-vertical-menu-sub-item-hover-color: #4b38b3;
     --vz-vertical-menu-sub-item-active-color: #4b38b3;
@@ -104,4 +104,48 @@ a.nav-link.menu-link,
 
 [data-layout=vertical][data-sidebar-size=sm] .navbar-menu .navbar-nav .nav-item:hover>a.menu-link {
     color: #4b38b3;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: transparent !important;
+    border-color: #ced4da;
+    /* sesuaikan */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    background-color: transparent;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    background-color: transparent;
+}
+
+.select2-container--default .select2-selection--multiple {
+    background-color: transparent !important;
+    border-color: #ced4da;
+}
+
+/* Bootstrap 5 Theme */
+.select2-container--bootstrap-5 .select2-selection {
+    background-color: var(--vz-input-bg) !important;
+    border: 1px solid var(--vz-input-border-custom, var(--vz-border-color)) !important;
+    color: var(--vz-body-color) !important;
+    min-height: calc(1.5em + .94rem + 2px);
+}
+
+.select2-container--bootstrap-5 .select2-selection__rendered {
+    color: var(--vz-body-color) !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection__placeholder {
+    color: var(--vz-secondary-color) !important;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    background-color: var(--vz-input-bg) !important;
+    border: 1px solid var(--vz-input-border-custom, var(--vz-border-color)) !important;
+}
+
+.select2-container--bootstrap-5 .select2-results__option {
+    color: var(--vz-body-color) !important;
 }
