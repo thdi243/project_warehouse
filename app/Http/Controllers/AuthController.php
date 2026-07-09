@@ -43,8 +43,17 @@ class AuthController extends Controller
             $field => $login,
             'password' => $password
         ])) {
-            $request->session()->regenerate();
             $user = Auth::user();
+
+            if (!$user->is_active) {
+                Auth::logout();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.',
+                ], 403);
+            }
+
+            $request->session()->regenerate();
 
             $imageUrl = $user->image && url(Storage::disk('public')->exists($user->image))
                 ? url(Storage::url($user->image)) // -> /storage/...

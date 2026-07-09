@@ -754,6 +754,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/statistik', [UserController::class, 'statisktik'])->name('user.statistik');
                 Route::get('/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
                 Route::put('/update/{id}', [UserController::class, 'update'])->name('user.update');
+                Route::patch('/toggle-status/{id}', [UserController::class, 'toggleStatus'])->name('user.toggle-status');
             });
         });
     });

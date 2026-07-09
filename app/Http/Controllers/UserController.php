@@ -57,7 +57,7 @@ class UserController extends Controller
     public function create()
     {
         try {
-            $data = User::select('id', 'nama_lengkap', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image')->get();
+            $data = User::select('id', 'nama_lengkap', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image', 'is_active')->get();
 
             $data = $data->map(function ($user) {
                 $imageName = trim($user->image ?? '', '/');
@@ -445,5 +445,33 @@ class UserController extends Controller
                 'message' => 'Gagal menghapus data: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function toggleStatus($id)
+    {
+        $user = User::findOrFail($id);
+
+        if (!$this->canModify(Auth::user(), $user)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Anda tidak memiliki izin.',
+            ], 403);
+        }
+
+        if ($user->id === Auth::id()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Anda tidak dapat menonaktifkan akun Anda sendiri.',
+            ], 400);
+        }
+
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Status user berhasil diperbarui.',
+            'is_active' => $user->is_active
+        ]);
     }
 }

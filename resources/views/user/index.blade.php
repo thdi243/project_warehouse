@@ -736,17 +736,28 @@
                                             <img src="${imgSrc}" class="card-img-top rounded-top img-fixed user-img" 
                                                 alt="foto ${user.nama_lengkap || user.username}" style="height:200px; object-fit:cover;">
                                             <div class="card-body">
-                                                <h4 class="card-title text-capitalize username">${user.nama_lengkap || user.username}</h4>
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <h4 class="card-title text-capitalize username mb-0">${user.nama_lengkap || user.username}</h4>
+                                                    <span class="badge ${user.is_active ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1 fs-8 status-badge">
+                                                        ${user.is_active ? 'Aktif' : 'Nonaktif'}
+                                                    </span>
+                                                </div>
                                                 <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7 jabatan">${user.jabatan}</span>
                                                 <p class="card-text text-muted mb-1 email"><i class="bi bi-envelope"></i> ${user.email}</p>
                                                 <p class="card-text text-muted mb-1 nik"><i class="bi bi-telephone"></i> ${user.nik}</p>
                                                 <p class="card-text text-muted mb-1 bagian"><i class="bi bi-building"></i> ${bagianFormatted}</p>
                                             </div>
-                                            <div class="card-footer border-0 d-flex justify-content-between">
-                                                <button class="btn btn-outline-primary btn-sm editBtn ${btnClassDisabled}" 
-                                                    data-id="${user.id}" ${editDisabled}>Edit</button>
-                                                <button class="btn btn-outline-danger btn-sm deleteBtn ${btnClassDisabled}" 
-                                                    data-id="${user.id}" ${deleteDisabled}>Delete</button>
+                                            <div class="card-footer border-0 d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <button class="btn btn-outline-primary btn-sm editBtn ${btnClassDisabled}" 
+                                                        data-id="${user.id}" ${editDisabled}>Edit</button>
+                                                    <button class="btn btn-outline-danger btn-sm deleteBtn ${btnClassDisabled}" 
+                                                        data-id="${user.id}" ${deleteDisabled}>Delete</button>
+                                                </div>
+                                                <div class="form-check form-switch ms-2" title="Aktif/Nonaktifkan User">
+                                                    <input class="form-check-input statusToggle" type="checkbox" role="switch" 
+                                                        data-id="${user.id}" ${user.is_active ? 'checked' : ''} ${canModify && parseInt(user.id) !== parseInt(currentUserId) ? '' : 'disabled'}>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -796,6 +807,7 @@
                                                         <th>User Data</th>
                                                         <th>NIK</th>
                                                         <th>Jabatan & Bagian</th>
+                                                        <th class="text-center" style="width: 100px;">Status</th>
                                                         <th class="text-center" style="width: 120px;">Aksi</th>
                                                     </tr>
                                                 </thead>
@@ -865,6 +877,17 @@
                                     <td>
                                         <div class="mb-1"><span class="badge ${badgeClass} px-2 py-1 fs-8 text-capitalize jabatan">${(user.jabatan || "-").replace(/_/g, " ")}</span></div>
                                         <div class="text-muted small bagian"><i class="bi bi-building me-1"></i>${bagianFormatted}</div>
+                                    </td>
+                                    <td class="text-center">
+                                         <div class="d-flex flex-column align-items-center">
+                                             <span class="badge ${user.is_active ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1 fs-8 mb-1 status-badge">
+                                                 ${user.is_active ? 'Aktif' : 'Nonaktif'}
+                                             </span>
+                                             <div class="form-check form-switch">
+                                                 <input class="form-check-input statusToggle" type="checkbox" role="switch" 
+                                                     data-id="${user.id}" ${user.is_active ? 'checked' : ''} ${canModify && parseInt(user.id) !== parseInt(currentUserId) ? '' : 'disabled'}>
+                                             </div>
+                                         </div>
                                     </td>
                                     <td class="text-center">
                                         <button type="button" class="btn btn-sm btn-outline-primary editBtn ${btnClassDisabled}" data-id="${user.id}" ${editDisabled}>
@@ -1017,6 +1040,71 @@
                                     'There was an error deleting the data.',
                                     'error'
                                 );
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Toggle User Status
+            $(document).on('change', '.statusToggle', function() {
+                const switchInput = $(this);
+                const userId = switchInput.data('id');
+                const isChecked = switchInput.is(':checked');
+                
+                // Temporary revert state visually until confirmed
+                switchInput.prop('checked', !isChecked);
+
+                Swal.fire({
+                    title: isChecked ? 'Aktifkan User?' : 'Nonaktifkan User?',
+                    text: isChecked 
+                        ? 'User akan dapat login kembali ke sistem.' 
+                        : 'User tidak akan bisa login ke dalam sistem.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: isChecked ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: isChecked ? '#3085d6' : '#d33',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `/master/user/toggle-status/${userId}`,
+                            method: 'PATCH',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            success: function(response) {
+                                if (response.ok) {
+                                    switchInput.prop('checked', response.is_active);
+                                    
+                                    // Update status badge
+                                    const cardContainer = switchInput.closest('.team-card');
+                                    const badge = cardContainer.find('.status-badge');
+                                    if (response.is_active) {
+                                        badge.removeClass('bg-danger-subtle text-danger')
+                                             .addClass('bg-success-subtle text-success')
+                                             .text('Aktif');
+                                    } else {
+                                        badge.removeClass('bg-success-subtle text-success')
+                                             .addClass('bg-danger-subtle text-danger')
+                                             .text('Nonaktif');
+                                    }
+                                    
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Berhasil!',
+                                        text: response.message,
+                                        timer: 1200,
+                                        showConfirmButton: false
+                                    });
+                                } else {
+                                    Swal.fire('Gagal!', response.message || 'Gagal mengubah status.', 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                console.error("Error toggling status:", xhr);
+                                const errorMsg = xhr.responseJSON?.message || 'Terjadi kesalahan pada server.';
+                                Swal.fire('Error!', errorMsg, 'error');
                             }
                         });
                     }

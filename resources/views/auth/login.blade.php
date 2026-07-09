@@ -179,13 +179,14 @@
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Unauthorized!',
-                                    text: 'Username atau password salah.'
+                                    text: xhr.responseJSON.message ||
+                                        'Username atau password salah.'
                                 });
                             } else if (xhr.status === 403) {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Akses Ditolak!',
-                                    text: 'Jabatan tidak dikenali.'
+                                    text: xhr.responseJSON.message
                                 });
                             } else {
                                 Swal.fire({
