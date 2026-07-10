@@ -555,12 +555,6 @@
                                 </div>
                             </div>
 
-                            {{-- Dynamic MID Legend --}}
-                            <div id="midLegendContainer" class="d-flex flex-wrap gap-2 mb-4 p-3 rounded-3 bg-light"
-                                style="border:1px solid #e2e8f0; display:none;">
-                                <!-- populated by JS -->
-                            </div>
-
                             {{-- Grid Container --}}
                             <div id="locationMapContainer" class="p-2">
                                 <div class="text-center text-muted py-5">
@@ -1122,11 +1116,39 @@
                         // Render Gudang and Zonas
                         let html = '';
                         for (const [gudangKey, zonas] of Object.entries(byGudang)) {
+                            // Gather all unique MIDs for this specific Gudang
+                            const gudangMids = {};
+                            for (const zInfo of Object.values(zonas)) {
+                                zInfo.mids.forEach(mid => {
+                                    if (usedMids[mid]) {
+                                        gudangMids[mid] = usedMids[mid];
+                                    }
+                                });
+                            }
+
+                            // Generate legend HTML for this specific Gudang
+                            let legendHtml = '';
+                            const midEntries = Object.entries(gudangMids);
+                            if (midEntries.length > 0) {
+                                legendHtml = `<div class="d-flex flex-wrap gap-2 mb-3 p-2 rounded-3 bg-light border align-items-center">
+                                    <b class="small text-muted me-2 align-self-center">Item Legend:</b>`;
+                                for (const [mid, info] of midEntries) {
+                                    legendHtml += `
+                                        <div class="d-flex align-items-center px-2 py-1 rounded shadow-sm border bg-white" style="font-size:11px;">
+                                            <div style="width:12px;height:12px;background-color:${info.color};border-radius:3px;margin-right:6px;"></div>
+                                            <span class="fw-semibold">${mid}</span><span class="text-muted ms-1 d-none d-sm-inline">- ${info.name}</span>
+                                        </div>
+                                    `;
+                                }
+                                legendHtml += `</div>`;
+                            }
+
                             html += `<div class="mb-5">
                                     <div class="d-flex align-items-center gap-2 mb-3">
                                         <h6 class="mb-0 fw-bold"><i class="bx bx-buildings text-primary me-2"></i>${gudangKey}</h6>
                                         <div class="flex-grow-1 border-bottom border-dashed border-secondary opacity-25"></div>
                                     </div>
+                                    ${legendHtml}
                                     <div class="d-flex flex-wrap gap-3">`;
 
                             // Render each Zona as a box
@@ -1160,23 +1182,6 @@
 
                             html += `   </div>
                                  </div>`;
-                        }
-
-                        // Render Legend
-                        if (Object.keys(usedMids).length > 0) {
-                            let legendHtml =
-                                '<b class="small text-muted me-2 align-self-center">Item Legend:</b> ';
-                            for (const [mid, info] of Object.entries(usedMids)) {
-                                legendHtml += `
-                                <div class="d-flex align-items-center px-2 py-1 rounded shadow-sm border" style="font-size:11px;">
-                                    <div style="width:12px;height:12px;background-color:${info.color};border-radius:3px;margin-right:6px;"></div>
-                                    <span class="fw-semibold">${mid}</span><span class="text-muted ms-1 d-none d-sm-inline">- ${info.name}</span>
-                                </div>
-                            `;
-                            }
-                            $('#midLegendContainer').html(legendHtml).fadeIn('fast');
-                        } else {
-                            $('#midLegendContainer').hide();
                         }
 
                         $container.html(html);
