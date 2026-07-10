@@ -354,8 +354,10 @@
             if (val === null || val === undefined || val === '') return '0';
             let num = parseFloat(val);
             if (isNaN(num)) return '0';
-            let formatted = num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            return formatted.replace(/,00$/, '');
+            return num.toLocaleString('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            });
         }
 
         $(document).ready(function() {
@@ -736,11 +738,11 @@
                                         <div class="row g-2">
                                             <div class="col-md-6">
                                                 <label class="form-label small mb-1">Qty Full Pallet</label>
-                                                <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" step="any" required>
+                                                <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full !== null ? parseFloat(det.qty_full) : ''}" min="0" step="any" required>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label small mb-1">Qty Receh</label>
-                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh}" min="0" step="any" required>
+                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh !== null ? parseFloat(det.qty_receh) : ''}" min="0" step="any" required>
                                             </div>
                                         </div>
                                         <button type="button" class="btn btn-danger btn-sm mt-2" onclick="deleteReportDetail(${det.id}, this)">

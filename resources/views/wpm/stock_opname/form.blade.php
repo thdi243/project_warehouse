@@ -262,11 +262,10 @@
             if (val === null || val === undefined || val === '') return '0';
             let num = parseFloat(val);
             if (isNaN(num)) return '0';
-            let formatted = num.toLocaleString('id-ID', {
-                minimumFractionDigits: 2,
+            return num.toLocaleString('id-ID', {
+                minimumFractionDigits: 0,
                 maximumFractionDigits: 2
             });
-            return formatted.replace(/,00$/, '');
         }
 
         $(document).ready(function() {
@@ -1027,11 +1026,11 @@
                                     <div class="row g-2">
                                         <div class="col-md-6">
                                             <label class="form-label small mb-1">Qty Full Pallet</label>
-                                            <input type="number" class="form-control qty_full" value="${item.qty_full}" min="0" step="any">
+                                            <input type="number" class="form-control qty_full" value="${item.qty_full !== null ? parseFloat(item.qty_full) : ''}" min="0" step="any">
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small mb-1">Qty Receh</label>
-                                            <input type="number" class="form-control qty_receh" value="${item.qty_receh}" min="0" step="any">
+                                            <input type="number" class="form-control qty_receh" value="${item.qty_receh !== null ? parseFloat(item.qty_receh) : ''}" min="0" step="any">
                                         </div>
                                     </div>
                                     <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-2" data-type="qty" data-id="${item.id}">
@@ -1086,7 +1085,7 @@
                         <div class="col-md-3">
                             <div class="p-2 border border-info rounded h-100 bg-light fade show history-card">
                                 <div class="fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center">
-                                    <span>Full: ${h.qty_full}, Receh: ${h.qty_receh}</span>
+                                    <span>Full: ${h.qty_full !== null ? formatDecimal(h.qty_full) : '-'}, Receh: ${h.qty_receh !== null ? formatDecimal(h.qty_receh) : '-'}</span>
                                     <span class="badge bg-info">${index + 1}</span>
                                 </div>
                                 <div class="text-muted small">

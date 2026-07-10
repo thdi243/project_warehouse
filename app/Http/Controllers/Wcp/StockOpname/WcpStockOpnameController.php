@@ -616,14 +616,14 @@ class WcpStockOpnameController extends Controller
             $soh = $sohData->get($temp['barang_id']);
             $qtySystem = $soh ? $soh->qty_soh : 0;
             $qtyPhysical = $temp['summary'];
-            $diff = $qtyPhysical - $qtySystem;
+            $diff = round($qtyPhysical - $qtySystem, 4);
 
             // Resolve comment from temp notes or manual request input
             $comment = $request->input('keterangan.' . $temp['soh_id']) ?? $tempNotes->get($temp['soh_id']);
 
             $status = $diff > 0 ? 'lebih' : ($diff < 0 ? 'kurang' : 'match');
 
-            if ($diff !== 0 && empty($comment)) {
+            if ($diff != 0 && empty($comment)) {
                 $varianceIssues[] = [
                     'mid' => $temp['barang']->mid,
                     'selisih' => $diff,

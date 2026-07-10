@@ -114,10 +114,10 @@ class WpmStockOnHandController extends Controller
 
             DB::beginTransaction();
 
-            $unrest = (float)($request->unrest ?? 0);
-            $qi     = (float)($request->qi ?? 0);
-            $block  = (float)($request->block ?? 0);
-            $qty_soh = $unrest + $qi + $block;
+            $unrest = round((float)($request->unrest ?? 0), 2);
+            $qi     = round((float)($request->qi ?? 0), 2);
+            $block  = round((float)($request->block ?? 0), 2);
+            $qty_soh = round($unrest + $qi + $block, 2);
 
             $soh = WpmSohModel::updateOrCreate(
                 [
@@ -182,10 +182,10 @@ class WpmStockOnHandController extends Controller
         ]);
 
         try {
-            $unrest = (float)($request->unrest ?? 0);
-            $qi = (float)($request->qi ?? 0);
-            $block = (float)($request->block ?? 0);
-            $qty_soh = $unrest + $qi + $block;
+            $unrest = round((float)($request->unrest ?? 0), 2);
+            $qi = round((float)($request->qi ?? 0), 2);
+            $block = round((float)($request->block ?? 0), 2);
+            $qty_soh = round($unrest + $qi + $block, 2);
 
             $soh->update([
                 'qty_soh' => $qty_soh,
@@ -379,10 +379,10 @@ class WpmStockOnHandController extends Controller
                 $barang = $item['barang'];
                 $data = $item['data'];
 
-                $unrest = (float)($data['unrest'] ?? 0);
-                $qual_insp = (float)($data['qual_insp'] ?? 0);
-                $blocked = (float)($data['blocked'] ?? 0);
-                $qty_soh = $unrest + $qual_insp + $blocked;
+                $unrest = round((float)($data['unrest'] ?? 0), 2);
+                $qual_insp = round((float)($data['qual_insp'] ?? 0), 2);
+                $blocked = round((float)($data['blocked'] ?? 0), 2);
+                $qty_soh = round($unrest + $qual_insp + $blocked, 2);
 
                 // Check if already exists for today. If so, update it, else create it.
                 $soh = WpmSohModel::updateOrCreate(
