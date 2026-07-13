@@ -8,7 +8,7 @@ use App\Models\NotificationsModel;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Events\ShowPortalNotification;
-use App\Models\Wfg\stock_opname\BarangWfgModel;
+use App\Models\Wfg\BarangWfgModel;
 use App\Models\Wfg\stock_opname\WfgSopApprovalModel;
 
 class NotificationController extends Controller
