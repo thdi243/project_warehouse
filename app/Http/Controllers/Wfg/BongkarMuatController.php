@@ -12,8 +12,8 @@ use App\Models\Wfg\BongkarMuat;
 use App\Models\Wfg\BongkarMuatDetail;
 use App\Models\Wfg\MasterDestinasi;
 use App\Models\Wrm\Inventory\StockOnHand;
-// use Barryvdh\DomPDF\Facade\Pdf;
-use Barryvdh\DomPDF\PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
+// use Barryvdh\DomPDF\PDF;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -952,7 +952,7 @@ class BongkarMuatController extends Controller
             }
         }
 
-        $pdf = PDF::loadView('pdf.wfg_bongkar_muat', compact('order', 'totalFullPallet', 'totalReceh', 'summarySMU', 'summaryBAS'));
+        $pdf = Pdf::loadView('pdf.wfg_bongkar_muat', compact('order', 'totalFullPallet', 'totalReceh', 'summarySMU', 'summaryBAS'));
 
         $filename = preg_replace('/[\/\\\\]/', '-', $order->no_dokumen) . '.pdf';
 
