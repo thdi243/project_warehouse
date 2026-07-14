@@ -768,6 +768,7 @@ class WspPurchaseRequesitionController extends Controller
         // Dept Head User
         $deptHead = User::where('departemen', $approvalDept)
             ->where('jabatan', 'dept_head')
+            ->where('is_active', true)
             ->first();
 
         if (!$deptHead) {
@@ -780,6 +781,7 @@ class WspPurchaseRequesitionController extends Controller
         // Dept Head Warehouse
         $warehouseHead = User::where('departemen', 'warehouse')
             ->where('jabatan', 'dept_head')
+            ->where('is_active', true)
             ->first();
 
         if (!$warehouseHead) {
@@ -792,6 +794,7 @@ class WspPurchaseRequesitionController extends Controller
         // Foreman WSP
         $foreman = User::where('jabatan', 'foreman')
             ->where('bagian', 'warehouse_sparepart')
+            ->where('is_active', true)
             ->first();
 
         if (!$foreman) {
