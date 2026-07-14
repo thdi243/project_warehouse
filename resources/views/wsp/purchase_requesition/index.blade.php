@@ -642,6 +642,15 @@
                                             <i class="mdi mdi-content-copy"></i> Copy
                                         </button>
 
+                                        <!-- Copy Keterangan PR -->
+                                        <button 
+                                            class="btn btn-success btn-sm"
+                                            onclick="copyKeteranganPR(${pr.id})"
+                                            title="Copy Keterangan PR"
+                                        >
+                                            <i class="mdi mdi-content-copy"></i> Copy Keterangan
+                                        </button>
+
                                     @endcan
                                 </div>
                             </td>
@@ -1101,6 +1110,28 @@
                         timer: 1500
                     });
                 }
+            }
+
+            window.copyKeteranganPR = function(prId) {
+                const pr = allPR.find(p => p.id === prId);
+                if (!pr) return;
+
+                const prItems = pr.items.filter(item =>
+                    item.jenis === 'pr' && item.keterangan && item.keterangan.trim() !== ''
+                );
+
+                if (prItems.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Tidak Ada Keterangan',
+                        text: 'Tidak ada item jenis PR yang memiliki keterangan',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+
+                const textToCopy = prItems.map(item => item.keterangan.trim()).join('\n');
+                window.copyToClipboard(textToCopy);
             }
         });
     </script>
