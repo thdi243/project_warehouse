@@ -749,8 +749,11 @@ class WspPurchaseRequesitionController extends Controller
     {
         $requestedName = strtolower(trim($pr->requested_by));
 
-        $user = User::whereRaw('LOWER(nama_lengkap) LIKE ?', ["%{$requestedName}%"])
-            ->orWhereRaw('? LIKE CONCAT("%", LOWER(nama_lengkap), "%")', [$requestedName])
+        $user = User::where('is_active', true)
+            ->where(function ($q) use ($requestedName) {
+                $q->whereRaw('LOWER(nama_lengkap) LIKE ?', ["%{$requestedName}%"])
+                    ->orWhereRaw('? LIKE CONCAT("%", LOWER(nama_lengkap), "%")', [$requestedName]);
+            })
             ->first();
 
         $userId = $user->id ?? $pr->user_id;
@@ -1174,7 +1177,7 @@ class WspPurchaseRequesitionController extends Controller
         if (!$approval->approver_id) return;
 
         $user = User::find($approval->approver_id);
-        if (!$user) return;
+        if (!$user || !$user->is_active) return;
 
         $url = "/purchase-requesition/approval";
 
