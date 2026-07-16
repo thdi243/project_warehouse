@@ -218,7 +218,7 @@
                                         <option value="supervisor">Supervisor</option>
                                         <option value="operator">Operator</option>
                                         @if (Auth::user()->jabatan == 'admin')
-                                            <option value="FM">Factory Manager</option>
+                                            <option value="fm">Factory Manager</option>
                                             <option value="admin">Admin</option>
                                         @endif
                                     </select>
@@ -367,7 +367,7 @@
                                         <option value="foreman">Foreman</option>
                                         <option value="operator">Operator</option>
                                         @if (Auth::user()->jabatan == 'admin')
-                                            <option value="FM">Factory Manager</option>
+                                            <option value="fm">Factory Manager</option>
                                             <option value="admin">Admin</option>
                                         @endif
                                     </select>
@@ -416,7 +416,7 @@
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
                                         @if (Auth::user()->jabatan == 'admin')
-                                            <option value="fm">Factory Manager</option>
+                                            <option value="FM">Factory Manager</option>
                                             <option value="IT">ITE</option>
                                         @endif
                                     </select>

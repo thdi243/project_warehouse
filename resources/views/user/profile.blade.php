@@ -186,7 +186,7 @@
                                         <option value="operator">Operator</option>
                                         @if (Auth::user()->jabatan === 'admin')
                                             <option value="admin">Admin</option>
-                                            <option value="FM">Factory Manager</option>
+                                            <option value="fm">Factory Manager</option>
                                         @endif
                                     </select>
                                 </div>
