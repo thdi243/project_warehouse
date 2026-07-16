@@ -86,7 +86,7 @@ export default function Topbar() {
                             alt="Logo"
                             className="h-12 w-auto"
                         />
-                        <span className="font-semibold text-lg">WMS</span>
+                        <span className="font-semibold text-lg">DWM</span>
                     </a>
                 </div>
                 <div className="flex items-center gap-1">

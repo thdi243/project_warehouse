@@ -172,7 +172,7 @@ export default function ApprovalPR() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
                     <Info label="Pengaju" value={pr.requested_by} />
-                    <Info label="Departemen" value={pr.department} />
+                    <Info label="Departemen" value={(pr.department || "").replace(/_/g, " ").toUpperCase()} />
                     <Info label="Tanggal PR" value={pr.pr_date} />
                     <Info label="Jenis" value={pr.jenis} />
                     <Info label="No IO" value={pr.no_io || "-"} />

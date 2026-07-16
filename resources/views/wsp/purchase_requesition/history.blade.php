@@ -52,8 +52,7 @@
                     <div class="alert alert-info py-2 px-3 w-100" role="alert">
                         <small>
                             <i class="ri-information-line me-1"></i>
-                            Klik badge status untuk melihat tracking approval PR. Gunakan tombol Form PR untuk pengajuan
-                            baru.
+                            Klik <b>Status Approved</b> untuk melihat tracking approval PR
                         </small>
                     </div>
                     <div class="table-responsive">
@@ -66,8 +65,8 @@
                                     <th>NO PR</th>
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
-                                    <th>STATUS</th>
-                                    <th>AKSI</th>
+                                    <th>STATUS APPROVED</th>
+                                    <th class="text-center">AKSI</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -282,7 +281,33 @@
                 };
 
                 pageData.forEach((pr, index) => {
-                    const badgeClass = badgeStatus[pr.status] ?? 'secondary';
+                    let statusText = pr.status.toUpperCase();
+                    let badgeClass = badgeStatus[pr.status] ?? 'secondary';
+
+                    if (pr.status === 'rejected') {
+                        statusText = 'REJECTED';
+                        badgeClass = 'danger';
+                    } else {
+                        let maxApprovedLevel = 1;
+                        if (pr.approval && pr.approval.length > 0) {
+                            pr.approval.forEach(a => {
+                                if (a.status === 'approved' && a.level > maxApprovedLevel) {
+                                    maxApprovedLevel = a.level;
+                                }
+                            });
+                        }
+                        statusText = `LEVEL ${maxApprovedLevel}`;
+
+                        if (maxApprovedLevel === 4) {
+                            badgeClass = 'success';
+                        } else if (maxApprovedLevel === 3) {
+                            badgeClass = 'info';
+                        } else if (maxApprovedLevel === 2) {
+                            badgeClass = 'primary';
+                        } else {
+                            badgeClass = 'warning';
+                        }
+                    }
 
                     tbody.append(`
                         <tr>
@@ -291,7 +316,7 @@
                             <td>${pr.no_doc}</td>
                             <td>${pr.pr_number ?? '-'}</td>
                             <td>${pr.requested_by}</td>
-                            <td class="text-uppercase">${pr.department}</td>
+                            <td>${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</td>
                             <td>
                                 <span 
                                     class="badge badge-soft-${badgeClass}" 
@@ -299,10 +324,10 @@
                                     onclick="showApprovalTracking(${pr.id})"
                                     title="Klik untuk melihat detail approval"
                                 >
-                                    ${pr.status.toUpperCase()}
+                                    ${statusText}
                                 </span>
                             </td>
-                            <td>
+                            <td class="text-center">
                                 <button class="btn btn-sm btn-info" onclick="showDetailPR(${pr.id})" title="Lihat Detail">
                                     <i class="mdi mdi-eye"></i>
                                 </button>
@@ -331,7 +356,7 @@
 
                 $('#d_pr_date').text(pr.pr_date);
                 $('#d_requested_by').text(pr.requested_by);
-                $('#d_department').text(pr.department.toUpperCase());
+                $('#d_department').text((pr.department ?? '').replace(/_/g, ' ').toUpperCase());
                 $('#d_jenis').text(pr.jenis || '-');
                 $('#d_detail_jenis').text(pr.detail_jenis || '-');
                 $('#d_status').text(pr.status.toUpperCase());
@@ -377,16 +402,16 @@
                                 <td>${item.alasan ?? '-'}</td>
                                 <td>
                                     ${item.keterangan ? `
-                                        <div class="d-flex align-items-center justify-content-between gap-2">
-                                            <span>${item.keterangan}</span>
-                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                    style="flex-shrink: 0;"
-                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                    title="Copy Keterangan">
-                                                <i class="mdi mdi-content-copy"></i>
-                                            </button>
-                                        </div>
-                                    ` : '-'}
+                                                        <div class="d-flex align-items-center justify-content-between gap-2">
+                                                            <span>${item.keterangan}</span>
+                                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                                    style="flex-shrink: 0;"
+                                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                    title="Copy Keterangan">
+                                                                <i class="mdi mdi-content-copy"></i>
+                                                            </button>
+                                                        </div>
+                                                    ` : '-'}
                                 </td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
                                 <td class="text-center">${formatBadge(statusWrh)}</td>
@@ -410,7 +435,7 @@
 
             window.copyToClipboard = function(text) {
                 if (!text) return;
-                
+
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(() => {
                         showCopySuccessToast();
@@ -431,7 +456,7 @@
                 textarea.style.width = "2em";
                 textarea.style.height = "2em";
                 textarea.style.opacity = "0";
-                
+
                 // Append inside active modal to bypass Bootstrap modal focus trap
                 const activeModal = document.querySelector('.modal.show');
                 if (activeModal) {
@@ -439,7 +464,7 @@
                 } else {
                     document.body.appendChild(textarea);
                 }
-                
+
                 textarea.focus();
                 textarea.select();
                 try {
@@ -448,7 +473,7 @@
                 } catch (err) {
                     console.error('Fallback copy failed', err);
                 }
-                
+
                 if (activeModal) {
                     activeModal.removeChild(textarea);
                 } else {
@@ -578,6 +603,9 @@
                                 <span class="badge bg-${badge}">${text}</span>
                                 <div class="small text-muted mt-1">
                                     ${a.action_at ? a.action_at : 'Belum diproses'}
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    ${a.approver ? a.approver.nama_lengkap : '-'} | ${a.approver && a.approver.departemen ? a.approver.departemen.replace(/_/g, ' ').toUpperCase() : '-'}
                                 </div>
                                 ${a.catatan ? `<div class="small mt-1 text-dark bg-light p-2 rounded">Catatan: ${a.catatan}</div>` : ''}
                             </div>

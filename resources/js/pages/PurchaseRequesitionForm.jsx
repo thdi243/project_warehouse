@@ -449,12 +449,14 @@ export default function PurchaseRequisitionForm() {
                                             requested_by: e.target.value,
                                         })
                                     }
+                                    disabled
+                                    className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                                 />
                             </Field>
 
                             <Field label="Departemen" required>
                                 <Input
-                                    value={form.department}
+                                    value={(form.department || "").replace(/_/g, " ").toUpperCase()}
                                     disabled
                                     className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                                 />
@@ -471,10 +473,10 @@ export default function PurchaseRequisitionForm() {
                                         <SelectValue placeholder="Pilih jenis" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="barang">
+                                        <SelectItem value="Barang">
                                             Barang
                                         </SelectItem>
-                                        <SelectItem value="jasa">
+                                        <SelectItem value="Jasa">
                                             Jasa
                                         </SelectItem>
                                     </SelectContent>
@@ -495,16 +497,16 @@ export default function PurchaseRequisitionForm() {
                                         <SelectValue placeholder="Pilih jenis" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="project">
+                                        <SelectItem value="Project">
                                             Project
                                         </SelectItem>
-                                        <SelectItem value="asset">
+                                        <SelectItem value="Asset">
                                             Asset
                                         </SelectItem>
-                                        <SelectItem value="consumable">
+                                        <SelectItem value="Consumable">
                                             Consumable
                                         </SelectItem>
-                                        <SelectItem value="cost_center">
+                                        <SelectItem value="Cost Center">
                                             Cost Center
                                         </SelectItem>
                                     </SelectContent>

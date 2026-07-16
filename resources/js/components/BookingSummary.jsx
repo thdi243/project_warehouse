@@ -37,7 +37,7 @@ export default function BookingSummary({
 
                     <span className="text-muted-foreground">Departemen</span>
                     <span className="font-medium">
-                        {form.department || "-"}
+                        {(form.department || "").replace(/_/g, " ").toUpperCase() || "-"}
                     </span>
 
                     <span className="text-muted-foreground">Jenis</span>

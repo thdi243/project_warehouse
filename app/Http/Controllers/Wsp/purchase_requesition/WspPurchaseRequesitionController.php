@@ -275,7 +275,7 @@ class WspPurchaseRequesitionController extends Controller
 
     public function getDataPR(Request $request)
     {
-        $query = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval');
+        $query = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval.approver');
 
         if ($request->filled('start_date')) {
             $query->whereDate('pr_date', '>=', $request->start_date);
@@ -510,7 +510,7 @@ class WspPurchaseRequesitionController extends Controller
         $user = Auth::user();
         $dept = strtolower(trim($user->departemen));
 
-        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval')
+        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval.approver')
             ->where(function ($q) use ($user, $dept) {
                 $q->where('user_id', $user->id)
                     ->orWhere('department', $dept);
@@ -1192,7 +1192,7 @@ class WspPurchaseRequesitionController extends Controller
         ]);
 
         if ($user->email) {
-            SendPrApprovalEmail::dispatch($pr, $approval, $user->email);
+            SendPrApprovalEmail::dispatch($pr, $approval, $user->email)->afterCommit();
         }
     }
 }

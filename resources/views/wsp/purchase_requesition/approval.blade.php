@@ -467,7 +467,7 @@
                             <td>${pr.pr_date}</td>
                             <td><span class="fw-bold text-primary">${pr.no_doc}</span></td>
                             <td>${pr.requested_by}</td>
-                            <td><span class="badge badge-soft-info">${pr.department.toUpperCase()}</span></td>
+                            <td><span class="badge badge-soft-info">${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</span></td>
                             <td><span class="badge badge-soft-warning">${roleName}</span></td>
                             <td class="text-center">
                             <div class="d-flex gap-1 justify-content-center">
@@ -475,10 +475,10 @@
                                     <i class="mdi mdi-check"></i> ${approveText}
                                 </button>
                                 ${!isLevel4 ? `
-                                    <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
-                                        <i class="mdi mdi-close"></i> Reject
-                                    </button>
-                                    ` : ''}
+                                        <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
+                                            <i class="mdi mdi-close"></i> Reject
+                                        </button>
+                                        ` : ''}
                             </div>
                         </td>
                     </tr>
@@ -561,7 +561,7 @@
                             <p class="mb-1 text-muted small">DATE</p>
                             <h6 class="fw-bold">${pr.pr_date}</h6>
                             <p class="mb-1 text-muted small mt-3">DEPARTMENT</p>
-                            <h6 class="fw-bold">${pr.department.toUpperCase()}</h6>
+                            <h6 class="fw-bold">${(pr.department ?? '').replace(/_/g, ' ').toCapitilize()}</h6>
                         </div>
                         <div class="col-12 mt-3">
                             <p class="mb-1 text-muted small">HAL</p>
@@ -626,16 +626,16 @@
                         <td>${item.barang?.uom || '-'}</td>
                         <td>
                             ${item.keterangan ? `
-                                <div class="d-flex align-items-center justify-content-between gap-2">
-                                    <span>${item.keterangan}</span>
-                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                            style="flex-shrink: 0;"
-                                            data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                            title="Copy Keterangan">
-                                        <i class="mdi mdi-content-copy"></i>
-                                    </button>
-                                </div>
-                            ` : '-'}
+                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                        <span>${item.keterangan}</span>
+                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                style="flex-shrink: 0;"
+                                                data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                title="Copy Keterangan">
+                                            <i class="mdi mdi-content-copy"></i>
+                                        </button>
+                                    </div>
+                                ` : '-'}
                         </td>
                         <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
                         <td class="level4-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>
@@ -843,7 +843,7 @@
 
             window.copyToClipboard = function(text) {
                 if (!text) return;
-                
+
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(() => {
                         showCopySuccessToast();
@@ -864,7 +864,7 @@
                 textarea.style.width = "2em";
                 textarea.style.height = "2em";
                 textarea.style.opacity = "0";
-                
+
                 // Append inside active modal to bypass Bootstrap modal focus trap
                 const activeModal = document.querySelector('.modal.show');
                 if (activeModal) {
@@ -872,7 +872,7 @@
                 } else {
                     document.body.appendChild(textarea);
                 }
-                
+
                 textarea.focus();
                 textarea.select();
                 try {
@@ -881,7 +881,7 @@
                 } catch (err) {
                     console.error('Fallback copy failed', err);
                 }
-                
+
                 if (activeModal) {
                     activeModal.removeChild(textarea);
                 } else {

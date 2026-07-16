@@ -102,7 +102,7 @@ export default function RiwayatPR() {
                                         Departemen
                                     </p>
                                     <p className="font-medium">
-                                        {selectedPr.department}
+                                        {(selectedPr.department || "").replace(/_/g, " ").toUpperCase()}
                                     </p>
                                 </div>
                                 <div>
@@ -253,7 +253,7 @@ export default function RiwayatPR() {
                                             {pr.pr_number ?? "-"}
                                         </TableCell>
                                         <TableCell>
-                                            {pr.department ?? "-"}
+                                            {(pr.department ?? "").replace(/_/g, " ").toUpperCase() || "-"}
                                         </TableCell>
                                         <TableCell className="capitalize">
                                             {pr.jenis ?? "-"}

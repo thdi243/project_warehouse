@@ -112,9 +112,7 @@
                     return '';
                 }
 
-                return collect(explode('_', strtolower($dept)))
-                    ->map(fn($w) => ucfirst($w))
-                    ->implode(' ');
+                return strtoupper(str_replace('_', ' ', $dept));
             }
         @endphp
 
@@ -182,7 +180,7 @@
                     <strong>Dept</strong>
                 </td>
                 <td colspan="3" style="padding-bottom: 10px; border-right: 1px solid black !important;">
-                    : {{ strToUpper($pr->department ?? '-') }}
+                    : {{ strtoupper(str_replace('_', ' ', $pr->department ?? '-')) }}
                 </td>
 
             </tr>

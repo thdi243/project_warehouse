@@ -14,6 +14,8 @@ class SendPrApprovalEmail implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $afterCommit = true;
+
     protected $pr;
     protected $approval;
     protected $email;

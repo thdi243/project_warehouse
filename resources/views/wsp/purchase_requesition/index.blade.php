@@ -124,7 +124,8 @@
                             <select id="filterDepartemen" class="form-select">
                                 <option value="all">All Departement</option>
                                 @foreach ($departemen as $dept)
-                                    <option value="{{ $dept }}">{{ $dept }}</option>
+                                    <option value="{{ $dept }}">{{ strtoupper(str_replace('_', ' ', $dept)) }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
@@ -183,7 +184,7 @@
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <i class="ri-information-line"></i>
                             <small class="mb-0">
-                                Klik badge status untuk melihat tracking approval PR
+                                Klik <b>Status Approved</b> untuk melihat tracking approval PR
                             </small>
                         </div>
 
@@ -206,7 +207,7 @@
                                     <th>NO PR</th>
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
-                                    <th>STATUS</th>
+                                    <th>STATUS APPROVED</th>
                                     <th>FLAG</th>
                                     <th class="text-center text-nowrap">AKSI</th>
                                     @can('permission', 'wsp-data-pr-plus')
@@ -541,9 +542,33 @@
                 const startIndex = (paginationData.current_page - 1) * paginationData.per_page;
 
                 allPR.forEach((pr, index) => {
-                    const badgeClass = badgeStatus[pr.status] ?? 'secondary';
-                    const isFinished = pr.status === 'finished';
-                    const canConfirm = pr.status === 'approved';
+                    let statusText = pr.status;
+                    let badgeClass = badgeStatus[pr.status] ?? 'secondary';
+
+                    if (pr.status === 'rejected') {
+                        statusText = 'REJECTED';
+                        badgeClass = 'danger';
+                    } else {
+                        let maxApprovedLevel = 1;
+                        if (pr.approval && pr.approval.length > 0) {
+                            pr.approval.forEach(a => {
+                                if (a.status === 'approved' && a.level > maxApprovedLevel) {
+                                    maxApprovedLevel = a.level;
+                                }
+                            });
+                        }
+                        statusText = `LEVEL ${maxApprovedLevel}`;
+
+                        if (maxApprovedLevel === 4) {
+                            badgeClass = 'success';
+                        } else if (maxApprovedLevel === 3) {
+                            badgeClass = 'info';
+                        } else if (maxApprovedLevel === 2) {
+                            badgeClass = 'primary';
+                        } else {
+                            badgeClass = 'warning';
+                        }
+                    }
 
                     const hasCancelledItems = pr.items && pr.items.some(item =>
                         item.status === false || item.status === 0 || item.status === '0'
@@ -573,14 +598,14 @@
                             <td>${pr.no_doc}</td>
                             <td>${pr.pr_number ?? '-'}</td>
                             <td>${pr.requested_by}</td>
-                            <td>${pr.department}</td>
+                            <td>${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</td>
                             <td>
                                 <span 
                                     class="badge badge-soft-${badgeClass}" 
                                     style="cursor:pointer"
                                     onclick="showApprovalTracking(${pr.id})"
                                 >
-                                    ${pr.status}
+                                    ${statusText}
                                 </span>
                             </td>
                             <td>${flagText}</td>
@@ -777,7 +802,7 @@
 
                 $('#d_pr_date').text(pr.pr_date ?? '-');
                 $('#d_requested_by').text(pr.requested_by ?? '-');
-                $('#d_department').text(pr.department ?? '-');
+                $('#d_department').text((pr.department ?? '').replace(/_/g, ' ').toUpperCase());
                 $('#d_jenis').text(pr.jenis ?? '-');
                 $('#d_detail_jenis').text(pr.detail_jenis ?? '-');
                 $('#d_no_io').text(pr.no_io ?? '-');
@@ -836,16 +861,16 @@
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td>
                                     ${item.keterangan ? `
-                                        <div class="d-flex align-items-center justify-content-between gap-2">
-                                            <span>${item.keterangan}</span>
-                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                    style="flex-shrink: 0;"
-                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                    title="Copy Keterangan">
-                                                <i class="mdi mdi-content-copy"></i>
-                                            </button>
-                                        </div>
-                                    ` : '-'}
+                                                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                                                        <span>${item.keterangan}</span>
+                                                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                                                style="flex-shrink: 0;"
+                                                                                data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                                title="Copy Keterangan">
+                                                                            <i class="mdi mdi-content-copy"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                ` : '-'}
                                 </td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
@@ -890,7 +915,7 @@
                 textarea.style.width = "2em";
                 textarea.style.height = "2em";
                 textarea.style.opacity = "0";
-                
+
                 // Append inside active modal to bypass Bootstrap modal focus trap
                 const activeModal = document.querySelector('.modal.show');
                 if (activeModal) {
@@ -898,7 +923,7 @@
                 } else {
                     document.body.appendChild(textarea);
                 }
-                
+
                 textarea.focus();
                 textarea.select();
                 try {
@@ -907,7 +932,7 @@
                 } catch (err) {
                     console.error('Fallback copy failed', err);
                 }
-                
+
                 if (activeModal) {
                     activeModal.removeChild(textarea);
                 } else {
@@ -988,11 +1013,15 @@
                                     ${a.action_at ? a.action_at : 'Belum diproses'}
                                 </div>
 
+                                <div class="small text-muted mt-1">
+                                    ${a.approver ? a.approver.nama_lengkap : '-'} | ${a.approver && a.approver.departemen ? a.approver.departemen.replace(/_/g, ' ').toUpperCase() : '-'}
+                                </div>
+
                                 ${a.catatan ? `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div class="small mt-1">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Catatan: ${a.catatan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                    <div class="small mt-1">
+                                                        Catatan: ${a.catatan}
+                                                    </div>
+                                                ` : ''}
                             </div>
 
                         </div>
