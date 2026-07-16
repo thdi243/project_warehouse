@@ -202,6 +202,12 @@
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>
+                                        <option value="hrga">HRGA</option>
+                                        <option value="expedisi">Expedisi</option>
+                                        <option value="timbangan">Timbangan</option>
+                                        @if (Auth::user()->jabatan == 'admin')
+                                            <option value="fm">Factory Manager</option>
+                                        @endif
                                     </select>
                                 </div>
                             </div>
@@ -223,6 +229,12 @@
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>
+                                        <option value="hrga">HRGA</option>
+                                        <option value="expedisi">Expedisi</option>
+                                        <option value="timbangan">Timbangan</option>
+                                        @if (Auth::user()->jabatan == 'admin')
+                                            <option value="fm">Factory Manager</option>
+                                        @endif
                                     </select>
                                 </div>
                             </div>

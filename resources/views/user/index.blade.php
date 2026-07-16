@@ -232,6 +232,12 @@
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>
+                                        <option value="hrga">HRGA</option>
+                                        <option value="expedisi">Expedisi</option>
+                                        <option value="timbangan">Timbangan</option>
+                                        @if (Auth::user()->jabatan == 'admin')
+                                            <option value="fm">Factory Manager</option>
+                                        @endif
                                     </select>
                                     {{-- <div class="invalid-feedback">Please select a Departemen.</div> --}}
                                 </div>
@@ -252,6 +258,12 @@
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>
+                                        <option value="hrga">HRGA</option>
+                                        <option value="expedisi">Expedisi</option>
+                                        <option value="timbangan">Timbangan</option>
+                                        @if (Auth::user()->jabatan == 'admin')
+                                            <option value="fm">Factory Manager</option>
+                                        @endif
                                     </select>
                                 </div>
 
@@ -642,7 +654,7 @@
                     `);
                 }
 
-                AOS.refresh();
+
             });
 
             getData();
@@ -731,7 +743,7 @@
 
                             const card = `
                                 <div class="col-md-3 mb-3">
-                                    <div data-aos="fade-up" data-aos-delay="${delay}" data-aos-anchor-placement="top-bottom">
+                                    
                                         <div class="card card-animate shadow-sm border-0 rounded-3 team-card">
                                             <img src="${imgSrc}" class="card-img-top rounded-top img-fixed user-img" 
                                                 alt="foto ${user.nama_lengkap || user.username}" style="height:200px; object-fit:cover;">
@@ -760,13 +772,13 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    
                                 </div>
                             `;
                             $("#userRow").append(card);
                         });
 
-                        AOS.refresh();
+
                         $('#team-member-list').empty();
                     },
                     error: function(err) {
@@ -1051,15 +1063,15 @@
                 const switchInput = $(this);
                 const userId = switchInput.data('id');
                 const isChecked = switchInput.is(':checked');
-                
+
                 // Temporary revert state visually until confirmed
                 switchInput.prop('checked', !isChecked);
 
                 Swal.fire({
                     title: isChecked ? 'Aktifkan User?' : 'Nonaktifkan User?',
-                    text: isChecked 
-                        ? 'User akan dapat login kembali ke sistem.' 
-                        : 'User tidak akan bisa login ke dalam sistem.',
+                    text: isChecked ?
+                        'User akan dapat login kembali ke sistem.' :
+                        'User tidak akan bisa login ke dalam sistem.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: isChecked ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan',
@@ -1076,20 +1088,23 @@
                             success: function(response) {
                                 if (response.ok) {
                                     switchInput.prop('checked', response.is_active);
-                                    
+
                                     // Update status badge
-                                    const cardContainer = switchInput.closest('.team-card');
+                                    const cardContainer = switchInput.closest(
+                                        '.team-card');
                                     const badge = cardContainer.find('.status-badge');
                                     if (response.is_active) {
-                                        badge.removeClass('bg-danger-subtle text-danger')
-                                             .addClass('bg-success-subtle text-success')
-                                             .text('Aktif');
+                                        badge.removeClass(
+                                                'bg-danger-subtle text-danger')
+                                            .addClass('bg-success-subtle text-success')
+                                            .text('Aktif');
                                     } else {
-                                        badge.removeClass('bg-success-subtle text-success')
-                                             .addClass('bg-danger-subtle text-danger')
-                                             .text('Nonaktif');
+                                        badge.removeClass(
+                                                'bg-success-subtle text-success')
+                                            .addClass('bg-danger-subtle text-danger')
+                                            .text('Nonaktif');
                                     }
-                                    
+
                                     Swal.fire({
                                         icon: 'success',
                                         title: 'Berhasil!',
@@ -1098,12 +1113,14 @@
                                         showConfirmButton: false
                                     });
                                 } else {
-                                    Swal.fire('Gagal!', response.message || 'Gagal mengubah status.', 'error');
+                                    Swal.fire('Gagal!', response.message ||
+                                        'Gagal mengubah status.', 'error');
                                 }
                             },
                             error: function(xhr) {
                                 console.error("Error toggling status:", xhr);
-                                const errorMsg = xhr.responseJSON?.message || 'Terjadi kesalahan pada server.';
+                                const errorMsg = xhr.responseJSON?.message ||
+                                    'Terjadi kesalahan pada server.';
                                 Swal.fire('Error!', errorMsg, 'error');
                             }
                         });
@@ -1351,7 +1368,7 @@
                         renderChartJabatan(res.by_jabatan);
                         renderChartBagian(res.by_bagian);
 
-                        AOS.refresh();
+
                     },
                     error: function(err) {
                         console.error("Error load statistik:", err);
