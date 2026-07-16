@@ -217,6 +217,10 @@
                                         <option value="foreman">Foreman</option>
                                         <option value="supervisor">Supervisor</option>
                                         <option value="operator">Operator</option>
+                                        @if (Auth::user()->jabatan == 'admin')
+                                            <option value="FM">Factory Manager</option>
+                                            <option value="admin">Admin</option>
+                                        @endif
                                     </select>
                                     {{-- <div class="invalid-feedback">Please select a Jabatan.</div> --}}
                                 </div>
@@ -236,7 +240,8 @@
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
                                         @if (Auth::user()->jabatan == 'admin')
-                                            <option value="fm">Factory Manager</option>
+                                            <option value="FM">Factory Manager</option>
+                                            <option value="IT">ITE</option>
                                         @endif
                                     </select>
                                     {{-- <div class="invalid-feedback">Please select a Departemen.</div> --}}
@@ -262,7 +267,8 @@
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
                                         @if (Auth::user()->jabatan == 'admin')
-                                            <option value="fm">Factory Manager</option>
+                                            <option value="FM">Factory Manager</option>
+                                            <option value="IT">ITE</option>
                                         @endif
                                     </select>
                                 </div>
@@ -360,6 +366,10 @@
                                         <option value="supervisor">Supervisor</option>
                                         <option value="foreman">Foreman</option>
                                         <option value="operator">Operator</option>
+                                        @if (Auth::user()->jabatan == 'admin')
+                                            <option value="FM">Factory Manager</option>
+                                            <option value="admin">Admin</option>
+                                        @endif
                                     </select>
                                 </div>
                             </div>
@@ -375,6 +385,13 @@
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>
+                                        <option value="hrga">HRGA</option>
+                                        <option value="expedisi">Expedisi</option>
+                                        <option value="timbangan">Timbangan</option>
+                                        @if (Auth::user()->jabatan == 'admin')
+                                            <option value="FM">Factory Manager</option>
+                                            <option value="IT">ITE</option>
+                                        @endif
                                     </select>
                                 </div>
                             </div>
@@ -395,6 +412,13 @@
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>
+                                        <option value="hrga">HRGA</option>
+                                        <option value="expedisi">Expedisi</option>
+                                        <option value="timbangan">Timbangan</option>
+                                        @if (Auth::user()->jabatan == 'admin')
+                                            <option value="fm">Factory Manager</option>
+                                            <option value="IT">ITE</option>
+                                        @endif
                                     </select>
                                 </div>
                             </div>

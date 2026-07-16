@@ -186,6 +186,7 @@
                                         <option value="operator">Operator</option>
                                         @if (Auth::user()->jabatan === 'admin')
                                             <option value="admin">Admin</option>
+                                            <option value="FM">Factory Manager</option>
                                         @endif
                                     </select>
                                 </div>
@@ -206,7 +207,8 @@
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
                                         @if (Auth::user()->jabatan == 'admin')
-                                            <option value="fm">Factory Manager</option>
+                                            <option value="FM">Factory Manager</option>
+                                            <option value="IT">ITE</option>
                                         @endif
                                     </select>
                                 </div>
@@ -233,7 +235,8 @@
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
                                         @if (Auth::user()->jabatan == 'admin')
-                                            <option value="fm">Factory Manager</option>
+                                            <option value="FM">Factory Manager</option>
+                                            <option value="IT">ITE</option>
                                         @endif
                                     </select>
                                 </div>
