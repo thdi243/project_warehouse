@@ -1,4 +1,4 @@
-@if (in_array($departemen, ['produksi', 'quality_control', 'engineering']))
+@if (in_array($departemen, ['produksi', 'quality_control', 'engineering', 'hrga', 'expedisi', 'timbangan']))
     <li class="nav-item">
         <a href="{{ url('/app/purchase-requesition/form') }}" target="_blank"
             class="nav-link menu-link {{ request()->Is('/app/purchase-requesition/form') ? 'active' : '' }}">
