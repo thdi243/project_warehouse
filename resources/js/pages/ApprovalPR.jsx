@@ -216,14 +216,14 @@ export default function ApprovalPR() {
                         </thead>
                         <tbody>
                             {pr.items.map((item) => {
-                                const latestStock = item.barang.stock?.sort(
+                                const latestStock = item.barang?.stock?.sort(
                                     (a, b) =>
                                         new Date(b.last_update) -
                                         new Date(a.last_update),
                                 )[0];
 
                                 const qtySoh = latestStock?.qty_soh ?? 0;
-                                const qtyActual = qtySoh + item.qty;
+                                const qtyActual = item.barang ? (qtySoh + item.qty) : "-";
 
                                 return (
                                     <tr key={item.id}>
@@ -240,11 +240,11 @@ export default function ApprovalPR() {
                                         </td>
 
                                         <td className="p-2 border">
-                                            {item.barang.mid_barang}
+                                            {item.barang?.mid_barang ?? "-"}
                                         </td>
 
                                         <td className="p-2 border">
-                                            {item.barang.nama_barang}
+                                            {item.barang?.nama_barang ?? item.desc ?? "-"}
                                         </td>
 
                                         <td className="p-2 border text-center">
@@ -252,7 +252,7 @@ export default function ApprovalPR() {
                                         </td>
 
                                         <td className="p-2 border text-center">
-                                            {qtySoh}
+                                            {item.barang ? qtySoh : "-"}
                                         </td>
 
                                         <td className="p-2 border text-center">
@@ -260,7 +260,7 @@ export default function ApprovalPR() {
                                         </td>
 
                                         <td className="p-2 border text-center">
-                                            {item.barang.uom}
+                                            {item.barang?.uom ?? "-"}
                                         </td>
 
                                         <td className="p-2 border">

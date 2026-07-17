@@ -475,10 +475,10 @@
                                     <i class="mdi mdi-check"></i> ${approveText}
                                 </button>
                                 ${!isLevel4 ? `
-                                        <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
-                                            <i class="mdi mdi-close"></i> Reject
-                                        </button>
-                                        ` : ''}
+                                            <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
+                                                <i class="mdi mdi-close"></i> Reject
+                                            </button>
+                                            ` : ''}
                             </div>
                         </td>
                     </tr>
@@ -561,7 +561,7 @@
                             <p class="mb-1 text-muted small">DATE</p>
                             <h6 class="fw-bold">${pr.pr_date}</h6>
                             <p class="mb-1 text-muted small mt-3">DEPARTMENT</p>
-                            <h6 class="fw-bold">${(pr.department ?? '').replace(/_/g, ' ').toCapitilize()}</h6>
+                            <h6 class="fw-bold">${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</h6>
                         </div>
                         <div class="col-12 mt-3">
                             <p class="mb-1 text-muted small">HAL</p>
@@ -626,16 +626,16 @@
                         <td>${item.barang?.uom || '-'}</td>
                         <td>
                             ${item.keterangan ? `
-                                    <div class="d-flex align-items-center justify-content-between gap-2">
-                                        <span>${item.keterangan}</span>
-                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                style="flex-shrink: 0;"
-                                                data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                title="Copy Keterangan">
-                                            <i class="mdi mdi-content-copy"></i>
-                                        </button>
-                                    </div>
-                                ` : '-'}
+                                        <div class="d-flex align-items-center justify-content-between gap-2">
+                                            <span>${item.keterangan}</span>
+                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                    style="flex-shrink: 0;"
+                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                    title="Copy Keterangan">
+                                                <i class="mdi mdi-content-copy"></i>
+                                            </button>
+                                        </div>
+                                    ` : '-'}
                         </td>
                         <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
                         <td class="level4-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>

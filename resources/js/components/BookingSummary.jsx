@@ -66,7 +66,7 @@ export default function BookingSummary({
                             >
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium truncate">
-                                        {item.mid} – {item.nama_barang}
+                                        {item.mid ? `${item.mid} – ${item.nama_barang}` : (item.desc || "Jasa")}
                                     </p>
                                     <p className="text-xs text-muted-foreground flex items-center flex-wrap gap-2">
                                         <span>Qty: {item.qty} {item.uom || ""}</span>

@@ -38,7 +38,7 @@ export default function PurchaseRequisitionForm() {
         pr_date: "",
         requested_by: "",
         department: "",
-        jenis: "",
+        jenis: "Barang",
         detail_jenis: "",
         no_io: "",
     });
@@ -49,6 +49,7 @@ export default function PurchaseRequisitionForm() {
         qty: "",
         keterangan: "",
         uom: "",
+        desc: "",
     });
 
     const [loading, setLoading] = useState(false);
@@ -64,23 +65,55 @@ export default function PurchaseRequisitionForm() {
 
 
     const handleAddItem = async () => {
-        if (!currentItem.mid || !currentItem.qty || !currentItem.keterangan) {
+        const isJasa = form.jenis === "Jasa";
+
+        if (isJasa) {
+            if (!currentItem.desc || !currentItem.qty || !currentItem.keterangan) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error!",
+                    text: "Harap lengkapi semua field jasa sebelum menambahkan.",
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#ef4444",
+                });
+                return;
+            }
+        } else {
+            if (!currentItem.mid || !currentItem.qty || !currentItem.keterangan) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error!",
+                    text: "Harap lengkapi semua field barang sebelum menambahkan.",
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#ef4444",
+                });
+                return;
+            }
+        }
+
+        const requestedQty = parseInt(currentItem.qty) || 0;
+        if (requestedQty <= 0) {
             Swal.fire({
                 icon: "error",
                 title: "Error!",
-                text: "Harap lengkapi semua field barang sebelum menambahkan.",
+                text: "Jumlah (Qty) harus minimal 1.",
                 confirmButtonText: "OK",
                 confirmButtonColor: "#ef4444",
             });
             return;
         }
-
-        const requestedQty = parseInt(currentItem.qty) || 0;
         const availableQty = parseInt(currentItem.available_qty) || 0;
 
         let itemsToAdd = [];
 
-        if (availableQty > 0) {
+        if (isJasa) {
+            itemsToAdd.push({
+                ...currentItem,
+                qty: requestedQty,
+                jenis: "pr",
+                alasan: "",
+            });
+        } else if (availableQty > 0) {
             if (requestedQty > availableQty) {
                 const result = await Swal.fire({
                     title: "Stok Tersedia!",
@@ -93,10 +126,10 @@ export default function PurchaseRequisitionForm() {
                                 Naikkan PR (Semua Qty)
                             </button>
                             <button id="btn-option-both" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-md transition duration-150">
-                                Reservasi + Naikkan PR
+                                Naikkan PR+ Reservasi (Potong Stok) 
                             </button>
                             <button id="btn-option-reserve" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition duration-150">
-                                Hanya Reservasi (Sesuai Stok)
+                                Hanya Reservasi (Potong Stok)
                             </button>
                             <button id="btn-option-cancel" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition duration-150 mt-2">
                                 Batal
@@ -169,12 +202,7 @@ export default function PurchaseRequisitionForm() {
                     });
 
                     if (reasonResult.isConfirmed && reasonResult.value) {
-                        itemsToAdd.push({
-                            ...currentItem,
-                            qty: availableQty,
-                            jenis: "blocked",
-                            alasan: "",
-                        });
+                        // Hanya naikkan PR untuk sisa qty (requestedQty - availableQty), reservasi dibatalkan
                         itemsToAdd.push({
                             ...currentItem,
                             qty: requestedQty - availableQty,
@@ -185,14 +213,27 @@ export default function PurchaseRequisitionForm() {
                         return;
                     }
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    // Option 3: Hanya Reservasi (Sesuai Stok)
-                    itemsToAdd.push({
-                        ...currentItem,
-                        qty: availableQty,
-                        jenis: "blocked",
-                        alasan: "",
+                    // Option 3: Hanya Reservasi (Sesuai Stok) -> Reset Form Tambah Barang & Batal
+                    setCurrentItem({
+                        mid: "",
+                        nama_barang: "",
+                        qty: "",
+                        keterangan: "",
+                        uom: "",
+                        desc: "",
+                        available_qty: 0,
                     });
+                    return;
                 } else {
+                    setCurrentItem({
+                        mid: "",
+                        nama_barang: "",
+                        qty: "",
+                        keterangan: "",
+                        uom: "",
+                        desc: "",
+                        available_qty: 0,
+                    });
                     return;
                 }
             } else {
@@ -201,7 +242,7 @@ export default function PurchaseRequisitionForm() {
                     title: "Stok Tersedia!",
                     html: `
                         <div class="mb-4">
-                            Barang ini memiliki stok ${availableQty}. Apakah Anda ingin melanjutkan PR (Menaikkan PR) atau hanya Block Stok?
+                            Barang ini memiliki stok ${availableQty}. Apakah Anda ingin melanjutkan PR (Menaikkan PR) atau hanya Potong Stok?
                         </div>
                         <div class="flex flex-col gap-2">
                             <button id="btn-option-pr" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition duration-150">
@@ -260,13 +301,27 @@ export default function PurchaseRequisitionForm() {
                         return;
                     }
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    itemsToAdd.push({
-                        ...currentItem,
-                        qty: requestedQty,
-                        jenis: "blocked",
-                        alasan: "",
+                    // Hanya Reservasi -> Reset Form Tambah Barang & Batal
+                    setCurrentItem({
+                        mid: "",
+                        nama_barang: "",
+                        qty: "",
+                        keterangan: "",
+                        uom: "",
+                        desc: "",
+                        available_qty: 0,
                     });
+                    return;
                 } else {
+                    setCurrentItem({
+                        mid: "",
+                        nama_barang: "",
+                        qty: "",
+                        keterangan: "",
+                        uom: "",
+                        desc: "",
+                        available_qty: 0,
+                    });
                     return;
                 }
             }
@@ -282,7 +337,7 @@ export default function PurchaseRequisitionForm() {
 
         let allSuccess = true;
         for (const item of itemsToAdd) {
-            const success = await addItem(item, item.jenis);
+            const success = await addItem(item, item.jenis, isJasa);
             if (!success) {
                 allSuccess = false;
                 break;
@@ -296,6 +351,7 @@ export default function PurchaseRequisitionForm() {
                 qty: "",
                 keterangan: "",
                 uom: "",
+                desc: "",
                 available_qty: 0,
             });
         }
@@ -306,7 +362,7 @@ export default function PurchaseRequisitionForm() {
             pr_date: getTodayDate(),
             requested_by: user?.nama_lengkap || "",
             department: user?.departemen || "",
-            jenis: "",
+            jenis: "Barang",
             detail_jenis: "",
             no_io: "",
         });
@@ -317,6 +373,7 @@ export default function PurchaseRequisitionForm() {
             qty: "",
             keterangan: "",
             uom: "",
+            desc: "",
         });
 
         clearItems();
@@ -350,9 +407,10 @@ export default function PurchaseRequisitionForm() {
                     ...form,
                     ttd: signatureBase64,
                     items: items.map((item) => ({
-                        mid: item.mid,
+                        mid: item.mid || null,
                         qty: item.qty,
                         keterangan: item.keterangan,
+                        desc: item.desc || null,
                         reservation_id: item.reservation_id,
                         jenis: item.jenis,
                         alasan: item.alasan,
@@ -465,9 +523,43 @@ export default function PurchaseRequisitionForm() {
                             <Field label="Jenis" required>
                                 <Select
                                     value={form.jenis}
-                                    onValueChange={(value) =>
-                                        setForm({ ...form, jenis: value })
-                                    }
+                                    onValueChange={(value) => {
+                                        if (items.length > 0) {
+                                            Swal.fire({
+                                                title: "Ubah Jenis PR?",
+                                                text: "Mengubah jenis PR akan menghapus semua barang/jasa yang telah ditambahkan. Lanjutkan?",
+                                                icon: "warning",
+                                                showCancelButton: true,
+                                                confirmButtonColor: "#ef4444",
+                                                cancelButtonColor: "#6c757d",
+                                                confirmButtonText: "Ya, Ubah!",
+                                                cancelButtonText: "Batal",
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    clearItems();
+                                                    setCurrentItem({
+                                                        mid: "",
+                                                        nama_barang: "",
+                                                        qty: "",
+                                                        keterangan: "",
+                                                        uom: "",
+                                                        desc: "",
+                                                    });
+                                                    setForm({ ...form, jenis: value });
+                                                }
+                                            });
+                                        } else {
+                                            setCurrentItem({
+                                                mid: "",
+                                                nama_barang: "",
+                                                qty: "",
+                                                keterangan: "",
+                                                uom: "",
+                                                desc: "",
+                                            });
+                                            setForm({ ...form, jenis: value });
+                                        }
+                                    }}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Pilih jenis" />
@@ -527,44 +619,67 @@ export default function PurchaseRequisitionForm() {
                         </CardContent>
                     </Card>
 
-                    {/* Form Tambah Barang */}
+                    {/* Form Tambah Barang / Jasa */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Tambah Barang</CardTitle>
+                            <CardTitle>{form.jenis === "Jasa" ? "Tambah Jasa" : "Tambah Barang"}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Field label="Search Material" required>
-                                <MidSearch
-                                    value={currentItem.mid}
-                                    namaBarang={currentItem.nama_barang}
-                                    onChange={(item) =>
-                                        setCurrentItem({
-                                            ...currentItem,
-                                            ...item,
-                                        })
-                                    }
-                                />
-                            </Field>
+                            {form.jenis !== "Jasa" && (
+                                <Field label="Search Material" required>
+                                    <MidSearch
+                                        value={currentItem.mid}
+                                        namaBarang={currentItem.nama_barang}
+                                        onChange={(item) =>
+                                            setCurrentItem({
+                                                ...currentItem,
+                                                ...item,
+                                            })
+                                        }
+                                    />
+                                </Field>
+                            )}
 
-                            <Field label="UoM">
-                                <Input
-                                    value={currentItem.uom || ""}
-                                    disabled
-                                    placeholder="Satuan barang"
-                                    className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                                />
-                            </Field>
+                            {form.jenis === "Jasa" && (
+                                <Field label="Desc" required>
+                                    <Input
+                                        value={currentItem.desc || ""}
+                                        onChange={(e) =>
+                                            setCurrentItem({
+                                                ...currentItem,
+                                                desc: e.target.value,
+                                            })
+                                        }
+                                        placeholder="Deskripsi jasa"
+                                    />
+                                </Field>
+                            )}
+
+                            {form.jenis !== "Jasa" && (
+                                <Field label="UoM">
+                                    <Input
+                                        value={currentItem.uom || ""}
+                                        disabled
+                                        placeholder="Satuan barang"
+                                        className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                                    />
+                                </Field>
+                            )}
 
                             <Field label="Qty" required>
                                 <Input
                                     type="number"
+                                    min="1"
                                     value={currentItem.qty}
-                                    onChange={(e) =>
-                                        setCurrentItem({
-                                            ...currentItem,
-                                            qty: e.target.value,
-                                        })
-                                    }
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === "" || parseInt(val) > 0) {
+                                            setCurrentItem({
+                                                ...currentItem,
+                                                qty: val,
+                                            });
+                                        }
+                                    }}
                                     placeholder="Masukkan jumlah"
                                 />
                             </Field>
@@ -578,7 +693,7 @@ export default function PurchaseRequisitionForm() {
                                             keterangan: e.target.value,
                                         })
                                     }
-                                    placeholder="Keterangan barang"
+                                    placeholder={form.jenis === "Jasa" ? "Keterangan jasa" : "Keterangan barang"}
                                 />
                             </Field>
 
@@ -588,7 +703,7 @@ export default function PurchaseRequisitionForm() {
                                 onClick={handleAddItem}
                                 className="w-full"
                             >
-                                + Tambah Barang
+                                {form.jenis === "Jasa" ? "+ Tambah Jasa" : "+ Tambah Barang"}
                             </Button>
                         </CardContent>
                     </Card>

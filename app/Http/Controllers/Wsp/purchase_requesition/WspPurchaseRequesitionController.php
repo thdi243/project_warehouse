@@ -45,7 +45,7 @@ class WspPurchaseRequesitionController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'pr_date'       => 'required|date',
             'hal'           => 'nullable|string|max:255',
             'no_doc'        => 'nullable|string|max:100',
@@ -57,55 +57,80 @@ class WspPurchaseRequesitionController extends Controller
             'ttd'           => 'required|string',
 
             'items'                 => 'required|array|min:1',
-            'items.*.mid'           => 'required|string',
+            'items.*.mid'           => 'nullable|string',
             'items.*.qty'           => 'required|numeric|min:1',
             'items.*.keterangan'    => 'nullable|string|max:255',
+            'items.*.desc'          => 'nullable|string|max:500',
+        ], [
+            'pr_date.required'      => 'Tanggal PR wajib diisi.',
+            'pr_date.date'          => 'Format tanggal PR tidak valid.',
+            'requested_by.required' => 'Nama pengaju (User) wajib diisi.',
+            'department.required'   => 'Departemen wajib diisi.',
+            'jenis.required'        => 'Jenis PR wajib diisi.',
+            'ttd.required'          => 'Tanda tangan wajib diisi.',
+            'items.required'        => 'Daftar barang/jasa tidak boleh kosong.',
+            'items.array'           => 'Format daftar barang/jasa tidak valid.',
+            'items.min'             => 'Minimal harus menambahkan 1 barang/jasa.',
+            'items.*.qty.required'  => 'Jumlah (Qty) barang/jasa wajib diisi.',
+            'items.*.qty.numeric'   => 'Jumlah (Qty) barang/jasa harus berupa angka.',
+            'items.*.qty.min'       => 'Jumlah (Qty) barang/jasa minimal 1.',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
 
         try {
             DB::beginTransaction();
 
             $sessionId = $request->session_id;
-            $reservations = WspStockReservations::where('session_id', $sessionId)
-                ->where('status', 'booked')
-                ->where('expired_at', '>', now())
-                ->lockForUpdate()
-                ->get();
+            $reservations = collect();
 
-            if ($reservations->isEmpty()) {
-                DB::rollBack();
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Booking telah expired atau tidak valid. Silakan booking ulang.'
-                ], 422);
-            }
+            if ($request->jenis !== 'Jasa') {
+                $reservations = WspStockReservations::where('session_id', $sessionId)
+                    ->where('status', 'booked')
+                    ->where('expired_at', '>', now())
+                    ->lockForUpdate()
+                    ->get();
 
-            // 2. Validasi qty masih sesuai dengan yang direserve
-            foreach ($request->items as $index => $item) {
-                $reservation = $reservations->firstWhere('id', $item['reservation_id']);
-
-                if (!$reservation) {
+                if ($reservations->isEmpty()) {
                     DB::rollBack();
                     return response()->json([
                         'status'  => false,
-                        'message' => "Reservasi untuk MID {$item['mid']} tidak ditemukan"
+                        'message' => 'Booking telah expired atau tidak valid. Silakan booking ulang.'
                     ], 422);
                 }
 
-                if ($reservation->qty != $item['qty']) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status'  => false,
-                        'message' => "Qty tidak sesuai dengan booking untuk MID {$item['mid']}"
-                    ], 422);
-                }
+                // 2. Validasi qty masih sesuai dengan yang direserve
+                foreach ($request->items as $index => $item) {
+                    $reservation = $reservations->firstWhere('id', $item['reservation_id']);
 
-                if ($reservation->mid_barang != $item['mid']) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status'  => false,
-                        'message' => "MID tidak sesuai dengan booking"
-                    ], 422);
+                    if (!$reservation) {
+                        DB::rollBack();
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Reservasi untuk MID {$item['mid']} tidak ditemukan"
+                        ], 422);
+                    }
+
+                    if ($reservation->qty != $item['qty']) {
+                        DB::rollBack();
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Qty tidak sesuai dengan booking untuk MID {$item['mid']}"
+                        ], 422);
+                    }
+
+                    if ($reservation->mid_barang != $item['mid']) {
+                        DB::rollBack();
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "MID tidak sesuai dengan booking"
+                        ], 422);
+                    }
                 }
             }
 
@@ -142,64 +167,54 @@ class WspPurchaseRequesitionController extends Controller
             $createdItems = [];
 
             foreach ($request->items as $item) {
-                $barang = BarangModel::where('mid_barang', $item['mid'])->first();
+                $barang = null;
+                $reservation = null;
 
-                if (!$barang) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status'  => false,
-                        'message' => "MID {$item['mid']} tidak ditemukan"
-                    ], 422);
+                if ($request->jenis !== 'Jasa') {
+                    $barang = BarangModel::where('mid_barang', $item['mid'])->first();
+
+                    if (!$barang) {
+                        DB::rollBack();
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "MID {$item['mid']} tidak ditemukan"
+                        ], 422);
+                    }
+
+                    $reservation = WspStockReservations::find($item['reservation_id']);
+
+                    $stock = StockOnHandWspModel::where('barang_id', $barang->id)
+                        ->orderBy('last_update', 'desc')
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$stock) {
+                        DB::rollBack();
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Stock tidak ditemukan untuk MID {$item['mid']}"
+                        ], 422);
+                    }
                 }
-
-                $reservation = WspStockReservations::find($item['reservation_id']);
-
-                $stock = StockOnHandWspModel::where('barang_id', $barang->id)
-                    ->orderBy('last_update', 'desc')
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$stock) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status'  => false,
-                        'message' => "Stock tidak ditemukan untuk MID {$item['mid']}"
-                    ], 422);
-                }
-
-                // if ($reservation->type === 'reservation' || $reservation->type === 'blocked') {
-                //     // Hanya reservasi: kurangi stok SOH
-                //     $newQtySoh = max(0, $stock->qty_soh - $item['qty']);
-                // } else {
-                //     // Lanjut PR: SOH jadi 0
-                //     $newQtySoh = 0;
-                // }
 
                 $prItem = $pr->items()->create([
                     'pr_id'        => $pr->id,
-                    'barang_id'    => $barang->id,
+                    'barang_id'    => $barang ? $barang->id : null,
                     'jenis'        => $item['jenis'] ?? 'pr',
                     'qty'          => $item['qty'],
                     'alasan'       => $item['alasan'] ?? null,
                     'keterangan'   => $item['keterangan'] ?? null,
+                    'desc'         => $item['desc'] ?? null,
                 ]);
 
                 $createdItems[] = $prItem;
 
-                // UPDATE STOCK
-                // $stock->update([
-                //     'unrest'      => $newQtySoh, // assuming unrest is the main SOH column being used
-                //     'qual_insp'   => 0,
-                //     'blocked'     => 0,
-                //     'transf'      => 0,
-                //     'qty_soh'     => $newQtySoh,
-                //     'last_update' => now(),
-                // ]);
-
-                $reservation->update([
-                    'status' => 'confirmed',
-                    'confirmed_at' => now(),
-                ]);
+                if ($reservation) {
+                    $reservation->update([
+                        'status' => 'confirmed',
+                        'confirmed_at' => now(),
+                    ]);
+                }
             }
 
             $approvals = $this->createApprovalFlow($pr, $request->ttd);

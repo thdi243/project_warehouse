@@ -157,10 +157,10 @@ export default function RiwayatPR() {
                                         {selectedPr.items.map((item) => (
                                             <TableRow key={item.id}>
                                                 <TableCell>
-                                                    {item.barang.mid_barang}
+                                                    {item.barang?.mid_barang ?? "-"}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {item.barang.nama_barang}
+                                                    {item.barang?.nama_barang ?? item.desc ?? "-"}
                                                 </TableCell>
                                                 <TableCell>
                                                     {item.jenis === "blocked" ? (
@@ -174,7 +174,7 @@ export default function RiwayatPR() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {item.barang.uom}
+                                                    {item.barang?.uom ?? "-"}
                                                 </TableCell>
                                                 <TableCell>
                                                     {item.qty}

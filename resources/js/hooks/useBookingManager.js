@@ -18,7 +18,41 @@ export function useBookingManager() {
     };
 
     // Add item dengan booking
-    const addItem = async (currentItem, type = "pr") => {
+    const addItem = async (currentItem, type = "pr", isJasa = false) => {
+        if (isJasa) {
+            if (!currentItem.desc || !currentItem.qty || !currentItem.keterangan) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error!",
+                    text: "Harap lengkapi semua field jasa sebelum menambahkan.",
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#ef4444",
+                });
+                return false;
+            }
+
+            // Tambahkan item ke list tanpa reservation
+            setItems((prev) => [
+                ...prev,
+                {
+                    ...currentItem,
+                    reservation_id: null,
+                },
+            ]);
+
+            Swal.fire({
+                icon: "success",
+                title: "Berhasil!",
+                text: `Jasa berhasil ditambahkan`,
+                confirmButtonText: "OK",
+                confirmButtonColor: "#10b981",
+                timer: 2000,
+                timerProgressBar: true,
+            });
+
+            return true;
+        }
+
         if (!currentItem.mid || !currentItem.qty || !currentItem.keterangan) {
             Swal.fire({
                 icon: "error",
@@ -96,7 +130,7 @@ export function useBookingManager() {
 
         const confirmResult = await Swal.fire({
             title: "Konfirmasi Hapus",
-            text: "Apakah Anda yakin ingin menghapus barang ini?",
+            text: "Apakah Anda yakin ingin menghapus barang/jasa ini?",
             icon: "warning",
             showCancelButton: true,
             confirmButtonColor: "#ef4444",
@@ -111,14 +145,16 @@ export function useBookingManager() {
         }
 
         try {
-            await fetch(`/purchase-requesition/release/${item.reservation_id}`, {
-                method: "DELETE",
-                headers: {
-                    "X-CSRF-TOKEN": document
-                        .querySelector('meta[name="csrf-token"]')
-                        .getAttribute("content"),
-                },
-            });
+            if (item.reservation_id) {
+                await fetch(`/purchase-requesition/release/${item.reservation_id}`, {
+                    method: "DELETE",
+                    headers: {
+                        "X-CSRF-TOKEN": document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute("content"),
+                    },
+                });
+            }
 
             const newItems = items.filter((_, i) => i !== index);
             setItems(newItems);
@@ -132,7 +168,7 @@ export function useBookingManager() {
             Swal.fire({
                 icon: "success",
                 title: "Item dihapus!",
-                text: "Barang dihapus dari booking",
+                text: "Barang/jasa berhasil dihapus",
                 confirmButtonText: "OK",
                 confirmButtonColor: "#10b981",
                 timer: 1000,
@@ -164,7 +200,22 @@ export function useBookingManager() {
     };
 
     // Clear all items
-    const clearItems = () => {
+    const clearItems = async () => {
+        const sessionId = sessionStorage.getItem("pr_session_id");
+        if (sessionId) {
+            try {
+                await fetch(`/purchase-requesition/release-session/${sessionId}`, {
+                    method: "DELETE",
+                    headers: {
+                        "X-CSRF-TOKEN": document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute("content"),
+                    },
+                });
+            } catch (err) {
+                console.error("Gagal melepaskan booking session:", err);
+            }
+        }
         setItems([]);
         setExpiredAt(null);
         sessionStorage.removeItem("pr_session_id");
