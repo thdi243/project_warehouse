@@ -397,11 +397,18 @@
                 const textToCopy = currentMidsToCopy;
                 if (!textToCopy) return;
 
+                let copied = false;
                 try {
                     if (navigator.clipboard && window.isSecureContext) {
                         await navigator.clipboard.writeText(textToCopy);
-                    } else {
-                        // Fallback for non-secure HTTP context
+                        copied = true;
+                    }
+                } catch (err) {
+                    console.warn("navigator.clipboard failed, trying fallback...", err);
+                }
+
+                if (!copied) {
+                    try {
                         const textArea = document.createElement("textarea");
                         textArea.value = textToCopy;
                         // Keep it invisible and small, but in-place inside the link to avoid browser scroll jumps
@@ -419,11 +426,15 @@
                         textArea.select();
                         const success = document.execCommand('copy');
                         textArea.remove();
-                        if (!success) {
-                            throw new Error('execCommand copy failed');
+                        if (success) {
+                            copied = true;
                         }
+                    } catch (e) {
+                        console.error("Fallback copy failed: ", e);
                     }
+                }
 
+                if (copied) {
                     Swal.update({
                         title: 'Daftar MID berhasil di-copy!',
                         icon: 'success'
@@ -447,8 +458,7 @@
                             icon: 'warning'
                         });
                     }, 3000);
-
-                } catch (e) {
+                } else {
                     Swal.showValidationMessage(
                         'Gagal copy. Silakan Ctrl+C manual.'
                     );
