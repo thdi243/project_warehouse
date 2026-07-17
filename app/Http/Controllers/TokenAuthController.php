@@ -64,7 +64,7 @@ class TokenAuthController extends Controller
                 $user = User::create([
                     'username' => $userData['username'],
                     'email' => $userData['email'] ?? null,
-                    'nama_lengkap' => $userData['nama_lengkap'] ?? $userData['username'],
+                    'nama_lengkap' => $userData['name'] ?? $userData['username'],
                     'nik' => $userData['nik'] ?? null,
                     'jabatan' => $userData['jabatan'] ?? null,
                     'departemen' => $userData['departemen'] ?? null,
@@ -77,7 +77,7 @@ class TokenAuthController extends Controller
                 $user->update([
                     'username' => $userData['username'],
                     'email' => $userData['email'] ?? $user->email,
-                    'nama_lengkap' => $userData['nama_lengkap'] ?? $user->nama_lengkap,
+                    'nama_lengkap' => $userData['name'] ?? $user->nama_lengkap,
                     'nik' => $userData['nik'] ?? $user->nik,
                     'jabatan' => $userData['jabatan'] ?? $user->jabatan,
                     'departemen' => $userData['departemen'] ?? $user->departemen,
