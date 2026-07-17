@@ -881,7 +881,24 @@
 
                         link.addEventListener('click', async () => {
                             try {
-                                await navigator.clipboard.writeText(textToCopy);
+                                if (navigator.clipboard && window.isSecureContext) {
+                                    await navigator.clipboard.writeText(textToCopy);
+                                } else {
+                                    // Fallback for non-secure HTTP context
+                                    const textArea = document.createElement("textarea");
+                                    textArea.value = textToCopy;
+                                    textArea.style.position = "fixed";
+                                    textArea.style.left = "-999999px";
+                                    textArea.style.top = "-999999px";
+                                    document.body.appendChild(textArea);
+                                    textArea.focus();
+                                    textArea.select();
+                                    const success = document.execCommand('copy');
+                                    textArea.remove();
+                                    if (!success) {
+                                        throw new Error('execCommand copy failed');
+                                    }
+                                }
 
                                 Swal.update({
                                     title: 'Daftar MID berhasil di-copy!',
@@ -901,7 +918,7 @@
                                     });
                                 }, 3000);
 
-                            } catch {
+                            } catch (e) {
                                 Swal.showValidationMessage(
                                     'Gagal copy. Silakan Ctrl+C manual.'
                                 );
