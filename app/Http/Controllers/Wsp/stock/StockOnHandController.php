@@ -208,9 +208,12 @@ class StockOnHandController extends Controller
             }
 
             // Hitung total book qty dari PR items
-            $totalBookSoh = DB::table('wsp_purchase_requesition_items')
-                ->where('barang_id', $barang->id)
-                ->sum('qty_book_soh') ?? 0;
+            $totalBookSoh = DB::table('wsp_purchase_requesition_items as items')
+                ->join('wsp_purchase_requesition as pr', 'items.pr_id', '=', 'pr.id')
+                ->where('items.barang_id', $barang->id)
+                ->where('items.jenis', 'blocked')
+                ->whereIn('pr.status', ['pending', 'approved'])
+                ->sum('items.qty') ?? 0;
 
             $inputUnrest = $request->unrest ?? 0;
             $finalUnrest = 0;
@@ -328,11 +331,14 @@ class StockOnHandController extends Controller
                 ->keyBy('mid_barang');
 
             // Fetch book qty for all matching barang
-            $bookLookup = DB::table('wsp_purchase_requesition_items')
-                ->whereIn('barang_id', $barangLookup->pluck('id'))
-                ->select('barang_id')
-                ->selectRaw('SUM(qty_book_soh) as total_book_soh')
-                ->groupBy('barang_id')
+            $bookLookup = DB::table('wsp_purchase_requesition_items as items')
+                ->join('wsp_purchase_requesition as pr', 'items.pr_id', '=', 'pr.id')
+                ->whereIn('items.barang_id', $barangLookup->pluck('id'))
+                ->where('items.jenis', 'blocked')
+                ->whereIn('pr.status', ['pending', 'approved'])
+                ->select('items.barang_id')
+                ->selectRaw('SUM(items.qty) as total_book_soh')
+                ->groupBy('items.barang_id')
                 ->get()
                 ->keyBy('barang_id');
 
