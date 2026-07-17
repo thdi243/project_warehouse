@@ -435,29 +435,36 @@
                 }
 
                 if (copied) {
-                    Swal.update({
-                        title: 'Daftar MID berhasil di-copy!',
-                        icon: 'success'
-                    });
+                    try {
+                        Swal.update({
+                            title: 'Daftar MID berhasil di-copy!',
+                            icon: 'success'
+                        });
 
-                    const activeLink = document.getElementById('copy-mid-link');
-                    if (activeLink) {
-                        activeLink.textContent = '✔ MID sudah di-copy';
-                        activeLink.style.color = '#28a745';
-                    }
-
-                    setTimeout(() => {
-                        const activeLinkReset = document.getElementById('copy-mid-link');
-                        if (activeLinkReset) {
-                            activeLinkReset.textContent = '📋 Copy daftar MID';
-                            activeLinkReset.style.color = '#6c757d';
+                        const activeLink = document.getElementById('copy-mid-link');
+                        if (activeLink) {
+                            activeLink.textContent = '✔ MID sudah di-copy';
+                            activeLink.style.color = '#28a745';
                         }
 
-                        Swal.update({
-                            title: 'MID Barang Tidak Ditemukan',
-                            icon: 'warning'
-                        });
-                    }, 3000);
+                        setTimeout(() => {
+                            const activeLinkReset = document.getElementById('copy-mid-link');
+                            if (activeLinkReset) {
+                                activeLinkReset.textContent = '📋 Copy daftar MID';
+                                activeLinkReset.style.color = '#6c757d';
+                            }
+
+                            Swal.update({
+                                title: 'MID Barang Tidak Ditemukan',
+                                icon: 'warning'
+                            });
+                        }, 3000);
+                    } catch (swalErr) {
+                        console.warn("Swal.update failed: ", swalErr);
+                        if (typeof toastr !== 'undefined') {
+                            toastr.success('Daftar MID berhasil di-copy!');
+                        }
+                    }
                 } else {
                     Swal.showValidationMessage(
                         'Gagal copy. Silakan Ctrl+C manual.'
@@ -481,9 +488,10 @@
                         </p>
 
                         <div style="max-height:220px; overflow:auto; text-align:left;
-                            background:#fff; padding:12px; border:1px solid #ddd; border-radius:6px;">
-                            <ul style="padding-left:20px; margin:0">
-                                ${notFoundList.map(id => `<li><code>${id}</code></li>`).join('')}
+                            background:#fff; padding:12px; border:1px solid #ddd; border-radius:6px;
+                            user-select: text !important; -webkit-user-select: text !important; -moz-user-select: text !important; -ms-user-select: text !important;">
+                            <ul style="padding-left:20px; margin:0; user-select: text !important; -webkit-user-select: text !important;">
+                                ${notFoundList.map(id => `<li><code style="user-select: text !important; -webkit-user-select: text !important;">${id}</code></li>`).join('')}
                             </ul>
                         </div>
                     `,
