@@ -126,10 +126,10 @@ export default function PurchaseRequisitionForm() {
                                 Naikkan PR (Semua Qty)
                             </button>
                             <button id="btn-option-both" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-md transition duration-150">
-                                Naikkan PR+ Reservasi (Potong Stok) 
+                                Naikkan PR+ Reservasi (SAP) 
                             </button>
                             <button id="btn-option-reserve" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition duration-150">
-                                Hanya Reservasi (Potong Stok)
+                                Hanya Reservasi (SAP)
                             </button>
                             <button id="btn-option-cancel" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition duration-150 mt-2">
                                 Batal
@@ -214,6 +214,13 @@ export default function PurchaseRequisitionForm() {
                     }
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
                     // Option 3: Hanya Reservasi (Sesuai Stok) -> Reset Form Tambah Barang & Batal
+                    Swal.fire({
+                        icon: "info",
+                        title: "Informasi",
+                        text: "Silakan Lanjutkan Reservasi Anda ke Sistem SAP",
+                        confirmButtonText: "OK",
+                        confirmButtonColor: "#3b82f6",
+                    });
                     setCurrentItem({
                         mid: "",
                         nama_barang: "",
@@ -242,7 +249,7 @@ export default function PurchaseRequisitionForm() {
                     title: "Stok Tersedia!",
                     html: `
                         <div class="mb-4">
-                            Barang ini memiliki stok ${availableQty}. Apakah Anda ingin melanjutkan PR (Menaikkan PR) atau hanya Potong Stok?
+                            Barang ini memiliki stok ${availableQty}. Apakah Anda ingin melanjutkan PR (Menaikkan PR) atau hanya Reservasi (ke SAP)?
                         </div>
                         <div class="flex flex-col gap-2">
                             <button id="btn-option-pr" type="button" class="w-full py-2.5 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition duration-150">
@@ -302,6 +309,13 @@ export default function PurchaseRequisitionForm() {
                     }
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
                     // Hanya Reservasi -> Reset Form Tambah Barang & Batal
+                    Swal.fire({
+                        icon: "info",
+                        title: "Informasi",
+                        text: "Silakan Lanjutkan Reservasi Anda ke Sistem SAP",
+                        confirmButtonText: "OK",
+                        confirmButtonColor: "#3b82f6",
+                    });
                     setCurrentItem({
                         mid: "",
                         nama_barang: "",
