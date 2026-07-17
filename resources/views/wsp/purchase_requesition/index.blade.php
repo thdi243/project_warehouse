@@ -119,7 +119,7 @@
             <div class="card shadow-sm mb-3">
                 <div class="card-body p-auto">
                     <div class="row g-2 align-items-center">
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label mb-1 small text-muted">Departemen</label>
                             <select id="filterDepartemen" class="form-select">
                                 <option value="all">All Departement</option>
@@ -129,15 +129,15 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        {{-- <div class="col-md-2">
                             <label class="form-label mb-1 small text-muted">Jenis Item</label>
                             <select id="filterJenisPR" class="form-select">
                                 <option value="all">All Item</option>
                                 <option value="pr">PR</option>
                                 <option value="blocked">Blocked/Reservasi</option>
                             </select>
-                        </div>
-                        <div class="col-md-2">
+                        </div> --}}
+                        <div class="col-md-3">
                             <label class="form-label mb-1 small text-muted">Status</label>
                             <select id="filterStatusPR" class="form-select">
                                 <option value="all">All Status</option>
@@ -860,16 +860,16 @@
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td>
                                     ${item.keterangan ? `
-                                                                        <div class="d-flex align-items-center justify-content-between gap-2">
-                                                                            <span>${item.keterangan}</span>
-                                                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                                                    style="flex-shrink: 0;"
-                                                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                                                    title="Copy Keterangan">
-                                                                                <i class="mdi mdi-content-copy"></i>
-                                                                            </button>
-                                                                        </div>
-                                                                    ` : '-'}
+                                                                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                                                                    <span>${item.keterangan}</span>
+                                                                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                                                            style="flex-shrink: 0;"
+                                                                                            data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                                            title="Copy Keterangan">
+                                                                                        <i class="mdi mdi-content-copy"></i>
+                                                                                    </button>
+                                                                                </div>
+                                                                            ` : '-'}
                                 </td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
@@ -1017,10 +1017,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                        <div class="small mt-1">
-                                                            Catatan: ${a.catatan}
-                                                        </div>
-                                                    ` : ''}
+                                                                <div class="small mt-1">
+                                                                    Catatan: ${a.catatan}
+                                                                </div>
+                                                            ` : ''}
                             </div>
 
                         </div>
