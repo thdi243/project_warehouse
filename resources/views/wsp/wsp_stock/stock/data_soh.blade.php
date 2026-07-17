@@ -890,7 +890,9 @@
                                     textArea.style.position = "fixed";
                                     textArea.style.left = "-999999px";
                                     textArea.style.top = "-999999px";
-                                    document.body.appendChild(textArea);
+                                    // Append to the active SweetAlert popup to bypass focus trap
+                                    const container = Swal.getPopup() || document.body;
+                                    container.appendChild(textArea);
                                     textArea.focus();
                                     textArea.select();
                                     const success = document.execCommand('copy');
