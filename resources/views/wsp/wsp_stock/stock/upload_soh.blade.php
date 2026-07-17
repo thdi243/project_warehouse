@@ -404,13 +404,18 @@
                         // Fallback for non-secure HTTP context
                         const textArea = document.createElement("textarea");
                         textArea.value = textToCopy;
-                        textArea.style.position = "fixed";
-                        textArea.style.left = "-999999px";
-                        textArea.style.top = "-999999px";
-                        // Append to the active SweetAlert popup to bypass focus trap
-                        const container = Swal.getPopup() || document.body;
-                        container.appendChild(textArea);
-                        textArea.focus();
+                        // Keep it invisible and small, but in-place inside the link to avoid browser scroll jumps
+                        textArea.style.position = "absolute";
+                        textArea.style.width = "0";
+                        textArea.style.height = "0";
+                        textArea.style.padding = "0";
+                        textArea.style.margin = "0";
+                        textArea.style.border = "none";
+                        textArea.style.opacity = "0";
+                        textArea.style.pointerEvents = "none";
+                        
+                        link.appendChild(textArea);
+                        textArea.focus({ preventScroll: true });
                         textArea.select();
                         const success = document.execCommand('copy');
                         textArea.remove();
