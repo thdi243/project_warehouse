@@ -795,6 +795,12 @@
                 const formData = new FormData();
                 formData.append('file', file);
 
+                const btnSubmit = $('#btnUploadSubmit');
+                const originalHtml = btnSubmit.html();
+
+                // Show loading state
+                btnSubmit.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Uploading...');
+
                 $.ajax({
                     url: "{{ route('stock.soh_upload') }}",
                     method: "POST",
@@ -837,9 +843,8 @@
                         }
                     },
                     complete: function() {
-                        loadingSpinner.hide();
-                        uploadArea.removeClass('loading');
-                        fileInput.val('');
+                        btnSubmit.prop('disabled', false).html(originalHtml);
+                        $('#fileUpload').val('');
                     }
                 });
             });
