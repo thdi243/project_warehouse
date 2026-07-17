@@ -392,11 +392,69 @@
                 });
             }
 
+            let currentMidsToCopy = '';
+            window.copyMidsToClipboard = async function(link) {
+                const textToCopy = currentMidsToCopy;
+                if (!textToCopy) return;
+
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(textToCopy);
+                    } else {
+                        // Fallback for non-secure HTTP context
+                        const textArea = document.createElement("textarea");
+                        textArea.value = textToCopy;
+                        textArea.style.position = "fixed";
+                        textArea.style.left = "-999999px";
+                        textArea.style.top = "-999999px";
+                        // Append to the active SweetAlert popup to bypass focus trap
+                        const container = Swal.getPopup() || document.body;
+                        container.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        const success = document.execCommand('copy');
+                        textArea.remove();
+                        if (!success) {
+                            throw new Error('execCommand copy failed');
+                        }
+                    }
+
+                    Swal.update({
+                        title: 'Daftar MID berhasil di-copy!',
+                        icon: 'success'
+                    });
+
+                    const activeLink = document.getElementById('copy-mid-link');
+                    if (activeLink) {
+                        activeLink.textContent = '✔ MID sudah di-copy';
+                        activeLink.style.color = '#28a745';
+                    }
+
+                    setTimeout(() => {
+                        const activeLinkReset = document.getElementById('copy-mid-link');
+                        if (activeLinkReset) {
+                            activeLinkReset.textContent = '📋 Copy daftar MID';
+                            activeLinkReset.style.color = '#6c757d';
+                        }
+
+                        Swal.update({
+                            title: 'MID Barang Tidak Ditemukan',
+                            icon: 'warning'
+                        });
+                    }, 3000);
+
+                } catch (e) {
+                    Swal.showValidationMessage(
+                        'Gagal copy. Silakan Ctrl+C manual.'
+                    );
+                }
+            };
+
             function showNotFoundWarning(res) {
                 const notFoundList = res.not_found || [];
                 const count = notFoundList.length;
                 const totalChecked = res.total_checked || '–';
-                const textToCopy = notFoundList.join('\n');
+                currentMidsToCopy = notFoundList.join('\n');
 
                 Swal.fire({
                     icon: 'warning',
@@ -415,66 +473,14 @@
                         </div>
                     `,
                     footer: `
-                        <a href="javascript:void(0)" id="copy-mid-link"
+                        <a href="javascript:void(0)" id="copy-mid-link" onclick="copyMidsToClipboard(this)"
                         style="font-weight:600; color:#6c757d; text-decoration:none;">
                             📋 Copy daftar MID
                         </a>
                     `,
                     confirmButtonText: 'Oke, Saya Perbaiki',
                     confirmButtonColor: '#f0ad4e',
-                    allowOutsideClick: false,
-
-                    didOpen: () => {
-                        const link = document.getElementById('copy-mid-link');
-
-                        link.addEventListener('click', async () => {
-                            try {
-                                if (navigator.clipboard && window.isSecureContext) {
-                                    await navigator.clipboard.writeText(textToCopy);
-                                } else {
-                                    // Fallback for non-secure HTTP context
-                                    const textArea = document.createElement("textarea");
-                                    textArea.value = textToCopy;
-                                    textArea.style.position = "fixed";
-                                    textArea.style.left = "-999999px";
-                                    textArea.style.top = "-999999px";
-                                    // Append to the active SweetAlert popup to bypass focus trap
-                                    const container = Swal.getPopup() || document.body;
-                                    container.appendChild(textArea);
-                                    textArea.focus();
-                                    textArea.select();
-                                    const success = document.execCommand('copy');
-                                    textArea.remove();
-                                    if (!success) {
-                                        throw new Error('execCommand copy failed');
-                                    }
-                                }
-
-                                Swal.update({
-                                    title: 'Daftar MID berhasil di-copy!',
-                                    icon: 'success'
-                                });
-
-                                link.textContent = '✔ MID sudah di-copy';
-                                link.style.color = '#28a745';
-
-                                setTimeout(() => {
-                                    link.textContent = '📋 Copy daftar MID';
-                                    link.style.color = '#6c757d';
-
-                                    Swal.update({
-                                        title: 'MID Barang Tidak Ditemukan',
-                                        icon: 'warning'
-                                    });
-                                }, 3000);
-
-                            } catch (e) {
-                                Swal.showValidationMessage(
-                                    'Gagal copy. Silakan Ctrl+C manual.'
-                                );
-                            }
-                        });
-                    }
+                    allowOutsideClick: false
                 });
             }
         });
