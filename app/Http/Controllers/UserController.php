@@ -228,7 +228,7 @@ class UserController extends Controller
         $request->validate([
             'nama_lengkap' => 'required|string|max:255',
             'username'   => 'required|unique:users,username,' . $id,
-            'email'      => 'required|email|unique:users,email,' . $id,
+            'email'      => 'required|email',
             'password'   => 'nullable|min:6',
             'jabatan'    => 'required',
             'nik'        => 'required',
