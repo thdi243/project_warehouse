@@ -259,6 +259,8 @@
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
                                         <option value="warehouse_packaging_material">Warehouse Packaging Material</option>
                                         <option value="engineering">Engineering</option>
+                                        <option value="engineering_utility">Engineering Utility</option>
+                                        <option value="engineering_production">Engineering Production</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
@@ -408,6 +410,8 @@
                                         <option value="warehouse_sparepart">Warehouse Sparepart</option>
                                         <option value="warehouse_packaging_material">Warehouse Packaging Material</option>
                                         <option value="engineering">Engineering</option>
+                                        <option value="engineering_utility">Engineering Utility</option>
+                                        <option value="engineering_production">Engineering Production</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
