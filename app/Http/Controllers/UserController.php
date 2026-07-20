@@ -474,4 +474,143 @@ class UserController extends Controller
             'is_active' => $user->is_active
         ]);
     }
+
+    public function editProfile()
+    {
+        $user = User::with('principal', 'signature')->findOrFail(Auth::id());
+        
+        $imageName = trim($user->image ?? '', '/');
+
+        if ($imageName && !str_starts_with($imageName, 'images/users/')) {
+            $imagePath = 'images/users/' . $imageName;
+        } else {
+            $imagePath = $imageName;
+        }
+
+        if ($imagePath && Storage::disk('public')->exists($imagePath)) {
+            $user->image_url = url(Storage::url($imagePath));
+        } else {
+            $user->image_url = url("material/assets/images/users/user-dummy-img.jpg");
+        }
+
+        return view('user.edit-profile', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = User::findOrFail(Auth::id());
+
+        $request->validate([
+            'nama_lengkap' => 'required|string|max:255',
+            'username'   => 'required|unique:users,username,' . $user->id,
+            'email'      => 'required|email',
+            'nik'        => 'required',
+            'jabatan'    => Auth::user()->jabatan === 'operator' ? 'nullable' : 'required',
+            'departemen' => Auth::user()->jabatan === 'operator' ? 'nullable' : 'required',
+            'bagian'     => Auth::user()->jabatan === 'operator' ? 'nullable' : 'required',
+            'image'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'signature'  => 'nullable|string',
+        ]);
+
+        try {
+            $data = [
+                'nama_lengkap' => $request->nama_lengkap,
+                'username'     => $request->username,
+                'email'        => $request->email,
+                'nik'          => $request->nik,
+            ];
+
+            if (Auth::user()->jabatan !== 'operator') {
+                $data['jabatan'] = $request->jabatan;
+                $data['departemen'] = $request->departemen;
+                $data['bagian'] = $request->bagian;
+            }
+
+            // Photo Profile upload
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+
+                if ($user->image && Storage::disk('public')->exists($user->image)) {
+                    Storage::disk('public')->delete($user->image);
+                }
+
+                $identifier = Str::slug($user->username);
+                $uniqueSuffix = Str::random(8);
+                $imageName = "profile_{$identifier}_{$uniqueSuffix}." . $file->getClientOriginalExtension();
+                $relativePath = "images/users/{$imageName}";
+
+                Storage::disk('public')->putFileAs('images/users', $file, $imageName);
+                $data['image'] = $relativePath;
+            }
+
+            $user->update($data);
+
+            // Digital Signature
+            if ($request->filled('signature') && trim($request->signature) !== '') {
+                $signatureData = $request->input('signature');
+                $imageData = preg_replace('#^data:image/\w+;base64,#i', '', $signatureData);
+                $imageData = str_replace(' ', '+', $imageData);
+                $binaryData = base64_decode($imageData);
+
+                if ($binaryData !== false) {
+                    $identifier = Str::slug($user->username);
+                    $uniqueSuffix = Str::random(8);
+                    $signatureName = "signature_{$identifier}_{$uniqueSuffix}.png";
+                    $relativePath = "uploads/signatures/{$signatureName}";
+
+                    Storage::disk('public')->put($relativePath, $binaryData);
+
+                    if ($user->signature && $user->signature->signature) {
+                        Storage::disk('public')->delete($user->signature->signature);
+                    }
+
+                    $user->signature()->updateOrCreate(
+                        ['user_id' => $user->id],
+                        ['signature' => $relativePath]
+                    );
+                }
+            } elseif ($request->has('signature') && trim($request->signature) === '') {
+                if ($user->signature && $user->signature->signature) {
+                    Storage::disk('public')->delete($user->signature->signature);
+                    $user->signature()->delete();
+                }
+            }
+
+            return redirect()->route('user.profile')->with('success', 'Profile berhasil diperbarui');
+        } catch (\Exception $e) {
+            Log::error('Profile update error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memperbarui profile: ' . $e->getMessage());
+        }
+    }
+
+    public function changePassword()
+    {
+        return view('user.change-password');
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password'     => 'required|min:6|confirmed',
+        ]);
+
+        $user = User::findOrFail(Auth::id());
+
+        if (!\Illuminate\Support\Facades\Hash::check($request->current_password, $user->password)) {
+            return redirect()->back()->with('error', 'Password lama tidak sesuai');
+        }
+
+        try {
+            $user->update([
+                'password' => bcrypt($request->new_password)
+            ]);
+
+            return redirect()->route('user.profile')->with('success', 'Password berhasil diperbarui');
+        } catch (\Exception $e) {
+            Log::error('Password update error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memperbarui password');
+        }
+    }
 }
+

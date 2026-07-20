@@ -90,6 +90,10 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('user')->group(function () {
         Route::get('/profile', [UserController::class, 'profileIndex'])->name('user.profile');
+        Route::get('/profile/edit', [UserController::class, 'editProfile'])->name('user.profile.edit');
+        Route::put('/profile/update', [UserController::class, 'updateProfile'])->name('user.profile.update');
+        Route::get('/profile/change-password', [UserController::class, 'changePassword'])->name('user.profile.change-password');
+        Route::put('/profile/change-password', [UserController::class, 'updatePassword'])->name('user.profile.update-password');
         Route::get('/profile/edit/{id}', [UserController::class, 'edit'])->name('user.edit');
         Route::put('/profile/update/{id}', [UserController::class, 'update'])->name('user.update');
     });

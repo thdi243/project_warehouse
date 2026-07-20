@@ -345,14 +345,16 @@
                                     <input type="email" class="form-control" id="editEmail" name="editEmail" required>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="editPassword" class="form-label">Password <small
-                                            class="text-muted">(kosongkan jika tidak ingin mengubah)</small></label>
-                                    <input type="password" class="form-control" id="editPassword" name="editPassword"
-                                        placeholder="Masukkan password baru">
+                            @if (Auth::user()->jabatan == 'admin')
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="editPassword" class="form-label">Password <small
+                                                class="text-muted">(kosongkan jika tidak ingin mengubah)</small></label>
+                                        <input type="password" class="form-control" id="editPassword"
+                                            name="editPassword" placeholder="Masukkan password baru">
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editNik" class="form-label">NIK <span
