@@ -932,7 +932,8 @@ class WspPurchaseRequesitionController extends Controller
             'it' => 'engineering',
             'quality control' => 'quality_control',
             'qc' => 'quality_control',
-            'production' => 'produksi'
+            'production' => 'produksi',
+            'timbangan' => 'expedisi',
         ];
 
         $approvalDept = $deptMap[$pr->department] ?? $pr->department;
@@ -967,6 +968,25 @@ class WspPurchaseRequesitionController extends Controller
                     ->where('is_active', true)
                     ->first();
             }
+        } elseif ($approvalDept === 'quality_control') {
+            if (str_contains($requesterBagian, 'quality_control_rmpm')) {
+                $supervisor = User::where('departemen', 'quality_control')
+                    ->where('jabatan', 'supervisor')
+                    ->where('bagian', 'quality_control_rmpm')
+                    ->where('is_active', true)
+                    ->first();
+            } elseif (str_contains($requesterBagian, 'quality_control_proses')) {
+                $supervisor = User::where('departemen', 'quality_control')
+                    ->where('jabatan', 'supervisor')
+                    ->where('bagian', 'quality_control_proses')
+                    ->where('is_active', true)
+                    ->first();
+            } else {
+                $supervisor = User::where('departemen', 'quality_control')
+                    ->where('jabatan', 'supervisor')
+                    ->where('is_active', true)
+                    ->first();
+            }
         } else {
             $supervisor = User::where('departemen', $approvalDept)
                 ->where('jabatan', 'supervisor')
@@ -981,6 +1001,12 @@ class WspPurchaseRequesitionController extends Controller
                     $detail = ' (Utility)';
                 } elseif (str_contains($requesterBagian, 'produksi') || str_contains($requesterBagian, 'production')) {
                     $detail = ' (Produksi)';
+                }
+            } elseif ($approvalDept === 'quality_control') {
+                if (str_contains($requesterBagian, 'rmpm')) {
+                    $detail = ' (RMPM)';
+                } elseif (str_contains($requesterBagian, 'proses')) {
+                    $detail = ' (Proses)';
                 }
             }
             return response()->json([
