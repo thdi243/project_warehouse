@@ -10,10 +10,19 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::call(function () {
+    // Release unsubmitted bookings (expired after 15 mins)
     WspStockReservations::where('status', 'booked')
         ->where('expired_at', '<=', now())
         ->update([
             'status' => 'cancelled'
+        ]);
+
+    // Release confirmed reservations after 24 hours
+    WspStockReservations::where('status', 'confirmed')
+        ->where('type', 'reservation')
+        ->where('confirmed_at', '<=', now()->subHours(24))
+        ->update([
+            'status' => 'released'
         ]);
 })->everyMinute();
 
