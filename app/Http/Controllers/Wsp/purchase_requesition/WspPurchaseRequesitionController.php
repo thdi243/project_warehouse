@@ -152,13 +152,24 @@ class WspPurchaseRequesitionController extends Controller
                 'qc'              => 'QC',
                 'expedisi'        => 'EXP',
                 'timbangan'       => 'EXP',
+                'hrga'            => 'HRGA',
             ];
             $deptCode = $deptMap[$rawDept] ?? strtoupper(substr($rawDept, 0, 3));
 
             // Ambil bulan romawi dan tahun
             $romanMonths = [
-                1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
-                7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
+                1 => 'I',
+                2 => 'II',
+                3 => 'III',
+                4 => 'IV',
+                5 => 'V',
+                6 => 'VI',
+                7 => 'VII',
+                8 => 'VIII',
+                9 => 'IX',
+                10 => 'X',
+                11 => 'XI',
+                12 => 'XII'
             ];
             $bulanRomawi = $romanMonths[(int)date('m')] ?? 'I';
             $tahun = date('Y');
@@ -603,7 +614,6 @@ class WspPurchaseRequesitionController extends Controller
                 'success' => true,
                 'items' => $items
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1400,7 +1410,7 @@ class WspPurchaseRequesitionController extends Controller
             DB::beginTransaction();
 
             $item = \App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionItemsModel::findOrFail($itemId);
-            
+
             // Check if PR is still pending
             $pr = WspPurchaseRequesitionModel::findOrFail($item->pr_id);
             if ($pr->status !== 'pending') {
