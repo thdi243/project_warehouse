@@ -27,4 +27,4 @@ Schedule::call(function () {
 })->everyMinute();
 
 // Update stock status dari QI ke UNREST setelah 14 hari incoming date
-Schedule::command('stock:update-status-qi-to-unrest')->dailyAt('00:00');
+// Schedule::command('stock:update-status-qi-to-unrest')->dailyAt('00:00');
