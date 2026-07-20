@@ -86,21 +86,33 @@
             <!-- Tabs -->
             @php
                 $user = Auth::user();
+                $isSupervisor = $user->jabatan === 'supervisor';
                 $isDeptHead = $user->jabatan === 'dept_head';
                 $isWarehouseHead = $isDeptHead && $user->departemen === 'warehouse';
                 $isForeman = $user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart';
                 $firstTab = true;
             @endphp
-            @if ($isDeptHead || $isWarehouseHead || $isForeman)
+            @if ($isSupervisor || $isDeptHead || $isWarehouseHead || $isForeman)
                 <ul class="nav nav-pills nav-justified mb-3 shadow-sm rounded bg-white p-1" id="approvalTabs" role="tablist"
                     data-aos="fade-up">
 
-                    @if ($isDeptHead)
+                    @if ($isSupervisor)
                         <li class="nav-item" role="presentation">
                             <button class="nav-link {{ $firstTab ? 'active' : '' }} py-2" id="tab-level-2" data-level="2"
                                 data-bs-toggle="pill" type="button" role="tab">
-                                <i class="mdi mdi-account-tie me-1"></i> Manager User (Level 2)
+                                <i class="mdi mdi-account-star me-1"></i> Supervisor User (Level 2)
                                 <span class="badge bg-danger ms-2 count-level-2">0</span>
+                            </button>
+                        </li>
+                        @php $firstTab = false; @endphp
+                    @endif
+
+                    @if ($isDeptHead)
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {{ $firstTab ? 'active' : '' }} py-2" id="tab-level-3" data-level="3"
+                                data-bs-toggle="pill" type="button" role="tab">
+                                <i class="mdi mdi-account-tie me-1"></i> Manager User (Level 3)
+                                <span class="badge bg-danger ms-2 count-level-3">0</span>
                             </button>
                         </li>
                         @php $firstTab = false; @endphp
@@ -108,10 +120,10 @@
 
                     @if ($isWarehouseHead)
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link {{ $firstTab ? 'active' : '' }} py-2" id="tab-level-3" data-level="3"
+                            <button class="nav-link {{ $firstTab ? 'active' : '' }} py-2" id="tab-level-4" data-level="4"
                                 data-bs-toggle="pill" type="button" role="tab">
-                                <i class="mdi mdi-warehouse me-1"></i> Manager Warehouse (Level 3)
-                                <span class="badge bg-danger ms-2 count-level-3">0</span>
+                                <i class="mdi mdi-warehouse me-1"></i> Manager Warehouse (Level 4)
+                                <span class="badge bg-danger ms-2 count-level-4">0</span>
                             </button>
                         </li>
                         @php $firstTab = false; @endphp
@@ -119,10 +131,10 @@
 
                     @if ($isForeman)
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link {{ $firstTab ? 'active' : '' }} py-2" id="tab-level-4" data-level="4"
+                            <button class="nav-link {{ $firstTab ? 'active' : '' }} py-2" id="tab-level-5" data-level="5"
                                 data-bs-toggle="pill" type="button" role="tab">
-                                <i class="mdi mdi-account-hard-hat me-1"></i> Foreman WSP (Level 4)
-                                <span class="badge bg-danger ms-2 count-level-4">0</span>
+                                <i class="mdi mdi-account-hard-hat me-1"></i> Foreman WSP (Level 5)
+                                <span class="badge bg-danger ms-2 count-level-5">0</span>
                             </button>
                         </li>
                         @php $firstTab = false; @endphp
@@ -184,7 +196,7 @@
                         <!-- Dynamic Content -->
                     </div>
 
-                    <div class="alert alert-info d-none mt-3" id="level4AlertInfo">
+                    <div class="alert alert-info d-none mt-3" id="level5AlertInfo">
                         <i class="mdi mdi-information-outline me-2"></i>
                         Jika item di-checklist, maka data terkonfirmasi naik PR. Jika tidak di-checklist, maka item tersebut
                         dicancel/tidak naik PR.
@@ -207,8 +219,8 @@
                                         <th>UoM</th>
                                         <th>Keterangan</th>
                                         <th>Status</th>
-                                        <th class="level4-only-col">Jenis</th>
-                                        <th class="level4-only-col">Alasan</th>
+                                        <th class="level5-only-col">Jenis</th>
+                                        <th class="level5-only-col">Alasan</th>
                                     </tr>
                                 </thead>
                                 <tbody id="detailItemsBody">
@@ -413,9 +425,15 @@
                     return myApp && myApp.level == 4;
                 }).length;
 
+                const count5 = data.filter(pr => {
+                    const myApp = pr.approval.find(a => a.approver_id == userId && a.status === 'pending');
+                    return myApp && myApp.level == 5;
+                }).length;
+
                 $('.count-level-2').text(count2);
                 $('.count-level-3').text(count3);
                 $('.count-level-4').text(count4);
+                $('.count-level-5').text(count5);
             }
 
             function filterAndRender(searchTerm) {
@@ -449,15 +467,15 @@
                     const myApproval = pr.approval.find(a => a.approver_id == userId && a.status ===
                         'pending');
                     const roleName = myApproval ? myApproval.role : '-';
-                    const isLevel4 = currentFilterLevel == 4;
-                    const approveText = isLevel4 ? 'Confirm' : 'Approve';
+                    const isLevel5 = currentFilterLevel == 5;
+                    const approveText = isLevel5 ? 'Confirm' : 'Approve';
 
                     let checkboxOrIndex = `
                         <div class="form-check">
                             <input class="form-check-input check-item" type="checkbox" value="${pr.id}">
                         </div>
                     `;
-                    if (isLevel4) {
+                    if (isLevel5) {
                         checkboxOrIndex = idx + 1;
                     }
 
@@ -474,7 +492,7 @@
                                 <button class="btn btn-sm btn-success btn-action-row" data-id="${pr.id}" data-action="approved">
                                     <i class="mdi mdi-check"></i> ${approveText}
                                 </button>
-                                ${!isLevel4 ? `
+                                ${!isLevel5 ? `
                                             <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
                                                 <i class="mdi mdi-close"></i> Reject
                                             </button>
@@ -516,7 +534,7 @@
             }
 
             function updateBulkUI() {
-                if (currentFilterLevel == 4) {
+                if (currentFilterLevel == 5) {
                     $('.bulk-actions-wrapper').addClass('d-none');
                     return;
                 } else {
@@ -572,15 +590,16 @@
 
                 const userId = {{ Auth::id() }};
                 const myApproval = pr.approval.find(a => a.approver_id == userId && a.status === 'pending');
-                const isLevel2Or4 = myApproval && (
-                    myApproval.level == 2 ||
-                    myApproval.level == 4 ||
+                const isLevel3Or5 = myApproval && (
+                    myApproval.level == 3 ||
+                    myApproval.level == 5 ||
                     myApproval.role === 'Manager User' ||
                     myApproval.role === 'Foreman Wsp'
                 );
-                const isLevel4 = myApproval && (myApproval.level == 4 || myApproval.role === 'Foreman Wsp');
+                const isLevel5 = myApproval && (myApproval.level == 5 || myApproval.role === 'Foreman Wsp');
+                const isLevel4 = myApproval && (myApproval.level == 4 || myApproval.role === 'Manager Warehouse');
 
-                if (isLevel2Or4) {
+                if (isLevel3Or5) {
                     $('.item-check-col').show();
                 } else {
                     $('.item-check-col').hide();
@@ -590,7 +609,7 @@
                 itemsBody.empty();
                 pr.items.forEach(item => {
                     let checkHtml = '';
-                    if (isLevel2Or4) {
+                    if (isLevel3Or5) {
                         if (item.jenis === 'pr') {
                             checkHtml = `
                             <td class="item-check-col">
@@ -638,18 +657,18 @@
                                     ` : '-'}
                         </td>
                         <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
-                        <td class="level4-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>
-                        <td class="level4-only-col">${item.alasan || '-'}</td>
+                        <td class="level5-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>
+                        <td class="level5-only-col">${item.alasan || '-'}</td>
                     </tr>
                 `);
                 });
 
-                if (isLevel4) {
-                    $('.level4-only-col').show();
-                    $('#level4AlertInfo').removeClass('d-none');
+                if (isLevel5) {
+                    $('.level5-only-col').show();
+                    $('#level5AlertInfo').removeClass('d-none');
                 } else {
-                    $('.level4-only-col').hide();
-                    $('#level4AlertInfo').addClass('d-none');
+                    $('.level5-only-col').hide();
+                    $('#level5AlertInfo').addClass('d-none');
                 }
 
                 const totalCheckboxes = $('.check-sub-item').length;
@@ -676,13 +695,13 @@
                 $('.btn-lanjut-action').off('click').on('click', function() {
                     selectedIds = [pr.id];
 
-                    if (isLevel2Or4) {
+                    if (isLevel3Or5) {
                         const selectedItems = [];
                         $('.check-sub-item:checked').each(function() {
                             selectedItems.push($(this).val());
                         });
 
-                        if (!isLevel4 && action === 'approved' && selectedItems.length === 0) {
+                        if (!isLevel5 && action === 'approved' && selectedItems.length === 0) {
                             Swal.fire('Peringatan', 'Harap pilih minimal satu item untuk diproses.',
                                 'warning');
                             return;
@@ -735,14 +754,14 @@
 
             function openActionModal(status) {
                 currentAction = status;
-                const isLevel4 = currentFilterLevel == 4;
+                const isLevel5 = currentFilterLevel == 5;
 
-                $('#actionModalTitle').text(isLevel4 ? (status === 'approved' ? 'Konfirmasi PR (Confirm)' :
+                $('#actionModalTitle').text(isLevel5 ? (status === 'approved' ? 'Konfirmasi PR (Confirm)' :
                     'Konfirmasi Penolakan') : (status === 'approved' ? 'Konfirmasi Approval' :
                     'Konfirmasi Penolakan'));
                 $('#btnSubmitAction').removeClass('btn-primary btn-success btn-danger')
                     .addClass(status === 'approved' ? 'btn-success' : 'btn-danger')
-                    .text(isLevel4 ? (status === 'approved' ? 'Confirm Sekarang' : 'Reject Sekarang') : (status ===
+                    .text(isLevel5 ? (status === 'approved' ? 'Confirm Sekarang' : 'Reject Sekarang') : (status ===
                         'approved' ? 'Approve Sekarang' : 'Reject Sekarang'));
 
                 if (status === 'rejected') {
@@ -751,7 +770,7 @@
                     $('#signatureWrapper').removeClass('d-none');
                 }
 
-                if (isLevel4 && status === 'approved') {
+                if (isLevel5 && status === 'approved') {
                     $('#noPrWrapper').removeClass('d-none');
                     $('#actionNoPr').val('');
                 } else {
@@ -774,7 +793,7 @@
 
             $('#btnSubmitAction').on('click', function() {
                 const useStored = $('#useStoredSignature').val() == '1';
-                const isLevel4 = currentFilterLevel == 4;
+                const isLevel5 = currentFilterLevel == 5;
                 const noPr = $('#actionNoPr').val().trim();
 
                 if (currentAction === 'approved' && !useStored && signaturePad.isEmpty()) {
@@ -782,7 +801,7 @@
                     return;
                 }
 
-                if (isLevel4 && currentAction === 'approved' && !noPr) {
+                if (isLevel5 && currentAction === 'approved' && !noPr) {
                     Swal.fire('Error', 'No PR wajib diisi.', 'error');
                     return;
                 }
@@ -792,7 +811,7 @@
                     status: currentAction,
                     comment: $('#actionComment').val(),
                     items: window.currentSelectedItems || [],
-                    no_pr: isLevel4 && currentAction === 'approved' ? noPr : null,
+                    no_pr: isLevel5 && currentAction === 'approved' ? noPr : null,
                     ttd: (currentAction === 'approved' && !useStored) ? signaturePad
                         .toDataURL() : null,
                     use_stored_signature: (currentAction === 'approved' && useStored) ? 1 : 0,

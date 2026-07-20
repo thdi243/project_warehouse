@@ -10,8 +10,10 @@ class WspStockReservations extends Model
     protected $table = 'wsp_stock_reservations';
 
     protected $fillable = [
+        'pr_id',
         'mid_barang',
         'qty',
+        'keterangan',
         'type',
         'session_id',
         'user_id',

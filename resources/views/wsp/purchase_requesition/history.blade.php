@@ -298,12 +298,14 @@
                         }
                         statusText = `LEVEL ${maxApprovedLevel}`;
 
-                        if (maxApprovedLevel === 4) {
+                        if (maxApprovedLevel === 5) {
                             badgeClass = 'success';
-                        } else if (maxApprovedLevel === 3) {
+                        } else if (maxApprovedLevel === 4) {
                             badgeClass = 'info';
-                        } else if (maxApprovedLevel === 2) {
+                        } else if (maxApprovedLevel === 3) {
                             badgeClass = 'primary';
+                        } else if (maxApprovedLevel === 2) {
+                            badgeClass = 'secondary';
                         } else {
                             badgeClass = 'warning';
                         }
@@ -378,8 +380,8 @@
                         if (item.approval && item.approval.length > 0) {
                             item.approval.forEach(a => {
                                 const level = a.approval?.level;
-                                if (level == 2) statusUser = a.status;
-                                if (level == 3) statusWrh = a.status;
+                                if (level == 3) statusUser = a.status;
+                                if (level == 4) statusWrh = a.status;
                             });
                         }
 

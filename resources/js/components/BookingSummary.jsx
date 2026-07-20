@@ -107,7 +107,7 @@ export default function BookingSummary({
                 <Button
                     type="submit"
                     className="w-full"
-                    disabled={loading || items.length === 0}
+                    disabled={loading || items.filter(item => item.jenis === 'pr').length === 0}
                 >
                     {loading ? "Menyimpan..." : "Submit PR"}
                 </Button>

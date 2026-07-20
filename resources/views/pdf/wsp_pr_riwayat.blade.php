@@ -252,46 +252,55 @@
         <table class="text-center" cellspacing="0" cellpadding="4"
             style="white-space: nowrap; border: 1px solid #000; border-top: 0; width: 100%; border-collapse: collapse; page-break-inside: avoid;">
             <tr>
-                <td colspan="4" style="height: 10px; border: none; border-bottom: 1px solid #000;"></td>
+                <td colspan="5" style="height: 10px; border: none; border-bottom: 1px solid #000;"></td>
             </tr>
             <tr>
-                <td style="width: 33%; border-right: 1px solid #000;">
+                <td style="width: 20%; border-right: 1px solid #000;">
                     <strong>Dibuat oleh,</strong>
                 </td>
-                <td style="width: 33%; border-right: 1px solid #000;">
+                <td style="width: 20%; border-right: 1px solid #000;">
+                    <strong>Diperiksa oleh,</strong>
+                </td>
+                <td style="width: 20%; border-right: 1px solid #000;">
                     <strong>Disetujui
                         oleh,</strong>
                 </td>
-                <td style="width: 33%; border-right: 1px solid #000;">
+                <td style="width: 20%; border-right: 1px solid #000;">
                     <strong>Diketahui
                         oleh,</strong>
                 </td>
-                <td style="width: 34%;"><strong>Diterima oleh,</strong></td>
+                <td style="width: 20%;"><strong>Diterima oleh,</strong></td>
             </tr>
 
             <tr>
                 <td class="approver-ttd-cell">
                     @if (!empty($approvers[0]['ttd']))
-                        <img src="{{ $approvers[0]['ttd'] }}" style="max-width: 120px; max-height: 60px;"
+                        <img src="{{ $approvers[0]['ttd'] }}" style="max-width: 100px; max-height: 50px;"
                             alt="Ttd {{ $approvers[0]['nama'] }}">
                     @endif
                 </td>
                 <td class="approver-ttd-cell">
                     @if (!empty($approvers[1]['ttd']))
-                        <img src="{{ $approvers[1]['ttd'] }}" style="max-width: 120px; max-height: 60px;"
+                        <img src="{{ $approvers[1]['ttd'] }}" style="max-width: 100px; max-height: 50px;"
                             alt="Ttd {{ $approvers[1]['nama'] }}">
                     @endif
                 </td>
                 <td class="approver-ttd-cell">
                     @if (!empty($approvers[2]['ttd']))
-                        <img src="{{ $approvers[2]['ttd'] }}" style="max-width: 120px; max-height: 60px;"
+                        <img src="{{ $approvers[2]['ttd'] }}" style="max-width: 100px; max-height: 50px;"
                             alt="Ttd {{ $approvers[2]['nama'] }}">
                     @endif
                 </td>
                 <td class="approver-ttd-cell">
                     @if (!empty($approvers[3]['ttd']))
-                        <img src="{{ $approvers[3]['ttd'] }}" style="max-width: 120px; max-height: 60px;"
+                        <img src="{{ $approvers[3]['ttd'] }}" style="max-width: 100px; max-height: 50px;"
                             alt="Ttd {{ $approvers[3]['nama'] }}">
+                    @endif
+                </td>
+                <td class="approver-ttd-cell">
+                    @if (!empty($approvers[4]['ttd']))
+                        <img src="{{ $approvers[4]['ttd'] }}" style="max-width: 100px; max-height: 50px;"
+                            alt="Ttd {{ $approvers[4]['nama'] }}">
                     @endif
                 </td>
             </tr>
@@ -299,49 +308,59 @@
             <tr>
                 <td class="approver-name-cell">
 
-                    <span style="font-size: 11px;"><strong>{{ $approvers[0]['nama'] ?? '' }}</strong></span>
+                    <span style="font-size: 10px;"><strong>{{ $approvers[0]['nama'] ?? '' }}</strong></span>
                     <br>
-                    <span style="font-size: 11px;">{{ $approvers[0]['action_at'] ?? '' }}</span>
+                    <span style="font-size: 10px;">{{ $approvers[0]['action_at'] ?? '' }}</span>
 
                 </td>
                 <td class="approver-name-cell">
 
-                    <span style="font-size: 11px;"><strong>{{ $approvers[1]['nama'] ?? '' }}</strong></span>
+                    <span style="font-size: 10px;"><strong>{{ $approvers[1]['nama'] ?? '' }}</strong></span>
                     <br>
-                    <span style="font-size: 11px;">{{ $approvers[1]['action_at'] ?? '' }}</span>
+                    <span style="font-size: 10px;">{{ $approvers[1]['action_at'] ?? '' }}</span>
 
                 </td>
                 <td class="approver-name-cell">
 
-                    <span style="font-size: 11px;"><strong>{{ $approvers[2]['nama'] ?? '' }}</strong></span>
+                    <span style="font-size: 10px;"><strong>{{ $approvers[2]['nama'] ?? '' }}</strong></span>
                     <br>
-                    <span style="font-size: 11px;">{{ $approvers[2]['action_at'] ?? '' }}</span>
+                    <span style="font-size: 10px;">{{ $approvers[2]['action_at'] ?? '' }}</span>
 
                 </td>
                 <td class="approver-name-cell">
 
-                    <span style="font-size: 11px;"><strong>{{ $approvers[3]['nama'] ?? '' }}</strong></span>
+                    <span style="font-size: 10px;"><strong>{{ $approvers[3]['nama'] ?? '' }}</strong></span>
                     <br>
-                    <span style="font-size: 11px;">{{ $approvers[3]['action_at'] ?? '' }}</span>
+                    <span style="font-size: 10px;">{{ $approvers[3]['action_at'] ?? '' }}</span>
+
+                </td>
+                <td class="approver-name-cell">
+
+                    <span style="font-size: 10px;"><strong>{{ $approvers[4]['nama'] ?? '' }}</strong></span>
+                    <br>
+                    <span style="font-size: 10px;">{{ $approvers[4]['action_at'] ?? '' }}</span>
 
                 </td>
             </tr>
 
             <tr>
-                <td style="text-align: center;"><strong style="font-size: 11px;">Dept.
+                <td style="text-align: center;"><strong style="font-size: 10px;">Dept.
                         {{ formatDept($approvers[0]['dept'] ?? '') }}</strong>
                 </td>
-                <td style="text-align: center;"><strong style="font-size: 11px;">Dept.
-                        Head {{ formatDept($approvers[1]['dept'] ?? '') }}</strong>
+                <td style="text-align: center;"><strong style="font-size: 10px;">Spv.
+                        {{ formatDept($approvers[1]['dept'] ?? '') }}</strong>
                 </td>
-                <td style="text-align: center;"><strong style="font-size: 11px;">Dept.
+                <td style="text-align: center;"><strong style="font-size: 10px;">Dept.
+                        Head {{ formatDept($approvers[2]['dept'] ?? '') }}</strong>
+                </td>
+                <td style="text-align: center;"><strong style="font-size: 10px;">Dept.
                         Head Warehouse</strong>
                 </td>
-                <td style="text-align: center;"><strong style="font-size: 11px;">Dept. WSP</span></td>
+                <td style="text-align: center;"><strong style="font-size: 10px;">Dept. WSP</strong></td>
             </tr>
 
             <tr>
-                <td class="text-left" colspan="4"
+                <td class="text-left" colspan="5"
                     style="height: 10px; border: none; border-bottom: 1px solid #000;">
                     Note: Apabila PR direvisi atau dihapus, maka User wajib membuat Internal Memo ditanda tangani
                     oleh
@@ -349,7 +368,7 @@
                 </td>
             </tr>
             <tr>
-                <td colspan="4" style="height: 10px; border: none; text-align: right; font-size: 11px;">
+                <td colspan="5" style="height: 10px; border: none; text-align: right; font-size: 11px;">
                     FRM/WSP/04/000/001</td>
             </tr>
         </table>

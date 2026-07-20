@@ -170,6 +170,7 @@ Route::prefix('purchase-requesition')->middleware('web')->group(function () {
     // Route::post('/store', [WspPurchaseRequesitionController::class, 'store']);
     Route::get('/print-riwayat/{id}', [WspPurchaseRequesitionController::class, 'printRiwayat']);
     Route::get('/getBarang/search', [WspPurchaseRequesitionController::class, 'searchSOH']);
+    Route::post('/upload-excel', [WspPurchaseRequesitionController::class, 'uploadExcel']);
     // Route::post('/reserved', [WspPurchaseRequesitionController::class, 'reserved']);
     Route::post('/release-item', [WspPurchaseRequesitionController::class, 'releaseItem']);
     Route::get('/pr-data/approval/{id}', [WspPurchaseRequesitionController::class, 'getDataApproval']);

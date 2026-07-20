@@ -18,7 +18,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Upload, Info, AlertCircle } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function PurchaseRequisitionForm() {
     const { user } = useAuth();
@@ -33,6 +40,10 @@ export default function PurchaseRequisitionForm() {
     } = useBookingManager();
 
     const [showSignature, setShowSignature] = useState(false);
+    const [showStockReview, setShowStockReview] = useState(false);
+    const [stockReviewItems, setStockReviewItems] = useState([]);
+    const [noStockItems, setNoStockItems] = useState([]);
+    const [reviewError, setReviewError] = useState("");
 
     const [form, setForm] = useState({
         pr_date: "",
@@ -62,7 +73,227 @@ export default function PurchaseRequisitionForm() {
         return `${y}-${m}-${d}`;
     };
 
+    const handleExcelUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
+        e.target.value = '';
+
+        Swal.fire({
+            title: "Memproses File...",
+            text: "Membaca dan memvalidasi stok barang",
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const res = await fetch("/api/purchase-requesition/upload-excel", {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+                    "X-Session-Id": getSessionId()
+                },
+                body: formData
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Gagal mengupload file");
+
+            Swal.close();
+
+            const allItems = data.items || [];
+            
+            const invalidItems = allItems.filter(item => item.error);
+            if (invalidItems.length > 0) {
+                await Swal.fire({
+                    icon: "warning",
+                    title: "Beberapa MID Tidak Valid",
+                    html: `Ditemukan ${invalidItems.length} barang dengan MID tidak terdaftar. Barang-barang ini akan diabaikan:<br><br>
+                    <div class="text-left text-xs bg-gray-100 p-2 rounded max-h-40 overflow-y-auto font-mono font-semibold">
+                        ${invalidItems.map(item => `${item.mid}: ${item.error}`).join("<br>")}
+                    </div>`,
+                    confirmButtonText: "Mengerti",
+                    confirmButtonColor: "#f59e0b"
+                });
+            }
+
+            const validItems = allItems.filter(item => !item.error);
+            if (validItems.length === 0) {
+                Swal.fire({
+                    icon: "info",
+                    title: "Informasi",
+                    text: "Tidak ada barang valid yang dapat ditambahkan dari Excel.",
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#3b82f6"
+                });
+                return;
+            }
+
+            const hasStock = validItems.filter(item => item.available_qty > 0);
+            const noStock = validItems.filter(item => item.available_qty <= 0);
+
+            const configuredStockItems = hasStock.map(item => ({
+                ...item,
+                action: 'pr',
+                alasan: ""
+            }));
+
+            setNoStockItems(noStock);
+
+            if (configuredStockItems.length > 0) {
+                setStockReviewItems(configuredStockItems);
+                setShowStockReview(true);
+            } else {
+                Swal.fire({
+                    title: "Tambahkan Barang",
+                    text: `Menambahkan ${noStock.length} barang (tidak memiliki stok di gudang) langsung ke daftar PR?`,
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonColor: "#10b981",
+                    cancelButtonColor: "#6c757d",
+                    confirmButtonText: "Ya, Tambahkan",
+                    cancelButtonText: "Batal"
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        await addParsedItems(noStock, []);
+                    }
+                });
+            }
+        } catch (err) {
+            Swal.fire({
+                icon: "error",
+                title: "Upload Gagal",
+                text: err.message || "Terjadi kesalahan saat mengupload excel.",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#ef4444"
+            });
+        }
+    };
+
+    const addParsedItems = async (itemsNoStock, itemsWithStockConfigured) => {
+        Swal.fire({
+            title: "Menambahkan Barang...",
+            text: "Menyimpan booking dan mendaftarkan barang ke PR",
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        let itemsToAdd = [];
+
+        for (const item of itemsNoStock) {
+            itemsToAdd.push({
+                mid: item.mid,
+                nama_barang: item.nama_barang,
+                qty: item.qty,
+                keterangan: item.keterangan,
+                uom: item.uom,
+                desc: item.desc || "",
+                jenis: "pr",
+                alasan: "",
+            });
+        }
+
+        for (const item of itemsWithStockConfigured) {
+            if (item.action === 'exclude') {
+                continue;
+            }
+
+            if (item.action === 'pr') {
+                itemsToAdd.push({
+                    mid: item.mid,
+                    nama_barang: item.nama_barang,
+                    qty: item.qty,
+                    keterangan: item.keterangan,
+                    uom: item.uom,
+                    desc: item.desc || "",
+                    jenis: "pr",
+                    alasan: item.alasan || "Dibutuhkan operasional (Excel)",
+                });
+            } else if (item.action === 'both') {
+                if (item.qty > item.available_qty) {
+                    itemsToAdd.push({
+                        mid: item.mid,
+                        nama_barang: item.nama_barang,
+                        qty: item.qty - item.available_qty,
+                        keterangan: item.keterangan,
+                        uom: item.uom,
+                        desc: item.desc || "",
+                        jenis: "pr",
+                        alasan: item.alasan || "Dibutuhkan operasional (Excel)",
+                    });
+                }
+                itemsToAdd.push({
+                    mid: item.mid,
+                    nama_barang: item.nama_barang,
+                    qty: Math.min(item.qty, item.available_qty),
+                    keterangan: item.keterangan,
+                    uom: item.uom,
+                    desc: item.desc || "",
+                    jenis: "blocked",
+                    alasan: "",
+                });
+            } else if (item.action === 'reserve') {
+                itemsToAdd.push({
+                    mid: item.mid,
+                    nama_barang: item.nama_barang,
+                    qty: Math.min(item.qty, item.available_qty),
+                    keterangan: item.keterangan,
+                    uom: item.uom,
+                    desc: item.desc || "",
+                    jenis: "blocked",
+                    alasan: "",
+                });
+            }
+        }
+
+        if (itemsToAdd.length === 0) {
+            Swal.close();
+            Swal.fire({
+                icon: "info",
+                title: "Selesai",
+                text: "Tidak ada barang yang ditambahkan ke list PR.",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#3b82f6"
+            });
+            return;
+        }
+
+        let allSuccess = true;
+        for (const itemToAdd of itemsToAdd) {
+            const success = await addItem(itemToAdd, itemToAdd.jenis, false, false);
+            if (!success) {
+                allSuccess = false;
+                break;
+            }
+        }
+
+        Swal.close();
+
+        if (allSuccess) {
+            Swal.fire({
+                icon: "success",
+                title: "Berhasil!",
+                text: `Berhasil menambahkan ${itemsToAdd.length} barang ke list PR.`,
+                confirmButtonText: "OK",
+                confirmButtonColor: "#10b981",
+            });
+        } else {
+            Swal.fire({
+                icon: "warning",
+                title: "Selesai dengan Catatan",
+                text: "Beberapa barang mungkin gagal ditambahkan karena kendala stok/booking.",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#f59e0b",
+            });
+        }
+    };
 
     const handleAddItem = async () => {
         const isJasa = form.jenis === "Jasa";
@@ -202,35 +433,31 @@ export default function PurchaseRequisitionForm() {
                     });
 
                     if (reasonResult.isConfirmed && reasonResult.value) {
-                        // Hanya naikkan PR untuk sisa qty (requestedQty - availableQty), reservasi dibatalkan
+                        // PR part (sisa qty)
                         itemsToAdd.push({
                             ...currentItem,
                             qty: requestedQty - availableQty,
                             jenis: "pr",
                             alasan: reasonResult.value,
                         });
+                        // Reservasi part (available stock)
+                        itemsToAdd.push({
+                            ...currentItem,
+                            qty: availableQty,
+                            jenis: "blocked",
+                            alasan: "",
+                        });
                     } else {
                         return;
                     }
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    // Option 3: Hanya Reservasi (Sesuai Stok) -> Reset Form Tambah Barang & Batal
-                    Swal.fire({
-                        icon: "info",
-                        title: "Informasi",
-                        text: "Silakan Lanjutkan Reservasi Anda ke Sistem SAP",
-                        confirmButtonText: "OK",
-                        confirmButtonColor: "#3b82f6",
+                    // Option 3: Hanya Reservasi (Sesuai Stok) -> Book SOH
+                    itemsToAdd.push({
+                        ...currentItem,
+                        qty: availableQty,
+                        jenis: "blocked",
+                        alasan: "",
                     });
-                    setCurrentItem({
-                        mid: "",
-                        nama_barang: "",
-                        qty: "",
-                        keterangan: "",
-                        uom: "",
-                        desc: "",
-                        available_qty: 0,
-                    });
-                    return;
                 } else {
                     setCurrentItem({
                         mid: "",
@@ -308,24 +535,13 @@ export default function PurchaseRequisitionForm() {
                         return;
                     }
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    // Hanya Reservasi -> Reset Form Tambah Barang & Batal
-                    Swal.fire({
-                        icon: "info",
-                        title: "Informasi",
-                        text: "Silakan Lanjutkan Reservasi Anda ke Sistem SAP",
-                        confirmButtonText: "OK",
-                        confirmButtonColor: "#3b82f6",
+                    // Hanya Reservasi -> Book SOH
+                    itemsToAdd.push({
+                        ...currentItem,
+                        qty: requestedQty,
+                        jenis: "blocked",
+                        alasan: "",
                     });
-                    setCurrentItem({
-                        mid: "",
-                        nama_barang: "",
-                        qty: "",
-                        keterangan: "",
-                        uom: "",
-                        desc: "",
-                        available_qty: 0,
-                    });
-                    return;
                 } else {
                     setCurrentItem({
                         mid: "",
@@ -350,8 +566,9 @@ export default function PurchaseRequisitionForm() {
         }
 
         let allSuccess = true;
+        const showIndividualNotification = itemsToAdd.length === 1;
         for (const item of itemsToAdd) {
-            const success = await addItem(item, item.jenis, isJasa);
+            const success = await addItem(item, item.jenis, isJasa, showIndividualNotification);
             if (!success) {
                 allSuccess = false;
                 break;
@@ -368,6 +585,18 @@ export default function PurchaseRequisitionForm() {
                 desc: "",
                 available_qty: 0,
             });
+
+            if (itemsToAdd.length > 1) {
+                Swal.fire({
+                    icon: "success",
+                    title: "Berhasil!",
+                    text: `${itemsToAdd.length} barang berhasil ditambahkan.`,
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#10b981",
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+            }
         }
     };
 
@@ -393,18 +622,7 @@ export default function PurchaseRequisitionForm() {
         clearItems();
     };
 
-    const submitWithSignature = async (signatureBase64) => {
-        if (!signatureBase64) {
-            Swal.fire({
-                icon: "error",
-                title: "Error!",
-                text: "Tanda Tangan wajib diisi.",
-                confirmButtonText: "OK",
-                confirmButtonColor: "#ef4444",
-            });
-            return;
-        }
-
+    const submitWithSignature = async (signatureBase64 = null) => {
         setLoading(true);
 
         try {
@@ -420,7 +638,7 @@ export default function PurchaseRequisitionForm() {
                 body: JSON.stringify({
                     ...form,
                     ttd: signatureBase64,
-                    items: items.map((item) => ({
+                    items: items.filter(item => item.jenis === 'pr').map((item) => ({
                         mid: item.mid || null,
                         qty: item.qty,
                         keterangan: item.keterangan,
@@ -483,7 +701,7 @@ export default function PurchaseRequisitionForm() {
         <form
             onSubmit={(e) => {
                 e.preventDefault();
-                setShowSignature(true);
+                submitWithSignature(null);
             }}
             className="space-y-6"
         >
@@ -635,8 +853,36 @@ export default function PurchaseRequisitionForm() {
 
                     {/* Form Tambah Barang / Jasa */}
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                             <CardTitle>{form.jenis === "Jasa" ? "Tambah Jasa" : "Tambah Barang"}</CardTitle>
+                            {form.jenis !== "Jasa" && (
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="file"
+                                        id="excel-file-input"
+                                        accept=".xlsx, .xls, .csv"
+                                        className="hidden"
+                                        onChange={handleExcelUpload}
+                                    />
+                                    <a
+                                        href="/assets/templates/excel/template_upload_purchase_requesition.xlsx"
+                                        download="template_upload_purchase_requesition.xlsx"
+                                        className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
+                                    >
+                                        Download Template
+                                    </a>
+                                    <Button
+                                        type="button"
+                                        variant="default"
+                                        size="sm"
+                                        className="flex items-center gap-1.5"
+                                        onClick={() => document.getElementById("excel-file-input").click()}
+                                    >
+                                        <Upload className="h-4 w-4" />
+                                        Import Excel
+                                    </Button>
+                                </div>
+                            )}
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {form.jenis !== "Jasa" && (
@@ -732,11 +978,163 @@ export default function PurchaseRequisitionForm() {
                     onRemoveItem={removeItem}
                     formatDate={formatDate}
                 />
-                <SignatureModal
-                    open={showSignature}
-                    onClose={() => setShowSignature(false)}
-                    onSave={submitWithSignature}
-                />
+
+
+                <Dialog open={showStockReview} onOpenChange={(open) => { setShowStockReview(open); if(!open) setReviewError(""); }}>
+                    <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-6">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                <Info className="h-5 w-5 text-blue-500" />
+                                Review Barang dengan Stok Gudang
+                            </DialogTitle>
+                            <div className="text-sm text-muted-foreground mt-1">
+                                Ditemukan <span className="font-semibold text-blue-600">{stockReviewItems.length} barang</span> yang memiliki stok di gudang. Silakan tentukan tindakan untuk masing-masing barang.
+                            </div>
+                        </DialogHeader>
+
+                        {/* Bulk Action Controls */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-100 dark:border-blue-900/50 mt-2">
+                            <div className="text-sm">
+                                <span className="font-semibold text-blue-800 dark:text-blue-300">Tindakan Massal:</span> Setel semua barang dengan pilihan tindakan yang sama.
+                            </div>
+                            <Select
+                                onValueChange={(val) => {
+                                    setStockReviewItems(prev =>
+                                        prev.map(item => ({
+                                            ...item,
+                                            action: val
+                                        }))
+                                    );
+                                    setReviewError("");
+                                }}
+                            >
+                                <SelectTrigger className="w-[260px] bg-white dark:bg-gray-900">
+                                    <SelectValue placeholder="Pilih tindakan massal..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="pr">Naikkan PR (Semua Qty)</SelectItem>
+                                    <SelectItem value="both">PR + Reservasi (SAP)</SelectItem>
+                                    <SelectItem value="reserve">Hanya Reservasi (SAP)</SelectItem>
+                                    <SelectItem value="exclude">Jangan Tambahkan</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Table Area */}
+                        <div className="flex-1 overflow-y-auto my-4 border rounded-lg max-h-[50vh]">
+                            <table className="w-full text-sm text-left border-collapse">
+                                <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 uppercase text-xs sticky top-0 border-b z-10">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold">MID / Nama</th>
+                                        <th className="px-4 py-3 font-semibold text-center w-24">Qty Minta</th>
+                                        <th className="px-4 py-3 font-semibold text-center w-24">Stok Gudang</th>
+                                        <th className="px-4 py-3 font-semibold w-[220px]">Tindakan</th>
+                                        <th className="px-4 py-3 font-semibold">Alasan Naik PR (Wajib jika PR)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {stockReviewItems.map((item, index) => {
+                                        const needsReason = item.action === 'pr' || (item.action === 'both' && item.qty > item.available_qty);
+                                        const isReasonInvalid = needsReason && !item.alasan?.trim();
+
+                                        return (
+                                            <tr key={index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                                                <td className="px-4 py-3.5">
+                                                    <div className="font-semibold text-gray-900 dark:text-gray-100">{item.mid}</div>
+                                                    <div className="text-xs text-muted-foreground truncate max-w-[250px]">{item.nama_barang}</div>
+                                                </td>
+                                                <td className="px-4 py-3.5 text-center font-medium">
+                                                    {item.qty} <span className="text-xs text-muted-foreground">{item.uom}</span>
+                                                </td>
+                                                <td className="px-4 py-3.5 text-center font-medium text-green-600 dark:text-green-400">
+                                                    {item.available_qty} <span className="text-xs text-muted-foreground">{item.uom}</span>
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    <Select
+                                                        value={item.action}
+                                                        onValueChange={(val) => {
+                                                            setStockReviewItems(prev =>
+                                                                prev.map((x, idx) => idx === index ? { ...x, action: val } : x)
+                                                            );
+                                                            setReviewError("");
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="w-full text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="pr">Naikkan PR (Semua Qty)</SelectItem>
+                                                            <SelectItem value="both">PR + Reservasi (SAP)</SelectItem>
+                                                            <SelectItem value="reserve">Hanya Reservasi (SAP)</SelectItem>
+                                                            <SelectItem value="exclude">Jangan Tambahkan</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    {needsReason ? (
+                                                        <Input
+                                                            type="text"
+                                                            value={item.alasan || ""}
+                                                            placeholder="Wajib mengisi alasan..."
+                                                            className={`text-xs h-9 ${isReasonInvalid ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setStockReviewItems(prev =>
+                                                                    prev.map((x, idx) => idx === index ? { ...x, alasan: val } : x)
+                                                                );
+                                                                setReviewError("");
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground italic">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {reviewError && (
+                            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 text-sm p-3 rounded-lg flex items-center gap-2 mb-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                <span className="font-medium">{reviewError}</span>
+                            </div>
+                        )}
+
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => { setShowStockReview(false); setReviewError(""); }}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="default"
+                                onClick={async () => {
+                                    const missingReason = stockReviewItems.some(item => {
+                                        const needsReason = item.action === 'pr' || (item.action === 'both' && item.qty > item.available_qty);
+                                        return needsReason && !item.alasan?.trim();
+                                    });
+
+                                    if (missingReason) {
+                                        setReviewError("Mohon isi alasan untuk semua barang yang dinaikkan ke PR.");
+                                        return;
+                                    }
+
+                                    setShowStockReview(false);
+                                    setReviewError("");
+                                    await addParsedItems(noStockItems, stockReviewItems);
+                                }}
+                            >
+                                Konfirmasi & Tambahkan ({stockReviewItems.length + noStockItems.length} Barang)
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </form>
     );

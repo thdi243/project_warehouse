@@ -18,7 +18,7 @@ export function useBookingManager() {
     };
 
     // Add item dengan booking
-    const addItem = async (currentItem, type = "pr", isJasa = false) => {
+    const addItem = async (currentItem, type = "pr", isJasa = false, showNotification = true) => {
         if (isJasa) {
             if (!currentItem.desc || !currentItem.qty || !currentItem.keterangan) {
                 Swal.fire({
@@ -40,15 +40,17 @@ export function useBookingManager() {
                 },
             ]);
 
-            Swal.fire({
-                icon: "success",
-                title: "Berhasil!",
-                text: `Jasa berhasil ditambahkan`,
-                confirmButtonText: "OK",
-                confirmButtonColor: "#10b981",
-                timer: 2000,
-                timerProgressBar: true,
-            });
+            if (showNotification) {
+                Swal.fire({
+                    icon: "success",
+                    title: "Berhasil!",
+                    text: `Jasa berhasil ditambahkan`,
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#10b981",
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+            }
 
             return true;
         }
@@ -76,6 +78,7 @@ export function useBookingManager() {
                 body: JSON.stringify({
                     mid: currentItem.mid,
                     qty: currentItem.qty,
+                    keterangan: currentItem.keterangan,
                     type: type,
                     session_id: getOrCreateSessionId(),
                 }),
@@ -101,15 +104,17 @@ export function useBookingManager() {
                 },
             ]);
 
-            Swal.fire({
-                icon: "success",
-                title: "Berhasil!",
-                text: `${currentItem.nama_barang} berhasil ditambahkan`,
-                confirmButtonText: "OK",
-                confirmButtonColor: "#10b981",
-                timer: 2000,
-                timerProgressBar: true,
-            });
+            if (showNotification) {
+                Swal.fire({
+                    icon: "success",
+                    title: "Berhasil!",
+                    text: `${currentItem.nama_barang} berhasil ditambahkan`,
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#10b981",
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+            }
 
             return true;
         } catch (err) {
@@ -248,6 +253,7 @@ export function useBookingManager() {
                     keterangan: item.keterangan ?? "",
                     uom: item.barang?.uom ?? "",
                     reservation_id: item.id,
+                    jenis: item.type === 'pr' ? 'pr' : 'blocked',
                 }))
             );
 
