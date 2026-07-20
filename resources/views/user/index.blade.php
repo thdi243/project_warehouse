@@ -261,6 +261,7 @@
                                         <option value="engineering">Engineering</option>
                                         <option value="engineering_utility">Engineering Utility</option>
                                         <option value="engineering_production">Engineering Production</option>
+                                        <option value="engineering_project">Engineering Project</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="quality_control_rmpm">Quality Control RMPM</option>
                                         <option value="quality_control_proses">Quality Control Proses</option>
@@ -416,6 +417,7 @@
                                         <option value="engineering">Engineering</option>
                                         <option value="engineering_utility">Engineering Utility</option>
                                         <option value="engineering_production">Engineering Production</option>
+                                        <option value="engineering_project">Engineering Project</option>
                                         <option value="quality_control">Quality Control</option>
                                         <option value="quality_control_rmpm">Quality Control RMPM</option>
                                         <option value="quality_control_proses">Quality Control Proses</option>

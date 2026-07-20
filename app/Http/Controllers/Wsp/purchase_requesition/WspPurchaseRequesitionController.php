@@ -962,6 +962,12 @@ class WspPurchaseRequesitionController extends Controller
                     ->where('bagian', 'engineering_production')
                     ->where('is_active', true)
                     ->first();
+            } elseif (str_contains($requesterBagian, 'engineering_project')) {
+                $supervisor = User::where('departemen', 'engineering')
+                    ->where('jabatan', 'supervisor')
+                    ->where('bagian', 'engineering_project')
+                    ->where('is_active', true)
+                    ->first();
             } else {
                 $supervisor = User::where('departemen', 'engineering')
                     ->where('jabatan', 'supervisor')
