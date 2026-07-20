@@ -89,7 +89,7 @@
                 $isSupervisor = $user->jabatan === 'supervisor';
                 $isDeptHead = $user->jabatan === 'dept_head';
                 $isWarehouseHead = $isDeptHead && $user->departemen === 'warehouse';
-                $isForeman = $user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart';
+                $isForeman = ($user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart') || $user->hasRole('level_5_pr');
                 $firstTab = true;
             @endphp
             @if ($isSupervisor || $isDeptHead || $isWarehouseHead || $isForeman)

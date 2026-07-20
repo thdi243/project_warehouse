@@ -10,7 +10,7 @@
             class="nav-link menu-link {{ request()->routeIs('stock.pr.history') ? 'active' : '' }}">
             <i class="bx bx-git-commit fs-12"></i>Data Riwayat PR</a>
     </li>
-    @if ($jabatan == 'dept_head' || $jabatan == 'supervisor')
+    @if ($jabatan == 'dept_head' || $jabatan == 'supervisor' || Auth::user()->hasRole('level_5_pr'))
         <li class="nav-item">
             <a href="{{ route('stock.pr.approval') }}"
                 class="nav-link menu-link {{ request()->routeIs('stock.pr.approval') ? 'active' : '' }}">
