@@ -379,6 +379,23 @@
                 });
             }
 
+            // Handle active tab from query parameter 'level'
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetLevel = urlParams.get('level');
+            if (targetLevel) {
+                const targetTab = $(`#approvalTabs button[data-level="${targetLevel}"]`);
+                if (targetTab.length > 0) {
+                    $('#approvalTabs button').removeClass('active');
+                    targetTab.addClass('active');
+                    try {
+                        const tabTrigger = new bootstrap.Tab(targetTab[0]);
+                        tabTrigger.show();
+                    } catch (e) {
+                        console.error('Bootstrap tab trigger failed:', e);
+                    }
+                }
+            }
+
             let currentFilterLevel = $('#approvalTabs button.active').data('level') || 2;
 
             $('#approvalTabs button').on('shown.bs.tab', function(e) {

@@ -1512,7 +1512,7 @@ class WspPurchaseRequesitionController extends Controller
         $user = User::find($approval->approver_id);
         if (!$user || !$user->is_active) return;
 
-        $url = "/purchase-requesition/approval";
+        $url = "/purchase-requesition/approval?level=" . $approval->level;
 
         NotificationsModel::create([
             'user_id' => $approval->approver_id,
