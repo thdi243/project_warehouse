@@ -622,6 +622,30 @@ export default function PurchaseRequisitionForm() {
         clearItems();
     };
 
+    const handleClearItems = () => {
+        Swal.fire({
+            title: "Hapus Semua Barang?",
+            text: "Semua barang yang telah ditambahkan ke list akan dihapus. Tindakan ini tidak dapat dibatalkan.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#6c757d",
+            confirmButtonText: "Ya, Hapus Semua!",
+            cancelButtonText: "Batal",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                clearItems();
+                Swal.fire({
+                    icon: "success",
+                    title: "Berhasil!",
+                    text: "Semua barang berhasil dihapus.",
+                    timer: 1500,
+                    showConfirmButton: false,
+                });
+            }
+        });
+    };
+
     const submitWithSignature = async (signatureBase64 = null) => {
         setLoading(true);
 
@@ -976,6 +1000,7 @@ export default function PurchaseRequisitionForm() {
                     loading={loading}
                     expiredAt={expiredAt}
                     onRemoveItem={removeItem}
+                    onClearItems={handleClearItems}
                     formatDate={formatDate}
                 />
 

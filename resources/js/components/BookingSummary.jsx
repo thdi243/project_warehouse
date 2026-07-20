@@ -11,6 +11,7 @@ export default function BookingSummary({
     loading,
     expiredAt,
     onRemoveItem,
+    onClearItems,
     formatDate,
 }) {
     const prItems = items.filter(item => item.jenis === "pr");
@@ -129,14 +130,25 @@ export default function BookingSummary({
 
                 <Separator />
 
-                {/* Submit Button */}
-                <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={loading || items.filter(item => item.jenis === 'pr').length === 0}
-                >
-                    {loading ? "Menyimpan..." : "Submit PR"}
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        onClick={onClearItems}
+                        disabled={loading || items.length === 0}
+                    >
+                        Hapus Semua
+                    </Button>
+                    <Button
+                        type="submit"
+                        className="flex-[2]"
+                        disabled={loading || items.filter(item => item.jenis === 'pr').length === 0}
+                    >
+                        {loading ? "Menyimpan..." : "Submit PR"}
+                    </Button>
+                </div>
 
                 {/* Info Countdown */}
                 {expiredAt && items.length > 0 && (
