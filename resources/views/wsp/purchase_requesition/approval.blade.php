@@ -221,6 +221,7 @@
                                         <th>Status</th>
                                         <th class="level5-only-col">Jenis</th>
                                         <th class="level5-only-col">Alasan</th>
+                                        <th class="edit-item-col" style="width: 120px;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="detailItemsBody">
@@ -598,11 +599,23 @@
                 );
                 const isLevel5 = myApproval && (myApproval.level == 5 || myApproval.role === 'Foreman Wsp');
                 const isLevel4 = myApproval && (myApproval.level == 4 || myApproval.role === 'Manager Warehouse');
+                const isLevel2Or3 = myApproval && (
+                    myApproval.level == 2 ||
+                    myApproval.level == 3 ||
+                    myApproval.role === 'Supervisor User' ||
+                    myApproval.role === 'Manager User'
+                );
 
                 if (isLevel3Or5) {
                     $('.item-check-col').show();
                 } else {
                     $('.item-check-col').hide();
+                }
+
+                if (isLevel2Or3) {
+                    $('.edit-item-col').show();
+                } else {
+                    $('.edit-item-col').hide();
                 }
 
                 const itemsBody = $('#detailItemsBody');
@@ -636,17 +649,30 @@
                         });
                     }
 
+                    let editBtnHtml = '';
+                    if (isLevel2Or3) {
+                        editBtnHtml = `
+                        <td class="edit-item-col text-center">
+                            <button class="btn btn-sm btn-soft-primary btn-edit-item" data-item-id="${item.id}" data-pr-id="${pr.id}">
+                                <i class="mdi mdi-pencil"></i> Edit
+                            </button>
+                        </td>
+                        `;
+                    } else {
+                        editBtnHtml = `<td class="edit-item-col d-none"></td>`;
+                    }
+
                     itemsBody.append(`
-                    <tr>
+                    <tr data-item-id="${item.id}">
                         ${checkHtml}
                         <td>${item.barang?.mid_barang || '-'}</td>
                         <td>${item.barang?.nama_barang || '-'}</td>
-                        <td>${item.qty}</td>
+                        <td class="col-qty" data-val="${item.qty}">${item.qty}</td>
                         <td>${item.barang?.uom || '-'}</td>
-                        <td>
+                        <td class="col-keterangan" data-val="${escapeHtmlAttribute(item.keterangan || '')}">
                             ${item.keterangan ? `
                                         <div class="d-flex align-items-center justify-content-between gap-2">
-                                            <span>${item.keterangan}</span>
+                                            <span class="text-keterangan">${item.keterangan}</span>
                                             <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
                                                     style="flex-shrink: 0;"
                                                     data-text="${escapeHtmlAttribute(item.keterangan)}"
@@ -659,6 +685,7 @@
                         <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
                         <td class="level5-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>
                         <td class="level5-only-col">${item.alasan || '-'}</td>
+                        ${editBtnHtml}
                     </tr>
                 `);
                 });
@@ -924,6 +951,172 @@
                 e.preventDefault();
                 const text = $(this).attr('data-text');
                 copyToClipboard(text);
+            });
+
+            // Edit Item Events (Level 2 & 3 Approvers)
+            $(document).on('click', '.btn-edit-item', function() {
+                const btn = $(this);
+                const tr = btn.closest('tr');
+                const itemId = btn.data('item-id');
+                const prId = btn.data('pr-id');
+
+                const qtyCell = tr.find('.col-qty');
+                const ketCell = tr.find('.col-keterangan');
+
+                const currentQty = qtyCell.data('val');
+                const currentKet = ketCell.data('val');
+
+                // Change Qty to Input
+                qtyCell.html(`<input type="number" min="1" class="form-control form-control-sm edit-qty-input" value="${currentQty}" style="width: 80px;">`);
+
+                // Change Keterangan to Input
+                ketCell.html(`<input type="text" class="form-control form-control-sm edit-ket-input" value="${escapeHtmlAttribute(currentKet || '')}">`);
+
+                // Replace Action cell buttons
+                tr.find('.edit-item-col').html(`
+                    <div class="d-flex gap-1 justify-content-center">
+                        <button class="btn btn-sm btn-success btn-save-item" data-item-id="${itemId}" data-pr-id="${prId}">
+                            <i class="mdi mdi-check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger btn-cancel-edit" data-item-id="${itemId}" data-pr-id="${prId}">
+                            <i class="mdi mdi-close"></i>
+                        </button>
+                    </div>
+                `);
+            });
+
+            $(document).on('click', '.btn-cancel-edit', function() {
+                const btn = $(this);
+                const tr = btn.closest('tr');
+                const itemId = btn.data('item-id');
+                const prId = btn.data('pr-id');
+
+                const qtyCell = tr.find('.col-qty');
+                const ketCell = tr.find('.col-keterangan');
+
+                const originalQty = qtyCell.data('val');
+                const originalKet = ketCell.data('val');
+
+                qtyCell.text(originalQty);
+
+                if (originalKet) {
+                    ketCell.html(`
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                            <span class="text-keterangan">${originalKet}</span>
+                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                    style="flex-shrink: 0;"
+                                    data-text="${escapeHtmlAttribute(originalKet)}"
+                                    title="Copy Keterangan">
+                                <i class="mdi mdi-content-copy"></i>
+                            </button>
+                        </div>
+                    `);
+                } else {
+                    ketCell.text('-');
+                }
+
+                tr.find('.edit-item-col').html(`
+                    <button class="btn btn-sm btn-soft-primary btn-edit-item" data-item-id="${itemId}" data-pr-id="${prId}">
+                        <i class="mdi mdi-pencil"></i> Edit
+                    </button>
+                `);
+            });
+
+            $(document).on('click', '.btn-save-item', function() {
+                const btn = $(this);
+                const tr = btn.closest('tr');
+                const itemId = btn.data('item-id');
+                const prId = btn.data('pr-id');
+
+                const newQty = tr.find('.edit-qty-input').val();
+                const newKet = tr.find('.edit-ket-input').val().trim();
+
+                if (!newQty || parseFloat(newQty) <= 0) {
+                    Swal.fire('Error', 'Jumlah (Qty) harus minimal 1.', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Menyimpan...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: `{{ url('api/purchase-requesition/update-item') }}/${itemId}`,
+                    type: "PUT",
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    data: {
+                        qty: newQty,
+                        keterangan: newKet
+                    },
+                    success: function(res) {
+                        Swal.close();
+                        if (res.success) {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: 'Item berhasil diperbarui',
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+
+                            // Update local allPending data
+                            const pr = allPending.find(p => p.id == prId);
+                            if (pr) {
+                                const item = pr.items.find(i => i.id == itemId);
+                                if (item) {
+                                    item.qty = newQty;
+                                    item.keterangan = newKet;
+                                }
+                            }
+
+                            // Update data attributes
+                            const qtyCell = tr.find('.col-qty');
+                            const ketCell = tr.find('.col-keterangan');
+                            qtyCell.data('val', newQty);
+                            ketCell.data('val', newKet);
+
+                            // Restore to display mode
+                            qtyCell.text(newQty);
+                            if (newKet) {
+                                ketCell.html(`
+                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                        <span class="text-keterangan">${newKet}</span>
+                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                style="flex-shrink: 0;"
+                                                data-text="${escapeHtmlAttribute(newKet)}"
+                                                title="Copy Keterangan">
+                                            <i class="mdi mdi-content-copy"></i>
+                                        </button>
+                                    </div>
+                                `);
+                            } else {
+                                ketCell.text('-');
+                            }
+
+                            tr.find('.edit-item-col').html(`
+                                <button class="btn btn-sm btn-soft-primary btn-edit-item" data-item-id="${itemId}" data-pr-id="${prId}">
+                                    <i class="mdi mdi-pencil"></i> Edit
+                                </button>
+                            `);
+
+                            loadData();
+                        } else {
+                            Swal.fire('Error', res.message || 'Gagal menyimpan data.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        const msg = xhr.responseJSON?.message || 'Gagal memperbarui item.';
+                        Swal.fire('Error', msg, 'error');
+                    }
+                });
             });
 
             $('#btnRefresh').on('click', loadData);

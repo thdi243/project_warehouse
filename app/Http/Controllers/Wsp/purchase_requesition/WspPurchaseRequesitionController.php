@@ -139,16 +139,32 @@ class WspPurchaseRequesitionController extends Controller
             // $prNumber = '50000' . random_int(10000, 99999);
 
             $no = WspPurchaseRequesitionModel::count() + 1;
+            $formattedNo = sprintf('%03d', $no);
 
-            // Ambil department
-            $dept = strtoupper(trim($request->department));
+            // Ambil department code
+            $rawDept = strtolower(trim($request->department));
+            $deptMap = [
+                'engineering'     => 'ENG',
+                'ite'             => 'ENG',
+                'warehouse'       => 'WRH',
+                'produksi'        => 'PRD',
+                'quality_control' => 'QC',
+                'qc'              => 'QC',
+                'expedisi'        => 'EXP',
+                'timbangan'       => 'EXP',
+            ];
+            $deptCode = $deptMap[$rawDept] ?? strtoupper(substr($rawDept, 0, 3));
 
-            // Ambil bulan dan tahun
-            $bulan = date('m');
+            // Ambil bulan romawi dan tahun
+            $romanMonths = [
+                1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
+                7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
+            ];
+            $bulanRomawi = $romanMonths[(int)date('m')] ?? 'I';
             $tahun = date('Y');
 
-            // Format no_doc
-            $noDoc = $no . '/' . $dept . '/' . $bulan . '/' . $tahun;
+            // Format no_doc (contoh: 001/ENG/VII/2026)
+            $noDoc = $formattedNo . '/' . $deptCode . '/' . $bulanRomawi . '/' . $tahun;
 
             $pr = WspPurchaseRequesitionModel::create([
                 'pr_number'     => null,
@@ -1371,6 +1387,80 @@ class WspPurchaseRequesitionController extends Controller
             'message' => "Berhasil memproses $successCount data." . (count($errors) > 0 ? " Terjadi " . count($errors) . " kesalahan." : ""),
             'errors' => $errors
         ]);
+    }
+
+    public function updateItem(Request $request, $itemId)
+    {
+        $request->validate([
+            'qty' => 'required|numeric|min:1',
+            'keterangan' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $item = \App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionItemsModel::findOrFail($itemId);
+            
+            // Check if PR is still pending
+            $pr = WspPurchaseRequesitionModel::findOrFail($item->pr_id);
+            if ($pr->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PR sudah diproses dan tidak dapat diedit.'
+                ], 422);
+            }
+
+            // Check if current user is allowed to approve (Supervisor/Manager Level 2/3)
+            $currentUserId = Auth::id();
+            $allowed = $pr->approval()
+                ->where('approver_id', $currentUserId)
+                ->whereIn('level', [2, 3])
+                ->where('status', 'pending')
+                ->exists();
+
+            if (!$allowed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki wewenang untuk mengedit item PR ini.'
+                ], 403);
+            }
+
+            // Update item
+            $item->update([
+                'qty' => $request->qty,
+                'keterangan' => $request->keterangan,
+            ]);
+
+            // If it's a blocked (reservation) item, update the associated reservation as well
+            if ($item->jenis === 'blocked') {
+                $barang = BarangModel::find($item->barang_id);
+                if ($barang) {
+                    $reservation = WspStockReservations::where('pr_id', $item->pr_id)
+                        ->where('mid_barang', $barang->mid_barang)
+                        ->where('status', 'confirmed') // since it is confirmed when stored
+                        ->first();
+                    if ($reservation) {
+                        $reservation->update([
+                            'qty' => $request->qty,
+                            'keterangan' => $request->keterangan,
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Item berhasil diperbarui.'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     private function sendNotification($pr, $approval)

@@ -177,6 +177,7 @@ Route::prefix('purchase-requesition')->middleware('web')->group(function () {
     Route::get('/pending-approvals', [WspPurchaseRequesitionController::class, 'getPendingApprovals']);
     Route::post('/bulk-action', [WspPurchaseRequesitionController::class, 'bulkAction']);
     Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action']);
+    Route::put('/update-item/{id}', [WspPurchaseRequesitionController::class, 'updateItem']);
 });
 
 Route::get('/data/summary-stock/item', [MonitoringController::class, 'getSummaryStockItemData'])->name('wrm.inventory.monitoring.summary-stock.item-data');
