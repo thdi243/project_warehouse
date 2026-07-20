@@ -13,6 +13,15 @@ export default function BookingSummary({
     onRemoveItem,
     formatDate,
 }) {
+    const prItems = items.filter(item => item.jenis === "pr");
+    const reserveItems = items.filter(item => item.jenis === "blocked");
+
+    const prCount = prItems.length;
+    const prQty = prItems.reduce((acc, item) => acc + (parseFloat(item.qty) || 0), 0);
+
+    const reserveCount = reserveItems.length;
+    const reserveQty = reserveItems.reduce((acc, item) => acc + (parseFloat(item.qty) || 0), 0);
+
     return (
         <Card className="h-fit sticky top-0">
             <CardHeader>
@@ -58,7 +67,7 @@ export default function BookingSummary({
                         <p>Belum ada barang ditambahkan</p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
                         {items.map((item, i) => (
                             <div
                                 key={i}
@@ -98,6 +107,23 @@ export default function BookingSummary({
                                 </Button>
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {items.length > 0 && (
+                    <div className="flex flex-col gap-1.5 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-md border border-dashed">
+                        <div className="flex justify-between items-center">
+                            <span>Menaikkan PR:</span>
+                            <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                {prCount} Item ({prQty} Qty)
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span>Reservasi:</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                {reserveCount} Item ({reserveQty} Qty)
+                            </span>
+                        </div>
                     </div>
                 )}
 
