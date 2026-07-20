@@ -262,6 +262,8 @@
                                         <option value="engineering_utility">Engineering Utility</option>
                                         <option value="engineering_production">Engineering Production</option>
                                         <option value="quality_control">Quality Control</option>
+                                        <option value="quality_control_rmpm">Quality Control RMPM</option>
+                                        <option value="quality_control_proses">Quality Control Proses</option>
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>
@@ -413,6 +415,8 @@
                                         <option value="engineering_utility">Engineering Utility</option>
                                         <option value="engineering_production">Engineering Production</option>
                                         <option value="quality_control">Quality Control</option>
+                                        <option value="quality_control_rmpm">Quality Control RMPM</option>
+                                        <option value="quality_control_proses">Quality Control Proses</option>
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>

@@ -159,14 +159,14 @@
                                     <input type="email" class="form-control" id="editEmail" name="editEmail" required>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            {{-- <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editPassword" class="form-label">Password <small
                                             class="text-muted">(kosongkan jika tidak ingin mengubah)</small></label>
                                     <input type="password" class="form-control" id="editPassword" name="editPassword"
                                         placeholder="Masukkan password baru">
                                 </div>
-                            </div>
+                            </div> --}}
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="editNik" class="form-label">NIK <span class="text-danger">*</span></label>
@@ -230,6 +230,8 @@
                                         <option value="engineering_utility">Engineering Utility</option>
                                         <option value="engineering_production">Engineering Production</option>
                                         <option value="quality_control">Quality Control</option>
+                                        <option value="quality_control_rmpm">Quality Control RMPM</option>
+                                        <option value="quality_control_proses">Quality Control Proses</option>
                                         <option value="produksi">Produksi</option>
                                         <option value="ppic">PPIC</option>
                                         <option value="purchasing">Purchasing</option>
