@@ -2716,9 +2716,9 @@ class StockOpnameWfgController extends Controller
         ]);
 
         // Jika semua approved, otomatis kirim laporan
-        if ($finalStatus === 'approved') {
-            GenerateAndSendSopReportJob::dispatch($request->sop_id);
-        }
+        // if ($finalStatus === 'approved') {
+        //     GenerateAndSendSopReportJob::dispatch($request->sop_id);
+        // }
 
         return response()->json([
             'message' => $request->status === 'approved' ? 'SO berhasil disetujui.' : 'SO telah ditolak.',
