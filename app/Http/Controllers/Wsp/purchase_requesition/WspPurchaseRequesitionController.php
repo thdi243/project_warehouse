@@ -971,6 +971,7 @@ class WspPurchaseRequesitionController extends Controller
             } else {
                 $supervisor = User::where('departemen', 'engineering')
                     ->where('jabatan', 'supervisor')
+                    ->where('bagian', 'engineering')
                     ->where('is_active', true)
                     ->first();
             }
@@ -997,6 +998,7 @@ class WspPurchaseRequesitionController extends Controller
         } else {
             $supervisor = User::where('departemen', $approvalDept)
                 ->where('jabatan', 'supervisor')
+                ->where('bagian', $approvalDept)
                 ->where('is_active', true)
                 ->first();
         }
