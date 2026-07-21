@@ -862,16 +862,16 @@
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td>
                                     ${item.keterangan ? `
-                                                                                            <div class="d-flex align-items-center justify-content-between gap-2">
-                                                                                                <span>${item.keterangan}</span>
-                                                                                                <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                                                                        style="flex-shrink: 0;"
-                                                                                                        data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                                                                        title="Copy Keterangan">
-                                                                                                    <i class="mdi mdi-content-copy"></i>
-                                                                                                </button>
-                                                                                            </div>
-                                                                                        ` : '-'}
+                                                                                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                                                                                    <span>${item.keterangan}</span>
+                                                                                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                                                                            style="flex-shrink: 0;"
+                                                                                                            data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                                                            title="Copy Keterangan">
+                                                                                                        <i class="mdi mdi-content-copy"></i>
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            ` : '-'}
                                 </td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
@@ -1019,10 +1019,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                            <div class="small mt-1">
-                                                                                Catatan: ${a.catatan}
-                                                                            </div>
-                                                                        ` : ''}
+                                                                                <div class="small mt-1">
+                                                                                    Catatan: ${a.catatan}
+                                                                                </div>
+                                                                            ` : ''}
                             </div>
 
                         </div>
@@ -1038,7 +1038,7 @@
                 const pr = allPR.find(p => p.id === prId);
                 if (!pr) return;
 
-                // hanya boleh copy jika sudah approved level 3
+                // hanya boleh copy jika sudah approved level 4
                 let maxApprovedLevel = 1;
                 if (pr.approval && pr.approval.length > 0) {
                     pr.approval.forEach(a => {
@@ -1048,11 +1048,11 @@
                     });
                 }
 
-                if (maxApprovedLevel < 3 || pr.status === 'rejected') {
+                if (maxApprovedLevel < 4 || pr.status === 'rejected') {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Belum Bisa Copy',
-                        text: 'PR harus disetujui minimal sampai Level 3 (Manager User) terlebih dahulu',
+                        text: 'PR harus disetujui minimal sampai Level 4 (Manager Warehouse) terlebih dahulu',
                         confirmButtonColor: '#f59e0b'
                     });
                     return;
@@ -1157,6 +1157,26 @@
             window.copyKeteranganPR = function(prId) {
                 const pr = allPR.find(p => p.id === prId);
                 if (!pr) return;
+
+                // hanya boleh copy jika sudah approved level 4
+                let maxApprovedLevel = 1;
+                if (pr.approval && pr.approval.length > 0) {
+                    pr.approval.forEach(a => {
+                        if (a.status === 'approved' && a.level > maxApprovedLevel) {
+                            maxApprovedLevel = a.level;
+                        }
+                    });
+                }
+
+                if (maxApprovedLevel < 4 || pr.status === 'rejected') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Belum Bisa Copy',
+                        text: 'PR harus disetujui minimal sampai Level 4 (Manager Warehouse) terlebih dahulu',
+                        confirmButtonColor: '#f59e0b'
+                    });
+                    return;
+                }
 
                 const prItems = pr.items.filter(item =>
                     item.jenis === 'pr' && item.keterangan && item.keterangan.trim() !== ''
