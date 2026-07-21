@@ -107,164 +107,169 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="jabatan" class="form-label fw-semibold">Jabatan</label>
-                                            <select class="form-select text-capitalize" id="jabatan" name="jabatan"
-                                                required @if (Auth::user()->jabatan === 'operator') disabled @endif>
-                                                <option value="">Pilih Jabatan</option>
-                                                <option value="dept_head"
-                                                    {{ old('jabatan', $user->jabatan) == 'dept_head' ? 'selected' : '' }}>
-                                                    Head of Departement</option>
-                                                <option value="supervisor"
-                                                    {{ old('jabatan', $user->jabatan) == 'supervisor' ? 'selected' : '' }}>
-                                                    Supervisor</option>
-                                                <option value="foreman"
-                                                    {{ old('jabatan', $user->jabatan) == 'foreman' ? 'selected' : '' }}>
-                                                    Foreman</option>
-                                                <option value="operator"
-                                                    {{ old('jabatan', $user->jabatan) == 'operator' ? 'selected' : '' }}>
-                                                    Operator</option>
-                                                @if (Auth::user()->jabatan === 'admin')
-                                                    <option value="admin"
-                                                        {{ old('jabatan', $user->jabatan) == 'admin' ? 'selected' : '' }}>
-                                                        Admin</option>
-                                                    <option value="fm"
-                                                        {{ old('jabatan', $user->jabatan) == 'fm' ? 'selected' : '' }}>
-                                                        Factory Manager</option>
+                                    @if (Auth::user()->jabatan == 'admin')
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="jabatan" class="form-label fw-semibold">Jabatan</label>
+                                                <select class="form-select text-capitalize" id="jabatan" name="jabatan"
+                                                    required @if (Auth::user()->jabatan === 'operator') disabled @endif>
+                                                    <option value="">Pilih Jabatan</option>
+                                                    <option value="dept_head"
+                                                        {{ old('jabatan', $user->jabatan) == 'dept_head' ? 'selected' : '' }}>
+                                                        Head of Departement</option>
+                                                    <option value="supervisor"
+                                                        {{ old('jabatan', $user->jabatan) == 'supervisor' ? 'selected' : '' }}>
+                                                        Supervisor</option>
+                                                    <option value="foreman"
+                                                        {{ old('jabatan', $user->jabatan) == 'foreman' ? 'selected' : '' }}>
+                                                        Foreman</option>
+                                                    <option value="operator"
+                                                        {{ old('jabatan', $user->jabatan) == 'operator' ? 'selected' : '' }}>
+                                                        Operator</option>
+                                                    @if (Auth::user()->jabatan === 'admin')
+                                                        <option value="admin"
+                                                            {{ old('jabatan', $user->jabatan) == 'admin' ? 'selected' : '' }}>
+                                                            Admin</option>
+                                                        <option value="fm"
+                                                            {{ old('jabatan', $user->jabatan) == 'fm' ? 'selected' : '' }}>
+                                                            Factory Manager</option>
+                                                    @endif
+                                                </select>
+                                                @if (Auth::user()->jabatan === 'operator')
+                                                    <input type="hidden" name="jabatan" value="{{ $user->jabatan }}">
                                                 @endif
-                                            </select>
-                                            @if (Auth::user()->jabatan === 'operator')
-                                                <input type="hidden" name="jabatan" value="{{ $user->jabatan }}">
-                                            @endif
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="departemen" class="form-label fw-semibold">Departemen</label>
-                                            <select class="form-select text-capitalize" id="departemen" name="departemen"
-                                                required @if (Auth::user()->jabatan === 'operator') disabled @endif>
-                                                <option value="">Pilih Departemen</option>
-                                                <option value="warehouse"
-                                                    {{ old('departemen', $user->departemen) == 'warehouse' ? 'selected' : '' }}>
-                                                    Warehouse</option>
-                                                <option value="engineering"
-                                                    {{ old('departemen', $user->departemen) == 'engineering' ? 'selected' : '' }}>
-                                                    Engineering</option>
-                                                <option value="quality_control"
-                                                    {{ old('departemen', $user->departemen) == 'quality_control' ? 'selected' : '' }}>
-                                                    Quality Control</option>
-                                                <option value="produksi"
-                                                    {{ old('departemen', $user->departemen) == 'produksi' ? 'selected' : '' }}>
-                                                    Produksi</option>
-                                                <option value="ppic"
-                                                    {{ old('departemen', $user->departemen) == 'ppic' ? 'selected' : '' }}>
-                                                    PPIC</option>
-                                                <option value="purchasing"
-                                                    {{ old('departemen', $user->departemen) == 'purchasing' ? 'selected' : '' }}>
-                                                    Purchasing</option>
-                                                <option value="hrga"
-                                                    {{ old('departemen', $user->departemen) == 'hrga' ? 'selected' : '' }}>
-                                                    HRGA</option>
-                                                <option value="expedisi"
-                                                    {{ old('departemen', $user->departemen) == 'expedisi' ? 'selected' : '' }}>
-                                                    Expedisi</option>
-                                                <option value="timbangan"
-                                                    {{ old('departemen', $user->departemen) == 'timbangan' ? 'selected' : '' }}>
-                                                    Timbangan</option>
-                                                @if (Auth::user()->jabatan == 'admin')
-                                                    <option value="FM"
-                                                        {{ old('departemen', $user->departemen) == 'FM' ? 'selected' : '' }}>
-                                                        Factory Manager</option>
-                                                    <option value="IT"
-                                                        {{ old('departemen', $user->departemen) == 'IT' ? 'selected' : '' }}>
-                                                        ITE</option>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="departemen" class="form-label fw-semibold">Departemen</label>
+                                                <select class="form-select text-capitalize" id="departemen"
+                                                    name="departemen" required
+                                                    @if (Auth::user()->jabatan === 'operator') disabled @endif>
+                                                    <option value="">Pilih Departemen</option>
+                                                    <option value="warehouse"
+                                                        {{ old('departemen', $user->departemen) == 'warehouse' ? 'selected' : '' }}>
+                                                        Warehouse</option>
+                                                    <option value="engineering"
+                                                        {{ old('departemen', $user->departemen) == 'engineering' ? 'selected' : '' }}>
+                                                        Engineering</option>
+                                                    <option value="quality_control"
+                                                        {{ old('departemen', $user->departemen) == 'quality_control' ? 'selected' : '' }}>
+                                                        Quality Control</option>
+                                                    <option value="produksi"
+                                                        {{ old('departemen', $user->departemen) == 'produksi' ? 'selected' : '' }}>
+                                                        Produksi</option>
+                                                    <option value="ppic"
+                                                        {{ old('departemen', $user->departemen) == 'ppic' ? 'selected' : '' }}>
+                                                        PPIC</option>
+                                                    <option value="purchasing"
+                                                        {{ old('departemen', $user->departemen) == 'purchasing' ? 'selected' : '' }}>
+                                                        Purchasing</option>
+                                                    <option value="hrga"
+                                                        {{ old('departemen', $user->departemen) == 'hrga' ? 'selected' : '' }}>
+                                                        HRGA</option>
+                                                    <option value="expedisi"
+                                                        {{ old('departemen', $user->departemen) == 'expedisi' ? 'selected' : '' }}>
+                                                        Expedisi</option>
+                                                    <option value="timbangan"
+                                                        {{ old('departemen', $user->departemen) == 'timbangan' ? 'selected' : '' }}>
+                                                        Timbangan</option>
+                                                    @if (Auth::user()->jabatan == 'admin')
+                                                        <option value="FM"
+                                                            {{ old('departemen', $user->departemen) == 'FM' ? 'selected' : '' }}>
+                                                            Factory Manager</option>
+                                                        <option value="IT"
+                                                            {{ old('departemen', $user->departemen) == 'IT' ? 'selected' : '' }}>
+                                                            ITE</option>
+                                                    @endif
+                                                </select>
+                                                @if (Auth::user()->jabatan === 'operator')
+                                                    <input type="hidden" name="departemen"
+                                                        value="{{ $user->departemen }}">
                                                 @endif
-                                            </select>
-                                            @if (Auth::user()->jabatan === 'operator')
-                                                <input type="hidden" name="departemen" value="{{ $user->departemen }}">
-                                            @endif
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="bagian" class="form-label fw-semibold">Bagian</label>
-                                            <select class="form-select text-capitalize" id="bagian" name="bagian"
-                                                required @if (Auth::user()->jabatan === 'operator') disabled @endif>
-                                                <option value="" disabled>Pilih Bagian</option>
-                                                <option value="warehouse"
-                                                    {{ old('bagian', $user->bagian) == 'warehouse' ? 'selected' : '' }}>
-                                                    Warehouse</option>
-                                                <option value="warehouse_co_product"
-                                                    {{ old('bagian', $user->bagian) == 'warehouse_co_product' ? 'selected' : '' }}>
-                                                    Warehouse Co Product</option>
-                                                <option value="warehouse_finish_goods"
-                                                    {{ old('bagian', $user->bagian) == 'warehouse_finish_goods' ? 'selected' : '' }}>
-                                                    Warehouse Finish Good</option>
-                                                <option value="warehouse_raw_material"
-                                                    {{ old('bagian', $user->bagian) == 'warehouse_raw_material' ? 'selected' : '' }}>
-                                                    Warehouse Raw Material</option>
-                                                <option value="warehouse_sparepart"
-                                                    {{ old('bagian', $user->bagian) == 'warehouse_sparepart' ? 'selected' : '' }}>
-                                                    Warehouse Sparepart</option>
-                                                <option value="warehouse_packaging_material"
-                                                    {{ old('bagian', $user->bagian) == 'warehouse_packaging_material' ? 'selected' : '' }}>
-                                                    Warehouse Packaging Material</option>
-                                                <option value="engineering"
-                                                    {{ old('bagian', $user->bagian) == 'engineering' ? 'selected' : '' }}>
-                                                    Engineering</option>
-                                                <option value="engineering_utility"
-                                                    {{ old('bagian', $user->bagian) == 'engineering_utility' ? 'selected' : '' }}>
-                                                    Engineering Utility</option>
-                                                <option value="engineering_production"
-                                                    {{ old('bagian', $user->bagian) == 'engineering_production' ? 'selected' : '' }}>
-                                                    Engineering Production</option>
-                                                <option value="engineering_project"
-                                                    {{ old('bagian', $user->bagian) == 'engineering_project' ? 'selected' : '' }}>
-                                                    Engineering Project</option>
-                                                <option value="quality_control"
-                                                    {{ old('bagian', $user->bagian) == 'quality_control' ? 'selected' : '' }}>
-                                                    Quality Control</option>
-                                                <option value="quality_control_rmpm"
-                                                    {{ old('bagian', $user->bagian) == 'quality_control_rmpm' ? 'selected' : '' }}>
-                                                    Quality Control RMPM</option>
-                                                <option value="quality_control_proses"
-                                                    {{ old('bagian', $user->bagian) == 'quality_control_proses' ? 'selected' : '' }}>
-                                                    Quality Control Proses</option>
-                                                <option value="produksi"
-                                                    {{ old('bagian', $user->bagian) == 'produksi' ? 'selected' : '' }}>
-                                                    Produksi</option>
-                                                <option value="ppic"
-                                                    {{ old('bagian', $user->bagian) == 'ppic' ? 'selected' : '' }}>PPIC
-                                                </option>
-                                                <option value="purchasing"
-                                                    {{ old('bagian', $user->bagian) == 'purchasing' ? 'selected' : '' }}>
-                                                    Purchasing</option>
-                                                <option value="hrga"
-                                                    {{ old('bagian', $user->bagian) == 'hrga' ? 'selected' : '' }}>HRGA
-                                                </option>
-                                                <option value="expedisi"
-                                                    {{ old('bagian', $user->bagian) == 'expedisi' ? 'selected' : '' }}>
-                                                    Expedisi</option>
-                                                <option value="timbangan"
-                                                    {{ old('bagian', $user->bagian) == 'timbangan' ? 'selected' : '' }}>
-                                                    Timbangan</option>
-                                                @if (Auth::user()->jabatan == 'admin')
-                                                    <option value="FM"
-                                                        {{ old('bagian', $user->bagian) == 'FM' ? 'selected' : '' }}>
-                                                        Factory Manager</option>
-                                                    <option value="IT"
-                                                        {{ old('bagian', $user->bagian) == 'IT' ? 'selected' : '' }}>ITE
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="bagian" class="form-label fw-semibold">Bagian</label>
+                                                <select class="form-select text-capitalize" id="bagian" name="bagian"
+                                                    required @if (Auth::user()->jabatan === 'operator') disabled @endif>
+                                                    <option value="" disabled>Pilih Bagian</option>
+                                                    <option value="warehouse"
+                                                        {{ old('bagian', $user->bagian) == 'warehouse' ? 'selected' : '' }}>
+                                                        Warehouse</option>
+                                                    <option value="warehouse_co_product"
+                                                        {{ old('bagian', $user->bagian) == 'warehouse_co_product' ? 'selected' : '' }}>
+                                                        Warehouse Co Product</option>
+                                                    <option value="warehouse_finish_goods"
+                                                        {{ old('bagian', $user->bagian) == 'warehouse_finish_goods' ? 'selected' : '' }}>
+                                                        Warehouse Finish Good</option>
+                                                    <option value="warehouse_raw_material"
+                                                        {{ old('bagian', $user->bagian) == 'warehouse_raw_material' ? 'selected' : '' }}>
+                                                        Warehouse Raw Material</option>
+                                                    <option value="warehouse_sparepart"
+                                                        {{ old('bagian', $user->bagian) == 'warehouse_sparepart' ? 'selected' : '' }}>
+                                                        Warehouse Sparepart</option>
+                                                    <option value="warehouse_packaging_material"
+                                                        {{ old('bagian', $user->bagian) == 'warehouse_packaging_material' ? 'selected' : '' }}>
+                                                        Warehouse Packaging Material</option>
+                                                    <option value="engineering"
+                                                        {{ old('bagian', $user->bagian) == 'engineering' ? 'selected' : '' }}>
+                                                        Engineering</option>
+                                                    <option value="engineering_utility"
+                                                        {{ old('bagian', $user->bagian) == 'engineering_utility' ? 'selected' : '' }}>
+                                                        Engineering Utility</option>
+                                                    <option value="engineering_production"
+                                                        {{ old('bagian', $user->bagian) == 'engineering_production' ? 'selected' : '' }}>
+                                                        Engineering Production</option>
+                                                    <option value="engineering_project"
+                                                        {{ old('bagian', $user->bagian) == 'engineering_project' ? 'selected' : '' }}>
+                                                        Engineering Project</option>
+                                                    <option value="quality_control"
+                                                        {{ old('bagian', $user->bagian) == 'quality_control' ? 'selected' : '' }}>
+                                                        Quality Control</option>
+                                                    <option value="quality_control_rmpm"
+                                                        {{ old('bagian', $user->bagian) == 'quality_control_rmpm' ? 'selected' : '' }}>
+                                                        Quality Control RMPM</option>
+                                                    <option value="quality_control_proses"
+                                                        {{ old('bagian', $user->bagian) == 'quality_control_proses' ? 'selected' : '' }}>
+                                                        Quality Control Proses</option>
+                                                    <option value="produksi"
+                                                        {{ old('bagian', $user->bagian) == 'produksi' ? 'selected' : '' }}>
+                                                        Produksi</option>
+                                                    <option value="ppic"
+                                                        {{ old('bagian', $user->bagian) == 'ppic' ? 'selected' : '' }}>PPIC
                                                     </option>
+                                                    <option value="purchasing"
+                                                        {{ old('bagian', $user->bagian) == 'purchasing' ? 'selected' : '' }}>
+                                                        Purchasing</option>
+                                                    <option value="hrga"
+                                                        {{ old('bagian', $user->bagian) == 'hrga' ? 'selected' : '' }}>HRGA
+                                                    </option>
+                                                    <option value="expedisi"
+                                                        {{ old('bagian', $user->bagian) == 'expedisi' ? 'selected' : '' }}>
+                                                        Expedisi</option>
+                                                    <option value="timbangan"
+                                                        {{ old('bagian', $user->bagian) == 'timbangan' ? 'selected' : '' }}>
+                                                        Timbangan</option>
+                                                    @if (Auth::user()->jabatan == 'admin')
+                                                        <option value="FM"
+                                                            {{ old('bagian', $user->bagian) == 'FM' ? 'selected' : '' }}>
+                                                            Factory Manager</option>
+                                                        <option value="IT"
+                                                            {{ old('bagian', $user->bagian) == 'IT' ? 'selected' : '' }}>
+                                                            ITE
+                                                        </option>
+                                                    @endif
+                                                </select>
+                                                @if (Auth::user()->jabatan === 'operator')
+                                                    <input type="hidden" name="bagian" value="{{ $user->bagian }}">
                                                 @endif
-                                            </select>
-                                            @if (Auth::user()->jabatan === 'operator')
-                                                <input type="hidden" name="bagian" value="{{ $user->bagian }}">
-                                            @endif
+                                            </div>
                                         </div>
-                                    </div>
+                                    @endif
 
-                                    <div class="col-md-6">
+                                    <div class="col-md-12">
                                         <div class="mb-3">
                                             <label for="imgEdit" class="form-label fw-semibold">Photo Profile</label>
                                             <input type="file" class="form-control" id="imgEdit" name="image"
