@@ -990,6 +990,7 @@ class WspPurchaseRequesitionController extends Controller
             } else {
                 $supervisor = User::where('departemen', 'quality_control')
                     ->where('jabatan', 'supervisor')
+                    ->where('bagian', 'quality_control')
                     ->where('is_active', true)
                     ->first();
             }
