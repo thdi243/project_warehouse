@@ -26,8 +26,41 @@ class WpmStockOpnameController extends Controller
     {
         $user = Auth::user();
         $today = now()->toDateString();
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
 
-        $existing = WpmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($jenisSo === 'monthly') {
+            $currentYear = Carbon::parse($today)->year;
+            $currentMonth = Carbon::parse($today)->month;
+
+            $existingMonthlyThisMonth = WpmSoStatusModel::where('jenis_so', 'monthly')
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->whereDate('tgl_opname', '!=', $today)
+                ->exists();
+
+            if ($existingMonthlyThisMonth) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Stock Opname Monthly untuk bulan ini sudah pernah dibuat/berjalan pada hari lain.'
+                ], 422);
+            }
+        }
+
+        // Check if SOH exists for today for this jenis_so
+        $sohCount = WpmSohModel::whereDate('created_at', $today)
+            ->where('jenis_so', $jenisSo)
+            ->count();
+
+        if ($sohCount === 0) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Data SOH kosong. Silakan unggah atau isi data SOH terlebih dahulu untuk jenis SO ini.'
+            ], 422);
+        }
+
+        $existing = WpmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
 
         if ($existing) {
             return response()->json([
@@ -41,6 +74,7 @@ class WpmStockOpnameController extends Controller
             'user_id' => $user->id ?? 1,
             'tgl_opname' => $today,
             'status' => 'started',
+            'jenis_so' => $jenisSo,
         ]);
 
         return response()->json([
@@ -50,10 +84,12 @@ class WpmStockOpnameController extends Controller
         ]);
     }
 
-    private function checkSoWriteAccess()
+    private function checkSoWriteAccess($jenisSo = 'cycle_count')
     {
         $today = now()->toDateString();
-        $status = WpmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        $status = WpmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
         if ($status && $status->status === 'started' && Auth::id() != $status->user_id) {
             return false;
         }
@@ -63,7 +99,11 @@ class WpmStockOpnameController extends Controller
     public function getStatusOpname(Request $request)
     {
         $today = now()->toDateString();
-        $status = WpmSoStatusModel::with('user')->whereDate('tgl_opname', $today)->first();
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
+        $status = WpmSoStatusModel::with('user')
+            ->whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
         $currentUser = Auth::user();
 
         if ($status) {
@@ -78,7 +118,7 @@ class WpmStockOpnameController extends Controller
         return response()->json([
             'status' => 'idle',
             'is_owner' => true,
-            'started_by' => $status->user->nama_lengkap ?? $status->user->username ?? 'Stock Control'
+            'started_by' => 'Stock Control'
         ]);
     }
 
@@ -86,12 +126,14 @@ class WpmStockOpnameController extends Controller
     {
         $search = $request->input('search');
         $today = now()->toDateString();
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
 
         // Query all SOH entered today
         $query = WpmSohModel::query()
             ->select('wpm_soh.*')
             ->leftJoin('wpm_master_barang', 'wpm_soh.barang_id', '=', 'wpm_master_barang.id')
-            ->whereDate('wpm_soh.created_at', $today);
+            ->whereDate('wpm_soh.created_at', $today)
+            ->where('wpm_soh.jenis_so', $jenisSo);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -103,9 +145,17 @@ class WpmStockOpnameController extends Controller
         $sohList = $query->with('barang')->get();
 
         // Pull active temp values grouped by barang_id
-        $tempData = WpmSoTempModel::whereDate('tgl_opname', $today)->get()->groupBy('barang_id');
+        $tempData = WpmSoTempModel::whereDate('tgl_opname', $today)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->get()->groupBy('barang_id');
 
-        $tempNotes = WpmSoTempNoteModel::whereDate('tgl_opname', $today)->get()->keyBy('barang_id');
+        $tempNotes = WpmSoTempNoteModel::whereDate('tgl_opname', $today)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->get()->keyBy('barang_id');
 
         $result = $sohList->map(function ($soh) use ($tempData, $tempNotes) {
             $temps = $tempData->get($soh->barang_id);
@@ -150,13 +200,6 @@ class WpmStockOpnameController extends Controller
 
     public function saveTemp(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
-            ], 403);
-        }
-
         $request->validate([
             'soh_id' => 'required|exists:wpm_soh,id',
             'qty_full' => 'nullable|numeric|min:0',
@@ -165,6 +208,14 @@ class WpmStockOpnameController extends Controller
         ]);
 
         $soh = WpmSohModel::with('barang')->findOrFail($request->soh_id);
+
+        if (!$this->checkSoWriteAccess($soh->jenis_so)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
+
         $barang = $soh->barang;
         $user = Auth::user();
         $today = now()->toDateString();
@@ -262,7 +313,7 @@ class WpmStockOpnameController extends Controller
                     'nama_barang' => $barang->nama_barang,
                     'qty_full'    => $rec->qty_full,
                     'qty_receh'   => $rec->qty_receh,
-                    'summary'     => (float) $rec->summary,
+                    'summary'     => $rec->summary,
                     'mode'        => 'qty',
                     'created_at'  => $rec->created_at->toDateTimeString(),
                     'updated_at'  => $rec->updated_at->toDateTimeString(),
@@ -331,13 +382,6 @@ class WpmStockOpnameController extends Controller
 
     public function updateTempBatch(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
-            ], 403);
-        }
-
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
@@ -349,6 +393,26 @@ class WpmStockOpnameController extends Controller
         $items = $validated['items'];
         $catatan = $validated['catatan'] ?? null;
 
+        if (empty($items)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tidak ada item yang divalidasi.'
+            ], 422);
+        }
+
+        $firstTemp = WpmSoTempModel::find($items[0]['id']);
+        $jenisSo = 'cycle_count';
+        if ($firstTemp && $firstTemp->soh) {
+            $jenisSo = $firstTemp->soh->jenis_so;
+        }
+
+        if (!$this->checkSoWriteAccess($jenisSo)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
+
         DB::beginTransaction();
         try {
             $processedPairs = [];
@@ -357,8 +421,8 @@ class WpmStockOpnameController extends Controller
                 $temp = WpmSoTempModel::with('barang', 'soh')->find($it['id']);
                 if (!$temp || !$temp->barang) continue;
 
-                $qtyFull = isset($it['qty_full']) ? (float)$it['qty_full'] : 0.0;
-                $qtyReceh = isset($it['qty_receh']) ? (float)$it['qty_receh'] : 0.0;
+                $qtyFull = isset($it['qty_full']) ? (float)$it['qty_full'] : 0;
+                $qtyReceh = isset($it['qty_receh']) ? (float)$it['qty_receh'] : 0;
                 $qtyPallet = (float)($temp->barang->qty_pallet ?? 1);
 
                 $summary = ($qtyFull * $qtyPallet) + $qtyReceh;
@@ -415,7 +479,22 @@ class WpmStockOpnameController extends Controller
 
     public function destroyTemp($id, Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
+        $type = $request->input('tipe', 'qty');
+        $jenisSo = 'cycle_count';
+
+        if ($type === 'note') {
+            $note = WpmSoTempNoteModel::where('soh_id', $id)->first();
+            if ($note && $note->soh) {
+                $jenisSo = $note->soh->jenis_so;
+            }
+        } else {
+            $temp = WpmSoTempModel::with('soh')->find($id);
+            if ($temp && $temp->soh) {
+                $jenisSo = $temp->soh->jenis_so;
+            }
+        }
+
+        if (!$this->checkSoWriteAccess($jenisSo)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
@@ -423,8 +502,6 @@ class WpmStockOpnameController extends Controller
         }
 
         try {
-            $type = $request->input('tipe', 'qty');
-
             if ($type === 'note') {
                 $deleted = WpmSoTempNoteModel::where('soh_id', $id)->delete();
                 if (!$deleted) {
@@ -461,13 +538,6 @@ class WpmStockOpnameController extends Controller
 
     public function saveTempNew(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
-            ], 403);
-        }
-
         $request->validate([
             'mid_barang' => 'required|exists:wpm_master_barang,mid',
             'unrest' => 'required|numeric|min:0',
@@ -475,14 +545,25 @@ class WpmStockOpnameController extends Controller
             'blocked' => 'nullable|numeric|min:0',
             'qty_full' => 'required|numeric|min:0',
             'qty_receh' => 'required|numeric|min:0',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
+
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
+
+        if (!$this->checkSoWriteAccess($jenisSo)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
 
         $barang = WpmMasterBarangModel::where('mid', $request->mid_barang)->firstOrFail();
         $user = Auth::user();
         $today = now()->toDateString();
 
-        // Validasi jika MID sudah ada hari ini
+        // Validasi jika MID sudah ada hari ini untuk jenis SO ini
         $exists = WpmSohModel::where('barang_id', $barang->id)
+            ->where('jenis_so', $jenisSo)
             ->whereDate('created_at', $today)
             ->exists();
 
@@ -501,11 +582,12 @@ class WpmStockOpnameController extends Controller
         $soh = WpmSohModel::updateOrCreate(
             [
                 'barang_id' => $barang->id,
+                'jenis_so'  => $jenisSo,
                 'created_at' => $today
             ],
             [
                 'user_id' => $user->id ?? 1,
-                'qty_soh' => (float)$request->unrest + (float)($request->qi ?? 0) + (float)($request->blocked ?? 0),
+                'qty_soh' => round((float)$request->unrest + (float)$request->qi + (float)$request->blocked, 2),
                 'qty_unrest' => $request->unrest,
                 'qty_qi' => $request->qi ?? 0,
                 'qty_block' => $request->blocked ?? 0,
@@ -540,16 +622,18 @@ class WpmStockOpnameController extends Controller
 
     public function resetTempRow(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
+        $request->validate([
+            'soh_id' => 'required|exists:wpm_soh,id'
+        ]);
+
+        $soh = WpmSohModel::findOrFail($request->soh_id);
+
+        if (!$this->checkSoWriteAccess($soh->jenis_so)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
             ], 403);
         }
-
-        $request->validate([
-            'soh_id' => 'required|exists:wpm_soh,id'
-        ]);
 
         $today = now()->toDateString();
         WpmSoTempModel::where('soh_id', $request->soh_id)->whereDate('tgl_opname', $today)->delete();
@@ -563,24 +647,32 @@ class WpmStockOpnameController extends Controller
 
     public function processOpname(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
+        $request->validate([
+            'tgl_opname' => 'required|date',
+            'mode' => 'required|in:check,final_prepare,final_submit',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
+            'keterangan' => 'nullable|array'
+        ]);
+
+        $jenisSo = $request->jenis_so;
+
+        if (!$this->checkSoWriteAccess($jenisSo)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
             ], 403);
         }
 
-        $request->validate([
-            'tgl_opname' => 'required|date',
-            'mode' => 'required|in:check,final_prepare,final_submit',
-            'keterangan' => 'nullable|array'
-        ]);
-
         $user = Auth::user();
         $tglOpname = $request->tgl_opname;
 
-        // Fetch temp data
-        $tempData = WpmSoTempModel::with('barang')->where('tgl_opname', $tglOpname)->get();
+        // Fetch temp data for this jenis_so
+        $tempData = WpmSoTempModel::with('barang')
+            ->where('tgl_opname', $tglOpname)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->get();
 
         if ($tempData->isEmpty()) {
             return response()->json([
@@ -589,11 +681,19 @@ class WpmStockOpnameController extends Controller
             ]);
         }
 
-        // Fetch all SOH today
-        $sohData = WpmSohModel::whereDate('created_at', $tglOpname)->get()->keyBy('barang_id');
+        // Fetch all SOH today for this jenis_so
+        $sohData = WpmSohModel::whereDate('created_at', $tglOpname)
+            ->where('jenis_so', $jenisSo)
+            ->get()
+            ->keyBy('barang_id');
 
         // Pull active temp notes
-        $tempNotes = WpmSoTempNoteModel::whereDate('tgl_opname', $tglOpname)->get()->pluck('catatan', 'soh_id');
+        $tempNotes = WpmSoTempNoteModel::whereDate('tgl_opname', $tglOpname)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->get()
+            ->pluck('catatan', 'soh_id');
 
         // Check if there are any items in SOH that haven't been counted yet
         $uncountedItems = [];
@@ -603,7 +703,7 @@ class WpmStockOpnameController extends Controller
                 $uncountedItems[] = [
                     'mid' => $soh->barang->mid,
                     'nama_barang' => $soh->barang->nama_barang,
-                    'qty_system' => $soh->qty_soh,
+                    'qty_system' => $soh->qty_soh
                 ];
             }
         }
@@ -730,13 +830,16 @@ class WpmStockOpnameController extends Controller
 
             DB::beginTransaction();
             try {
-                $existingSop = WpmSoModel::whereDate('tgl_opname', $tglOpname)->first();
+                $existingSop = WpmSoModel::whereDate('tgl_opname', $tglOpname)
+                    ->where('jenis_so', $jenisSo)
+                    ->first();
                 if ($existingSop && $existingSop->no_doc) {
                     $noDoc = $existingSop->no_doc;
                 } else {
                     $tanggalCarbon = \Carbon\Carbon::parse($tglOpname);
                     $count = WpmSoModel::whereMonth('tgl_opname', $tanggalCarbon->month)
                         ->whereYear('tgl_opname', $tanggalCarbon->year)
+                        ->where('jenis_so', $jenisSo)
                         ->count();
                     $nextNum = $count + 1;
                     $nomor = str_pad($nextNum, 3, '0', STR_PAD_LEFT);
@@ -747,15 +850,18 @@ class WpmStockOpnameController extends Controller
                 }
 
                 $sop = WpmSoModel::updateOrCreate(
-                    ['tgl_opname' => $tglOpname],
+                    [
+                        'tgl_opname' => $tglOpname,
+                        'jenis_so'   => $jenisSo
+                    ],
                     [
                         'user_id' => $user->id ?? 1,
-                        'status' => 'draft',
+                        'status' => $jenisSo === 'cycle_count' ? 'approved' : 'draft',
                         'no_doc' => $noDoc
                     ]
                 );
 
-                // Delete old details/summaries for this date
+                // Delete old details/summaries for this date and jenis_so
                 WpmSoDetailModel::where('so_id', $sop->id)->delete();
                 WpmSoSummariesModel::where('so_id', $sop->id)->delete();
                 WpmSoApprovalModel::where('so_id', $sop->id)->delete();
@@ -763,8 +869,10 @@ class WpmStockOpnameController extends Controller
                 WpmSoApprovalModel::create([
                     'so_id' => $sop->id,
                     'approver_id' => $user->id,
-                    'status' => 'read',
-                    'catatan' => $komentarFinal
+                    'status' => $jenisSo === 'cycle_count' ? 'approved' : 'read',
+                    'catatan' => $komentarFinal,
+                    'action_at' => $jenisSo === 'cycle_count' ? now() : null,
+                    'action_by' => $jenisSo === 'cycle_count' ? $user->id : null,
                 ]);
 
                 // Save details (individual entries from temp!)
@@ -793,22 +901,36 @@ class WpmStockOpnameController extends Controller
 
                 // Update session status log
                 WpmSoStatusModel::updateOrCreate(
-                    ['tgl_opname' => $tglOpname],
+                    [
+                        'tgl_opname' => $tglOpname,
+                        'jenis_so'   => $jenisSo
+                    ],
                     [
                         'user_id' => $user->id ?? 1,
                         'status' => 'finished'
                     ]
                 );
 
-                // Clear temp tables
-                WpmSoTempModel::where('tgl_opname', $tglOpname)->delete();
-                WpmSoTempNoteModel::where('tgl_opname', $tglOpname)->delete();
+                // Clear temp tables for this date and jenis_so
+                WpmSoTempModel::where('tgl_opname', $tglOpname)
+                    ->whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    })->delete();
+
+                WpmSoTempNoteModel::where('tgl_opname', $tglOpname)
+                    ->whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    })->delete();
 
                 DB::commit();
 
+                $msg = $jenisSo === 'cycle_count' ? 
+                    'Stock Opname WPM berhasil disubmit final (Auto-Approved).' :
+                    'Stock Opname WPM berhasil disubmit final. Status saat ini Draft. Silakan kirim persetujuan dari menu Report SO.';
+
                 return response()->json([
                     'status' => 'success',
-                    'message' => 'Stock Opname WPM berhasil disubmit final. Status saat ini Draft. Silakan kirim persetujuan dari menu Report SO.'
+                    'message' => $msg
                 ]);
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -823,13 +945,23 @@ class WpmStockOpnameController extends Controller
     public function getDataReport(Request $request)
     {
         $tglOpname = $request->input('tgl_opname', now()->toDateString());
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
 
-        $sop = WpmSoModel::whereDate('tgl_opname', $tglOpname)->first();
+        $query = WpmSoModel::where('jenis_so', $jenisSo);
+        if (strlen($tglOpname) === 7) {
+            $parts = explode('-', $tglOpname);
+            $query->whereYear('tgl_opname', $parts[0])
+                  ->whereMonth('tgl_opname', $parts[1]);
+        } else {
+            $query->whereDate('tgl_opname', $tglOpname);
+        }
+        $sop = $query->first();
 
         // Get all WpmSoModel records that are not approved yet (draft, pending, rejected)
         $unapprovedSops = WpmSoModel::where('status', '!=', 'approved')
+            ->where('jenis_so', $jenisSo)
             ->orderBy('tgl_opname', 'asc')
-            ->get(['id', 'tgl_opname', 'status']);
+            ->get(['id', 'tgl_opname', 'status', 'jenis_so']);
 
         if (!$sop) {
             return response()->json([
@@ -851,17 +983,19 @@ class WpmStockOpnameController extends Controller
         ]);
     }
 
-    public function getPendingApprovalReport(Request $request)
+    public function getPendingApprovals(Request $request)
     {
         $user = Auth::user();
 
         $approvals = WpmSoApprovalModel::with([
             'approver:id,nama_lengkap,username,jabatan',
-            'so:id,tgl_opname,status,user_id',
+            'so:id,tgl_opname,status,user_id,jenis_so',
             'so.user:id,username,nama_lengkap',
         ])
+            ->where('approver_id', $user->id)
             ->whereIn('wpm_so_approvals.status', ['pending', 'read'])
             ->join('wpm_so', 'wpm_so.id', '=', 'wpm_so_approvals.so_id')
+            ->where('wpm_so.status', '!=', 'approved')
             ->orderByDesc('wpm_so.tgl_opname')
             ->orderByDesc('wpm_so_approvals.created_at')
             ->select('wpm_so_approvals.*')
@@ -903,7 +1037,11 @@ class WpmStockOpnameController extends Controller
         ]);
     }
 
-    // Approval List
+    public function getPendingApprovalReport(Request $request)
+    {
+        return $this->getPendingApprovals($request);
+    }
+
     public function getDataApproval()
     {
         $users = User::where(function ($q) {
@@ -922,7 +1060,6 @@ class WpmStockOpnameController extends Controller
         ]);
     }
 
-    // Send Approval
     public function sendApproval(Request $request)
     {
         $request->validate([
@@ -986,8 +1123,8 @@ class WpmStockOpnameController extends Controller
             $so->update(['status' => 'pending']);
 
             $title   = 'Approval SO WPM';
-            $message = 'SO Packaging Material tanggal ' . $so->tgl_opname . ' menunggu persetujuan Anda.';
-            $url     = route('wpm.stock_opname.report') . '?tgl_opname=' . $so->tgl_opname;
+            $message = 'SO Warehouse Packaging Material tanggal ' . $so->tgl_opname . ' menunggu persetujuan Anda.';
+            $url     = route('wpm.stock_opname.report') . '?tgl_opname=' . $so->tgl_opname . '&jenis_so=' . $so->jenis_so;
 
             foreach ($approverIds as $approverId) {
                 if ($approverId == $user->id) continue;
@@ -1024,7 +1161,6 @@ class WpmStockOpnameController extends Controller
         }
     }
 
-    // Show Approval Tracking status
     public function showApproval($id)
     {
         $so = WpmSoModel::findOrFail($id);
@@ -1051,6 +1187,7 @@ class WpmStockOpnameController extends Controller
 
         return response()->json([
             'status' => 'success',
+            'jenis_so' => $so->jenis_so,
             'status_sop' => $so->status,
             'approval_status' => $approvalStatus,
             'approval_note' => $approvalNote,
@@ -1060,7 +1197,6 @@ class WpmStockOpnameController extends Controller
         ]);
     }
 
-    // Update Status Approval (Approve / Reject)
     public function updateStatus(Request $request)
     {
         $request->validate([
@@ -1118,13 +1254,13 @@ class WpmStockOpnameController extends Controller
             if (in_array($finalStatus, ['approved', 'rejected']) && $so->user_id) {
                 $statusText = $finalStatus === 'approved' ? 'DISETUJUI' : 'DITOLAK';
                 $titleText = "SO WPM " . ($finalStatus === 'approved' ? 'Approved' : 'Rejected');
-                $messageText = "Stock Opname Packaging Material tanggal " . $so->tgl_opname . " telah " . $statusText . " oleh " . $user->nama_lengkap . ".";
+                $messageText = "Stock Opname Warehouse Packaging Material tanggal " . $so->tgl_opname . " telah " . $statusText . " oleh " . $user->nama_lengkap . ".";
 
                 if ($finalStatus === 'rejected' && $request->catatan) {
                     $messageText .= " Catatan: " . $request->catatan;
                 }
 
-                $url = route('wpm.stock_opname.report') . '?tgl_opname=' . $so->tgl_opname;
+                $url = route('wpm.stock_opname.report') . '?tgl_opname=' . $so->tgl_opname . '&jenis_so=' . $so->jenis_so;
 
                 // Clear old status notifications for this SO for the creator
                 NotificationsModel::where('user_id', $so->user_id)
@@ -1213,8 +1349,8 @@ class WpmStockOpnameController extends Controller
 
                 if (!$detail) continue;
 
-                $qtyFull = isset($it['qty_full']) ? (float)$it['qty_full'] : 0.0;
-                $qtyReceh = isset($it['qty_receh']) ? (float)$it['qty_receh'] : 0.0;
+                $qtyFull = isset($it['qty_full']) ? (float)$it['qty_full'] : 0;
+                $qtyReceh = isset($it['qty_receh']) ? (float)$it['qty_receh'] : 0;
 
                 if ($qtyFull < 0 || $qtyReceh < 0) {
                     return response()->json([
@@ -1380,8 +1516,17 @@ class WpmStockOpnameController extends Controller
     public function exportPdfSOWPM(Request $request)
     {
         $tglOpname = $request->input('tgl_opname', now()->toDateString());
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
 
-        $so = WpmSoModel::whereDate('tgl_opname', $tglOpname)->first();
+        $query = WpmSoModel::where('jenis_so', $jenisSo);
+        if (strlen($tglOpname) === 7) {
+            $parts = explode('-', $tglOpname);
+            $query->whereYear('tgl_opname', $parts[0])
+                  ->whereMonth('tgl_opname', $parts[1]);
+        } else {
+            $query->whereDate('tgl_opname', $tglOpname);
+        }
+        $so = $query->first();
 
         if (!$so) {
             return redirect()->back()->with('error', 'Data Stock Opname tidak ditemukan untuk tanggal ' . $tglOpname);
