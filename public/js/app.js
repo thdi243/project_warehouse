@@ -470,7 +470,7 @@ $(document).ready(function () {
     fetchNotifications(false);
 
     setInterval(() => {
-        fetchNotifications(false);
+        fetchNotifications(true);
     }, 180000);
 
     function setupRealtimeNotifications() {
