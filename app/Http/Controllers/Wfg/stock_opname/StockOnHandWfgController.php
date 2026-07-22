@@ -18,7 +18,6 @@ use App\Models\Wfg\stock_opname\WfgSopDetailModel;
 use App\Models\Wfg\stock_opname\WfgSopStatusModel;
 use App\Models\Wfg\stock_opname\WfgSopSummariesModel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Models\Wsp\StockOnHandModel as WspStockOnHandModel;
 
 class StockOnHandWfgController extends Controller
 {
@@ -40,6 +39,7 @@ class StockOnHandWfgController extends Controller
             'unrest' => 'nullable|integer|min:0',
             'qi' => 'nullable|integer|min:0',
             'block' => 'nullable|integer|min:0',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
 
         try {
@@ -64,15 +64,48 @@ class StockOnHandWfgController extends Controller
                 ], 422);
             }
 
-            // Cegah input ganda untuk hari yang sama
+            $jenisSo = $request->jenis_so;
+            $today = now()->toDateString();
+            $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+
+            $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+                ->where('principal', $principal)
+                ->where('jenis_so', $jenisSo)
+                ->first();
+            if ($soStatus && $soStatus->status === 'finished') {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Tidak dapat menambah data SOH karena Stock Opname {$periodeText} telah selesai (finished)."
+                ], 422);
+            }
+
+            if ($jenisSo === 'monthly') {
+                $currentYear = now()->year;
+                $currentMonth = now()->month;
+                $hasMonthlySo = WfgSopStatusModel::where('jenis_so', 'monthly')
+                    ->where('principal', $principal)
+                    ->whereYear('tgl_opname', $currentYear)
+                    ->whereMonth('tgl_opname', $currentMonth)
+                    ->whereDate('tgl_opname', '!=', $today)
+                    ->exists();
+                if ($hasMonthlySo) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Tidak dapat menambah data SOH karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
+                    ], 422);
+                }
+            }
+
+            // Cegah input ganda untuk hari yang sama untuk jenis SO ini
             $exists = StockOnHandModel::where('barang_id', $request->barang_id)
-                ->whereDate('last_updated', now()->toDateString())
+                ->where('jenis_so', $jenisSo)
+                ->whereDate('last_updated', $today)
                 ->exists();
 
             if ($exists) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Data Mid Barang SOH untuk barang ini sudah diinput hari ini!',
+                    'message' => "Data Mid Barang SOH untuk barang ini sudah diinput {$periodeText}!",
                 ], 409);
             }
 
@@ -85,6 +118,7 @@ class StockOnHandWfgController extends Controller
             // Simpan ke database
             $soh = StockOnHandModel::create([
                 'barang_id'    => $barang->id,
+                'jenis_so'     => $jenisSo,
                 'user_id'      => Auth::id() ?? 1,
                 'qty_soh'      => $qty_soh,
                 'qty_unrest'   => $unrest,
@@ -93,6 +127,31 @@ class StockOnHandWfgController extends Controller
                 'last_updated' => now(),
                 'principal'    => $principal, // 🔹 langsung dari master barang
             ]);
+
+            // Update summaries if there is a running opname today
+            $sop = WfgSopModel::whereDate('tgl_opname', $today)
+                ->where('principal', $principal)
+                ->where('jenis_so', $jenisSo)
+                ->first();
+
+            if ($sop) {
+                $summary = WfgSopSummariesModel::where('sop_id', $sop->id)
+                    ->where('barang_id', $barang->id)
+                    ->first();
+
+                if ($summary) {
+                    $qtySistem = $qty_soh;
+                    $qtyFisik  = $summary->qty_fisik ?? 0;
+                    $selisih   = $qtyFisik - $qtySistem;
+                    $status    = $selisih > 0 ? 'kurang' : ($selisih < 0 ? 'lebih' : 'match');
+
+                    $summary->update([
+                        'qty_sistem' => $qtySistem,
+                        'selisih'    => $selisih,
+                        'status'     => $status,
+                    ]);
+                }
+            }
 
             return response()->json([
                 'status'  => true,
@@ -139,6 +198,7 @@ class StockOnHandWfgController extends Controller
     {
         $searchTerm = $request->input('search');
         $principalFilter = $request->input('principal');
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
         $perPage = 100;
         $today = now()->toDateString();
         $user = Auth::user();
@@ -148,8 +208,9 @@ class StockOnHandWfgController extends Controller
             ->leftJoin('wfg_barang', 'wfg_soh.barang_id', '=', 'wfg_barang.id')
             ->leftJoin('users', 'wfg_soh.user_id', '=', 'users.id');
 
-        // Filter tanggal
-        $query->whereDate('wfg_soh.last_updated', $today);
+        // Filter tanggal dan jenis SO
+        $query->whereDate('wfg_soh.last_updated', $today)
+            ->where('wfg_soh.jenis_so', $jenisSo);
 
         // Filter principal jika operator
         if ($user->jabatan === 'operator') {
@@ -184,9 +245,28 @@ class StockOnHandWfgController extends Controller
         $data = $query->orderBy('wfg_soh.id', 'desc')
             ->paginate($perPage);
 
-        return response()->json($data);
-    }
+        // Check if finished for the target principal/jenis_so
+        $targetPrincipal = null;
+        if ($user->jabatan === 'operator') {
+            $targetPrincipal = $user->principal?->principal;
+        } else {
+            $targetPrincipal = $principalFilter;
+        }
 
+        $isFinished = false;
+        if ($targetPrincipal && $targetPrincipal !== 'SMU') {
+            $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+                ->where('principal', $targetPrincipal)
+                ->where('jenis_so', $jenisSo)
+                ->first();
+            $isFinished = $soStatus && $soStatus->status === 'finished';
+        }
+
+        $responseData = $data->toArray();
+        $responseData['is_finished'] = $isFinished;
+
+        return response()->json($responseData);
+    }
 
     public function getBarang()
     {
@@ -227,6 +307,19 @@ class StockOnHandWfgController extends Controller
             $soh = StockOnHandModel::findOrFail($id);
             $user = Auth::user();
 
+            $today = now()->toDateString();
+            $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+            $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+                ->where('principal', $soh->principal)
+                ->where('jenis_so', $soh->jenis_so)
+                ->first();
+            if ($soStatus && $soStatus->status === 'finished') {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished)."
+                ], 422);
+            }
+
             $request->validate([
                 'unrest' => 'nullable|integer',
                 'qi' => 'nullable|integer',
@@ -261,11 +354,10 @@ class StockOnHandWfgController extends Controller
                 'last_updated' => now()
             ]);
 
-            $today = Carbon::today()->toDateString();
-
             // Cari SOP yang masih aktif
             $sop = WfgSopModel::whereDate('tgl_opname', $today)
                 ->where('principal', $principal)
+                ->where('jenis_so', $soh->jenis_so)
                 ->first();
 
             if ($sop) {
@@ -302,7 +394,7 @@ class StockOnHandWfgController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Terjadi kesalahan saat memperbarui Stock On Hand',
-                'error' => $e->getMessage() // optional, untuk debugging
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -313,6 +405,20 @@ class StockOnHandWfgController extends Controller
     public function destroy(string $id)
     {
         $soh = StockOnHandModel::findOrFail($id);
+
+        $today = now()->toDateString();
+        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+            ->where('principal', $soh->principal)
+            ->where('jenis_so', $soh->jenis_so)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat menghapus data SOH karena Stock Opname {$periodeText} telah selesai (finished)."
+            ], 422);
+        }
+
         $soh->delete();
         return response()->json([
             'status' => true,
@@ -320,11 +426,13 @@ class StockOnHandWfgController extends Controller
         ]);
     }
 
-    public function resetAll()
+    public function resetAll(Request $request)
     {
         try {
             $user = Auth::user();
             $today = now()->toDateString();
+            $jenisSo = $request->input('jenis_so', 'cycle_count');
+            $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
 
             // Jika operator → hapus hanya data hari ini milik principal-nya
             if ($user->jabatan === 'operator') {
@@ -337,12 +445,39 @@ class StockOnHandWfgController extends Controller
                     ], 422);
                 }
 
+                $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+                    ->where('principal', $principal)
+                    ->where('jenis_so', $jenisSo)
+                    ->first();
+                if ($soStatus && $soStatus->status === 'finished') {
+                    return response()->json([
+                        'status' => false,
+                        'message' => "Tidak dapat mengosongkan data SOH karena Stock Opname {$periodeText} telah selesai (finished)."
+                    ], 422);
+                }
+
                 $deleted = StockOnHandModel::where('principal', $principal)
+                    ->where('jenis_so', $jenisSo)
                     ->whereDate('last_updated', $today)
                     ->delete();
             } else {
                 // Admin atau non-operator bisa hapus semua principal untuk hari ini
-                $deleted = StockOnHandModel::whereDate('last_updated', $today)->delete();
+                $query = StockOnHandModel::where('jenis_so', $jenisSo)->whereDate('last_updated', $today);
+                if ($request->has('principal')) {
+                    $principal = $request->principal;
+                    $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+                        ->where('principal', $principal)
+                        ->where('jenis_so', $jenisSo)
+                        ->first();
+                    if ($soStatus && $soStatus->status === 'finished') {
+                        return response()->json([
+                            'status' => false,
+                            'message' => "Tidak dapat mengosongkan data SOH karena Stock Opname {$periodeText} telah selesai (finished)."
+                        ], 422);
+                    }
+                    $query->where('principal', $principal);
+                }
+                $deleted = $query->delete();
             }
 
             if ($deleted === 0) {
@@ -370,8 +505,13 @@ class StockOnHandWfgController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls'
+            'file' => 'required|mimes:xlsx,xls',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
+
+        $jenisSo = $request->input('jenis_so');
+        $today = now()->toDateString();
+        $user = Auth::user();
 
         try {
             $file = $request->file('file');
@@ -386,7 +526,6 @@ class StockOnHandWfgController extends Controller
             $notFound = [];
             $incompletePrincipal = [];
             $validData = [];
-            $today = now()->toDateString();
 
             foreach ($rows as $index => $row) {
                 if ($index == 1) {
@@ -447,13 +586,47 @@ class StockOnHandWfgController extends Controller
                 ], 422);
             }
 
+            // Validasi apakah status selesai untuk principal yang bersangkutan
+            $principalsInFile = array_unique(array_map(fn($item) => $item['barang']->principal, $validData));
+            $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+            foreach ($principalsInFile as $pr) {
+                $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+                    ->where('principal', $pr)
+                    ->where('jenis_so', $jenisSo)
+                    ->first();
+                if ($soStatus && $soStatus->status === 'finished') {
+                    return response()->json([
+                        'status' => false,
+                        'message' => "Tidak dapat mengunggah file Excel karena Stock Opname {$periodeText} untuk principal {$pr} dan jenis SO ini telah selesai (finished)."
+                    ], 422);
+                }
+
+                if ($jenisSo === 'monthly') {
+                    $currentYear = now()->year;
+                    $currentMonth = now()->month;
+                    $hasMonthlySo = WfgSopStatusModel::where('jenis_so', 'monthly')
+                        ->where('principal', $pr)
+                        ->whereYear('tgl_opname', $currentYear)
+                        ->whereMonth('tgl_opname', $currentMonth)
+                        ->whereDate('tgl_opname', '!=', $today)
+                        ->exists();
+                    if ($hasMonthlySo) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => "Tidak dapat mengunggah file Excel karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan untuk principal {$pr}."
+                        ], 422);
+                    }
+                }
+            }
+
             // Simpan semua data valid
             foreach ($validData as $item) {
                 $barang = $item['barang'];
                 $data = $item['data'];
 
                 $exists = StockOnHandModel::where('barang_id', $barang->id)
-                    ->whereDate('created_at', $today)
+                    ->where('jenis_so', $jenisSo)
+                    ->whereDate('last_updated', $today)
                     ->exists();
 
                 if ($exists) continue;
@@ -465,6 +638,7 @@ class StockOnHandWfgController extends Controller
 
                 StockOnHandModel::create([
                     'barang_id'    => $barang->id,
+                    'jenis_so'     => $jenisSo,
                     'user_id'      => Auth::id() ?? 1,
                     'qty_soh'      => $qty_soh,
                     'qty_unrest'   => $unrest,
@@ -478,6 +652,7 @@ class StockOnHandWfgController extends Controller
 
                 $sop = WfgSopModel::whereDate('tgl_opname', $today)
                     ->where('principal', $barang->principal)
+                    ->where('jenis_so', $jenisSo)
                     ->first();
 
                 if ($sop) {

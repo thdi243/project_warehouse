@@ -14,6 +14,7 @@ class WfgSopModel extends Model
 
     protected $fillable = [
         'tgl_opname',
+        'jenis_so',
         'user_id',
         'status',
         'principal',

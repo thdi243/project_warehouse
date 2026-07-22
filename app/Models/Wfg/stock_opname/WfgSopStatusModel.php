@@ -14,6 +14,7 @@ class WfgSopStatusModel extends Model
 
     protected $fillable = [
         'tgl_opname',
+        'jenis_so',
         'user_id',
         'status',
         'mode',
@@ -28,12 +29,13 @@ class WfgSopStatusModel extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public static function getModeByUser($userId, $principal, $tglOpname = null)
+    public static function getModeByUser($userId, $principal, $tglOpname = null, $jenisSo = 'cycle_count')
     {
         $tglOpname = $tglOpname ?? now()->toDateString();
 
         return self::where('user_id', $userId)
             ->where('principal', $principal)
+            ->where('jenis_so', $jenisSo)
             ->whereDate('tgl_opname', $tglOpname)  // 🔹 Tambahkan ini!
             ->value('mode') ?? 'normal';
     }

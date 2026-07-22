@@ -243,7 +243,7 @@
                             </div>
 
                             <div class="row g-3 align-items-end mb-3">
-                                <div class="col-md-8 col-12">
+                                <div class="col-md-4 col-12">
                                     <label for="searchBarang" class="form-label fw-semibold">Cari Barang</label>
                                     <div class="input-group">
                                         <input type="text" id="searchBarang" class="form-control"
@@ -256,6 +256,17 @@
 
                                 <div class="col-md-4 col-12 text-center">
                                     <div>
+                                        <label for="jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                                        <select id="jenis_so" name="jenis_so" class="form-select">
+                                            <option value="cycle_count">Cycle Count (Daily)</option>
+                                            <option value="monthly">Monthly SO</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4 col-12 text-center">
+                                    <div>
+                                        <label class="form-label fw-semibold invisible">Start</label>
                                         <button type="button" id="btnStartOpname" class="btn btn-outline-primary w-100">
                                             <i class="mdi mdi-play-circle me-2"></i> Start Opname
                                         </button>
@@ -410,32 +421,43 @@
     <script>
         $(document).ready(function() {
 
+            // Restore jenis_so selection that was saved before page reload
+            const savedJenisSo = sessionStorage.getItem('wfg_jenis_so');
+            if (savedJenisSo) {
+                $('#jenis_so').val(savedJenisSo);
+                sessionStorage.removeItem('wfg_jenis_so');
+            }
+
             const sopStatusUrl = "{{ route('getStatusOpname') }}";
 
-            $.get(sopStatusUrl, function(res) {
-                const btn = $('#btnStartOpname');
-                console.log(res.status);
+            function checkSessionStatus() {
+                const jenisSo = $('#jenis_so').val();
+                $.get(sopStatusUrl, {
+                    jenis_so: jenisSo
+                }, function(res) {
+                    const btn = $('#btnStartOpname');
+                    console.log(res.status);
 
-                if (res.status === 'started') {
-                    btn.prop('disabled', true)
-                        .removeClass('btn-outline-success')
-                        .addClass('btn-success')
-                        .html('<i class="mdi mdi-loading mdi-spin me-2"></i> Opname...');
+                    if (res.status === 'started') {
+                        btn.prop('disabled', true)
+                            .removeClass('btn-outline-success')
+                            .addClass('btn-success')
+                            .html('<i class="mdi mdi-loading mdi-spin me-2"></i> Opname...');
 
-                    $('.page-header').addClass('d-none');
+                        $('.page-header').addClass('d-none');
 
-                    generatePrincipalTabs(true);
-                } else if (res.status === 'finished') {
-                    btn.prop('disabled', true)
-                        .removeClass('btn-outline-success btn-success')
-                        .addClass('btn-secondary')
-                        .html('<i class="mdi mdi-check-circle-outline me-2"></i> Opname Done');
+                        generatePrincipalTabs(true);
+                    } else if (res.status === 'finished') {
+                        btn.prop('disabled', true)
+                            .removeClass('btn-outline-success btn-success')
+                            .addClass('btn-secondary')
+                            .html('<i class="mdi mdi-check-circle-outline me-2"></i> Opname Done');
 
-                    $('#formSopFinal button').prop('disabled', true).addClass('disabled');
-                    $('#searchBarang').prop('disabled', true).addClass('disabled');
-                    $('#btnSearchBarang').prop('disabled', true).addClass('disabled');
+                        $('#formSopFinal button').prop('disabled', true).addClass('disabled');
+                        $('#searchBarang').prop('disabled', true).addClass('disabled');
+                        $('#btnSearchBarang').prop('disabled', true).addClass('disabled');
 
-                    $('#soInputTableContainer').html(`
+                        $('#soInputTableContainer').html(`
                         <div class="d-flex justify-content-center align-items-center py-2">
                             <div class="card border-0 shadow-sm text-center p-4" style="max-width: 700px;">
                                 <div class="mb-3">
@@ -449,23 +471,32 @@
                         </div>
                     `);
 
-                    generatePrincipalTabs(false);
-                } else if (res.status === 'idle') {
-                    $('#btnSaveFinal').prop('disabled', true).addClass('disabled');
-                    $('#btnAddRow').prop('disabled', true).addClass('disabled');
-                    $('#btnReset').prop('disabled', true).addClass('disabled');
-                    $('#btnSearchBarang').prop('disabled', true).addClass('disabled');
-                    $('#searchBarang').prop('disabled', true).addClass('disabled');
+                        generatePrincipalTabs(false);
+                    } else if (res.status === 'idle') {
+                        $('#btnSaveFinal').prop('disabled', true).addClass('disabled');
+                        $('#btnAddRow').prop('disabled', true).addClass('disabled');
+                        $('#btnReset').prop('disabled', true).addClass('disabled');
+                        $('#btnSearchBarang').prop('disabled', true).addClass('disabled');
+                        $('#searchBarang').prop('disabled', true).addClass('disabled');
 
-                    // Hanya START yang aktif
-                    $('#btnStartOpname')
-                        .prop('disabled', false)
-                        .removeClass('disabled');
-                }
+                        // Hanya START yang aktif
+                        $('#btnStartOpname')
+                            .prop('disabled', false)
+                            .removeClass('disabled');
+                    }
+                });
+            }
+
+            checkSessionStatus();
+
+            // Re-check when jenis_so changes
+            $('#jenis_so').on('change', function() {
+                checkSessionStatus();
             });
 
             $('#btnStartOpname').on('click', function() {
                 const $btn = $(this);
+                const jenisSo = $('#jenis_so').val();
 
                 // Disable tombol biar tidak diklik berkali-kali
                 $btn.prop('disabled', true)
@@ -481,17 +512,30 @@
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     },
+                    data: {
+                        jenis_so: jenisSo
+                    },
                     success: function(res) {
                         if (res.status) {
                             toastr.success(res.message);
+                            // Persist jenis_so across the reload so the dropdown restores correctly
+                            sessionStorage.setItem('wfg_jenis_so', jenisSo);
                             location.reload();
                             generatePrincipalTabs(true);
                         } else {
                             toastr.warning(res.message);
+                            $btn.prop('disabled', false)
+                                .removeClass('btn-success')
+                                .addClass('btn-outline-success')
+                                .html('<i class="mdi mdi-play-circle"></i> Start Opname');
                         }
                     },
-                    error: function() {
-                        toastr.error('Gagal memulai opname');
+                    error: function(xhr) {
+                        if (xhr.status === 422) {
+                            toastr.error(xhr.responseJSON.message);
+                        } else {
+                            toastr.error('Gagal memulai opname.');
+                        }
                         $btn.prop('disabled', false)
                             .removeClass('btn-success')
                             .addClass('btn-outline-success')
@@ -522,6 +566,7 @@
                         principal: principal,
                         search: search,
                         mode: $('#opname_mode').val(),
+                        jenis_so: $('#jenis_so').val(),
                     },
                     success: function(response) {
                         const items = response.data;
@@ -799,6 +844,27 @@
                 }
             });
 
+            function updateTglOpnameForm() {
+                const jenis = $('#jenis_so').val();
+                const tglInput = $('#tgl_opname');
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+
+                if (jenis === 'monthly') {
+                    tglInput.attr('type', 'month').val(`${year}-${month}`);
+                } else {
+                    tglInput.attr('type', 'date').val(`${year}-${month}-${day}`);
+                }
+            }
+
+            updateTglOpnameForm();
+
+            $('#jenis_so').on('change', function() {
+                updateTglOpnameForm();
+            });
+
             $('#principal_filter').on('change', function() {
                 currentPrincipal = $(this).val();
                 loadBarangForOpname(1, currentPrincipal,
@@ -1028,7 +1094,8 @@
                         _token: $('input[name="_token"]').val(),
                         tgl_opname,
                         principal: activePrincipal,
-                        mode: 'check'
+                        mode: 'check',
+                        jenis_so: $('#jenis_so').val()
                     },
                     success: function(res) {
                         if (res.status === 'success') {
@@ -1127,7 +1194,8 @@
                                             .val(),
                                         tgl_opname,
                                         principal: activePrincipal,
-                                        mode: 'final_prepare'
+                                        mode: 'final_prepare',
+                                        jenis_so: $('#jenis_so').val()
                                     },
                                     success: function(finalRes) {
                                         if (finalRes.status ===
@@ -1161,7 +1229,8 @@
                                                         principal: activePrincipal,
                                                         komentar_final: resComment
                                                             .value,
-                                                        mode: 'final_submit'
+                                                        mode: 'final_submit',
+                                                        jenis_so: $('#jenis_so').val()
                                                     },
                                                     success: function(
                                                         submitRes
@@ -1359,7 +1428,9 @@
                     const uom = (tempItem.data('uom') || '').toString().toUpperCase();
                     const qtyBox = parseInt(tempItem.data('qtybox'), 10) || 1;
                     if (uom === 'BOX' && parseInt(val, 10) >= qtyBox) {
-                        toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full box (${qtyBox})!`);
+                        toastr.warning(
+                            `Qty Receh tidak boleh melebihi atau sama dengan acuan full box (${qtyBox})!`
+                        );
                         $(this).val('');
                     }
                 }
@@ -1391,7 +1462,9 @@
                 });
 
                 if (hasExceededAcuan) {
-                    toastr.warning(`Qty Receh tidak boleh melebihi atau sama dengan acuan full box (${acuanLimit})!`);
+                    toastr.warning(
+                        `Qty Receh tidak boleh melebihi atau sama dengan acuan full box (${acuanLimit})!`
+                    );
                     return;
                 }
 
@@ -1593,7 +1666,9 @@
                 }
 
                 if (data.uom.toUpperCase() === 'BOX' && data.qty_receh >= data.qty_box) {
-                    Swal.fire('Peringatan', `Qty Receh tidak boleh melebihi atau sama dengan acuan full box (${data.qty_box}).`, 'warning');
+                    Swal.fire('Peringatan',
+                        `Qty Receh tidak boleh melebihi atau sama dengan acuan full box (${data.qty_box}).`,
+                        'warning');
                     return;
                 }
                 data.summary = (data.qty_full * data.qty_box) + data.qty_receh;

@@ -184,7 +184,8 @@
 
                              @if ($barangCount > 0)
                                 <div
-                                    class="@if (Auth::user()->jabatan != 'operator') col-lg-6 @else col-lg-6 @endif col-md-4 d-flex justify-content-between">
+                                    class="@if (Auth::user()->jabatan != 'operator') col-lg-6 @else col-lg-6 @endif col-md-4 d-flex justify-content-between" id="soh-actions-container">
+                                    <div id="soh-actions-wrapper" class="d-flex gap-2 w-100 justify-content-between">
                                     <button class="btn btn-success w-100 me-2" data-bs-toggle="modal"
                                         data-bs-target="#uploadModal">
                                         <i class="mdi mdi-upload me-1"></i> Upload
@@ -196,6 +197,7 @@
                                     <button class="btn btn-danger w-100 me-2" id="btnDeleteAll">
                                         <i class="mdi mdi-refresh me-1"></i> Delete All
                                     </button>
+                                    </div>
                                 </div>
                             @else
                                 <div class="col-lg-6 col-md-4">
@@ -211,6 +213,19 @@
 
             <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="200">
                 <div class="card-body">
+                    <!-- Tab Pemilihan Jenis SO -->
+                    <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" id="jenisSoTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-value="cycle_count" type="button" role="tab">
+                                <i class="mdi mdi-sync me-1"></i> Cycle Count (Daily)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-value="monthly" type="button" role="tab">
+                                <i class="mdi mdi-calendar-month me-1"></i> Monthly SO
+                            </button>
+                        </li>
+                    </ul>
                     <div id="soh-table-container" class="table-responsive">
                     </div>
                 </div>
@@ -240,6 +255,13 @@
                             <label for="file" class="form-label fw-bold">Pilih File Stock On Hand</label>
                             <input class="form-control" type="file" id="file" name="file" required
                                 accept=".xlsx, .xls">
+                        </div>
+                        <div class="mb-3">
+                            <label for="upload_jenis_so" class="form-label fw-bold">Jenis SO</label>
+                            <select class="form-select" id="upload_jenis_so" name="jenis_so" required>
+                                <option value="cycle_count">Cycle Count (Daily)</option>
+                                <option value="monthly">Monthly SO</option>
+                            </select>
                         </div>
                     </div>
 
@@ -272,6 +294,14 @@
 
                     <div class="modal-body">
                         <input type="hidden" id="soh_id" name="id">
+
+                        <div class="mb-3">
+                            <label for="soh_jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                            <select class="form-select" id="soh_jenis_so" name="jenis_so" required>
+                                <option value="cycle_count">Cycle Count (Daily)</option>
+                                <option value="monthly">Monthly SO</option>
+                            </select>
+                        </div>
 
                         <div class="mb-3">
                             <label for="barang_id" class="form-label fw-semibold">Barang</label>
@@ -348,10 +378,23 @@
 
             loadSOHList();
 
+            // Tab Event for SOH type
+            $('#jenisSoTabs button').on('shown.bs.tab', function(e) {
+                loadSOHList();
+            });
+
+            // Automatically pre-select jenis_so in upload modal based on active tab
+            $('#uploadModal').on('show.bs.modal', function() {
+                const activeJenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
+                $('#upload_jenis_so').val(activeJenisSo).prop('disabled', false);
+            });
+
             function loadSOHList(page = 1, search = '', principal = '') {
+                const jenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
                 const ajaxData = {
                     page: page,
-                    per_page: 25
+                    per_page: 25,
+                    jenis_so: jenisSo
                 };
 
                 if (search) {
@@ -383,6 +426,7 @@
                     success: function(response) {
                         const paginatedData = response;
                         const finalData = response.data; // Array data item
+                        const isFinished = response.is_finished || false;
                         let html = '';
 
                         if (finalData.length === 0) {
@@ -496,6 +540,9 @@
                 let formData = new FormData(this);
                 const principal = $('#filterPrincipal').val() ?? '';
                 formData.append('principal', principal);
+                if ($('#upload_jenis_so').is(':disabled')) {
+                    formData.append('jenis_so', $('#upload_jenis_so').val());
+                }
 
                 const csrfToken = $('meta[name="csrf-token"]').attr('content');
                 if (csrfToken) {
@@ -582,7 +629,10 @@
                     `{{ route('wfg.stock_opname.soh.store') }}` :
                     `{{ route('wfg.stock_opname.soh.update', '') }}/${id}`;
 
-                const formData = $(this).serialize() + `&principal=${principal}`;
+                let formData = $(this).serialize() + `&principal=${principal}`;
+                if ($('#soh_jenis_so').is(':disabled')) {
+                    formData += '&jenis_so=' + encodeURIComponent($('#soh_jenis_so').val());
+                }
 
                 $.ajax({
                     url: url,
@@ -646,13 +696,14 @@
 
             $('#btnDeleteAll').on('click', function(e) {
                 e.preventDefault();
+                const jenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
 
                 Swal.fire({
-                    title: 'Reset Data SOH Hari Ini?',
-                    text: 'Semua data Stock On Hand yang diinput hari ini akan dihapus. Tindakan ini tidak bisa dibatalkan!',
+                    title: 'Reset Data SOH?',
+                    text: 'Semua data Stock On Hand jenis ' + (jenisSo === 'monthly' ? 'Monthly SO' : 'Cycle Count') + ' ' + (jenisSo === 'monthly' ? 'bulan ini' : 'hari ini') + ' akan dihapus. Tindakan ini tidak bisa dibatalkan!',
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Ya, hapus data hari ini',
+                    confirmButtonText: 'Ya, hapus data',
                     cancelButtonText: 'Batal',
                     confirmButtonColor: '#d33',
                     cancelButtonColor: '#3085d6'
@@ -662,7 +713,8 @@
                             url: "{{ route('wfg.stock_opname.soh.reset_all') }}",
                             type: "DELETE",
                             data: {
-                                _token: $('meta[name="csrf-token"]').attr('content')
+                                _token: $('meta[name="csrf-token"]').attr('content'),
+                                jenis_so: jenisSo
                             },
                             beforeSend: function() {
                                 Swal.fire({
@@ -715,6 +767,8 @@
             $('#sohModalLabel').html('<i class="mdi mdi-plus-circle me-1"></i>Tambah Data SOH Baru');
             $('#btnSaveSOH').html('<i class="mdi mdi-content-save me-1"></i>Simpan');
             $('#barang_id').prop('disabled', false);
+            const activeJenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
+            $('#soh_jenis_so').val(activeJenisSo).prop('disabled', false);
 
             loadBarangOptions(() => {
                 $('#barang_id').val('');
@@ -745,6 +799,7 @@
                         if (res && res.data) {
                             const data = res.data;
                             $('#soh_id').val(data.id);
+                            $('#soh_jenis_so').val(data.jenis_so).prop('disabled', false);
                             // $('#barang_id').val(data.barang_id);
                             $('#barang_id').val(data.barang_id).prop('disabled', true);
                             $('#qty_soh').val(data.qty_soh);

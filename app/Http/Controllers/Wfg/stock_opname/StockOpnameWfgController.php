@@ -167,9 +167,54 @@ class StockOpnameWfgController extends Controller
             ], 401);
         }
 
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
+        $today = now()->toDateString();
+        $principal = optional($user->principal)->principal ?? null;
+
+        if (empty($principal)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Principal belum diatur untuk operator ini.'
+            ], 422);
+        }
+
+        if ($jenisSo === 'monthly') {
+            $currentYear = Carbon::parse($today)->year;
+            $currentMonth = Carbon::parse($today)->month;
+
+            $existingMonthlyThisMonth = WfgSopStatusModel::where('jenis_so', 'monthly')
+                ->where('principal', $principal)
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->whereDate('tgl_opname', '!=', $today)
+                ->exists();
+
+            if ($existingMonthlyThisMonth) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Stock Opname Monthly untuk bulan ini sudah pernah dibuat/berjalan pada hari lain.'
+                ], 422);
+            }
+        }
+
+        // Check if SOH exists for today for this jenis_so and principal
+        $sohCount = StockOnHandModel::whereDate('last_updated', $today)
+            ->where('principal', $principal)
+            ->where('jenis_so', $jenisSo)
+            ->count();
+
+        if ($sohCount === 0) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Data SOH kosong. Silakan unggah atau isi data SOH terlebih dahulu untuk jenis SO ini.'
+            ], 422);
+        }
+
         // Cek apakah user sudah memiliki opname aktif di tanggal hari ini
-        $existing = WfgSopStatusModel::where('user_id', $user->id)
-            ->whereDate('tgl_opname', now()->toDateString())
+        $existing = WfgSopStatusModel::where('principal', $principal)
+            ->where('jenis_so', $jenisSo)
+            ->where('user_id', $user->id)
+            ->whereDate('tgl_opname', $today)
             ->first();
 
         if ($existing) {
@@ -183,10 +228,11 @@ class StockOpnameWfgController extends Controller
         // Simpan status opname baru
         $status = WfgSopStatusModel::create([
             'user_id' => $user->id,
-            'tgl_opname' => now()->toDateString(),
+            'tgl_opname' => $today,
             'status' => 'started',
             'mode' => 'normal',
-            'principal' => optional($user->principal)->principal ?? null,
+            'principal' => $principal,
+            'jenis_so' => $jenisSo,
         ]);
 
         return response()->json([
@@ -198,9 +244,13 @@ class StockOpnameWfgController extends Controller
 
     public function getStatusOpname(Request $request)
     {
-        $userId = $request->user()->id;
+        $user = Auth::user();
+        $userId = $user->id;
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
+        $principal = optional($user->principal)->principal ?? null;
 
-        $status = WfgSopStatusModel::where('user_id', $userId)
+        $status = WfgSopStatusModel::where('jenis_so', $jenisSo)
+            ->where('principal', $principal)
             ->whereDate('tgl_opname', now()->toDateString())
             ->first();
 
@@ -231,6 +281,8 @@ class StockOpnameWfgController extends Controller
             ]);
         }
 
+        $soh = StockOnHandModel::findOrFail($request->soh_id);
+        $jenisSo = $soh->jenis_so;
         $user = Auth::user();
 
         // 🔍 Tentukan principal sesuai role
@@ -244,6 +296,17 @@ class StockOpnameWfgController extends Controller
             }
         } else {
             $principal = $request->input('principal', $user->principal ?? null);
+        }
+
+        $soStatus = WfgSopStatusModel::whereDate('tgl_opname', now()->toDateString())
+            ->where('principal', $principal)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname hari ini telah selesai (finished) untuk jenis SO ini.'
+            ], 403);
         }
 
         $keterangan = trim($request->keterangan ?? '');
@@ -353,9 +416,12 @@ class StockOpnameWfgController extends Controller
             'blocked' => 'nullable|integer|min:0',
             'qty_full' => 'required|integer|min:0',
             'qty_receh' => 'required|integer|min:0',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
 
+        $jenisSo = $request->jenis_so;
         $user = Auth::user();
+        $today = now()->toDateString();
 
         // 🔍 Tentukan principal
         if ($user->jabatan === 'operator') {
@@ -368,6 +434,34 @@ class StockOpnameWfgController extends Controller
             }
         } else {
             $principal = $request->input('principal', $user->principal ?? null);
+        }
+
+        $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+            ->where('principal', $principal)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak dapat menambah data SOH karena Stock Opname hari ini telah selesai (finished).'
+            ], 422);
+        }
+
+        if ($jenisSo === 'monthly') {
+            $currentYear = now()->year;
+            $currentMonth = now()->month;
+            $hasMonthlySo = WfgSopStatusModel::where('jenis_so', 'monthly')
+                ->where('principal', $principal)
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->whereDate('tgl_opname', '!=', $today)
+                ->exists();
+            if ($hasMonthlySo) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak dapat menambah data SOH karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
+                ], 422);
+            }
         }
 
         // 🔹 Simpan barang baru ke wfg_barang (jika belum ada)
@@ -390,40 +484,38 @@ class StockOpnameWfgController extends Controller
             ], 422);
         }
 
+        // Cek duplicate SOH untuk hari ini
+        $exists = StockOnHandModel::where('barang_id', $barang->id)
+            ->where('jenis_so', $jenisSo)
+            ->whereDate('last_updated', $today)
+            ->exists();
+        if ($exists) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "MID {$request->mid_barang} sudah ada hari ini untuk jenis SO ini."
+            ], 422);
+        }
+
         // 🔹 Hitung summary
         $summary = ($request->qty_full * $barang->qty_box) + $request->qty_receh;
 
-        // 🔹 Simpan juga ke StockOnHand (jika belum ada)
-        $soh = StockOnHandModel::firstOrCreate(
-            [
-                'barang_id' => $barang->id,
-                'principal' => $principal
-            ],
-            [
-                'user_id' => Auth::id(),
-                'qty_soh' => $summary,
-                'qty_unrest' => $request->unrest ?? 0,
-                'qty_qi' => $request->qi ?? 0,
-                'qty_block' => $request->blocked ?? 0,
-                'last_updated' => now(),
-            ]
-        );
-
-        // 🔹 Jika sudah ada, update data-nya
-        if (!$soh->wasRecentlyCreated) {
-            $soh->update([
-                'qty_soh' => $summary,
-                'qty_unrest' => $request->unrest ?? $soh->qty_unrest,
-                'qty_qi' => $request->qi ?? $soh->qty_qi,
-                'qty_block' => $request->blocked ?? $soh->qty_block,
-                'last_updated' => now(),
-            ]);
-        }
+        // 🔹 Simpan juga ke StockOnHand
+        $soh = StockOnHandModel::create([
+            'barang_id' => $barang->id,
+            'principal' => $principal,
+            'jenis_so' => $jenisSo,
+            'user_id' => Auth::id() ?? 1,
+            'qty_soh' => $summary,
+            'qty_unrest' => $request->unrest ?? 0,
+            'qty_qi' => $request->qi ?? 0,
+            'qty_block' => $request->blocked ?? 0,
+            'last_updated' => now(),
+        ]);
 
         // 🔹 Simpan ke temp opname
         $temp = WfgSopTempModel::create([
             'barang_id' => $barang->id,
-            'soh_id' => $soh->id, // karena belum ada di SOH
+            'soh_id' => $soh->id,
             'qty_full' => $request->qty_full,
             'qty_receh' => $request->qty_receh,
             'summary' => $summary,
@@ -449,11 +541,13 @@ class StockOpnameWfgController extends Controller
         $request->validate([
             'tgl_opname' => 'required|date',
             'mode' => 'required|in:check,final_prepare,final_submit',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
 
         $mode = $request->mode;
         $user = Auth::user();
         $tglOpname = $request->tgl_opname;
+        $jenisSo = $request->jenis_so;
         $keteranganInput = $request->input('keterangan', []);
         $komentarFinal = $request->input('komentar_final');
 
@@ -476,7 +570,7 @@ class StockOpnameWfgController extends Controller
             }
         }
 
-        // Ambil temp data
+        // Ambil temp data untuk jenis_so tertentu
         $tempData = WfgSopTempModel::query()
             ->when(
                 $user->jabatan === 'operator',
@@ -485,6 +579,9 @@ class StockOpnameWfgController extends Controller
             )
             ->where('tgl_opname', $tglOpname)
             ->where('principal', $principalFilter)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
             ->get();
 
         if ($tempData->isEmpty()) {
@@ -494,9 +591,10 @@ class StockOpnameWfgController extends Controller
             ]);
         }
 
-        // 🔹 Ambil barang SOH hari ini
+        // 🔹 Ambil barang SOH hari ini untuk jenis_so tertentu
         $barangHariIni = StockOnHandModel::with('barang:id,mid_barang,nama_barang,principal')
             ->whereHas('barang', fn($q) => $q->where('principal', $principalFilter))
+            ->where('jenis_so', $jenisSo)
             ->whereDate('last_updated', Carbon::today())
             ->get();
 
@@ -531,22 +629,11 @@ class StockOpnameWfgController extends Controller
         }
 
         $tempNotes = WfgSopTempNoteModel::where('tgl_opname', $tglOpname)
-            ->pluck('catatan', 'barang_id'); // hasil: [barang_id => keterangan]
-
-        // $selisihList = [];
-        // foreach ($grouped as $barangId => $g) {
-        //     $selisih = $g['qty_fisik'] - $g['qty_sap'];
-        //     $keterangan = $keteranganInput[$barangId]
-        //         ?? ($tempNotes[$barangId] ?? null);
-
-        //     if ($selisih != 0 && empty($keterangan)) {
-        //         $g['selisih'] = $selisih;
-        //         $g['status'] = 'selisih';
-        //         $selisihList[] = $g;
-        //     }
-
-        //     $grouped[$barangId]['keterangan'] = $keterangan;
-        // }
+            ->where('principal', $principalFilter)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->pluck('catatan', 'barang_id');
 
         $selisihList = [];
         foreach ($grouped as $barangId => $g) {
@@ -576,11 +663,12 @@ class StockOpnameWfgController extends Controller
                 [
                     'tgl_opname' => $tglOpname,
                     'principal'  => $principalFilter,
+                    'jenis_so'   => $jenisSo,
                 ],
                 [
                     'user_id' => $user->id,
                     'mode'    => 'check',
-                    'status'  => 'started', // atau sesuai logika kamu
+                    'status'  => 'started',
                 ]
             );
 
@@ -637,6 +725,7 @@ class StockOpnameWfgController extends Controller
             if ($user->jabatan === 'operator') {
                 $existingSop = WfgSopModel::whereDate('tgl_opname', $tglOpname)
                     ->where('principal', $principalFilter)
+                    ->where('jenis_so', $jenisSo)
                     ->first();
 
                 if ($existingSop) {
@@ -654,6 +743,7 @@ class StockOpnameWfgController extends Controller
                     [
                         'tgl_opname' => $tglOpname,
                         'principal'  => $principalFilter,
+                        'jenis_so'   => $jenisSo,
                     ],
                     [
                         'user_id' => $user->id,
@@ -664,6 +754,7 @@ class StockOpnameWfgController extends Controller
                 // Generate nomor dokumen
                 $tanggalCarbon = \Carbon\Carbon::parse($tglOpname);
                 $jumlahDataPrincipal = WfgSopModel::where('principal', $principalFilter)
+                    ->where('jenis_so', $jenisSo)
                     ->whereMonth('tgl_opname', $tanggalCarbon->month)
                     ->whereYear('tgl_opname', $tanggalCarbon->year)
                     ->count();
@@ -680,9 +771,10 @@ class StockOpnameWfgController extends Controller
                 $sop = WfgSopModel::create([
                     'tgl_opname' => $tglOpname,
                     'user_id' => $user->id,
-                    'status' => 'draft',
+                    'status' => $jenisSo === 'cycle_count' ? 'approved' : 'draft',
                     'principal' => $principalFilter,
                     'no_doc' => $nomorDokumen,
+                    'jenis_so' => $jenisSo,
                 ]);
 
                 foreach ($grouped as $g) {
@@ -714,12 +806,17 @@ class StockOpnameWfgController extends Controller
                 WfgSopApprovalModel::create([
                     'sop_id' => $sop->id,
                     'approver_id' => $user->id,
-                    'status' => 'read',
-                    'catatan' => $komentarFinal
+                    'status' => $jenisSo === 'cycle_count' ? 'approved' : 'read',
+                    'catatan' => $komentarFinal,
+                    'action_at' => $jenisSo === 'cycle_count' ? now() : null,
+                    'action_by' => $jenisSo === 'cycle_count' ? $user->id : null,
                 ]);
 
                 WfgSopTempModel::where('tgl_opname', $tglOpname)
                     ->where('principal', $principalFilter)
+                    ->whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    })
                     ->when(
                         $user->jabatan === 'operator',
                         fn($q) =>
@@ -729,6 +826,9 @@ class StockOpnameWfgController extends Controller
 
                 WfgSopTempNoteModel::where('tgl_opname', $tglOpname)
                     ->where('principal', $principalFilter)
+                    ->whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    })
                     ->when(
                         $user->jabatan === 'operator',
                         fn($q) =>
@@ -738,9 +838,13 @@ class StockOpnameWfgController extends Controller
 
                 DB::commit();
 
+                $msg = $jenisSo === 'cycle_count' ?
+                    'Stock Opname WFG berhasil disubmit final (Auto-Approved).' :
+                    'Data opname berhasil disimpan final.';
+
                 return response()->json([
                     'status' => 'success',
-                    'message' => 'Data opname berhasil disimpan final.',
+                    'message' => $msg,
                 ]);
             } catch (\Throwable $th) {
                 DB::rollBack();
@@ -934,10 +1038,7 @@ class StockOpnameWfgController extends Controller
         $tanggalFilter = $request->input('tanggal');
         $principalFilter = $request->input('principal');
         $isOperator = $user->jabatan === 'operator';
-        // dd($isOperator);
-
-        $sop = WfgSopModel::find($id);
-        $statusSop = $sop->status ?? 'draft';
+        $jenisSo = $request->input('jenis_so', $request->input('jenisSo', 'cycle_count'));
 
         if ($user->jabatan === 'operator') {
             $activePrincipal = optional($user->principal)->principal;
@@ -956,9 +1057,18 @@ class StockOpnameWfgController extends Controller
             $activePrincipal = $principalFilter ?: null;
         }
 
+        $sop = null;
         // Jika ada filter tanggal, coba resolve SOP berdasarkan tanggal + principal (jika ada)
         if ($tanggalFilter) {
-            $sopQuery = WfgSopModel::whereDate('tgl_opname', $tanggalFilter);
+            $sopQuery = WfgSopModel::where('jenis_so', $jenisSo);
+
+            if (strlen($tanggalFilter) === 7) {
+                $parts = explode('-', $tanggalFilter);
+                $sopQuery->whereYear('tgl_opname', $parts[0])
+                    ->whereMonth('tgl_opname', $parts[1]);
+            } else {
+                $sopQuery->whereDate('tgl_opname', $tanggalFilter);
+            }
 
             if ($activePrincipal) {
                 $sopQuery->where('principal', $activePrincipal);
@@ -966,36 +1076,59 @@ class StockOpnameWfgController extends Controller
             // ambil yang paling baru jika ada beberapa
             $sop = $sopQuery->latest('id')->first();
 
+            if (!$sop && $id && is_numeric($id)) {
+                $sop = WfgSopModel::find($id);
+            }
+
             if (!$sop) {
                 return response()->json([
                     'approval_status' => 'draft',
                     'approval_note' => null,
                     'approver_tracking' => [],
                     'status_sop' => 'draft',
+                    'is_operator' => $isOperator,
                 ]);
             }
 
             $id = $sop->id; // override id arg dengan sop yang ditemukan
         } else {
+            if ($id && is_numeric($id)) {
+                $sop = WfgSopModel::find($id);
+            }
+
+            if (!$sop) {
+                $sop = WfgSopModel::where('user_id', $userId)
+                    ->where('jenis_so', $jenisSo)
+                    ->latest('id')
+                    ->first();
+            }
+
             if (!$sop) {
                 return response()->json([
                     'approval_status' => 'draft',
                     'approval_note' => null,
                     'approver_tracking' => [],
                     'status_sop' => 'draft',
-                ]);
+                    'is_operator' => $isOperator,
+                    'message' => 'Data SO tidak ditemukan.',
+                ], 404);
             }
 
-            // Jika user operator pastikan sop princial match user principal (safety)
+            // Jika user operator pastikan sop principal match user principal (safety)
             if ($user->jabatan === 'operator' && $sop->principal !== $activePrincipal) {
                 return response()->json([
                     'approval_status' => 'draft',
                     'approval_note' => null,
                     'approver_tracking' => [],
                     'status_sop' => 'draft',
+                    'is_operator' => $isOperator,
+                    'message' => 'Principal tidak ditemukan pada akun operator. Hubungi foreman.',
                 ], 403);
             }
+            $id = $sop->id;
         }
+
+        $statusSop = $sop->status ?? 'draft';
 
         // Ambil semua approval untuk SOP ini
         $approvals = WfgSopApprovalModel::where('sop_id', $id)
@@ -1009,6 +1142,8 @@ class StockOpnameWfgController extends Controller
                 'jabatan' => $a->approver->jabatan ?? '-',
                 'status' => ucfirst($a->status),
                 'catatan' => $a->catatan,
+                'action_at' => $a->action_at ? \Carbon\Carbon::parse($a->action_at)->format('d M Y H:i') : null,
+                'created_at' => $a->created_at ? $a->created_at->format('d M Y H:i') : null,
             ];
         })->values();
 
@@ -1079,28 +1214,24 @@ class StockOpnameWfgController extends Controller
         $userId = $user->id;
         $searchTerm = $request->input('search');
         $principalFilter = $request->input('principal');
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
         $perPage = 150;
         $today = now()->toDateString();
 
-        // Tentukan principal filter
-        // $principalToFilter = $user->jabatan === 'operator'
-        //     ? $user->principal?->principal
-        //     : $principalFilter;
-
         $userPrincipal = $user->principal?->principal;
 
-
-
-        // 🔹 Subquery: total summary per SOH (hari ini)
+        // 🔹 Subquery: total summary per SOH (hari ini) untuk jenis_so tertentu
         $tempSummarySubquery = DB::table('wfg_sop_temp')
+            ->join('wfg_soh', 'wfg_sop_temp.soh_id', '=', 'wfg_soh.id')
             ->select(
-                'soh_id',
-                DB::raw('SUM(summary) AS total_summary')
+                'wfg_sop_temp.soh_id',
+                DB::raw('SUM(wfg_sop_temp.summary) AS total_summary')
             )
-            ->whereDate('tgl_opname', $today)
-            ->groupBy('soh_id');
+            ->where('wfg_soh.jenis_so', $jenisSo)
+            ->whereDate('wfg_sop_temp.tgl_opname', $today)
+            ->groupBy('wfg_sop_temp.soh_id');
 
-        $mode = WfgSopStatusModel::getModeByUser($userId, $userPrincipal, $today);
+        $mode = WfgSopStatusModel::getModeByUser($userId, $userPrincipal, $today, $jenisSo);
 
         $selisihSelect = $mode === 'check'
             ? DB::raw("(COALESCE(temp_sum.total_summary, 0) - COALESCE(wfg_soh.qty_soh, 0)) AS selisih")
@@ -1115,7 +1246,6 @@ class StockOpnameWfgController extends Controller
                 END AS has_diff
             ")
             : DB::raw("0 AS has_diff");
-
 
         // Ambil data SOH + summary opname
         $finalQuery = DB::table('wfg_soh')
@@ -1135,15 +1265,13 @@ class StockOpnameWfgController extends Controller
                 $selisihSelect,
                 $hasDiffSelect
             )
-            ->whereDate('wfg_soh.last_updated', $today);
-        // ->orderBy('wfg_soh.id', 'asc');
+            ->whereDate('wfg_soh.last_updated', $today)
+            ->where('wfg_soh.jenis_so', $jenisSo);
 
         // Filter principal
         if ($user->jabatan === 'operator') {
             if ($userPrincipal === 'SMU') {
-                // Log::info($userPrincipal);
                 if ($principalFilter) {
-                    // Log::info($principalFilter);
                     $finalQuery->where('wfg_barang.principal', $principalFilter);
                 } else {
                     $finalQuery->where('wfg_barang.principal', '!=', 'BAS');
@@ -1154,7 +1282,6 @@ class StockOpnameWfgController extends Controller
                 $finalQuery->whereRaw('1 = 0');
             }
         } else {
-            // 🔹 Non-operator (admin dsb) bisa filter manual via tab
             if ($principalFilter) {
                 $finalQuery->where('wfg_barang.principal', $principalFilter);
             }
@@ -1389,8 +1516,9 @@ class StockOpnameWfgController extends Controller
     public function getDataReport(Request $request)
     {
         try {
-            $tanggalFilter = $request->filled('tanggal') ? $request->tanggal : now()->toDateString();
+            $tanggalFilter = $request->input('tanggal', $request->input('tgl_opname', now()->toDateString()));
             $principalFilter = $request->input('principal');
+            $jenisSo = $request->input('jenis_so', 'cycle_count');
             $search = trim($request->input('search', ''));
             $user = Auth::user();
 
@@ -1408,11 +1536,20 @@ class StockOpnameWfgController extends Controller
                 ], 422);
             }
 
-            // 🔹 Filter berdasarkan tanggal + principal aktif
-            $sop = WfgSopModel::with('user:id,username')
-                ->whereDate('tgl_opname', $tanggalFilter)
+            // 🔹 Filter berdasarkan tanggal + principal aktif + jenis_so
+            $sopQuery = WfgSopModel::with('user:id,username')
                 ->where('principal', $activePrincipal)
-                ->first();
+                ->where('jenis_so', $jenisSo);
+
+            if (strlen($tanggalFilter) === 7) {
+                $parts = explode('-', $tanggalFilter);
+                $sopQuery->whereYear('tgl_opname', $parts[0])
+                    ->whereMonth('tgl_opname', $parts[1]);
+            } else {
+                $sopQuery->whereDate('tgl_opname', $tanggalFilter);
+            }
+
+            $sop = $sopQuery->first();
 
             if (!$sop) {
                 return response()->json([
@@ -1515,7 +1652,11 @@ class StockOpnameWfgController extends Controller
             'sop.user:id,username,nama_lengkap',
         ])
             ->whereIn('wfg_sop_approvals.status', ['pending', 'read'])
+            ->when($user->jabatan !== 'operator', function ($query) use ($user) {
+                $query->where('approver_id', $user->id);
+            })
             ->whereHas('sop', function ($query) use ($user, $principalFilter) {
+                $query->where('jenis_so', 'monthly');
                 if ($user->jabatan === 'operator') {
                     $query->where('principal', optional($user->principal)->principal);
                     return;
@@ -1526,6 +1667,7 @@ class StockOpnameWfgController extends Controller
                 }
             })
             ->join('wfg_sop', 'wfg_sop.id', '=', 'wfg_sop_approvals.sop_id')
+            ->where('wfg_sop.status', '!=', 'approved')
             ->orderByDesc('wfg_sop.tgl_opname')
             ->orderByDesc('wfg_sop_approvals.created_at')
             ->select('wfg_sop_approvals.*')
@@ -1571,6 +1713,7 @@ class StockOpnameWfgController extends Controller
     public function getDataDetailEdit($barangId, Request $request)
     {
         $tanggal = $request->input('tanggal'); // ambil dari query param
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
 
         $query = WfgSopDetailModel::with([
             'barang:id,mid_barang,nama_barang,qty_box',
@@ -1579,9 +1722,16 @@ class StockOpnameWfgController extends Controller
             }
         ])
             ->where('barang_id', $barangId)
-            ->whereHas('sop', function ($q) use ($tanggal) {
+            ->whereHas('sop', function ($q) use ($tanggal, $jenisSo) {
+                $q->where('jenis_so', $jenisSo);
                 if ($tanggal) {
-                    $q->whereDate('tgl_opname', $tanggal);
+                    if (strlen($tanggal) === 7) {
+                        $parts = explode('-', $tanggal);
+                        $q->whereYear('tgl_opname', $parts[0])
+                          ->whereMonth('tgl_opname', $parts[1]);
+                    } else {
+                        $q->whereDate('tgl_opname', $tanggal);
+                    }
                 }
             });
 
@@ -1910,7 +2060,6 @@ class StockOpnameWfgController extends Controller
             'items.*.id' => 'required|integer', // id dari wfg_sop_detail
             'items.*.qty_full' => 'required|numeric',
             'items.*.qty_receh' => 'required|numeric',
-            'items.*.tanggal' => 'required|date',
             'note'           => 'nullable|string|max:1000',
         ]);
 
@@ -1919,11 +2068,7 @@ class StockOpnameWfgController extends Controller
             $note = $validated['note'];
             foreach ($validated['items'] as $item) {
                 $detail = WfgSopDetailModel::with(['barang', 'sop'])
-                    ->where('id', $item['id'])
-                    ->whereHas('sop', function ($q) use ($item) {
-                        $q->whereDate('tgl_opname', $item['tanggal']);
-                    })
-                    ->first();
+                    ->find($item['id']);
 
                 if (!$detail) {
                     continue; // skip kalau gak ketemu
@@ -1934,24 +2079,20 @@ class StockOpnameWfgController extends Controller
                 $detail->save();
             }
 
-            // Ambil tanggal opname dari item pertama
-            $tanggal = $validated['items'][0]['tanggal'];
+            // Ambil semua detail id unik yang diupdate
+            $detailIds = collect($validated['items'])->pluck('id')->unique();
 
-            // Ambil semua barang_id unik dari detail yang diupdate
-            $barangIds = collect($validated['items'])->pluck('id')->unique();
-
-            foreach ($barangIds as $detailId) {
+            foreach ($detailIds as $detailId) {
                 $detailSample = WfgSopDetailModel::find($detailId);
                 if (!$detailSample) continue;
 
                 $barangId = $detailSample->barang_id;
+                $sopId = $detailSample->sop_id;
 
-                // Ambil semua detail dengan barang_id & tanggal opname sama
-                $details = WfgSopDetailModel::with(['barang', 'sop'])
+                // Ambil semua detail dengan barang_id & sop_id yang sama
+                $details = WfgSopDetailModel::with(['barang'])
                     ->where('barang_id', $barangId)
-                    ->whereHas('sop', function ($q) use ($tanggal) {
-                        $q->whereDate('tgl_opname', $tanggal);
-                    })
+                    ->where('sop_id', $sopId)
                     ->get();
 
                 // Hitung total qty fisik dari semua detail
@@ -1962,7 +2103,7 @@ class StockOpnameWfgController extends Controller
                 }
 
                 // Update summary
-                $summary = WfgSopSummariesModel::where('sop_id', $detailSample->sop_id)
+                $summary = WfgSopSummariesModel::where('sop_id', $sopId)
                     ->where('barang_id', $barangId)
                     ->first();
 
@@ -2143,18 +2284,27 @@ class StockOpnameWfgController extends Controller
     public function exportPdfSOPWFG(Request $request, $asContent = false)
     {
         $request->validate([
-            'tanggal' => 'required|date',
+            'tanggal' => 'required',
         ], [
             'tanggal.required' => 'Tanggal wajib diisi untuk ekspor.',
         ]);
 
-        $tanggal = $request->tanggal;
+        $tanggal = $request->input('tanggal', $request->input('tgl_opname'));
         $principalFilter = $request->input('principal');
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
         $user = Auth::user();
 
         try {
             $sopQuery = WfgSopModel::with(['user:id,nama_lengkap,username'])
-                ->whereDate('tgl_opname', $tanggal);
+                ->where('jenis_so', $jenisSo);
+
+            if (strlen($tanggal) === 7) {
+                $parts = explode('-', $tanggal);
+                $sopQuery->whereYear('tgl_opname', $parts[0])
+                    ->whereMonth('tgl_opname', $parts[1]);
+            } else {
+                $sopQuery->whereDate('tgl_opname', $tanggal);
+            }
 
             // Kondisi 1: dipanggil lewat UI (user login)
             if ($user && $user->jabatan === 'operator' && optional($user->principal)->principal) {
@@ -2529,7 +2679,6 @@ class StockOpnameWfgController extends Controller
         }
 
         try {
-
             DB::beginTransaction();
 
             // Cek approval existing
@@ -2560,23 +2709,24 @@ class StockOpnameWfgController extends Controller
                 [$request->supervisor_id]
             ));
 
+            // Clear old approvals except creator
+            WfgSopApprovalModel::where('sop_id', $sop->id)
+                ->where('approver_id', '!=', $user->id)
+                ->delete();
+
             $approvals = [];
 
             foreach ($approverIds as $approverId) {
                 if ($approverId == $user->id) continue;
 
-                $approvals[$approverId] = WfgSopApprovalModel::updateOrCreate(
-                    [
-                        'sop_id'      => $sop->id,
-                        'approver_id' => $approverId,
-                    ],
-                    [
-                        'status'    => 'pending',
-                        'action_at' => null,
-                        'action_by' => null,
-                        'catatan'   => null,
-                    ]
-                );
+                $approvals[$approverId] = WfgSopApprovalModel::create([
+                    'sop_id'      => $sop->id,
+                    'approver_id' => $approverId,
+                    'status'    => 'pending',
+                    'action_at' => null,
+                    'action_by' => null,
+                    'catatan'   => null,
+                ]);
             }
 
             $sop->update(['status' => 'pending']);
@@ -2584,28 +2734,26 @@ class StockOpnameWfgController extends Controller
             $title   = 'Approval SO WFG';
             $message = 'SO ' . $sop->principal . ' tanggal ' . $sop->tgl_opname . ' menunggu persetujuan Anda.';
             $url     = route('wfg.stock_opname.report') . '?tanggal=' . $sop->tgl_opname .
-                '&principal=' . urlencode($sop->principal ?? '');
+                '&principal=' . urlencode($sop->principal ?? '') . '&jenis_so=' . $sop->jenis_so;
 
             foreach ($approverIds as $approverId) {
                 if ($approverId == $user->id) continue; // jangan kirim ke diri sendiri
 
-                // Cek apakah notifikasi dengan URL sama sudah ada (hindari duplikat)
-                $existingNotif = NotificationsModel::where('user_id', $approverId)
+                NotificationsModel::where('user_id', $approverId)
                     ->where('url', $url)
-                    ->first();
+                    ->delete();
 
-                if (!$existingNotif) {
-                    foreach ($approvals as $approverId => $approvalModel) {
-                        NotificationsModel::create([
-                            'user_id'         => $approverId,
-                            'notifiable_type' => WfgSopApprovalModel::class,
-                            'notifiable_id'   => $approvalModel->id,
-                            'title'           => $title,
-                            'message'         => $message,
-                            'url'             => $url,
-                            'is_read'         => false,
-                        ]);
-                    }
+                $approvalModel = $approvals[$approverId] ?? null;
+                if ($approvalModel) {
+                    NotificationsModel::create([
+                        'user_id'         => $approverId,
+                        'notifiable_type' => WfgSopApprovalModel::class,
+                        'notifiable_id'   => $approvalModel->id,
+                        'title'           => $title,
+                        'message'         => $message,
+                        'url'             => $url,
+                        'is_read'         => false,
+                    ]);
                 }
             }
 
@@ -2662,68 +2810,104 @@ class StockOpnameWfgController extends Controller
 
         $isForeman = $user->jabatan === 'foreman';
 
-        if ($isForeman && $request->status === 'approved') {
+        DB::beginTransaction();
+        try {
+            if ($isForeman && $request->status === 'approved') {
 
-            // Ambil approval foreman lain (selain yang approve)
-            $otherForemanApprovals = WfgSopApprovalModel::where('sop_id', $request->sop_id)
-                ->where('approver_id', '!=', $user->id)
-                ->whereHas('approver', function ($q) {
-                    $q->where('jabatan', 'foreman');
-                })
-                ->get();
+                // Ambil approval foreman lain (selain yang approve)
+                $otherForemanApprovals = WfgSopApprovalModel::where('sop_id', $request->sop_id)
+                    ->where('approver_id', '!=', $user->id)
+                    ->whereHas('approver', function ($q) {
+                        $q->where('jabatan', 'foreman');
+                    })
+                    ->get();
 
-            foreach ($otherForemanApprovals as $otherApproval) {
+                foreach ($otherForemanApprovals as $otherApproval) {
 
-                // 🔥 HAPUS NOTIFIKASI TERKAIT
-                NotificationsModel::where('notifiable_type', WfgSopApprovalModel::class)
-                    ->where('notifiable_id', $otherApproval->id)
-                    ->where('user_id', $otherApproval->approver_id)
+                    // 🔥 HAPUS NOTIFIKASI TERKAIT
+                    NotificationsModel::where('notifiable_type', WfgSopApprovalModel::class)
+                        ->where('notifiable_id', $otherApproval->id)
+                        ->where('user_id', $otherApproval->approver_id)
+                        ->delete();
+
+                    // 🔥 HAPUS APPROVAL FOREMAN LAIN
+                    $otherApproval->delete();
+                }
+            }
+
+            $approval->update([
+                'status' => $request->status,
+                'catatan' => $request->catatan,
+                'action_at' => now(),
+                'action_by' => $user->id,
+            ]);
+
+            // HAPUS NOTIFIKASI TERKAIT
+            NotificationsModel::where('notifiable_type', WfgSopApprovalModel::class)
+                ->where('notifiable_id', $approval->id)
+                ->where('user_id', Auth::id())
+                ->delete();
+
+            $approvals = WfgSopApprovalModel::where('sop_id', $request->sop_id)->get();
+
+            $allApproved = $approvals->every(fn($a) => $a->status === 'approved');
+            $anyRejected = $approvals->contains(fn($a) => $a->status === 'rejected');
+
+            if ($anyRejected) {
+                $finalStatus = 'rejected';
+            } elseif ($allApproved) {
+                $finalStatus = 'approved';
+            } else {
+                $finalStatus = 'waiting';
+            }
+
+            $sop = WfgSopModel::findOrFail($request->sop_id);
+            $sop->update([
+                'status' => $finalStatus
+            ]);
+
+            // Notify the creator of the SO (operator) if approved or rejected
+            if (in_array($finalStatus, ['approved', 'rejected']) && $sop->user_id) {
+                $statusText = $finalStatus === 'approved' ? 'DISETUJUI' : 'DITOLAK';
+                $titleText = "SO WFG " . ($finalStatus === 'approved' ? 'Approved' : 'Rejected');
+                $messageText = "Stock Opname WFG " . $sop->principal . " tanggal " . $sop->tgl_opname . " telah " . $statusText . " oleh " . $user->nama_lengkap . ".";
+
+                if ($finalStatus === 'rejected' && $request->catatan) {
+                    $messageText .= " Catatan: " . $request->catatan;
+                }
+
+                $url = route('wfg.stock_opname.report') . '?tanggal=' . $sop->tgl_opname . '&principal=' . urlencode($sop->principal ?? '') . '&jenis_so=' . $sop->jenis_so;
+
+                // Clear old status notifications for this SO for the creator
+                NotificationsModel::where('user_id', $sop->user_id)
+                    ->where('url', $url)
+                    ->where('title', 'like', 'SO WFG%')
                     ->delete();
 
-                // 🔥 HAPUS APPROVAL FOREMAN LAIN
-                $otherApproval->delete();
+                NotificationsModel::create([
+                    'user_id'         => $sop->user_id,
+                    'notifiable_type' => WfgSopModel::class,
+                    'notifiable_id'   => $sop->id,
+                    'title'           => $titleText,
+                    'message'         => $messageText,
+                    'url'             => $url,
+                    'is_read'         => false,
+                ]);
             }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => $request->status === 'approved' ? 'SO berhasil disetujui.' : 'SO telah ditolak.',
+                'data' => $approval
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal memperbarui status: ' . $e->getMessage()
+            ], 500);
         }
-
-        $approval->update([
-            'status' => $request->status,
-            'catatan' => $request->catatan,
-            'action_at' => now(),
-            'action_by' => $user->id,
-        ]);
-
-        // HAPUS NOTIFIKASI TERKAIT
-        NotificationsModel::where('notifiable_type', WfgSopApprovalModel::class)
-            ->where('notifiable_id', $approval->id)
-            ->where('user_id', Auth::id())
-            ->delete();
-
-        $approvals = WfgSopApprovalModel::where('sop_id', $request->sop_id)->get();
-
-        $allApproved = $approvals->every(fn($a) => $a->status === 'approved');
-        $anyRejected = $approvals->contains(fn($a) => $a->status === 'rejected');
-
-        if ($anyRejected) {
-            $finalStatus = 'rejected';
-        } elseif ($allApproved) {
-            $finalStatus = 'approved';
-        } else {
-            $finalStatus = 'waiting';
-        }
-
-        WfgSopModel::where('id', $request->sop_id)->update([
-            'status' => $finalStatus
-        ]);
-
-        // Jika semua approved, otomatis kirim laporan
-        // if ($finalStatus === 'approved') {
-        //     GenerateAndSendSopReportJob::dispatch($request->sop_id);
-        // }
-
-        return response()->json([
-            'message' => $request->status === 'approved' ? 'SO berhasil disetujui.' : 'SO telah ditolak.',
-            'data' => $approval
-        ]);
     }
 
     // Send report

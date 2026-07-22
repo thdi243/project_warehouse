@@ -139,8 +139,7 @@
                     <div class="row g-3 align-items-end">
 
                         {{-- Filter Tanggal --}}
-                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-4 @else col-md-4 @endif col-12">
-                            {{-- <label for="filter_tanggal" class="form-label fw-semibold">Filter Tanggal</label> --}}
+                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-3 @endif col-12">
                             <div>
                                 <label class="form-label" for="filter_tanggal">Tanggal</label>
                                 <input type="date" id="filter_tanggal" class="form-control"
@@ -148,42 +147,50 @@
                             </div>
                         </div>
 
+                        {{-- Filter Jenis SO --}}
+                        <div class="col-md-2 col-12">
+                            <label class="form-label fw-semibold" for="jenis_so">Jenis SO</label>
+                            <select id="jenis_so" class="form-select">
+                                <option value="cycle_count">Cycle Count</option>
+                                <option value="monthly">Monthly SO</option>
+                            </select>
+                        </div>
+
                         {{-- Filter Principal untuk non-operator --}}
                         @if (Auth::user()->jabatan != 'operator')
-                            <div class="col-md-4 col-12">
+                            <div class="col-md-3 col-12">
                                 <select id="principal_filter" class="form-select">
                                     @foreach ($principals as $p)
-                                        <option value="{{ $p }}" {{ request('principal') == $p ? 'selected' : '' }}>{{ $p }}</option>
+                                        <option value="{{ $p }}"
+                                            {{ request('principal') == $p ? 'selected' : '' }}>{{ $p }}</option>
                                     @endforeach
                                 </select>
                             </div>
                         @endif
 
-                        {{-- Tombol Export --}}
-                        <div class="@if (Auth::user()->jabatan != 'operator') col-md-4 @else col-md-4 @endif col-12">
-                            <button type="button" id="btn_export" class="btn btn-outline-warning w-100">
-                                <i class="mdi mdi-export me-2"></i> Export PDF
-                            </button>
-                        </div>
-
-                        {{-- Tombol Send Approval (hanya untuk operator) --}}
-                        @if (Auth::user()->jabatan == 'operator')
-                            <div class="@if (Auth::user()->jabatan != 'operator') col-md-3 @else col-md-4 @endif col-12">
-                                {{-- <label class="form-label d-block opacity-0">.</label> --}}
-                                <button type="button" id="btn_approval" class="btn btn-outline-success w-100"
-                                    style="display:none;">
-                                    <i class="mdi mdi-send me-2"></i> Send Approval
-                                </button>
-                            </div>
-                        @endif
-
-                        <div class="col-md-6 col-12">
+                        <div class="col-md-3">
                             <label for="searchBarang" class="form-label fw-semibold">Cari Data</label>
                             <div class="input-group">
                                 <input type="text" id="searchBarang" class="form-control" placeholder="Ketik MID...">
                                 <button type="button" id="btnSearchBarang" class="btn btn-outline-primary">
                                     <i class="mdi mdi-magnify"></i> Cari
                                 </button>
+                            </div>
+                        </div>
+
+                        {{-- Tombol Export & Approval --}}
+                        <div class="col-md-4 col-12">
+                            <div class="d-flex gap-2">
+                                <button type="button" id="btn_export" class="btn btn-outline-warning d-none flex-fill">
+                                    <i class="mdi mdi-export me-2"></i> Export PDF
+                                </button>
+
+                                @if (Auth::user()->jabatan == 'operator')
+                                    <button type="button" id="btn_approval"
+                                        class="btn btn-outline-success d-none flex-fill">
+                                        <i class="mdi mdi-send me-2"></i> Send Approval
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -203,8 +210,9 @@
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="approval-tab" data-bs-toggle="pill" data-bs-target="#tabApproval"
-                                type="button" role="tab" aria-controls="tabApproval" aria-selected="false">
+                            <button class="nav-link d-none" id="approval-tab" data-bs-toggle="pill"
+                                data-bs-target="#tabApproval" type="button" role="tab" aria-controls="tabApproval"
+                                aria-selected="false">
                                 <i class="mdi mdi-account-clock-outline me-1"></i> Belum Approve
                                 <span id="pendingApprovalBadge" class="badge bg-warning text-dark ms-1">0</span>
                             </button>
@@ -472,22 +480,87 @@
             // trigger filter
             const params = new URLSearchParams(window.location.search);
             const tanggal = params.get('tanggal');
-            const principalFromUrl = params.get('principal'); // ⬅️ Tambahan ini
+            const principalFromUrl = params.get('principal');
+            const jenisSoFromUrl = params.get('jenis_so');
+
+            if (jenisSoFromUrl) {
+                $('#jenis_so').val(jenisSoFromUrl);
+            }
+
+            // Adjust date input type based on current selected jenis_so
+            const initialJenisSo = $('#jenis_so').val();
+            const dateInput = $('#filter_tanggal');
+            const approvalTabBtn = $('#approval-tab');
+            const btnApproval = $('#btn_approval');
+            const btnExport = $('#btn_export');
+
+            if (initialJenisSo === 'monthly') {
+                dateInput.attr('type', 'month');
+                approvalTabBtn.removeClass('d-none');
+                btnApproval.removeClass('d-none');
+                btnExport.removeClass('d-none');
+            } else {
+                dateInput.attr('type', 'date');
+                approvalTabBtn.addClass('d-none');
+                btnApproval.addClass('d-none');
+                btnExport.addClass('d-none');
+            }
+
+            if (tanggal) {
+                let formattedTanggal = tanggal;
+                if (initialJenisSo === 'monthly' && tanggal.length === 10) {
+                    formattedTanggal = tanggal.substring(0, 7);
+                } else if (initialJenisSo === 'cycle_count' && tanggal.length === 7) {
+                    formattedTanggal = tanggal + '-01';
+                }
+                dateInput.val(formattedTanggal);
+            }
+
             let currentSearch = '';
             let currentPrincipal = '';
 
-            if (tanggal) {
-                $('#filter_tanggal').val(tanggal).trigger('change');
-            }
-
             if (principalFromUrl) {
                 currentPrincipal = principalFromUrl;
-                $('#principal_filter').val(currentPrincipal).trigger('change');
+                $('#principal_filter').val(currentPrincipal);
             } else {
-                // Kalau tidak ada di URL, ambil dari dropdown
                 currentPrincipal = $('#principal_filter').val() || '';
             }
-            // end trigger filter
+
+            // jenis_so change handler
+            $('#jenis_so').on('change', function() {
+                const type = $(this).val();
+                const dateInput = $('#filter_tanggal');
+                const approvalTabBtn = $('#approval-tab');
+                const btnApproval = $('#btn_approval');
+                const btnExport = $('#btn_export');
+                let val = dateInput.val();
+
+                if (type === 'monthly') {
+                    dateInput.attr('type', 'month');
+                    if (val && val.length === 10) dateInput.val(val.substring(0, 7));
+                    else if (!val) {
+                        const t = new Date();
+                        dateInput.val(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0'));
+                    }
+                    approvalTabBtn.removeClass('d-none');
+                    btnApproval.removeClass('d-none');
+                    btnExport.removeClass('d-none');
+                } else {
+                    dateInput.attr('type', 'date');
+                    const t = new Date();
+                    const todayStr = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+                    if (val && val.length === 10) dateInput.val(val);
+                    else dateInput.val(todayStr);
+                    approvalTabBtn.addClass('d-none');
+                    btnApproval.addClass('d-none');
+                    btnExport.addClass('d-none');
+                    if (approvalTabBtn.hasClass('active')) {
+                        $('#data-tab').tab('show');
+                    }
+                }
+                loadReportData(currentPrincipal, currentSearch);
+                checkApprovalStatus(null, dateInput.val());
+            });
 
             loadReportData(currentPrincipal, currentSearch);
             checkApprovalStatus(null, $('#filter_tanggal').val());
@@ -523,7 +596,9 @@
                 $('#empty_state').hide();
                 $('#tableBody').html('');
                 renderApprovalSummary(null);
-                loadPendingApprovals(principal);
+                if ($('#jenis_so').val() === 'monthly') {
+                    loadPendingApprovals(principal);
+                }
                 const tanggal = $('#filter_tanggal').val() || new Date().toISOString().slice(0,
                     10);
 
@@ -534,7 +609,8 @@
                     data: {
                         tanggal: $('#filter_tanggal').val(),
                         principal: principal,
-                        search: search
+                        search: search,
+                        jenis_so: $('#jenis_so').val()
                     },
                     success: function(response) {
                         $('#loading_state').hide();
@@ -657,6 +733,16 @@
 
             function checkApprovalStatus(data = null, tanggal) {
                 const wrapper = $('#approvalWrapper');
+                const jenisSo = $('#jenis_so').val();
+
+                console.log(jenisSo);
+
+                if (jenisSo === 'cycle_count') {
+                    wrapper.html('');
+                    $('#btn_approval').hide();
+                    $('#filter_tanggal').removeData('sop-id');
+                    return;
+                }
 
                 // Jika data SOP tidak ada
                 if (!data?.sop) {
@@ -667,6 +753,7 @@
                         </div>
                     `);
                     $('#btn_approval').hide();
+                    $('#filter_tanggal').removeData('sop-id');
                     return;
                 }
 
@@ -678,7 +765,8 @@
 
                 $.get("{{ route('wfg.stock_opname.approval.show', '') }}/" + sopId, {
                     tanggal: tanggalFilter,
-                    principal: currentPrincipal
+                    principal: currentPrincipal,
+                    jenisSo: jenisSo
                 }, function(res) {
                     console.log('Approval status response:', res);
                     const status = res.approval_status;
@@ -1033,9 +1121,10 @@
                     totalPalletSum += group.total_pallet;
                     totalBoxSum += group.total_box;
 
-                    const matchedSummary = response.summaries ? response.summaries.find(s => s.barang_id == barangId) : null;
+                    const matchedSummary = response.summaries ? response.summaries.find(s => s.barang_id ==
+                        barangId) : null;
                     const summaryId = matchedSummary ? matchedSummary.id : null;
-                    const detailButton = summaryId ? 
+                    const detailButton = summaryId ?
                         `<button class="btn btn-outline-primary btn-sm" onclick="showDetail(${summaryId})">
                             <i class="mdi mdi-eye-outline"></i> Detail
                          </button>` : '';
@@ -1316,6 +1405,7 @@
                 try {
                     let checkUrl = `{{ route('wfg.stock_opname.export') }}?tanggal=${tanggal}`;
                     if (principal) checkUrl += `&principal=${encodeURIComponent(principal)}`;
+                    checkUrl += `&jenis_so=${encodeURIComponent($('#jenis_so').val())}`;
 
                     // 🔹 Cek dulu apakah backend siap (pakai ?check=true)
                     const checkResponse = await fetch(checkUrl + '&check=true');
@@ -1647,11 +1737,13 @@
         // edit data
         function showEdit(barangId) {
             const tanggal = $('#filter_tanggal').val();
+            const jenisSo = $('#jenis_so').val();
             $.ajax({
                 url: `{{ url('api/wfg/sop/detail/edit') }}/` + barangId,
                 type: 'GET',
                 data: {
-                    tanggal: tanggal
+                    tanggal: tanggal,
+                    jenis_so: jenisSo
                 },
                 success: function(res) {
                     if (res.status === 'success') {
