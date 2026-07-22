@@ -449,6 +449,7 @@ class StockOnHandController extends Controller
                 ->select([
                     'wsp_barang.mid_barang',
                     'wsp_barang.nama_barang',
+                    'wsp_barang.uom',
                     DB::raw('COALESCE(soh.unrest, 0) as unrest'),
                     DB::raw('COALESCE(soh.qual_insp, 0) as qual_insp'),
                     DB::raw('COALESCE(soh.blocked, 0) as blocked'),
@@ -463,6 +464,7 @@ class StockOnHandController extends Controller
             $headers = [
                 'MID',
                 'Nama Barang',
+                'UoM',
                 'Unrest',
                 'QI',
                 'Blocked',
@@ -481,10 +483,11 @@ class StockOnHandController extends Controller
             foreach ($data as $item) {
                 $sheet->setCellValueExplicit('A' . $rowNum, $item->mid_barang, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
                 $sheet->setCellValue('B' . $rowNum, $item->nama_barang);
-                $sheet->setCellValue('C' . $rowNum, $item->unrest);
-                $sheet->setCellValue('D' . $rowNum, $item->qual_insp);
-                $sheet->setCellValue('E' . $rowNum, $item->blocked);
-                $sheet->setCellValue('F' . $rowNum, $item->last_update ? date('d-m-Y H:i:s', strtotime($item->last_update)) : '-');
+                $sheet->setCellValue('C' . $rowNum, $item->uom);
+                $sheet->setCellValue('D' . $rowNum, $item->unrest);
+                $sheet->setCellValue('E' . $rowNum, $item->qual_insp);
+                $sheet->setCellValue('F' . $rowNum, $item->blocked);
+                $sheet->setCellValue('G' . $rowNum, $item->last_update ? date('d-m-Y H:i:s', strtotime($item->last_update)) : '-');
                 $rowNum++;
             }
 

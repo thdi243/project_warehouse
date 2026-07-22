@@ -403,6 +403,7 @@
                                     <th>No</th>
                                     <th>Mid</th>
                                     <th>DESC</th>
+                                    <th>UoM</th>
                                     <th>Total Qty SOH</th>
                                     <th>Unrest</th>
                                     <th>Qual Insp</th>
@@ -634,6 +635,7 @@
                             <td>${startIndex + index + 1}</td>
                             <td><strong>${soh.mid_barang}</strong></td>
                             <td><strong>${soh.nama_barang}</strong></td>
+                            <td><strong>${soh.uom}</strong></td>
                             <td>${soh.qty_soh ?? 0}</td>
                             <td>${soh.unrest ?? 0}</td>
                             <td>${soh.qual_insp ?? 0}</td>
