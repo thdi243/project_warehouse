@@ -358,12 +358,8 @@ class VehicleTrackingController extends Controller
             $initialQcStatus = 'pending';
             $currentLocId = $targetLoc->id;
 
-            if ($targetLoc->s_loc === 'C001') {
-                // WPM is standalone unloading
-                $newStatus = 'wpm';
-                $initialQcStatus = 'pending';
-            } elseif ($targetLoc->s_loc === 'B006') {
-                // WRM goes to QC first
+            if ($targetLoc->s_loc === 'C001' || $targetLoc->s_loc === 'B006') {
+                // WRM and WPM go to QC first
                 $newStatus = 'antri_sampling';
                 $initialQcStatus = 'waiting_dokumen';
                 $currentLocId = $targetLoc->id;
@@ -392,7 +388,7 @@ class VehicleTrackingController extends Controller
                 'no_pol' => $noPol,
                 'current_location' => $targetLoc->s_loc,
                 'status' => $newStatus,
-                'message' => "Truk {$noPol} diarahkan dari Timbangan menuju " . ($targetLoc->s_loc === 'B006' ? "WRM (QC)" : $targetLoc->name) . ".",
+                'message' => "Truk {$noPol} diarahkan dari Timbangan menuju " . (in_array($targetLoc->s_loc, ['B006', 'C001']) ? "QC (" . $targetLoc->name . ")" : $targetLoc->name) . ".",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
@@ -624,10 +620,13 @@ class VehicleTrackingController extends Controller
 
             // Broadcast movement/update
             $noPol = $transaction->vehicle->no_pol;
+            $targetLoc = $transaction->targetLocation;
+            $sLoc = $targetLoc ? $targetLoc->s_loc : 'B006';
+
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'B006',
+                'current_location' => $sLoc,
                 'status' => 'sampling',
                 'message' => "Truk {$noPol} dokumen telah diterima. No Antrian: {$request->no_antrian}. Masuk Proses Sampling.",
                 'time' => Carbon::now()->format('H:i:s')
@@ -678,38 +677,65 @@ class VehicleTrackingController extends Controller
             $noPol = $transaction->vehicle->no_pol;
 
             if ($request->qc_status === 'released') {
-                // Move to WRM Unloading Area
-                $wrmLoc = Location::where('s_loc', 'B006')->first();
-                if (!$wrmLoc) {
-                    throw new \Exception('Lokasi WRM (Raw Material) tidak ditemukan.');
+                // Dynamically route to WRM (B006) or WPM (C001) depending on target
+                $targetLoc = Location::find($transaction->target_location_id);
+                if (!$targetLoc) {
+                    throw new \Exception('Lokasi target tidak ditemukan.');
                 }
 
-                $transaction->update([
-                    'qc_status' => 'released',
-                    'current_location_id' => $wrmLoc->id,
-                    'status' => 'wrm_bongkar',
-                    'unloading_status' => 'process',
-                    'updated_by' => Auth::id()
-                ]);
+                if ($targetLoc->s_loc === 'C001') {
+                    $transaction->update([
+                        'qc_status' => 'released',
+                        'current_location_id' => $targetLoc->id,
+                        'status' => 'wpm',
+                        'unloading_status' => 'process',
+                        'updated_by' => Auth::id()
+                    ]);
 
-                // Create new tracking log for WRM
-                VehicleTracking::create([
-                    'vehicle_transaction_id' => $transaction->id,
-                    'location_id' => $wrmLoc->id,
-                    'arrival_time' => $now,
-                    'created_by' => Auth::id()
-                ]);
+                    VehicleTracking::create([
+                        'vehicle_transaction_id' => $transaction->id,
+                        'location_id' => $targetLoc->id,
+                        'arrival_time' => $now,
+                        'created_by' => Auth::id()
+                    ]);
 
-                event(new VehicleStatusUpdated([
-                    'transaction_id' => $transaction->id,
-                    'no_pol' => $noPol,
-                    'current_location' => 'B006',
-                    'status' => 'wrm_bongkar',
-                    'message' => "Truk {$noPol} lolos QC (Released) -> Menuju WRM Bongkar.",
-                    'time' => $now->format('H:i:s')
-                ]));
+                    event(new VehicleStatusUpdated([
+                        'transaction_id' => $transaction->id,
+                        'no_pol' => $noPol,
+                        'current_location' => 'C001',
+                        'status' => 'wpm',
+                        'message' => "Truk {$noPol} lolos QC (Released) -> Menuju WPM Bongkar.",
+                        'time' => $now->format('H:i:s')
+                    ]));
 
-                $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke RELEASED. Truk diarahkan ke WRM Bongkar.';
+                    $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke RELEASED. Truk diarahkan ke WPM.';
+                } else {
+                    $transaction->update([
+                        'qc_status' => 'released',
+                        'current_location_id' => $targetLoc->id,
+                        'status' => 'wrm_bongkar',
+                        'unloading_status' => 'process',
+                        'updated_by' => Auth::id()
+                    ]);
+
+                    VehicleTracking::create([
+                        'vehicle_transaction_id' => $transaction->id,
+                        'location_id' => $targetLoc->id,
+                        'arrival_time' => $now,
+                        'created_by' => Auth::id()
+                    ]);
+
+                    event(new VehicleStatusUpdated([
+                        'transaction_id' => $transaction->id,
+                        'no_pol' => $noPol,
+                        'current_location' => 'B006',
+                        'status' => 'wrm_bongkar',
+                        'message' => "Truk {$noPol} lolos QC (Released) -> Menuju WRM Bongkar.",
+                        'time' => $now->format('H:i:s')
+                    ]));
+
+                    $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke RELEASED. Truk diarahkan ke WRM Bongkar.';
+                }
             } else {
                 // Rejected, direct completed check-out (exits premises)
                 $transaction->update([
@@ -1130,12 +1156,8 @@ class VehicleTrackingController extends Controller
                 $initialQcStatus = $transaction->qc_status;
                 $currentLocId = $targetLoc->id;
 
-                if ($targetLoc->s_loc === 'C001') {
-                    // WPM is standalone unloading
-                    $newStatus = 'wpm';
-                    $initialQcStatus = 'pending';
-                } elseif ($targetLoc->s_loc === 'B006') {
-                    // WRM goes to QC first
+                if ($targetLoc->s_loc === 'C001' || $targetLoc->s_loc === 'B006') {
+                    // WRM and WPM go to QC first
                     $newStatus = 'antri_sampling';
                     $initialQcStatus = 'waiting_dokumen';
                     $currentLocId = $targetLoc->id;
@@ -1446,9 +1468,27 @@ class VehicleTrackingController extends Controller
             $totalDurationSeconds = $tx->check_out_time ? $tx->check_out_time->diffInSeconds($tx->check_in_time) : 0;
 
             // Format movement history path
-            $historyPath = $tx->tracking->map(function ($track) {
+            $historyPath = $tx->tracking->map(function ($track) use ($tx) {
                 $durMin = $track->duration_seconds ? round($track->duration_seconds / 60) . 'm' : 'aktif';
-                return "{$track->location->name} ({$durMin})";
+                $locName = $track->location->name;
+
+                // Determine if this is a QC track
+                $isQcTrack = false;
+                if ($track->status_notes && (
+                    str_contains($track->status_notes, 'QC Hasil') || 
+                    str_contains($track->status_notes, 'Sampling') ||
+                    str_contains($track->status_notes, 'Dokumen')
+                )) {
+                    $isQcTrack = true;
+                } elseif (!$track->departure_time && in_array($tx->status, ['antri_sampling', 'sampling'])) {
+                    $isQcTrack = true;
+                }
+
+                if ($isQcTrack) {
+                    $locName = 'QC (Quality Control)';
+                }
+
+                return "{$locName} ({$durMin})";
             })->implode(' ➔ ');
 
             return [

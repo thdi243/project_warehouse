@@ -12,14 +12,14 @@
                 <li class="nav-item">
                     <a href="{{ route('vehicle.monitoring.history') }}"
                         class="nav-link {{ request()->routeIs('vehicle.monitoring.history') ? 'active' : '' }}">
-                        <i class="ri-history-line fs-12"></i>History
+                        <i class="ri-history-line fs-12"></i>Report
                     </a>
                 </li>
                 @can('permission', 'vehicle-monitoring-timbangan')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.timbangan') }}"
                             class="nav-link {{ request()->routeIs('vehicle.monitoring.timbangan') ? 'active' : '' }}">
-                            <i class="ri-scales-3-line fs-12"></i> Timbangan (Scales)
+                            <i class="ri-scales-3-line fs-12"></i> Timbangan
                         </a>
                     </li>
                 @endcan
@@ -35,7 +35,7 @@
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.wpm') }}"
                             class="nav-link {{ request()->routeIs('vehicle.monitoring.wpm') ? 'active' : '' }}">
-                            <i class="ri-download-2-line fs-12"></i> WPM Area (Bongkar)
+                            <i class="ri-download-2-line fs-12"></i> WPM Area
                         </a>
                     </li>
                 @endcan
@@ -43,7 +43,7 @@
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.wrm') }}"
                             class="nav-link {{ request()->routeIs('vehicle.monitoring.wrm') ? 'active' : '' }}">
-                            <i class="ri-download-2-line fs-12"></i> WRM (Unloading)
+                            <i class="ri-download-2-line fs-12"></i> WRM Area
                         </a>
                     </li>
                 @endcan
@@ -51,7 +51,7 @@
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.wfg') }}"
                             class="nav-link {{ request()->routeIs('vehicle.monitoring.wfg') ? 'active' : '' }}">
-                            <i class="ri-upload-2-line fs-12"></i> WFG (Bongkar Muat)
+                            <i class="ri-upload-2-line fs-12"></i> WFG Area
                         </a>
                     </li>
                 @endcan
