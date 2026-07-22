@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Wsp\StockOpname\WspSohModel;
 use App\Models\Wsp\StockOpname\WspSoModel;
 use App\Models\Wsp\StockOpname\WspSoSummariesModel;
+use App\Models\Wsp\StockOpname\WspSoStatusModel;
 use App\Models\Wsp\BarangModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class WspStockOnHandController extends Controller
     public function getList(Request $request)
     {
         $searchTerm = $request->input('search');
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
         $perPage = 100;
         $today = now()->toDateString();
 
@@ -30,7 +32,8 @@ class WspStockOnHandController extends Controller
             ->leftJoin('wsp_barang', 'wsp_soh.barang_id', '=', 'wsp_barang.id')
             ->leftJoin('users', 'wsp_soh.user_id', '=', 'users.id');
 
-        $query->whereDate('wsp_soh.created_at', $today);
+        $query->whereDate('wsp_soh.created_at', $today)
+            ->where('wsp_soh.jenis_so', $jenisSo);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
@@ -46,7 +49,15 @@ class WspStockOnHandController extends Controller
 
         $data = $query->orderBy('wsp_soh.id', 'desc')->paginate($perPage);
 
-        return response()->json($data);
+        $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        $isFinished = $soStatus && $soStatus->status === 'finished';
+
+        $responseData = $data->toArray();
+        $responseData['is_finished'] = $isFinished;
+
+        return response()->json($responseData);
     }
 
     public function getBarang()
@@ -85,23 +96,52 @@ class WspStockOnHandController extends Controller
             'unrest' => 'nullable|integer|min:0',
             'qi' => 'nullable|integer|min:0',
             'block' => 'nullable|integer|min:0',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
 
-        try {
-            $today = now()->toDateString();
-            $barangId = $request->barang_id;
+        $today = now()->toDateString();
+        $jenisSo = $request->jenis_so;
+        $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat menambah data SOH karena Stock Opname {$periodeText} telah selesai (finished)."
+            ], 422);
+        }
 
+        if ($jenisSo === 'monthly') {
+            $currentYear = now()->year;
+            $currentMonth = now()->month;
+            $hasMonthlySo = WspSoStatusModel::where('jenis_so', 'monthly')
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->whereDate('tgl_opname', '!=', $today)
+                ->exists();
+            if ($hasMonthlySo) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak dapat menambah data SOH karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
+                ], 422);
+            }
+        }
+
+        try {
+            $barangId = $request->barang_id;
             $barang = BarangModel::findOrFail($barangId);
 
-            // Validasi jika MID sudah ada hari ini
+            // Validasi jika MID sudah ada hari ini untuk jenis SO ini
             $exists = WspSohModel::where('barang_id', $barangId)
+                ->where('jenis_so', $jenisSo)
                 ->whereDate('created_at', $today)
                 ->exists();
 
             if ($exists) {
                 return response()->json([
                     'status' => false,
-                    'message' => "Data SOH untuk MID {$barang->mid_barang} sudah ada hari ini!"
+                    'message' => "Data SOH untuk MID {$barang->mid_barang} sudah ada {$periodeText}!"
                 ], 422);
             }
 
@@ -115,6 +155,7 @@ class WspStockOnHandController extends Controller
             $soh = WspSohModel::updateOrCreate(
                 [
                     'barang_id' => $barangId,
+                    'jenis_so'  => $jenisSo,
                     'created_at' => $today
                 ],
                 [
@@ -128,7 +169,9 @@ class WspStockOnHandController extends Controller
             );
 
             // Update summaries if there is a running opname today
-            $sop = WspSoModel::whereDate('tgl_opname', $today)->first();
+            $sop = WspSoModel::whereDate('tgl_opname', $today)
+                ->where('jenis_so', $jenisSo)
+                ->first();
             if ($sop) {
                 $summary = WspSoSummariesModel::where('so_id', $sop->id)
                     ->where('barang_id', $barangId)
@@ -169,6 +212,18 @@ class WspStockOnHandController extends Controller
     {
         $soh = WspSohModel::findOrFail($id);
 
+        $today = now()->toDateString();
+        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $soh->jenis_so)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+            ], 422);
+        }
+
         $request->validate([
             'unrest' => 'nullable|integer|min:0',
             'qi' => 'nullable|integer|min:0',
@@ -191,8 +246,9 @@ class WspStockOnHandController extends Controller
             ]);
 
             // Update live comparison if a session is currently running
-            $today = Carbon::today()->toDateString();
-            $sop = WspSoModel::whereDate('tgl_opname', $today)->first();
+            $sop = WspSoModel::whereDate('tgl_opname', $today)
+                ->where('jenis_so', $soh->jenis_so)
+                ->first();
 
             if ($sop) {
                 $summary = WspSoSummariesModel::where('so_id', $sop->id)
@@ -229,6 +285,19 @@ class WspStockOnHandController extends Controller
     public function destroy(string $id)
     {
         $soh = WspSohModel::findOrFail($id);
+
+        $today = now()->toDateString();
+        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $soh->jenis_so)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat menghapus data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+            ], 422);
+        }
+
         $soh->delete();
         return response()->json([
             'status' => true,
@@ -236,15 +305,29 @@ class WspStockOnHandController extends Controller
         ]);
     }
 
-    public function resetAll()
+    public function resetAll(Request $request)
     {
+        $today = now()->toDateString();
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
+        $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat mengosongkan data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+            ], 422);
+        }
+
         try {
-            $today = now()->toDateString();
-            $deleted = WspSohModel::whereDate('created_at', $today)->delete();
+            $deleted = WspSohModel::whereDate('created_at', $today)
+                ->where('jenis_so', $jenisSo)
+                ->delete();
 
             return response()->json([
                 'status' => true,
-                'message' => "Berhasil menghapus $deleted data SOH untuk hari ini."
+                'message' => "Berhasil menghapus $deleted data SOH untuk {$periodeText}."
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -257,8 +340,38 @@ class WspStockOnHandController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls'
+            'file' => 'required|mimes:xlsx,xls',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
+
+        $today = now()->toDateString();
+        $jenisSo = $request->input('jenis_so');
+        $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat mengunggah file Excel karena Stock Opname {$periodeText} telah selesai (finished)."
+            ], 422);
+        }
+
+        if ($jenisSo === 'monthly') {
+            $currentYear = now()->year;
+            $currentMonth = now()->month;
+            $hasMonthlySo = WspSoStatusModel::where('jenis_so', 'monthly')
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->whereDate('tgl_opname', '!=', $today)
+                ->exists();
+            if ($hasMonthlySo) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak dapat mengunggah file Excel karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
+                ], 422);
+            }
+        }
 
         try {
             $file = $request->file('file');
@@ -272,7 +385,6 @@ class WspStockOnHandController extends Controller
             $countSuccess = 0;
             $notFound = [];
             $validData = [];
-            $today = now()->toDateString();
 
             foreach ($rows as $index => $row) {
                 if ($index == 1) {
@@ -317,7 +429,7 @@ class WspStockOnHandController extends Controller
                 ], 422);
             }
 
-            // Validasi jika MID sama di hari ini dan sudah ada
+            // Validasi jika MID sama di hari ini dan sudah ada untuk jenis SO ini
             $duplicatesInDb = [];
             $seenCombinations = [];
             $duplicatesInFile = [];
@@ -335,6 +447,7 @@ class WspStockOnHandController extends Controller
 
                 // Check duplicates in database for today
                 $exists = WspSohModel::where('barang_id', $barang->id)
+                    ->where('jenis_so', $jenisSo)
                     ->whereDate('created_at', $today)
                     ->exists();
 
@@ -364,6 +477,7 @@ class WspStockOnHandController extends Controller
                 $soh = WspSohModel::updateOrCreate(
                     [
                         'barang_id' => $barang->id,
+                        'jenis_so'  => $jenisSo,
                         'created_at' => $today
                     ],
                     [
@@ -377,7 +491,9 @@ class WspStockOnHandController extends Controller
                 );
 
                 // Update summaries if there is a running opname today
-                $sop = WspSoModel::whereDate('tgl_opname', $today)->first();
+                $sop = WspSoModel::whereDate('tgl_opname', $today)
+                    ->where('jenis_so', $jenisSo)
+                    ->first();
                 if ($sop) {
                     $summary = WspSoSummariesModel::where('so_id', $sop->id)
                         ->where('barang_id', $barang->id)

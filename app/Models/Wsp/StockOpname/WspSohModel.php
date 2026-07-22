@@ -15,6 +15,7 @@ class WspSohModel extends Model
 
     protected $fillable = [
         'barang_id',
+        'jenis_so',
         'user_id',
         'qty_soh',
         'qty_unrest',

@@ -75,7 +75,15 @@
                                     value="{{ request('tgl_opname', now()->toDateString()) }}" required>
                             </div>
 
-                            <div class="col-lg-4 col-md-6">
+                            <div class="col-lg-3 col-md-6">
+                                <label for="jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                                <select id="jenis_so" name="jenis_so" class="form-select">
+                                    <option value="cycle_count" {{ request('jenis_so') === 'cycle_count' ? 'selected' : '' }}>Cycle Count (Daily)</option>
+                                    <option value="monthly" {{ request('jenis_so') === 'monthly' ? 'selected' : '' }}>Monthly SO</option>
+                                </select>
+                            </div>
+
+                            <div class="col-lg-3 col-md-6">
                                 <label for="searchReport" class="form-label fw-semibold">Cari MID / Nama Barang</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light">
@@ -86,7 +94,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-lg-5">
+                            <div class="col-lg-3 col-md-12">
                                 <div class="d-flex flex-wrap gap-2">
                                     <button type="submit" class="btn btn-primary">
                                         <i class="mdi mdi-magnify me-1"></i>
@@ -353,10 +361,62 @@
                 toastr.error("{{ session('error') }}", "Peringatan!");
             @endif
 
+            $('#jenis_so').on('change', function() {
+                const type = $(this).val();
+                const dateInput = $('#tgl_opname');
+                const approvalTab = $('#approval-tab').parent(); // select the li parent
+                const btnExportPdf = $('#btnExportPdf');
+
+                let val = dateInput.val();
+
+                if (type === 'monthly') {
+                    dateInput.attr('type', 'month');
+                    if (val) {
+                        if (val.length === 10) {
+                            dateInput.val(val.substring(0, 7));
+                        } else {
+                            dateInput.val(val);
+                        }
+                    } else {
+                        const today = new Date();
+                        const month = String(today.getMonth() + 1).padStart(2, '0');
+                        dateInput.val(`${today.getFullYear()}-${month}`);
+                    }
+                    approvalTab.removeClass('d-none');
+                    btnExportPdf.removeClass('d-none');
+                } else {
+                    dateInput.attr('type', 'date');
+                    const today = new Date();
+                    const day = String(today.getDate()).padStart(2, '0');
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const todayStr = `${today.getFullYear()}-${month}-${day}`;
+                    if (val && val.length === 10) {
+                        dateInput.val(val);
+                    } else {
+                        dateInput.val(todayStr);
+                    }
+                    approvalTab.addClass('d-none');
+                    btnExportPdf.addClass('d-none');
+
+                    // If the active tab was approval tab, switch back to data tab
+                    if ($('#approval-tab').hasClass('active')) {
+                        var triggerEl = document.querySelector('#reportTabs button[id="data-tab"]');
+                        if (triggerEl) {
+                            var tab = bootstrap.Tab.getInstance(triggerEl) || new bootstrap.Tab(triggerEl);
+                            tab.show();
+                        }
+                    }
+                }
+                loadReport();
+            });
+
+            // Trigger change on load to configure inputs and load report
+            $('#jenis_so').trigger('change');
+
             // Automatically pull report for today on load
             loadReport();
 
-            $('#formFilterReport').on('submit', function(e) {
+            $('#formFilterReport').on('change', function(e) {
                 e.preventDefault();
                 loadReport();
             });
@@ -369,7 +429,8 @@
                     return;
                 }
 
-                const url = `{{ route('wsp.stock_opname.export') }}?tgl_opname=${date}`;
+                const jenisSo = $('#jenis_so').val();
+                const url = `{{ route('wsp.stock_opname.export') }}?tgl_opname=${date}&jenis_so=${jenisSo}`;
                 window.open(url, '_blank');
             });
 
@@ -444,6 +505,7 @@
         function loadReport() {
             const tableBody = $('#tableReportList tbody');
             const date = $('#tgl_opname').val();
+            const jenisSo = $('#jenis_so').val();
 
             if (!date) return;
 
@@ -460,7 +522,8 @@
                 url: "{{ route('wsp.stock_opname.report.getData') }}",
                 type: "GET",
                 data: {
-                    tgl_opname: date
+                    tgl_opname: date,
+                    jenis_so: jenisSo
                 },
                 success: function(res) {
                     tableBody.empty();
@@ -488,6 +551,7 @@
                             }
 
                             const isDraft = res.sop && res.sop.status === 'draft';
+                            const jenisSo = res.jenis_so || 'cycle_count';
                             const isSpv = res.sop && res.sop.user_id == {{ Auth::user()->id }};
 
                             tableBody.append(`  
