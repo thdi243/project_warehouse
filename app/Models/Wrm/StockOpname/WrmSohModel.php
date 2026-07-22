@@ -15,8 +15,11 @@ class WrmSohModel extends Model
 
     protected $fillable = [
         'barang_id',
+        'jenis_so',
         'user_id',
+        'jenis_data',
         'no_spb',
+        'pallet',
         'qty_soh',
         'qty_unrest',
         'qty_qi',

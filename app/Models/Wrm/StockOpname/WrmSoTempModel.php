@@ -17,6 +17,7 @@ class WrmSoTempModel extends Model
         'soh_id',
         'barang_id',
         'no_spb',
+        'pallet',
         'qty_full',
         'qty_receh',
         'summary',

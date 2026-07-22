@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Wrm\StockOpname;
 
 use App\Http\Controllers\Controller;
+use App\Models\Wrm\Inventory\StockInboundDetail;
+use App\Models\Wrm\Inventory\StockOnHand;
+use App\Models\Wrm\Inventory\StockOutboundDetail;
+use App\Models\Wrm\MasterBarangModel;
 use App\Models\Wrm\StockOpname\WrmSohModel;
 use App\Models\Wrm\StockOpname\WrmSoModel;
+use App\Models\Wrm\StockOpname\WrmSoStatusModel;
 use App\Models\Wrm\StockOpname\WrmSoSummariesModel;
-use App\Models\Wrm\Inventory\StockOnHand;
-use App\Models\Wrm\MasterBarangModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +25,7 @@ class WrmStockOnHandController extends Controller
     public function getList(Request $request)
     {
         $searchTerm = $request->input('search');
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
         $perPage = 100;
         $today = now()->toDateString();
 
@@ -30,7 +34,8 @@ class WrmStockOnHandController extends Controller
             ->leftJoin('wrm_master_barang', 'wrm_soh.barang_id', '=', 'wrm_master_barang.id')
             ->leftJoin('users', 'wrm_soh.user_id', '=', 'users.id');
 
-        $query->whereDate('wrm_soh.created_at', $today);
+        $query->whereDate('wrm_soh.created_at', $today)
+            ->where('wrm_soh.jenis_so', $jenisSo);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
@@ -47,12 +52,42 @@ class WrmStockOnHandController extends Controller
 
         $data = $query->orderBy('wrm_soh.id', 'desc')->paginate($perPage);
 
-        return response()->json($data);
+        $soStatus = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        $isFinished = $soStatus && $soStatus->status === 'finished';
+
+        $responseData = $data->toArray();
+        $responseData['is_finished'] = $isFinished;
+
+        return response()->json($responseData);
     }
 
-    public function getBarang()
+    public function getBarang(Request $request)
     {
-        $barang = MasterBarangModel::select('id', 'mid', 'nama_barang', 'uom', 'qty_kg')->get();
+        $tanggal = $request->input('tanggal');
+        $jenisData = $request->input('jenis_data');
+
+        if ($tanggal && $jenisData) {
+            if ($jenisData === 'inbound') {
+                $barangIds = StockInboundDetail::whereHas('inbound', function ($q) use ($tanggal) {
+                    $q->whereDate('incoming_date', $tanggal);
+                })
+                    ->distinct()
+                    ->pluck('barang_id');
+            } else {
+                $barangIds = StockOutboundDetail::whereHas('outbound', function ($q) use ($tanggal) {
+                    $q->whereDate('reservasi_date', $tanggal)
+                        ->where('status_transfer', 'COMPLETED');
+                })
+                    ->distinct()
+                    ->pluck('barang_id');
+            }
+
+            $barang = MasterBarangModel::whereIn('id', $barangIds)->select('id', 'mid', 'nama_barang', 'uom', 'qty_kg')->get();
+        } else {
+            $barang = MasterBarangModel::select('id', 'mid', 'nama_barang', 'uom', 'qty_kg')->get();
+        }
 
         return response()->json([
             'status' => 'success',
@@ -64,31 +99,197 @@ class WrmStockOnHandController extends Controller
     {
         $barangId = $request->input('barang_id');
         $mid = $request->input('mid');
+        $tanggal = $request->input('tanggal');
+        $jenisData = $request->input('jenis_data');
 
-        $query = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
+        if ($tanggal && $jenisData && ($barangId || $mid)) {
+            if (!$barangId && $mid) {
+                $barang = MasterBarangModel::where('mid', $mid)->first();
+                $barangId = $barang?->id;
+            }
 
-        if ($barangId) {
-            $query->where('barang_id', $barangId);
-        } elseif ($mid) {
-            $query->whereHas('barang', function ($q) use ($mid) {
-                $q->where('mid', $mid);
-            });
+            if ($jenisData === 'inbound') {
+                $query = StockInboundDetail::whereHas('inbound', function ($q) use ($tanggal) {
+                    $q->whereDate('incoming_date', $tanggal);
+                });
+
+                if (is_array($barangId)) {
+                    $query->whereIn('barang_id', $barangId);
+                } else {
+                    $query->where('barang_id', $barangId);
+                }
+
+                $spbList = $query->join('wrm_stock_inbound', 'wrm_stock_inbound.id', '=', 'wrm_stock_inbound_details.inbound_id')
+                    ->distinct()
+                    ->orderBy('wrm_stock_inbound.no_spb', 'asc')
+                    ->pluck('wrm_stock_inbound.no_spb');
+            } else {
+                $query = StockOutboundDetail::whereHas('outbound', function ($q) use ($tanggal) {
+                    $q->whereDate('reservasi_date', $tanggal)
+                        ->where('status_transfer', 'COMPLETED');
+                });
+
+                if (is_array($barangId)) {
+                    $query->whereIn('barang_id', $barangId);
+                } else {
+                    $query->where('barang_id', $barangId);
+                }
+
+                $spbList = $query->whereNotNull('no_spb')
+                    ->where('no_spb', '!=', '')
+                    ->distinct()
+                    ->orderBy('no_spb', 'asc')
+                    ->pluck('no_spb');
+            }
         } else {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Material ID / Barang ID diperlukan.'
-            ], 422);
-        }
+            $query = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING']);
 
-        $spbList = $query->whereNotNull('no_spb')
-            ->where('no_spb', '!=', '')
-            ->distinct()
-            ->orderBy('no_spb', 'asc')
-            ->pluck('no_spb');
+            if ($barangId) {
+                $query->where('barang_id', $barangId);
+            } elseif ($mid) {
+                $query->whereHas('barang', function ($q) use ($mid) {
+                    $q->where('mid', $mid);
+                });
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Material ID / Barang ID diperlukan.'
+                ], 422);
+            }
+
+            $spbList = $query->whereNotNull('no_spb')
+                ->where('no_spb', '!=', '')
+                ->distinct()
+                ->orderBy('no_spb', 'asc')
+                ->pluck('no_spb');
+        }
 
         return response()->json([
             'status' => 'success',
             'data' => $spbList
+        ]);
+    }
+
+    public function getPalletList(Request $request)
+    {
+        $barangId = $request->input('barang_id');
+        $noSpb = $request->input('no_spb');
+        $tanggal = $request->input('tanggal');
+        $jenisData = $request->input('jenis_data');
+
+        if ($tanggal && $jenisData && $barangId && $noSpb) {
+            if ($jenisData === 'inbound') {
+                $query = StockInboundDetail::with('inbound:id,no_spb')
+                    ->whereHas('inbound', function ($q) use ($tanggal, $noSpb) {
+                        $q->whereDate('incoming_date', $tanggal);
+                        if (is_array($noSpb)) {
+                            $q->whereIn('no_spb', $noSpb);
+                        } else {
+                            $q->where('no_spb', $noSpb);
+                        }
+                    });
+
+                if (is_array($barangId)) {
+                    $query->whereIn('barang_id', $barangId);
+                } else {
+                    $query->where('barang_id', $barangId);
+                }
+
+                $palletList = $query->whereNotNull('pallet_id')
+                    ->where('pallet_id', '!=', '')
+                    ->get(['id', 'pallet_id', 'inbound_id'])
+                    ->map(fn($d) => [
+                        'no_spb'    => $d->inbound->no_spb ?? '-',
+                        'pallet_id' => $d->pallet_id,
+                    ])
+                    ->unique(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
+                    ->sortBy(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
+                    ->values();
+            } else {
+                $query = StockOutboundDetail::whereHas('outbound', function ($q) use ($tanggal) {
+                    $q->whereDate('reservasi_date', $tanggal)
+                        ->where('status_transfer', 'COMPLETED');
+                });
+
+                if (is_array($barangId)) {
+                    $query->whereIn('barang_id', $barangId);
+                } else {
+                    $query->where('barang_id', $barangId);
+                }
+
+                if (is_array($noSpb)) {
+                    $query->whereIn('no_spb', $noSpb);
+                } else {
+                    $query->where('no_spb', $noSpb);
+                }
+
+                $palletList = $query->whereNotNull('pallet_id')
+                    ->where('pallet_id', '!=', '')
+                    ->get(['no_spb', 'pallet_id'])
+                    ->map(fn($d) => [
+                        'no_spb'    => $d->no_spb,
+                        'pallet_id' => $d->pallet_id,
+                    ])
+                    ->unique(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
+                    ->sortBy(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
+                    ->values();
+            }
+        } else {
+            $palletList = [];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $palletList
+        ]);
+    }
+
+    public function getPalletQty(Request $request)
+    {
+        $barangId = $request->input('barang_id');
+        $noSpb = $request->input('no_spb');
+        $pallet_id = $request->input('pallet_id');
+        $tanggal = $request->input('tanggal');
+        $jenisData = $request->input('jenis_data');
+
+        $qty = 0;
+        $status = 'UNREST';
+
+        if ($tanggal && $jenisData && $barangId && $noSpb && $pallet_id) {
+            if ($jenisData === 'inbound') {
+                $detail = StockInboundDetail::whereHas('inbound', function ($q) use ($tanggal, $noSpb) {
+                    $q->whereDate('incoming_date', $tanggal)
+                        ->where('no_spb', $noSpb);
+                })
+                    ->where('barang_id', $barangId)
+                    ->where('pallet_id', $pallet_id)
+                    ->first();
+
+                if ($detail) {
+                    $qty = $detail->qty;
+                    $status = $detail->status;
+                }
+            } else {
+                $detail = StockOutboundDetail::whereHas('outbound', function ($q) use ($tanggal) {
+                    $q->whereDate('reservasi_date', $tanggal)
+                        ->where('status_transfer', 'COMPLETED');
+                })
+                    ->where('barang_id', $barangId)
+                    ->where('no_spb', $noSpb)
+                    ->where('pallet_id', $pallet_id)
+                    ->first();
+
+                if ($detail) {
+                    $qty = $detail->qty;
+                    $status = $detail->status;
+                }
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'qty' => $qty,
+            'status_stock' => $status
         ]);
     }
 
@@ -112,63 +313,192 @@ class WrmStockOnHandController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'barang_id' => 'required|exists:wrm_master_barang,id',
-            'no_spb' => 'required|array',
-            'no_spb.*' => 'nullable|string'
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
 
-        try {
-            $today = now()->toDateString();
-            $barangId = $request->barang_id;
-            $spbs = $request->no_spb;
+        $today = now()->toDateString();
+        $jenisSo = $request->jenis_so;
+        $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat memproses SOH karena Stock Opname {$periodeText} telah selesai (finished)."
+            ], 422);
+        }
 
-            // Validasi jika MID dan no_spb sama di hari ini dan sudah ada
-            $barang = MasterBarangModel::findOrFail($barangId);
-            $duplicateSpbs = [];
-            foreach ($spbs as $spb) {
-                if (empty($spb)) continue;
-
-                $exists = WrmSohModel::where('barang_id', $barangId)
-                    ->where('no_spb', $spb)
-                    ->whereDate('created_at', $today)
-                    ->exists();
-
-                if ($exists) {
-                    $duplicateSpbs[] = $spb;
-                }
-            }
-
-            if (!empty($duplicateSpbs)) {
+        if ($jenisSo === 'monthly') {
+            $currentYear = now()->year;
+            $currentMonth = now()->month;
+            $hasMonthlySo = WrmSoStatusModel::where('jenis_so', 'monthly')
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->whereDate('tgl_opname', '!=', $today)
+                ->exists();
+            if ($hasMonthlySo) {
                 return response()->json([
                     'status' => false,
-                    'message' => "Data SOH untuk MID {$barang->mid} dengan No SPB (" . implode(', ', $duplicateSpbs) . ") sudah ada hari ini!"
+                    'message' => 'Tidak dapat memproses SOH karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
                 ], 422);
             }
+        }
 
+        if ($request->has('tanggal') && $request->has('jenis_data') && $request->has('barang_id') && $request->has('no_spb')) {
+            $tanggal   = $request->input('tanggal');
+            $jenisData = $request->input('jenis_data');
+            $barangId  = $request->input('barang_id');
+            $noSpb     = $request->input('no_spb');
+            $palletId  = $request->input('pallet_id'); // may be array or null
+
+            if ($jenisData === 'inbound') {
+                $query = StockInboundDetail::whereHas('inbound', function ($q) use ($tanggal, $noSpb) {
+                    $q->whereDate('incoming_date', $tanggal);
+                    if (is_array($noSpb)) {
+                        $q->whereIn('no_spb', $noSpb);
+                    } else {
+                        $q->where('no_spb', $noSpb);
+                    }
+                });
+
+                if (is_array($barangId)) {
+                    $query->whereIn('barang_id', $barangId);
+                } else {
+                    $query->where('barang_id', $barangId);
+                }
+
+                // Filter by selected pallets if provided
+                if (!empty($palletId)) {
+                    $palletId = is_array($palletId) ? $palletId : [$palletId];
+                    $query->whereIn('pallet_id', $palletId);
+                }
+
+                $details = $query->get();
+
+                $items = $details->map(function ($d) {
+                    return [
+                        'barang_id' => $d->barang_id,
+                        'no_spb'    => $d->inbound->no_spb ?? '-',
+                        'pallet_id' => $d->pallet_id ?? '-',
+                        'qty'       => $d->qty,
+                        'status'    => $d->status
+                    ];
+                })->toArray();
+            } else {
+                $query = StockOutboundDetail::whereHas('outbound', function ($q) use ($tanggal) {
+                    $q->whereDate('reservasi_date', $tanggal)
+                        ->where('status_transfer', 'COMPLETED');
+                });
+
+                if (is_array($barangId)) {
+                    $query->whereIn('barang_id', $barangId);
+                } else {
+                    $query->where('barang_id', $barangId);
+                }
+
+                if (is_array($noSpb)) {
+                    $query->whereIn('no_spb', $noSpb);
+                } else {
+                    $query->where('no_spb', $noSpb);
+                }
+
+                // Filter by selected pallets if provided
+                if (!empty($palletId)) {
+                    $palletId = is_array($palletId) ? $palletId : [$palletId];
+                    $query->whereIn('pallet_id', $palletId);
+                }
+
+                $details = $query->get();
+
+                $items = $details->map(function ($d) {
+                    return [
+                        'barang_id' => $d->barang_id,
+                        'no_spb'    => $d->no_spb ?? '-',
+                        'pallet_id' => $d->pallet_id ?? '-',
+                        'qty'       => $d->qty,
+                        'status'    => $d->status
+                    ];
+                })->toArray();
+            }
+
+            if (empty($items)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak ada data detail transaksi komplit untuk kombinasi Barang dan SPB terpilih pada tanggal tersebut.'
+                ], 422);
+            }
+        } else {
+            $request->validate([
+                'items' => 'required|array',
+                'items.*.barang_id' => 'required|exists:wrm_master_barang,id',
+                'items.*.no_spb' => 'nullable|string',
+                'items.*.pallet_id' => 'nullable|string',
+                'items.*.qty' => 'required|numeric|min:0',
+                'items.*.status' => 'required|string',
+            ]);
+            $items = $request->items;
+        }
+
+        // Validasi existing (barang, spb, pallet, jenis_so, today)
+        $existingItems = [];
+        foreach ($items as $item) {
+            $bId = $item['barang_id'];
+            $spb = $item['no_spb'];
+            $pallet = $item['pallet_id'];
+
+            $exists = WrmSohModel::where('barang_id', $bId)
+                ->where('no_spb', $spb)
+                ->where('pallet', $pallet)
+                ->where('jenis_so', $jenisSo)
+                ->where('jenis_data', $jenisData)
+                ->whereDate('created_at', $today)
+                ->exists();
+
+            if ($exists) {
+                $barang = MasterBarangModel::find($bId);
+                $mid = $barang ? $barang->mid : $bId;
+                $existingItems[] = "Barang: {$mid}, SPB: {$spb}, Pallet: {$pallet}";
+            }
+        }
+
+        if (!empty($existingItems)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Data SOH berikut sudah terdaftar untuk hari ini'
+            ], 422);
+        }
+
+        try {
             DB::beginTransaction();
 
             $createdCount = 0;
             $updatedCount = 0;
 
-            foreach ($spbs as $spb) {
-                if (empty($spb)) continue;
+            foreach ($items as $item) {
+                $barangId = $item['barang_id'];
+                $noSpb = $item['no_spb'];
+                $pallet = $item['pallet_id'];
+                $qty = (float)$item['qty'];
+                $status = strtoupper($item['status']);
 
-                // Fetch actual stock from wrm_stock_on_hand
-                $stockQuery = StockOnHand::where('barang_id', $barangId)
-                    ->where('no_spb', $spb)
-                    ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
-                    ->get();
+                $unrest = $status === 'UNREST' ? $qty : 0;
+                $qi     = $status === 'QI' ? $qty : 0;
+                $block  = $status === 'BLOCKED' ? $qty : 0;
 
-                $unrest = (int)$stockQuery->where('status', 'UNREST')->sum('qty');
-                $qi     = (int)$stockQuery->where('status', 'QI')->sum('qty');
-                $block  = (int)$stockQuery->where('status', 'BLOCKED')->sum('qty');
+                if (!in_array($status, ['UNREST', 'QI', 'BLOCKED'])) {
+                    $unrest = $qty;
+                }
+
                 $qty_soh = $unrest + $qi + $block;
 
-                // Check if already exists for today. Update if exists, or create new.
                 $soh = WrmSohModel::updateOrCreate(
                     [
                         'barang_id' => $barangId,
-                        'no_spb' => $spb,
+                        'jenis_data' => $jenisData,
+                        'no_spb'    => $noSpb,
+                        'pallet'    => $pallet,
+                        'jenis_so'  => $jenisSo,
                         'created_at' => $today
                     ],
                     [
@@ -188,23 +518,26 @@ class WrmStockOnHandController extends Controller
                 }
 
                 // Update summaries if there is a running opname today
-                $sop = WrmSoModel::whereDate('tgl_opname', $today)->first();
+                $sop = WrmSoModel::whereDate('tgl_opname', $today)
+                    ->where('jenis_so', $jenisSo)
+                    ->first();
                 if ($sop) {
                     $summary = WrmSoSummariesModel::where('so_id', $sop->id)
                         ->where('barang_id', $barangId)
-                        ->where('no_spb', $spb)
+                        ->where('no_spb', $noSpb)
+                        ->where('pallet', $pallet)
                         ->first();
 
                     if ($summary) {
                         $qtySistem = $qty_soh;
                         $qtyFisik  = $summary->qty_fisik ?? 0;
                         $selisih   = $qtyFisik - $qtySistem;
-                        $status    = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
+                        $summaryStatus = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
 
                         $summary->update([
                             'qty_sistem' => $qtySistem,
                             'selisih'    => $selisih,
-                            'status'     => $status,
+                            'status'     => $summaryStatus,
                         ]);
                     }
                 }
@@ -228,19 +561,34 @@ class WrmStockOnHandController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $soh = WrmSohModel::findOrFail($id);
+
+        $today = now()->toDateString();
+        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $soh->jenis_so)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+            ], 422);
+        }
+
         $request->validate([
             'unrest' => 'nullable|integer|min:0',
             'qi' => 'nullable|integer|min:0',
             'block' => 'nullable|integer|min:0',
             'no_spb' => 'nullable|string',
+            'pallet' => 'nullable|string',
         ]);
 
         try {
-            $soh = WrmSohModel::findOrFail($id);
-
-            // Validasi jika MID dan no_spb sama di hari ini dan sudah ada (selain record ini)
+            // Validasi jika MID, no_spb, dan pallet sama di hari ini dan sudah ada (selain record ini) untuk jenis SO ini
             $exists = WrmSohModel::where('barang_id', $soh->barang_id)
                 ->where('no_spb', $request->no_spb)
+                ->where('pallet', $request->pallet)
+                ->where('jenis_so', $soh->jenis_so)
                 ->whereDate('created_at', $soh->created_at)
                 ->where('id', '!=', $soh->id)
                 ->exists();
@@ -249,7 +597,7 @@ class WrmStockOnHandController extends Controller
                 $barang = MasterBarangModel::find($soh->barang_id);
                 return response()->json([
                     'status' => false,
-                    'message' => "Data SOH untuk MID {$barang->mid} dengan No SPB {$request->no_spb} sudah ada hari ini!"
+                    'message' => "Data SOH untuk MID {$barang->mid} dengan No SPB {$request->no_spb} dan Pallet {$request->pallet} sudah ada {$periodeText} untuk jenis SO ini!"
                 ], 422);
             }
 
@@ -260,6 +608,7 @@ class WrmStockOnHandController extends Controller
 
             $soh->update([
                 'no_spb' => $request->no_spb,
+                'pallet' => $request->pallet,
                 'qty_soh' => $qty_soh,
                 'qty_unrest' => $unrest,
                 'qty_qi' => $qi,
@@ -269,20 +618,22 @@ class WrmStockOnHandController extends Controller
             ]);
 
             // Update live comparison if a session is currently running
-            $today = Carbon::today()->toDateString();
-            $sop = WrmSoModel::whereDate('tgl_opname', $today)->first();
+            $sop = WrmSoModel::whereDate('tgl_opname', $today)
+                ->where('jenis_so', $soh->jenis_so)
+                ->first();
 
             if ($sop) {
                 $summary = WrmSoSummariesModel::where('so_id', $sop->id)
                     ->where('barang_id', $soh->barang_id)
                     ->where('no_spb', $soh->no_spb)
+                    ->where('pallet', $soh->pallet)
                     ->first();
 
                 if ($summary) {
                     $qtySistem = $qty_soh;
-                    $qtyFisik = $summary->qty_fisik ?? 0;
-                    $selisih = $qtyFisik - $qtySistem;
-                    $status = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
+                    $qtyFisik  = $summary->qty_fisik ?? 0;
+                    $selisih   = $qtyFisik - $qtySistem;
+                    $status    = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
 
                     $summary->update([
                         'qty_sistem' => $qtySistem,
@@ -305,9 +656,80 @@ class WrmStockOnHandController extends Controller
         }
     }
 
+    public function fetchSourceDetails(Request $request)
+    {
+        $request->validate([
+            'tanggal' => 'required|date',
+            'jenis_data' => 'required|string|in:inbound,outbound',
+        ]);
+
+        $date = $request->tanggal;
+        $jenisData = $request->jenis_data;
+
+        if ($jenisData === 'inbound') {
+            $details = \App\Models\Wrm\Inventory\StockInboundDetail::whereHas('inbound', function ($q) use ($date) {
+                $q->whereDate('incoming_date', $date);
+            })
+                ->where('status', 'COMPLETED')
+                ->with(['barang', 'inbound'])
+                ->get();
+
+            $result = $details->map(function ($d) {
+                $noSpb = $d->inbound->no_spb ?? '-';
+                return [
+                    'barang_id' => $d->barang_id,
+                    'mid' => $d->barang->mid ?? '-',
+                    'nama_barang' => $d->barang->nama_barang ?? '-',
+                    'no_spb' => $noSpb,
+                    'pallet' => $d->pallet ?? '-',
+                    'qty' => $d->qty,
+                    'status' => $d->status,
+                ];
+            });
+        } else {
+            $details = \App\Models\Wrm\Inventory\StockOutboundDetail::whereHas('outbound', function ($q) use ($date) {
+                $q->whereDate('reservasi_date', $date)
+                    ->where('status_transfer', 'COMPLETED');
+            })
+                ->with(['barang', 'outbound'])
+                ->get();
+
+            $result = $details->map(function ($d) {
+                return [
+                    'barang_id' => $d->barang_id,
+                    'mid' => $d->barang->mid ?? '-',
+                    'nama_barang' => $d->barang->nama_barang ?? '-',
+                    'no_spb' => $d->no_spb ?? '-',
+                    'pallet' => $d->pallet ?? '-',
+                    'qty' => $d->qty,
+                    'status' => $d->status,
+                ];
+            });
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $result
+        ]);
+    }
+
+
     public function destroy(string $id)
     {
         $soh = WrmSohModel::findOrFail($id);
+
+        $today = now()->toDateString();
+        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $soh->jenis_so)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat menghapus data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+            ], 422);
+        }
+
         $soh->delete();
         return response()->json([
             'status' => true,
@@ -315,15 +737,29 @@ class WrmStockOnHandController extends Controller
         ]);
     }
 
-    public function resetAll()
+    public function resetAll(Request $request)
     {
+        $today = now()->toDateString();
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
+        $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat mengosongkan data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+            ], 422);
+        }
+
         try {
-            $today = now()->toDateString();
-            $deleted = WrmSohModel::whereDate('created_at', $today)->delete();
+            $deleted = WrmSohModel::whereDate('created_at', $today)
+                ->where('jenis_so', $jenisSo)
+                ->delete();
 
             return response()->json([
                 'status' => true,
-                'message' => "Berhasil menghapus $deleted data SOH untuk hari ini."
+                'message' => "Berhasil menghapus $deleted data SOH untuk {$periodeText}."
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -336,8 +772,38 @@ class WrmStockOnHandController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls'
+            'file' => 'required|mimes:xlsx,xls',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
+
+        $today = now()->toDateString();
+        $jenisSo = $request->input('jenis_so');
+        $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+        $soStatus = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
+        if ($soStatus && $soStatus->status === 'finished') {
+            return response()->json([
+                'status' => false,
+                'message' => "Tidak dapat mengunggah file Excel karena Stock Opname {$periodeText} telah selesai (finished)."
+            ], 422);
+        }
+
+        if ($jenisSo === 'monthly') {
+            $currentYear = now()->year;
+            $currentMonth = now()->month;
+            $hasMonthlySo = WrmSoStatusModel::where('jenis_so', 'monthly')
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->whereDate('tgl_opname', '!=', $today)
+                ->exists();
+            if ($hasMonthlySo) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak dapat mengunggah file Excel karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
+                ], 422);
+            }
+        }
 
         try {
             $file = $request->file('file');
@@ -351,12 +817,11 @@ class WrmStockOnHandController extends Controller
             $countSuccess = 0;
             $notFound = [];
             $validData = [];
-            $today = now()->toDateString();
 
             foreach ($rows as $index => $row) {
                 if ($index == 1) {
                     $header = array_map(fn($h) => strtolower(trim($h)), $row);
-                    $requiredHeaders = ['mid_barang', 'no_spb', 'unrest', 'qual_insp', 'blocked'];
+                    $requiredHeaders = ['mid_barang', 'no_spb', 'pallet_id', 'unrest', 'qual_insp', 'blocked'];
                     $missing = array_diff($requiredHeaders, $header);
 
                     if (!empty($missing)) {
@@ -396,7 +861,7 @@ class WrmStockOnHandController extends Controller
                 ], 422);
             }
 
-            // Validasi jika MID dan no_spb sama di hari ini dan sudah ada
+            // Validasi jika MID, no_spb dan pallet sama di hari ini dan sudah ada untuk jenis SO ini
             $duplicatesInDb = [];
             $seenCombinations = [];
             $duplicatesInFile = [];
@@ -406,11 +871,12 @@ class WrmStockOnHandController extends Controller
                 $data = $item['data'];
 
                 $noSpb = empty($data['no_spb']) ? null : (string)$data['no_spb'];
-                $combinationKey = $barang->mid . '-' . $noSpb;
+                $pallet = isset($data['pallet_id']) ? (string)$data['pallet_id'] : null;
+                $combinationKey = $barang->mid . '-' . $noSpb . '-' . $pallet;
 
                 // Check duplicates in file
                 if (in_array($combinationKey, $seenCombinations)) {
-                    $duplicatesInFile[] = "MID: {$barang->mid}, SPB: " . ($noSpb ?? '-');
+                    $duplicatesInFile[] = "MID: {$barang->mid}, SPB: " . ($noSpb ?? '-') . ", Pallet: " . ($pallet ?? '-');
                 } else {
                     $seenCombinations[] = $combinationKey;
                 }
@@ -418,11 +884,13 @@ class WrmStockOnHandController extends Controller
                 // Check duplicates in database for today
                 $exists = WrmSohModel::where('barang_id', $barang->id)
                     ->where('no_spb', $noSpb)
+                    ->where('pallet', $pallet)
+                    ->where('jenis_so', $jenisSo)
                     ->whereDate('created_at', $today)
                     ->exists();
 
                 if ($exists) {
-                    $duplicatesInDb[] = "MID: {$barang->mid}, SPB: " . ($noSpb ?? '-');
+                    $duplicatesInDb[] = "MID: {$barang->mid}, SPB: " . ($noSpb ?? '-') . ", Pallet: " . ($pallet ?? '-');
                 }
             }
 
@@ -430,7 +898,7 @@ class WrmStockOnHandController extends Controller
                 $allDuplicates = array_unique(array_merge($duplicatesInFile, $duplicatesInDb));
                 return response()->json([
                     'status' => false,
-                    'message' => 'Terdapat duplikasi data MID dan No SPB untuk hari ini: ' . implode('; ', $allDuplicates),
+                    'message' => 'Terdapat duplikasi data MID, No SPB, dan Pallet untuk hari ini: ' . implode('; ', $allDuplicates),
                     'duplicates' => $allDuplicates
                 ], 422);
             }
@@ -439,7 +907,8 @@ class WrmStockOnHandController extends Controller
                 $barang = $item['barang'];
                 $data = $item['data'];
 
-                $noSpb = empty($data['no_spb']) ? null : (int)$data['no_spb'];
+                $noSpb = empty($data['no_spb']) ? null : (string)$data['no_spb'];
+                $pallet = isset($data['pallet_id']) ? (string)$data['pallet_id'] : null;
                 $unrest = (int)($data['unrest'] ?? 0);
                 $qual_insp = (int)($data['qual_insp'] ?? 0);
                 $blocked = (int)($data['blocked'] ?? 0);
@@ -449,7 +918,9 @@ class WrmStockOnHandController extends Controller
                 $soh = WrmSohModel::updateOrCreate(
                     [
                         'barang_id' => $barang->id,
-                        'no_spb' => $noSpb,
+                        'no_spb'    => $noSpb,
+                        'pallet'    => $pallet,
+                        'jenis_so'  => $jenisSo,
                         'created_at' => $today
                     ],
                     [
@@ -463,11 +934,14 @@ class WrmStockOnHandController extends Controller
                 );
 
                 // Update summaries if there is a running opname today
-                $sop = WrmSoModel::whereDate('tgl_opname', $today)->first();
+                $sop = WrmSoModel::whereDate('tgl_opname', $today)
+                    ->where('jenis_so', $jenisSo)
+                    ->first();
                 if ($sop) {
                     $summary = WrmSoSummariesModel::where('so_id', $sop->id)
                         ->where('barang_id', $barang->id)
                         ->where('no_spb', $noSpb)
+                        ->where('pallet', $pallet)
                         ->first();
 
                     if ($summary) {
@@ -507,6 +981,7 @@ class WrmStockOnHandController extends Controller
         $headers = [
             'mid_barang',
             'no_spb',
+            'pallet_id',
             'unrest',
             'qual_insp',
             'blocked',
@@ -521,13 +996,14 @@ class WrmStockOnHandController extends Controller
         }
 
         // Sample data
-        $sheet->setCellValue('A2', '1200001'); // Sample MID
-        $sheet->setCellValue('B2', '300050123'); // Sample SPB
-        $sheet->setCellValue('C2', 500); // Unrest
-        $sheet->setCellValue('D2', 0); // QI
-        $sheet->setCellValue('E2', 0); // Blocked
+        $sheet->setCellValue('A2', '20000812'); // Sample MID
+        $sheet->setCellValue('B2', '9000007673'); // Sample SPB
+        $sheet->setCellValue('C2', '1'); // Sample Pallet
+        $sheet->setCellValue('D2', 500); // Unrest
+        $sheet->setCellValue('E2', 0); // QI
+        $sheet->setCellValue('F2', 0); // Blocked
 
-        $fileName = 'Template_Stock_On_Hand_WRM_' . date('Y-m-d') . '.xlsx';
+        $fileName = 'Template_SO_WRM_' . date('Y-m-d') . '.xlsx';
 
         return new StreamedResponse(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);

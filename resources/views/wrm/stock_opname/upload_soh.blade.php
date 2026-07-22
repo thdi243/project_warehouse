@@ -85,6 +85,31 @@
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: 36px;
         }
+
+        /* Custom dropdown styles */
+        .custom-filter-dropdown .dropdown-toggle {
+            border-radius: 0.25rem;
+            padding: 0.47rem 0.75rem;
+            font-size: 0.875rem;
+            box-shadow: 0 0 0 0 !important;
+            background-color: var(--vz-input-bg) !important;
+            border: 1px solid var(--vz-border-color) !important;
+            color: var(--vz-body-color) !important;
+            min-height: calc(1.5em + .94rem + 2px);
+        }
+
+        .custom-filter-dropdown .dropdown-menu {
+            border-radius: 0.4rem;
+            font-size: 0.875rem;
+        }
+
+        .custom-filter-dropdown .option-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .custom-filter-dropdown .options-list {
+            padding-right: 5px;
+        }
     </style>
 @endsection
 
@@ -120,23 +145,30 @@
                                 </form>
                             </div>
 
-                             @if ($barangCount > 0)
-                                <div class="col-lg-6 col-md-12 d-flex gap-2 justify-content-lg-end">
-                                    <button class="btn btn-success px-4 w-100" data-bs-toggle="modal"
-                                        data-bs-target="#uploadModal">
-                                        <i class="mdi mdi-upload me-1"></i> Upload Excel
-                                    </button>
-                                    <button class="btn btn-primary px-4 w-100" onclick="openAddSOH()">
-                                        <i class="mdi mdi-plus-circle-outline me-1"></i> Tambah Manual
-                                    </button>
-                                    <button class="btn btn-danger px-4 w-100" id="btnDeleteAll">
-                                        <i class="mdi mdi-delete me-1"></i> Kosongkan Hari Ini
-                                    </button>
+                            @if ($barangCount > 0)
+                                <div class="col-lg-6 col-md-12 d-flex gap-2 justify-content-lg-end"
+                                    id="soh-actions-container">
+                                    <div id="soh-actions-wrapper" class="d-flex gap-2 w-100 justify-content-lg-end">
+                                        <button class="btn btn-success px-4 w-100" data-bs-toggle="modal"
+                                            data-bs-target="#uploadModal">
+                                            <i class="mdi mdi-upload me-1"></i> Upload Excel
+                                        </button>
+                                        <button class="btn btn-primary px-4 w-100" onclick="openAddSOH()">
+                                            <i class="mdi mdi-plus-circle-outline me-1"></i> Tambah Manual
+                                        </button>
+                                        <button class="btn btn-danger px-4 w-100" id="btnDeleteAll">
+                                            <i class="mdi mdi-delete me-1"></i> Kosongkan Hari Ini
+                                        </button>
+                                    </div>
                                 </div>
                             @else
                                 <div class="col-lg-6 col-md-12">
-                                    <div class="alert alert-warning py-2 px-3 mb-0 w-100 text-center small border-0 shadow-none">
-                                        <i class="mdi mdi-alert-circle me-1"></i> Data Master Barang kosong. Silakan isi <a href="{{ route('master.wrm.barang.index') }}" class="alert-link text-decoration-underline fw-bold">Master Barang</a> terlebih dahulu.
+                                    <div
+                                        class="alert alert-warning py-2 px-3 mb-0 w-100 text-center small border-0 shadow-none">
+                                        <i class="mdi mdi-alert-circle me-1"></i> Data Master Barang kosong. Silakan isi <a
+                                            href="{{ route('master.wrm.barang.index') }}"
+                                            class="alert-link text-decoration-underline fw-bold">Master Barang</a> terlebih
+                                        dahulu.
                                     </div>
                                 </div>
                             @endif
@@ -148,6 +180,21 @@
             <!-- Table Card -->
             <div class="card shadow-sm border-0" data-aos="fade-up" data-aos-delay="200">
                 <div class="card-body">
+                    <!-- Tab Pemilihan Jenis SO -->
+                    <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" id="jenisSoTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-value="cycle_count" type="button"
+                                role="tab">
+                                <i class="mdi mdi-sync me-1"></i> Cycle Count (Daily)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-value="monthly" type="button"
+                                role="tab">
+                                <i class="mdi mdi-calendar-month me-1"></i> Monthly SO
+                            </button>
+                        </li>
+                    </ul>
                     <div class="table-responsive table-card p-2" id="soh-table-container">
                         <table class="table table-striped align-middle mb-0" id="tableSOHList">
                             <thead class="table-light">
@@ -156,6 +203,7 @@
                                     <th class="text-center">MID</th>
                                     <th class="text-start">Nama Barang</th>
                                     <th class="text-center">No SPB (Batch)</th>
+                                    <th class="text-center">Pallet</th>
                                     <th class="text-end">Total SOH (Kg)</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
@@ -200,8 +248,15 @@
                         </div>
                         <div class="mb-3">
                             <label for="excel_file" class="form-label fw-semibold">Pilih File Excel (.xlsx, .xls)</label>
-                            <input type="file" class="form-control" id="excel_file" name="file" accept=".xlsx, .xls"
-                                required>
+                            <input type="file" class="form-control" id="excel_file" name="file"
+                                accept=".xlsx, .xls" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="upload_jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                            <select class="form-select" id="upload_jenis_so" name="jenis_so" required>
+                                <option value="cycle_count">Cycle Count (Daily)</option>
+                                <option value="monthly">Monthly SO</option>
+                            </select>
                         </div>
                     </div>
                     <div class="modal-footer bg-light d-flex gap-2">
@@ -232,44 +287,140 @@
                     <input type="hidden" id="soh_id" name="soh_id">
                     <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label for="barang_id" class="form-label fw-semibold">Barang (MID)</label>
-                            <select class="form-select select2" id="barang_id" name="barang_id" required
-                                style="width: 100%">
-                                <option value="">-- Pilih Barang --</option>
+                            <label for="soh_jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                            <select class="form-select" id="soh_jenis_so" name="jenis_so" required>
+                                <option value="cycle_count">Cycle Count (Daily)</option>
+                                <option value="monthly">Monthly SO</option>
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="no_spb" class="form-label fw-semibold mb-0">No SPB (Batch)</label>
-                                <div id="spbSelectActions" style="display: none;">
-                                    <button type="button"
-                                        class="btn btn-link btn-sm p-0 me-2 text-decoration-none fw-semibold"
-                                        id="btnSelectAllSpb" style="font-size: 0.8rem;">Select All</button>
-                                    <button type="button"
-                                        class="btn btn-link btn-sm p-0 text-danger text-decoration-none fw-semibold"
-                                        id="btnClearAllSpb" style="font-size: 0.8rem;">Clear All</button>
+
+                        <!-- ADD SECTION -->
+                        <div id="addSection">
+                            <div class="mb-3">
+                                <label for="soh_tanggal" class="form-label fw-semibold">Tanggal Data</label>
+                                <input type="date" class="form-control" id="soh_tanggal" name="tanggal"
+                                    value="{{ date('Y-m-d') }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="soh_jenis_data" class="form-label fw-semibold">Jenis Data</label>
+                                <select class="form-select" id="soh_jenis_data" name="jenis_data">
+                                    <option value="inbound">Inbound</option>
+                                    <option value="outbound">Outbound</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Pilih Barang</label>
+                                <div class="dropdown custom-filter-dropdown" id="dropdown-barang">
+                                    <button
+                                        class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
+                                        type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        aria-expanded="false">
+                                        <span class="dropdown-placeholder text-muted">Pilih Barang...</span>
+                                        <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                    </button>
+                                    <div class="dropdown-menu p-3 border"
+                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                        <div class="mb-2">
+                                            <input type="text" class="form-control form-control-sm search-options"
+                                                placeholder="Cari Barang...">
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                        </div>
+                                        <hr class="dropdown-divider my-2">
+                                        <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                    </div>
                                 </div>
                             </div>
-                            <select class="form-select select2" id="no_spb" name="no_spb" required
-                                style="width: 100%">
-                                <option value="">-- Pilih atau Ketik No SPB --</option>
-                            </select>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Pilih No SPB</label>
+                                <div class="dropdown custom-filter-dropdown" id="dropdown-no-spb">
+                                    <button
+                                        class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
+                                        type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        aria-expanded="false">
+                                        <span class="dropdown-placeholder text-muted">Pilih No SPB...</span>
+                                        <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                    </button>
+                                    <div class="dropdown-menu p-3 border"
+                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                        <div class="mb-2">
+                                            <input type="text" class="form-control form-control-sm search-options"
+                                                placeholder="Cari No SPB...">
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                        </div>
+                                        <hr class="dropdown-divider my-2">
+                                        <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Pilih Pallet</label>
+                                <div class="dropdown custom-filter-dropdown" id="dropdown-pallet">
+                                    <button
+                                        class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
+                                        type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        aria-expanded="false">
+                                        <span class="dropdown-placeholder text-muted">Pilih Pallet...</span>
+                                        <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                    </button>
+                                    <div class="dropdown-menu p-3 border"
+                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                        <div class="mb-2">
+                                            <input type="text" class="form-control form-control-sm search-options"
+                                                placeholder="Cari Pallet...">
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                        </div>
+                                        <hr class="dropdown-divider my-2">
+                                        <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div id="qtyInputWrapper" class="row g-3">
-                            <div class="col-md-4">
-                                <label for="unrest" class="form-label fw-semibold">UNREST (Kg)</label>
-                                <input type="number" class="form-control" id="unrest" name="unrest" value="0"
-                                    min="0" required>
+
+                        <!-- EDIT SECTION -->
+                        <div id="editSection" style="display: none;">
+                            <div class="mb-3">
+                                <label for="edit_mid_barang" class="form-label fw-semibold">MID Barang</label>
+                                <input type="text" class="form-control" id="edit_mid_barang" readonly>
                             </div>
-                            <div class="col-md-4">
-                                <label for="qi" class="form-label fw-semibold">QI (Kg)</label>
-                                <input type="number" class="form-control" id="qi" name="qi" value="0"
-                                    min="0" required>
+                            <div class="mb-3">
+                                <label for="edit_no_spb" class="form-label fw-semibold">No SPB</label>
+                                <input type="text" class="form-control" id="edit_no_spb" name="no_spb">
                             </div>
-                            <div class="col-md-4">
-                                <label for="block" class="form-label fw-semibold">BLOCKED (Kg)</label>
-                                <input type="number" class="form-control" id="block" name="block" value="0"
-                                    min="0" required>
+                            <div class="mb-3">
+                                <label for="edit_pallet" class="form-label fw-semibold">Pallet</label>
+                                <input type="text" class="form-control" id="edit_pallet" name="pallet">
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="edit_unrest" class="form-label fw-semibold">UNREST (Kg)</label>
+                                    <input type="number" class="form-control" id="edit_unrest" name="unrest"
+                                        min="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="edit_qi" class="form-label fw-semibold">QI (Kg)</label>
+                                    <input type="number" class="form-control" id="edit_qi" name="qi"
+                                        min="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="edit_block" class="form-label fw-semibold">BLOCKED (Kg)</label>
+                                    <input type="number" class="form-control" id="edit_block" name="block"
+                                        min="0">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -316,86 +467,16 @@
         let mode = 'add';
 
         $(document).ready(function() {
-            // Initialize select2 on modal elements
-            $('#barang_id').select2({
-                dropdownParent: $('#sohModal')
-            });
+            // Initialize custom dropdowns
+            initDynamicDropdown('dropdown-barang', 'Pilih Barang...', loadSpbOptionsForAdd);
+            initDynamicDropdown('dropdown-no-spb', 'Pilih No SPB...', loadPalletOptionsForAdd);
+            initDynamicDropdown('dropdown-pallet', 'Pilih Pallet...', null);
 
-            $('#no_spb').select2({
-                dropdownParent: $('#sohModal'),
-                tags: true,
-                placeholder: "-- Pilih atau Ketik No SPB --",
-                allowClear: true,
-                createTag: function(params) {
-                    var term = $.trim(params.term);
-                    if (term === '' || isNaN(term)) {
-                        return null;
-                    }
-                    return {
-                        id: term,
-                        text: term,
-                        newTag: true
-                    }
+            // Date/type change handler
+            $('#soh_tanggal, #soh_jenis_data').on('change', function() {
+                if (mode === 'add') {
+                    loadBarangOptionsForAdd();
                 }
-            });
-
-            // Select All SPB handler
-            $('#btnSelectAllSpb').on('click', function(e) {
-                e.preventDefault();
-                const allValues = $('#no_spb option').map(function() {
-                    return $(this).val();
-                }).get().filter(val => val !== '');
-                $('#no_spb').val(allValues).trigger('change');
-            });
-
-            // Clear All SPB handler
-            $('#btnClearAllSpb').on('click', function(e) {
-                e.preventDefault();
-                $('#no_spb').val([]).trigger('change');
-            });
-
-            // SOH Modal change barang event
-            $('#barang_id').on('change', function() {
-                const barangId = $(this).val();
-                const spbSelect = $('#no_spb');
-
-                spbSelect.empty();
-                if (mode === 'edit') {
-                    spbSelect.append('<option value="">-- Pilih atau Ketik No SPB --</option>');
-                }
-
-                if (!barangId) {
-                    spbSelect.trigger('change');
-                    return;
-                }
-
-                $.ajax({
-                    url: "{{ route('wrm.stock_opname.soh.getSpbList') }}",
-                    type: 'GET',
-                    data: {
-                        barang_id: barangId
-                    },
-                    success: function(response) {
-                        if (response.status === 'success' && response.data.length > 0) {
-                            response.data.forEach(function(spb) {
-                                spbSelect.append(
-                                    `<option value="${spb}">${spb}</option>`);
-                            });
-                        }
-
-                        if (mode === 'edit' && window.currentEditSpb) {
-                            if (spbSelect.find(`option[value="${window.currentEditSpb}"]`)
-                                .length === 0) {
-                                spbSelect.append(
-                                    `<option value="${window.currentEditSpb}">${window.currentEditSpb}</option>`
-                                );
-                            }
-                            spbSelect.val(window.currentEditSpb);
-                            window.currentEditSpb = null;
-                        }
-                        spbSelect.trigger('change');
-                    }
-                });
             });
 
             // Load SOH list initially
@@ -406,10 +487,58 @@
                 loadSOHList();
             });
 
+            // Tab Event for SOH type
+            $('#jenisSoTabs button').on('shown.bs.tab', function(e) {
+                loadSOHList();
+            });
+
             // Form Submit for Add/Edit
             $('#formSOH').on('submit', function(e) {
                 e.preventDefault();
                 const sohId = $('#soh_id').val();
+
+                let postData;
+                let contentType = 'application/x-www-form-urlencoded; charset=UTF-8';
+                let processData = true;
+
+                if (mode === 'add') {
+                    const barangId = $('#dropdown-barang').data('getValues')();
+                    const noSpb = $('#dropdown-no-spb').data('getValues')();
+                    const palletRaw = $('#dropdown-pallet').data('getValues')(); // each value: "no_spb|pallet_id"
+                    const tanggal = $('#soh_tanggal').val();
+                    const jenisData = $('#soh_jenis_data').val();
+
+                    if (!tanggal || !jenisData || !barangId || barangId.length === 0 || !noSpb || noSpb.length === 0 || !palletRaw || palletRaw.length === 0) {
+                        Swal.fire('Peringatan', 'Tanggal, Jenis Data, Barang, SPB, dan Pallet harus diisi!', 'warning');
+                        return;
+                    }
+
+                    // Parse "no_spb|pallet_id" → extract only pallet_id part
+                    const palletId = palletRaw.map(v => v.split('|')[1]);
+
+                    postData = JSON.stringify({
+                        _token: "{{ csrf_token() }}",
+                        jenis_so: $('#soh_jenis_so').val(),
+                        tanggal: tanggal,
+                        jenis_data: jenisData,
+                        barang_id: barangId,
+                        no_spb: noSpb,
+                        pallet_id: palletId
+                    });
+                    contentType = 'application/json';
+                    processData = false;
+                } else {
+                    postData = {
+                        _token: "{{ csrf_token() }}",
+                        jenis_so: $('#soh_jenis_so').val(),
+                        no_spb: $('#edit_no_spb').val(),
+                        pallet: $('#edit_pallet').val(),
+                        unrest: $('#edit_unrest').val(),
+                        qi: $('#edit_qi').val(),
+                        block: $('#edit_block').val()
+                    };
+                }
+
                 const url = mode === 'add' ?
                     "{{ route('wrm.stock_opname.soh.store') }}" :
                     `{{ route('wrm.stock_opname.soh.update', '') }}/${sohId}`;
@@ -417,7 +546,9 @@
                 $.ajax({
                     url: url,
                     type: "POST",
-                    data: $(this).serialize(),
+                    data: postData,
+                    contentType: contentType,
+                    processData: processData,
                     success: function(res) {
                         if (res.status) {
                             Swal.fire({
@@ -440,10 +571,19 @@
                 });
             });
 
+            // Automatically pre-select jenis_so in upload modal based on active tab
+            $('#uploadModal').on('show.bs.modal', function() {
+                const activeJenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
+                $('#upload_jenis_so').val(activeJenisSo).prop('disabled', false);
+            });
+
             // Form Submit for Upload
             $('#uploadSOHForm').on('submit', function(e) {
                 e.preventDefault();
                 const formData = new FormData(this);
+                if ($('#upload_jenis_so').is(':disabled')) {
+                    formData.append('jenis_so', $('#upload_jenis_so').val());
+                }
                 const btn = $('#btnSubmitUpload');
                 btn.prop('disabled', true).html(
                     '<span class="spinner-border spinner-border-sm me-1"></span>Mengunggah...');
@@ -484,9 +624,11 @@
 
             // Delete All Event
             $('#btnDeleteAll').on('click', function() {
+                const jenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
                 Swal.fire({
                     title: 'Kosongkan Data SOH?',
-                    text: 'Seluruh data SOH WRM hari ini akan dihapus permanen.',
+                    text: 'Seluruh data SOH WRM ' + (jenisSo === 'monthly' ? 'bulan ini' :
+                        'hari ini') + ' akan dihapus permanen.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Ya, Hapus',
@@ -498,7 +640,8 @@
                             url: "{{ route('wrm.stock_opname.soh.reset_all') }}",
                             type: "DELETE",
                             data: {
-                                _token: "{{ csrf_token() }}"
+                                _token: "{{ csrf_token() }}",
+                                jenis_so: jenisSo
                             },
                             success: function(res) {
                                 if (res.status) {
@@ -517,13 +660,15 @@
         function loadSOHList(page = 1) {
             const tableBody = $('#tableSOHList tbody');
             const search = $('#searchSOHInput').val();
+            const jenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
 
             $.ajax({
                 url: "{{ route('wrm.stock_opname.soh.list') }}",
                 type: "GET",
                 data: {
                     page: page,
-                    search: search
+                    search: search,
+                    jenis_so: jenisSo
                 },
                 success: function(res) {
                     tableBody.empty();
@@ -533,7 +678,22 @@
                             const barangName = item.barang ? item.barang.nama_barang : 'N/A';
                             const barangMid = item.barang ? item.barang.mid : 'N/A';
                             const spb = item.no_spb ? item.no_spb : '-';
+                            const pallet = item.pallet ? item.pallet : '-';
                             const qtySoh = item.qty_soh.toLocaleString('id-ID');
+                            const editBtn = `
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                            onclick="editSOH(${item.id})"
+                                            title="Edit">
+                                            <i class="mdi mdi-pencil"></i>
+                                        </button>
+                            `;
+                            const deleteBtn = `
+                                        <button class="btn btn-sm btn-outline-danger"
+                                            onclick="deleteSOH(${item.id})"
+                                            title="Hapus">
+                                            <i class="mdi mdi-trash-can"></i>
+                                        </button>
+                            `;
                             const unrest = item.qty_unrest.toLocaleString('id-ID');
                             const qi = item.qty_qi.toLocaleString('id-ID');
                             const block = item.qty_block.toLocaleString('id-ID');
@@ -544,6 +704,7 @@
                                     <td class="text-center">${barangMid}</td>
                                     <td>${barangName}</td>
                                     <td class="text-center">${spb}</td>
+                                    <td class="text-center">${pallet}</td>
                                     <td class="text-end fw-bold text-primary">${qtySoh}</td>
                                     <td class="text-center">
                                         <button class="btn btn-sm btn-outline-info me-1"
@@ -552,17 +713,7 @@
                                             <i class="mdi mdi-eye"></i>
                                         </button>
 
-                                        <button class="btn btn-sm btn-outline-primary me-1"
-                                            onclick="editSOH(${item.id})"
-                                            title="Edit">
-                                            <i class="mdi mdi-pencil"></i>
-                                        </button>
-
-                                        <button class="btn btn-sm btn-outline-danger"
-                                            onclick="deleteSOH(${item.id})"
-                                            title="Hapus">
-                                            <i class="mdi mdi-trash-can"></i>
-                                        </button>
+                                        ${editBtn} ${deleteBtn}
                                     </td>
                                 </tr>
                             `);
@@ -582,39 +733,228 @@
             });
         }
 
+        function loadBarangOptionsForAdd() {
+            const tanggal = $('#soh_tanggal').val();
+            const jenisData = $('#soh_jenis_data').val();
+
+            $('#dropdown-barang').data('reset')();
+            $('#dropdown-no-spb').data('reset')();
+            $('#dropdown-pallet').data('reset')();
+
+            if (!tanggal || !jenisData) return;
+
+            $.ajax({
+                url: "{{ route('wrm.stock_opname.soh.getBarang') }}",
+                type: "GET",
+                data: {
+                    tanggal: tanggal,
+                    jenis_data: jenisData
+                },
+                success: function(res) {
+                    if (res.status === 'success' && res.data) {
+                        updateDropdownOptions('dropdown-barang', res.data, 'Pilih Barang...', true);
+                    }
+                }
+            });
+        }
+
+        function loadSpbOptionsForAdd() {
+            const tanggal = $('#soh_tanggal').val();
+            const jenisData = $('#soh_jenis_data').val();
+            const barangId = $('#dropdown-barang').data('getValues')();
+
+            $('#dropdown-no-spb').data('reset')();
+            $('#dropdown-pallet').data('reset')();
+
+            if (!tanggal || !jenisData || !barangId || barangId.length === 0) return;
+
+            $.ajax({
+                url: "{{ route('wrm.stock_opname.soh.getSpbList') }}",
+                type: "GET",
+                data: {
+                    tanggal: tanggal,
+                    jenis_data: jenisData,
+                    barang_id: barangId
+                },
+                success: function(res) {
+                    if (res.status === 'success' && res.data) {
+                        updateDropdownOptions('dropdown-no-spb', res.data, 'Pilih No SPB...', false);
+                    }
+                }
+            });
+        }
+
+        function loadPalletOptionsForAdd() {
+            const tanggal = $('#soh_tanggal').val();
+            const jenisData = $('#soh_jenis_data').val();
+            const barangId = $('#dropdown-barang').data('getValues')();
+            const noSpb = $('#dropdown-no-spb').data('getValues')();
+
+            $('#dropdown-pallet').data('reset')();
+
+            if (!tanggal || !jenisData || !barangId || barangId.length === 0 || !noSpb || noSpb.length === 0) return;
+
+            $.ajax({
+                url: "{{ route('wrm.stock_opname.soh.getPalletList') }}",
+                type: "GET",
+                data: {
+                    tanggal: tanggal,
+                    jenis_data: jenisData,
+                    barang_id: barangId,
+                    no_spb: noSpb
+                },
+                success: function(res) {
+                    if (res.status === 'success' && res.data) {
+                        updateDropdownOptions('dropdown-pallet', res.data, 'Pilih Pallet...', false, true);
+                    }
+                }
+            });
+        }
+
+        function initDynamicDropdown(id, placeholder, onChange) {
+            const $dropdown = $('#' + id);
+
+            // Search options
+            $dropdown.off('input', '.search-options').on('input', '.search-options', function() {
+                const query = $(this).val().toLowerCase();
+                $dropdown.find('.option-item').each(function() {
+                    const text = $(this).data('text').toString().toLowerCase();
+                    const val = $(this).data('value').toString().toLowerCase();
+                    if (text.indexOf(query) > -1 || val.indexOf(query) > -1) {
+                        $(this).removeClass('d-none');
+                    } else {
+                        $(this).addClass('d-none');
+                    }
+                });
+            });
+
+            // Checkbox changes
+            $dropdown.off('change', '.option-checkbox').on('change', '.option-checkbox', function() {
+                updateLabel();
+            });
+
+            // Select All
+            $dropdown.off('click', '.select-all-options').on('click', '.select-all-options', function(e) {
+                e.preventDefault();
+                $dropdown.find('.option-item:not(.d-none) .option-checkbox').prop('checked', true);
+                updateLabel();
+            });
+
+            // Clear All
+            $dropdown.off('click', '.clear-all-options').on('click', '.clear-all-options', function(e) {
+                e.preventDefault();
+                $dropdown.find('.option-checkbox').prop('checked', false);
+                updateLabel();
+            });
+
+            function updateLabel() {
+                const selected = [];
+                $dropdown.find('.option-checkbox:checked').each(function() {
+                    selected.push($(this).val());
+                });
+
+                const $placeholderSpan = $dropdown.find('.dropdown-placeholder');
+                const $badge = $dropdown.find('.selected-count');
+                if (selected.length === 0) {
+                    $placeholderSpan.text(placeholder);
+                    $badge.addClass('d-none').text('0');
+                } else {
+                    $placeholderSpan.text(`${selected.length} Terpilih`);
+                    $badge.removeClass('d-none').text(selected.length);
+                }
+
+                if (onChange) {
+                    onChange(selected);
+                }
+            }
+
+            // Attach methods
+            $dropdown.data('getValues', function() {
+                const selected = [];
+                $dropdown.find('.option-checkbox:checked').each(function() {
+                    selected.push($(this).val());
+                });
+                return selected;
+            });
+
+            $dropdown.data('reset', function() {
+                $dropdown.find('.option-checkbox').prop('checked', false);
+                $dropdown.find('.search-options').val('').trigger('input');
+                updateLabel();
+            });
+        }
+
+        function updateDropdownOptions(id, data, placeholder, isBarang = false, isPallet = false) {
+            const $dropdown = $('#' + id);
+            const currentValues = $dropdown.data('getValues') ? $dropdown.data('getValues')() : [];
+            let html = '';
+
+            data.forEach(item => {
+                let val, text;
+                if (isBarang) {
+                    val = item.id;
+                    text = `${item.mid} - ${item.nama_barang} (${item.uom})`;
+                } else if (isPallet) {
+                    // value = "no_spb|pallet_id" for easy parsing; label = "no_spb-pallet_id"
+                    val  = `${item.no_spb}|${item.pallet_id}`;
+                    text = `${item.no_spb}-${item.pallet_id}`;
+                } else {
+                    val = item;
+                    text = item;
+                }
+
+                let safeVal = val ?? '';
+                let safeText = text ?? '';
+                // sanitize for use inside html attribute (no quotes/chevrons)
+                let safeId = safeVal.toString().replace(/[^a-zA-Z0-9_\-]/g, '_');
+
+                let isSelected = currentValues.includes(safeVal.toString());
+                let checkedAttr = isSelected ? 'checked' : '';
+                html += `
+                    <div class="form-check mb-2 option-item" data-value="${safeVal}" data-text="${safeText}">
+                        <input class="form-check-input option-checkbox" type="checkbox" value="${safeVal}" id="chk-${id}-${safeId}" ${checkedAttr}>
+                        <label class="form-check-label text-truncate w-100" for="chk-${id}-${safeId}">
+                            ${safeText}
+                        </label>
+                    </div>
+                `;
+            });
+
+            $dropdown.find('.options-list').html(html);
+
+            // Update the label and selected count badge
+            const selectedCount = $dropdown.find('.option-checkbox:checked').length;
+            const $placeholderSpan = $dropdown.find('.dropdown-placeholder');
+            const $badge = $dropdown.find('.selected-count');
+
+            if (selectedCount === 0) {
+                $placeholderSpan.text(placeholder);
+                $badge.addClass('d-none').text('0');
+            } else {
+                $placeholderSpan.text(`${selectedCount} Terpilih`);
+                $badge.removeClass('d-none').text(selectedCount);
+            }
+        }
+
         function openAddSOH() {
             mode = 'add';
             $('#formSOH')[0].reset();
             $('#soh_id').val('');
             $('#sohModalLabel').html('<i class="mdi mdi-plus-circle me-1"></i>Tambah Data SOH');
             $('#btnSaveSOH').html('Simpan');
-            $('#barang_id').prop('disabled', false);
 
-            // Show Select All / Clear All action links
-            $('#spbSelectActions').show();
+            $('#addSection').show();
+            $('#editSection').hide();
 
-            // Re-initialize select2 for no_spb as multi-select
-            if ($('#no_spb').data('select2')) {
-                $('#no_spb').select2('destroy');
-            }
-            $('#no_spb').empty();
-            $('#no_spb').attr('multiple', 'multiple');
-            $('#no_spb').attr('name', 'no_spb[]');
-            $('#no_spb').prop('required', true);
-            $('#no_spb').select2({
-                dropdownParent: $('#sohModal'),
-                placeholder: "-- Pilih SPB --",
-                allowClear: true
-            });
+            const activeJenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
+            $('#soh_jenis_so').val(activeJenisSo).prop('disabled', false);
 
-            // Hide quantity fields and remove required
-            $('#qtyInputWrapper').hide();
-            $('#unrest, #qi, #block').prop('required', false);
+            const today = new Date().toISOString().split('T')[0];
+            $('#soh_tanggal').val(today);
+            $('#soh_jenis_data').val('inbound');
 
-            loadBarangOptions(() => {
-                $('#barang_id').val('').trigger('change');
-                $('#sohModal').modal('show');
-            });
+            loadBarangOptionsForAdd();
+            $('#sohModal').modal('show');
         }
 
         function editSOH(id) {
@@ -622,61 +962,31 @@
             $('#sohModalLabel').html('<i class="mdi mdi-pencil-outline me-1"></i>Edit Data SOH');
             $('#btnSaveSOH').html('Update');
 
-            // Close details modal if open
             const modalEl = document.getElementById('modalSOHDetail');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
 
-            // Hide Select All / Clear All action links
-            $('#spbSelectActions').hide();
+            $('#addSection').hide();
+            $('#editSection').show();
 
-            // Re-initialize select2 for no_spb as single-select with tags
-            if ($('#no_spb').data('select2')) {
-                $('#no_spb').select2('destroy');
-            }
-            $('#no_spb').removeAttr('multiple');
-            $('#no_spb').attr('name', 'no_spb');
-            $('#no_spb').prop('required', true);
-            $('#no_spb').select2({
-                dropdownParent: $('#sohModal'),
-                tags: true,
-                placeholder: "-- Pilih atau Ketik No SPB --",
-                allowClear: true,
-                createTag: function(params) {
-                    var term = $.trim(params.term);
-                    if (term === '' || isNaN(term)) {
-                        return null;
-                    }
-                    return {
-                        id: term,
-                        text: term,
-                        newTag: true
+            $.ajax({
+                url: `{{ route('wrm.stock_opname.soh.show', '') }}/${id}`,
+                type: 'GET',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        const data = res.data;
+                        $('#soh_id').val(data.id);
+                        $('#soh_jenis_so').val(data.jenis_so).prop('disabled', false);
+                        $('#edit_mid_barang').val(data.barang ?
+                            `${data.barang.mid} - ${data.barang.nama_barang}` : '');
+                        $('#edit_no_spb').val(data.no_spb);
+                        $('#edit_pallet').val(data.pallet);
+                        $('#edit_unrest').val(data.qty_unrest);
+                        $('#edit_qi').val(data.qty_qi);
+                        $('#edit_block').val(data.qty_block);
+                        $('#sohModal').modal('show');
                     }
                 }
-            });
-
-            // Show quantity fields and require them
-            $('#qtyInputWrapper').show();
-            $('#unrest, #qi, #block').prop('required', true);
-
-            loadBarangOptions(() => {
-                $.ajax({
-                    url: `{{ route('wrm.stock_opname.soh.show', '') }}/${id}`,
-                    type: 'GET',
-                    success: function(res) {
-                        if (res.status === 'success') {
-                            const data = res.data;
-                            $('#soh_id').val(data.id);
-                            window.currentEditSpb = data.no_spb;
-                            $('#barang_id').val(data.barang_id).trigger('change').prop('disabled',
-                                true);
-                            $('#unrest').val(data.qty_unrest);
-                            $('#qi').val(data.qty_qi);
-                            $('#block').val(data.qty_block);
-                            $('#sohModal').modal('show');
-                        }
-                    }
-                });
             });
         }
 

@@ -75,7 +75,18 @@
                                     value="{{ request('tgl_opname', now()->toDateString()) }}" required>
                             </div>
 
-                            <div class="col-lg-4 col-md-6">
+                            <div class="col-lg-3 col-md-6">
+                                <label for="jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                                <select id="jenis_so" name="jenis_so" class="form-select">
+                                    <option value="cycle_count"
+                                        {{ request('jenis_so') === 'cycle_count' ? 'selected' : '' }}>Cycle Count (Daily)
+                                    </option>
+                                    <option value="monthly" {{ request('jenis_so') === 'monthly' ? 'selected' : '' }}>
+                                        Monthly SO</option>
+                                </select>
+                            </div>
+
+                            <div class="col-lg-3 col-md-6">
                                 <label for="searchReport" class="form-label fw-semibold">Cari MID / No SPB</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light">
@@ -86,12 +97,12 @@
                                 </div>
                             </div>
 
-                            <div class="col-lg-5">
+                            <div class="col-lg-3 col-md-12">
                                 <div class="d-flex flex-wrap gap-2">
-                                    <button type="submit" class="btn btn-primary">
+                                    {{-- <button type="submit" class="btn btn-primary">
                                         <i class="mdi mdi-magnify me-1"></i>
                                         Tampilkan
-                                    </button>
+                                    </button> --}}
 
                                     <button type="button" class="btn btn-outline-danger" id="btnExportPdf">
                                         <i class="mdi mdi-file-pdf-box me-1"></i>
@@ -146,7 +157,8 @@
                                             <th style="width: 50px;">No</th>
                                             <th>MID</th>
                                             <th class="text-start">Nama Barang</th>
-                                            <th class="text-end">No SPB (Batch)</th>
+                                            <th>No SPB (Batch)</th>
+                                            <th>Pallet</th>
                                             <th class="text-end">Qty Sistem (Kg)</th>
                                             <th class="text-end">Qty Fisik (Kg)</th>
                                             <th class="text-end">Selisih (Kg)</th>
@@ -157,7 +169,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="10" class="text-center py-4 text-muted">
+                                            <td colspan="11" class="text-center py-4 text-muted">
                                                 Silakan tentukan tanggal lalu klik <strong>Tampilkan Laporan</strong>.
                                             </td>
                                         </tr>
@@ -261,47 +273,37 @@
                                 <td id="detailSpb" class="font-monospace"></td>
                             </tr>
                             <tr>
-                                <th>Qty Sistem</th>
+                                <th>Total Qty Sistem</th>
                                 <td id="detailQtySistem" class="text-end font-monospace text-primary fw-semibold"></td>
-                            </tr>
-                            <tr>
-                                <th>Riwayat Input Fisik</th>
-                                <td>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered table-hover mb-0 align-middle">
-                                            <thead class="table-light text-center">
-                                                <tr>
-                                                    <th style="width: 50px;">No</th>
-                                                    <th>Waktu Input</th>
-                                                    <th>Qty Full Pallet</th>
-                                                    <th>Qty Receh (Kg)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="detailInputsList">
-                                                <!-- Dynamic detail rows -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </td>
                             </tr>
                             <tr>
                                 <th>Total Qty Fisik</th>
                                 <td id="detailQtyFisik" class="text-end font-monospace fw-bold text-success"></td>
                             </tr>
                             <tr>
-                                <th>Selisih</th>
+                                <th>Total Selisih</th>
                                 <td id="detailSelisih" class="text-end font-monospace fw-bold"></td>
-                            </tr>
-                            <tr>
-                                <th>Status</th>
-                                <td id="detailStatus" class="text-center"></td>
-                            </tr>
-                            <tr>
-                                <th>Keterangan</th>
-                                <td id="detailKeterangan"></td>
                             </tr>
                         </tbody>
                     </table>
+
+                    <h6 class="fw-bold mt-3 mb-2 border-bottom pb-2"><i class="mdi mdi-layers-outline me-1"></i>Detail per
+                        Pallet</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered table-hover mb-0 align-middle">
+                            <thead class="table-light text-center">
+                                <tr>
+                                    <th>Pallet</th>
+                                    <th class="text-end">Qty Sistem</th>
+                                    <th class="text-end">Qty Fisik</th>
+                                    <th class="text-end">Selisih</th>
+                                    <th>Status</th>
+                                    <th>Riwayat Input</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailPalletsList"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -323,13 +325,18 @@
                     <input type="hidden" id="editReportId">
                     <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                         <div class="row mb-3">
-                            <div class="col-md-8">
+                            <div class="col-md-5">
                                 <label class="form-label fw-semibold">Nama Barang</label>
                                 <input type="text" id="editReportNama" class="form-control bg-light" readonly>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-semibold">No SPB (Batch)</label>
                                 <input type="text" id="editReportSpb" class="form-control bg-light font-monospace"
+                                    readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Pallet</label>
+                                <input type="text" id="editReportPallet" class="form-control bg-light font-monospace"
                                     readonly>
                             </div>
                         </div>
@@ -363,10 +370,62 @@
                 toastr.error("{{ session('error') }}", "Peringatan!");
             @endif
 
+            $('#jenis_so').on('change', function() {
+                const type = $(this).val();
+                const dateInput = $('#tgl_opname');
+                const approvalTab = $('#approval-tab').parent(); // select the li parent
+                const btnExportPdf = $('#btnExportPdf');
+
+                let val = dateInput.val();
+
+                if (type === 'monthly') {
+                    dateInput.attr('type', 'month');
+                    if (val) {
+                        if (val.length === 10) {
+                            dateInput.val(val.substring(0, 7));
+                        } else {
+                            dateInput.val(val);
+                        }
+                    } else {
+                        const today = new Date();
+                        const month = String(today.getMonth() + 1).padStart(2, '0');
+                        dateInput.val(`${today.getFullYear()}-${month}`);
+                    }
+                    approvalTab.removeClass('d-none');
+                    btnExportPdf.removeClass('d-none');
+                } else {
+                    dateInput.attr('type', 'date');
+                    const today = new Date();
+                    const day = String(today.getDate()).padStart(2, '0');
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const todayStr = `${today.getFullYear()}-${month}-${day}`;
+                    if (val && val.length === 10) {
+                        dateInput.val(val);
+                    } else {
+                        dateInput.val(todayStr);
+                    }
+                    approvalTab.addClass('d-none');
+                    btnExportPdf.addClass('d-none');
+
+                    // If the active tab was approval tab, switch back to data tab
+                    if ($('#approval-tab').hasClass('active')) {
+                        var triggerEl = document.querySelector('#reportTabs button[id="data-tab"]');
+                        if (triggerEl) {
+                            var tab = bootstrap.Tab.getInstance(triggerEl) || new bootstrap.Tab(triggerEl);
+                            tab.show();
+                        }
+                    }
+                }
+                loadReport();
+            });
+
+            // Trigger change on load to configure inputs and load report
+            $('#jenis_so').trigger('change');
+
             // Automatically pull report for today on load
             loadReport();
 
-            $('#formFilterReport').on('submit', function(e) {
+            $('#formFilterReport').on('change', function(e) {
                 e.preventDefault();
                 loadReport();
             });
@@ -379,7 +438,8 @@
                     return;
                 }
 
-                const url = `{{ route('wrm.stock_opname.export') }}?tgl_opname=${date}`;
+                const jenisSo = $('#jenis_so').val();
+                const url = `{{ route('wrm.stock_opname.export') }}?tgl_opname=${date}&jenis_so=${jenisSo}`;
 
                 window.open(url, '_blank');
             });
@@ -455,12 +515,13 @@
         function loadReport() {
             const tableBody = $('#tableReportList tbody');
             const date = $('#tgl_opname').val();
+            const jenisSo = $('#jenis_so').val();
 
             if (!date) return;
 
             tableBody.html(`
                 <tr>
-                    <td colspan="10" class="text-center py-4 text-muted">
+                    <td colspan="11" class="text-center py-4 text-muted">
                         <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                         Memuat laporan...
                     </td>
@@ -471,7 +532,8 @@
                 url: "{{ route('wrm.stock_opname.report.getData') }}",
                 type: "GET",
                 data: {
-                    tgl_opname: date
+                    tgl_opname: date,
+                    jenis_so: jenisSo
                 },
                 success: function(res) {
                     tableBody.empty();
@@ -488,6 +550,7 @@
                             const qtyFisik = item.qty_fisik.toLocaleString('id-ID');
                             const selisih = item.selisih.toLocaleString('id-ID');
                             const note = item.keterangan ? item.keterangan : '-';
+                            const palletCount = item.pallet_count || 0;
 
                             let statusBadge = '';
                             if (item.status === 'lebih') {
@@ -499,6 +562,7 @@
                             }
 
                             const isDraft = res.sop && res.sop.status === 'draft';
+                            const jenisSo = res.jenis_so || 'cycle_count';
                             const isSpv = res.sop && res.sop.user_id == {{ Auth::user()->id }};
 
                             tableBody.append(`  
@@ -506,7 +570,8 @@
                                     <td class="text-center font-semibold">${index + 1}</td>
                                     <td class="text-center">${barangMid}</td>
                                     <td>${barangName}</td>
-                                    <td class="text-end">${spb}</td>
+                                    <td class="text-center">${spb}</td>
+                                    <td class="text-center"><span class="badge bg-light text-dark border">${palletCount} pallet</span></td>
                                     <td class="text-end">${qtySistem}</td>
                                     <td class="text-end">${qtyFisik}</td>
                                     <td class="text-end fw-bold">${selisih}</td>
@@ -530,7 +595,7 @@
                     } else {
                         tableBody.append(`
                             <tr>
-                                <td colspan="10" class="text-center py-4 text-muted">
+                                <td colspan="11" class="text-center py-4 text-muted">
                                     Laporan SO tidak ditemukan untuk tanggal: <strong>${date}</strong>
                                 </td>
                             </tr>
@@ -541,7 +606,7 @@
                 error: function(xhr) {
                     tableBody.html(`
                         <tr>
-                            <td colspan="10" class="text-center py-4 text-danger">Gagal memuat data laporan dari server.</td>
+                            <td colspan="11" class="text-center py-4 text-danger">Gagal memuat data laporan dari server.</td>
                         </tr>
                     `);
                     checkApprovalStatus(null, date);
@@ -649,47 +714,65 @@
 
                         $('#detailMid').text(sum.barang ? sum.barang.mid : '-');
                         $('#detailNamaBarang').text(sum.barang ? sum.barang.nama_barang : '-');
-                        $('#detailSpb').text(sum.no_spb ? sum.no_spb : '-');
-                        $('#detailQtySistem').text(sum.qty_sistem.toLocaleString('id-ID'));
+                        $('#detailSpb').text(res.no_spb ? res.no_spb : '-');
 
-                        let detailRowsHtml = '';
-                        if (res.details && res.details.length > 0) {
-                            res.details.forEach((det, idx) => {
-                                const inputTime = det.created_at ? det.created_at.substring(11,
-                                    16) : '-';
-                                detailRowsHtml += `
+                        let totalSistem = 0,
+                            totalFisik = 0,
+                            totalSelisih = 0;
+                        let palletRowsHtml = '';
+
+                        if (res.pallets && res.pallets.length > 0) {
+                            res.pallets.forEach(p => {
+                                totalSistem += p.qty_sistem;
+                                totalFisik += p.qty_fisik;
+                                totalSelisih += p.selisih;
+
+                                // Build history rows
+                                let historyHtml = '<em class="text-muted small">-</em>';
+                                if (p.details && p.details.length > 0) {
+                                    historyHtml =
+                                        '<table class="table table-xs table-sm mb-0"><tbody>';
+                                    p.details.forEach((det, idx) => {
+                                        const t = det.created_at ? det.created_at.substring(
+                                            11, 16) : '-';
+                                        const checked = det.qty_full === 1 ? 'Terhitung' :
+                                            'Tidak';
+                                        historyHtml +=
+                                            `<tr><td class="font-monospace">${idx+1}. ${t}</td><td>${checked}</td><td class="text-end">${det.qty_receh.toLocaleString('id-ID')} Kg</td></tr>`;
+                                    });
+                                    historyHtml += '</tbody></table>';
+                                }
+
+                                let sBadge = '';
+                                if (p.status === 'lebih') sBadge =
+                                    '<span class="badge bg-warning">LEBIH</span>';
+                                else if (p.status === 'kurang') sBadge =
+                                    '<span class="badge bg-danger">KURANG</span>';
+                                else sBadge = '<span class="badge bg-success">MATCH</span>';
+
+                                palletRowsHtml += `
                                     <tr>
-                                        <td class="text-center fw-semibold">${idx + 1}</td>
-                                        <td class="text-center font-monospace">${inputTime}</td>
-                                        <td class="text-end font-monospace">${det.qty_full.toLocaleString('id-ID')}</td>
-                                        <td class="text-end font-monospace">${det.qty_receh.toLocaleString('id-ID')}</td>
+                                        <td class="font-monospace">${p.pallet ?? '-'}</td>
+                                        <td class="text-end">${p.qty_sistem.toLocaleString('id-ID')}</td>
+                                        <td class="text-end">${p.qty_fisik.toLocaleString('id-ID')}</td>
+                                        <td class="text-end fw-bold">${p.selisih.toLocaleString('id-ID')}</td>
+                                        <td class="text-center">${sBadge}</td>
+                                        <td>${historyHtml}</td>
                                     </tr>
                                 `;
                             });
                         } else {
-                            detailRowsHtml += `
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted py-2">
-                                        <em>Tidak ada detail input fisik</em>
-                                    </td>
-                                </tr>
-                            `;
+                            palletRowsHtml =
+                                '<tr><td colspan="6" class="text-center text-muted py-2"><em>Tidak ada data pallet</em></td></tr>';
                         }
-                        $('#detailInputsList').html(detailRowsHtml);
 
-                        $('#detailQtyFisik').text(sum.qty_fisik.toLocaleString('id-ID'));
-                        $('#detailSelisih').text(sum.selisih.toLocaleString('id-ID'));
-
-                        let badge = '';
-                        if (sum.status === 'lebih') {
-                            badge = '<span class="badge bg-warning px-2 py-1">LEBIH</span>';
-                        } else if (sum.status === 'kurang') {
-                            badge = '<span class="badge bg-danger px-2 py-1">KURANG</span>';
-                        } else {
-                            badge = '<span class="badge bg-success px-2 py-1">MATCH</span>';
-                        }
-                        $('#detailStatus').html(badge);
-                        $('#detailKeterangan').text(sum.keterangan ? sum.keterangan : '-');
+                        $('#detailPalletsList').html(palletRowsHtml);
+                        $('#detailQtySistem').text(totalSistem.toLocaleString('id-ID') + ' Kg');
+                        $('#detailQtyFisik').text(totalFisik.toLocaleString('id-ID') + ' Kg');
+                        const selisihColor = totalSelisih < 0 ? 'text-danger' : totalSelisih > 0 ?
+                            'text-warning' : 'text-success';
+                        $('#detailSelisih').removeClass('text-danger text-warning text-success').addClass(
+                            selisihColor).text(totalSelisih.toLocaleString('id-ID') + ' Kg');
 
                         const modalEl = document.getElementById('detailReportModal');
                         const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
@@ -716,6 +799,7 @@
                         $('#editReportId').val(sum.id);
                         $('#editReportNama').val(sum.barang ? sum.barang.nama_barang : '-');
                         $('#editReportSpb').val(sum.no_spb ? sum.no_spb : '-');
+                        $('#editReportPallet').val(sum.pallet ? sum.pallet : '-');
                         $('#editKeterangan').val(sum.keterangan ? sum.keterangan : '');
 
                         let editHtml = '';
@@ -734,11 +818,14 @@
                                         </div>
                                         <div class="row g-2">
                                             <div class="col-md-6">
-                                                <label class="form-label small mb-1">Qty Full Pallet</label>
-                                                <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" required>
+                                                <label class="form-label small mb-1">Checklist</label>
+                                                <select class="form-select qty_full" name="items[${idx}][qty_full]">
+                                                    <option value="1" ${det.qty_full === 1 ? 'selected' : ''}>Terhitung</option>
+                                                    <option value="0" ${det.qty_full === 0 ? 'selected' : ''}>Tidak Terhitung</option>
+                                                </select>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label small mb-1">Qty Receh</label>
+                                                <label class="form-label small mb-1">Qty (Kg)</label>
                                                 <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh}" min="0" required>
                                             </div>
                                         </div>
@@ -768,7 +855,7 @@
         };
 
         // Live check for negative inputs in edit report modal
-        $(document).on('input', '#editReportModal .qty_full, #editReportModal .qty_receh', function() {
+        $(document).on('input', '#editReportModal .qty_receh', function() {
             if ($(this).val() !== '' && parseInt($(this).val()) < 0) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                 $(this).val('');
@@ -780,28 +867,17 @@
             e.preventDefault();
             const id = $('#editReportId').val();
             let hasNegative = false;
-            let hasZeroBoth = false;
 
             $('#editReportItemsList .report-detail-item').each(function() {
-                const qtyFullVal = parseInt($(this).find('.qty_full').val()) || 0;
                 const qtyRecehVal = parseInt($(this).find('.qty_receh').val()) || 0;
 
-                if (qtyFullVal < 0 || qtyRecehVal < 0) {
+                if (qtyRecehVal < 0) {
                     hasNegative = true;
-                }
-
-                if (qtyFullVal === 0 && qtyRecehVal === 0) {
-                    hasZeroBoth = true;
                 }
             });
 
             if (hasNegative) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
-                return;
-            }
-
-            if (hasZeroBoth) {
-                toastr.warning('Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
                 return;
             }
 

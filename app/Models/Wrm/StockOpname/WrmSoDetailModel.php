@@ -16,6 +16,8 @@ class WrmSoDetailModel extends Model
         'so_id',
         'barang_id',
         'no_spb',
+        'pallet',
+        'jenis_data',
         'qty_full',
         'qty_receh',
         'created_at',

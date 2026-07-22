@@ -17,6 +17,7 @@ class WrmSoTempNoteModel extends Model
         'soh_id',
         'barang_id',
         'no_spb',
+        'pallet',
         'catatan',
         'created_by',
         'tgl_opname',

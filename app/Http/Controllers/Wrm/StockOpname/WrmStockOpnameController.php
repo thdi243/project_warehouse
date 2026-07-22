@@ -26,8 +26,41 @@ class WrmStockOpnameController extends Controller
     {
         $user = Auth::user();
         $today = now()->toDateString();
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
 
-        $existing = WrmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        if ($jenisSo === 'monthly') {
+            $currentYear = Carbon::parse($today)->year;
+            $currentMonth = Carbon::parse($today)->month;
+
+            $existingMonthlyThisMonth = WrmSoStatusModel::where('jenis_so', 'monthly')
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->whereDate('tgl_opname', '!=', $today)
+                ->exists();
+
+            if ($existingMonthlyThisMonth) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Stock Opname Monthly untuk bulan ini sudah pernah dibuat/berjalan pada hari lain.'
+                ], 422);
+            }
+        }
+
+        // Check if SOH exists for today for this jenis_so
+        $sohCount = WrmSohModel::whereDate('created_at', $today)
+            ->where('jenis_so', $jenisSo)
+            ->count();
+
+        if ($sohCount === 0) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Data SOH kosong. Silakan unggah atau isi data SOH terlebih dahulu untuk jenis SO ini.'
+            ], 422);
+        }
+
+        $existing = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
 
         if ($existing) {
             return response()->json([
@@ -41,6 +74,7 @@ class WrmStockOpnameController extends Controller
             'user_id' => $user->id ?? 1,
             'tgl_opname' => $today,
             'status' => 'started',
+            'jenis_so' => $jenisSo,
         ]);
 
         return response()->json([
@@ -50,10 +84,12 @@ class WrmStockOpnameController extends Controller
         ]);
     }
 
-    private function checkSoWriteAccess()
+    private function checkSoWriteAccess($jenisSo = 'cycle_count')
     {
         $today = now()->toDateString();
-        $status = WrmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        $status = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
         if ($status && $status->status === 'started' && Auth::id() != $status->user_id) {
             return false;
         }
@@ -63,7 +99,11 @@ class WrmStockOpnameController extends Controller
     public function getStatusOpname(Request $request)
     {
         $today = now()->toDateString();
-        $status = WrmSoStatusModel::with('user')->whereDate('tgl_opname', $today)->first();
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
+        $status = WrmSoStatusModel::with('user')
+            ->whereDate('tgl_opname', $today)
+            ->where('jenis_so', $jenisSo)
+            ->first();
         $currentUser = Auth::user();
 
         if ($status) {
@@ -78,7 +118,7 @@ class WrmStockOpnameController extends Controller
         return response()->json([
             'status' => 'idle',
             'is_owner' => true,
-            'started_by' => $status->user->nama_lengkap ?? $status->user->username ?? 'Stock Control'
+            'started_by' => 'Stock Control'
         ]);
     }
 
@@ -86,34 +126,45 @@ class WrmStockOpnameController extends Controller
     {
         $search = $request->input('search');
         $today = now()->toDateString();
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
 
         // Query all SOH entered today
         $query = WrmSohModel::query()
             ->select('wrm_soh.*')
             ->leftJoin('wrm_master_barang', 'wrm_soh.barang_id', '=', 'wrm_master_barang.id')
-            ->whereDate('wrm_soh.created_at', $today);
+            ->whereDate('wrm_soh.created_at', $today)
+            ->where('wrm_soh.jenis_so', $jenisSo);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('wrm_master_barang.mid', 'like', '%' . $search . '%')
                     ->orWhere('wrm_master_barang.nama_barang', 'like', '%' . $search . '%')
-                    ->orWhere('wrm_soh.no_spb', 'like', '%' . $search . '%');
+                    ->orWhere('wrm_soh.no_spb', 'like', '%' . $search . '%')
+                    ->orWhere('wrm_soh.pallet', 'like', '%' . $search . '%');
             });
         }
 
         $sohList = $query->with('barang')->get();
 
-        // Pull active temp values grouped by barang_id and no_spb
-        $tempData = WrmSoTempModel::whereDate('tgl_opname', $today)->get()->groupBy(function ($item) {
-            return $item->barang_id . '-' . $item->no_spb;
-        });
+        // Pull active temp values grouped by barang_id, no_spb and pallet
+        $tempData = WrmSoTempModel::whereDate('tgl_opname', $today)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->get()->groupBy(function ($item) {
+                return $item->barang_id . '-' . $item->no_spb . '-' . $item->pallet;
+            });
 
-        $tempNotes = WrmSoTempNoteModel::whereDate('tgl_opname', $today)->get()->keyBy(function ($item) {
-            return $item->barang_id . '-' . $item->no_spb;
-        });
+        $tempNotes = WrmSoTempNoteModel::whereDate('tgl_opname', $today)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->get()->keyBy(function ($item) {
+                return $item->barang_id . '-' . $item->no_spb . '-' . $item->pallet;
+            });
 
         $result = $sohList->map(function ($soh) use ($tempData, $tempNotes) {
-            $key = $soh->barang_id . '-' . $soh->no_spb;
+            $key = $soh->barang_id . '-' . $soh->no_spb . '-' . $soh->pallet;
             $temps = $tempData->get($key);
             $note = $tempNotes->get($key);
 
@@ -137,6 +188,7 @@ class WrmStockOpnameController extends Controller
                 'uom' => $soh->barang->uom,
                 'qty_kg' => (float)($soh->barang->qty_kg ?? 1),
                 'no_spb' => $soh->no_spb,
+                'pallet' => $soh->pallet,
                 'qty_soh' => $soh->qty_soh,
                 'qty_unrest' => $soh->qty_unrest,
                 'qty_qi' => $soh->qty_qi,
@@ -157,22 +209,22 @@ class WrmStockOpnameController extends Controller
 
     public function saveTemp(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
+        $request->validate([
+            'soh_id' => 'required|exists:wrm_soh,id',
+            'qty_full' => 'nullable|integer|in:0,1',
+            'qty_receh' => 'nullable|integer|min:0',
+            'keterangan' => 'nullable|string|max:255'
+        ]);
+
+        $soh = WrmSohModel::findOrFail($request->soh_id);
+
+        if (!$this->checkSoWriteAccess($soh->jenis_so)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
             ], 403);
         }
 
-        $request->validate([
-            'soh_id' => 'required|exists:wrm_soh,id',
-            'qty_full' => 'nullable|integer|min:0',
-            'qty_receh' => 'nullable|integer|min:0',
-            'keterangan' => 'nullable|string|max:255'
-        ]);
-
-        $soh = WrmSohModel::with('barang')->findOrFail($request->soh_id);
-        $barang = $soh->barang;
         $user = Auth::user();
         $today = now()->toDateString();
 
@@ -185,27 +237,23 @@ class WrmStockOpnameController extends Controller
         if ($hasQty) {
             $qtyFullVal = (int)($qtyFull ?? 0);
             $qtyRecehVal = (int)($qtyReceh ?? 0);
-            $qtyKg = (float)($barang->qty_kg ?? 1);
+            $summary = ($qtyFullVal === 1) ? $qtyRecehVal : 0;
 
-            if ($qtyRecehVal >= $qtyKg) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => "Qty Receh ({$qtyRecehVal}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyKg})!"
-                ], 422);
-            }
-
-            $summary = ($qtyFullVal * $qtyKg) + $qtyRecehVal;
-
-            $temp = WrmSoTempModel::create([
-                'soh_id' => $soh->id,
-                'barang_id' => $soh->barang_id,
-                'no_spb' => $soh->no_spb,
-                'qty_full' => $qtyFullVal,
-                'qty_receh' => $qtyRecehVal,
-                'summary' => $summary,
-                'tgl_opname' => $today,
-                'created_by' => $user->id ?? 1,
-            ]);
+            $temp = WrmSoTempModel::updateOrCreate(
+                [
+                    'soh_id' => $soh->id,
+                    'tgl_opname' => $today,
+                ],
+                [
+                    'barang_id' => $soh->barang_id,
+                    'no_spb' => $soh->no_spb,
+                    'pallet' => $soh->pallet,
+                    'qty_full' => $qtyFullVal,
+                    'qty_receh' => $qtyRecehVal,
+                    'summary' => $summary,
+                    'created_by' => $user->id ?? 1,
+                ]
+            );
         }
 
         // Save notes temp if present
@@ -217,6 +265,7 @@ class WrmStockOpnameController extends Controller
                         'soh_id' => $soh->id,
                         'barang_id' => $soh->barang_id,
                         'no_spb' => $soh->no_spb,
+                        'pallet' => $soh->pallet,
                         'tgl_opname' => $today
                     ],
                     [
@@ -347,23 +396,36 @@ class WrmStockOpnameController extends Controller
 
     public function updateTempBatch(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
-            ], 403);
-        }
-
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
-            'items.*.qty_full' => 'nullable|integer|min:0',
+            'items.*.qty_full' => 'nullable|integer|in:0,1',
             'items.*.qty_receh' => 'nullable|integer|min:0',
             'catatan' => 'nullable|string|max:1000',
         ]);
 
         $items = $validated['items'];
         $catatan = $validated['catatan'] ?? null;
+
+        if (empty($items)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tidak ada item yang divalidasi.'
+            ], 422);
+        }
+
+        $firstTemp = WrmSoTempModel::find($items[0]['id']);
+        $jenisSo = 'cycle_count';
+        if ($firstTemp && $firstTemp->soh) {
+            $jenisSo = $firstTemp->soh->jenis_so;
+        }
+
+        if (!$this->checkSoWriteAccess($jenisSo)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
+            ], 403);
+        }
 
         DB::beginTransaction();
         try {
@@ -375,13 +437,7 @@ class WrmStockOpnameController extends Controller
 
                 $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
-                $qtyKg = (float)($temp->barang->qty_kg ?? 1);
-
-                if ($qtyReceh >= $qtyKg) {
-                    throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid} tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyKg})!");
-                }
-
-                $summary = ($qtyFull * $qtyKg) + $qtyReceh;
+                $summary = ($qtyFull === 1) ? $qtyReceh : 0;
 
                 $temp->qty_full = $qtyFull;
                 $temp->qty_receh = $qtyReceh;
@@ -394,6 +450,7 @@ class WrmStockOpnameController extends Controller
                     'soh_id' => $temp->soh_id,
                     'barang_id' => $temp->barang_id,
                     'no_spb' => $temp->no_spb,
+                    'pallet' => $temp->pallet,
                     'tgl_opname' => $tglOpname,
                 ];
             }
@@ -406,6 +463,7 @@ class WrmStockOpnameController extends Controller
                                 'soh_id' => $pair['soh_id'],
                                 'barang_id' => $pair['barang_id'],
                                 'no_spb' => $pair['no_spb'],
+                                'pallet' => $pair['pallet'],
                                 'tgl_opname' => $pair['tgl_opname']
                             ],
                             [
@@ -437,7 +495,22 @@ class WrmStockOpnameController extends Controller
 
     public function destroyTemp($id, Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
+        $type = $request->input('tipe', 'qty');
+        $jenisSo = 'cycle_count';
+
+        if ($type === 'note') {
+            $note = WrmSoTempNoteModel::where('soh_id', $id)->first();
+            if ($note && $note->soh) {
+                $jenisSo = $note->soh->jenis_so;
+            }
+        } else {
+            $temp = WrmSoTempModel::with('soh')->find($id);
+            if ($temp && $temp->soh) {
+                $jenisSo = $temp->soh->jenis_so;
+            }
+        }
+
+        if (!$this->checkSoWriteAccess($jenisSo)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
@@ -445,8 +518,6 @@ class WrmStockOpnameController extends Controller
         }
 
         try {
-            $type = $request->input('tipe', 'qty');
-
             if ($type === 'note') {
                 $deleted = WrmSoTempNoteModel::where('soh_id', $id)->delete();
                 if (!$deleted) {
@@ -483,56 +554,57 @@ class WrmStockOpnameController extends Controller
 
     public function saveTempNew(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
+        $request->validate([
+            'mid_barang' => 'required|exists:wrm_master_barang,mid',
+            'no_spb' => 'nullable|string',
+            'pallet' => 'required|string',
+            'unrest' => 'required|integer|min:0',
+            'qi' => 'nullable|integer|min:0',
+            'blocked' => 'nullable|integer|min:0',
+            'qty_full' => 'required|integer|in:0,1',
+            'qty_receh' => 'required|integer|min:0',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
+        ]);
+
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
+
+        if (!$this->checkSoWriteAccess($jenisSo)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
             ], 403);
         }
 
-        $request->validate([
-            'mid_barang' => 'required|exists:wrm_master_barang,mid',
-            'no_spb' => 'nullable|integer',
-            'unrest' => 'required|integer|min:0',
-            'qi' => 'nullable|integer|min:0',
-            'blocked' => 'nullable|integer|min:0',
-            'qty_full' => 'required|integer|min:0',
-            'qty_receh' => 'required|integer|min:0',
-        ]);
-
         $barang = MasterBarangModel::where('mid', $request->mid_barang)->firstOrFail();
         $user = Auth::user();
         $today = now()->toDateString();
 
-        // Validasi jika MID dan no_spb sama di hari ini dan sudah ada
+        // Validasi jika MID, no_spb dan pallet sudah ada hari ini untuk jenis SO ini
         $exists = WrmSohModel::where('barang_id', $barang->id)
             ->where('no_spb', $request->no_spb)
+            ->where('pallet', $request->pallet)
+            ->where('jenis_so', $jenisSo)
             ->whereDate('created_at', $today)
             ->exists();
 
         if ($exists) {
             return response()->json([
                 'status' => 'error',
-                'message' => "MID {$request->mid_barang} dengan No SPB " . ($request->no_spb ?? '-') . " sudah ada hari ini."
+                'message' => "MID {$request->mid_barang} dengan No SPB " . ($request->no_spb ?? '-') . " dan Pallet {$request->pallet} sudah ada hari ini."
             ], 422);
         }
 
-        $qtyKg = (float)($barang->qty_kg ?? 1);
-
-        if ((int)$request->qty_receh >= $qtyKg) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "Qty Receh ({$request->qty_receh}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyKg})!"
-            ], 422);
-        }
-
-        $summary = ($request->qty_full * $qtyKg) + $request->qty_receh;
+        $qtyFullVal = (int)($request->qty_full ?? 0);
+        $qtyRecehVal = (int)($request->qty_receh ?? 0);
+        $summary = ($qtyFullVal === 1) ? $qtyRecehVal : 0;
 
         // Create new SOH entry for today
         $soh = WrmSohModel::updateOrCreate(
             [
                 'barang_id' => $barang->id,
-                'no_spb' => $request->no_spb,
+                'no_spb'    => $request->no_spb,
+                'pallet'    => $request->pallet,
+                'jenis_so'  => $jenisSo,
                 'created_at' => $today
             ],
             [
@@ -551,11 +623,12 @@ class WrmStockOpnameController extends Controller
                 'soh_id' => $soh->id,
                 'barang_id' => $barang->id,
                 'no_spb' => $request->no_spb,
+                'pallet' => $request->pallet,
                 'tgl_opname' => $today
             ],
             [
-                'qty_full' => $request->qty_full,
-                'qty_receh' => $request->qty_receh,
+                'qty_full' => $qtyFullVal,
+                'qty_receh' => $qtyRecehVal,
                 'summary' => $summary,
                 'created_by' => $user->id ?? 1,
             ]
@@ -573,16 +646,18 @@ class WrmStockOpnameController extends Controller
 
     public function resetTempRow(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
+        $request->validate([
+            'soh_id' => 'required|exists:wrm_soh,id'
+        ]);
+
+        $soh = WrmSohModel::findOrFail($request->soh_id);
+
+        if (!$this->checkSoWriteAccess($soh->jenis_so)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
             ], 403);
         }
-
-        $request->validate([
-            'soh_id' => 'required|exists:wrm_soh,id'
-        ]);
 
         $today = now()->toDateString();
         WrmSoTempModel::where('soh_id', $request->soh_id)->whereDate('tgl_opname', $today)->delete();
@@ -596,24 +671,32 @@ class WrmStockOpnameController extends Controller
 
     public function processOpname(Request $request)
     {
-        if (!$this->checkSoWriteAccess()) {
+        $request->validate([
+            'tgl_opname' => 'required|date',
+            'mode' => 'required|in:check,final_prepare,final_submit',
+            'jenis_so' => 'required|string|in:cycle_count,monthly',
+            'keterangan' => 'nullable|array'
+        ]);
+
+        $jenisSo = $request->jenis_so;
+
+        if (!$this->checkSoWriteAccess($jenisSo)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Akses ditolak. Stock opname sedang dilakukan oleh user lain.'
             ], 403);
         }
 
-        $request->validate([
-            'tgl_opname' => 'required|date',
-            'mode' => 'required|in:check,final_prepare,final_submit',
-            'keterangan' => 'nullable|array'
-        ]);
-
         $user = Auth::user();
         $tglOpname = $request->tgl_opname;
 
-        // Fetch temp data
-        $tempData = WrmSoTempModel::with('barang')->where('tgl_opname', $tglOpname)->get();
+        // Fetch temp data for this jenis_so
+        $tempData = WrmSoTempModel::with('barang')
+            ->where('tgl_opname', $tglOpname)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->get();
 
         if ($tempData->isEmpty()) {
             return response()->json([
@@ -622,13 +705,21 @@ class WrmStockOpnameController extends Controller
             ]);
         }
 
-        // Fetch all SOH today
-        $sohData = WrmSohModel::whereDate('created_at', $tglOpname)->get()->keyBy(function ($item) {
-            return $item->barang_id . '-' . $item->no_spb;
-        });
+        // Fetch all SOH today for this jenis_so
+        $sohData = WrmSohModel::whereDate('created_at', $tglOpname)
+            ->where('jenis_so', $jenisSo)
+            ->get()
+            ->keyBy(function ($item) {
+                return $item->barang_id . '-' . $item->no_spb . '-' . $item->pallet;
+            });
 
         // Pull active temp notes
-        $tempNotes = WrmSoTempNoteModel::whereDate('tgl_opname', $tglOpname)->get()->pluck('catatan', 'soh_id');
+        $tempNotes = WrmSoTempNoteModel::whereDate('tgl_opname', $tglOpname)
+            ->whereHas('soh', function ($q) use ($jenisSo) {
+                $q->where('jenis_so', $jenisSo);
+            })
+            ->get()
+            ->pluck('catatan', 'soh_id');
 
         // Check if there are any items in SOH that haven't been counted yet
         $uncountedItems = [];
@@ -639,22 +730,26 @@ class WrmStockOpnameController extends Controller
                     'mid' => $soh->barang->mid,
                     'nama_barang' => $soh->barang->nama_barang,
                     'no_spb' => $soh->no_spb,
+                    'pallet' => $soh->pallet,
                     'qty_system' => $soh->qty_soh
                 ];
             }
         }
 
         // Group temp counts by soh_id to sum their values
-        $groupedTemp = $tempData->groupBy('soh_id')->map(function ($items) {
+        $groupedTemp = $tempData->groupBy('soh_id')->map(function ($items) use ($sohData) {
             $first = $items->first();
+            $soh   = $sohData->get($first->barang_id . '-' . $first->no_spb . '-' . $first->pallet);
             return [
-                'soh_id' => $first->soh_id,
-                'barang_id' => $first->barang_id,
-                'no_spb' => $first->no_spb,
-                'barang' => $first->barang,
-                'qty_full' => $items->sum('qty_full'),
-                'qty_receh' => $items->sum('qty_receh'),
-                'summary' => $items->sum('summary'),
+                'soh_id'     => $first->soh_id,
+                'barang_id'  => $first->barang_id,
+                'no_spb'     => $first->no_spb,
+                'pallet'     => $first->pallet,
+                'jenis_data' => $soh ? $soh->jenis_data : null,
+                'barang'     => $first->barang,
+                'qty_full'   => $items->sum('qty_full'),
+                'qty_receh'  => $items->sum('qty_receh'),
+                'summary'    => $items->sum('summary'),
             ];
         });
 
@@ -662,7 +757,7 @@ class WrmStockOpnameController extends Controller
         $varianceIssues = [];
         $analysis = [];
         foreach ($groupedTemp as $temp) {
-            $soh = $sohData->get($temp['barang_id'] . '-' . $temp['no_spb']);
+            $soh = $sohData->get($temp['barang_id'] . '-' . $temp['no_spb'] . '-' . $temp['pallet']);
             $qtySystem = $soh ? $soh->qty_soh : 0;
             $qtyPhysical = $temp['summary'];
             $diff = round($qtyPhysical - $qtySystem, 4);
@@ -676,23 +771,26 @@ class WrmStockOpnameController extends Controller
                 $varianceIssues[] = [
                     'mid' => $temp['barang']->mid,
                     'no_spb' => $temp['no_spb'],
+                    'pallet' => $temp['pallet'],
                     'selisih' => $diff,
                 ];
             }
 
             $analysis[] = [
-                'soh_id' => $temp['soh_id'],
-                'barang_id' => $temp['barang_id'],
-                'mid' => $temp['barang']->mid ?? '-',
-                'nama_barang' => $temp['barang']->nama_barang ?? '-',
-                'no_spb' => $temp['no_spb'],
-                'qty_fisik' => $qtyPhysical,
+                'soh_id'     => $temp['soh_id'],
+                'barang_id'  => $temp['barang_id'],
+                'jenis_data' => $temp['jenis_data'],
+                'mid'        => $temp['barang']->mid ?? '-',
+                'nama_barang'=> $temp['barang']->nama_barang ?? '-',
+                'no_spb'     => $temp['no_spb'],
+                'pallet'     => $temp['pallet'],
+                'qty_fisik'  => $qtyPhysical,
                 'qty_sistem' => $qtySystem,
-                'selisih' => $diff,
-                'status' => $status,
+                'selisih'    => $diff,
+                'status'     => $status,
                 'keterangan' => $comment,
-                'qty_full' => $temp['qty_full'],
-                'qty_receh' => $temp['qty_receh'],
+                'qty_full'   => $temp['qty_full'],
+                'qty_receh'  => $temp['qty_receh'],
             ];
         }
 
@@ -769,13 +867,16 @@ class WrmStockOpnameController extends Controller
 
             DB::beginTransaction();
             try {
-                $existingSop = WrmSoModel::whereDate('tgl_opname', $tglOpname)->first();
+                $existingSop = WrmSoModel::whereDate('tgl_opname', $tglOpname)
+                    ->where('jenis_so', $jenisSo)
+                    ->first();
                 if ($existingSop && $existingSop->no_doc) {
                     $noDoc = $existingSop->no_doc;
                 } else {
                     $tanggalCarbon = \Carbon\Carbon::parse($tglOpname);
                     $count = WrmSoModel::whereMonth('tgl_opname', $tanggalCarbon->month)
                         ->whereYear('tgl_opname', $tanggalCarbon->year)
+                        ->where('jenis_so', $jenisSo)
                         ->count();
                     $nextNum = $count + 1;
                     $nomor = str_pad($nextNum, 3, '0', STR_PAD_LEFT);
@@ -786,15 +887,18 @@ class WrmStockOpnameController extends Controller
                 }
 
                 $sop = WrmSoModel::updateOrCreate(
-                    ['tgl_opname' => $tglOpname],
+                    [
+                        'tgl_opname' => $tglOpname,
+                        'jenis_so'   => $jenisSo
+                    ],
                     [
                         'user_id' => $user->id ?? 1,
-                        'status' => 'draft',
+                        'status' => $jenisSo === 'cycle_count' ? 'approved' : 'draft',
                         'no_doc' => $noDoc
                     ]
                 );
 
-                // Delete old details/summaries for this date
+                // Delete old details/summaries for this date and jenis_so
                 WrmSoDetailModel::where('so_id', $sop->id)->delete();
                 WrmSoSummariesModel::where('so_id', $sop->id)->delete();
                 WrmSoApprovalModel::where('so_id', $sop->id)->delete();
@@ -802,18 +906,23 @@ class WrmStockOpnameController extends Controller
                 WrmSoApprovalModel::create([
                     'so_id' => $sop->id,
                     'approver_id' => $user->id,
-                    'status' => 'read',
-                    'catatan' => $komentarFinal
+                    'status' => $jenisSo === 'cycle_count' ? 'approved' : 'read',
+                    'catatan' => $komentarFinal,
+                    'action_at' => $jenisSo === 'cycle_count' ? now() : null,
+                    'action_by' => $jenisSo === 'cycle_count' ? $user->id : null,
                 ]);
 
                 // Save details (individual entries from temp!)
                 foreach ($tempData as $temp) {
+                    $soh = $sohData->get($temp->barang_id . '-' . $temp->no_spb . '-' . $temp->pallet);
                     WrmSoDetailModel::create([
-                        'so_id' => $sop->id,
-                        'barang_id' => $temp->barang_id,
-                        'no_spb' => $temp->no_spb,
-                        'qty_full' => $temp->qty_full,
-                        'qty_receh' => $temp->qty_receh,
+                        'so_id'      => $sop->id,
+                        'barang_id'  => $temp->barang_id,
+                        'no_spb'     => $temp->no_spb,
+                        'pallet'     => $temp->pallet,
+                        'jenis_data' => $soh ? $soh->jenis_data : null,
+                        'qty_full'   => $temp->qty_full,
+                        'qty_receh'  => $temp->qty_receh,
                         'created_at' => $temp->created_at,
                     ]);
                 }
@@ -821,35 +930,51 @@ class WrmStockOpnameController extends Controller
                 // Save summaries
                 foreach ($analysis as $item) {
                     WrmSoSummariesModel::create([
-                        'so_id' => $sop->id,
-                        'barang_id' => $item['barang_id'],
-                        'no_spb' => $item['no_spb'],
-                        'qty_fisik' => $item['qty_fisik'],
+                        'so_id'      => $sop->id,
+                        'barang_id'  => $item['barang_id'],
+                        'no_spb'     => $item['no_spb'],
+                        'pallet'     => $item['pallet'],
+                        'jenis_data' => $item['jenis_data'],
+                        'qty_fisik'  => $item['qty_fisik'],
                         'qty_sistem' => $item['qty_sistem'],
-                        'selisih' => $item['selisih'],
-                        'status' => $item['status'],
+                        'selisih'    => $item['selisih'],
+                        'status'     => $item['status'],
                         'keterangan' => $item['keterangan'],
                     ]);
                 }
 
                 // Update session status log
                 WrmSoStatusModel::updateOrCreate(
-                    ['tgl_opname' => $tglOpname],
+                    [
+                        'tgl_opname' => $tglOpname,
+                        'jenis_so'   => $jenisSo
+                    ],
                     [
                         'user_id' => $user->id ?? 1,
                         'status' => 'finished'
                     ]
                 );
 
-                // Clear temp tables
-                WrmSoTempModel::where('tgl_opname', $tglOpname)->delete();
-                WrmSoTempNoteModel::where('tgl_opname', $tglOpname)->delete();
+                // Clear temp tables for this date and jenis_so
+                WrmSoTempModel::where('tgl_opname', $tglOpname)
+                    ->whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    })->delete();
+
+                WrmSoTempNoteModel::where('tgl_opname', $tglOpname)
+                    ->whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    })->delete();
 
                 DB::commit();
 
+                $msg = $jenisSo === 'cycle_count' ? 
+                    'Stock Opname WRM berhasil disubmit final (Auto-Approved).' :
+                    'Stock Opname WRM berhasil disubmit final. Status saat ini Draft. Silakan kirim persetujuan dari menu Report SO.';
+
                 return response()->json([
                     'status' => 'success',
-                    'message' => 'Stock Opname WRM berhasil disubmit final. Status saat ini Draft. Silakan kirim persetujuan dari menu Report SO.'
+                    'message' => $msg
                 ]);
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -864,13 +989,23 @@ class WrmStockOpnameController extends Controller
     public function getDataReport(Request $request)
     {
         $tglOpname = $request->input('tgl_opname', now()->toDateString());
+        $jenisSo   = $request->input('jenis_so', 'cycle_count');
 
-        $sop = WrmSoModel::whereDate('tgl_opname', $tglOpname)->first();
+        $query = WrmSoModel::where('jenis_so', $jenisSo);
+        if (strlen($tglOpname) === 7) {
+            $parts = explode('-', $tglOpname);
+            $query->whereYear('tgl_opname', $parts[0])
+                  ->whereMonth('tgl_opname', $parts[1]);
+        } else {
+            $query->whereDate('tgl_opname', $tglOpname);
+        }
+        $sop = $query->first();
 
         // Get all WrmSoModel records that are not approved yet (draft, pending, rejected)
         $unapprovedSops = WrmSoModel::where('status', '!=', 'approved')
+            ->where('jenis_so', $jenisSo)
             ->orderBy('tgl_opname', 'asc')
-            ->get(['id', 'tgl_opname', 'status']);
+            ->get(['id', 'tgl_opname', 'status', 'jenis_so']);
 
         if (!$sop) {
             return response()->json([
@@ -880,16 +1015,44 @@ class WrmStockOpnameController extends Controller
             ]);
         }
 
-        $data = WrmSoSummariesModel::where('so_id', $sop->id)
+        // Load all pallet-level summaries and group by (barang_id, no_spb)
+        $summaries = WrmSoSummariesModel::where('so_id', $sop->id)
             ->with('barang:id,mid,nama_barang,uom')
             ->get();
 
+        $grouped = $summaries->groupBy(fn($s) => $s->barang_id . '_' . $s->no_spb)
+            ->map(function ($rows) {
+                $first = $rows->first();
+                return [
+                    // Use the first pallet-row ID as the representative ID for backwards compat
+                    'id'         => $first->id,
+                    'so_id'      => $first->so_id,
+                    'barang_id'  => $first->barang_id,
+                    'no_spb'     => $first->no_spb,
+                    'barang'     => $first->barang,
+                    'qty_sistem' => $rows->sum('qty_sistem'),
+                    'qty_fisik'  => $rows->sum('qty_fisik'),
+                    'selisih'    => $rows->sum('selisih'),
+                    'status'     => $this->aggregateStatus($rows->pluck('status')),
+                    'keterangan' => $rows->pluck('keterangan')->filter()->implode('; '),
+                    'pallet_count' => $rows->count(),
+                ];
+            })->values();
+
         return response()->json([
-            'status' => 'success',
-            'sop' => $sop, // send header to check status
-            'data' => $data,
-            'unapproved_sops' => $unapprovedSops
+            'status'         => 'success',
+            'sop'            => $sop,
+            'data'           => $grouped,
+            'jenis_so'       => $jenisSo,
+            'unapproved_sops'=> $unapprovedSops
         ]);
+    }
+
+    private function aggregateStatus($statuses): string
+    {
+        if ($statuses->contains('kurang')) return 'kurang';
+        if ($statuses->contains('lebih'))  return 'lebih';
+        return 'match';
     }
 
     public function getPendingApprovalReport(Request $request)
@@ -898,11 +1061,13 @@ class WrmStockOpnameController extends Controller
 
         $approvals = WrmSoApprovalModel::with([
             'approver:id,nama_lengkap,username,jabatan',
-            'so:id,tgl_opname,status,user_id',
+            'so:id,tgl_opname,status,user_id,jenis_so',
             'so.user:id,username,nama_lengkap',
         ])
+            ->where('approver_id', $user->id)
             ->whereIn('wrm_so_approvals.status', ['pending', 'read'])
             ->join('wrm_so', 'wrm_so.id', '=', 'wrm_so_approvals.so_id')
+            ->where('wrm_so.status', '!=', 'approved')
             ->orderByDesc('wrm_so.tgl_opname')
             ->orderByDesc('wrm_so_approvals.created_at')
             ->select('wrm_so_approvals.*')
@@ -949,7 +1114,7 @@ class WrmStockOpnameController extends Controller
     {
         $users = User::where(function ($q) {
             $q->where('jabatan', 'foreman')
-                ->where('bagian', 'warehouse_raw_material');
+                ->where('departemen', 'warehouse');
         })
             ->orWhere(function ($q) {
                 $q->where('jabatan', 'supervisor')
@@ -963,7 +1128,6 @@ class WrmStockOpnameController extends Controller
         ]);
     }
 
-    // Send Approval
     public function sendApproval(Request $request)
     {
         $request->validate([
@@ -1027,8 +1191,8 @@ class WrmStockOpnameController extends Controller
             $so->update(['status' => 'pending']);
 
             $title   = 'Approval SO WRM';
-            $message = 'SO Raw Material tanggal ' . $so->tgl_opname . ' menunggu persetujuan Anda.';
-            $url     = route('wrm.stock_opname.report') . '?tgl_opname=' . $so->tgl_opname;
+            $message = 'SO Warehouse Raw Material tanggal ' . $so->tgl_opname . ' menunggu persetujuan Anda.';
+            $url     = route('wrm.stock_opname.report') . '?tgl_opname=' . $so->tgl_opname . '&jenis_so=' . $so->jenis_so;
 
             foreach ($approverIds as $approverId) {
                 if ($approverId == $user->id) continue;
@@ -1065,7 +1229,6 @@ class WrmStockOpnameController extends Controller
         }
     }
 
-    // Show Approval Tracking status
     public function showApproval($id)
     {
         $so = WrmSoModel::findOrFail($id);
@@ -1092,6 +1255,7 @@ class WrmStockOpnameController extends Controller
 
         return response()->json([
             'status' => 'success',
+            'jenis_so' => $so->jenis_so,
             'status_sop' => $so->status,
             'approval_status' => $approvalStatus,
             'approval_note' => $approvalNote,
@@ -1101,7 +1265,6 @@ class WrmStockOpnameController extends Controller
         ]);
     }
 
-    // Update Status Approval (Approve / Reject)
     public function updateStatus(Request $request)
     {
         $request->validate([
@@ -1159,13 +1322,13 @@ class WrmStockOpnameController extends Controller
             if (in_array($finalStatus, ['approved', 'rejected']) && $so->user_id) {
                 $statusText = $finalStatus === 'approved' ? 'DISETUJUI' : 'DITOLAK';
                 $titleText = "SO WRM " . ($finalStatus === 'approved' ? 'Approved' : 'Rejected');
-                $messageText = "Stock Opname Raw Material tanggal " . $so->tgl_opname . " telah " . $statusText . " oleh " . $user->nama_lengkap . ".";
+                $messageText = "Stock Opname Warehouse Raw Material tanggal " . $so->tgl_opname . " telah " . $statusText . " oleh " . $user->nama_lengkap . ".";
 
                 if ($finalStatus === 'rejected' && $request->catatan) {
                     $messageText .= " Catatan: " . $request->catatan;
                 }
 
-                $url = route('wrm.stock_opname.report') . '?tgl_opname=' . $so->tgl_opname;
+                $url = route('wrm.stock_opname.report') . '?tgl_opname=' . $so->tgl_opname . '&jenis_so=' . $so->jenis_so;
 
                 // Clear old status notifications for this SO for the creator
                 NotificationsModel::where('user_id', $so->user_id)
@@ -1195,33 +1358,52 @@ class WrmStockOpnameController extends Controller
             DB::rollBack();
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal memperbarui status approval: ' . $e->getMessage()
+                'message' => 'Gagal memperbarui status: ' . $e->getMessage()
             ], 500);
         }
     }
 
-    public function getReportDetail(int $id)
+    public function getReportDetail(Request $request, int $id)
     {
-        $summary = WrmSoSummariesModel::with('barang')->findOrFail($id);
+        // $id is now the representative summary ID for a (barang_id, no_spb) group
+        $representative = WrmSoSummariesModel::with('barang')->findOrFail($id);
 
-        $details = WrmSoDetailModel::where('so_id', $summary->so_id)
-            ->where('barang_id', $summary->barang_id)
-            ->where(function ($q) use ($summary) {
-                if ($summary->no_spb === null) {
-                    $q->whereNull('no_spb');
-                } else {
-                    $q->where('no_spb', $summary->no_spb);
-                }
-            })
+        // Get all pallet-level rows for the same (so_id, barang_id, no_spb)
+        $pallets = WrmSoSummariesModel::where('so_id', $representative->so_id)
+            ->where('barang_id', $representative->barang_id)
+            ->where('no_spb', $representative->no_spb)
             ->get();
 
-        $barang = $summary->barang;
+        // For each pallet row, also get its physical input history
+        $palletsWithDetails = $pallets->map(function ($row) {
+            $details = WrmSoDetailModel::where('so_id', $row->so_id)
+                ->where('barang_id', $row->barang_id)
+                ->where('no_spb', $row->no_spb)
+                ->where('pallet', $row->pallet)
+                ->get();
+
+            return [
+                'id'         => $row->id,
+                'pallet'     => $row->pallet,
+                'qty_sistem' => $row->qty_sistem,
+                'qty_fisik'  => $row->qty_fisik,
+                'selisih'    => $row->selisih,
+                'status'     => $row->status,
+                'keterangan' => $row->keterangan,
+                'details'    => $details,
+            ];
+        });
+
+        $barang = $representative->barang;
 
         return response()->json([
-            'status' => 'success',
-            'summary' => $summary,
-            'details' => $details,
-            'qty_kg' => $barang ? $barang->qty_kg : 1
+            'status'     => 'success',
+            'so_id'      => $representative->so_id,
+            'barang_id'  => $representative->barang_id,
+            'no_spb'     => $representative->no_spb,
+            'summary'    => $representative,
+            'pallets'    => $palletsWithDetails,
+            'qty_kg'     => $barang ? $barang->qty_kg : 1
         ]);
     }
 
@@ -1230,7 +1412,7 @@ class WrmStockOpnameController extends Controller
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
-            'items.*.qty_full' => 'nullable|integer|min:0',
+            'items.*.qty_full' => 'nullable|integer|in:0,1',
             'items.*.qty_receh' => 'nullable|integer|min:0',
             'keterangan' => 'nullable|string|max:1000'
         ]);
@@ -1252,7 +1434,6 @@ class WrmStockOpnameController extends Controller
             }
 
             $totalQtyFisik = 0;
-            $qtyKg = $summary->barang ? $summary->barang->qty_kg : 1;
 
             foreach ($items as $it) {
                 $detail = WrmSoDetailModel::where('id', $it['id'])
@@ -1264,7 +1445,7 @@ class WrmStockOpnameController extends Controller
                 $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
                 $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
 
-                if ($qtyFull < 0 || $qtyReceh < 0) {
+                if ($qtyReceh < 0) {
                     return response()->json([
                         'status' => 'error',
                         'message' => 'Kuantitas tidak boleh negatif/minus!'
@@ -1275,7 +1456,7 @@ class WrmStockOpnameController extends Controller
                 $detail->qty_receh = $qtyReceh;
                 $detail->save();
 
-                $totalQtyFisik += ($qtyFull * $qtyKg) + $qtyReceh;
+                $totalQtyFisik += ($qtyFull === 1) ? $qtyReceh : 0;
             }
 
             // Calculate new summary values
@@ -1322,13 +1503,8 @@ class WrmStockOpnameController extends Controller
             // Delete matching details
             WrmSoDetailModel::where('so_id', $summary->so_id)
                 ->where('barang_id', $summary->barang_id)
-                ->where(function ($q) use ($summary) {
-                    if ($summary->no_spb === null) {
-                        $q->whereNull('no_spb');
-                    } else {
-                        $q->where('no_spb', $summary->no_spb);
-                    }
-                })
+                ->where('no_spb', $summary->no_spb)
+                ->where('pallet', $summary->pallet)
                 ->delete();
 
             // Delete summary
@@ -1369,32 +1545,21 @@ class WrmStockOpnameController extends Controller
             // Recalculate summary
             $summary = WrmSoSummariesModel::where('so_id', $detail->so_id)
                 ->where('barang_id', $detail->barang_id)
-                ->where(function ($q) use ($detail) {
-                    if ($detail->no_spb === null) {
-                        $q->whereNull('no_spb');
-                    } else {
-                        $q->where('no_spb', $detail->no_spb);
-                    }
-                })
+                ->where('no_spb', $detail->no_spb)
+                ->where('pallet', $detail->pallet)
                 ->first();
 
             if ($summary) {
                 // Get all remaining details for this summary
                 $remainingDetails = WrmSoDetailModel::where('so_id', $summary->so_id)
                     ->where('barang_id', $summary->barang_id)
-                    ->where(function ($q) use ($summary) {
-                        if ($summary->no_spb === null) {
-                            $q->whereNull('no_spb');
-                        } else {
-                            $q->where('no_spb', $summary->no_spb);
-                        }
-                    })
+                    ->where('no_spb', $summary->no_spb)
+                    ->where('pallet', $summary->pallet)
                     ->get();
 
-                $qtyKg = $summary->barang ? $summary->barang->qty_kg : 1;
                 $totalQtyFisik = 0;
                 foreach ($remainingDetails as $det) {
-                    $totalQtyFisik += ($det->qty_full * $qtyKg) + $det->qty_receh;
+                    $totalQtyFisik += ($det->qty_full === 1) ? $det->qty_receh : 0;
                 }
 
                 if ($remainingDetails->isEmpty()) {
@@ -1449,8 +1614,17 @@ class WrmStockOpnameController extends Controller
     public function exportPdfSOWRM(Request $request)
     {
         $tglOpname = $request->input('tgl_opname', now()->toDateString());
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
 
-        $so = WrmSoModel::whereDate('tgl_opname', $tglOpname)->first();
+        $query = WrmSoModel::where('jenis_so', $jenisSo);
+        if (strlen($tglOpname) === 7) {
+            $parts = explode('-', $tglOpname);
+            $query->whereYear('tgl_opname', $parts[0])
+                  ->whereMonth('tgl_opname', $parts[1]);
+        } else {
+            $query->whereDate('tgl_opname', $tglOpname);
+        }
+        $so = $query->first();
 
         if (!$so) {
             return redirect()->back()->with('error', 'Data Stock Opname tidak ditemukan untuk tanggal ' . $tglOpname);
@@ -1501,7 +1675,7 @@ class WrmStockOpnameController extends Controller
         $operatorApproval = $approvals->first(fn($a) => $a->approver_id == $so->user_id);
         $approvers[] = [
             'nama' => $operatorApproval?->approver?->nama_lengkap ?? $operatorApproval?->approver?->username ?? '-',
-            'status' => 'approved', // creator is always approved since they submitted it
+            'status' => 'approved',
             'ttd' => $getSignaturePath($operatorApproval?->approver, 'approved'),
             'catatan' => $operatorApproval?->catatan ?? '-',
             'action_at' => $so->created_at ? Carbon::parse($so->created_at)->format('d/m/Y H:i') : '',

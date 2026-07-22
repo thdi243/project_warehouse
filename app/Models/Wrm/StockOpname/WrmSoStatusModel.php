@@ -16,6 +16,7 @@ class WrmSoStatusModel extends Model
         'user_id',
         'tgl_opname',
         'status',
+        'jenis_so',
     ];
 
     public function user()
