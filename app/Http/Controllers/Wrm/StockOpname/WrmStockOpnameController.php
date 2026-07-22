@@ -237,7 +237,7 @@ class WrmStockOpnameController extends Controller
         if ($hasQty) {
             $qtyFullVal = (int)($qtyFull ?? 0);
             $qtyRecehVal = (int)($qtyReceh ?? 0);
-            $summary = ($qtyFullVal === 1) ? $qtyRecehVal : 0;
+            $summary = $qtyRecehVal;
 
             $temp = WrmSoTempModel::updateOrCreate(
                 [
@@ -596,7 +596,7 @@ class WrmStockOpnameController extends Controller
 
         $qtyFullVal = (int)($request->qty_full ?? 0);
         $qtyRecehVal = (int)($request->qty_receh ?? 0);
-        $summary = ($qtyFullVal === 1) ? $qtyRecehVal : 0;
+        $summary = $qtyRecehVal;
 
         // Create new SOH entry for today
         $soh = WrmSohModel::updateOrCreate(

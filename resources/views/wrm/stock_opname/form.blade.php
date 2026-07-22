@@ -629,7 +629,13 @@
                             ).join('');
                             Swal.fire({
                                 title: 'Ada item belum di-opname!',
-                                html: `<div class="text-start"><p>Berikut item dengan selisih:</p><ul>${listSelisih}</ul><p>Berikut item yang belum diisi nilainya:</p><ul>${list}</ul><p>Semua item wajib diisi sebelum submit final.</p></div>`,
+                                html: `<div class="text-start" style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
+                                    <p class="fw-bold mb-1">Berikut item dengan selisih:</p>
+                                    <ul>${listSelisih}</ul>
+                                    <p class="fw-bold mb-1">Berikut item yang belum diisi nilainya:</p>
+                                    <ul>${list}</ul>
+                                    <p class="text-danger fw-bold mt-2">Semua item wajib diisi sebelum submit final.</p>
+                                </div>`,
                                 icon: 'warning'
                             });
                         } else if (res.status === 'variance_unexplained') {
@@ -639,7 +645,11 @@
                             ).join('');
                             Swal.fire({
                                 title: 'Catatan Selisih Diperlukan!',
-                                html: `<div class="text-start"><p>Ada item dengan selisih yang belum diberikan alasan:</p><ul>${list}</ul><p>Silakan isi kolom Catatan pada baris tersebut terlebih dahulu.</p></div>`,
+                                html: `<div class="text-start" style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
+                                    <p class="fw-bold mb-1">Ada item dengan selisih yang belum diberikan alasan:</p>
+                                    <ul>${list}</ul>
+                                    <p class="text-warning fw-bold mt-2">Silakan isi kolom Catatan pada baris tersebut terlebih dahulu.</p>
+                                </div>`,
                                 icon: 'warning'
                             });
                         } else {
@@ -735,6 +745,17 @@
                 success: function(res) {
                     if (res.status === 'success' && res.data.length > 0) {
                         let html = `
+                            <div class="alert alert-info border-0 shadow-sm d-flex align-items-start mb-3 alert-dismissible fade show text-start" role="alert">
+                                <i class="mdi mdi-information-outline fs-4 me-2"></i>
+                                <div>
+                                    <strong>Petunjuk Pengisian Opname:</strong>
+                                    <ul class="mb-0 ps-3 mt-1 small">
+                                        <li>Ceklis <strong>Checklist</strong> untuk mengisi Qty Fisik secara otomatis sesuai Qty Sistem (Full Pallet).</li>
+                                        <li>Ketik langsung di kolom <strong>Qty (Kg)</strong> untuk mengisi Qty secara custom (Checklist otomatis mati).</li>
+                                    </ul>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
                             <table class="table align-middle mb-0 text-nowrap" id="tableInputOpname">
                                 <thead class="table-light text-center">
                                     <tr>
@@ -847,22 +868,53 @@
                 }
             });
 
-            // Live validation & preview on input
-            $('.qty-full, .qty-receh, .notes-field').on('input', function() {
+            // Live checklist change event
+            $('.qty-full').off('change').on('change', function() {
                 const row = $(this).closest('tr');
-                const isChecked = row.find('.qty-full').is(':checked');
-                const recehValStr = row.find('.qty-receh').val();
+                const isChecked = $(this).is(':checked');
+                const qtySoh = parseInt(row.attr('data-qty-soh')) || 0;
 
-                if (recehValStr !== '' && parseInt(recehValStr) < 0) {
-                    toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
+                if (isChecked) {
+                    row.find('.qty-receh').val(qtySoh);
+                } else {
                     row.find('.qty-receh').val('');
+                }
+
+                // Update physical summary preview
+                const valStr = row.find('.qty-receh').val();
+                row.find('.physical-summary').text(valStr !== '' ? (parseInt(valStr) || 0).toLocaleString('id-ID') : '-');
+
+                saveRow(row);
+            });
+
+            // Live qty input change event
+            $('.qty-receh').off('input').on('input', function() {
+                const row = $(this).closest('tr');
+                const qtySoh = parseInt(row.attr('data-qty-soh')) || 0;
+                const valStr = $(this).val();
+
+                if (valStr !== '' && parseInt(valStr) < 0) {
+                    toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
+                    $(this).val('');
                     return;
                 }
 
-                // Calculate preview values
-                const physicalSummary = isChecked ? (parseInt(recehValStr) || 0) : 0;
-                row.find('.physical-summary').text(isChecked && recehValStr !== '' ? physicalSummary.toLocaleString(
-                    'id-ID') : '-');
+                const val = parseInt(valStr) || 0;
+
+                // Auto checkbox logic: check if entered value matches system qty, else uncheck
+                if (valStr !== '' && val === qtySoh) {
+                    row.find('.qty-full').prop('checked', true);
+                } else {
+                    row.find('.qty-full').prop('checked', false);
+                }
+
+                // Update physical summary preview
+                row.find('.physical-summary').text(valStr !== '' ? val.toLocaleString('id-ID') : '-');
+            });
+
+            // Live notes change event
+            $('.notes-field').off('input').on('input', function() {
+                // Just live preview (none needed for notes except it has input handler)
             });
 
             function saveRow(row) {
@@ -871,12 +923,6 @@
                 const qtyFullVal = isChecked ? 1 : 0;
                 const qtyRecehValStr = row.find('.qty-receh').val();
                 const noteVal = row.find('.notes-field').val();
-
-                // If checked, wait for quantity to be filled before saving
-                if (isChecked && qtyRecehValStr === '') {
-                    row.find('.physical-summary').text('-');
-                    return;
-                }
 
                 const qtyReceh = parseInt(qtyRecehValStr) || 0;
 
@@ -905,12 +951,7 @@
                 });
             }
 
-            // Save on change
-            $('.qty-full').on('change', function() {
-                saveRow($(this).closest('tr'));
-            });
-
-            $('.qty-receh, .notes-field').on('change', function() {
+            $('.qty-receh, .notes-field').off('change').on('change', function() {
                 saveRow($(this).closest('tr'));
             });
         }
