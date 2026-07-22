@@ -147,6 +147,16 @@
                                 value="{{ now()->toDateString() }}" disabled>
                         </div>
 
+                        <div class="col-md-3">
+                            <label for="jenis_so" class="form-label fw-semibold">
+                                Jenis SO
+                            </label>
+                            <select id="jenis_so" name="jenis_so" class="form-select">
+                                <option value="cycle_count">Cycle Count (Daily)</option>
+                                <option value="monthly">Monthly SO</option>
+                            </select>
+                        </div>
+
                         <div class="col-md-6">
                             <div class="d-flex flex-wrap gap-2">
                                 <button type="button" class="btn btn-outline-success" id="btnStartOpname">
@@ -163,8 +173,8 @@
                             </div>
                         </div>
 
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold invisible">Search</label>
+                        {{-- <div class="col-md-3">
+                            <label class="form-label fw-semibold">Search</label>
 
                             <div class="position-relative d-none" id="searchContainer">
                                 <input type="text" id="searchBarang" class="form-control ps-5"
@@ -173,7 +183,7 @@
                                 <i
                                     class="mdi mdi-magnify position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                             </div>
-                        </div>
+                        </div> --}}
                     </div>
                 </div>
             </div>
@@ -293,10 +303,33 @@
                 dropdownParent: $('#modalAddItem')
             });
 
+            function updateTglOpnameForm() {
+                const jenis = $('#jenis_so').val();
+                const tglInput = $('#tgl_opname');
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+
+                if (jenis === 'monthly') {
+                    tglInput.attr('type', 'month').val(`${year}-${month}`);
+                } else {
+                    tglInput.attr('type', 'date').val(`${year}-${month}-${day}`);
+                }
+            }
+
+            updateTglOpnameForm();
             checkSessionStatus();
+
+            // Trigger checkSessionStatus when jenis_so changes
+            $('#jenis_so').on('change', function() {
+                updateTglOpnameForm();
+                checkSessionStatus();
+            });
 
             $('#btnStartOpname').on('click', function() {
                 const btn = $(this);
+                const jenisSo = $('#jenis_so').val();
                 btn.prop('disabled', true).html(
                     '<span class="spinner-border spinner-border-sm me-1"></span>Memulai...');
 
@@ -304,7 +337,8 @@
                     url: "{{ route('wcp.stock_opname.startOpname') }}",
                     type: "POST",
                     data: {
-                        _token: "{{ csrf_token() }}"
+                        _token: "{{ csrf_token() }}",
+                        jenis_so: jenisSo
                     },
                     success: function(res) {
                         if (res.status) {
@@ -316,8 +350,12 @@
                                 '<i class="mdi mdi-play-circle me-1"></i> Mulai Opname');
                         }
                     },
-                    error: function() {
-                        toastr.error('Gagal memulai opname.');
+                    error: function(xhr) {
+                        if (xhr.status === 422) {
+                            toastr.error(xhr.responseJSON.message);
+                        } else {
+                            toastr.error('Gagal memulai opname.');
+                        }
                         btn.prop('disabled', false).html(
                             '<i class="mdi mdi-play-circle me-1"></i> Mulai Opname');
                     }
@@ -364,10 +402,13 @@
                 btn.prop('disabled', true).html(
                     '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...');
 
+                let formData = $('#formAddItem').serialize();
+                formData += '&jenis_so=' + encodeURIComponent($('#jenis_so').val());
+
                 $.ajax({
                     url: "{{ route('wcp.stock_opname.save-temp-new') }}",
                     type: "POST",
-                    data: $('#formAddItem').serialize(),
+                    data: formData,
                     success: function(res) {
                         btn.prop('disabled', false).html(
                             '<i class="mdi mdi-content-save-outline me-1"></i> Tambahkan');
@@ -395,6 +436,7 @@
 
             $('#btnSaveFinal').on('click', function() {
                 const btn = $(this);
+                const jenisSo = $('#jenis_so').val();
                 btn.prop('disabled', true).html(
                     '<span class="spinner-border spinner-border-sm me-1"></span>Memeriksa...');
 
@@ -405,7 +447,8 @@
                     data: {
                         _token: "{{ csrf_token() }}",
                         tgl_opname: "{{ now()->toDateString() }}",
-                        mode: 'check'
+                        mode: 'check',
+                        jenis_so: jenisSo
                     },
                     success: function(res) {
                         btn.prop('disabled', false).html(
@@ -493,7 +536,8 @@
                                         data: {
                                             _token: "{{ csrf_token() }}",
                                             tgl_opname: "{{ now()->toDateString() }}",
-                                            mode: 'final_prepare'
+                                            mode: 'final_prepare',
+                                            jenis_so: jenisSo
                                         },
                                         success: function(finalRes) {
                                             if (finalRes.status ===
@@ -569,8 +613,12 @@
         });
 
         function checkSessionStatus() {
-            $.get("{{ route('wcp.stock_opname.getStatusOpname') }}", function(res) {
+            const jenisSo = $('#jenis_so').val();
+            $.get("{{ route('wcp.stock_opname.getStatusOpname') }}", {
+                jenis_so: jenisSo
+            }, function(res) {
                 if (res.status === 'started') {
+                    $('#jenis_so').prop('disabled', true);
                     if (!res.is_owner) {
                         $('#btnStartOpname').removeClass('d-none').prop('disabled', true).addClass('btn-secondary')
                             .html('<i class="mdi mdi-clock-outline me-1"></i> Sedang Opname');
@@ -592,6 +640,7 @@
                         loadItems();
                     }
                 } else if (res.status === 'finished') {
+                    $('#jenis_so').prop('disabled', false);
                     $('#btnStartOpname').removeClass('d-none').prop('disabled', true).addClass('btn-secondary')
                         .html('<i class="mdi mdi-check-circle-outline me-1"></i> Opname Selesai');
                     $('#btnSaveFinal').addClass('d-none');
@@ -606,18 +655,26 @@
                     `);
                 } else {
                     // idle
+                    $('#jenis_so').prop('disabled', false);
                     $('#btnStartOpname').removeClass('d-none').prop('disabled', false).removeClass('btn-secondary')
                         .addClass('btn-outline-success').html(
                             '<i class="mdi mdi-play-circle me-1"></i> Mulai Opname');
                     $('#btnSaveFinal').addClass('d-none');
                     $('#btnAddRow').addClass('d-none');
                     $('#searchContainer').addClass('d-none');
+                    $('#soInputTableContainer').html(`
+                        <div class="text-center py-5 text-muted">
+                            <h4>Silakan Klik Mulai Opname</h4>
+                            <p>Pilih Jenis SO dan klik tombol Mulai Opname di atas untuk memulai input data fisik.</p>
+                        </div>
+                    `);
                 }
             });
         }
 
         function loadItems() {
             const container = $('#soInputTableContainer');
+            const jenisSo = $('#jenis_so').val();
             container.html(`
                     <div class="text-center py-5 text-primary">
                         <div class="spinner-border text-primary mb-3" role="status"></div>
@@ -628,6 +685,9 @@
             $.ajax({
                 url: "{{ route('wcp.stock_opname.getData') }}",
                 type: "GET",
+                data: {
+                    jenis_so: jenisSo
+                },
                 success: function(res) {
                     if (res.status === 'success' && res.data.length > 0) {
                         let html = `
@@ -787,7 +847,8 @@
                         _token: "{{ csrf_token() }}",
                         soh_id: sohId,
                         qty_receh: recehValStr !== '' ? receh : null,
-                        keterangan: noteVal
+                        keterangan: noteVal,
+                        jenis_so: $('#jenis_so').val()
                     },
                     success: function(res) {
                         if (res.status === 'success') {
@@ -823,7 +884,8 @@
                         type: "DELETE",
                         data: {
                             _token: "{{ csrf_token() }}",
-                            soh_id: sohId
+                            soh_id: sohId,
+                            jenis_so: $('#jenis_so').val()
                         },
                         success: function(res) {
                             if (res.status === 'success') {
@@ -844,7 +906,8 @@
                     _token: "{{ csrf_token() }}",
                     tgl_opname: "{{ now()->toDateString() }}",
                     mode: 'final_submit',
-                    komentar_final: komentarFinal
+                    komentar_final: komentarFinal,
+                    jenis_so: $('#jenis_so').val()
                 },
                 success: function(res) {
                     if (res.status === 'success') {
@@ -898,7 +961,8 @@
                 url: "{{ route('wcp.stock_opname.getTempBatch') }}",
                 type: "GET",
                 data: {
-                    soh_ids: sohIds
+                    soh_ids: sohIds,
+                    jenis_so: $('#jenis_so').val()
                 },
                 success: function(res) {
                     if (res.status === "success" && Array.isArray(res.data)) {

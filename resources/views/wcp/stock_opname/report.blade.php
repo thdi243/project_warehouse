@@ -75,7 +75,18 @@
                                     value="{{ request('tgl_opname', now()->toDateString()) }}" required>
                             </div>
 
-                            <div class="col-lg-4 col-md-6">
+                            <div class="col-lg-3 col-md-6">
+                                <label for="jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                                <select id="jenis_so" name="jenis_so" class="form-select">
+                                    <option value="cycle_count"
+                                        {{ request('jenis_so') === 'cycle_count' ? 'selected' : '' }}>Cycle Count (Daily)
+                                    </option>
+                                    <option value="monthly" {{ request('jenis_so') === 'monthly' ? 'selected' : '' }}>
+                                        Monthly SO</option>
+                                </select>
+                            </div>
+
+                            <div class="col-lg-3 col-md-6">
                                 <label for="searchReport" class="form-label fw-semibold">Cari MID / Nama Barang</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light">
@@ -86,14 +97,10 @@
                                 </div>
                             </div>
 
-                            <div class="col-lg-5">
+                            <div class="col-lg-3 col-md-6">
                                 <div class="d-flex flex-wrap gap-2">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="mdi mdi-magnify me-1"></i>
-                                        Tampilkan
-                                    </button>
 
-                                    <button type="button" class="btn btn-outline-danger" id="btnExportPdf">
+                                    <button type="button" class="btn btn-outline-danger d-none" id="btnExportPdf">
                                         <i class="mdi mdi-file-pdf-box me-1"></i>
                                         PDF
                                     </button>
@@ -352,23 +359,73 @@
                 toastr.error("{{ session('error') }}", "Peringatan!");
             @endif
 
-            // Automatically pull report for today on load
-            loadReport();
+            $('#jenis_so').on('change', function() {
+                const type = $(this).val();
+                const dateInput = $('#tgl_opname');
+                const approvalTab = $('#approval-tab').parent(); // select the li parent
+                const btnExportPdf = $('#btnExportPdf');
 
-            $('#formFilterReport').on('submit', function(e) {
+                let val = dateInput.val();
+
+                if (type === 'monthly') {
+                    dateInput.attr('type', 'month');
+                    if (val) {
+                        if (val.length === 10) {
+                            dateInput.val(val.substring(0, 7));
+                        } else {
+                            dateInput.val(val);
+                        }
+                    } else {
+                        const today = new Date();
+                        const month = String(today.getMonth() + 1).padStart(2, '0');
+                        dateInput.val(`${today.getFullYear()}-${month}`);
+                    }
+                    approvalTab.removeClass('d-none');
+                    btnExportPdf.removeClass('d-none');
+                } else {
+                    dateInput.attr('type', 'date');
+                    const today = new Date();
+                    const day = String(today.getDate()).padStart(2, '0');
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const todayStr = `${today.getFullYear()}-${month}-${day}`;
+                    if (val && val.length === 10) {
+                        dateInput.val(val);
+                    } else {
+                        dateInput.val(todayStr);
+                    }
+                    approvalTab.addClass('d-none');
+                    btnExportPdf.addClass('d-none');
+
+                    // If the active tab was approval tab, switch back to data tab
+                    if ($('#approval-tab').hasClass('active')) {
+                        var triggerEl = document.querySelector('#reportTabs button[id="data-tab"]');
+                        if (triggerEl) {
+                            var tab = bootstrap.Tab.getInstance(triggerEl) || new bootstrap.Tab(triggerEl);
+                            tab.show();
+                        }
+                    }
+                }
+                loadReport();
+            });
+
+            // Trigger change on load to configure inputs and load report
+            $('#jenis_so').trigger('change');
+
+            $('#formFilterReport').on('change', function(e) {
                 e.preventDefault();
                 loadReport();
             });
 
             $('#btnExportPdf').on('click', function() {
                 const date = $('#tgl_opname').val();
+                const jenisSo = $('#jenis_so').val();
 
                 if (!date) {
                     Swal.fire('Perhatian', 'Silakan pilih tanggal opname terlebih dahulu.', 'warning');
                     return;
                 }
 
-                const url = `{{ route('wcp.stock_opname.export') }}?tgl_opname=${date}`;
+                const url = `{{ route('wcp.stock_opname.export') }}?tgl_opname=${date}&jenis_so=${jenisSo}`;
                 window.open(url, '_blank');
             });
 
@@ -428,7 +485,12 @@
             $(document).on('click', '#pendingApprovalBody tr', function() {
                 const date = $(this).data('date');
                 if (date) {
-                    $('#tgl_opname').val(date);
+                    const jenisSo = $('#jenis_so').val();
+                    if (jenisSo === 'monthly' && date.length === 10) {
+                        $('#tgl_opname').val(date.substring(0, 7)); // YYYY-MM
+                    } else {
+                        $('#tgl_opname').val(date);
+                    }
                     // Trigger the Data Opname tab pill show to switch back
                     var triggerEl = document.querySelector('#reportTabs button[id="data-tab"]');
                     if (triggerEl) {
@@ -443,6 +505,7 @@
         function loadReport() {
             const tableBody = $('#tableReportList tbody');
             const date = $('#tgl_opname').val();
+            const jenisSo = $('#jenis_so').val();
 
             if (!date) return;
 
@@ -459,7 +522,8 @@
                 url: "{{ route('wcp.stock_opname.report.getData') }}",
                 type: "GET",
                 data: {
-                    tgl_opname: date
+                    tgl_opname: date,
+                    jenis_so: jenisSo
                 },
                 success: function(res) {
                     tableBody.empty();
@@ -948,6 +1012,7 @@
                 const isApprover = res.is_approver;
                 const isOperator = res.is_operator;
                 const tracking = res.approver_tracking || [];
+                const jenisSo = res.jenis_so || 'cycle_count';
 
                 let trackingHtml = '';
                 if (tracking.length > 0) {
@@ -1035,6 +1100,10 @@
                     `;
                 } else if (statusSo === 'approved') {
                     btnSend.addClass('d-none');
+                    let approvedText = 'Stock Opname telah disetujui sepenuhnya oleh tim verifikasi.';
+                    if (jenisSo === 'cycle_count') {
+                        approvedText = 'Cycle Count (Daily SO) otomatis disetujui tanpa approval.';
+                    }
                     cardHtml = `
                         <div class="card shadow-sm border-0 border-start border-3 border-success">
                             <div class="card-body">
@@ -1046,7 +1115,7 @@
                                     </div>
                                     <div class="flex-grow-1">
                                         <h5 class="mb-1 text-success fw-bold">Status SO: Disetujui</h5>
-                                        <p class="text-muted mb-0 small">Stock Opname telah disetujui sepenuhnya oleh tim verifikasi.</p>
+                                        <p class="text-muted mb-0 small">${approvedText}</p>
                                     </div>
                                 </div>
                                 ${trackingHtml}

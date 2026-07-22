@@ -121,8 +121,8 @@
                             </div>
 
                              @if ($barangCount > 0)
-                                <div class="col-lg-6 col-md-12 d-flex gap-2 justify-content-lg-end">
-                                    @if (!$isFinished)
+                                <div class="col-lg-6 col-md-12 d-flex gap-2 justify-content-lg-end" id="soh-actions-container">
+                                    <div id="soh-actions-wrapper" class="d-flex gap-2 w-100 justify-content-lg-end">
                                         <button class="btn btn-success px-4 w-100" data-bs-toggle="modal"
                                             data-bs-target="#uploadModal">
                                             <i class="mdi mdi-upload me-1"></i> Upload Excel
@@ -133,11 +133,7 @@
                                         <button class="btn btn-danger px-4 w-100" id="btnDeleteAll">
                                             <i class="mdi mdi-delete me-1"></i> Kosongkan Hari Ini
                                         </button>
-                                    @else
-                                        <div class="alert alert-info py-2 px-3 mb-0 w-100 text-center small border-0 shadow-none">
-                                            <i class="mdi mdi-check-circle me-1"></i> Stock Opname hari ini telah disubmit final (finished). Anda tidak dapat menambah atau mengunggah data SOH baru.
-                                        </div>
-                                    @endif
+                                    </div>
                                 </div>
                             @else
                                 <div class="col-lg-6 col-md-12">
@@ -154,6 +150,19 @@
             <!-- Table Card -->
             <div class="card shadow-sm border-0" data-aos="fade-up" data-aos-delay="200">
                 <div class="card-body">
+                    <!-- Tab Pemilihan Jenis SO -->
+                    <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" id="jenisSoTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-value="cycle_count" type="button" role="tab">
+                                <i class="mdi mdi-sync me-1"></i> Cycle Count (Daily)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-value="monthly" type="button" role="tab">
+                                <i class="mdi mdi-calendar-month me-1"></i> Monthly SO
+                            </button>
+                        </li>
+                    </ul>
                     <div class="table-responsive table-card p-2" id="soh-table-container">
                         <table class="table table-striped align-middle mb-0" id="tableSOHList">
                             <thead class="table-light">
@@ -208,6 +217,13 @@
                             <input type="file" class="form-control" id="excel_file" name="file" accept=".xlsx, .xls"
                                 required>
                         </div>
+                        <div class="mb-3">
+                            <label for="upload_jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                            <select class="form-select" id="upload_jenis_so" name="jenis_so" required>
+                                <option value="cycle_count">Cycle Count (Daily)</option>
+                                <option value="monthly">Monthly SO</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer bg-light d-flex gap-2">
                         <a href="{{ route('wcp.stock_opname.soh.template') }}" class="btn btn-primary flex-grow-1">
@@ -236,6 +252,13 @@
                     @csrf
                     <input type="hidden" id="soh_id" name="soh_id">
                     <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label for="soh_jenis_so" class="form-label fw-semibold">Jenis SO</label>
+                            <select class="form-select" id="soh_jenis_so" name="jenis_so" required>
+                                <option value="cycle_count">Cycle Count (Daily)</option>
+                                <option value="monthly">Monthly SO</option>
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label for="barang_id" class="form-label fw-semibold">Barang (MID)</label>
                             <select class="form-select select2" id="barang_id" name="barang_id" required
@@ -313,10 +336,22 @@
                 loadSOHList();
             });
 
+            // Tab Event for SOH type
+            $('#jenisSoTabs button').on('shown.bs.tab', function(e) {
+                loadSOHList();
+            });
+
             // Form Submit for Add/Edit
             $('#formSOH').on('submit', function(e) {
                 e.preventDefault();
                 const sohId = $('#soh_id').val();
+                
+                // If the field is disabled, serialize won't include it. We manually append it:
+                let postData = $(this).serialize();
+                if ($('#soh_jenis_so').is(':disabled')) {
+                    postData += '&jenis_so=' + encodeURIComponent($('#soh_jenis_so').val());
+                }
+
                 const url = mode === 'add' ?
                     "{{ route('wcp.stock_opname.soh.store') }}" :
                     `{{ route('wcp.stock_opname.soh.update', '') }}/${sohId}`;
@@ -324,7 +359,7 @@
                 $.ajax({
                     url: url,
                     type: "POST",
-                    data: $(this).serialize(),
+                    data: postData,
                     success: function(res) {
                         if (res.status) {
                             Swal.fire({
@@ -347,10 +382,19 @@
                 });
             });
 
+            // Automatically pre-select jenis_so in upload modal based on active tab
+            $('#uploadModal').on('show.bs.modal', function() {
+                const activeJenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
+                $('#upload_jenis_so').val(activeJenisSo).prop('disabled', false);
+            });
+
             // Form Submit for Upload
             $('#uploadSOHForm').on('submit', function(e) {
                 e.preventDefault();
                 const formData = new FormData(this);
+                if ($('#upload_jenis_so').is(':disabled')) {
+                    formData.append('jenis_so', $('#upload_jenis_so').val());
+                }
                 const btn = $('#btnSubmitUpload');
                 btn.prop('disabled', true).html(
                     '<span class="spinner-border spinner-border-sm me-1"></span>Mengunggah...');
@@ -391,9 +435,10 @@
 
             // Delete All Event
             $('#btnDeleteAll').on('click', function() {
+                const jenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
                 Swal.fire({
                     title: 'Kosongkan Data SOH?',
-                    text: 'Seluruh data SOH WCP hari ini akan dihapus permanen.',
+                    text: 'Seluruh data SOH WCP ' + (jenisSo === 'monthly' ? 'bulan ini' : 'hari ini') + ' akan dihapus permanen.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Ya, Hapus',
@@ -405,7 +450,8 @@
                             url: "{{ route('wcp.stock_opname.soh.reset_all') }}",
                             type: "DELETE",
                             data: {
-                                _token: "{{ csrf_token() }}"
+                                _token: "{{ csrf_token() }}",
+                                jenis_so: jenisSo
                             },
                             success: function(res) {
                                 if (res.status) {
@@ -424,13 +470,15 @@
         function loadSOHList(page = 1) {
             const tableBody = $('#tableSOHList tbody');
             const search = $('#searchSOHInput').val();
+            const jenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
 
             $.ajax({
                 url: "{{ route('wcp.stock_opname.soh.list') }}",
                 type: "GET",
                 data: {
                     page: page,
-                    search: search
+                    search: search,
+                    jenis_so: jenisSo
                 },
                 success: function(res) {
                     tableBody.empty();
@@ -441,6 +489,21 @@
                             const barangMid = item.barang ? item.barang.mid : 'N/A';
                             const uom = item.barang ? item.barang.uom : '';
                             const qtySoh = item.qty_soh.toLocaleString('id-ID');
+
+                            const editBtn = `
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                            onclick="editSOH(${item.id})"
+                                            title="Edit">
+                                            <i class="mdi mdi-pencil"></i>
+                                        </button>
+                            `;
+                            const deleteBtn = `
+                                        <button class="btn btn-sm btn-outline-danger"
+                                            onclick="deleteSOH(${item.id})"
+                                            title="Hapus">
+                                            <i class="mdi mdi-trash-can"></i>
+                                        </button>
+                            `;
 
                             tableBody.append(`
                                 <tr>
@@ -454,18 +517,8 @@
                                             title="Detail">
                                             <i class="mdi mdi-eye"></i>
                                         </button>
-
-                                        <button class="btn btn-sm btn-outline-primary me-1"
-                                            onclick="editSOH(${item.id})"
-                                            title="Edit">
-                                            <i class="mdi mdi-pencil"></i>
-                                        </button>
-
-                                        <button class="btn btn-sm btn-outline-danger"
-                                            onclick="deleteSOH(${item.id})"
-                                            title="Hapus">
-                                            <i class="mdi mdi-trash-can"></i>
-                                        </button>
+                                        ${editBtn}
+                                        ${deleteBtn}
                                     </td>
                                 </tr>
                             `);
@@ -493,6 +546,9 @@
             $('#btnSaveSOH').html('Simpan');
             $('#barang_id').prop('disabled', false);
 
+            const activeJenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
+            $('#soh_jenis_so').val(activeJenisSo).prop('disabled', false);
+
             loadBarangOptions(() => {
                 $('#barang_id').val('').trigger('change');
                 $('#sohModal').modal('show');
@@ -517,6 +573,7 @@
                         if (res.status === 'success') {
                             const data = res.data;
                             $('#soh_id').val(data.id);
+                            $('#soh_jenis_so').val(data.jenis_so).prop('disabled', false);
                             $('#barang_id').val(data.barang_id).trigger('change').prop('disabled',
                                 true);
                             $('#unrest').val(data.qty_unrest);

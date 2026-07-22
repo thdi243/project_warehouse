@@ -384,6 +384,9 @@ Route::middleware('auth')->group(function () {
                 Route::get('/soh/list', [WrmStockOnHandController::class, 'getList'])->name('wrm.stock_opname.soh.list');
                 Route::get('/soh/getBarang', [WrmStockOnHandController::class, 'getBarang'])->name('wrm.stock_opname.soh.getBarang');
                 Route::get('/soh/getSpbList', [WrmStockOnHandController::class, 'getSpbList'])->name('wrm.stock_opname.soh.getSpbList');
+                Route::get('/soh/getPalletList', [WrmStockOnHandController::class, 'getPalletList'])->name('wrm.stock_opname.soh.getPalletList');
+                Route::get('/soh/getPalletQty', [WrmStockOnHandController::class, 'getPalletQty'])->name('wrm.stock_opname.soh.getPalletQty');
+                Route::get('/soh/fetch-source-details', [WrmStockOnHandController::class, 'fetchSourceDetails'])->name('wrm.stock_opname.soh.fetchSourceDetails');
                 Route::get('/soh/show/{id}', [WrmStockOnHandController::class, 'show'])->name('wrm.stock_opname.soh.show');
                 Route::delete('/soh/reset-all', [WrmStockOnHandController::class, 'resetAll'])->name('wrm.stock_opname.soh.reset_all');
             });

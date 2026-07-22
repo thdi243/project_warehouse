@@ -15,6 +15,7 @@ class WcpSoStatusModel extends Model
     protected $fillable = [
         'user_id',
         'tgl_opname',
+        'jenis_so',
         'status',
     ];
 

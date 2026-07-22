@@ -318,7 +318,8 @@ class WarehouseController extends Controller
             }
         }
 
-        $principals = WfgSopModel::distinct()->pluck('principal');
+        $principalsQuery = WfgSopModel::distinct()->pluck('principal');
+        $principals = $principalsQuery->isEmpty() ? collect(['BAS', 'SMU']) : $principalsQuery;
         $hasNewBarang = BarangWfgModel::where('is_new', 1)->exists();
 
         // Cek apakah user saat ini adalah Foreman Robi
