@@ -655,7 +655,7 @@
 
                                 </div>
                             </td>
-                            <td>
+                            <td class="text-nowrap">
                                 <div class="d-flex justify-content-center flex-wrap gap-1">
                                     @can('permission', 'wsp-data-pr-plus')
 
@@ -862,16 +862,16 @@
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td>
                                     ${item.keterangan ? `
-                                                                                                <div class="d-flex align-items-center justify-content-between gap-2">
-                                                                                                    <span>${item.keterangan}</span>
-                                                                                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                                                                            style="flex-shrink: 0;"
-                                                                                                            data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                                                                            title="Copy Keterangan">
-                                                                                                        <i class="mdi mdi-content-copy"></i>
-                                                                                                    </button>
-                                                                                                </div>
-                                                                                            ` : '-'}
+                                                                                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                                                                                        <span>${item.keterangan}</span>
+                                                                                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                                                                                style="flex-shrink: 0;"
+                                                                                                                data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                                                                title="Copy Keterangan">
+                                                                                                            <i class="mdi mdi-content-copy"></i>
+                                                                                                        </button>
+                                                                                                    </div>
+                                                                                                ` : '-'}
                                 </td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
@@ -1019,10 +1019,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                <div class="small mt-1">
-                                                                                    Catatan: ${a.catatan}
-                                                                                </div>
-                                                                            ` : ''}
+                                                                                    <div class="small mt-1">
+                                                                                        Catatan: ${a.catatan}
+                                                                                    </div>
+                                                                                ` : ''}
                             </div>
 
                         </div>
