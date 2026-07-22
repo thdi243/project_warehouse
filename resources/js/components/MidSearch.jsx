@@ -161,13 +161,10 @@ export default function MidSearch({ value, namaBarang, onChange }) {
                                         <div className="text-muted-foreground truncate">
                                             {item.barang.nama_barang}
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                            {item.availability_info}
-                                        </div>
                                         {item.total_book_soh > 0 && (
                                             <div className="text-xs text-blue-600 font-semibold mt-1 flex items-center gap-1">
                                                 <AlertCircle className="h-3 w-3" />
-                                                Booked PR: {item.total_book_soh} {item.barang.uom}
+                                                Reservasi: {item.total_book_soh} {item.barang.uom} {item.reservasi_oleh && item.reservasi_oleh !== '-' ? `(Oleh: ${item.reservasi_oleh})` : ''}
                                             </div>
                                         )}
                                     </div>

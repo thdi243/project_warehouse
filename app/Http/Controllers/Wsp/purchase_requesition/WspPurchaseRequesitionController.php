@@ -366,7 +366,7 @@ class WspPurchaseRequesitionController extends Controller
         $totalDocs = (clone $query)->count();
         $totalPendingDocs = (clone $query)->where('status', 'pending')->count();
         $totalItemPR = DB::table('wsp_purchase_requesition_items')->whereIn('pr_id', $subquery)->where('jenis', 'pr')->count('id') ?? 0;
-        $totalItemReservasi = DB::table('wsp_stock_reservations')->whereIn('pr_id', $subquery)->where('status', 'confirmed')->where('type', 'reservation')->sum('qty') ?? 0;
+        $totalItemReservasi = DB::table('wsp_stock_reservations')->whereIn('pr_id', $subquery)->where('status', 'confirmed')->where('type', 'reservation')->count('id') ?? 0;
 
         $pr = $query->orderBy('created_at', 'desc')->paginate(15);
 
@@ -468,6 +468,24 @@ class WspPurchaseRequesitionController extends Controller
             // $isAvailable = $item->qty_soh > 0 && !$isBeingBooked;
             $isAvailable = !$isBeingBooked;
 
+            $byUsers = '-';
+            if ((int)$item->total_book_soh > 0) {
+                $userNames = DB::table('wsp_stock_reservations as res')
+                    ->join('wsp_purchase_requesition as pr', 'res.pr_id', '=', 'pr.id')
+                    ->join('users as u', 'res.user_id', '=', 'u.id')
+                    ->where('res.mid_barang', $item->mid_barang)
+                    ->where('res.status', 'confirmed')
+                    ->where('res.type', 'reservation')
+                    ->whereIn('pr.status', ['pending', 'approved'])
+                    ->distinct()
+                    ->pluck('u.username')
+                    ->toArray();
+
+                if (!empty($userNames)) {
+                    $byUsers = implode(', ', $userNames);
+                }
+            }
+
             return [
                 // ID TETAP ADA (pakai SOH ID kalau ada, fallback barang_id)
                 'id' => $item->soh_id ?? $item->barang_id,
@@ -480,6 +498,7 @@ class WspPurchaseRequesitionController extends Controller
 
                 'qty_soh' => $qtySoh,
                 'total_book_soh' => (int) $item->total_book_soh,
+                'reservasi_oleh' => $byUsers,
                 'reserved_by_others' => $reservedByOthers,
                 'reserved_by_me' => $reservedByMe,
                 'total_reserved' => $totalReserved,
@@ -497,7 +516,8 @@ class WspPurchaseRequesitionController extends Controller
                     $prByMe,
                     $availableQty,
                     $qtySoh,
-                    (int) $item->total_book_soh
+                    (int) $item->total_book_soh,
+                    $byUsers
                 ),
             ];
         });
@@ -622,7 +642,7 @@ class WspPurchaseRequesitionController extends Controller
         }
     }
 
-    private function getBookingInfo($isBeingBooked, $reservedByOthers, $prByOthers, $reservedByMe, $prByMe, $available, $soh, $totalBookSoh = 0)
+    private function getBookingInfo($isBeingBooked, $reservedByOthers, $prByOthers, $reservedByMe, $prByMe, $available, $soh, $totalBookSoh = 0, $byUsers = '-')
     {
         $info = "";
         if ($reservedByMe > 0 || $prByMe > 0) {
@@ -647,10 +667,6 @@ class WspPurchaseRequesitionController extends Controller
             $info = "Stok habis";
         } else {
             $info = "✓ Tersedia {$available} dari {$soh} qty";
-        }
-
-        if ($totalBookSoh > 0) {
-            $info .= " | 📌 Booked PR: {$totalBookSoh}";
         }
 
         return $info;

@@ -853,6 +853,17 @@
                             return `<span class="badge badge-soft-${bg}">${status}</span>`;
                         };
 
+                        const keteranganHtml = item.keterangan ?
+                            `<div class="d-flex align-items-center justify-content-between gap-2">
+                                <span>${item.keterangan}</span>
+                                <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan"
+                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                    title="Copy Keterangan">
+                                    <i class="mdi mdi-content-copy"></i>
+                                </button>
+                            </div>` :
+                            '-';
+
                         tbody.append(`
                             <tr>
                                 <td>${i + 1}</td>
@@ -860,19 +871,7 @@
                                 <td>${item.barang?.nama_barang ?? '-'}</td>
                                 <td>${item.qty}</td>
                                 <td>${item.barang?.uom ?? '-'}</td>
-                                <td>
-                                    ${item.keterangan ? `
-                                            <div class="d-flex align-items-center justify-content-between gap-2">
-                                                <span>${item.keterangan}</span>
-                                                <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                        style="flex-shrink: 0;"
-                                                        data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                        title="Copy Keterangan">
-                                                    <i class="mdi mdi-content-copy"></i>
-                                                </button>
-                                            </div>
-                                        ` : '-'}
-                                </td>
+                                <td>${keteranganHtml}</td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
@@ -1019,10 +1018,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                            <div class="small mt-1">
-                                                                                                Catatan: ${a.catatan}
-                                                                                            </div>
-                                                                                        ` : ''}
+                                                                                                                <div class="small mt-1">
+                                                                                                                    Catatan: ${a.catatan}
+                                                                                                                </div>
+                                                                                                            ` : ''}
                             </div>
 
                         </div>
