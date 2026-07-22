@@ -348,12 +348,14 @@
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
                         <div class="action-buttons justify-content-md-end">
 
-                            <!-- 🔥 Satu tombol untuk Upload + Download -->
-                            <button type="button" class="btn btn-action btn-upload" id="btnUpload" data-bs-toggle="modal"
-                                data-bs-target="#modalUpload">
-                                <i class="mdi mdi-file-upload"></i>
-                                <span>Upload Data</span>
-                            </button>
+                            @can('permission', 'wsp-soh-plus')
+                                <!-- 🔥 Satu tombol untuk Upload + Download -->
+                                <button type="button" class="btn btn-action btn-upload" id="btnUpload" data-bs-toggle="modal"
+                                    data-bs-target="#modalUpload">
+                                    <i class="mdi mdi-file-upload"></i>
+                                    <span>Upload Data</span>
+                                </button>
+                            @endcan
 
                             <!-- Button Download Excel -->
                             <a href="{{ route('stock.soh_export') }}" class="btn btn-action btn-export" id="btnExport">
@@ -361,11 +363,13 @@
                                 <span>Download Excel</span>
                             </a>
 
-                            <!-- Button Tambah Data tetap -->
-                            <button type="button" class="btn btn-action btn-add" id="btnAdd">
-                                <i class="mdi mdi-plus-circle"></i>
-                                <span>Tambah Data</span>
-                            </button>
+                            @can('permission', 'wsp-soh-plus')
+                                <!-- Button Tambah Data tetap -->
+                                <button type="button" class="btn btn-action btn-add" id="btnAdd">
+                                    <i class="mdi mdi-plus-circle"></i>
+                                    <span>Tambah Data</span>
+                                </button>
+                            @endcan
 
                         </div>
                     </div>
@@ -410,7 +414,9 @@
                                     <th>Blocked</th>
                                     <th>Transf</th>
                                     <th>Last Updated</th>
-                                    <th>Aksi</th>
+                                    @can('permission', 'wsp-soh-plus')
+                                        <th>Aksi</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -642,16 +648,18 @@
                             <td>${soh.blocked ?? 0}</td>
                             <td>${soh.transf ?? 0}</td>
                             <td>${soh.last_update ?? '-'}</td>
-                            <td>
-                                <div class="action-btns">
-                                    <button class="btn btn-sm-action btn-edit" onclick="editSOH(${soh.id})" title="Edit">
-                                        <i class="mdi mdi-pencil"></i>
-                                    </button>
-                                    <button class="btn btn-sm-action btn-delete" onclick="deleteSOH(${soh.id})" title="Delete">
-                                        <i class="mdi mdi-delete"></i>
-                                    </button>
-                                </div>
-                            </td>
+                            @can('permission', 'wsp-soh-plus')
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-sm-action btn-edit" onclick="editSOH(${soh.id})" title="Edit">
+                                            <i class="mdi mdi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm-action btn-delete" onclick="deleteSOH(${soh.id})" title="Delete">
+                                            <i class="mdi mdi-delete"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            @endcan
                         </tr>
                     `);
                 });

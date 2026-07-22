@@ -1,5 +1,12 @@
 @if (in_array($departemen, ['produksi', 'quality_control', 'engineering', 'hrga', 'expedisi', 'timbangan']))
     <li class="nav-item">
+        <a href="{{ route('stock.soh.user') }}"
+            class="nav-link menu-link {{ request()->routeIs('stock.soh.user') ? 'active' : '' }}">
+            <i class="bx bx-git-commit fs-12"></i> <span data-key="t-stock-gula">Stock On
+                Hand</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a href="{{ url('/app/purchase-requesition/form') }}" target="_blank"
             class="nav-link menu-link {{ request()->Is('/app/purchase-requesition/form') ? 'active' : '' }}">
             <i class="bx bx-git-commit fs-12"></i> <span data-key="t-tkbm">Form PR</span>

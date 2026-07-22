@@ -87,6 +87,12 @@ Route::middleware('auth')->group(function () {
     // Free access
     Route::view('dashboard', 'dashboard')->name('dashboard');
     Route::get('maintenance', [WarehouseController::class, 'maintenanceView'])->name('maintenance');
+    Route::prefix('wsp')->group(function () {
+        // Stock On Hand
+        Route::get('/stock-on-hand', [WarehouseController::class, 'stockOnHandView'])->name('stock.soh.user');
+        Route::get('/get-data', [StockOnHandController::class, 'getDataSOH'])->name('stock.soh_data');
+    });
+    // End Free access
 
     Route::prefix('user')->group(function () {
         Route::get('/profile', [UserController::class, 'profileIndex'])->name('user.profile');
@@ -182,7 +188,7 @@ Route::middleware('auth')->group(function () {
             Route::prefix('soh')->middleware(['permission:wsp-soh'])->group(function () {
                 Route::get('/', [WarehouseController::class, 'stockOnHandView'])->name('stock.stock-on-hand');
                 Route::get('/data', [WarehouseController::class, 'sohView'])->name('stock.soh.index');
-                Route::get('/get-data', [StockOnHandController::class, 'getDataSOH'])->name('stock.soh_data');
+                // Route::get('/get-data', [StockOnHandController::class, 'getDataSOH'])->name('stock.soh_data');
                 Route::get('/data-barang', [StockOnHandController::class, 'getBarang'])->name('stock.data_barang');
                 Route::get('/show/{id}', [StockOnHandController::class, 'show'])->name('stock.soh_show');
                 Route::post('/store', [StockOnHandController::class, 'store'])->name('stock.soh_store');
