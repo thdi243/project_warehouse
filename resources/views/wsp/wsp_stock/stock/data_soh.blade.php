@@ -2,10 +2,6 @@
 
 @section('styles')
     <style>
-        .page-header {
-            margin-bottom: 2rem;
-        }
-
         .page-title {
             /* color: #2d3748; */
             font-weight: 700;
@@ -83,14 +79,6 @@
             border-color: #adb5bd;
             transform: translateY(-2px);
             color: #495057;
-        }
-
-        .table-card {
-            /* background: white; */
-            border-radius: 1rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            margin-top: 2rem;
         }
 
         .table-header {
@@ -310,9 +298,6 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            .page-header {
-                margin-bottom: 1.5rem;
-            }
 
             .page-title {
                 font-size: 1.5rem;
@@ -354,7 +339,7 @@
         <div class="container-fluid">
 
             <!-- Page Header -->
-            <div class="page-header" data-aos="fade-down">
+            <div class="page-header mb-2" data-aos="fade-down">
                 <div class="row align-items-center">
                     <div class="col-md-6">
                         <h3 class="page-title">Stock On Hand</h3>
@@ -388,7 +373,7 @@
             </div>
 
             <!-- Table Card -->
-            <div class="table-card" data-aos="fade-up">
+            <div class="card shadow-sm" data-aos="fade-up">
                 <div class="table-header">
                     <div class="row align-items-center">
                         <div class="col-md-6">
@@ -404,13 +389,13 @@
                     </div>
                 </div>
                 <div class="table-body">
-                    <div class="alert alert-info py-2 px-3 w-100" role="alert">
+                    {{-- <div class="alert alert-info py-2 px-3 w-100" role="alert">
                         <small>
                             <i class="ri-information-line me-1"></i>
-                            <strong>QTY BOOK</strong> Merupakan Qty Reservasi yang belum di konfirmasi karena sedang
+                            <strong>Total Qty SOH</strong> Merupakan Qty  yang belum di konfirmasi karena sedang
                             dalam proses PR
                         </small>
-                    </div>
+                    </div> --}}
                     <div class="table-responsive">
                         <table class="table custom-table" id="sohTable">
                             <thead>
@@ -817,7 +802,9 @@
                 const originalHtml = btnSubmit.html();
 
                 // Show loading state
-                btnSubmit.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Uploading...');
+                btnSubmit.prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Uploading...'
+                );
 
                 $.ajax({
                     url: "{{ route('stock.soh_upload') }}",
@@ -895,9 +882,11 @@
                         textArea.style.border = "none";
                         textArea.style.opacity = "0";
                         textArea.style.pointerEvents = "none";
-                        
+
                         link.appendChild(textArea);
-                        textArea.focus({ preventScroll: true });
+                        textArea.focus({
+                            preventScroll: true
+                        });
                         textArea.select();
                         const success = document.execCommand('copy');
                         textArea.remove();
