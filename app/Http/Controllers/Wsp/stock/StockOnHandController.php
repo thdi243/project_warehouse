@@ -41,7 +41,7 @@ class StockOnHandController extends Controller
                     DB::raw('COALESCE(soh.qty_soh, 0) as qty_soh'),
                     DB::raw('COALESCE(soh.unrest, 0) as unrest'),
                     DB::raw('COALESCE(soh.qual_insp, 0) as qual_insp'),
-                    // DB::raw('COALESCE(soh.blocked, 0) as blocked'),
+                    DB::raw('COALESCE(soh.blocked, 0) as blocked'),
                     DB::raw('COALESCE(soh.transf, 0) as transf'),
                     'soh.last_update',
                 ])
@@ -456,5 +456,76 @@ class StockOnHandController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => "attachment;filename=\"{$fileName}\"",
         ]);
+    }
+
+    public function exportExcel()
+    {
+        try {
+            $latestPerBarang = StockOnHandWspModel::select('barang_id')
+                ->selectRaw('MAX(last_update) as last_update')
+                ->groupBy('barang_id');
+
+            $data = BarangModel::query()
+                ->leftJoinSub($latestPerBarang, 'latest', function ($join) {
+                    $join->on('wsp_barang.id', '=', 'latest.barang_id');
+                })
+                ->leftJoin('wsp_stock_on_hand as soh', function ($join) {
+                    $join->on('wsp_barang.id', '=', 'soh.barang_id')
+                        ->on('soh.last_update', '=', 'latest.last_update');
+                })
+                ->select([
+                    'wsp_barang.mid_barang',
+                    'wsp_barang.nama_barang',
+                    DB::raw('COALESCE(soh.unrest, 0) as unrest'),
+                    DB::raw('COALESCE(soh.qual_insp, 0) as qual_insp'),
+                    DB::raw('COALESCE(soh.blocked, 0) as blocked'),
+                    'soh.last_update',
+                ])
+                ->orderBy('soh.last_update', 'desc')
+                ->get();
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $headers = [
+                'MID',
+                'Nama Barang',
+                'Unrest',
+                'QI',
+                'Blocked',
+                'Last Updated'
+            ];
+
+            $columnIndex = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($columnIndex . '1', $header);
+                $sheet->getStyle($columnIndex . '1')->getFont()->setBold(true);
+                $sheet->getColumnDimension($columnIndex)->setAutoSize(true);
+                $columnIndex++;
+            }
+
+            $rowNum = 2;
+            foreach ($data as $item) {
+                $sheet->setCellValueExplicit('A' . $rowNum, $item->mid_barang, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                $sheet->setCellValue('B' . $rowNum, $item->nama_barang);
+                $sheet->setCellValue('C' . $rowNum, $item->unrest);
+                $sheet->setCellValue('D' . $rowNum, $item->qual_insp);
+                $sheet->setCellValue('E' . $rowNum, $item->blocked);
+                $sheet->setCellValue('F' . $rowNum, $item->last_update ? date('d-m-Y H:i:s', strtotime($item->last_update)) : '-');
+                $rowNum++;
+            }
+
+            $fileName = 'Data_Stock_On_Hand_Wsp_' . date('Y-m-d') . '.xlsx';
+
+            return new StreamedResponse(function () use ($spreadsheet) {
+                $writer = new Xlsx($spreadsheet);
+                $writer->save('php://output');
+            }, 200, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => "attachment;filename=\"{$fileName}\"",
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal mengekspor data: ' . $e->getMessage());
+        }
     }
 }

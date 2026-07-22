@@ -188,6 +188,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/store', [StockOnHandController::class, 'store'])->name('stock.soh_store');
                 Route::put('/update/{id}', [StockOnHandController::class, 'update'])->name('stock.soh_update');
                 Route::delete('/delete/{id}', [StockOnHandController::class, 'destroy'])->name('stock.soh_delete');
+                Route::get('/export', [StockOnHandController::class, 'exportExcel'])->name('stock.soh_export');
                 Route::get('/download', [StockOnHandController::class, 'downloadTemplate'])->name('stock.soh_download');
                 Route::post('/upload', [StockOnHandController::class, 'upload'])->name('stock.soh_upload');
                 Route::get('/opname', [WarehouseController::class, 'opnameIndex'])->name('stock.opname');

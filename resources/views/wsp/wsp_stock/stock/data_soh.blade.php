@@ -60,6 +60,18 @@
             color: white;
         }
 
+        .btn-export {
+            background: linear-gradient(135deg, #6f42c1, #563d7c);
+            color: white;
+            box-shadow: 0 4px 12px rgba(111, 66, 193, 0.3);
+        }
+
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(111, 66, 193, 0.5);
+            color: white;
+        }
+
         .btn-template {
             background: white;
             color: #6c757d;
@@ -357,6 +369,12 @@
                                 <i class="mdi mdi-file-upload"></i>
                                 <span>Upload Data</span>
                             </button>
+
+                            <!-- Button Download Excel -->
+                            <a href="{{ route('stock.soh_export') }}" class="btn btn-action btn-export" id="btnExport">
+                                <i class="mdi mdi-file-excel"></i>
+                                <span>Download Excel</span>
+                            </a>
 
                             <!-- Button Tambah Data tetap -->
                             <button type="button" class="btn btn-action btn-add" id="btnAdd">
