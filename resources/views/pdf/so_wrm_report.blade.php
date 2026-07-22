@@ -181,7 +181,8 @@
                     <th style="width: 5%;">No</th>
                     <th style="width: 10%;">MID</th>
                     <th style="width: 20%;">Nama Barang</th>
-                    <th style="width: 15%;">No SPB</th>
+                    <th style="width: 10%;">No SPB</th>
+                    <th style="width: 10%;">Pallet</th>
                     <th style="width: 5%;">Uom</th>
                     <th style="width: 5%;">SAP</th>
                     <th style="width: 5%;">Fisik</th>
@@ -199,6 +200,7 @@
                             {{ $dt->barang->nama_barang }}
                         </td>
                         <td>{{ $dt->no_spb }}</td>
+                        <td>{{ $dt->pallet }}</td>
                         <td>{{ $dt->barang->uom }}</td>
                         <td style="padding-right: 5px;">
                             @php
@@ -244,6 +246,7 @@
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td style="text-align: left; padding-left: 5px;">&nbsp;</td>
+                        <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
