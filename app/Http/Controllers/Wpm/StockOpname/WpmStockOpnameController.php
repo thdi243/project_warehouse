@@ -924,7 +924,7 @@ class WpmStockOpnameController extends Controller
 
                 DB::commit();
 
-                $msg = $jenisSo === 'cycle_count' ? 
+                $msg = $jenisSo === 'cycle_count' ?
                     'Stock Opname WPM berhasil disubmit final (Auto-Approved).' :
                     'Stock Opname WPM berhasil disubmit final. Status saat ini Draft. Silakan kirim persetujuan dari menu Report SO.';
 
@@ -944,6 +944,9 @@ class WpmStockOpnameController extends Controller
 
     public function getDataReport(Request $request)
     {
+        // dd(config('app.timezone'));
+        // dd(now()->format('Y-m-d H:i:s'));
+
         $tglOpname = $request->input('tgl_opname', now()->toDateString());
         $jenisSo = $request->input('jenis_so', 'cycle_count');
 
@@ -951,7 +954,7 @@ class WpmStockOpnameController extends Controller
         if (strlen($tglOpname) === 7) {
             $parts = explode('-', $tglOpname);
             $query->whereYear('tgl_opname', $parts[0])
-                  ->whereMonth('tgl_opname', $parts[1]);
+                ->whereMonth('tgl_opname', $parts[1]);
         } else {
             $query->whereDate('tgl_opname', $tglOpname);
         }
@@ -1332,12 +1335,12 @@ class WpmStockOpnameController extends Controller
 
             // Check if SO is still in draft status
             $sopHeader = WpmSoModel::findOrFail($summary->so_id);
-            if ($sopHeader->status !== 'draft') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Tidak dapat mengubah data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
-                ], 422);
-            }
+            // if ($sopHeader->status !== 'draft') {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'Tidak dapat mengubah data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
+            //     ], 422);
+            // }
 
             $totalQtyFisik = 0;
             $qtyPallet = $summary->barang ? $summary->barang->qty_pallet : 1;
@@ -1438,12 +1441,12 @@ class WpmStockOpnameController extends Controller
 
             // Check if SO is still in draft status
             $sopHeader = WpmSoModel::findOrFail($detail->so_id);
-            if ($sopHeader->status !== 'draft') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Tidak dapat menghapus data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
-                ], 422);
-            }
+            // if ($sopHeader->status !== 'draft') {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'Tidak dapat menghapus data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
+            //     ], 422);
+            // }
 
             $detail->delete();
 
@@ -1522,7 +1525,7 @@ class WpmStockOpnameController extends Controller
         if (strlen($tglOpname) === 7) {
             $parts = explode('-', $tglOpname);
             $query->whereYear('tgl_opname', $parts[0])
-                  ->whereMonth('tgl_opname', $parts[1]);
+                ->whereMonth('tgl_opname', $parts[1]);
         } else {
             $query->whereDate('tgl_opname', $tglOpname);
         }

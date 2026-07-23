@@ -258,7 +258,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <table class="table table-bordered table-striped mb-0">
+                    <table class="table table-striped mb-0">
                         <tbody>
                             <tr>
                                 <th style="width: 200px;">MID</th>
@@ -290,7 +290,7 @@
                     <h6 class="fw-bold mt-3 mb-2 border-bottom pb-2"><i class="mdi mdi-layers-outline me-1"></i>Detail per
                         Pallet</h6>
                     <div class="table-responsive">
-                        <table class="table table-sm table-bordered table-hover mb-0 align-middle">
+                        <table class="table table-sm table-hover mb-0 align-middle">
                             <thead class="table-light text-center">
                                 <tr>
                                     <th>Pallet</th>
@@ -298,7 +298,7 @@
                                     <th class="text-end">Qty Fisik</th>
                                     <th class="text-end">Selisih</th>
                                     <th>Status</th>
-                                    <th>Riwayat Input</th>
+                                    <th>Waktu Input</th>
                                 </tr>
                             </thead>
                             <tbody id="detailPalletsList"></tbody>
@@ -316,7 +316,7 @@
     <div class="modal fade" id="editReportModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header">
                     <h5 class="modal-title"><i class="mdi mdi-pencil-outline me-2"></i>Edit Hasil Opname</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -422,9 +422,6 @@
             // Trigger change on load to configure inputs and load report
             $('#jenis_so').trigger('change');
 
-            // Automatically pull report for today on load
-            loadReport();
-
             $('#formFilterReport').on('change', function(e) {
                 e.preventDefault();
                 loadReport();
@@ -493,9 +490,6 @@
                 });
             });
 
-            // Load pending approval report on init
-            loadPendingApprovals();
-
             // Click handler for pending approval row to navigate/filter by date
             $(document).on('click', '#pendingApprovalBody tr', function() {
                 const date = $(this).data('date');
@@ -561,9 +555,20 @@
                                 statusBadge = '<span class="badge bg-success px-2 py-1">MATCH</span>';
                             }
 
-                            const isDraft = res.sop && res.sop.status === 'draft';
+
                             const jenisSo = res.jenis_so || 'cycle_count';
                             const isSpv = res.sop && res.sop.user_id == {{ Auth::user()->id }};
+                            const canEdit =
+                                {{ Auth::user()->jabatan !== 'operator' ? 'true' : 'false' }};
+
+                            const actioButtons = canEdit ?
+                                `<button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editReportRow(${item.id})" title="Edit">
+                                    <i class="mdi mdi-pencil-outline"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteReportRow(${item.id})" title="Hapus">
+                                    <i class="mdi mdi-trash-can-outline"></i>
+                                </button>
+                            ` : '';
 
                             tableBody.append(`  
                                 <tr>
@@ -581,12 +586,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-info me-1" onclick="viewDetailReport(${item.id})" title="Detail">
                                             <i class="mdi mdi-eye-outline"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editReportRow(${item.id})" title="Edit" ${!isDraft ? 'disabled' : ''}>
-                                            <i class="mdi mdi-pencil-outline"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteReportRow(${item.id})" title="Hapus" ${!isDraft ? 'disabled' : ''}>
-                                            <i class="mdi mdi-trash-can-outline"></i>
-                                        </button>
+                                        ${actioButtons}
                                     </td>
                                 </tr>
                             `);
@@ -733,12 +733,19 @@
                                     historyHtml =
                                         '<table class="table table-xs table-sm mb-0"><tbody>';
                                     p.details.forEach((det, idx) => {
-                                        const t = det.created_at ? det.created_at.substring(
-                                            11, 16) : '-';
+                                        const t = det.created_at ?
+                                            new Date(det.created_at).toLocaleTimeString(
+                                                'id-ID', {
+                                                    timeZone: 'Asia/Jakarta',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    hour12: false
+                                                }) :
+                                            '-';
                                         const checked = det.qty_full === 1 ? 'Terhitung' :
                                             'Tidak';
                                         historyHtml +=
-                                            `<tr><td class="font-monospace">${idx+1}. ${t}</td><td>${checked}</td><td class="text-end">${det.qty_receh.toLocaleString('id-ID')} Kg</td></tr>`;
+                                            `<tr><td class="font-monospace text-center">${t}</td></tr>`;
                                     });
                                     historyHtml += '</tbody></table>';
                                 }
@@ -752,7 +759,7 @@
 
                                 palletRowsHtml += `
                                     <tr>
-                                        <td class="font-monospace">${p.pallet ?? '-'}</td>
+                                        <td class="font-monospace text-center">${p.pallet ?? '-'}</td>
                                         <td class="text-end">${p.qty_sistem.toLocaleString('id-ID')}</td>
                                         <td class="text-end">${p.qty_fisik.toLocaleString('id-ID')}</td>
                                         <td class="text-end fw-bold">${p.selisih.toLocaleString('id-ID')}</td>
@@ -803,30 +810,61 @@
                         $('#editKeterangan').val(sum.keterangan ? sum.keterangan : '');
 
                         let editHtml = '';
-                        if (res.details && res.details.length > 0) {
-                            res.details.forEach((det, idx) => {
-                                const inputTime = det.created_at ? det.created_at.substring(11,
-                                    16) : '-';
+                        // Flatten semua detail dari semua pallet menjadi satu list
+                        let allDetails = [];
+                        if (res.pallets && res.pallets.length > 0) {
+                            res.pallets.forEach(pallet => {
+                                if (pallet.details && pallet.details.length > 0) {
+                                    pallet.details.forEach(det => {
+                                        allDetails.push({
+                                            ...det,
+                                            pallet: pallet.pallet
+                                        });
+                                    });
+                                }
+                            });
+                        }
+
+                        if (allDetails.length > 0) {
+                            allDetails.forEach((det, idx) => {
+                                const inputTime = det.created_at ?
+                                    new Date(det.created_at).toLocaleTimeString('id-ID', {
+                                        timeZone: 'Asia/Jakarta',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: false
+                                    }) :
+                                    '-';
+                                const qtyFullVal = parseInt(det.qty_full);
                                 editHtml += `
                                     <div class="mb-3 border border-info p-3 rounded report-detail-item bg-light" data-id="${det.id}">
                                         <input type="hidden" name="items[${idx}][id]" value="${det.id}">
                                         <div class="d-flex align-items-center justify-content-between mb-2">
                                             <p class="mb-0 fw-semibold text-dark">
-                                                Input ke-${idx + 1} <span class="text-muted fw-normal font-monospace">(${inputTime})</span>
+                                                Input ke-${idx + 1}
+                                                ${det.pallet ? `<span class="badge bg-secondary ms-1">${det.pallet}</span>` : ''}
+                                                <span class="text-muted fw-normal font-monospace">(${inputTime})</span>
                                             </p>
                                             <span class="badge bg-info">Detail Qty</span>
                                         </div>
                                         <div class="row g-2">
-                                            <div class="col-md-6">
-                                                <label class="form-label small mb-1">Checklist</label>
-                                                <select class="form-select qty_full" name="items[${idx}][qty_full]">
-                                                    <option value="1" ${det.qty_full === 1 ? 'selected' : ''}>Terhitung</option>
-                                                    <option value="0" ${det.qty_full === 0 ? 'selected' : ''}>Tidak Terhitung</option>
-                                                </select>
+                                            <div class="col-md-6 d-flex align-items-center">
+                                                <div class="form-check form-switch mt-3">
+                                                    <input type="hidden" name="items[${idx}][qty_full]" value="0">
+                                                    <input class="form-check-input qty_full" type="checkbox"
+                                                        name="items[${idx}][qty_full]"
+                                                        value="1"
+                                                        id="chk_qty_full_${idx}"
+                                                        ${qtyFullVal === 1 ? 'checked' : ''}
+                                                        style="width: 2.5em; height: 1.3em; cursor: pointer;">
+                                                    <label class="form-check-label ms-2 fw-semibold" for="chk_qty_full_${idx}">
+                                                        ${qtyFullVal === 1 ? '<span class="text-success">Terhitung</span>' : '<span class="text-danger">Tidak Terhitung</span>'}
+                                                    </label>
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label small mb-1">Qty (Kg)</label>
-                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh}" min="0" required>
+                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh ?? 0}" min="0" required>
                                             </div>
                                         </div>
                                         <button type="button" class="btn btn-danger btn-sm mt-2" onclick="deleteReportDetail(${det.id}, this)">
@@ -859,6 +897,16 @@
             if ($(this).val() !== '' && parseInt($(this).val()) < 0) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                 $(this).val('');
+            }
+        });
+
+        // Toggle label Terhitung / Tidak Terhitung saat checkbox diubah
+        $(document).on('change', '#editReportModal .qty_full[type="checkbox"]', function() {
+            const label = $(this).siblings('label');
+            if ($(this).is(':checked')) {
+                label.html('<span class="text-success">Terhitung</span>');
+            } else {
+                label.html('<span class="text-danger">Tidak Terhitung</span>');
             }
         });
 

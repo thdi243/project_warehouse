@@ -942,7 +942,7 @@ class WspStockOpnameController extends Controller
 
                 DB::commit();
 
-                $msg = $jenisSo === 'cycle_count' ? 
+                $msg = $jenisSo === 'cycle_count' ?
                     'Stock Opname WSP berhasil disubmit final (Auto-Approved).' :
                     'Stock Opname WSP berhasil disubmit final. Status saat ini Draft. Silakan kirim persetujuan dari menu Report SO.';
 
@@ -969,7 +969,7 @@ class WspStockOpnameController extends Controller
         if (strlen($tglOpname) === 7) {
             $parts = explode('-', $tglOpname);
             $query->whereYear('tgl_opname', $parts[0])
-                  ->whereMonth('tgl_opname', $parts[1]);
+                ->whereMonth('tgl_opname', $parts[1]);
         } else {
             $query->whereDate('tgl_opname', $tglOpname);
         }
@@ -1345,12 +1345,12 @@ class WspStockOpnameController extends Controller
 
             // Check if SO is still in draft status
             $sopHeader = WspSoModel::findOrFail($summary->so_id);
-            if ($sopHeader->status !== 'draft') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Tidak dapat mengubah data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
-                ], 422);
-            }
+            // if ($sopHeader->status !== 'draft') {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'Tidak dapat mengubah data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
+            //     ], 422);
+            // }
 
             $totalQtyFisik = 0;
             $qtyPallet = $summary->barang ? $summary->barang->qty_pallet : 1;
@@ -1451,12 +1451,12 @@ class WspStockOpnameController extends Controller
 
             // Check if SO is still in draft status
             $sopHeader = WspSoModel::findOrFail($detail->so_id);
-            if ($sopHeader->status !== 'draft') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Tidak dapat menghapus data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
-                ], 422);
-            }
+            // if ($sopHeader->status !== 'draft') {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'Tidak dapat menghapus data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
+            //     ], 422);
+            // }
 
             $detail->delete();
 
@@ -1535,7 +1535,7 @@ class WspStockOpnameController extends Controller
         if (strlen($tglOpname) === 7) {
             $parts = explode('-', $tglOpname);
             $query->whereYear('tgl_opname', $parts[0])
-                  ->whereMonth('tgl_opname', $parts[1]);
+                ->whereMonth('tgl_opname', $parts[1]);
         } else {
             $query->whereDate('tgl_opname', $tglOpname);
         }

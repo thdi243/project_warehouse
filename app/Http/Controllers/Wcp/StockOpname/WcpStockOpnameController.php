@@ -105,7 +105,7 @@ class WcpStockOpnameController extends Controller
             ->where('jenis_so', $jenisSo)
             ->first();
         $currentUser = Auth::user();
- 
+
         if ($status) {
             $isOwner = $currentUser && ($currentUser->id == $status->user_id);
             return response()->json([
@@ -913,7 +913,7 @@ class WcpStockOpnameController extends Controller
         if (strlen($tglOpname) === 7) {
             $parts = explode('-', $tglOpname);
             $query->whereYear('tgl_opname', $parts[0])
-                  ->whereMonth('tgl_opname', $parts[1]);
+                ->whereMonth('tgl_opname', $parts[1]);
         } else {
             $query->whereDate('tgl_opname', $tglOpname);
         }
@@ -1286,12 +1286,12 @@ class WcpStockOpnameController extends Controller
 
             // Check if SO is still in draft status
             $sopHeader = WcpSoModel::findOrFail($summary->so_id);
-            if ($sopHeader->status !== 'draft') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Tidak dapat mengubah data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
-                ], 422);
-            }
+            // if ($sopHeader->status !== 'draft') {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'Tidak dapat mengubah data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
+            //     ], 422);
+            // }
 
             $totalQtyFisik = 0;
 
@@ -1390,12 +1390,12 @@ class WcpStockOpnameController extends Controller
 
             // Check if SO is still in draft status
             $sopHeader = WcpSoModel::findOrFail($detail->so_id);
-            if ($sopHeader->status !== 'draft') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Tidak dapat menghapus data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
-                ], 422);
-            }
+            // if ($sopHeader->status !== 'draft') {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'Tidak dapat menghapus data karena status SO sudah ' . strtoupper($sopHeader->status) . '.'
+            //     ], 422);
+            // }
 
             $detail->delete();
 
@@ -1473,7 +1473,7 @@ class WcpStockOpnameController extends Controller
         if (strlen($tglOpname) === 7) {
             $parts = explode('-', $tglOpname);
             $query->whereYear('tgl_opname', $parts[0])
-                  ->whereMonth('tgl_opname', $parts[1]);
+                ->whereMonth('tgl_opname', $parts[1]);
         } else {
             $query->whereDate('tgl_opname', $tglOpname);
         }

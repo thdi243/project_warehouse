@@ -252,7 +252,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <table class="table table-bordered table-striped mb-0">
+                    <table class="table table-striped mb-0">
                         <tbody>
                             <tr>
                                 <th style="width: 200px;">MID</th>
@@ -270,7 +270,7 @@
                                 <th>Riwayat Input Fisik</th>
                                 <td>
                                     <div class="table-responsive">
-                                        <table class="table table-sm table-bordered table-hover mb-0 align-middle">
+                                        <table class="table table-sm table-hover mb-0 align-middle">
                                             <thead class="table-light text-center">
                                                 <tr>
                                                     <th style="width: 50px;">No</th>
@@ -478,9 +478,6 @@
                 });
             });
 
-            // Load pending approval report on init
-            loadPendingApprovals();
-
             // Click handler for pending approval row to navigate/filter by date
             $(document).on('click', '#pendingApprovalBody tr', function() {
                 const date = $(this).data('date');
@@ -550,8 +547,18 @@
                                 statusBadge = '<span class="badge bg-success px-2 py-1">MATCH</span>';
                             }
 
-                            const isDraft = res.sop && res.sop.status === 'draft';
                             const isSpv = res.sop && res.sop.user_id == {{ Auth::user()->id }};
+                            const canEdit =
+                                {{ Auth::user()->jabatan !== 'operator' ? 'true' : 'false' }};
+
+                            const actionButtons = canEdit ? `
+                                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editReportRow(${item.id})" title="Edit">
+                                    <i class="mdi mdi-pencil-outline"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteReportRow(${item.id})" title="Hapus">
+                                    <i class="mdi mdi-trash-can-outline"></i>
+                                </button>
+                            ` : '';
 
                             tableBody.append(`  
                                 <tr>
@@ -567,12 +574,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-info me-1" onclick="viewDetailReport(${item.id})" title="Detail">
                                             <i class="mdi mdi-eye-outline"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editReportRow(${item.id})" title="Edit" ${!isDraft ? 'disabled' : ''}>
-                                            <i class="mdi mdi-pencil-outline"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteReportRow(${item.id})" title="Hapus" ${!isDraft ? 'disabled' : ''}>
-                                            <i class="mdi mdi-trash-can-outline"></i>
-                                        </button>
+                                        ${actionButtons}
                                     </td>
                                 </tr>
                             `);
@@ -706,8 +708,14 @@
                         let detailRowsHtml = '';
                         if (res.details && res.details.length > 0) {
                             res.details.forEach((det, idx) => {
-                                const inputTime = det.created_at ? det.created_at.substring(11,
-                                    16) : '-';
+                                const inputTime = det.created_at ?
+                                    new Date(det.created_at).toLocaleTimeString('id-ID', {
+                                        timeZone: 'Asia/Jakarta',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: false
+                                    }) :
+                                    '-';
                                 detailRowsHtml += `
                                     <tr>
                                         <td class="text-center fw-semibold">${idx + 1}</td>
@@ -774,8 +782,13 @@
                         if (res.details && res.details.length > 0) {
                             res.details.forEach((det, idx) => {
                                 const inputTime = det.created_at ?
-                                    det.created_at.substring(11,
-                                        16) : '-';
+                                    new Date(det.created_at).toLocaleTimeString('id-ID', {
+                                        timeZone: 'Asia/Jakarta',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: false
+                                    }) :
+                                    '-';
                                 editHtml += `
                                     <div class="mb-3 border border-info p-3 rounded report-detail-item bg-light" data-id="${det.id}">
                                         <input type="hidden" name="items[${idx}][id]" value="${det.id}">
