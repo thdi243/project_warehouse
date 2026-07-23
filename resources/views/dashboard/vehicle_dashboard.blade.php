@@ -1321,7 +1321,7 @@
                                 if (window.toastr) {
                                     toastr.info(payload.message, 'Update Lokasi Truk');
                                 }
-                                triggerRocketLaunch();
+                                // triggerRocketLaunch();
                                 loadDashboardData();
                             });
                     } else {
@@ -1373,17 +1373,17 @@
                 setupRealtimeEcho();
 
                 // Launch rocket on load with a small delay
-                setTimeout(triggerRocketLaunch, 1500);
+                // setTimeout(triggerRocketLaunch, 1500);
 
                 // Auto-update timers every second
                 setInterval(updateDashboardTimers, 1000);
 
                 // Launch rocket periodically every 30s
-                setInterval(triggerRocketLaunch, 30000);
+                // setInterval(triggerRocketLaunch, 30000);
 
                 // Manual Refresh
                 $('#btnRefreshData').on('click', function() {
-                    triggerRocketLaunch();
+                    // triggerRocketLaunch();
                     loadDashboardData();
                     if (window.toastr) {
                         toastr.success('Data dashboard berhasil diperbarui.');
