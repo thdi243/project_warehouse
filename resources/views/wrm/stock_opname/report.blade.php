@@ -42,6 +42,13 @@
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: 36px;
         }
+
+        @media (min-width: 992px) {
+            .col-md-2-4 {
+                flex: 0 0 auto;
+                width: 20%;
+            }
+        }
     </style>
 @endsection
 
@@ -150,6 +157,111 @@
                     <div class="tab-content">
                         <!-- Tab 1: Data Opname -->
                         <div class="tab-pane fade show active" id="tabData" role="tabpanel" aria-labelledby="data-tab">
+
+                            <!-- Summary Cards -->
+                            <div class="row g-2 mb-3" id="summaryCardsContainer">
+                                <div class="col-md-2-4 col-sm-6 col-12">
+                                    <div class="card bg-light border-0 shadow-none m-0 rounded-3">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-xs flex-shrink-0 me-3">
+                                                    <span
+                                                        class="avatar-title bg-primary-subtle text-white rounded-circle fs-4"
+                                                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                                        <i class="bx bx-cube-alt"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="text-muted mb-1 text-uppercase fw-semibold"
+                                                        style="font-size: 10px; letter-spacing: 0.5px;">Total Item</h6>
+                                                    <h4 class="mb-0 fw-bold" id="cardTotalItem">0</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2-4 col-sm-6 col-12">
+                                    <div class="card bg-light border-0 shadow-none m-0 rounded-3">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-xs flex-shrink-0 me-3">
+                                                    <span class="avatar-title bg-info-subtle text-info rounded-circle fs-4"
+                                                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                                        <i class="bx bx-receipt"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="text-muted mb-1 text-uppercase fw-semibold"
+                                                        style="font-size: 10px; letter-spacing: 0.5px;">Total SPB</h6>
+                                                    <h4 class="mb-0 fw-bold" id="cardTotalSpb">0</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2-4 col-sm-6 col-12">
+                                    <div class="card bg-light border-0 shadow-none m-0 rounded-3">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-xs flex-shrink-0 me-3">
+                                                    <span
+                                                        class="avatar-title bg-warning-subtle text-warning rounded-circle fs-4"
+                                                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                                        <i class="mdi mdi-layers-outline"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="text-muted mb-1 text-uppercase fw-semibold"
+                                                        style="font-size: 10px; letter-spacing: 0.5px;">Total Pallet</h6>
+                                                    <h4 class="mb-0 fw-bold" id="cardTotalPallet">0</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2-4 col-sm-6 col-12">
+                                    <div class="card bg-light border-0 shadow-none m-0 rounded-3">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-xs flex-shrink-0 me-3">
+                                                    <span
+                                                        class="avatar-title bg-success-subtle text-success rounded-circle fs-4"
+                                                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                                        <i class="mdi mdi-weight"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="text-muted mb-1 text-uppercase fw-semibold"
+                                                        style="font-size: 10px; letter-spacing: 0.5px;">Total Qty Fisik
+                                                    </h6>
+                                                    <h4 class="mb-0 fw-bold" id="cardTotalQtyFisik">0 Kg</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2-4 col-sm-6 col-12">
+                                    <div class="card bg-light border-0 shadow-none m-0 rounded-3">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-xs flex-shrink-0 me-3">
+                                                    <span
+                                                        class="avatar-title bg-danger-subtle text-danger rounded-circle fs-4"
+                                                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                                        <i class="mdi mdi-calculator"></i>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="text-muted mb-1 text-uppercase fw-semibold"
+                                                        style="font-size: 10px; letter-spacing: 0.5px;">Total Selisih</h6>
+                                                    <h4 class="mb-0 fw-bold" id="cardTotalSelisih">0 Kg</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="table-responsive">
                                 <table class="table table-striped align-middle mb-0" id="tableReportList">
                                     <thead class="table-light text-center">
@@ -535,7 +647,29 @@
                     // Reload pending approvals count/state
                     loadPendingApprovals();
 
+                    let totalItem = 0;
+                    let totalSpb = 0;
+                    let totalPallet = 0;
+                    let totalQtyFisik = 0;
+                    let totalSelisih = 0;
+
                     if (res.status === 'success' && res.data.length > 0) {
+                        // Perhitungan summary
+                        const uniqueItems = new Set(res.data.map(item => item.barang_id)).size;
+                        const uniqueSpbs = new Set(res.data.map(item => item.no_spb).filter(spb => spb)).size;
+                        const sumPallets = res.data.reduce((sum, item) => sum + (parseInt(item.pallet_count) ||
+                            0), 0);
+                        const sumQtyFisik = res.data.reduce((sum, item) => sum + (parseFloat(item.qty_fisik) ||
+                            0), 0);
+                        const sumSelisih = res.data.reduce((sum, item) => sum + (parseFloat(item.selisih) || 0),
+                            0);
+
+                        totalItem = uniqueItems;
+                        totalSpb = uniqueSpbs;
+                        totalPallet = sumPallets;
+                        totalQtyFisik = sumQtyFisik;
+                        totalSelisih = sumSelisih;
+
                         res.data.forEach((item, index) => {
                             const barangName = item.barang ? item.barang.nama_barang : 'N/A';
                             const barangMid = item.barang ? item.barang.mid : 'N/A';
@@ -602,6 +736,26 @@
                         `);
                         checkApprovalStatus(null, date);
                     }
+
+                    // Update UI Card
+                    $('#cardTotalItem').text(totalItem.toLocaleString('id-ID'));
+                    $('#cardTotalSpb').text(totalSpb.toLocaleString('id-ID'));
+                    $('#cardTotalPallet').text(totalPallet.toLocaleString('id-ID'));
+                    $('#cardTotalQtyFisik').text(totalQtyFisik.toLocaleString('id-ID') + ' Kg');
+
+                    // Format selisih agar ada warna jika minus (-) atau plus (+)
+                    const selisihText = (totalSelisih > 0 ? '+' : '') + totalSelisih.toLocaleString('id-ID') +
+                        ' Kg';
+                    const selisihEl = $('#cardTotalSelisih');
+                    selisihEl.text(selisihText);
+                    selisihEl.removeClass('text-danger text-success text-warning');
+                    if (totalSelisih < 0) {
+                        selisihEl.addClass('text-danger');
+                    } else if (totalSelisih > 0) {
+                        selisihEl.addClass('text-warning');
+                    } else {
+                        selisihEl.addClass('text-success');
+                    }
                 },
                 error: function(xhr) {
                     tableBody.html(`
@@ -611,6 +765,13 @@
                     `);
                     checkApprovalStatus(null, date);
                     loadPendingApprovals();
+
+                    // Reset UI Card
+                    $('#cardTotalItem').text('0');
+                    $('#cardTotalSpb').text('0');
+                    $('#cardTotalPallet').text('0');
+                    $('#cardTotalQtyFisik').text('0 Kg');
+                    $('#cardTotalSelisih').text('0 Kg').removeClass('text-danger text-success text-warning');
                 }
             });
         }
