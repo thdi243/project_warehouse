@@ -539,6 +539,7 @@
                     if (res.status === 'success') {
                         updateKPIs(res.data.kpis, res.data.ringkasanSections);
                         renderAccuracyChart(res.data.charts.accuracy);
+                        renderSectionAccuracyChart(res.data.ringkasanSections);
                         renderSectionDetailGrid(res.data.ringkasanSections);
                         renderTop10Table(res.data.top10);
                     }
@@ -676,7 +677,7 @@
                     if (s.status === 'finished') {
                         statusBadge = '<span class="status-badge badge-selesai"><i class="mdi mdi-check-circle me-1"></i>SELESAI</span>';
                     } else if (s.status === 'started') {
-                        statusBadge = '<span class="status-badge badge-progress"><i class="mdi mdi-play-circle me-1"></i>STARTED</span>';
+                        statusBadge = '<span class="status-badge badge-progress"><i class="mdi mdi-play-circle me-1"></i>PROSES</span>';
                     } else {
                         statusBadge = '<span class="status-badge badge-belum">BELUM MULAI</span>';
                     }
@@ -698,6 +699,16 @@
                     // Match vs Selisih color coding
                     let matchClass = s.match > 0 ? 'text-dark' : 'text-muted';
                     let selisihClass = s.selisih > 0 ? 'text-danger fw-bold' : 'text-success';
+
+                    // Format Batch and Pallet meta info
+                    let metaInfo = '';
+                    if (s.batches !== null && s.pallets !== null) {
+                        metaInfo = `<small class="text-muted d-block" style="font-size: 10px;">${s.batches} Batch | ${s.pallets} Palet</small>`;
+                    } else if (s.pallets !== null) {
+                        metaInfo = `<small class="text-muted d-block" style="font-size: 10px;">${s.pallets} Palet</small>`;
+                    } else if (s.batches !== null) {
+                        metaInfo = `<small class="text-muted d-block" style="font-size: 10px;">${s.batches} Batch</small>`;
+                    }
                     
                     html += `
                         <div class="col-xl-4 col-md-6">
@@ -708,7 +719,7 @@
                                         <div class="kpi-icon-box bg-light text-primary me-3" style="width: 44px; height: 44px; font-size: 20px; border-radius: 10px; box-shadow: none;">
                                             <i class="mdi ${icon}"></i>
                                         </div>
-                                        <h5 class="fw-bold mb-0 text-dark" style="font-size: 16px;">${s.name} Section</h5>
+                                        <h5 class="fw-bold mb-0 text-dark" style="font-size: 16px;">Section ${s.name}</h5>
                                     </div>
                                     <div>
                                         ${statusBadge}
@@ -722,16 +733,16 @@
                                         <h3 class="fw-extrabold text-dark mb-0" style="font-size: 28px; letter-spacing: -0.02em;">${s.accuracy}%</h3>
                                     </div>
                                     <div class="col-6 ps-3">
-                                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1" style="font-size: 9px; letter-spacing: 0.05em;">Total Items</span>
+                                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1" style="font-size: 9px; letter-spacing: 0.05em;">Total Item</span>
                                         <h3 class="fw-extrabold text-dark mb-0" style="font-size: 24px;">${s.diopname.toLocaleString('id-ID')}</h3>
-                                        <small class="text-muted" style="font-size: 10px;">${s.batches} Batches | ${s.pallets} Pallets</small>
+                                        ${metaInfo}
                                     </div>
                                 </div>
                                 
                                 <!-- KPI Row 2: Match & Selisih -->
                                 <div class="bg-light rounded-3 p-3 mb-4 d-flex justify-content-between text-center">
                                     <div class="flex-fill border-end">
-                                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1" style="font-size: 9px;">Match</span>
+                                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1" style="font-size: 9px;">Sesuai</span>
                                         <span class="fs-5 fw-bold ${matchClass}">${s.match.toLocaleString('id-ID')}</span>
                                     </div>
                                     <div class="flex-fill">
@@ -742,22 +753,22 @@
                                 
                                 <!-- SOH Details Stacked Progress Bar -->
                                 <div class="mb-4">
-                                    <span class="text-muted small text-uppercase fw-bold d-block mb-2" style="font-size: 9.5px; letter-spacing: 0.03em;">SOH Details</span>
+                                    <span class="text-muted small text-uppercase fw-bold d-block mb-2" style="font-size: 9.5px; letter-spacing: 0.03em;">Detail SOH</span>
                                     <div class="progress" style="height: 8px; border-radius: 4px; background-color: #e9ecef; overflow: hidden;">
                                         <div class="progress-bar" role="progressbar" style="width: ${unrestPct}%; background-color: #1e293b;" title="Unrest: ${s.qty_unrest}"></div>
                                         <div class="progress-bar" role="progressbar" style="width: ${qiPct}%; background-color: #94a3b8;" title="QI: ${s.qty_qi}"></div>
-                                        <div class="progress-bar" role="progressbar" style="width: ${blockPct}%; background-color: #dc2626;" title="Blocked: ${s.qty_block}"></div>
+                                        <div class="progress-bar" role="progressbar" style="width: ${blockPct}%; background-color: #dc2626;" title="Terblokir: ${s.qty_block}"></div>
                                     </div>
                                     <div class="d-flex justify-content-between mt-2 text-muted" style="font-size: 10.5px;">
                                         <span>Unrest: <strong class="text-dark">${s.qty_unrest.toLocaleString('id-ID')}</strong></span>
                                         <span>QI: <strong class="text-dark">${s.qty_qi.toLocaleString('id-ID')}</strong></span>
-                                        <span>Blocked: <strong class="text-dark">${s.qty_block.toLocaleString('id-ID')}</strong></span>
+                                        <span>Terblokir: <strong class="text-dark">${s.qty_block.toLocaleString('id-ID')}</strong></span>
                                     </div>
                                 </div>
                                 
                                 <!-- Work Time -->
                                 <div class="border-top pt-3">
-                                    <span class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-size: 9.5px;">Work Time</span>
+                                    <span class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-size: 9.5px;">Waktu Kerja</span>
                                     <div class="d-flex align-items-center text-dark fw-semibold" style="font-size: 13px;">
                                         <i class="mdi mdi-clock-outline text-muted me-2"></i>
                                         <span>${s.work_time}</span>
@@ -770,6 +781,59 @@
             }
             
             $('#sectionDetailGrid').html(html);
+        }
+
+        function renderSectionAccuracyChart(sections) {
+            const categories = sections.map(s => s.name);
+            const data = sections.map(s => parseFloat(s.accuracy));
+
+            sectionAccuracyChart = Highcharts.chart('chartSectionAccuracy', {
+                chart: {
+                    type: 'column',
+                    backgroundColor: 'transparent'
+                },
+                title: {
+                    text: null
+                },
+                xAxis: {
+                    categories: categories,
+                    crosshair: true
+                },
+                yAxis: {
+                    min: 0,
+                    max: 100,
+                    title: {
+                        text: 'Akurasi (%)'
+                    },
+                    labels: {
+                        format: '{value}%'
+                    }
+                },
+                tooltip: {
+                    valueSuffix: '%'
+                },
+                plotOptions: {
+                    column: {
+                        pointPadding: 0.2,
+                        borderWidth: 0,
+                        borderRadius: 6,
+                        colorByPoint: true,
+                        colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#22c55e', '#ec4899', '#f59e0b', '#10b981']
+                    },
+                    series: {
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function() {
+                                return parseFloat(this.y) + '%';
+                            }
+                        }
+                    }
+                },
+                series: [{
+                    name: 'Akurasi Section',
+                    data: data
+                }]
+            });
         }
 
 

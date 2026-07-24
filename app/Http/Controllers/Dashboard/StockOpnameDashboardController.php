@@ -15,6 +15,7 @@ use App\Models\Wsp\StockOpname\WspSoSummariesModel;
 use App\Models\Wsp\StockOpname\WspSohModel;
 use App\Models\Wsp\StockOpname\WspSoStatusModel;
 use App\Models\Wsp\StockOpname\WspSoTempModel;
+use App\Models\Wsp\StockOpname\WspSoDetailModel;
 
 // Models WRM
 use App\Models\Wrm\StockOpname\WrmSoModel;
@@ -22,6 +23,7 @@ use App\Models\Wrm\StockOpname\WrmSoSummariesModel;
 use App\Models\Wrm\StockOpname\WrmSohModel;
 use App\Models\Wrm\StockOpname\WrmSoStatusModel;
 use App\Models\Wrm\StockOpname\WrmSoTempModel;
+use App\Models\Wrm\StockOpname\WrmSoDetailModel;
 
 // Models WPM
 use App\Models\Wpm\StockOpname\WpmSoModel;
@@ -29,6 +31,7 @@ use App\Models\Wpm\StockOpname\WpmSoSummariesModel;
 use App\Models\Wpm\StockOpname\WpmSohModel;
 use App\Models\Wpm\StockOpname\WpmSoStatusModel;
 use App\Models\Wpm\StockOpname\WpmSoTempModel;
+use App\Models\Wpm\StockOpname\WpmSoDetailModel;
 
 // Models WCP
 use App\Models\Wcp\StockOpname\WcpSoModel;
@@ -36,12 +39,14 @@ use App\Models\Wcp\StockOpname\WcpSoSummariesModel;
 use App\Models\Wcp\StockOpname\WcpSohModel;
 use App\Models\Wcp\StockOpname\WcpSoStatusModel;
 use App\Models\Wcp\StockOpname\WcpSoTempModel;
+use App\Models\Wcp\StockOpname\WcpSoDetailModel;
 
 // Models WFG
 use App\Models\Wfg\stock_opname\WfgSopModel;
 use App\Models\Wfg\stock_opname\WfgSopSummariesModel;
 use App\Models\Wfg\stock_opname\WfgSopStatusModel;
 use App\Models\Wfg\stock_opname\WfgSopTempModel;
+use App\Models\Wfg\stock_opname\WfgSopDetailModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel as WfgSohModel;
 
 class StockOpnameDashboardController extends Controller
@@ -232,17 +237,18 @@ class StockOpnameDashboardController extends Controller
                 $qtyQi = (int) WspSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
                 $qtyBlock = (int) WspSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
 
-                $batches = WspSoModel::whereDate('tgl_opname', $tglOpname)->count();
-                
-                $wspSoh = WspSohModel::whereDate('created_at', $tglOpname)->with('barang')->get();
-                foreach ($wspSoh as $s) {
-                    $qty_pallet = optional($s->barang)->qty_pallet ?: 100;
-                    $pallets += ceil($s->qty_soh / $qty_pallet);
-                }
+                $batches = null;
+                $pallets = null;
 
-                $startTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at')
-                    ?? WspSoModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
-                $endTime = WspSoModel::whereDate('tgl_opname', $tglOpname)->max('updated_at');
+                $wspSoIds = WspSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                if ($wspSoIds->isNotEmpty()) {
+                    $startTime = WspSoDetailModel::whereIn('so_id', $wspSoIds)->min('created_at');
+                    $endTime = WspSoDetailModel::whereIn('so_id', $wspSoIds)->max('created_at');
+                }
+                if (!$startTime) {
+                    $startTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
+                    $endTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->max('created_at');
+                }
             } elseif ($key === 'WRM') {
                 $hasDoc = WrmSoModel::whereDate('tgl_opname', $tglOpname)->exists();
                 $statusRecord = WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
@@ -265,12 +271,27 @@ class StockOpnameDashboardController extends Controller
                 $qtyQi = (int) WrmSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
                 $qtyBlock = (int) WrmSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
 
-                $batches = WrmSoModel::whereDate('tgl_opname', $tglOpname)->count();
-                $pallets = WrmSohModel::whereDate('created_at', $tglOpname)->whereNotNull('pallet')->where('pallet', '!=', '')->distinct('pallet')->count();
+                $wrmSoIdsForMeta = WrmSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                $batches = 0;
+                $pallets = 0;
+                if ($wrmSoIdsForMeta->isNotEmpty()) {
+                    $batches = WrmSoDetailModel::whereIn('so_id', $wrmSoIdsForMeta)->whereNotNull('no_spb')->where('no_spb', '!=', '')->distinct('no_spb')->count('no_spb');
+                    $pallets = WrmSoDetailModel::whereIn('so_id', $wrmSoIdsForMeta)->whereNotNull('pallet')->where('pallet', '!=', '')->distinct('pallet')->count('pallet');
+                }
+                if ($batches === 0 && $pallets === 0) {
+                    $batches = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->whereNotNull('no_spb')->where('no_spb', '!=', '')->distinct('no_spb')->count('no_spb');
+                    $pallets = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->whereNotNull('pallet')->where('pallet', '!=', '')->distinct('pallet')->count('pallet');
+                }
 
-                $startTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at')
-                    ?? WrmSoModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
-                $endTime = WrmSoModel::whereDate('tgl_opname', $tglOpname)->max('updated_at');
+                $wrmSoIds = WrmSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                if ($wrmSoIds->isNotEmpty()) {
+                    $startTime = WrmSoDetailModel::whereIn('so_id', $wrmSoIds)->min('created_at');
+                    $endTime = WrmSoDetailModel::whereIn('so_id', $wrmSoIds)->max('created_at');
+                }
+                if (!$startTime) {
+                    $startTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
+                    $endTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->max('created_at');
+                }
             } elseif ($key === 'WPM') {
                 $hasDoc = WpmSoModel::whereDate('tgl_opname', $tglOpname)->exists();
                 $statusRecord = WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
@@ -293,17 +314,18 @@ class StockOpnameDashboardController extends Controller
                 $qtyQi = (int) WpmSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
                 $qtyBlock = (int) WpmSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
 
-                $batches = WpmSoModel::whereDate('tgl_opname', $tglOpname)->count();
+                $batches = null;
+                $pallets = null;
 
-                $wpmSoh = WpmSohModel::whereDate('created_at', $tglOpname)->with('barang')->get();
-                foreach ($wpmSoh as $s) {
-                    $qty_pallet = optional($s->barang)->qty_pallet ?: 100;
-                    $pallets += ceil($s->qty_soh / $qty_pallet);
+                $wpmSoIds = WpmSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                if ($wpmSoIds->isNotEmpty()) {
+                    $startTime = WpmSoDetailModel::whereIn('so_id', $wpmSoIds)->min('created_at');
+                    $endTime = WpmSoDetailModel::whereIn('so_id', $wpmSoIds)->max('created_at');
                 }
-
-                $startTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at')
-                    ?? WpmSoModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
-                $endTime = WpmSoModel::whereDate('tgl_opname', $tglOpname)->max('updated_at');
+                if (!$startTime) {
+                    $startTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
+                    $endTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->max('created_at');
+                }
             } elseif ($key === 'WCP') {
                 $hasDoc = WcpSoModel::whereDate('tgl_opname', $tglOpname)->exists();
                 $statusRecord = WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
@@ -326,17 +348,18 @@ class StockOpnameDashboardController extends Controller
                 $qtyQi = (int) WcpSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
                 $qtyBlock = (int) WcpSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
 
-                $batches = WcpSoModel::whereDate('tgl_opname', $tglOpname)->count();
+                $batches = null;
+                $pallets = null;
 
-                $wcpSoh = WcpSohModel::whereDate('created_at', $tglOpname)->with('barang')->get();
-                foreach ($wcpSoh as $s) {
-                    $qty_pallet = optional($s->barang)->qty_pallet ?: 100;
-                    $pallets += ceil($s->qty_soh / $qty_pallet);
+                $wcpSoIds = WcpSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                if ($wcpSoIds->isNotEmpty()) {
+                    $startTime = WcpSoDetailModel::whereIn('so_id', $wcpSoIds)->min('created_at');
+                    $endTime = WcpSoDetailModel::whereIn('so_id', $wcpSoIds)->max('created_at');
                 }
-
-                $startTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at')
-                    ?? WcpSoModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
-                $endTime = WcpSoModel::whereDate('tgl_opname', $tglOpname)->max('updated_at');
+                if (!$startTime) {
+                    $startTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
+                    $endTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->max('created_at');
+                }
             } elseif ($key === 'WFG_BAS') {
                 $hasDoc = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->exists();
                 $statusRecord = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->first();
@@ -363,12 +386,29 @@ class StockOpnameDashboardController extends Controller
                 $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->sum('qty_qi');
                 $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->sum('qty_block');
 
-                $batches = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->count();
-                $pallets = ceil($diopnameCount / 10);
+                $batches = null;
+                $pallets = 0;
+                $wfgBasSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->pluck('id');
+                if ($wfgBasSopIdsForMeta->isNotEmpty()) {
+                    $fullPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIdsForMeta)->sum('qty_full');
+                    $recehPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIdsForMeta)->where('qty_receh', '>', 0)->count();
+                    $pallets = $fullPallets + $recehPallets;
+                }
+                if ($pallets === 0) {
+                    $fullPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->sum('qty_full');
+                    $recehPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('qty_receh', '>', 0)->count();
+                    $pallets = $fullPallets + $recehPallets;
+                }
 
-                $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->min('created_at')
-                    ?? WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->min('created_at');
-                $endTime = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->max('updated_at');
+                $wfgBasSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->pluck('id');
+                if ($wfgBasSopIds->isNotEmpty()) {
+                    $startTime = WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIds)->min('created_at');
+                    $endTime = WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIds)->max('created_at');
+                }
+                if (!$startTime) {
+                    $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->min('created_at');
+                    $endTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->max('created_at');
+                }
             } elseif ($key === 'WFG_SMU') {
                 $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists()
                     || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->exists();
@@ -397,21 +437,39 @@ class StockOpnameDashboardController extends Controller
                 $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_qi');
                 $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_block');
 
-                $batches = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->count();
-                $pallets = ceil($diopnameCount / 10);
+                $batches = null;
+                $pallets = 0;
+                $wfgSmuSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->pluck('id');
+                if ($wfgSmuSopIdsForMeta->isNotEmpty()) {
+                    $fullPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIdsForMeta)->sum('qty_full');
+                    $recehPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIdsForMeta)->where('qty_receh', '>', 0)->count();
+                    $pallets = $fullPallets + $recehPallets;
+                }
+                if ($pallets === 0) {
+                    $fullPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_full');
+                    $recehPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('qty_receh', '>', 0)->count();
+                    $pallets = $fullPallets + $recehPallets;
+                }
 
-                $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->min('created_at')
-                    ?? WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->min('created_at');
-                $endTime = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->max('updated_at');
+                $wfgSmuSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->pluck('id');
+                if ($wfgSmuSopIds->isNotEmpty()) {
+                    $startTime = WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIds)->min('created_at');
+                    $endTime = WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIds)->max('created_at');
+                }
+                if (!$startTime) {
+                    $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->min('created_at');
+                    $endTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->max('created_at');
+                }
             }
 
             if ($startTime) {
                 $startFormatted = Carbon::parse($startTime)->format('H:i');
                 if ($status === 'finished') {
                     $endFormatted = $endTime ? Carbon::parse($endTime)->format('H:i') : '17:00';
-                    $workTime = "{$startFormatted} - {$endFormatted} (Finalized)";
+                    $workTime = "{$startFormatted} - {$endFormatted}";
                 } elseif ($status === 'started') {
-                    $workTime = "{$startFormatted} - On Progress...";
+                    $endFormatted = $endTime ? Carbon::parse($endTime)->format('H:i') : '...';
+                    $workTime = "{$startFormatted} - {$endFormatted} (Proses)";
                 } else {
                     $workTime = 'Belum Mulai';
                 }
@@ -421,8 +479,8 @@ class StockOpnameDashboardController extends Controller
 
             // Fallback for batches and pallets if 0 but there is diopnameCount
             if ($diopnameCount > 0) {
-                if ($batches === 0) $batches = ceil($diopnameCount / 30);
-                if ($pallets === 0) $pallets = ceil($diopnameCount / 10);
+                if ($batches !== null && $batches === 0) $batches = ceil($diopnameCount / 30);
+                if ($pallets !== null && $pallets === 0) $pallets = ceil($diopnameCount / 10);
             }
 
             // Calculate accuracy rate: 0.00% if not opnamed yet
