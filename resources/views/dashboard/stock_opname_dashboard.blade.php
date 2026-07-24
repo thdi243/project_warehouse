@@ -438,7 +438,8 @@
                         <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
                             <div>
                                 <h5 class="card-title fw-bold mb-1">Detail Performa per Section</h5>
-                                <p class="text-muted mb-0 small">Analisa akurasi, volume, SOH, dan status aktivitas opname per area</p>
+                                <p class="text-muted mb-0 small">Analisa akurasi, volume, SOH, dan status aktivitas opname
+                                    per area</p>
                             </div>
                         </div>
                         <div class="row g-4" id="sectionDetailGrid">
@@ -667,21 +668,24 @@
 
         function renderSectionDetailGrid(sections) {
             let html = '';
-            
+
             if (sections.length === 0) {
-                html = '<div class="col-12 text-center text-muted py-5"><i class="mdi mdi-alert-circle-outline fs-1 d-block mb-2"></i>Tidak ada data section ditemukan untuk filter ini.</div>';
+                html =
+                    '<div class="col-12 text-center text-muted py-5"><i class="mdi mdi-alert-circle-outline fs-1 d-block mb-2"></i>Tidak ada data section ditemukan untuk filter ini.</div>';
             } else {
                 sections.forEach(function(s) {
                     // Status Badge
                     let statusBadge = '';
                     if (s.status === 'finished') {
-                        statusBadge = '<span class="status-badge badge-selesai"><i class="mdi mdi-check-circle me-1"></i>SELESAI</span>';
+                        statusBadge =
+                            '<span class="status-badge badge-selesai"><i class="mdi mdi-check-circle me-1"></i>SELESAI</span>';
                     } else if (s.status === 'started') {
-                        statusBadge = '<span class="status-badge badge-progress"><i class="mdi mdi-play-circle me-1"></i>PROSES</span>';
+                        statusBadge =
+                            '<span class="status-badge badge-progress"><i class="mdi mdi-play-circle me-1"></i>PROSES</span>';
                     } else {
                         statusBadge = '<span class="status-badge badge-belum">BELUM MULAI</span>';
                     }
-                    
+
                     // Icon based on section key
                     let icon = 'mdi-office-building';
                     if (s.key === 'WSP') icon = 'mdi-cog-outline';
@@ -689,13 +693,13 @@
                     else if (s.key === 'WPM') icon = 'mdi-robot-industrial';
                     else if (s.key === 'WCP') icon = 'mdi-toy-brick-outline';
                     else if (s.key.indexOf('WFG') === 0) icon = 'mdi-warehouse';
-                    
+
                     // Calculate SOH Details percentage for stacked progress bar
                     let totalSoh = s.qty_unrest + s.qty_qi + s.qty_block;
                     let unrestPct = totalSoh > 0 ? (s.qty_unrest / totalSoh * 100) : 0;
                     let qiPct = totalSoh > 0 ? (s.qty_qi / totalSoh * 100) : 0;
                     let blockPct = totalSoh > 0 ? (s.qty_block / totalSoh * 100) : 0;
-                    
+
                     // Match vs Selisih color coding
                     let matchClass = s.match > 0 ? 'text-dark' : 'text-muted';
                     let selisihClass = s.selisih > 0 ? 'text-danger fw-bold' : 'text-success';
@@ -703,16 +707,19 @@
                     // Format Batch and Pallet meta info
                     let metaInfo = '';
                     if (s.batches !== null && s.pallets !== null) {
-                        metaInfo = `<small class="text-muted d-block" style="font-size: 10px;">${s.batches} Batch | ${s.pallets} Palet</small>`;
+                        metaInfo =
+                            `<small class="text-muted d-block" style="font-size: 10px;">${s.batches} Batch | ${s.pallets} Palet</small>`;
                     } else if (s.pallets !== null) {
-                        metaInfo = `<small class="text-muted d-block" style="font-size: 10px;">${s.pallets} Palet</small>`;
+                        metaInfo =
+                            `<small class="text-muted d-block" style="font-size: 10px;">${s.pallets} Palet</small>`;
                     } else if (s.batches !== null) {
-                        metaInfo = `<small class="text-muted d-block" style="font-size: 10px;">${s.batches} Batch</small>`;
+                        metaInfo =
+                            `<small class="text-muted d-block" style="font-size: 10px;">${s.batches} Batch</small>`;
                     }
-                    
+
                     html += `
                         <div class="col-xl-4 col-md-6">
-                            <div class="card h-100 border shadow-sm p-4" style="border-radius: 16px; transition: transform 0.2s; background: #fff;">
+                            <div class="card h-100 border shadow-sm p-4" style="border-radius: 16px; transition: transform 0.2s;">
                                 <!-- Card Header -->
                                 <div class="d-flex align-items-center justify-content-between mb-4">
                                     <div class="d-flex align-items-center">
@@ -779,7 +786,7 @@
                     `;
                 });
             }
-            
+
             $('#sectionDetailGrid').html(html);
         }
 
