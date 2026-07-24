@@ -276,11 +276,11 @@ class StockOpnameDashboardController extends Controller
                 $pallets = 0;
                 if ($wrmSoIdsForMeta->isNotEmpty()) {
                     $batches = WrmSoDetailModel::whereIn('so_id', $wrmSoIdsForMeta)->whereNotNull('no_spb')->where('no_spb', '!=', '')->distinct('no_spb')->count('no_spb');
-                    $pallets = WrmSoDetailModel::whereIn('so_id', $wrmSoIdsForMeta)->whereNotNull('pallet')->where('pallet', '!=', '')->distinct('pallet')->count('pallet');
+                    $pallets = WrmSoDetailModel::whereIn('so_id', $wrmSoIdsForMeta)->count();
                 }
                 if ($batches === 0 && $pallets === 0) {
                     $batches = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->whereNotNull('no_spb')->where('no_spb', '!=', '')->distinct('no_spb')->count('no_spb');
-                    $pallets = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->whereNotNull('pallet')->where('pallet', '!=', '')->distinct('pallet')->count('pallet');
+                    $pallets = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->count();
                 }
 
                 $wrmSoIds = WrmSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
