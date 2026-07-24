@@ -593,6 +593,15 @@
                             `<span class="badge badge-soft-danger animate-pulse" title="${tooltipText}" style="cursor: help;">yes</span>`;
                     }
 
+                    const isRejected = pr.status === 'rejected';
+                    const copyDisabled = isRejected ? 'disabled' : '';
+                    const copyTitle = isRejected ?
+                        'PR Rejected tidak dapat di-copy' :
+                        'Copy Formatted';
+                    const copyKetTitle = isRejected ?
+                        'PR Rejected tidak dapat di-copy' :
+                        'Copy Keterangan PR';
+
                     tbody.append(`
                         <tr>
                             <td class="text-center">${startIndex + index + 1}</td>
@@ -663,7 +672,8 @@
                                         <button 
                                             class="btn btn-primary btn-sm"
                                             onclick="copyFormatted(${pr.id})"
-                                            title="Copy Formatted"
+                                            title="${copyTitle}"
+                                            ${copyDisabled}
                                         >
                                             <i class="mdi mdi-content-copy"></i> Copy
                                         </button>
@@ -672,7 +682,8 @@
                                         <button 
                                             class="btn btn-success btn-sm"
                                             onclick="copyKeteranganPR(${pr.id})"
-                                            title="Copy Keterangan PR"
+                                            title="${copyKetTitle}"
+                                            ${copyDisabled}
                                         >
                                             <i class="mdi mdi-content-copy"></i> Copy Keterangan
                                         </button>
@@ -1018,10 +1029,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                <div class="small mt-1">
-                                                                                                                    Catatan: ${a.catatan}
-                                                                                                                </div>
-                                                                                                            ` : ''}
+                                                                                                                        <div class="small mt-1">
+                                                                                                                            Catatan: ${a.catatan}
+                                                                                                                        </div>
+                                                                                                                    ` : ''}
                             </div>
 
                         </div>
