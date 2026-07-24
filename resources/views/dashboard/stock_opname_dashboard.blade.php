@@ -222,6 +222,24 @@
             border-radius: 8px;
             font-weight: 700;
         }
+
+        .nav-pills-custom .nav-link {
+            border-radius: 8px;
+            color: #475569;
+            font-weight: 600;
+            padding: 8px 16px;
+            transition: all 0.2s ease;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            margin-right: 6px;
+        }
+
+        .nav-pills-custom .nav-link.active {
+            background-color: #6366f1;
+            color: #ffffff;
+            border-color: #6366f1;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
     </style>
 @endsection
 
@@ -361,31 +379,29 @@
                                 <i class="mdi mdi-bullseye-arrow"></i>
                             </div>
                             <div>
-                                <h6 class="text-muted mb-0 small fw-bold text-uppercase">Akurasi Stock (Accuracy)</h6>
+                                <h6 class="text-muted mb-0 small fw-bold text-uppercase">Akurasi Stock</h6>
                             </div>
                         </div>
                         <h3 class="huge-number mb-2 text-success" id="lblStockAccuracy">100%</h3>
+                        <div id="lblStockAccuracyCompare" class="small fw-semibold mb-2"></div>
                         <p class="text-muted small mb-0">Tingkat akurasi fisik vs sistem</p>
                     </div>
                 </div>
 
-                <!-- 4. Total Selisih Qty (+ / -) -->
+                <!-- 4. Item Sesuai (Match) -->
                 <div class="col-xl-3 col-md-6">
                     <div class="card dashboard-card h-100 p-4 kpi-card">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="kpi-icon-box bg-rose-gradient me-3">
-                                <i class="mdi mdi-calculator-variant"></i>
+                            <div class="kpi-icon-box bg-cyan-gradient me-3">
+                                <i class="mdi mdi-check-circle-outline"></i>
                             </div>
                             <div>
-                                <h6 class="text-muted mb-0 small fw-bold text-uppercase">Total Selisih Kuantitas</h6>
+                                <h6 class="text-muted mb-0 small fw-bold text-uppercase">Item Sesuai (Match)</h6>
                             </div>
                         </div>
-                        <h3 class="fw-bold mb-3 d-flex gap-2 align-items-center" style="font-size: 26px;">
-                            <span class="qty-plus" id="lblQtyPlus">+0</span>
-                            <span class="text-muted">/</span>
-                            <span class="qty-minus" id="lblQtyMinus">-0</span>
-                        </h3>
-                        <p class="text-muted small mb-0">Akumulasi kelebihan & kekurangan qty</p>
+                        <h3 class="huge-number mb-2 text-success" id="lblItemMatch">0</h3>
+                        <p class="text-muted small mb-0"><span class="text-success fw-bold" id="lblItemMatchPct">0%</span>
+                            dari total diopname</p>
                     </div>
                 </div>
             </div>
@@ -415,63 +431,24 @@
                 </div>
             </div>
 
-            <!-- Ringkasan per Section Table -->
-            <div class="row g-4 mb-4">
+            <!-- Detail Performa per Section Grid -->
+            <div class="row mb-4">
                 <div class="col-12">
                     <div class="card dashboard-card p-4">
-                        <h5 class="card-title fw-bold mb-3">Ringkasan Selisih & Akurasi per Section</h5>
-                        <div class="table-responsive">
-                            <table class="table-custom" id="tableSectionSummary">
-                                <thead>
-                                    <tr>
-                                        <th>Nama Section / Gudang</th>
-                                        <th class="text-center">Total Diopname</th>
-                                        <th class="text-center">Match (Sesuai)</th>
-                                        <th class="text-center">Selisih Item</th>
-                                        <th class="text-center">Akurasi (%)</th>
-                                        <th class="text-center">Selisih Kuantitas (+ / -)</th>
-                                        <th class="text-center">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Dynamic Rows -->
-                                </tbody>
-                            </table>
+                        <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+                            <div>
+                                <h5 class="card-title fw-bold mb-1">Detail Performa per Section</h5>
+                                <p class="text-muted mb-0 small">Analisa akurasi, volume, SOH, dan status aktivitas opname per area</p>
+                            </div>
+                        </div>
+                        <div class="row g-4" id="sectionDetailGrid">
+                            <!-- Dynamic Section Cards will be rendered here -->
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tracking Approval per Section Table -->
-            <div class="row g-4 mb-4">
-                <div class="col-12">
-                    <div class="card dashboard-card p-4">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <h5 class="card-title fw-bold mb-0">Tracking Approval Stock Opname per Section</h5>
-                            <span class="text-muted small">Memantau status approval dan siapa saja yang belum
-                                approve</span>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table-custom" id="tableApprovalTracking">
-                                <thead>
-                                    <tr>
-                                        <th>Nama Section / Gudang</th>
-                                        <th>No. Dokumen</th>
-                                        <th>Operator (SC)</th>
-                                        <th class="text-center">Status Approval</th>
-                                        <th>Sudah Approve</th>
-                                        <th>Belum Approve (Pending)</th>
-                                        <th>Ditolak (Rejected)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Dynamic Rows -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
 
             <!-- Top 10 Selisih Terbesar -->
             <div class="row">
@@ -509,7 +486,7 @@
 
 @section('scripts')
     <script>
-        let accuracyChart, sectionAccuracyChart;
+        let accuracyChart, sectionAccuracyChart, sectionCompositionChart;
 
         $(function() {
             // Load initial data
@@ -560,11 +537,9 @@
                 },
                 success: function(res) {
                     if (res.status === 'success') {
-                        updateKPIs(res.data.kpis);
+                        updateKPIs(res.data.kpis, res.data.ringkasanSections);
                         renderAccuracyChart(res.data.charts.accuracy);
-                        renderSectionAccuracyChart(res.data.ringkasanSections);
-                        renderSectionSummaryTable(res.data.ringkasanSections);
-                        renderApprovalTrackingTable(res.data.approvalTracking);
+                        renderSectionDetailGrid(res.data.ringkasanSections);
                         renderTop10Table(res.data.top10);
                     }
                 },
@@ -574,7 +549,7 @@
             });
         }
 
-        function updateKPIs(kpis) {
+        function updateKPIs(kpis, sections) {
             $('#lblTanggalOpname').text(kpis.tanggal_formatted);
             $('#lblProgressPct').text(kpis.progress_pct + '%');
             $('#lblSectionSelesai').text(kpis.section_selesai);
@@ -593,8 +568,52 @@
                 $('#lblStockAccuracy').removeClass('text-success text-warning').addClass('text-danger');
             }
 
-            $('#lblQtyPlus').text(kpis.selisih_qty_pos);
-            $('#lblQtyMinus').text(kpis.selisih_qty_neg);
+            // Update Comparison with Yesterday
+            const compareContainer = $('#lblStockAccuracyCompare');
+            compareContainer.empty();
+            if (kpis.yesterday_accuracy !== null) {
+                const diff = parseFloat(kpis.stock_accuracy) - parseFloat(kpis.yesterday_accuracy);
+                const diffFormatted = Math.abs(diff).toFixed(2) + '%';
+                if (diff > 0) {
+                    compareContainer.html(`
+                        <span class="text-success fw-bold">
+                            <i class="mdi mdi-arrow-up-bold me-1"></i>+${diffFormatted}
+                        </span>
+                        <span class="text-muted ms-1 small">dari kemarin</span>
+                    `);
+                } else if (diff < 0) {
+                    compareContainer.html(`
+                        <span class="text-danger fw-bold">
+                            <i class="mdi mdi-arrow-down-bold me-1"></i>-${diffFormatted}
+                        </span>
+                        <span class="text-muted ms-1 small">dari kemarin</span>
+                    `);
+                } else {
+                    compareContainer.html(`
+                        <span class="text-muted fw-bold">
+                            <i class="mdi mdi-minus me-1"></i>Sama dengan kemarin
+                        </span>
+                    `);
+                }
+            } else {
+                compareContainer.html(`
+                    <span class="text-muted small">
+                        <i class="mdi mdi-information-outline me-1"></i>Data kemarin tidak tersedia
+                    </span>
+                `);
+            }
+
+            // Hitung total match dari data sections
+            let totalDiopname = 0;
+            let totalMatch = 0;
+            if (sections && sections.length > 0) {
+                totalDiopname = sections.reduce((sum, item) => sum + item.diopname, 0);
+                totalMatch = sections.reduce((sum, item) => sum + item.match, 0);
+            }
+            const totalMatchPct = totalDiopname > 0 ? ((totalMatch / totalDiopname) * 100).toFixed(1) : 0;
+
+            $('#lblItemMatch').text(totalMatch.toLocaleString('id-ID'));
+            $('#lblItemMatchPct').text(totalMatchPct + '%');
         }
 
         function renderAccuracyChart(chartData) {
@@ -645,165 +664,112 @@
             });
         }
 
-        function renderSectionAccuracyChart(sections) {
-            const categories = sections.map(s => s.name);
-            const data = sections.map(s => s.accuracy);
-
-            sectionAccuracyChart = Highcharts.chart('chartSectionAccuracy', {
-                chart: {
-                    type: 'column',
-                    backgroundColor: 'transparent'
-                },
-                title: {
-                    text: null
-                },
-                xAxis: {
-                    categories: categories,
-                    crosshair: true
-                },
-                yAxis: {
-                    min: 0,
-                    max: 100,
-                    title: {
-                        text: 'Accuracy (%)'
-                    },
-                    labels: {
-                        format: '{value}%'
-                    }
-                },
-                tooltip: {
-                    valueSuffix: '%'
-                },
-                plotOptions: {
-                    column: {
-                        pointPadding: 0.2,
-                        borderWidth: 0,
-                        borderRadius: 6,
-                        colorByPoint: true,
-                        colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#22c55e', '#ec4899', '#f59e0b', '#10b981']
-                    },
-                    series: {
-                        dataLabels: {
-                            enabled: true,
-                            formatter: function() {
-                                return parseFloat(this.y) + '%';
-                            }
-                        }
-                    }
-                },
-                series: [{
-                    name: 'Akurasi Section',
-                    data: data
-                }]
-            });
-        }
-
-        function renderSectionSummaryTable(data) {
+        function renderSectionDetailGrid(sections) {
             let html = '';
-            if (data.length === 0) {
-                html =
-                    `<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data section ditemukan.</td></tr>`;
+            
+            if (sections.length === 0) {
+                html = '<div class="col-12 text-center text-muted py-5"><i class="mdi mdi-alert-circle-outline fs-1 d-block mb-2"></i>Tidak ada data section ditemukan untuk filter ini.</div>';
             } else {
-                data.forEach(function(row) {
-                    let badgeClass = 'badge-belum';
-                    if (row.status === 'started') badgeClass = 'badge-progress';
-                    if (row.status === 'finished') badgeClass = 'badge-selesai';
-
-                    let qtyPlus = row.qty_lebih > 0 ? `+${row.qty_lebih.toLocaleString('id-ID')}` : '0';
-                    let qtyMinus = row.qty_kurang < 0 ? row.qty_kurang.toLocaleString('id-ID') : '0';
-
-                    let accuracyBadgeClass = 'accuracy-badge-low';
-                    if (parseFloat(row.accuracy) >= 80.00) {
-                        accuracyBadgeClass = 'accuracy-badge-high';
-                    } else if (parseFloat(row.accuracy) >= 50.00) {
-                        accuracyBadgeClass = 'accuracy-badge-mid';
+                sections.forEach(function(s) {
+                    // Status Badge
+                    let statusBadge = '';
+                    if (s.status === 'finished') {
+                        statusBadge = '<span class="status-badge badge-selesai"><i class="mdi mdi-check-circle me-1"></i>SELESAI</span>';
+                    } else if (s.status === 'started') {
+                        statusBadge = '<span class="status-badge badge-progress"><i class="mdi mdi-play-circle me-1"></i>STARTED</span>';
+                    } else {
+                        statusBadge = '<span class="status-badge badge-belum">BELUM MULAI</span>';
                     }
-
+                    
+                    // Icon based on section key
+                    let icon = 'mdi-office-building';
+                    if (s.key === 'WSP') icon = 'mdi-cog-outline';
+                    else if (s.key === 'WRM') icon = 'mdi-archive-outline';
+                    else if (s.key === 'WPM') icon = 'mdi-robot-industrial';
+                    else if (s.key === 'WCP') icon = 'mdi-toy-brick-outline';
+                    else if (s.key.indexOf('WFG') === 0) icon = 'mdi-warehouse';
+                    
+                    // Calculate SOH Details percentage for stacked progress bar
+                    let totalSoh = s.qty_unrest + s.qty_qi + s.qty_block;
+                    let unrestPct = totalSoh > 0 ? (s.qty_unrest / totalSoh * 100) : 0;
+                    let qiPct = totalSoh > 0 ? (s.qty_qi / totalSoh * 100) : 0;
+                    let blockPct = totalSoh > 0 ? (s.qty_block / totalSoh * 100) : 0;
+                    
+                    // Match vs Selisih color coding
+                    let matchClass = s.match > 0 ? 'text-dark' : 'text-muted';
+                    let selisihClass = s.selisih > 0 ? 'text-danger fw-bold' : 'text-success';
+                    
                     html += `
-                        <tr>
-                            <td><strong>${row.name}</strong></td>
-                            <td class="text-center">${row.diopname.toLocaleString('id-ID')}</td>
-                            <td class="text-center">${row.match.toLocaleString('id-ID')}</td>
-                            <td class="text-center text-danger">${row.selisih.toLocaleString('id-ID')}</td>
-                            <td class="text-center">
-                                <span class="${accuracyBadgeClass}">${row.accuracy}%</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="qty-plus small">${qtyPlus}</span> / <span class="qty-minus small">${qtyMinus}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="status-badge ${badgeClass}">${row.status}</span>
-                            </td>
-                        </tr>
+                        <div class="col-xl-4 col-md-6">
+                            <div class="card h-100 border shadow-sm p-4" style="border-radius: 16px; transition: transform 0.2s; background: #fff;">
+                                <!-- Card Header -->
+                                <div class="d-flex align-items-center justify-content-between mb-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="kpi-icon-box bg-light text-primary me-3" style="width: 44px; height: 44px; font-size: 20px; border-radius: 10px; box-shadow: none;">
+                                            <i class="mdi ${icon}"></i>
+                                        </div>
+                                        <h5 class="fw-bold mb-0 text-dark" style="font-size: 16px;">${s.name} Section</h5>
+                                    </div>
+                                    <div>
+                                        ${statusBadge}
+                                    </div>
+                                </div>
+                                
+                                <!-- KPI Row 1: Accuracy & Total Items -->
+                                <div class="row mb-3">
+                                    <div class="col-6 border-end">
+                                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1" style="font-size: 9px; letter-spacing: 0.05em;">Akurasi</span>
+                                        <h3 class="fw-extrabold text-dark mb-0" style="font-size: 28px; letter-spacing: -0.02em;">${s.accuracy}%</h3>
+                                    </div>
+                                    <div class="col-6 ps-3">
+                                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1" style="font-size: 9px; letter-spacing: 0.05em;">Total Items</span>
+                                        <h3 class="fw-extrabold text-dark mb-0" style="font-size: 24px;">${s.diopname.toLocaleString('id-ID')}</h3>
+                                        <small class="text-muted" style="font-size: 10px;">${s.batches} Batches | ${s.pallets} Pallets</small>
+                                    </div>
+                                </div>
+                                
+                                <!-- KPI Row 2: Match & Selisih -->
+                                <div class="bg-light rounded-3 p-3 mb-4 d-flex justify-content-between text-center">
+                                    <div class="flex-fill border-end">
+                                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1" style="font-size: 9px;">Match</span>
+                                        <span class="fs-5 fw-bold ${matchClass}">${s.match.toLocaleString('id-ID')}</span>
+                                    </div>
+                                    <div class="flex-fill">
+                                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1" style="font-size: 9px;">Selisih</span>
+                                        <span class="fs-5 fw-bold ${selisihClass}">${s.selisih.toLocaleString('id-ID')}</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- SOH Details Stacked Progress Bar -->
+                                <div class="mb-4">
+                                    <span class="text-muted small text-uppercase fw-bold d-block mb-2" style="font-size: 9.5px; letter-spacing: 0.03em;">SOH Details</span>
+                                    <div class="progress" style="height: 8px; border-radius: 4px; background-color: #e9ecef; overflow: hidden;">
+                                        <div class="progress-bar" role="progressbar" style="width: ${unrestPct}%; background-color: #1e293b;" title="Unrest: ${s.qty_unrest}"></div>
+                                        <div class="progress-bar" role="progressbar" style="width: ${qiPct}%; background-color: #94a3b8;" title="QI: ${s.qty_qi}"></div>
+                                        <div class="progress-bar" role="progressbar" style="width: ${blockPct}%; background-color: #dc2626;" title="Blocked: ${s.qty_block}"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-2 text-muted" style="font-size: 10.5px;">
+                                        <span>Unrest: <strong class="text-dark">${s.qty_unrest.toLocaleString('id-ID')}</strong></span>
+                                        <span>QI: <strong class="text-dark">${s.qty_qi.toLocaleString('id-ID')}</strong></span>
+                                        <span>Blocked: <strong class="text-dark">${s.qty_block.toLocaleString('id-ID')}</strong></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Work Time -->
+                                <div class="border-top pt-3">
+                                    <span class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-size: 9.5px;">Work Time</span>
+                                    <div class="d-flex align-items-center text-dark fw-semibold" style="font-size: 13px;">
+                                        <i class="mdi mdi-clock-outline text-muted me-2"></i>
+                                        <span>${s.work_time}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     `;
                 });
             }
-            $('#tableSectionSummary tbody').html(html);
-        }
-
-        function renderApprovalTrackingTable(data) {
-            let html = '';
-            if (!data || data.length === 0) {
-                html =
-                    `<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data tracking approval ditemukan.</td></tr>`;
-            } else {
-                data.forEach(function(row) {
-                    let badgeClass = 'bg-light text-muted border border-secondary-subtle';
-                    if (row.status === 'On Progress') badgeClass =
-                        'bg-info-subtle text-info border border-info-subtle';
-                    if (row.status === 'Pending') badgeClass =
-                        'bg-warning-subtle text-warning border border-warning-subtle';
-                    if (row.status === 'Approved') badgeClass =
-                        'bg-success-subtle text-success border border-success-subtle';
-                    if (row.status === 'Rejected') badgeClass =
-                        'bg-danger-subtle text-danger border border-danger-subtle';
-
-                    let approvedBadges = '';
-                    if (row.approved_by && row.approved_by.length > 0) {
-                        row.approved_by.forEach(function(name) {
-                            approvedBadges +=
-                                `<span class="badge bg-success-subtle text-success me-1 mb-1 border border-success-subtle px-2 py-1"><i class="mdi mdi-check-circle me-1"></i>${name}</span>`;
-                        });
-                    } else {
-                        approvedBadges = '<span class="text-muted small">-</span>';
-                    }
-
-                    let pendingBadges = '';
-                    if (row.pending_by && row.pending_by.length > 0) {
-                        row.pending_by.forEach(function(name) {
-                            pendingBadges +=
-                                `<span class="badge bg-warning-subtle text-warning me-1 mb-1 border border-warning-subtle px-2 py-1"><i class="mdi mdi-clock-outline me-1"></i>${name}</span>`;
-                        });
-                    } else {
-                        pendingBadges = '<span class="text-muted small">-</span>';
-                    }
-
-                    let rejectedBadges = '';
-                    if (row.rejected_by && row.rejected_by.length > 0) {
-                        row.rejected_by.forEach(function(name) {
-                            rejectedBadges +=
-                                `<span class="badge bg-danger-subtle text-danger me-1 mb-1 border border-danger-subtle px-2 py-1"><i class="mdi mdi-close-circle me-1"></i>${name}</span>`;
-                        });
-                    } else {
-                        rejectedBadges = '<span class="text-muted small">-</span>';
-                    }
-
-                    html += `
-                        <tr>
-                            <td><strong>${row.name}</strong></td>
-                            <td><code>${row.no_doc}</code></td>
-                            <td>${row.operator}</td>
-                            <td class="text-center">
-                                <span class="status-badge ${badgeClass}">${row.status}</span>
-                            </td>
-                            <td>${approvedBadges}</td>
-                            <td>${pendingBadges}</td>
-                            <td>${rejectedBadges}</td>
-                        </tr>
-                    `;
-                });
-            }
-            $('#tableApprovalTracking tbody').html(html);
+            
+            $('#sectionDetailGrid').html(html);
         }
 
 

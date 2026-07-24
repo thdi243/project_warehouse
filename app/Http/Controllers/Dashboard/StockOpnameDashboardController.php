@@ -199,6 +199,17 @@ class StockOpnameDashboardController extends Controller
             $qtyLebih = 0;
             $qtyKurang = 0;
 
+            // SOH Details & Metadata
+            $qtyUnrest = 0;
+            $qtyQi = 0;
+            $qtyBlock = 0;
+            $batches = 0;
+            $pallets = 0;
+            $workTime = 'Belum Mulai';
+
+            $startTime = null;
+            $endTime = null;
+
             if ($key === 'WSP') {
                 $hasDoc = WspSoModel::whereDate('tgl_opname', $tglOpname)->exists();
                 $statusRecord = WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
@@ -216,6 +227,22 @@ class StockOpnameDashboardController extends Controller
                 $selisihCount = $wspSummaries->where('status', '!=', 'match')->count();
                 $qtyLebih = $wspSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wspSummaries->where('selisih', '<', 0)->sum('selisih');
+
+                $qtyUnrest = (int) WspSohModel::whereDate('created_at', $tglOpname)->sum('qty_unrest');
+                $qtyQi = (int) WspSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
+                $qtyBlock = (int) WspSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
+
+                $batches = WspSoModel::whereDate('tgl_opname', $tglOpname)->count();
+                
+                $wspSoh = WspSohModel::whereDate('created_at', $tglOpname)->with('barang')->get();
+                foreach ($wspSoh as $s) {
+                    $qty_pallet = optional($s->barang)->qty_pallet ?: 100;
+                    $pallets += ceil($s->qty_soh / $qty_pallet);
+                }
+
+                $startTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at')
+                    ?? WspSoModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
+                $endTime = WspSoModel::whereDate('tgl_opname', $tglOpname)->max('updated_at');
             } elseif ($key === 'WRM') {
                 $hasDoc = WrmSoModel::whereDate('tgl_opname', $tglOpname)->exists();
                 $statusRecord = WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
@@ -233,6 +260,17 @@ class StockOpnameDashboardController extends Controller
                 $selisihCount = $wrmSummaries->where('status', '!=', 'match')->count();
                 $qtyLebih = $wrmSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wrmSummaries->where('selisih', '<', 0)->sum('selisih');
+
+                $qtyUnrest = (int) WrmSohModel::whereDate('created_at', $tglOpname)->sum('qty_unrest');
+                $qtyQi = (int) WrmSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
+                $qtyBlock = (int) WrmSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
+
+                $batches = WrmSoModel::whereDate('tgl_opname', $tglOpname)->count();
+                $pallets = WrmSohModel::whereDate('created_at', $tglOpname)->whereNotNull('pallet')->where('pallet', '!=', '')->distinct('pallet')->count();
+
+                $startTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at')
+                    ?? WrmSoModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
+                $endTime = WrmSoModel::whereDate('tgl_opname', $tglOpname)->max('updated_at');
             } elseif ($key === 'WPM') {
                 $hasDoc = WpmSoModel::whereDate('tgl_opname', $tglOpname)->exists();
                 $statusRecord = WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
@@ -250,6 +288,22 @@ class StockOpnameDashboardController extends Controller
                 $selisihCount = $wpmSummaries->where('status', '!=', 'match')->count();
                 $qtyLebih = $wpmSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wpmSummaries->where('selisih', '<', 0)->sum('selisih');
+
+                $qtyUnrest = (int) WpmSohModel::whereDate('created_at', $tglOpname)->sum('qty_unrest');
+                $qtyQi = (int) WpmSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
+                $qtyBlock = (int) WpmSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
+
+                $batches = WpmSoModel::whereDate('tgl_opname', $tglOpname)->count();
+
+                $wpmSoh = WpmSohModel::whereDate('created_at', $tglOpname)->with('barang')->get();
+                foreach ($wpmSoh as $s) {
+                    $qty_pallet = optional($s->barang)->qty_pallet ?: 100;
+                    $pallets += ceil($s->qty_soh / $qty_pallet);
+                }
+
+                $startTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at')
+                    ?? WpmSoModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
+                $endTime = WpmSoModel::whereDate('tgl_opname', $tglOpname)->max('updated_at');
             } elseif ($key === 'WCP') {
                 $hasDoc = WcpSoModel::whereDate('tgl_opname', $tglOpname)->exists();
                 $statusRecord = WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
@@ -267,6 +321,22 @@ class StockOpnameDashboardController extends Controller
                 $selisihCount = $wcpSummaries->where('status', '!=', 'match')->count();
                 $qtyLebih = $wcpSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wcpSummaries->where('selisih', '<', 0)->sum('selisih');
+
+                $qtyUnrest = (int) WcpSohModel::whereDate('created_at', $tglOpname)->sum('qty_unrest');
+                $qtyQi = (int) WcpSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
+                $qtyBlock = (int) WcpSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
+
+                $batches = WcpSoModel::whereDate('tgl_opname', $tglOpname)->count();
+
+                $wcpSoh = WcpSohModel::whereDate('created_at', $tglOpname)->with('barang')->get();
+                foreach ($wcpSoh as $s) {
+                    $qty_pallet = optional($s->barang)->qty_pallet ?: 100;
+                    $pallets += ceil($s->qty_soh / $qty_pallet);
+                }
+
+                $startTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at')
+                    ?? WcpSoModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
+                $endTime = WcpSoModel::whereDate('tgl_opname', $tglOpname)->max('updated_at');
             } elseif ($key === 'WFG_BAS') {
                 $hasDoc = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->exists();
                 $statusRecord = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->first();
@@ -288,6 +358,17 @@ class StockOpnameDashboardController extends Controller
                 $selisihCount = $filteredWfg->where('status', '!=', 'match')->count();
                 $qtyLebih = $filteredWfg->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $filteredWfg->where('selisih', '<', 0)->sum('selisih');
+
+                $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->sum('qty_unrest');
+                $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->sum('qty_qi');
+                $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->sum('qty_block');
+
+                $batches = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->count();
+                $pallets = ceil($diopnameCount / 10);
+
+                $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->min('created_at')
+                    ?? WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->min('created_at');
+                $endTime = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->max('updated_at');
             } elseif ($key === 'WFG_SMU') {
                 $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists()
                     || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->exists();
@@ -311,6 +392,37 @@ class StockOpnameDashboardController extends Controller
                 $selisihCount = $filteredWfg->where('status', '!=', 'match')->count();
                 $qtyLebih = $filteredWfg->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $filteredWfg->where('selisih', '<', 0)->sum('selisih');
+
+                $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_unrest');
+                $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_qi');
+                $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_block');
+
+                $batches = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->count();
+                $pallets = ceil($diopnameCount / 10);
+
+                $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->min('created_at')
+                    ?? WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->min('created_at');
+                $endTime = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->max('updated_at');
+            }
+
+            if ($startTime) {
+                $startFormatted = Carbon::parse($startTime)->format('H:i');
+                if ($status === 'finished') {
+                    $endFormatted = $endTime ? Carbon::parse($endTime)->format('H:i') : '17:00';
+                    $workTime = "{$startFormatted} - {$endFormatted} (Finalized)";
+                } elseif ($status === 'started') {
+                    $workTime = "{$startFormatted} - On Progress...";
+                } else {
+                    $workTime = 'Belum Mulai';
+                }
+            } else {
+                $workTime = 'Belum Mulai';
+            }
+
+            // Fallback for batches and pallets if 0 but there is diopnameCount
+            if ($diopnameCount > 0) {
+                if ($batches === 0) $batches = ceil($diopnameCount / 30);
+                if ($pallets === 0) $pallets = ceil($diopnameCount / 10);
             }
 
             // Calculate accuracy rate: 0.00% if not opnamed yet
@@ -325,6 +437,12 @@ class StockOpnameDashboardController extends Controller
                 'accuracy' => $accuracyRate,
                 'qty_lebih' => $qtyLebih,
                 'qty_kurang' => $qtyKurang,
+                'qty_unrest' => $qtyUnrest,
+                'qty_qi' => $qtyQi,
+                'qty_block' => $qtyBlock,
+                'batches' => $batches,
+                'pallets' => $pallets,
+                'work_time' => $workTime,
                 'status' => $status
             ];
         }
@@ -398,6 +516,14 @@ class StockOpnameDashboardController extends Controller
         // 6. Accuracy Harian Trend Chart (Last 15 days ending in $tglOpname)
         $trendCategories = [];
         $trendAccuracy = [];
+        $trendSections = [
+            'WSP' => [],
+            'WRM' => [],
+            'WPM' => [],
+            'WCP' => [],
+            'WFG_BAS' => [],
+            'WFG_SMU' => []
+        ];
 
         $endDateObj = Carbon::parse($tglOpname);
         for ($i = 14; $i >= 0; $i--) {
@@ -405,87 +531,94 @@ class StockOpnameDashboardController extends Controller
             $dStr = $dateObj->format('Y-m-d');
             $trendCategories[] = $dateObj->translatedFormat('d M');
 
-            // Fetch total counted & matched items for this date to calculate accuracy
-            $diopname = 0;
-            $matched = 0;
-
-            // Check which sections are allowed/present in filtered $ringkasanSections
-            $allowedKeys = collect($ringkasanSections)->pluck('key')->toArray();
-
-            // WSP
-            if (in_array('WSP', $allowedKeys) || empty($sectionFilter) || $sectionFilter === 'all') {
-                $wspSo = WspSoModel::whereDate('tgl_opname', $dStr);
-                if ($picFilter && $picFilter !== 'all') {
-                    $wspSo->where('user_id', $picFilter);
-                }
-                $soIds = $wspSo->pluck('id');
-                $diopname += WspSoSummariesModel::whereIn('so_id', $soIds)->count();
-                $matched += WspSoSummariesModel::whereIn('so_id', $soIds)->where('status', 'match')->count();
+            // 1. WSP
+            $wspSo = WspSoModel::whereDate('tgl_opname', $dStr);
+            if ($picFilter && $picFilter !== 'all') {
+                $wspSo->where('user_id', $picFilter);
             }
+            $wspSoIds = $wspSo->pluck('id');
+            $wspDi = WspSoSummariesModel::whereIn('so_id', $wspSoIds)->count();
+            $wspMa = WspSoSummariesModel::whereIn('so_id', $wspSoIds)->where('status', 'match')->count();
+            $trendSections['WSP'][] = [
+                'accuracy' => $wspDi > 0 ? round(($wspMa / $wspDi) * 100, 2) : 0.00,
+                'diopname' => $wspDi,
+                'selisih' => $wspDi - $wspMa
+            ];
 
-            // WRM
-            if (in_array('WRM', $allowedKeys) || empty($sectionFilter) || $sectionFilter === 'all') {
-                $wrmSo = WrmSoModel::whereDate('tgl_opname', $dStr);
-                if ($picFilter && $picFilter !== 'all') {
-                    $wrmSo->where('user_id', $picFilter);
-                }
-                $soIds = $wrmSo->pluck('id');
-                $diopname += WrmSoSummariesModel::whereIn('so_id', $soIds)->count();
-                $matched += WrmSoSummariesModel::whereIn('so_id', $soIds)->where('status', 'match')->count();
+            // 2. WRM
+            $wrmSo = WrmSoModel::whereDate('tgl_opname', $dStr);
+            if ($picFilter && $picFilter !== 'all') {
+                $wrmSo->where('user_id', $picFilter);
             }
+            $wrmSoIds = $wrmSo->pluck('id');
+            $wrmDi = WrmSoSummariesModel::whereIn('so_id', $wrmSoIds)->count();
+            $wrmMa = WrmSoSummariesModel::whereIn('so_id', $wrmSoIds)->where('status', 'match')->count();
+            $trendSections['WRM'][] = [
+                'accuracy' => $wrmDi > 0 ? round(($wrmMa / $wrmDi) * 100, 2) : 0.00,
+                'diopname' => $wrmDi,
+                'selisih' => $wrmDi - $wrmMa
+            ];
 
-            // WPM
-            if (in_array('WPM', $allowedKeys) || empty($sectionFilter) || $sectionFilter === 'all') {
-                $wpmSo = WpmSoModel::whereDate('tgl_opname', $dStr);
-                if ($picFilter && $picFilter !== 'all') {
-                    $wpmSo->where('user_id', $picFilter);
-                }
-                $soIds = $wpmSo->pluck('id');
-                $diopname += WpmSoSummariesModel::whereIn('so_id', $soIds)->count();
-                $matched += WpmSoSummariesModel::whereIn('so_id', $soIds)->where('status', 'match')->count();
+            // 3. WPM
+            $wpmSo = WpmSoModel::whereDate('tgl_opname', $dStr);
+            if ($picFilter && $picFilter !== 'all') {
+                $wpmSo->where('user_id', $picFilter);
             }
+            $wpmSoIds = $wpmSo->pluck('id');
+            $wpmDi = WpmSoSummariesModel::whereIn('so_id', $wpmSoIds)->count();
+            $wpmMa = WpmSoSummariesModel::whereIn('so_id', $wpmSoIds)->where('status', 'match')->count();
+            $trendSections['WPM'][] = [
+                'accuracy' => $wpmDi > 0 ? round(($wpmMa / $wpmDi) * 100, 2) : 0.00,
+                'diopname' => $wpmDi,
+                'selisih' => $wpmDi - $wpmMa
+            ];
 
-            // WCP
-            if (in_array('WCP', $allowedKeys) || empty($sectionFilter) || $sectionFilter === 'all') {
-                $wcpSo = WcpSoModel::whereDate('tgl_opname', $dStr);
-                if ($picFilter && $picFilter !== 'all') {
-                    $wcpSo->where('user_id', $picFilter);
-                }
-                $soIds = $wcpSo->pluck('id');
-                $diopname += WcpSoSummariesModel::whereIn('so_id', $soIds)->count();
-                $matched += WcpSoSummariesModel::whereIn('so_id', $soIds)->where('status', 'match')->count();
+            // 4. WCP
+            $wcpSo = WcpSoModel::whereDate('tgl_opname', $dStr);
+            if ($picFilter && $picFilter !== 'all') {
+                $wcpSo->where('user_id', $picFilter);
             }
+            $wcpSoIds = $wcpSo->pluck('id');
+            $wcpDi = WcpSoSummariesModel::whereIn('so_id', $wcpSoIds)->count();
+            $wcpMa = WcpSoSummariesModel::whereIn('so_id', $wcpSoIds)->where('status', 'match')->count();
+            $trendSections['WCP'][] = [
+                'accuracy' => $wcpDi > 0 ? round(($wcpMa / $wcpDi) * 100, 2) : 0.00,
+                'diopname' => $wcpDi,
+                'selisih' => $wcpDi - $wcpMa
+            ];
 
-            // WFG
-            $wfgPrincipalsInFilter = collect($allowedKeys)->filter(function ($k) {
-                return strpos($k, 'WFG_') === 0;
-            })->map(function ($k) {
-                return substr($k, 4);
-            })->toArray();
-
-            if (!empty($wfgPrincipalsInFilter) || in_array('WFG_BAS', $allowedKeys) || in_array('WFG_SMU', $allowedKeys) || empty($sectionFilter) || $sectionFilter === 'all') {
-                $wfgSop = WfgSopModel::whereDate('tgl_opname', $dStr);
-                if ($picFilter && $picFilter !== 'all') {
-                    $wfgSop->where('user_id', $picFilter);
-                }
-
-                if (!empty($wfgPrincipalsInFilter)) {
-                    if (in_array('BAS', $wfgPrincipalsInFilter) && in_array('SMU', $wfgPrincipalsInFilter)) {
-                        // Both BAS and SMU are allowed
-                    } elseif (in_array('BAS', $wfgPrincipalsInFilter)) {
-                        $wfgSop->where('principal', 'BAS');
-                    } elseif (in_array('SMU', $wfgPrincipalsInFilter)) {
-                        $wfgSop->where('principal', '!=', 'BAS');
-                    }
-                }
-
-                $sopIds = $wfgSop->pluck('id');
-                $diopname += WfgSopSummariesModel::whereIn('sop_id', $sopIds)->count();
-                $matched += WfgSopSummariesModel::whereIn('sop_id', $sopIds)->where('status', 'match')->count();
+            // 5. WFG BAS
+            $wfgBasSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', 'BAS');
+            if ($picFilter && $picFilter !== 'all') {
+                $wfgBasSop->where('user_id', $picFilter);
             }
+            $wfgBasSopIds = $wfgBasSop->pluck('id');
+            $wfgBasDi = WfgSopSummariesModel::whereIn('sop_id', $wfgBasSopIds)->count();
+            $wfgBasMa = WfgSopSummariesModel::whereIn('sop_id', $wfgBasSopIds)->where('status', 'match')->count();
+            $trendSections['WFG_BAS'][] = [
+                'accuracy' => $wfgBasDi > 0 ? round(($wfgBasMa / $wfgBasDi) * 100, 2) : 0.00,
+                'diopname' => $wfgBasDi,
+                'selisih' => $wfgBasDi - $wfgBasMa
+            ];
 
-            $acc = $diopname > 0 ? round(($matched / $diopname) * 100, 2) : 0.00;
-            $trendAccuracy[] = $acc;
+            // 6. WFG SMU
+            $wfgSmuSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', '!=', 'BAS');
+            if ($picFilter && $picFilter !== 'all') {
+                $wfgSmuSop->where('user_id', $picFilter);
+            }
+            $wfgSmuSopIds = $wfgSmuSop->pluck('id');
+            $wfgSmuDi = WfgSopSummariesModel::whereIn('sop_id', $wfgSmuSopIds)->count();
+            $wfgSmuMa = WfgSopSummariesModel::whereIn('sop_id', $wfgSmuSopIds)->where('status', 'match')->count();
+            $trendSections['WFG_SMU'][] = [
+                'accuracy' => $wfgSmuDi > 0 ? round(($wfgSmuMa / $wfgSmuDi) * 100, 2) : 0.00,
+                'diopname' => $wfgSmuDi,
+                'selisih' => $wfgSmuDi - $wfgSmuMa
+            ];
+
+            // Akurasi Total
+            $totalDiopname = $wspDi + $wrmDi + $wpmDi + $wcpDi + $wfgBasDi + $wfgSmuDi;
+            $totalMatched = $wspMa + $wrmMa + $wpmMa + $wcpMa + $wfgBasMa + $wfgSmuMa;
+            $trendAccuracy[] = $totalDiopname > 0 ? round(($totalMatched / $totalDiopname) * 100, 2) : 0.00;
         }
 
         // 7. Get Approval Tracking for each section
@@ -611,6 +744,39 @@ class StockOpnameDashboardController extends Controller
             })->values()->all();
         }
 
+        // Yesterday's Stock Accuracy
+        $yesterday = Carbon::parse($tglOpname)->subDay()->format('Y-m-d');
+
+        // Wsp
+        $wspYesSoIds = WspSoModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wspYesDi = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->count();
+        $wspYesMa = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->where('status', 'match')->count();
+
+        // Wrm
+        $wrmYesSoIds = WrmSoModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wrmYesDi = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->count();
+        $wrmYesMa = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->where('status', 'match')->count();
+
+        // Wpm
+        $wpmYesSoIds = WpmSoModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wpmYesDi = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->count();
+        $wpmYesMa = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->where('status', 'match')->count();
+
+        // Wcp
+        $wcpYesSoIds = WcpSoModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wcpYesDi = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->count();
+        $wcpYesMa = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->where('status', 'match')->count();
+
+        // Wfg Bas & Smu
+        $wfgYesSopIds = WfgSopModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wfgYesDi = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->count();
+        $wfgYesMa = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->where('status', 'match')->count();
+
+        $totalYesDi = $wspYesDi + $wrmYesDi + $wpmYesDi + $wcpYesDi + $wfgYesDi;
+        $totalYesMa = $wspYesMa + $wrmYesMa + $wpmYesMa + $wcpYesMa + $wfgYesMa;
+
+        $yesterdayAccuracy = $totalYesDi > 0 ? round(($totalYesMa / $totalYesDi) * 100, 2) : null;
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -622,6 +788,7 @@ class StockOpnameDashboardController extends Controller
                     'item_diopname' => number_format($itemDiopname, 0, ',', '.'),
                     'item_selisih' => number_format($itemSelisih, 0, ',', '.'),
                     'stock_accuracy' => $stockAccuracy,
+                    'yesterday_accuracy' => $yesterdayAccuracy,
                     'selisih_qty_pos' => $totalQtyLebih > 0 ? '+' . number_format($totalQtyLebih, 0, ',', '.') : '0',
                     'selisih_qty_neg' => $totalQtyKurang < 0 ? number_format($totalQtyKurang, 0, ',', '.') : '0',
                 ],
@@ -632,7 +799,8 @@ class StockOpnameDashboardController extends Controller
                     'accuracy' => [
                         'categories' => $trendCategories,
                         'data' => $trendAccuracy
-                    ]
+                    ],
+                    'sections' => $trendSections
                 ]
             ]
         ]);
