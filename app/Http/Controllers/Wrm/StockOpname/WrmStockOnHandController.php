@@ -179,7 +179,7 @@ class WrmStockOnHandController extends Controller
 
         if ($tanggal && $jenisData && $barangId && $noSpb) {
             if ($jenisData === 'inbound') {
-                $query = StockInboundDetail::with('inbound:id,no_spb')
+                $query = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid'])
                     ->whereHas('inbound', function ($q) use ($tanggal, $noSpb) {
                         $q->whereDate('incoming_date', $tanggal);
                         if (is_array($noSpb)) {
@@ -197,12 +197,14 @@ class WrmStockOnHandController extends Controller
 
                 $palletList = $query->whereNotNull('pallet_id')
                     ->where('pallet_id', '!=', '')
-                    ->get(['id', 'pallet_id', 'inbound_id'])
+                    ->get(['id', 'pallet_id', 'inbound_id', 'barang_id', 'qty'])
                     ->map(fn($d) => [
+                        'id'        => $d->id,
                         'no_spb'    => $d->inbound->no_spb ?? '-',
                         'pallet_id' => $d->pallet_id,
+                        'mid'       => $d->barang->mid ?? '-',
+                        'qty'       => $d->qty,
                     ])
-                    ->unique(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
                     ->sortBy(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
                     ->values();
             } else {
@@ -225,12 +227,15 @@ class WrmStockOnHandController extends Controller
 
                 $palletList = $query->whereNotNull('pallet_id')
                     ->where('pallet_id', '!=', '')
-                    ->get(['no_spb', 'pallet_id'])
+                    ->with('barang:id,mid')
+                    ->get(['id', 'no_spb', 'pallet_id', 'barang_id', 'qty'])
                     ->map(fn($d) => [
+                        'id'        => $d->id,
                         'no_spb'    => $d->no_spb,
                         'pallet_id' => $d->pallet_id,
+                        'mid'       => $d->barang->mid ?? '-',
+                        'qty'       => $d->qty,
                     ])
-                    ->unique(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
                     ->sortBy(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
                     ->values();
             }
