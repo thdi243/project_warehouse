@@ -1043,68 +1043,13 @@
                 $('#approvalModal').modal('show');
             }
 
-            window.copyFormatted = function(prId) {
-
-                const pr = allPR.find(p => p.id === prId);
-                if (!pr) return;
-
-                // hanya boleh copy jika sudah approved level 4
-                let maxApprovedLevel = 1;
-                if (pr.approval && pr.approval.length > 0) {
-                    pr.approval.forEach(a => {
-                        if (a.status === 'approved' && a.level > maxApprovedLevel) {
-                            maxApprovedLevel = a.level;
-                        }
-                    });
-                }
-
-                if (maxApprovedLevel < 4 || pr.status === 'rejected') {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Belum Bisa Copy',
-                        text: 'PR harus disetujui minimal sampai Level 4 (Manager Warehouse) terlebih dahulu',
-                        confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-                }
-
-                const deptMap = {
-                    engineering: 'BAS-ENG',
-                    warehouse: 'BAS-WRH',
-                    ite: 'BAS-ITE',
-                    produksi: 'BAS-PRD',
-                    quality_control: 'BAS-QC',
-                    hrga: 'BAS-HRGA',
-                    expedisi: 'BAS-EXP',
-                    timbangan: 'BAS-EXP'
-                };
-
-                const deptCode = deptMap[pr.department] ?? 'BAS-Dept User';
-
+            function copyFormattedRowsToClipboard(items, deptCode, pr) {
                 let rows = [];
-
-                const approvedItems = pr.items.filter(item =>
-                    item.jenis === 'pr'
-                );
-
-                // (item.status === true || item.status === 1 || item.status === '1') &&
-
-                if (approvedItems.length === 0) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Tidak Ada Item Naik PR',
-                        text: 'Tidak ada item yang naik PR untuk dicopy ke SAP'
-                    });
-                    return;
-                }
-
-                approvedItems.forEach(item => {
-
+                items.forEach(item => {
                     const mid = item.barang?.mid_barang ?? '';
                     const qty = item.qty ?? '';
                     const sLoc = item.barang?.s_loc ?? '';
                     const plant = item.barang?.plant ?? '';
-                    const prNumber = pr.pr_number ?? '';
                     const noIo = pr.no_io ?? '';
 
                     const row = [
@@ -1144,7 +1089,6 @@
                             console.error(err);
                         });
                 } else {
-
                     // fallback lama
                     const textarea = document.createElement("textarea");
                     textarea.value = textToCopy;
@@ -1161,6 +1105,116 @@
                         showConfirmButton: false,
                         timer: 1500
                     });
+                }
+            }
+
+            window.copyFormatted = function(prId) {
+                const pr = allPR.find(p => p.id === prId);
+                if (!pr) return;
+
+                // hanya boleh copy jika sudah approved level 4
+                let maxApprovedLevel = 1;
+                if (pr.approval && pr.approval.length > 0) {
+                    pr.approval.forEach(a => {
+                        if (a.status === 'approved' && a.level > maxApprovedLevel) {
+                            maxApprovedLevel = a.level;
+                        }
+                    });
+                }
+
+                if (maxApprovedLevel < 4 || pr.status === 'rejected') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Belum Bisa Copy',
+                        text: 'PR harus disetujui minimal sampai Level 4 (Manager Warehouse) terlebih dahulu',
+                        confirmButtonColor: '#f59e0b'
+                    });
+                    return;
+                }
+
+                const deptMap = {
+                    engineering: 'BAS-ENG',
+                    warehouse: 'BAS-WRH',
+                    ite: 'BAS-ITE',
+                    produksi: 'BAS-PRD',
+                    quality_control: 'BAS-QC',
+                    hrga: 'BAS-HRGA',
+                    expedisi: 'BAS-EXP',
+                    timbangan: 'BAS-EXP'
+                };
+
+                const deptCode = deptMap[pr.department] ?? 'BAS-Dept User';
+
+                const approvedItems = pr.items.filter(item =>
+                    item.jenis === 'pr'
+                );
+
+                if (approvedItems.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Tidak Ada Item Naik PR',
+                        text: 'Tidak ada item yang naik PR untuk dicopy ke SAP'
+                    });
+                    return;
+                }
+
+                const totalItems = approvedItems.length;
+
+                if (totalItems > 10) {
+                    let chunkOptionsHtml = '';
+                    for (let i = 0; i < totalItems; i += 10) {
+                        const start = i;
+                        const end = Math.min(i + 10, totalItems);
+                        chunkOptionsHtml += `
+                            <button class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2.5 copy-chunk-btn" data-start="${start}" data-end="${end}">
+                                <span class="text-dark fw-medium">Item ${start + 1} - ${end}</span>
+                                <i class="mdi mdi-chevron-right text-muted"></i>
+                            </button>
+                        `;
+                    }
+
+                    Swal.fire({
+                        title: '',
+                        html: `
+                            <div class="text-start px-2">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="rounded-circle p-2 me-3" style="background-color: rgba(59, 130, 246, 0.1);">
+                                        <i class="mdi mdi-content-copy text-primary fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0 fw-semibold text-dark">Opsi Salin Format SAP</h5>
+                                        <small class="text-muted">Terdeteksi <strong>${totalItems}</strong> item untuk PR ini.</small>
+                                    </div>
+                                </div>
+                                <div class="list-group">
+                                    <button class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 border-primary copy-chunk-btn" data-start="0" data-end="${totalItems}" style="background-color: rgba(59, 130, 246, 0.05); color: #2563eb;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="mdi mdi-checkbox-multiple-marked-circle-outline fs-5 me-2"></i>
+                                            <span class="fw-bold">Salin Semua Item</span>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">${totalItems} item</span>
+                                    </button>
+                                    <div class="text-muted small my-2 fw-semibold">Atau salin per 10 item:</div>
+                                    ${chunkOptionsHtml}
+                                </div>
+                            </div>
+                        `,
+                        showConfirmButton: false,
+                        showCancelButton: true,
+                        cancelButtonText: 'Batal',
+                        cancelButtonColor: '#6c757d',
+                        didOpen: () => {
+                            $('.copy-chunk-btn').off('click').on('click', function() {
+                                const start = parseInt($(this).data('start'));
+                                const end = parseInt($(this).data('end'));
+                                const chunkItems = approvedItems.slice(start, end);
+                                copyFormattedRowsToClipboard(chunkItems, deptCode, pr);
+                                Swal.close();
+                            });
+                        }
+                    });
+                } else {
+                    copyFormattedRowsToClipboard(approvedItems, deptCode, pr);
                 }
             }
 
@@ -1202,8 +1256,66 @@
                     return;
                 }
 
-                const textToCopy = prItems.map(item => item.keterangan.trim()).join('\n');
-                window.copyToClipboard(textToCopy);
+                const totalItems = prItems.length;
+
+                if (totalItems > 10) {
+                    let chunkOptionsHtml = '';
+                    for (let i = 0; i < totalItems; i += 10) {
+                        const start = i;
+                        const end = Math.min(i + 10, totalItems);
+                        chunkOptionsHtml += `
+                            <button class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2.5 copy-chunk-ket-btn" data-start="${start}" data-end="${end}">
+                                <span class="text-dark fw-medium">Keterangan Item ${start + 1} - ${end}</span>
+                                <i class="mdi mdi-chevron-right text-muted"></i>
+                            </button>
+                        `;
+                    }
+
+                    Swal.fire({
+                        title: '',
+                        html: `
+                            <div class="text-start px-2">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="rounded-circle p-2 me-3" style="background-color: rgba(16, 185, 129, 0.1);">
+                                        <i class="mdi mdi-content-copy text-success fs-3"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0 fw-semibold text-dark">Opsi Salin Keterangan PR</h5>
+                                        <small class="text-muted">Terdeteksi <strong>${totalItems}</strong> item dengan keterangan.</small>
+                                    </div>
+                                </div>
+                                <div class="list-group">
+                                    <button class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3 border-success copy-chunk-ket-btn" data-start="0" data-end="${totalItems}" style="background-color: rgba(16, 185, 129, 0.05); color: #059669;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="mdi mdi-checkbox-multiple-marked-circle-outline fs-5 me-2"></i>
+                                            <span class="fw-bold">Salin Semua Keterangan</span>
+                                        </div>
+                                        <span class="badge bg-success rounded-pill">${totalItems} item</span>
+                                    </button>
+                                    <div class="text-muted small my-2 fw-semibold">Atau salin per 10 item:</div>
+                                    ${chunkOptionsHtml}
+                                </div>
+                            </div>
+                        `,
+                        showConfirmButton: false,
+                        showCancelButton: true,
+                        cancelButtonText: 'Batal',
+                        cancelButtonColor: '#6c757d',
+                        didOpen: () => {
+                            $('.copy-chunk-ket-btn').off('click').on('click', function() {
+                                const start = parseInt($(this).data('start'));
+                                const end = parseInt($(this).data('end'));
+                                const chunkItems = prItems.slice(start, end);
+                                const textToCopy = chunkItems.map(item => item.keterangan.trim()).join('\n');
+                                window.copyToClipboard(textToCopy);
+                                Swal.close();
+                            });
+                        }
+                    });
+                } else {
+                    const textToCopy = prItems.map(item => item.keterangan.trim()).join('\n');
+                    window.copyToClipboard(textToCopy);
+                }
             }
         });
     </script>
