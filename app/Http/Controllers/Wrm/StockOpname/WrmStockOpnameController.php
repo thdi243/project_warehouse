@@ -144,7 +144,7 @@ class WrmStockOpnameController extends Controller
             });
         }
 
-        $sohList = $query->with('barang')->get();
+        $sohList = $query->with(['barang', 'bin.location'])->get();
 
         // Pull active temp values grouped by barang_id, no_spb and pallet
         $tempData = WrmSoTempModel::whereDate('tgl_opname', $today)
@@ -198,6 +198,9 @@ class WrmStockOpnameController extends Controller
                 'summary' => $summary,
                 'catatan' => $note ? $note->catatan : null,
                 'diff_status' => $diffStatus,
+                'location_text' => $soh->bin && $soh->bin->location
+                    ? "{$soh->bin->location->plant} - {$soh->bin->location->s_loc} - {$soh->bin->location->gudang} - {$soh->bin->location->zona} - {$soh->bin->location->bin} - ({$soh->bin->kolom}.{$soh->bin->level})"
+                    : '-',
             ];
         });
 
@@ -598,12 +601,19 @@ class WrmStockOpnameController extends Controller
         $qtyRecehVal = (int)($request->qty_receh ?? 0);
         $summary = $qtyRecehVal;
 
+        $sohStock = \App\Models\Wrm\Inventory\StockOnHand::where('barang_id', $barang->id)
+            ->where('no_spb', $request->no_spb)
+            ->where('pallet', $request->pallet)
+            ->first();
+        $locId = $sohStock ? $sohStock->loc_id : null;
+
         // Create new SOH entry for today
         $soh = WrmSohModel::updateOrCreate(
             [
                 'barang_id' => $barang->id,
                 'no_spb'    => $request->no_spb,
                 'pallet'    => $request->pallet,
+                'loc_id'    => $locId,
                 'jenis_so'  => $jenisSo,
                 'created_at' => $today
             ],
@@ -791,6 +801,7 @@ class WrmStockOpnameController extends Controller
                 'keterangan' => $comment,
                 'qty_full'   => $temp['qty_full'],
                 'qty_receh'  => $temp['qty_receh'],
+                'loc_id'     => $soh ? $soh->loc_id : null,
             ];
         }
 
@@ -940,6 +951,7 @@ class WrmStockOpnameController extends Controller
                         'selisih'    => $item['selisih'],
                         'status'     => $item['status'],
                         'keterangan' => $item['keterangan'],
+                        'loc_id'     => $item['loc_id'],
                     ]);
                 }
 
@@ -1017,12 +1029,20 @@ class WrmStockOpnameController extends Controller
 
         // Load all pallet-level summaries and group by (barang_id, no_spb)
         $summaries = WrmSoSummariesModel::where('so_id', $sop->id)
-            ->with('barang:id,mid,nama_barang,uom')
+            ->with(['barang:id,mid,nama_barang,uom', 'bin.location'])
             ->get();
 
         $grouped = $summaries->groupBy(fn($s) => $s->barang_id . '_' . $s->no_spb)
             ->map(function ($rows) {
                 $first = $rows->first();
+
+                // Get unique location texts
+                $locations = $rows->map(function ($r) {
+                    return $r->bin && $r->bin->location
+                        ? "{$r->bin->location->gudang} - {$r->bin->location->bin}"
+                        : null;
+                })->filter()->unique()->implode(', ');
+
                 return [
                     // Use the first pallet-row ID as the representative ID for backwards compat
                     'id'         => $first->id,
@@ -1036,6 +1056,7 @@ class WrmStockOpnameController extends Controller
                     'status'     => $this->aggregateStatus($rows->pluck('status')),
                     'keterangan' => $rows->pluck('keterangan')->filter()->implode('; '),
                     'pallet_count' => $rows->count(),
+                    'location_text' => $locations ?: '-',
                 ];
             })->values();
 
@@ -1368,10 +1389,11 @@ class WrmStockOpnameController extends Controller
         // $id is now the representative summary ID for a (barang_id, no_spb) group
         $representative = WrmSoSummariesModel::with('barang')->findOrFail($id);
 
-        // Get all pallet-level rows for the same (so_id, barang_id, no_spb)
+         // Get all pallet-level rows for the same (so_id, barang_id, no_spb)
         $pallets = WrmSoSummariesModel::where('so_id', $representative->so_id)
             ->where('barang_id', $representative->barang_id)
             ->where('no_spb', $representative->no_spb)
+            ->with('bin.location')
             ->get();
 
         // For each pallet row, also get its physical input history
@@ -1391,6 +1413,9 @@ class WrmStockOpnameController extends Controller
                 'status'     => $row->status,
                 'keterangan' => $row->keterangan,
                 'details'    => $details,
+                'location_text' => $row->bin && $row->bin->location
+                    ? "{$row->bin->location->plant} - {$row->bin->location->s_loc} - {$row->bin->location->gudang} - {$row->bin->location->zona} - {$row->bin->location->bin} - ({$row->bin->kolom}.{$row->bin->level})"
+                    : '-',
             ];
         });
 
@@ -1631,7 +1656,7 @@ class WrmStockOpnameController extends Controller
         }
 
         $summaries = WrmSoSummariesModel::where('so_id', $so->id)
-            ->with('barang:id,mid,nama_barang,uom')
+            ->with(['barang:id,mid,nama_barang,uom', 'bin.location'])
             ->get();
 
         if ($summaries->isEmpty()) {

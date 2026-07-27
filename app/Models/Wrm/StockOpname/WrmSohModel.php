@@ -20,6 +20,7 @@ class WrmSohModel extends Model
         'jenis_data',
         'no_spb',
         'pallet',
+        'loc_id',
         'qty_soh',
         'qty_unrest',
         'qty_qi',
@@ -35,5 +36,22 @@ class WrmSohModel extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function bin()
+    {
+        return $this->belongsTo(\App\Models\Wrm\MasterBinModel::class, 'loc_id');
+    }
+
+    public function location()
+    {
+        return $this->hasOneThrough(
+            \App\Models\Wrm\MasterLocationModel::class,
+            \App\Models\Wrm\MasterBinModel::class,
+            'id',
+            'id',
+            'loc_id',
+            'loc_id'
+        );
     }
 }

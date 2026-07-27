@@ -204,6 +204,7 @@
                                     <th class="text-start">Nama Barang</th>
                                     <th class="text-center">No SPB (Batch)</th>
                                     <th class="text-center">Pallet</th>
+                                    <th class="text-start">Location</th>
                                     <th class="text-end">Total SOH (Kg)</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
@@ -326,9 +327,11 @@
                                         </div>
                                         <div class="d-flex justify-content-between mb-2">
                                             <button type="button"
-                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                All</button>
                                             <button type="button"
-                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                All</button>
                                         </div>
                                         <hr class="dropdown-divider my-2">
                                         <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
@@ -353,9 +356,11 @@
                                         </div>
                                         <div class="d-flex justify-content-between mb-2">
                                             <button type="button"
-                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                All</button>
                                             <button type="button"
-                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                All</button>
                                         </div>
                                         <hr class="dropdown-divider my-2">
                                         <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
@@ -380,9 +385,11 @@
                                         </div>
                                         <div class="d-flex justify-content-between mb-2">
                                             <button type="button"
-                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select All</button>
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                All</button>
                                             <button type="button"
-                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear All</button>
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                All</button>
                                         </div>
                                         <hr class="dropdown-divider my-2">
                                         <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
@@ -504,12 +511,15 @@
                 if (mode === 'add') {
                     const barangId = $('#dropdown-barang').data('getValues')();
                     const noSpb = $('#dropdown-no-spb').data('getValues')();
-                    const palletRaw = $('#dropdown-pallet').data('getValues')(); // each value: "no_spb|pallet_id"
+                    const palletRaw = $('#dropdown-pallet').data('getValues')
+                (); // each value: "no_spb|pallet_id"
                     const tanggal = $('#soh_tanggal').val();
                     const jenisData = $('#soh_jenis_data').val();
 
-                    if (!tanggal || !jenisData || !barangId || barangId.length === 0 || !noSpb || noSpb.length === 0 || !palletRaw || palletRaw.length === 0) {
-                        Swal.fire('Peringatan', 'Tanggal, Jenis Data, Barang, SPB, dan Pallet harus diisi!', 'warning');
+                    if (!tanggal || !jenisData || !barangId || barangId.length === 0 || !noSpb || noSpb
+                        .length === 0 || !palletRaw || palletRaw.length === 0) {
+                        Swal.fire('Peringatan', 'Tanggal, Jenis Data, Barang, SPB, dan Pallet harus diisi!',
+                            'warning');
                         return;
                     }
 
@@ -698,6 +708,13 @@
                             const qi = item.qty_qi.toLocaleString('id-ID');
                             const block = item.qty_block.toLocaleString('id-ID');
 
+                            let locationText = '-';
+                            if (item.bin && item.bin.location) {
+                                const loc = item.bin.location;
+                                const bin = item.bin;
+                                locationText = `${loc.plant} - ${loc.s_loc} - ${loc.gudang} - ${loc.zona} - ${loc.bin} - (${bin.kolom}.${bin.level})`;
+                            }
+
                             tableBody.append(`
                                 <tr>
                                     <td class="text-center">${globalIndex}</td>
@@ -705,6 +722,7 @@
                                     <td>${barangName}</td>
                                     <td class="text-center">${spb}</td>
                                     <td class="text-center">${pallet}</td>
+                                    <td class="text-start">${locationText}</td>
                                     <td class="text-end fw-bold text-primary">${qtySoh}</td>
                                     <td class="text-center">
                                         <button class="btn btn-sm btn-outline-info me-1"
@@ -896,7 +914,7 @@
                     text = `${item.mid} - ${item.nama_barang} (${item.uom})`;
                 } else if (isPallet) {
                     // value = "no_spb|pallet_id" for easy parsing; label = "no_spb-pallet_id"
-                    val  = `${item.no_spb}|${item.pallet_id}`;
+                    val = `${item.no_spb}|${item.pallet_id}`;
                     text = `${item.no_spb}-${item.pallet_id}`;
                 } else {
                     val = item;
@@ -988,12 +1006,17 @@
                     }
                 }
             });
-        }
-
-        function detailSOH(item) {
+        }         function detailSOH(item) {
             const barangName = item.barang ? item.barang.nama_barang : 'Stock On Hand';
             const barangMid = item.barang ? item.barang.mid : 'N/A';
             const spb = item.no_spb ? item.no_spb : '-';
+
+            let locationText = '-';
+            if (item.bin && item.bin.location) {
+                const loc = item.bin.location;
+                const bin = item.bin;
+                locationText = `${loc.plant} - ${loc.s_loc} - ${loc.gudang} - ${loc.zona} - ${loc.bin} - (${bin.kolom}.${bin.level})`;
+            }
 
             $('#modalTitle').text(barangName);
             $('#modalMID').text(`MID: ${barangMid} | SPB: ${spb}`);
@@ -1005,6 +1028,15 @@
                         <h1 class="mb-0 fw-bold display-4 text-white">${item.qty_soh.toLocaleString('id-ID')} Kg</h1>
                     </div>
                     
+                    <div class="mb-4">
+                        <h6 class="text-muted text-uppercase small fw-bold mb-2 border-bottom pb-2">
+                            <i class="mdi mdi-map-marker-outline me-1"></i>Location
+                        </h6>
+                        <div class="bg-light rounded-3 p-3 border">
+                            <strong class="text-dark fs-6">${locationText}</strong>
+                        </div>
+                    </div>
+
                     <div class="mb-4">
                         <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">
                             <i class="mdi mdi-information-outline me-1"></i>Kuantitas Detil

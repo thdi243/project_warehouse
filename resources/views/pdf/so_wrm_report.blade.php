@@ -178,16 +178,17 @@
         <table cellspacing="0" cellpadding="4" class="border-top-th text-center data-table">
             <thead>
                 <tr>
-                    <th style="width: 5%;">No</th>
-                    <th style="width: 10%;">MID</th>
-                    <th style="width: 20%;">Nama Barang</th>
+                    <th style="width: 4%;">No</th>
+                    <th style="width: 8%;">MID</th>
+                    <th style="width: 18%;">Nama Barang</th>
                     <th style="width: 10%;">No SPB</th>
-                    <th style="width: 10%;">Pallet</th>
-                    <th style="width: 5%;">Uom</th>
-                    <th style="width: 5%;">SAP</th>
-                    <th style="width: 5%;">Fisik</th>
-                    <th style="width: 5%;">Selisih</th>
-                    <th style="width: 15%;">Keterangan</th>
+                    <th style="width: 8%;">Pallet</th>
+                    <th style="width: 15%;">Location</th>
+                    <th style="width: 4%;">Uom</th>
+                    <th style="width: 8%;">SAP</th>
+                    <th style="width: 8%;">Fisik</th>
+                    <th style="width: 7%;">Selisih</th>
+                    <th style="width: 10%;">Keterangan</th>
                 </tr>
             </thead>
 
@@ -201,6 +202,9 @@
                         </td>
                         <td>{{ $dt->no_spb }}</td>
                         <td>{{ $dt->pallet }}</td>
+                        <td>
+                            {{ $dt->bin && $dt->bin->location ? $dt->bin->location->gudang . ' - ' . $dt->bin->location->bin . ' (' . $dt->bin->kolom . '.' . $dt->bin->level . ')' : '-' }}
+                        </td>
                         <td>{{ $dt->barang->uom }}</td>
                         <td style="padding-right: 5px;">
                             @php
@@ -246,6 +250,7 @@
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td style="text-align: left; padding-left: 5px;">&nbsp;</td>
+                        <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>

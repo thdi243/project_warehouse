@@ -763,6 +763,7 @@
                                         <th class="text-start">MID (Barang)</th>
                                         <th>No SPB (Batch)</th>
                                         <th>Pallet</th>
+                                        <th>Location</th>
                                         <th style="width: 100px;">Checklist</th>
                                         <th style="width: 150px;">Qty (Kg)</th>
                                         <th>Summary (Kg)</th>
@@ -807,6 +808,7 @@
                                     </td>
                                     <td class="text-center">${item.no_spb ? item.no_spb : '-'}</td>
                                     <td class="text-center">${item.pallet ? item.pallet : '-'}</td>
+                                    <td class="text-start text-wrap">${item.location_text ? item.location_text : '-'}</td>
                                     <td class="text-center">
                                         <input type="checkbox" class="form-check-input qty-full" ${qtyFull === 1 ? 'checked' : ''} style="width: 24px; height: 24px;">
                                     </td>
@@ -833,7 +835,7 @@
                                     </td>
                                 </tr>
                                 <tr class="collapse" id="history-${item.soh_id}">
-                                    <td colspan="10" class="p-3 text-muted small text-start history-container">
+                                    <td colspan="11" class="p-3 text-muted small text-start history-container">
                                         <em>Belum ada riwayat input.</em>
                                     </td>
                                 </tr>
@@ -882,7 +884,8 @@
 
                 // Update physical summary preview
                 const valStr = row.find('.qty-receh').val();
-                row.find('.physical-summary').text(valStr !== '' ? (parseInt(valStr) || 0).toLocaleString('id-ID') : '-');
+                row.find('.physical-summary').text(valStr !== '' ? (parseInt(valStr) || 0).toLocaleString('id-ID') :
+                    '-');
 
                 saveRow(row);
             });

@@ -23,6 +23,7 @@ class WrmSoSummariesModel extends Model
         'selisih',
         'status',
         'keterangan',
+        'loc_id',
     ];
 
     public function so()
@@ -33,5 +34,22 @@ class WrmSoSummariesModel extends Model
     public function barang()
     {
         return $this->belongsTo(MasterBarangModel::class, 'barang_id');
+    }
+
+    public function bin()
+    {
+        return $this->belongsTo(\App\Models\Wrm\MasterBinModel::class, 'loc_id');
+    }
+
+    public function location()
+    {
+        return $this->hasOneThrough(
+            \App\Models\Wrm\MasterLocationModel::class,
+            \App\Models\Wrm\MasterBinModel::class,
+            'id',
+            'id',
+            'loc_id',
+            'loc_id'
+        );
     }
 }

@@ -271,6 +271,7 @@
                                             <th class="text-start">Nama Barang</th>
                                             <th>No SPB (Batch)</th>
                                             <th>Pallet</th>
+                                            <th>Location</th>
                                             <th class="text-end">Qty Sistem (Kg)</th>
                                             <th class="text-end">Qty Fisik (Kg)</th>
                                             <th class="text-end">Selisih (Kg)</th>
@@ -281,7 +282,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="11" class="text-center py-4 text-muted">
+                                            <td colspan="12" class="text-center py-4 text-muted">
                                                 Silakan tentukan tanggal lalu klik <strong>Tampilkan Laporan</strong>.
                                             </td>
                                         </tr>
@@ -406,6 +407,7 @@
                             <thead class="table-light text-center">
                                 <tr>
                                     <th>Pallet</th>
+                                    <th>Location</th>
                                     <th class="text-end">Qty Sistem</th>
                                     <th class="text-end">Qty Fisik</th>
                                     <th class="text-end">Selisih</th>
@@ -704,13 +706,14 @@
                                 </button>
                             ` : '';
 
-                            tableBody.append(`  
+                             tableBody.append(`  
                                 <tr>
                                     <td class="text-center font-semibold">${index + 1}</td>
                                     <td class="text-center">${barangMid}</td>
                                     <td>${barangName}</td>
                                     <td class="text-center">${spb}</td>
                                     <td class="text-center"><span class="badge bg-light text-dark border">${palletCount} pallet</span></td>
+                                    <td class="text-start">${item.location_text ? item.location_text : '-'}</td>
                                     <td class="text-end">${qtySistem}</td>
                                     <td class="text-end">${qtyFisik}</td>
                                     <td class="text-end fw-bold">${selisih}</td>
@@ -729,7 +732,7 @@
                     } else {
                         tableBody.append(`
                             <tr>
-                                <td colspan="11" class="text-center py-4 text-muted">
+                                <td colspan="12" class="text-center py-4 text-muted">
                                     Laporan SO tidak ditemukan untuk tanggal: <strong>${date}</strong>
                                 </td>
                             </tr>
@@ -918,9 +921,10 @@
                                     '<span class="badge bg-danger">KURANG</span>';
                                 else sBadge = '<span class="badge bg-success">MATCH</span>';
 
-                                palletRowsHtml += `
+                                 palletRowsHtml += `
                                     <tr>
                                         <td class="font-monospace text-center">${p.pallet ?? '-'}</td>
+                                        <td class="text-start">${p.location_text ?? '-'}</td>
                                         <td class="text-end">${p.qty_sistem.toLocaleString('id-ID')}</td>
                                         <td class="text-end">${p.qty_fisik.toLocaleString('id-ID')}</td>
                                         <td class="text-end fw-bold">${p.selisih.toLocaleString('id-ID')}</td>
@@ -931,7 +935,7 @@
                             });
                         } else {
                             palletRowsHtml =
-                                '<tr><td colspan="6" class="text-center text-muted py-2"><em>Tidak ada data pallet</em></td></tr>';
+                                '<tr><td colspan="7" class="text-center text-muted py-2"><em>Tidak ada data pallet</em></td></tr>';
                         }
 
                         $('#detailPalletsList').html(palletRowsHtml);

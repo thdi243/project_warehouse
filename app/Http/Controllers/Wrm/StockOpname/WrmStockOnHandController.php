@@ -47,7 +47,8 @@ class WrmStockOnHandController extends Controller
 
         $query->with([
             'barang:id,mid,nama_barang,uom,qty_kg',
-            'user:id,username'
+            'user:id,username',
+            'bin.location'
         ]);
 
         $data = $query->orderBy('wrm_soh.id', 'desc')->paginate($perPage);
@@ -179,7 +180,10 @@ class WrmStockOnHandController extends Controller
 
         if ($tanggal && $jenisData && $barangId && $noSpb) {
             if ($jenisData === 'inbound') {
-                $query = StockInboundDetail::with(['inbound:id,no_spb', 'barang:id,mid'])
+                $query = StockInboundDetail::with([
+                    'inbound:id,no_spb',
+                    'barang:id,mid',
+                ])
                     ->whereHas('inbound', function ($q) use ($tanggal, $noSpb) {
                         $q->whereDate('incoming_date', $tanggal);
                         if (is_array($noSpb)) {
@@ -189,21 +193,24 @@ class WrmStockOnHandController extends Controller
                         }
                     });
 
+                // dd($query->with('location')->first());
+
                 if (is_array($barangId)) {
                     $query->whereIn('barang_id', $barangId);
                 } else {
                     $query->where('barang_id', $barangId);
                 }
 
-                $palletList = $query->whereNotNull('pallet_id')
+                 $palletList = $query->whereNotNull('pallet_id')
                     ->where('pallet_id', '!=', '')
-                    ->get(['id', 'pallet_id', 'inbound_id', 'barang_id', 'qty'])
+                    ->get(['id', 'pallet_id', 'inbound_id', 'barang_id', 'qty', 'loc_id'])
                     ->map(fn($d) => [
                         'id'        => $d->id,
                         'no_spb'    => $d->inbound->no_spb ?? '-',
                         'pallet_id' => $d->pallet_id,
                         'mid'       => $d->barang->mid ?? '-',
                         'qty'       => $d->qty,
+                        'loc_id'    => $d->loc_id,
                     ])
                     ->sortBy(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
                     ->values();
@@ -227,14 +234,18 @@ class WrmStockOnHandController extends Controller
 
                 $palletList = $query->whereNotNull('pallet_id')
                     ->where('pallet_id', '!=', '')
-                    ->with('barang:id,mid')
-                    ->get(['id', 'no_spb', 'pallet_id', 'barang_id', 'qty'])
+                    ->with(
+                        'barang:id,mid',
+                    )
+                    ->get(['id', 'no_spb', 'pallet_id', 'barang_id', 'qty', 'loc_id'])
+
                     ->map(fn($d) => [
                         'id'        => $d->id,
                         'no_spb'    => $d->no_spb,
                         'pallet_id' => $d->pallet_id,
                         'mid'       => $d->barang->mid ?? '-',
                         'qty'       => $d->qty,
+                        'loc_id'    => $d->loc_id,
                     ])
                     ->sortBy(fn($i) => $i['no_spb'] . '-' . $i['pallet_id'])
                     ->values();
@@ -300,7 +311,7 @@ class WrmStockOnHandController extends Controller
 
     public function show(string $id)
     {
-        $soh = WrmSohModel::with('barang:id,mid,nama_barang')->find($id);
+        $soh = WrmSohModel::with(['barang:id,mid,nama_barang', 'bin.location'])->find($id);
 
         if (!$soh) {
             return response()->json([
@@ -387,7 +398,8 @@ class WrmStockOnHandController extends Controller
                         'no_spb'    => $d->inbound->no_spb ?? '-',
                         'pallet_id' => $d->pallet_id ?? '-',
                         'qty'       => $d->qty,
-                        'status'    => $d->status
+                        'status'    => $d->status,
+                        'loc_id'    => $d->loc_id
                     ];
                 })->toArray();
             } else {
@@ -422,7 +434,8 @@ class WrmStockOnHandController extends Controller
                         'no_spb'    => $d->no_spb ?? '-',
                         'pallet_id' => $d->pallet_id ?? '-',
                         'qty'       => $d->qty,
-                        'status'    => $d->status
+                        'status'    => $d->status,
+                        'loc_id'    => $d->loc_id
                     ];
                 })->toArray();
             }
@@ -441,6 +454,7 @@ class WrmStockOnHandController extends Controller
                 'items.*.pallet_id' => 'nullable|string',
                 'items.*.qty' => 'required|numeric|min:0',
                 'items.*.status' => 'required|string',
+                'items.*.loc_id' => 'nullable|integer',
             ]);
             $items = $request->items;
         }
@@ -487,6 +501,17 @@ class WrmStockOnHandController extends Controller
                 $qty = (float)$item['qty'];
                 $status = strtoupper($item['status']);
 
+                $locId = $item['loc_id'] ?? null;
+                if (!$locId) {
+                    $sohStock = \App\Models\Wrm\Inventory\StockOnHand::where('barang_id', $barangId)
+                        ->where('no_spb', $noSpb)
+                        ->where('pallet', $pallet)
+                        ->first();
+                    if ($sohStock) {
+                        $locId = $sohStock->loc_id;
+                    }
+                }
+
                 $unrest = $status === 'UNREST' ? $qty : 0;
                 $qi     = $status === 'QI' ? $qty : 0;
                 $block  = $status === 'BLOCKED' ? $qty : 0;
@@ -503,6 +528,7 @@ class WrmStockOnHandController extends Controller
                         'jenis_data' => $jenisData,
                         'no_spb'    => $noSpb,
                         'pallet'    => $pallet,
+                        'loc_id'    => $locId,
                         'jenis_so'  => $jenisSo,
                         'created_at' => $today
                     ],
@@ -919,12 +945,19 @@ class WrmStockOnHandController extends Controller
                 $blocked = (int)($data['blocked'] ?? 0);
                 $qty_soh = $unrest + $qual_insp + $blocked;
 
+                $sohStock = \App\Models\Wrm\Inventory\StockOnHand::where('barang_id', $barang->id)
+                    ->where('no_spb', $noSpb)
+                    ->where('pallet', $pallet)
+                    ->first();
+                $locId = $sohStock ? $sohStock->loc_id : null;
+
                 // Check if already exists for today. If so, update it, else create it.
                 $soh = WrmSohModel::updateOrCreate(
                     [
                         'barang_id' => $barang->id,
                         'no_spb'    => $noSpb,
                         'pallet'    => $pallet,
+                        'loc_id'    => $locId,
                         'jenis_so'  => $jenisSo,
                         'created_at' => $today
                     ],
