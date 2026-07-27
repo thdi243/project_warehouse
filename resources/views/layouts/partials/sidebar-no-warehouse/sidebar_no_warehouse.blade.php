@@ -1,4 +1,4 @@
-@if (in_array($departemen, ['produksi', 'quality_control', 'engineering', 'hrga', 'expedisi', 'timbangan']))
+@if (in_array($departemen, ['produksi', 'quality_control', 'engineering', 'hrga', 'expedisi', 'timbangan', 'hse']))
     <li class="nav-item">
         <a href="{{ route('stock.soh.user') }}"
             class="nav-link menu-link {{ request()->routeIs('stock.soh.user') ? 'active' : '' }}">
