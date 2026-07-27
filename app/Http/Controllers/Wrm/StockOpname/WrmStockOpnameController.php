@@ -928,7 +928,7 @@ class WrmStockOpnameController extends Controller
 
                 // Save details (individual entries from temp!)
                 foreach ($tempData as $temp) {
-                    $soh = $sohData->get($temp->barang_id . '-' . $temp->no_spb . '-' . $temp->pallet);
+                    $soh = $sohData->get($temp->barang_id . '-' . $temp->no_spb . '-' . $temp->pallet . '-' . $temp->soh->loc_id);
                     WrmSoDetailModel::create([
                         'so_id'      => $sop->id,
                         'barang_id'  => $temp->barang_id,
