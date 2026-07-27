@@ -239,6 +239,7 @@
                                         <option value="hrga">HRGA</option>
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
+                                        <option value="hse">HSE</option>
                                         @if (Auth::user()->jabatan == 'admin')
                                             <option value="FM">Factory Manager</option>
                                             <option value="IT">ITE</option>
@@ -271,6 +272,7 @@
                                         <option value="hrga">HRGA</option>
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
+                                        <option value="hse">HSE</option>
                                         @if (Auth::user()->jabatan == 'admin')
                                             <option value="FM">Factory Manager</option>
                                             <option value="IT">ITE</option>
@@ -395,6 +397,7 @@
                                         <option value="hrga">HRGA</option>
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
+                                        <option value="hse">HSE</option>
                                         @if (Auth::user()->jabatan == 'admin')
                                             <option value="FM">Factory Manager</option>
                                             <option value="IT">ITE</option>
@@ -427,6 +430,7 @@
                                         <option value="hrga">HRGA</option>
                                         <option value="expedisi">Expedisi</option>
                                         <option value="timbangan">Timbangan</option>
+                                        <option value="hse">HSE</option>
                                         @if (Auth::user()->jabatan == 'admin')
                                             <option value="FM">Factory Manager</option>
                                             <option value="IT">ITE</option>

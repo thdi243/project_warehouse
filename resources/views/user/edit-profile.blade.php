@@ -174,6 +174,9 @@
                                                     <option value="timbangan"
                                                         {{ old('departemen', $user->departemen) == 'timbangan' ? 'selected' : '' }}>
                                                         Timbangan</option>
+                                                    <option value="hse"
+                                                        {{ old('departemen', $user->departemen) == 'hse' ? 'selected' : '' }}>
+                                                        HSE</option>
                                                     @if (Auth::user()->jabatan == 'admin')
                                                         <option value="FM"
                                                             {{ old('departemen', $user->departemen) == 'FM' ? 'selected' : '' }}>
@@ -252,6 +255,9 @@
                                                     <option value="timbangan"
                                                         {{ old('bagian', $user->bagian) == 'timbangan' ? 'selected' : '' }}>
                                                         Timbangan</option>
+                                                    <option value="hse"
+                                                        {{ old('departemen', $user->departemen) == 'hse' ? 'selected' : '' }}>
+                                                        HSE</option>
                                                     @if (Auth::user()->jabatan == 'admin')
                                                         <option value="FM"
                                                             {{ old('bagian', $user->bagian) == 'FM' ? 'selected' : '' }}>
