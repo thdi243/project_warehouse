@@ -271,7 +271,6 @@
                                             <th class="text-start">Nama Barang</th>
                                             <th>No SPB (Batch)</th>
                                             <th>Pallet</th>
-                                            <th>Location</th>
                                             <th class="text-end">Qty Sistem (Kg)</th>
                                             <th class="text-end">Qty Fisik (Kg)</th>
                                             <th class="text-end">Selisih (Kg)</th>
@@ -706,14 +705,13 @@
                                 </button>
                             ` : '';
 
-                             tableBody.append(`  
+                            tableBody.append(`  
                                 <tr>
                                     <td class="text-center font-semibold">${index + 1}</td>
                                     <td class="text-center">${barangMid}</td>
                                     <td>${barangName}</td>
                                     <td class="text-center">${spb}</td>
                                     <td class="text-center"><span class="badge bg-light text-dark border">${palletCount} pallet</span></td>
-                                    <td class="text-start">${item.location_text ? item.location_text : '-'}</td>
                                     <td class="text-end">${qtySistem}</td>
                                     <td class="text-end">${qtyFisik}</td>
                                     <td class="text-end fw-bold">${selisih}</td>
@@ -921,7 +919,7 @@
                                     '<span class="badge bg-danger">KURANG</span>';
                                 else sBadge = '<span class="badge bg-success">MATCH</span>';
 
-                                 palletRowsHtml += `
+                                palletRowsHtml += `
                                     <tr>
                                         <td class="font-monospace text-center">${p.pallet ?? '-'}</td>
                                         <td class="text-start">${p.location_text ?? '-'}</td>
