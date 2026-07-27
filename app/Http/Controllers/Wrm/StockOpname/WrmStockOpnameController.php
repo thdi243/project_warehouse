@@ -701,7 +701,7 @@ class WrmStockOpnameController extends Controller
         $tglOpname = $request->tgl_opname;
 
         // Fetch temp data for this jenis_so
-        $tempData = WrmSoTempModel::with('barang')
+        $tempData = WrmSoTempModel::with('barang', 'soh')
             ->where('tgl_opname', $tglOpname)
             ->whereHas('soh', function ($q) use ($jenisSo) {
                 $q->where('jenis_so', $jenisSo);
@@ -720,7 +720,7 @@ class WrmStockOpnameController extends Controller
             ->where('jenis_so', $jenisSo)
             ->get()
             ->keyBy(function ($item) {
-                return $item->barang_id . '-' . $item->no_spb . '-' . $item->pallet;
+                return $item->barang_id . '-' . $item->no_spb . '-' . $item->pallet . '-' . $item->loc_id;
             });
 
         // Pull active temp notes
@@ -741,6 +741,7 @@ class WrmStockOpnameController extends Controller
                     'nama_barang' => $soh->barang->nama_barang,
                     'no_spb' => $soh->no_spb,
                     'pallet' => $soh->pallet,
+                    'loc_id' => $soh->loc_id,
                     'qty_system' => $soh->qty_soh
                 ];
             }
@@ -749,12 +750,13 @@ class WrmStockOpnameController extends Controller
         // Group temp counts by soh_id to sum their values
         $groupedTemp = $tempData->groupBy('soh_id')->map(function ($items) use ($sohData) {
             $first = $items->first();
-            $soh   = $sohData->get($first->barang_id . '-' . $first->no_spb . '-' . $first->pallet);
+            $soh   = $sohData->get($first->barang_id . '-' . $first->no_spb . '-' . $first->pallet . '-' . $first->soh->loc_id);
             return [
                 'soh_id'     => $first->soh_id,
                 'barang_id'  => $first->barang_id,
                 'no_spb'     => $first->no_spb,
                 'pallet'     => $first->pallet,
+                'loc_id'     => $first->soh->loc_id,
                 'jenis_data' => $soh ? $soh->jenis_data : null,
                 'barang'     => $first->barang,
                 'qty_full'   => $items->sum('qty_full'),
@@ -767,7 +769,7 @@ class WrmStockOpnameController extends Controller
         $varianceIssues = [];
         $analysis = [];
         foreach ($groupedTemp as $temp) {
-            $soh = $sohData->get($temp['barang_id'] . '-' . $temp['no_spb'] . '-' . $temp['pallet']);
+            $soh = $sohData->get($temp['barang_id'] . '-' . $temp['no_spb'] . '-' . $temp['pallet'] . '-' . $temp['loc_id']);
             $qtySystem = $soh ? $soh->qty_soh : 0;
             $qtyPhysical = $temp['summary'];
             $diff = round($qtyPhysical - $qtySystem, 4);
@@ -782,6 +784,7 @@ class WrmStockOpnameController extends Controller
                     'mid' => $temp['barang']->mid,
                     'no_spb' => $temp['no_spb'],
                     'pallet' => $temp['pallet'],
+                    'loc_id' => $temp['loc_id'],
                     'selisih' => $diff,
                 ];
             }
@@ -1389,7 +1392,7 @@ class WrmStockOpnameController extends Controller
         // $id is now the representative summary ID for a (barang_id, no_spb) group
         $representative = WrmSoSummariesModel::with('barang')->findOrFail($id);
 
-         // Get all pallet-level rows for the same (so_id, barang_id, no_spb)
+        // Get all pallet-level rows for the same (so_id, barang_id, no_spb)
         $pallets = WrmSoSummariesModel::where('so_id', $representative->so_id)
             ->where('barang_id', $representative->barang_id)
             ->where('no_spb', $representative->no_spb)
