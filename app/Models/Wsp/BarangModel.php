@@ -19,8 +19,6 @@ class BarangModel extends Model
         'nama_barang',
         'uom',
         'qty_pallet',
-        's_loc',
-        'plant',
         'image',
     ];
 
@@ -33,11 +31,6 @@ class BarangModel extends Model
     {
         return $this->hasOne(StockOnHandWspModel::class, 'barang_id')
             ->latestOfMany('last_update');
-    }
-
-    public function transaksi()
-    {
-        return $this->hasMany(TransaksiModel::class);
     }
 
     public function rak()

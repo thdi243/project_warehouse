@@ -14,6 +14,8 @@ class RakModel extends Model
     protected $table = 'wsp_rak';
 
     protected $fillable = [
+        'plant',
+        's_loc',
         'area_rak',
         'nama_rak',
         'kolom_rak',

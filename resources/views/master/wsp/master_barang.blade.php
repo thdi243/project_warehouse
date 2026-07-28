@@ -4,65 +4,84 @@
     <div class="page-content">
         <div class="container-fluid">
 
-            <!-- Header + Breadcrumb + Action Buttons -->
-            <div class="row align-items-center mb-3 g-3">
-                <!-- Judul Halaman -->
-                <div class="col-12 col-md-6 d-flex align-items-center">
-                    <i class="mdi mdi-cube-outline text-success fs-4 me-2"></i>
-                    <h4 class="fw-semibold mb-0">Data Barang</h4>
-                </div>
-
-                <!-- Tombol Aksi -->
-                <div class="col-12 col-md-6">
-                    <div class="d-flex flex-column flex-sm-row justify-content-md-end gap-2 align-items-center">
-                        <select id="statusFilter" class="form-select w-auto flex-fill flex-sm-none">
-                            <option value="active">Barang Aktif</option>
-                            <option value="trashed">Barang Nonaktif</option>
-                        </select>
-
-                        <button class="btn btn-success flex-fill d-flex justify-content-center align-items-center"
-                            data-bs-toggle="modal" data-bs-target="#modalImport">
-                            <i class="mdi mdi-database-import-outline me-1"></i> Import
-                        </button>
-
-                        <a href="{{ route('wsp.barang.export') }}"
-                            class="btn btn-info flex-fill d-flex justify-content-center align-items-center">
-                            <i class="mdi mdi-database-export-outline me-1"></i> Export
-                        </a>
-
-                        <button class="btn btn-primary flex-fill d-flex justify-content-center align-items-center"
-                            data-bs-toggle="modal" data-bs-target="#modalRegistrasi">
-                            <i class="mdi mdi-plus me-1"></i> Tambah
-                        </button>
+            <!-- Page Header -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0">Master Barang Spareparts</h4>
+                        <div class="page-title-right">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item"><a href="javascript: void(0);">RackMan</a></li>
+                                <li class="breadcrumb-item"><a href="javascript: void(0);">Master</a></li>
+                                <li class="breadcrumb-item active">Barang</li>
+                            </ol>
+                        </div>
                     </div>
                 </div>
-
             </div>
 
             <!-- Card Data Barang -->
             <div class="card shadow-sm border-0">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">Data Barang</h4>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalImport">
+                            <i class="mdi mdi-database-import-outline"></i> Import Excel
+                        </button>
+
+                        <a href="{{ route('wsp.barang.export') }}" class="btn btn-info">
+                            <i class="mdi mdi-database-export-outline"></i> Export Excel
+                        </a>
+
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalRegistrasi">
+                            <i class="mdi mdi-plus"></i> Tambah Barang
+                        </button>
+                    </div>
+                </div>
                 <div class="card-body">
+                    <!-- Filters & Search -->
+                    <div class="row mb-3 g-3">
+                        <div class="col-md-3">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Cari MID / Nama...">
+                        </div>
+                        <div class="col-md-3">
+                            <select id="statusFilter" class="form-select">
+                                <option value="active">Barang Aktif</option>
+                                <option value="trashed">Barang Nonaktif</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
                         <table id="wspTable" class="table table-striped table-hover align-middle mb-0 nowrap"
                             style="width:100%">
-                            <thead class="table-light">
+                            <thead class="table-light text-uppercase">
                                 <tr>
                                     <th>No</th>
                                     <th>Mid Barang</th>
                                     <th>Nama Barang</th>
                                     <th>Uom</th>
                                     <th>Qty Pallet</th>
-                                    <th>SLoc</th>
-                                    <th>Plant</th>
-                                    @if (Session::get('jabatan') !== 'operator')
-                                        <th class="text-center" data-orderable="false">Aksi</th>
-                                    @endif
+                                    <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {{-- Diisi oleh JS --}}
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="text-muted small">
+                            Menampilkan <strong id="showingFrom">0</strong> sampai <strong id="showingTo">0</strong>
+                            dari <strong id="totalRecords">0</strong> data
+                        </div>
+                        <nav>
+                            <ul class="pagination mb-0" id="pagination">
+                                <!-- Pagination will be generated here -->
+                            </ul>
+                        </nav>
                     </div>
                 </div>
             </div>
@@ -141,14 +160,6 @@
                                 <input type="number" step="0.01" class="form-control" id="qty_pallet"
                                     name="qty_pallet" value="1">
                             </div>
-                            <div class="col-xxl-4 col-md-6">
-                                <label for="s_loc" class="form-label">Storage Location</label>
-                                <input type="text" class="form-control" id="s_loc" name="s_loc">
-                            </div>
-                            <div class="col-xxl-4 col-md-6">
-                                <label for="plant" class="form-label">Plant</label>
-                                <input type="text" class="form-control" id="plant" name="plant">
-                            </div>
                             <div class="col-xxl-6 col-md-6">
                                 <label for="image" class="form-label">Foto Barang (Opsional)</label>
                                 <input type="file" class="form-control" id="image" name="image"
@@ -202,14 +213,6 @@
                                 <label for="qtyPalletEdit" class="form-label">Qty Pallet</label>
                                 <input type="number" step="0.01" class="form-control" id="qtyPalletEdit"
                                     name="qtyPalletEdit">
-                            </div>
-                            <div class="col-xxl-3 col-md-6">
-                                <label for="sLocEdit" class="form-label">Storage Location</label>
-                                <input type="text" class="form-control" id="sLocEdit" name="sLocEdit">
-                            </div>
-                            <div class="col-xxl-3 col-md-6">
-                                <label for="plantEdit" class="form-label">Plant</label>
-                                <input type="text" class="form-control" id="plantEdit" name="plantEdit">
                             </div>
                             <div class="col-xxl-6 col-md-6">
                                 <div class="mb-3">
@@ -269,14 +272,6 @@
                             <strong>Qty Pallet:</strong>
                             <p id="detailQtyPallet"></p>
                         </div>
-                        <div class="col-md-4">
-                            <strong>SLoc:</strong>
-                            <p id="detailSLoc"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Plant:</strong>
-                            <p id="detailPlant"></p>
-                        </div>
                         <div class="col-md-12">
                             <strong>Foto Barang:</strong>
                             <div>
@@ -297,114 +292,224 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            let table = $('#wspTable').DataTable({
-                processing: true,
-                serverSide: false,
-                responsive: true,
-                scrollX: true,
-                ajax: {
+            let allBarang = [];
+            let filteredBarang = [];
+            let currentPage = 1;
+            const itemsPerPage = 10;
+
+            loadBarang();
+
+            // Load data from backend
+            function loadBarang() {
+                const status = $('#statusFilter').val();
+                $.ajax({
                     url: `/api/wsp/data/barang`,
                     type: 'GET',
-                    data: function(d) {
-                        d.status = $('#statusFilter').val();
+                    data: {
+                        status: status
                     },
-                    dataSrc: 'data'
-                },
-                columns: [{
-                        data: null,
-                        render: function(data, type, row, meta) {
-                            return meta.row + 1; // otomatis nomor urut
+                    dataType: 'json',
+                    beforeSend: function() {
+                        $('#wspTable tbody').html(`
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2 mb-0 text-muted">Memuat data...</p>
+                                </td>
+                            </tr>
+                        `);
+                    },
+                    success: function(res) {
+                        if (res && Array.isArray(res.data)) {
+                            allBarang = res.data;
+                            applyFilters();
+                        } else {
+                            $('#wspTable tbody').html(
+                                '<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
+                            );
                         }
                     },
-                    {
-                        data: 'mid_barang',
-                        render: function(data, type, row) {
-                            return data || '-';
-                        }
-                    },
-                    {
-                        data: 'nama_barang',
-                        render: function(data, type, row) {
-                            return data || '-';
-                        }
-                    },
-                    {
-                        data: 'uom',
-                        render: function(data, type, row) {
-                            return data || '-';
-                        }
-                    },
-                    {
-                        data: 'qty_pallet',
-                        render: function(data, type, row) {
-                            return data || '1';
-                        }
-                    },
-                    {
-                        data: 's_loc',
-                        render: function(data, type, row) {
-                            return data || '-';
-                        }
-                    },
-                    {
-                        data: 'plant',
-                        render: function(data, type, row) {
-                            return data || '-';
-                        }
-                    },
-                    @if (Session::get('jabatan') !== 'operator')
-                        {
-                            data: null,
-                            orderable: false,
-                            className: 'text-center text-wrap',
-                            render: function(data, type, row) {
-                                let status = $('#statusFilter').val();
-                                if (status === 'trashed') {
-                                    return `
-                                        <button class="btn btn-sm btn-success restore-btn" data-id="${row.id}" title="Restore">
-                                            <i class="mdi mdi-restore me-2"></i>Restore
-                                        </button>
-                                        <button class="btn btn-sm btn-danger force-delete-btn" data-id="${row.id}" title="Hapus Permanen">
-                                            <i class="mdi mdi-delete-forever me-2"></i>Hapus Permanen
-                                        </button>
-                                    `;
-                                }
-                                return `
-                                    <button class="btn btn-sm btn-primary detail-btn" data-id="${row.id}" title="Detail Data">
-                                        <i class="mdi mdi-eye me-2"></i>Detail
-                                    </button>
-                                    <button class="btn btn-sm btn-info edit-btn" data-id="${row.id}" title="Edit Data">
-                                        <i class="mdi mdi-pencil me-2"></i>Edit
-                                    </button>
-                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${row.id}" title="Delete Data">
-                                        <i class="mdi mdi-delete me-2"></i>Delete
-                                    </button>
-                                `;
-                            }
-                        }
-                    @endif
-                ],
-                order: [
-                    [0, 'asc']
-                ],
-                language: {
-                    lengthMenu: "Show _MENU_ entries",
+                    error: function(err) {
+                        console.error(err);
+                        $('#wspTable tbody').html(`
+                            <tr>
+                                <td colspan="6" class="text-center text-danger py-3">
+                                    <i class="mdi mdi-alert-circle-outline me-1"></i> Gagal memuat data.
+                                </td>
+                            </tr>
+                        `);
+                    }
+                });
+            }
+
+            // Apply filtering locally
+            function applyFilters() {
+                const search = $('#searchInput').val().toLowerCase().trim();
+
+                filteredBarang = allBarang.filter(item => {
+                    let matchSearch = true;
+
+                    if (search) {
+                        const mid = (item.mid_barang || '').toString().toLowerCase();
+                        const name = (item.nama_barang || '').toLowerCase();
+                        matchSearch = mid.includes(search) || name.includes(search);
+                    }
+
+                    return matchSearch;
+                });
+
+                currentPage = 1;
+                renderTable();
+            }
+
+            // Render table rows
+            function renderTable() {
+                const tbody = $('#wspTable tbody');
+                tbody.empty();
+
+                if (filteredBarang.length === 0) {
+                    tbody.html(`
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                Tidak ada data yang cocok dengan pencarian.
+                            </td>
+                        </tr>
+                    `);
+                    updatePaginationInfo(0, 0, 0);
+                    renderPagination();
+                    return;
                 }
-            });
 
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, filteredBarang.length);
+                const pageData = filteredBarang.slice(startIndex, endIndex);
+
+                const status = $('#statusFilter').val();
+
+                pageData.forEach((row, index) => {
+                    let actionBtn = '';
+                    if (status === 'trashed') {
+                        @if (Session::get('jabatan') !== 'operator')
+                            actionBtn = `
+                                <button class="btn btn-sm btn-success restore-btn" data-id="${row.id}" title="Restore">
+                                    <i class="mdi mdi-restore me-1"></i>Restore
+                                </button>
+                                <button class="btn btn-sm btn-danger force-delete-btn" data-id="${row.id}" title="Hapus Permanen">
+                                    <i class="mdi mdi-delete-forever me-1"></i>Hapus
+                                </button>
+                            `;
+                        @endif
+                    } else {
+                        actionBtn = `
+                            <button class="btn btn-sm btn-primary detail-btn" data-id="${row.id}" title="Detail Data">
+                                <i class="mdi mdi-eye me-1"></i>Detail
+                            </button>
+                        `;
+                        @if (Session::get('jabatan') !== 'operator')
+                            actionBtn += `
+                                <button class="btn btn-sm btn-info edit-btn" data-id="${row.id}" title="Edit Data">
+                                    <i class="mdi mdi-pencil me-1"></i>Edit
+                                </button>
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="${row.id}" title="Delete Data">
+                                    <i class="mdi mdi-delete me-1"></i>Delete
+                                </button>
+                            `;
+                        @endif
+                    }
+
+                    tbody.append(`
+                        <tr>
+                            <td class="text-center">${startIndex + index + 1}</td>
+                            <td><strong>${row.mid_barang || '-'}</strong></td>
+                            <td>${row.nama_barang || '-'}</td>
+                            <td>${row.uom || '-'}</td>
+                            <td>${Number(row.qty_pallet || 1).toLocaleString('id-ID', {
+                                    maximumFractionDigits: 10
+                                })}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    ${actionBtn}
+                                </div>
+                            </td>
+                        </tr>
+                    `);
+                });
+
+                updatePaginationInfo(startIndex + 1, endIndex, filteredBarang.length);
+                renderPagination();
+            }
+
+            function updatePaginationInfo(from, to, total) {
+                $('#showingFrom').text(from);
+                $('#showingTo').text(to);
+                $('#totalRecords').text(total);
+            }
+
+            function renderPagination() {
+                const totalPages = Math.ceil(filteredBarang.length / itemsPerPage);
+                const pagination = $('#pagination');
+                pagination.empty();
+
+                if (totalPages <= 1) return;
+
+                // Previous button
+                pagination.append(`
+                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
+                            <i class="mdi mdi-chevron-left"></i>
+                        </a>
+                    </li>
+                `);
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                        pagination.append(`
+                            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+                            </li>
+                        `);
+                    } else if (i === currentPage - 2 || i === currentPage + 2) {
+                        pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                    }
+                }
+
+                // Next button
+                pagination.append(`
+                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
+                            <i class="mdi mdi-chevron-right"></i>
+                        </a>
+                    </li>
+                `);
+            }
+
+            window.changePage = function(page) {
+                const totalPages = Math.ceil(filteredBarang.length / itemsPerPage);
+                if (page < 1 || page > totalPages) return;
+                currentPage = page;
+                renderTable();
+            }
+
+            // Listeners
             $('#statusFilter').change(function() {
-                table.ajax.reload();
+                loadBarang();
             });
 
-            // kode preview gambar registrasi
+            $('#searchInput').on('input', function() {
+                applyFilters();
+            });
+
+            // Image previews
             $("#image").change(function() {
                 let file = this.files[0];
                 if (file) {
                     let reader = new FileReader();
                     reader.onload = function(e) {
-                        $("#imagePreview")
-                            .attr("src", e.target.result)
-                            .show();
+                        $("#imagePreview").attr("src", e.target.result).show();
                     };
                     reader.readAsDataURL(file);
                 } else {
@@ -412,15 +517,12 @@
                 }
             });
 
-            // kode preview gambar edit
             $("#imageEdit").change(function() {
                 let file = this.files[0];
                 if (file) {
                     let reader = new FileReader();
                     reader.onload = function(e) {
-                        $("#imagePreviewEdit")
-                            .attr("src", e.target.result)
-                            .show();
+                        $("#imagePreviewEdit").attr("src", e.target.result).show();
                     };
                     reader.readAsDataURL(file);
                 } else {
@@ -428,7 +530,7 @@
                 }
             });
 
-            // Handle submit form registrasi barang
+            // Form registrasi submit
             $('#formRegistrasiBarang').on('submit', function(e) {
                 e.preventDefault();
 
@@ -442,7 +544,6 @@
                     contentType: false,
                     processData: false,
                     beforeSend: function() {
-                        // Optional: ubah tombol jadi loading
                         form.find('button[type="submit"]')
                             .prop('disabled', true)
                             .html('<i class="mdi mdi-loading mdi-spin"></i> Menyimpan...');
@@ -454,12 +555,11 @@
                             html: response.message || 'Barang berhasil ditambahkan.'
                         });
 
-                        // Reset form dan tampilan
                         form[0].reset();
                         form.find('input[type="file"]').val('');
                         $('#imagePreview').hide().attr('src', '');
                         $('#modalRegistrasi').modal('hide');
-                        $('#wspTable').DataTable().ajax.reload();
+                        loadBarang();
                     },
                     error: function(xhr) {
                         let res = xhr.responseJSON;
@@ -468,7 +568,6 @@
                         let title = 'Error';
 
                         if (xhr.status === 422 && res?.errors) {
-                            // Validation error
                             errorMsg = Object.values(res.errors).flat().join('<br>');
                             icon = 'warning';
                             title = 'Perhatian!';
@@ -483,32 +582,34 @@
                         });
                     },
                     complete: function() {
-                        // Balikin tombol ke kondisi semula
-                        form.find('button[type="submit"]')
-                            .prop('disabled', false)
-                            .html('Simpan');
+                        form.find('button[type="submit"]').prop('disabled', false).html(
+                            'Simpan');
                     }
                 });
             });
 
-            // edit button click event
+            // Edit button click event
             $(document).on('click', '.edit-btn', function() {
                 const id = $(this).data('id');
 
-                // Misalnya buka modal edit dan load data dari backend
                 $.ajax({
-                    url: `/api/wsp/show/barang/${id}`, // sesuaikan dengan route kamu
+                    url: `/api/wsp/show/barang/${id}`,
                     type: 'GET',
                     success: function(res) {
-                        // tampilkan datanya di modal form
                         $('#editModal').modal('show');
                         $('#editId').val(res.data.id);
                         $('#midBarangEdit').val(res.data.mid_barang);
                         $('#namaBarangEdit').val(res.data.nama_barang);
                         $('#uomEdit').val(res.data.uom);
                         $('#qtyPalletEdit').val(res.data.qty_pallet);
-                        $('#sLocEdit').val(res.data.s_loc);
-                        $('#plantEdit').val(res.data.plant);
+
+                        if (res.data.image) {
+                            $('#imagePreviewEdit')
+                                .attr('src', `{{ asset('storage/') }}/${res.data.image}`)
+                                .show();
+                        } else {
+                            $('#imagePreviewEdit').hide().attr('src', '');
+                        }
                     },
                     error: function(xhr) {
                         toastr.error('Gagal memuat data barang');
@@ -516,7 +617,7 @@
                 });
             });
 
-            // handle form edit submit
+            // Handle edit submit
             $('#editForm').on('submit', function(e) {
                 e.preventDefault();
 
@@ -531,13 +632,13 @@
                     contentType: false,
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-                        'X-HTTP-Method-Override': 'PUT' // penting untuk Laravel agar dikenali sebagai PUT
+                        'X-HTTP-Method-Override': 'PUT'
                     },
                     success: function(res) {
                         toastr.success(res.message || 'Data barang berhasil diperbarui');
                         $('#editModal').modal('hide');
                         $('#editForm')[0].reset();
-                        $('#wspTable').DataTable().ajax.reload();
+                        loadBarang();
                     },
                     error: function(err) {
                         let errorMsg = 'There was an error updating the data.';
@@ -549,7 +650,7 @@
                 });
             });
 
-            // delete button click event
+            // Delete button click
             $(document).on('click', '.delete-btn', function() {
                 const id = $(this).data('id');
 
@@ -566,16 +667,14 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: `/api/wsp/delete/barang/${id}`, // sesuaikan dengan route kamu
+                            url: `/api/wsp/delete/barang/${id}`,
                             type: 'DELETE',
                             data: {
-                                _token: $('meta[name="csrf-token"]').attr(
-                                    'content')
+                                _token: $('meta[name="csrf-token"]').attr('content')
                             },
                             success: function(res) {
                                 toastr.success(res.message || 'Data berhasil dihapus');
-                                $('#wspTable').DataTable().ajax.reload(null,
-                                    false);
+                                loadBarang();
                             },
                             error: function(xhr) {
                                 toastr.error('Gagal menghapus data');
@@ -612,13 +711,14 @@
                                     timer: 1500,
                                     showConfirmButton: false
                                 });
-                                table.ajax.reload();
+                                loadBarang();
                             },
                             error: function(xhr) {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Gagal!',
-                                    text: xhr.responseJSON?.message ?? 'Terjadi kesalahan saat merestore data'
+                                    text: xhr.responseJSON?.message ??
+                                        'Terjadi kesalahan saat merestore data'
                                 });
                             }
                         });
@@ -653,13 +753,14 @@
                                     timer: 1500,
                                     showConfirmButton: false
                                 });
-                                table.ajax.reload();
+                                loadBarang();
                             },
                             error: function(xhr) {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Gagal!',
-                                    text: xhr.responseJSON?.message ?? 'Terjadi kesalahan saat menghapus permanen'
+                                    text: xhr.responseJSON?.message ??
+                                        'Terjadi kesalahan saat menghapus permanen'
                                 });
                             }
                         });
@@ -694,9 +795,7 @@
                     beforeSend: function() {
                         $('#btnUpload')
                             .prop('disabled', true)
-                            .html(
-                                '<i class="mdi mdi-loading mdi-spin"></i> Mengunggah...'
-                            );
+                            .html('<i class="mdi mdi-loading mdi-spin"></i> Mengunggah...');
                     },
                     success: function(response) {
                         const {
@@ -706,7 +805,6 @@
                         } = response;
 
                         if (status === true) {
-                            // Sukses total (errors kosong)
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Berhasil!',
@@ -715,10 +813,8 @@
                                 showConfirmButton: false
                             });
                         } else {
-                            // Ada error (atau partial)
                             let errorListHtml = errors.length > 0 ?
                                 errors.map(err => {
-                                    // Sesuaikan format error dari WSP (baris + error)
                                     if (typeof err === 'object') {
                                         return `<li>Baris ${err.baris}: ${err.error}</li>`;
                                     }
@@ -738,10 +834,9 @@
                             });
                         }
 
-                        // Reset & reload table
                         $('#modalImport').modal('hide');
                         $('#formImport')[0].reset();
-                        $('#wspTable').DataTable().ajax.reload();
+                        loadBarang();
                     },
                     error: function(xhr) {
                         Swal.fire({
@@ -752,29 +847,25 @@
                         });
                     },
                     complete: function() {
-                        $('#btnUpload')
-                            .prop('disabled', false)
-                            .html('<i class="mdi mdi-upload"></i> Upload');
+                        $('#btnUpload').prop('disabled', false).html(
+                            '<i class="mdi mdi-upload"></i> Upload');
                     }
                 });
             });
 
+            // Detail button click
             $(document).on('click', '.detail-btn', function() {
                 const id = $(this).data('id');
 
-                // Misalnya buka modal edit dan load data dari backend
                 $.ajax({
-                    url: `/api/wsp/show/barang/${id}`, // sesuaikan dengan route kamu
+                    url: `/api/wsp/show/barang/${id}`,
                     type: 'GET',
                     success: function(res) {
-                        // tampilkan datanya di modal form
                         $('#detailModal').modal('show');
                         $('#detailMid').text(res.data.mid_barang);
                         $('#detailNama').text(res.data.nama_barang);
                         $('#detailUom').text(res.data.uom);
                         $('#detailQtyPallet').text(res.data.qty_pallet || '1');
-                        $('#detailSLoc').text(res.data.s_loc);
-                        $('#detailPlant').text(res.data.plant);
                         if (res.data.image) {
                             $('#detailImage')
                                 .attr('src', `{{ asset('storage/') }}/${res.data.image}`)

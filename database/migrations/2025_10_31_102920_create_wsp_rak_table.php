@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('area_rak', 20);
             $table->string('nama_rak', 20);
-            $table->integer('kolom_rak');
-            $table->integer('level_rak');
+            $table->integer('kolom_rak')->nullable();
+            $table->integer('level_rak')->nullable();
             $table->string('box_rak', 20)->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();

@@ -29,8 +29,6 @@ class WspBarangController extends Controller
             'nama_barang' => 'required|string|max:255',
             'uom'         => 'required|string|max:50',
             'qty_pallet'  => 'nullable|numeric|min:1',
-            's_loc'       => 'nullable|string|max:50',
-            'plant'       => 'nullable|string|max:50',
             'image'       => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
@@ -49,15 +47,12 @@ class WspBarangController extends Controller
                 $imagePath = $request->file('image')->store('images/wsp', 'public');
             }
 
-            // Simpan barang
             $barang = BarangModel::create([
                 'created_by'     => Auth::id() ?? 1,
                 'mid_barang'  => $request->mid_barang,
                 'nama_barang' => $request->nama_barang,
                 'uom'         => $request->uom,
                 'qty_pallet'  => $request->qty_pallet ?? 1,
-                's_loc'       => $request->s_loc,
-                'plant'       => $request->plant,
                 'image'       => $imagePath,
             ]);
 
@@ -102,8 +97,6 @@ class WspBarangController extends Controller
             'mid_barang' => $barang->mid_barang,
             'uom' => $barang->uom,
             'qty_pallet' => $barang->qty_pallet ?? 1,
-            's_loc' => $barang->s_loc,
-            'plant' => $barang->plant,
             'image' => $barang->image,
             'username' => $barang->user->username ?? null,
         ];
@@ -137,8 +130,6 @@ class WspBarangController extends Controller
                     'nama_barang' => $barang->nama_barang,
                     'uom'         => $barang->uom,
                     'qty_pallet'  => $barang->qty_pallet ?? 1,
-                    's_loc'       => $barang->s_loc,
-                    'plant'       => $barang->plant,
                     'username'    => $barang->user->username ?? null,
                     'image'       => $barang->image ? asset('storage/' . $barang->image) : null,
                 ];
@@ -235,8 +226,6 @@ class WspBarangController extends Controller
             'namaBarangEdit' => 'required|string|max:255',
             'uomEdit'        => 'required|string|max:50',
             'qtyPalletEdit'  => 'nullable|numeric|min:1',
-            'sLocEdit'       => 'required|string|max:50',
-            'plantEdit'      => 'nullable|string|max:50',
             'imageEdit'      => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
@@ -253,8 +242,6 @@ class WspBarangController extends Controller
         $barang->nama_barang = $request->namaBarangEdit;
         $barang->uom = $request->uomEdit;
         $barang->qty_pallet = $request->qtyPalletEdit ?? 1;
-        $barang->s_loc = $request->sLocEdit;
-        $barang->plant = $request->plantEdit;
 
         if ($request->hasFile('imageEdit')) {
             $barang->image = $request->file('imageEdit')->store('images/wsp', 'public');
@@ -369,9 +356,7 @@ class WspBarangController extends Controller
                 $rawMid     = trim((string) $worksheet->getCell('A' . $row)->getValue() ?? '');
                 $namaBarang = trim((string) $worksheet->getCell('B' . $row)->getValue() ?? '');
                 $uom        = trim((string) $worksheet->getCell('C' . $row)->getValue() ?? '');
-                $s_loc      = trim((string) $worksheet->getCell('D' . $row)->getValue() ?? '');
-                $plant      = trim((string) $worksheet->getCell('E' . $row)->getValue() ?? '');
-                $qtyPallet  = trim((string) $worksheet->getCell('F' . $row)->getValue() ?? '');
+                $qtyPallet  = trim((string) $worksheet->getCell('D' . $row)->getValue() ?? '');
 
                 $qtyPalletVal = 1.0;
                 if ($qtyPallet !== '' && is_numeric($qtyPallet) && floatval($qtyPallet) > 0) {
@@ -408,7 +393,7 @@ class WspBarangController extends Controller
                 if (!empty($rowErrors)) {
                     $errors[] = [
                         'baris' => $row,
-                        'data'  => compact('rawMid', 'namaBarang', 'uom', 's_loc'),
+                        'data'  => compact('rawMid', 'namaBarang', 'uom'),
                         'error' => implode(', ', $rowErrors),
                     ];
                     continue;
@@ -419,8 +404,6 @@ class WspBarangController extends Controller
                     'nama_barang'  => strtoupper($namaBarang),
                     'uom'          => strtoupper($uom),
                     'qty_pallet'   => $qtyPalletVal,
-                    's_loc'        => strtoupper($s_loc),
-                    'plant'        => strtoupper($plant),
                     'created_by'   => Auth::id() ?? 1,
                     'updated_at'   => now(),
                     'created_at'   => now(),
@@ -449,8 +432,6 @@ class WspBarangController extends Controller
                             'nama_barang' => $item['nama_barang'],
                             'uom'         => $item['uom'],
                             'qty_pallet'  => $item['qty_pallet'],
-                            's_loc'       => $item['s_loc'],
-                            'plant'       => $item['plant'],
                             'updated_at'  => now(),
                         ]);
                     } else {
@@ -492,33 +473,27 @@ class WspBarangController extends Controller
         $sheet->setCellValue('A1', 'MID Barang');
         $sheet->setCellValue('B1', 'Nama Barang');
         $sheet->setCellValue('C1', 'Uom');
-        $sheet->setCellValue('D1', 'SLoc');
-        $sheet->setCellValue('E1', 'Plant');
-        $sheet->setCellValue('F1', 'Qty Pallet');
+        $sheet->setCellValue('D1', 'Qty Pallet');
 
         // Add example data
         $sheet->setCellValue('A2', 12345678);
         $sheet->setCellValue('B2', 'Contoh Barang 1');
         $sheet->setCellValue('C2', 'Pcs');
-        $sheet->setCellValue('D2', 'G001');
-        $sheet->setCellValue('E2', '1006');
-        $sheet->setCellValue('F2', 100);
+        $sheet->setCellValue('D2', 100);
 
         $sheet->setCellValue('A3', 87654321);
         $sheet->setCellValue('B3', 'Contoh Barang 2');
         $sheet->setCellValue('C3', 'Pcs');
-        $sheet->setCellValue('D3', 'G001');
-        $sheet->setCellValue('E3', '1006');
-        $sheet->setCellValue('F3', 50);
+        $sheet->setCellValue('D3', 50);
 
         // Auto width columns
-        foreach (range('A', 'F') as $column) {
+        foreach (range('A', 'D') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
         // Style header
-        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:F1')->getFill()
+        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:D1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFCCCCCC');
 
@@ -542,7 +517,7 @@ class WspBarangController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         // Set headers (sesuai dengan format import)
-        $headers = ['MID Barang', 'Nama Barang', 'Uom', 'SLoc', 'Plant', 'Qty Pallet'];
+        $headers = ['MID Barang', 'Nama Barang', 'Uom', 'Qty Pallet'];
         $columnIndex = 'A';
         foreach ($headers as $header) {
             $sheet->setCellValue($columnIndex . '1', $header);
@@ -559,14 +534,12 @@ class WspBarangController extends Controller
             $sheet->setCellValue('A' . $row, $item->mid_barang);
             $sheet->setCellValue('B' . $row, $item->nama_barang);
             $sheet->setCellValue('C' . $row, $item->uom);
-            $sheet->setCellValue('D' . $row, $item->s_loc);
-            $sheet->setCellValue('E' . $row, $item->plant);
-            $sheet->setCellValue('F' . $row, $item->qty_pallet ?? 1);
+            $sheet->setCellValue('D' . $row, $item->qty_pallet ?? 1);
             $row++;
         }
 
         // Auto width columns
-        foreach (range('A', 'F') as $column) {
+        foreach (range('A', 'D') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 

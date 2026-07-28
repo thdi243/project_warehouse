@@ -21,7 +21,7 @@ class StockLocationController extends Controller
         try {
             $query = StockLocationModel::with([
                 'barang:id,mid_barang,nama_barang,uom',
-                'rak:id,area_rak,nama_rak,kolom_rak,level_rak,box_rak',
+                'rak',
             ]);
 
             // Jika ingin filter berdasarkan status
@@ -77,11 +77,7 @@ class StockLocationController extends Controller
     {
         $validated = $request->validate([
             'mid_barang' => 'required|digits_between:1,8|integer',
-            'area_rak' => 'required|string',
-            'nama_rak' => 'required|string',
-            'kolom_rak' => 'required|string',
-            'level_rak' => 'required|string',
-            'box_rak' => 'nullable|string',
+            'rak_id'     => 'required|exists:wsp_rak,id',
         ]);
 
         // Cari barang berdasarkan MID
@@ -92,36 +88,22 @@ class StockLocationController extends Controller
             ], 404);
         }
 
-        // Cari rak berdasarkan kombinasi lengkap
-        $rak = RakModel::where('area_rak', $validated['area_rak'])
-            ->where('nama_rak', $validated['nama_rak'])
-            ->where('kolom_rak', $validated['kolom_rak'])
-            ->where('level_rak', $validated['level_rak'])
-            ->where('box_rak', $validated['box_rak'])
-            ->first();
-
-        if (!$rak) {
-            return response()->json([
-                'message' => 'Rak dengan kombinasi tersebut tidak ditemukan.'
-            ], 404);
-        }
-
         // Cek apakah kombinasi barang + rak sudah ada
         $exists = StockLocationModel::where('barang_id', $barang->id)
-            ->where('rak_id', $rak->id)
+            ->where('rak_id', $validated['rak_id'])
             ->exists();
 
         if ($exists) {
             return response()->json([
-                'message' => 'Data dengan barang dan rak ini sudah ada.'
+                'message' => 'Data dengan barang dan lokasi rak ini sudah ada.'
             ], 409);
         }
 
         // Simpan ke tabel stock_location
         $data = StockLocationModel::create([
-            'barang_id' => $barang->id,
-            'rak_id' => $rak->id,
-            'status' => 'active',
+            'barang_id'  => $barang->id,
+            'rak_id'     => $validated['rak_id'],
+            'status'     => 'active',
             'created_by' => Auth::id() ?? 1,
         ]);
 
@@ -142,15 +124,11 @@ class StockLocationController extends Controller
         return response()->json([
             'message' => 'Data berhasil diambil',
             'data' => [
-                'id' => $data->id,
-                'text' => $data->barang->nama_barang,
-                'mid_barang' => $data->barang->mid_barang,
+                'id'          => $data->id,
+                'text'        => $data->barang->nama_barang,
+                'mid_barang'  => $data->barang->mid_barang,
                 'nama_barang' => $data->barang->nama_barang,
-                'area_rak' => $data->rak->area_rak,
-                'nama_rak' => $data->rak->nama_rak,
-                'kolom_rak' => $data->rak->kolom_rak,
-                'level_rak' => $data->rak->level_rak,
-                'box_rak' => $data->rak->box_rak,
+                'rak_id'      => $data->rak_id,
             ],
         ]);
     }
@@ -159,11 +137,7 @@ class StockLocationController extends Controller
     {
         $request->validate([
             'mid_barang' => 'required|string',
-            'area_rak' => 'required|string',
-            'nama_rak' => 'required|string',
-            'kolom_rak' => 'required|string',
-            'level_rak' => 'required|string',
-            'box_rak' => 'nullable|string',
+            'rak_id'     => 'required|exists:wsp_rak,id',
         ]);
 
         $data = StockLocationModel::find($id);
@@ -176,20 +150,21 @@ class StockLocationController extends Controller
             return response()->json(['message' => 'Barang tidak ditemukan'], 404);
         }
 
-        $rak = RakModel::where('area_rak', $request->area_rak)
-            ->where('nama_rak', $request->nama_rak)
-            ->where('kolom_rak', $request->kolom_rak)
-            ->where('level_rak', $request->level_rak)
-            ->where('box_rak', $request->box_rak)
-            ->first();
+        // Cek apakah kombinasi barang + rak sudah ada di data lain
+        $exists = StockLocationModel::where('barang_id', $barang->id)
+            ->where('rak_id', $request->rak_id)
+            ->where('id', '!=', $id)
+            ->exists();
 
-        if (!$rak) {
-            return response()->json(['message' => 'Kombinasi rak tidak ditemukan di master rak'], 404);
+        if ($exists) {
+            return response()->json([
+                'message' => 'Data dengan barang dan lokasi rak ini sudah ada.'
+            ], 409);
         }
 
         $data->update([
-            'barang_id' => $barang->id,
-            'rak_id' => $rak->id,
+            'barang_id'  => $barang->id,
+            'rak_id'     => $request->rak_id,
             'updated_by' => Auth::id() ?? 1,
         ]);
 
@@ -236,40 +211,46 @@ class StockLocationController extends Controller
                 if ($index == 1) continue;
 
                 $mid_barang = isset($row['A']) ? trim((string)$row['A']) : null;
-                $area_rak   = isset($row['B']) ? trim((string)$row['B']) : null;
-                $nama_rak   = isset($row['C']) ? trim((string)$row['C']) : null;
-                $kolom_rak  = isset($row['D']) ? trim((string)$row['D']) : null;
-                $level_rak  = isset($row['E']) ? trim((string)$row['E']) : null;
-                $box_rak    = isset($row['F']) ? trim((string)$row['F']) : '000';
+                $plant      = isset($row['B']) ? trim((string)$row['B']) : null;
+                $s_loc      = isset($row['C']) ? trim((string)$row['C']) : null;
+                $area_rak   = isset($row['D']) ? trim((string)$row['D']) : null;
+                $nama_rak   = isset($row['E']) ? trim((string)$row['E']) : null;
+                $kolom_rak  = isset($row['F']) ? trim((string)$row['F']) : null;
+                $level_rak  = isset($row['G']) ? trim((string)$row['G']) : null;
+                $box_rak    = isset($row['H']) ? trim((string)$row['H']) : '000';
 
                 if ($mid_barang === '' && $area_rak === '' && $nama_rak === '') {
                     continue;
                 }
 
-                if ($mid_barang === '' || $area_rak === '' || $nama_rak === '' || $kolom_rak === '' || $level_rak === '') {
+                if ($mid_barang === '' || $plant === '' || $s_loc === '' || $area_rak === '' || $nama_rak === '' || $kolom_rak === '' || $level_rak === '') {
                     $skipped[] = "Baris " . $index . ": Kolom wajib ada tidak lengkap.";
                     continue;
                 }
 
                 $barang = BarangModel::where('mid_barang', $mid_barang)->first();
                 if (!$barang) {
-                    $skipped[] = "Baris " . ($index + 2) . ": MID Barang {$mid_barang} tidak ditemukan.";
+                    $skipped[] = "Baris " . $index . ": MID Barang {$mid_barang} tidak ditemukan.";
                     continue;
                 }
 
+                $plant     = strtoupper($plant);
+                $s_loc     = strtoupper($s_loc);
                 $area_rak  = strtoupper($area_rak);
                 $nama_rak  = strtoupper($nama_rak);
-                $kolom_rak = $kolom_rak !== '' ? $kolom_rak : 1;
-                $level_rak = $level_rak !== '' ? $level_rak : 1;
+                $kolom_rak = $kolom_rak !== '' ? intval($kolom_rak) : 1;
+                $level_rak = $level_rak !== '' ? intval($level_rak) : 1;
                 $box_rak   = $box_rak !== '' ? $box_rak : '000';
 
-                // Cari atau buat rak
+                // Cari atau buat rak dengan semua koordinatnya
                 $rak = RakModel::firstOrCreate([
-                    'area_rak' => $area_rak,
-                    'nama_rak' => $nama_rak,
+                    'plant'     => $plant,
+                    's_loc'     => $s_loc,
+                    'area_rak'  => $area_rak,
+                    'nama_rak'  => $nama_rak,
                     'kolom_rak' => $kolom_rak,
                     'level_rak' => $level_rak,
-                    'box_rak' => $box_rak,
+                    'box_rak'   => $box_rak,
                 ], [
                     'created_by' => Auth::id() ?? 1,
                 ]);
@@ -279,15 +260,15 @@ class StockLocationController extends Controller
                     ->exists();
 
                 if ($exists) {
-                    $skipped[] = "Baris " . ($index + 2) . ": Barang sudah ada di rak.";
+                    $skipped[] = "Baris " . $index . ": Barang sudah ada di lokasi rak.";
                     continue;
                 }
 
                 // Simpan data baru
                 StockLocationModel::create([
-                    'barang_id' => $barang->id,
-                    'rak_id' => $rak->id,
-                    'status' => 'active',
+                    'barang_id'  => $barang->id,
+                    'rak_id'     => $rak->id,
+                    'status'     => 'active',
                     'created_by' => Auth::id() ?? 1,
                 ]);
 
@@ -309,18 +290,43 @@ class StockLocationController extends Controller
         }
     }
 
-    // download temlate
+    // download template dynamically
     public function downloadTemplate()
     {
-        $filePath = public_path('assets/templates/excel/Template_Stock_Location_Wsp.xlsx');
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
 
-        // cek kalau file memang ada
-        if (!file_exists($filePath)) {
-            abort(404, 'Template tidak ditemukan.');
-        }
+        // Headers
+        $sheet->setCellValue('A1', 'MID Barang');
+        $sheet->setCellValue('B1', 'Plant');
+        $sheet->setCellValue('C1', 'S Loc');
+        $sheet->setCellValue('D1', 'Area Rak');
+        $sheet->setCellValue('E1', 'Nama Rak');
+        $sheet->setCellValue('F1', 'Kolom');
+        $sheet->setCellValue('G1', 'Level');
+        $sheet->setCellValue('H1', 'Box');
 
+        // Example row
+        $sheet->setCellValue('A2', '123456');
+        $sheet->setCellValue('B2', 'GP01');
+        $sheet->setCellValue('C2', 'SL01');
+        $sheet->setCellValue('D2', 'FL1');
+        $sheet->setCellValue('E2', 'A');
+        $sheet->setCellValue('F2', '1');
+        $sheet->setCellValue('G2', '1');
+        $sheet->setCellValue('H2', '000');
+
+        $writer = new Xlsx($spreadsheet);
         $fileName = 'Template_Stock_Location_Wsp_' . date('Y-m-d') . '.xlsx';
 
-        return response()->download($filePath, $fileName);
+        $response = new StreamedResponse(function () use ($writer) {
+            $writer->save('php://output');
+        });
+
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $response->headers->set('Content-Disposition', 'attachment;filename="' . $fileName . '"');
+        $response->headers->set('Cache-Control', 'max-age=0');
+
+        return $response;
     }
 }

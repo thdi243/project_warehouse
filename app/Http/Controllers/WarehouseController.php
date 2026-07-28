@@ -134,25 +134,19 @@ class WarehouseController extends Controller
         return view('master.wsp.master_rak');
     }
 
-    public function dashboardStockWsp()
-    {
-        return view('wsp.wsp_stock.home_stock');
-        // return view('maintenance');
-    }
-
     public function stockOnHandView()
     {
-        return view('wsp.wsp_stock.stock.data_soh');
+        return view('wsp.wsp_stock.data_soh');
     }
 
     public function stockLocView()
     {
-        return view('wsp.wsp_stock.stock.stock_location');
+        return view('wsp.wsp_stock.stock_location');
     }
 
     public function sohView()
     {
-        return view('wsp.wsp_stock.stock.data_soh');
+        return view('wsp.wsp_stock.data_soh');
     }
 
     public function formSOWFG()
@@ -443,10 +437,5 @@ class WarehouseController extends Controller
     public function reportSOWSP()
     {
         return view('wsp.stock_opname.report');
-    }
-
-    public function viewStockMove()
-    {
-        return view('wsp.wsp_stock.home_stock_move');
     }
 }

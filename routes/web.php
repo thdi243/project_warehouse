@@ -608,6 +608,11 @@ Route::middleware('auth')->group(function () {
             Route::get('/soh/template', [WspStockOnHandSOController::class, 'downloadTemplate'])->name('soh.template');
             Route::get('/soh/list', [WspStockOnHandSOController::class, 'getList'])->name('soh.list');
             Route::get('/soh/getBarang', [WspStockOnHandSOController::class, 'getBarang'])->name('soh.getBarang');
+            Route::get('/soh/getBarangStockLocation', [WspStockOnHandSOController::class, 'getBarangStockLocation'])->name('soh.getBarangStockLocation');
+            Route::get('/soh/getRakList', [WspStockOnHandSOController::class, 'getRakList'])->name('soh.getRakList');
+            Route::get('/soh/getAreaList', [WspStockOnHandSOController::class, 'getAreaList'])->name('soh.getAreaList');
+            Route::get('/soh/getNamaRakList', [WspStockOnHandSOController::class, 'getNamaRakList'])->name('soh.getNamaRakList');
+            Route::get('/soh/getBarangListByLocation', [WspStockOnHandSOController::class, 'getBarangListByLocation'])->name('soh.getBarangListByLocation');
             Route::get('/soh/show/{id}', [WspStockOnHandSOController::class, 'show'])->name('soh.show');
             Route::delete('/soh/reset-all', [WspStockOnHandSOController::class, 'resetAll'])->name('soh.reset_all');
         });
@@ -640,7 +645,9 @@ Route::middleware('auth')->group(function () {
                 Route::put('/update/rak/{id}', [WspRakController::class, 'update'])->name('wsp.rak.update');
                 Route::post('/store/rak', [WspRakController::class, 'store'])->name('wsp.store.rak');
                 Route::delete('/delete/rak/{id}', [WspRakController::class, 'destroy'])->name('wsp.delete.rak');
-            });
+                Route::post('/upload/rak', [WspRakController::class, 'upload'])->name('wsp.rak.upload');
+                Route::get('/download-template/rak', [WspRakController::class, 'downloadTemplate'])->name('wsp.rak.download-template');
+             });
 
             // Master WFG
             Route::prefix('wfg')->middleware(['permission:master-wfg'])->group(function () {
