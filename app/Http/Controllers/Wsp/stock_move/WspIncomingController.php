@@ -101,10 +101,10 @@ class WspIncomingController extends Controller
             $emails = array_unique($emails);
 
             if (count($emails) > 0) {
-                $emailData = [
-                    'material_doc' => $incoming->material_doc ?? '-',
-                    'list' => [
+                $emailGroup = [
+                    ($incoming->material_doc ?? '-') => [
                         [
+                            'emails'      => $emails,
                             'mid'         => $incoming->mid,
                             'nama_barang' => $incoming->nama_barang,
                             'po_number'   => $incoming->po_number,
@@ -113,7 +113,7 @@ class WspIncomingController extends Controller
                     ]
                 ];
 
-                SendIncomingMaterialEmailJob::dispatch($emails, $emailData);
+                SendIncomingMaterialEmailJob::dispatch($emailGroup)->afterResponse();
             }
 
             return response()->json([
@@ -291,7 +291,7 @@ class WspIncomingController extends Controller
 
             DB::commit();
 
-            SendIncomingMaterialEmailJob::dispatch($emailGroup);
+            SendIncomingMaterialEmailJob::dispatch($emailGroup)->afterResponse();
 
             return response()->json([
                 "message" => "Upload berhasil. {$inserted} data ditambahkan.",

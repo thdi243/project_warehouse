@@ -423,8 +423,8 @@
                 <div class="col-xl-6">
                     <div class="card dashboard-card p-4 h-100">
                         <div class="d-flex align-items-center justify-content-between mb-3">
-                            <h5 class="card-title fw-bold mb-0">Akurasi Stock per Section (%)</h5>
-                            <span class="text-muted small">Perbandingan akurasi harian per area</span>
+                            <h5 class="card-title fw-bold mb-0">Akurasi Stock Semua Section (%)</h5>
+                            <span class="text-muted small">Perbandingan akurasi harian semua area</span>
                         </div>
                         <div id="chartSectionAccuracy" style="height: 320px;"></div>
                     </div>
@@ -437,7 +437,7 @@
                     <div class="card dashboard-card p-4">
                         <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
                             <div>
-                                <h5 class="card-title fw-bold mb-1">Detail Performa per Section</h5>
+                                <h5 class="card-title fw-bold mb-1">Detail Performa Semua Section</h5>
                                 <p class="text-muted mb-0 small">Analisa akurasi, volume, SOH, dan status aktivitas opname
                                     per area</p>
                             </div>
@@ -764,12 +764,12 @@
                                     <div class="progress" style="height: 8px; border-radius: 4px; background-color: #e9ecef; overflow: hidden;">
                                         <div class="progress-bar" role="progressbar" style="width: ${unrestPct}%; background-color: #1e293b;" title="Unrest: ${s.qty_unrest}"></div>
                                         <div class="progress-bar" role="progressbar" style="width: ${qiPct}%; background-color: #94a3b8;" title="QI: ${s.qty_qi}"></div>
-                                        <div class="progress-bar" role="progressbar" style="width: ${blockPct}%; background-color: #dc2626;" title="Terblokir: ${s.qty_block}"></div>
+                                        <div class="progress-bar" role="progressbar" style="width: ${blockPct}%; background-color: #dc2626;" title="Blocked: ${s.qty_block}"></div>
                                     </div>
                                     <div class="d-flex justify-content-between mt-2 text-muted" style="font-size: 10.5px;">
                                         <span>Unrest: <strong class="text-dark">${s.qty_unrest.toLocaleString('id-ID')}</strong></span>
                                         <span>QI: <strong class="text-dark">${s.qty_qi.toLocaleString('id-ID')}</strong></span>
-                                        <span>Terblokir: <strong class="text-dark">${s.qty_block.toLocaleString('id-ID')}</strong></span>
+                                        <span>Blocked: <strong class="text-dark">${s.qty_block.toLocaleString('id-ID')}</strong></span>
                                     </div>
                                 </div>
                                 
