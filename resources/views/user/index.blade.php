@@ -712,119 +712,267 @@
             const currentUserLevel = jabatanLevel[currentUserJabatan] || 0;
 
             function getData() {
+                if ($("#btnStatistikUser").hasClass("active")) {
+                    loadStatistik();
+                    return;
+                }
+
                 $.ajax({
                     url: `/master/user/get-data`,
                     method: "GET",
                     success: function(res) {
                         let users = res.data || res;
 
-                        if (!users || users.length === 0) {
-                            $("#userRow").html(`
-                                <div class="col-12 d-flex justify-content-center">
-                                <div class="card border-0 shadow-sm py-3">
-                                        <div class="card-body">
-                                            <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
-                                            <h5 class="text-muted">Tidak ada hasil yang cocok</h5>
-                                            <p class="text-secondary">Coba kata kunci lain atau periksa kembali ejaan pencarianmu.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            `);
-                            return;
+                        if ($("#list-view-button").hasClass("active")) {
+                            renderListView(users);
+                        } else {
+                            renderGridView(users);
                         }
-
-                        users.forEach((user, index) => {
-                            let badgeClass = "";
-                            switch ((user.jabatan || "").toLowerCase()) {
-                                case "dept_head":
-                                    badgeClass = "bg-danger";
-                                    break;
-                                case "supervisor":
-                                    badgeClass = "bg-success";
-                                    break;
-                                case "foreman":
-                                    badgeClass = "bg-warning";
-                                    break;
-                                case "operator":
-                                    badgeClass = "bg-info";
-                                    break;
-                                default:
-                                    badgeClass = "bg-secondary";
-                            }
-
-                            const bagianFormatted = user.bagian ?
-                                user.bagian.replace(/_/g, " ").replace(/\b\w/g, c => c
-                                    .toUpperCase()) :
-                                "-";
-
-                            const imgSrc = user.image_url || "/default.png";
-                            const delay = (index * 200) % 1000;
-
-                            // Cek apakah user adalah admin → disable tombol edit & delete
-                            const targetLevel = jabatanLevel[(user.jabatan || "")
-                                .toLowerCase()] || 0;
-
-                            // admin bebas segalanya
-                            let canModify = false;
-
-                            if (currentUserLevel === 5) {
-                                canModify = true;
-                            } else if (parseInt(user.id) === parseInt(currentUserId)) {
-                                canModify = true;
-                            } else {
-                                // hanya boleh edit/delete user dengan level lebih rendah
-                                canModify = currentUserLevel > targetLevel;
-                            }
-
-                            const editDisabled = canModify ? "" : "disabled";
-                            const deleteDisabled = canModify ? "" : "disabled";
-                            const btnClassDisabled = canModify ? "" :
-                                "opacity-50 cursor-not-allowed";
-
-                            const card = `
-                                <div class="col-md-3 mb-3">
-                                    
-                                        <div class="card card-animate shadow-sm border-0 rounded-3 team-card">
-                                            <img src="${imgSrc}" class="card-img-top rounded-top img-fixed user-img" 
-                                                alt="foto ${user.nama_lengkap || user.username}" style="height:200px; object-fit:cover;">
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <h4 class="card-title text-capitalize username mb-0">${user.nama_lengkap || user.username}</h4>
-                                                    <span class="badge ${user.is_active ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1 fs-8 status-badge">
-                                                        ${user.is_active ? 'Aktif' : 'Nonaktif'}
-                                                    </span>
-                                                </div>
-                                                <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7 jabatan">${user.jabatan}</span>
-                                                <p class="card-text text-muted mb-1 email"><i class="bi bi-envelope"></i> ${user.email}</p>
-                                                <p class="card-text text-muted mb-1 nik"><i class="bi bi-telephone"></i> ${user.nik}</p>
-                                                <p class="card-text text-muted mb-1 bagian"><i class="bi bi-building"></i> ${bagianFormatted}</p>
-                                            </div>
-                                            <div class="card-footer border-0 d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <button class="btn btn-outline-primary btn-sm editBtn ${btnClassDisabled}" 
-                                                        data-id="${user.id}" ${editDisabled}>Edit</button>
-                                                    <button class="btn btn-outline-danger btn-sm deleteBtn ${btnClassDisabled}" 
-                                                        data-id="${user.id}" ${deleteDisabled}>Delete</button>
-                                                </div>
-                                                <div class="form-check form-switch ms-2" title="Aktif/Nonaktifkan User">
-                                                    <input class="form-check-input statusToggle" type="checkbox" role="switch" 
-                                                        data-id="${user.id}" ${user.is_active ? 'checked' : ''} ${canModify && parseInt(user.id) !== parseInt(currentUserId) ? '' : 'disabled'}>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    
-                                </div>
-                            `;
-                            $("#userRow").append(card);
-                        });
-
-
-                        $('#team-member-list').empty();
                     },
                     error: function(err) {
                         console.error("Error load data:", err);
                     }
                 });
+            }
+
+            function renderGridView(users) {
+                $("#userRow").empty();
+                $('#team-member-list').empty();
+
+                if (!users || users.length === 0) {
+                    $("#userRow").html(`
+                        <div class="col-12 d-flex justify-content-center">
+                            <div class="card border-0 shadow-sm py-3">
+                                <div class="card-body">
+                                    <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
+                                    <h5 class="text-muted">Tidak ada hasil yang cocok</h5>
+                                    <p class="text-secondary">Coba kata kunci lain atau periksa kembali ejaan pencarianmu.</p>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                    return;
+                }
+
+                users.forEach((user, index) => {
+                    let badgeClass = "";
+                    switch ((user.jabatan || "").toLowerCase()) {
+                        case "dept_head":
+                            badgeClass = "bg-danger";
+                            break;
+                        case "supervisor":
+                            badgeClass = "bg-success";
+                            break;
+                        case "foreman":
+                            badgeClass = "bg-warning";
+                            break;
+                        case "operator":
+                            badgeClass = "bg-info";
+                            break;
+                        default:
+                            badgeClass = "bg-secondary";
+                    }
+
+                    const bagianFormatted = user.bagian ?
+                        user.bagian.replace(/_/g, " ").replace(/\b\w/g, c => c
+                            .toUpperCase()) :
+                        "-";
+
+                    const imgSrc = user.image_url || "/default.png";
+
+                    // Cek apakah user adalah admin → disable tombol edit & delete
+                    const targetLevel = jabatanLevel[(user.jabatan || "")
+                        .toLowerCase()] || 0;
+
+                    // admin bebas segalanya
+                    let canModify = false;
+
+                    if (currentUserLevel === 5) {
+                        canModify = true;
+                    } else if (parseInt(user.id) === parseInt(currentUserId)) {
+                        canModify = true;
+                    } else {
+                        // hanya boleh edit/delete user dengan level lebih rendah
+                        canModify = currentUserLevel > targetLevel;
+                    }
+
+                    const editDisabled = canModify ? "" : "disabled";
+                    const deleteDisabled = canModify ? "" : "disabled";
+                    const btnClassDisabled = canModify ? "" :
+                        "opacity-50 cursor-not-allowed";
+
+                    const card = `
+                        <div class="col-md-3 mb-3">
+                            <div class="card card-animate shadow-sm border-0 rounded-3 team-card">
+                                <img src="${imgSrc}" class="card-img-top rounded-top img-fixed user-img" 
+                                    alt="foto ${user.nama_lengkap || user.username}" style="height:200px; object-fit:cover;">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h4 class="card-title text-capitalize username mb-0">${user.nama_lengkap || user.username}</h4>
+                                        <span class="badge ${user.is_active ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1 fs-8 status-badge">
+                                            ${user.is_active ? 'Aktif' : 'Nonaktif'}
+                                        </span>
+                                    </div>
+                                    <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7 jabatan">${user.jabatan}</span>
+                                    <p class="card-text text-muted mb-1 email"><i class="bi bi-envelope"></i> ${user.email}</p>
+                                    <p class="card-text text-muted mb-1 nik"><i class="bi bi-telephone"></i> ${user.nik}</p>
+                                    <p class="card-text text-muted mb-1 bagian"><i class="bi bi-building"></i> ${bagianFormatted}</p>
+                                </div>
+                                <div class="card-footer border-0 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <button class="btn btn-outline-primary btn-sm editBtn ${btnClassDisabled}" 
+                                            data-id="${user.id}" ${editDisabled}>Edit</button>
+                                        <button class="btn btn-outline-danger btn-sm deleteBtn ${btnClassDisabled}" 
+                                            data-id="${user.id}" ${deleteDisabled}>Delete</button>
+                                    </div>
+                                    <div class="form-check form-switch ms-2" title="Aktif/Nonaktifkan User">
+                                        <input class="form-check-input statusToggle" type="checkbox" role="switch" 
+                                            data-id="${user.id}" ${user.is_active ? 'checked' : ''} ${canModify && parseInt(user.id) !== parseInt(currentUserId) ? '' : 'disabled'}>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $("#userRow").append(card);
+                });
+            }
+
+            function renderListView(users) {
+                $("#userRow").empty();
+                $('#team-member-list').empty();
+
+                if (!users || users.length === 0) {
+                    $('#team-member-list').html(`
+                        <div class="col-12 d-flex justify-content-center">
+                            <div class="card border-0 shadow-sm py-3">
+                                <div class="card-body">
+                                    <img src="{{ asset('assets/images/empty_state.png') }}" alt="Empty" style="width:150px;">
+                                    <h5 class="text-muted">Tidak ada hasil yang cocok</h5>
+                                    <p class="text-secondary">Coba kata kunci lain atau periksa kembali ejaan pencarianmu.</p>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                    return;
+                }
+
+                let userList = `
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="text-center" style="width: 50px;">No</th>
+                                                <th>User Data</th>
+                                                <th>NIK</th>
+                                                <th>Jabatan & Bagian</th>
+                                                <th class="text-center" style="width: 100px;">Status</th>
+                                                <th class="text-center" style="width: 120px;">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                `;
+
+                users.forEach((user, index) => {
+                    const imgSrc = user.image_url || "/default.png";
+
+                    let badgeClass = "";
+                    switch ((user.jabatan || "").toLowerCase()) {
+                        case "dept_head":
+                            badgeClass = "bg-danger";
+                            break;
+                        case "supervisor":
+                            badgeClass = "bg-success";
+                            break;
+                        case "foreman":
+                            badgeClass = "bg-warning";
+                            break;
+                        case "operator":
+                            badgeClass = "bg-info";
+                            break;
+                        default:
+                            badgeClass = "bg-secondary";
+                    }
+
+                    const bagianFormatted = user.bagian ?
+                        user.bagian.replace(/_/g, " ").replace(/\b\w/g, c => c
+                            .toUpperCase()) :
+                        "-";
+
+                    // Cek apakah user adalah admin → disable tombol edit & delete
+                    const targetLevel = jabatanLevel[(user.jabatan || "")
+                        .toLowerCase()] || 0;
+
+                    // admin bebas segalanya
+                    let canModify = false;
+
+                    if (currentUserLevel === 5) {
+                        canModify = true;
+                    } else if (parseInt(user.id) === parseInt(currentUserId)) {
+                        canModify = true;
+                    } else {
+                        // hanya boleh edit/delete user dengan level lebih rendah
+                        canModify = currentUserLevel > targetLevel;
+                    }
+
+                    const editDisabled = canModify ? "" : "disabled";
+                    const deleteDisabled = canModify ? "" : "disabled";
+                    const btnClassDisabled = canModify ? "" :
+                        "opacity-50 cursor-not-allowed";
+
+                    userList += `
+                        <tr class="team-card">
+                            <td class="text-center">${index + 1}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="${imgSrc}" alt="" class="avatar-sm rounded-circle me-3 user-img img-thumbnail" style="object-fit:cover;">
+                                    <div>
+                                        <h5 class="fs-14 m-0 text-capitalize username">${user.nama_lengkap || user.username}</h5>
+                                        <p class="text-muted mb-0 email"><i class="bi bi-envelope me-1"></i>${user.email || '-'}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="nik">${user.nik || '-'}</td>
+                            <td>
+                                <div class="mb-1"><span class="badge ${badgeClass} px-2 py-1 fs-8 text-capitalize jabatan">${(user.jabatan || "-").replace(/_/g, " ")}</span></div>
+                                <div class="text-muted small bagian"><i class="bi bi-building me-1"></i>${bagianFormatted}</div>
+                            </td>
+                            <td class="text-center">
+                                 <div class="d-flex flex-column align-items-center">
+                                     <span class="badge ${user.is_active ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1 fs-8 mb-1 status-badge">
+                                         ${user.is_active ? 'Aktif' : 'Nonaktif'}
+                                     </span>
+                                     <div class="form-check form-switch">
+                                         <input class="form-check-input statusToggle" type="checkbox" role="switch" 
+                                             data-id="${user.id}" ${user.is_active ? 'checked' : ''} ${canModify && parseInt(user.id) !== parseInt(currentUserId) ? '' : 'disabled'}>
+                                     </div>
+                                 </div>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary editBtn ${btnClassDisabled}" data-id="${user.id}" ${editDisabled}>
+                                    <i class="ri-pencil-line"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger deleteBtn ${btnClassDisabled}" data-id="${user.id}" ${deleteDisabled}>
+                                    <i class="ri-delete-bin-5-line"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                userList += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // render ke container list
+                $('#team-member-list').html(userList);
             }
 
             // Grid view toggle
@@ -842,134 +990,7 @@
                 $("#grid-view-button").removeClass("active");
                 $("#btnStatistikUser").removeClass("active");
                 $("#statistikUser").hide();
-
-                $.ajax({
-                    url: `/master/user/get-data`,
-                    type: "GET",
-                    success: function(res) {
-                        let userList = `
-                            <div class="col-12">
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover table-striped align-middle mb-0">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th class="text-center" style="width: 50px;">No</th>
-                                                        <th>User Data</th>
-                                                        <th>NIK</th>
-                                                        <th>Jabatan & Bagian</th>
-                                                        <th class="text-center" style="width: 100px;">Status</th>
-                                                        <th class="text-center" style="width: 120px;">Aksi</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                        `;
-
-                        res.data.forEach((user, index) => {
-                            const imgSrc = user.image_url || "/default.png";
-
-                            let badgeClass = "";
-                            switch ((user.jabatan || "").toLowerCase()) {
-                                case "dept_head":
-                                    badgeClass = "bg-danger";
-                                    break;
-                                case "supervisor":
-                                    badgeClass = "bg-success";
-                                    break;
-                                case "foreman":
-                                    badgeClass = "bg-warning";
-                                    break;
-                                case "operator":
-                                    badgeClass = "bg-info";
-                                    break;
-                                default:
-                                    badgeClass = "bg-secondary";
-                            }
-
-                            const bagianFormatted = user.bagian ?
-                                user.bagian.replace(/_/g, " ").replace(/\b\w/g, c => c
-                                    .toUpperCase()) :
-                                "-";
-
-                            // Cek apakah user adalah admin → disable tombol edit & delete
-                            const targetLevel = jabatanLevel[(user.jabatan || "")
-                                .toLowerCase()] || 0;
-
-                            // admin bebas segalanya
-                            let canModify = false;
-
-                            if (currentUserLevel === 5) {
-                                canModify = true;
-                            } else if (parseInt(user.id) === parseInt(currentUserId)) {
-                                canModify = true;
-                            } else {
-                                // hanya boleh edit/delete user dengan level lebih rendah
-                                canModify = currentUserLevel > targetLevel;
-                            }
-
-                            const editDisabled = canModify ? "" : "disabled";
-                            const deleteDisabled = canModify ? "" : "disabled";
-                            const btnClassDisabled = canModify ? "" :
-                                "opacity-50 cursor-not-allowed";
-
-                            userList += `
-                                <tr class="team-card">
-                                    <td class="text-center">${index + 1}</td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <img src="${imgSrc}" alt="" class="avatar-sm rounded-circle me-3 user-img img-thumbnail" style="object-fit:cover;">
-                                            <div>
-                                                <h5 class="fs-14 m-0 text-capitalize username">${user.nama_lengkap || user.username}</h5>
-                                                <p class="text-muted mb-0 email"><i class="bi bi-envelope me-1"></i>${user.email || '-'}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="nik">${user.nik || '-'}</td>
-                                    <td>
-                                        <div class="mb-1"><span class="badge ${badgeClass} px-2 py-1 fs-8 text-capitalize jabatan">${(user.jabatan || "-").replace(/_/g, " ")}</span></div>
-                                        <div class="text-muted small bagian"><i class="bi bi-building me-1"></i>${bagianFormatted}</div>
-                                    </td>
-                                    <td class="text-center">
-                                         <div class="d-flex flex-column align-items-center">
-                                             <span class="badge ${user.is_active ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1 fs-8 mb-1 status-badge">
-                                                 ${user.is_active ? 'Aktif' : 'Nonaktif'}
-                                             </span>
-                                             <div class="form-check form-switch">
-                                                 <input class="form-check-input statusToggle" type="checkbox" role="switch" 
-                                                     data-id="${user.id}" ${user.is_active ? 'checked' : ''} ${canModify && parseInt(user.id) !== parseInt(currentUserId) ? '' : 'disabled'}>
-                                             </div>
-                                         </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-primary editBtn ${btnClassDisabled}" data-id="${user.id}" ${editDisabled}>
-                                            <i class="ri-pencil-line"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger deleteBtn ${btnClassDisabled}" data-id="${user.id}" ${deleteDisabled}>
-                                            <i class="ri-delete-bin-5-line"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            `;
-                        });
-
-                        userList += `
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-
-                        // render ke container list
-                        $('#team-member-list').html(userList);
-                        $("#userRow").empty();
-                    },
-                    error: function(xhr) {
-                        console.log("Error fetching data:", xhr.responseText);
-                    }
-                });
+                getData(); // tampilkan list
             });
 
             // add users
@@ -1026,7 +1047,7 @@
                             showConfirmButton: false
                         }).then(() => {
                             $('#addUserModal').modal('hide');
-                            location.reload();
+                            getData();
                         });
                     },
                     error: function(xhr) {
@@ -1082,7 +1103,7 @@
                                     showConfirmButton: false,
                                     timer: 1000
                                 }).then(() => {
-                                    location.reload();
+                                    getData();
                                 })
                             },
                             error: function(err) {
@@ -1324,7 +1345,7 @@
                             showConfirmButton: false
                         }).then(() => {
                             $('#editUserModal').modal('hide');
-                            location.reload();
+                            getData();
                         });
                     },
                     error: function(xhr) {
@@ -1390,7 +1411,10 @@
                 $(this).addClass("active");
                 $("#grid-view-button").removeClass("active");
                 $("#list-view-button").removeClass("active");
+                loadStatistik();
+            });
 
+            function loadStatistik() {
                 $.ajax({
                     url: "/api/dashboard/user/statistik",
                     method: "GET",
@@ -1407,8 +1431,6 @@
                         // render charts
                         renderChartJabatan(res.by_jabatan);
                         renderChartBagian(res.by_bagian);
-
-
                     },
                     error: function(err) {
                         console.error("Error load statistik:", err);
@@ -1419,7 +1441,7 @@
                         });
                     }
                 });
-            });
+            }
 
             function renderChartJabatan(data) {
                 let labels = data.map(item => item.jabatan ?? "Tidak Ada");
