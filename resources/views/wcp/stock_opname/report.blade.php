@@ -533,9 +533,9 @@
                             const barangName = item.barang ? item.barang.nama_barang : 'N/A';
                             const barangMid = item.barang ? item.barang.mid : 'N/A';
                             const uom = item.barang ? item.barang.uom : '';
-                            const qtySistem = item.qty_sistem.toLocaleString('id-ID');
-                            const qtyFisik = item.qty_fisik.toLocaleString('id-ID');
-                            const selisih = item.selisih.toLocaleString('id-ID');
+                            const qtySistem = parseFloat(item.qty_sistem).toLocaleString('id-ID');
+                            const qtyFisik = parseFloat(item.qty_fisik).toLocaleString('id-ID');
+                            const selisih = parseFloat(item.selisih).toLocaleString('id-ID');
                             const note = item.keterangan ? item.keterangan : '-';
 
                             let statusBadge = '';
@@ -720,7 +720,7 @@
                                     <tr>
                                         <td class="text-center fw-semibold">${idx + 1}</td>
                                         <td class="text-center">${inputTime}</td>
-                                        <td class="text-end">${det.qty_receh.toLocaleString('id-ID')}</td>
+                                        <td class="text-end">${parseFloat(det.qty_receh).toLocaleString('id-ID')}</td>
                                     </tr>
                                 `;
                             });
@@ -735,8 +735,10 @@
                         }
                         $('#detailInputsList').html(detailRowsHtml);
 
-                        $('#detailQtyFisik').text(sum.qty_fisik.toLocaleString('id-ID') + ' ' + uom);
-                        $('#detailSelisih').text(sum.selisih.toLocaleString('id-ID') + ' ' + uom);
+                        $('#detailQtyFisik').text(parseFloat(sum.qty_fisik).toLocaleString('id-ID') + ' ' +
+                            uom);
+                        $('#detailSelisih').text(parseFloat(sum.selisih).toLocaleString('id-ID') + ' ' +
+                            uom);
 
                         let badge = '';
                         if (sum.status === 'lebih') {
@@ -801,7 +803,7 @@
                                         <div class="row g-2">
                                             <div class="col-md-12">
                                                 <label class="form-label small mb-1">Qty Fisik</label>
-                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh}" min="0" step="any" required>
+                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${parseFloat(det.qty_receh)}" min="0" step="any" required>
                                             </div>
                                         </div>
                                         <button type="button" class="btn btn-danger btn-sm mt-2" onclick="deleteReportDetail(${det.id}, this)">

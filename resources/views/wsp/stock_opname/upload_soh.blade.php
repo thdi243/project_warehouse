@@ -395,7 +395,7 @@
                                 <label class="form-label fw-semibold">Lokasi</label>
                                 <div id="edit_location_info" class="form-control bg-light text-muted"
                                     style="min-height:38px;">
-                                    <span class="badge bg-warning-subtle text-warning">Not Yet</span>
+                                    <span class="badge badge-soft-warning">Not Yet</span>
                                 </div>
                             </div>
                             <div id="qtyInputWrapper" class="row g-3">
@@ -839,7 +839,7 @@
                             const rak = item.location && item.location.rak ? item.location.rak : null;
                             if (!rak) {
                                 locationText =
-                                    '<span class="badge bg-warning-subtle text-warning">Not Yet</span>';
+                                    '<span class="badge badge-soft-warning">Not Yet</span>';
                             } else {
                                 locationText =
                                     `${rak.plant || ''} - ${rak.s_loc || ''} - ${rak.area_rak} - ${rak.nama_rak} - (${rak.kolom_rak || '-'}.${rak.level_rak || '-'}.${rak.box_rak || '-'})`;
@@ -942,10 +942,10 @@
                         if (rak) {
                             $('#edit_location_info').html(
                                 `<span class="badge bg-primary-subtle text-primary me-1">${rak.plant || ''} - ${rak.s_loc || ''}</span> <strong>${rak.area_rak}</strong> &gt; ${rak.nama_rak} &gt; ${rak.kolom_rak || '-'}.${rak.level_rak || '-'}.${rak.box_rak || '-'}`
-                                );
+                            );
                         } else {
                             $('#edit_location_info').html(
-                                '<span class="badge bg-warning-subtle text-warning">Not Yet</span>');
+                                '<span class="badge badge-soft-warning">Not Yet</span>');
                         }
 
                         $('#unrest').val(parseFloat(data.qty_unrest));
@@ -978,51 +978,51 @@
                         </h6>
                         ${(() => {
                             const rak = item.location && item.location.rak ? item.location.rak : null;
-                            if (!rak) return '<div class="text-center py-2"><span class="badge bg-warning-subtle text-warning fs-6">Not Yet</span></div>';
+                            if (!rak) return '<div class="text-center py-2"><span class="badge badge-soft-warning fs-6">Not Yet</span></div>';
                             return `<div class="row g-3">
-                                    <div class="col-6">
-                                        <div class="bg-light rounded-3 p-2 border text-center">
-                                            <div class="small text-muted mb-1 text-uppercase">Plant</div>
-                                            <strong>${rak.plant || '-'}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="bg-light rounded-3 p-2 border text-center">
-                                            <div class="small text-muted mb-1 text-uppercase">S.Loc</div>
-                                            <strong>${rak.s_loc || '-'}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-4">
-                                        <div class="bg-light rounded-3 p-2 border text-center">
-                                            <div class="small text-muted mb-1 text-uppercase">Area</div>
-                                            <strong>${rak.area_rak || '-'}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-4">
-                                        <div class="bg-light rounded-3 p-2 border text-center">
-                                            <div class="small text-muted mb-1 text-uppercase">Rak</div>
-                                            <strong>${rak.nama_rak || '-'}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-4">
-                                        <div class="bg-light rounded-3 p-2 border text-center">
-                                            <div class="small text-muted mb-1 text-uppercase">Kolom</div>
-                                            <strong>${rak.kolom_rak || '-'}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="bg-light rounded-3 p-2 border text-center">
-                                            <div class="small text-muted mb-1 text-uppercase">Level</div>
-                                            <strong>${rak.level_rak || '-'}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="bg-light rounded-3 p-2 border text-center">
-                                            <div class="small text-muted mb-1 text-uppercase">Bin</div>
-                                            <strong>${rak.box_rak || '-'}</strong>
-                                        </div>
-                                    </div>
-                                </div>`;
+                                            <div class="col-6">
+                                                <div class="bg-light rounded-3 p-2 border text-center">
+                                                    <div class="small text-muted mb-1 text-uppercase">Plant</div>
+                                                    <strong>${rak.plant || '-'}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="bg-light rounded-3 p-2 border text-center">
+                                                    <div class="small text-muted mb-1 text-uppercase">S.Loc</div>
+                                                    <strong>${rak.s_loc || '-'}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="bg-light rounded-3 p-2 border text-center">
+                                                    <div class="small text-muted mb-1 text-uppercase">Area</div>
+                                                    <strong>${rak.area_rak || '-'}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="bg-light rounded-3 p-2 border text-center">
+                                                    <div class="small text-muted mb-1 text-uppercase">Rak</div>
+                                                    <strong>${rak.nama_rak || '-'}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="bg-light rounded-3 p-2 border text-center">
+                                                    <div class="small text-muted mb-1 text-uppercase">Kolom</div>
+                                                    <strong>${rak.kolom_rak || '-'}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="bg-light rounded-3 p-2 border text-center">
+                                                    <div class="small text-muted mb-1 text-uppercase">Level</div>
+                                                    <strong>${rak.level_rak || '-'}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="bg-light rounded-3 p-2 border text-center">
+                                                    <div class="small text-muted mb-1 text-uppercase">Bin</div>
+                                                    <strong>${rak.box_rak || '-'}</strong>
+                                                </div>
+                                            </div>
+                                        </div>`;
                         })()}
                     </div>
                     

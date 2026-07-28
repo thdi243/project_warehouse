@@ -541,9 +541,9 @@
                             const barangName = item.barang ? item.barang.nama_barang : 'N/A';
                             const barangMid = item.barang ? item.barang.mid_barang : 'N/A';
                             const uom = item.barang ? item.barang.uom : '';
-                            const qtySistem = item.qty_sistem.toLocaleString('id-ID');
-                            const qtyFisik = item.qty_fisik.toLocaleString('id-ID');
-                            const selisih = item.selisih.toLocaleString('id-ID');
+                            const qtySistem = parseFloat(item.qty_sistem).toLocaleString('id-ID');
+                            const qtyFisik = parseFloat(item.qty_fisik).toLocaleString('id-ID');
+                            const selisih = parseFloat(item.selisih).toLocaleString('id-ID');
                             const note = item.keterangan ? item.keterangan : '-';
 
                             const area_rak = item.area_rak || '-';
@@ -729,11 +729,12 @@
 
                         $('#detailMid').text(sum.barang ? sum.barang.mid_barang : '-');
                         $('#detailNamaBarang').text(sum.barang ? sum.barang.nama_barang : '-');
-                        
-                        const hasLocation = sum.area_rak || sum.nama_rak || sum.kolom_rak || sum.level_rak || sum.bin_rak;
-                        const locationText = hasLocation
-                            ? `${sum.area_rak || '-'}-${sum.nama_rak || '-'}-${sum.kolom_rak || '-'}-${sum.level_rak || '-'}-${sum.bin_rak || '-'}`
-                            : 'Not yet';
+
+                        const hasLocation = sum.area_rak || sum.nama_rak || sum.kolom_rak || sum
+                            .level_rak || sum.bin_rak;
+                        const locationText = hasLocation ?
+                            `${sum.area_rak || '-'}-${sum.nama_rak || '-'}-${sum.kolom_rak || '-'}-${sum.level_rak || '-'}-${sum.bin_rak || '-'}` :
+                            'Not yet';
                         $('#detailLokasiRak').text(locationText);
 
                         $('#detailQtySistem').text(sum.qty_sistem.toLocaleString('id-ID') + ' ' + uom);
@@ -753,7 +754,7 @@
                                     <tr>
                                         <td class="text-center fw-semibold">${idx + 1}</td>
                                         <td class="text-center">${inputTime}</td>
-                                        <td class="text-end">${det.qty_full.toLocaleString('id-ID')}</td>
+                                        <td class="text-end">${parseFloat(det.qty_full).toLocaleString('id-ID')}</td>
                                     </tr>
                                 `;
                             });
@@ -768,8 +769,10 @@
                         }
                         $('#detailInputsList').html(detailRowsHtml);
 
-                        $('#detailQtyFisik').text(sum.qty_fisik.toLocaleString('id-ID') + ' ' + uom);
-                        $('#detailSelisih').text(sum.selisih.toLocaleString('id-ID') + ' ' + uom);
+                        $('#detailQtyFisik').text(parseFloat(sum.qty_fisik).toLocaleString('id-ID') + ' ' +
+                            uom);
+                        $('#detailSelisih').text(parseFloat(sum.selisih).toLocaleString('id-ID') + ' ' +
+                            uom);
 
                         let badge = '';
                         if (sum.status === 'lebih') {
@@ -834,7 +837,7 @@
                                          <div class="row g-2">
                                              <div class="col-md-12">
                                                  <label class="form-label small mb-1">Qty Fisik</label>
-                                                 <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" step="any" required>
+                                                 <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${parseFloat(det.qty_full)}" min="0" step="any" required>
                                                  <input type="hidden" name="items[${idx}][qty_receh]" value="0">
                                              </div>
                                          </div><button type="button" class="btn btn-danger btn-sm mt-2" onclick="deleteReportDetail(${det.id}, this)">
