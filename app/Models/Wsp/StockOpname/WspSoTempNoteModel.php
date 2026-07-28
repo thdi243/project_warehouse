@@ -16,6 +16,7 @@ class WspSoTempNoteModel extends Model
     protected $fillable = [
         'soh_id',
         'barang_id',
+        'loc_id',
         'catatan',
         'created_by',
         'tgl_opname',

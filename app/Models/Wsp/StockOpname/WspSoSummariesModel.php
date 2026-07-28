@@ -15,6 +15,7 @@ class WspSoSummariesModel extends Model
     protected $fillable = [
         'so_id',
         'barang_id',
+        'loc_id',
         'qty_fisik',
         'qty_sistem',
         'selisih',

@@ -178,14 +178,15 @@
         <table cellspacing="0" cellpadding="4" class="border-top-th text-center data-table">
             <thead>
                 <tr>
-                    <th style="width: 5%;">No</th>
-                    <th style="width: 13%;">MID</th>
-                    <th style="width: 30%;">Nama Barang</th>
+                    <th style="width: 4%;">No</th>
+                    <th style="width: 11%;">MID</th>
+                    <th style="width: 23%;">Nama Barang</th>
+                    <th style="width: 12%;">Lokasi</th>
                     <th style="width: 5%;">Uom</th>
                     <th style="width: 8%;">SAP</th>
                     <th style="width: 8%;">Fisik</th>
                     <th style="width: 8%;">Selisih</th>
-                    <th style="width: 28%;">Keterangan</th>
+                    <th style="width: 21%;">Keterangan</th>
                 </tr>
             </thead>
 
@@ -196,6 +197,13 @@
                         <td>{{ $dt->barang->mid_barang }}</td>
                         <td style="text-align: left; padding-left: 5px;">
                             {{ $dt->barang->nama_barang }}
+                        </td>
+                        <td>
+                            @php
+                                $locParts = array_filter([$dt->area_rak, $dt->nama_rak, $dt->kolom_rak, $dt->level_rak, $dt->bin_rak]);
+                                $locStr = count($locParts) > 0 ? implode('-', $locParts) : '-';
+                            @endphp
+                            {{ $locStr }}
                         </td>
                         <td>{{ $dt->barang->uom }}</td>
                         <td style="padding-right: 5px;">
@@ -239,6 +247,7 @@
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td style="text-align: left; padding-left: 5px;">&nbsp;</td>
+                        <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>

@@ -85,6 +85,31 @@
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: 36px;
         }
+
+        /* Custom dropdown styles */
+        .custom-filter-dropdown .dropdown-toggle {
+            border-radius: 0.25rem;
+            padding: 0.47rem 0.75rem;
+            font-size: 0.875rem;
+            box-shadow: 0 0 0 0 !important;
+            background-color: var(--vz-input-bg) !important;
+            border: 1px solid var(--vz-border-color) !important;
+            color: var(--vz-body-color) !important;
+            min-height: calc(1.5em + .94rem + 2px);
+        }
+
+        .custom-filter-dropdown .dropdown-menu {
+            border-radius: 0.4rem;
+            font-size: 0.875rem;
+        }
+
+        .custom-filter-dropdown .option-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .custom-filter-dropdown .options-list {
+            padding-right: 5px;
+        }
     </style>
 @endsection
 
@@ -177,13 +202,14 @@
                                     <th class="text-center" style="width: 60px;">No</th>
                                     <th class="text-center">MID</th>
                                     <th class="text-start">Nama Barang</th>
+                                    <th class="text-start">Location</th>
                                     <th class="text-end">Total SOH</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">
+                                    <td colspan="6" class="text-center py-4 text-muted">
                                         <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
                                         </div>
                                         Memuat data...
@@ -266,28 +292,128 @@
                                 <option value="monthly">Monthly SO</option>
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="barang_id" class="form-label fw-semibold">Barang (MID)</label>
-                            <select class="form-select select2" id="barang_id" name="barang_id" required
-                                style="width: 100%">
-                                <option value="">-- Pilih Barang --</option>
-                            </select>
+
+                        <!-- ADD SECTION -->
+                        <div id="addSection">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Pilih Area</label>
+                                <div class="dropdown custom-filter-dropdown" id="dropdown-area">
+                                    <button
+                                        class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
+                                        type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        aria-expanded="false">
+                                        <span class="dropdown-placeholder text-muted">Pilih Area...</span>
+                                        <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                    </button>
+                                    <div class="dropdown-menu p-3 border"
+                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                        <div class="mb-2">
+                                            <input type="text" class="form-control form-control-sm search-options"
+                                                placeholder="Cari Area...">
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                All</button>
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                All</button>
+                                        </div>
+                                        <hr class="dropdown-divider my-2">
+                                        <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Pilih Nama Rak</label>
+                                <div class="dropdown custom-filter-dropdown" id="dropdown-rak">
+                                    <button
+                                        class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
+                                        type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        aria-expanded="false">
+                                        <span class="dropdown-placeholder text-muted">Pilih Nama Rak...</span>
+                                        <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                    </button>
+                                    <div class="dropdown-menu p-3 border"
+                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                        <div class="mb-2">
+                                            <input type="text" class="form-control form-control-sm search-options"
+                                                placeholder="Cari Nama Rak...">
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                All</button>
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                All</button>
+                                        </div>
+                                        <hr class="dropdown-divider my-2">
+                                        <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Pilih Barang (MID)</label>
+                                <div class="dropdown custom-filter-dropdown" id="dropdown-barang">
+                                    <button
+                                        class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
+                                        type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        aria-expanded="false">
+                                        <span class="dropdown-placeholder text-muted">Pilih Barang...</span>
+                                        <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                    </button>
+                                    <div class="dropdown-menu p-3 border"
+                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                        <div class="mb-2">
+                                            <input type="text" class="form-control form-control-sm search-options"
+                                                placeholder="Cari Barang...">
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                All</button>
+                                            <button type="button"
+                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                All</button>
+                                        </div>
+                                        <hr class="dropdown-divider my-2">
+                                        <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div id="qtyInputWrapper" class="row g-3">
-                            <div class="col-md-4">
-                                <label for="unrest" class="form-label fw-semibold">UNREST</label>
-                                <input type="number" class="form-control" id="unrest" name="unrest" value="0"
-                                    min="0" required>
+
+                        <!-- EDIT SECTION -->
+                        <div id="editSection" style="display: none;">
+                            <input type="hidden" id="edit_loc_id" name="loc_id">
+                            <div class="mb-3">
+                                <label for="edit_mid_barang" class="form-label fw-semibold">MID Barang</label>
+                                <input type="text" class="form-control" id="edit_mid_barang" readonly>
                             </div>
-                            <div class="col-md-4">
-                                <label for="qi" class="form-label fw-semibold">QI</label>
-                                <input type="number" class="form-control" id="qi" name="qi" value="0"
-                                    min="0" required>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Lokasi</label>
+                                <div id="edit_location_info" class="form-control bg-light text-muted"
+                                    style="min-height:38px;">
+                                    <span class="badge bg-warning-subtle text-warning">Not Yet</span>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <label for="block" class="form-label fw-semibold">BLOCKED</label>
-                                <input type="number" class="form-control" id="block" name="block" value="0"
-                                    min="0" required>
+                            <div id="qtyInputWrapper" class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="unrest" class="form-label fw-semibold">UNREST</label>
+                                    <input type="number" class="form-control" id="unrest" name="unrest"
+                                        value="0" min="0" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="qi" class="form-label fw-semibold">QI</label>
+                                    <input type="number" class="form-control" id="qi" name="qi"
+                                        value="0" min="0" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="block" class="form-label fw-semibold">BLOCKED</label>
+                                    <input type="number" class="form-control" id="block" name="block"
+                                        value="0" min="0" required>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -330,33 +456,10 @@
         let mode = 'add';
 
         $(document).ready(function() {
-            // Initialize select2 on modal elements
-            $('#barang_id').select2({
-                dropdownParent: $('#sohModal'),
-                ajax: {
-                    url: '/api/wsp/barang',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function(params) {
-                        return {
-                            q: params.term
-                        };
-                    },
-                    processResults: function(data) {
-                        return {
-                            results: $.map(data.data, function(item) {
-                                return {
-                                    id: item.id,
-                                    text: `${item.mid_barang} - ${item.nama_barang} (${item.uom})`
-                                };
-                            })
-                        };
-                    },
-                    cache: true
-                },
-                placeholder: '-- Pilih Barang --',
-                minimumInputLength: 1
-            });
+            // Initialize custom dropdowns
+            initDynamicDropdown('dropdown-area', 'Pilih Area...', loadNamaRakOptionsForAdd);
+            initDynamicDropdown('dropdown-rak', 'Pilih Nama Rak...', loadBarangOptionsForAdd);
+            initDynamicDropdown('dropdown-barang', 'Pilih Barang...', null);
 
             // Load SOH list initially
             loadSOHList();
@@ -376,10 +479,40 @@
                 e.preventDefault();
                 const sohId = $('#soh_id').val();
 
-                let postData = $(this).serialize();
-                if ($('#soh_jenis_so').is(':disabled')) {
-                    postData += '&jenis_so=' + encodeURIComponent($('#soh_jenis_so').val());
+                let postData;
+                let contentType = 'application/x-www-form-urlencoded; charset=UTF-8';
+                let processData = true;
+
+                if (mode === 'add') {
+                    const barangId = $('#dropdown-barang').data('getValues')();
+                    const area = $('#dropdown-area').data('getValues')();
+                    const namaRak = $('#dropdown-rak').data('getValues')();
+
+                    if (!barangId || barangId.length === 0 || !area || area.length === 0 || !namaRak ||
+                        namaRak.length === 0) {
+                        Swal.fire('Peringatan', 'Barang, Area, dan Nama Rak harus dipilih!', 'warning');
+                        return;
+                    }
+
+                    postData = JSON.stringify({
+                        _token: "{{ csrf_token() }}",
+                        jenis_so: $('#soh_jenis_so').val(),
+                        barang_id: barangId,
+                        area: area,
+                        nama_rak: namaRak
+                    });
+                    contentType = 'application/json';
+                    processData = false;
+                } else {
+                    postData = {
+                        _token: "{{ csrf_token() }}",
+                        jenis_so: $('#soh_jenis_so').val(),
+                        unrest: $('#unrest').val(),
+                        qi: $('#qi').val(),
+                        block: $('#block').val()
+                    };
                 }
+
                 const url = mode === 'add' ?
                     "{{ route('wsp.stock_opname.soh.store') }}" :
                     `{{ route('wsp.stock_opname.soh.update', '') }}/${sohId}`;
@@ -388,6 +521,8 @@
                     url: url,
                     type: "POST",
                     data: postData,
+                    contentType: contentType,
+                    processData: processData,
                     success: function(res) {
                         if (res.status) {
                             Swal.fire({
@@ -496,6 +631,187 @@
             });
         });
 
+        function loadAreaOptionsForAdd() {
+            $('#dropdown-area').data('reset')();
+            $('#dropdown-rak').data('reset')();
+            $('#dropdown-barang').data('reset')();
+
+            $.ajax({
+                url: "{{ route('wsp.stock_opname.soh.getAreaList') }}",
+                type: "GET",
+                success: function(res) {
+                    if (res.status === 'success' && res.data) {
+                        updateDropdownOptions('dropdown-area', res.data, 'Pilih Area...', 'area');
+                    }
+                }
+            });
+        }
+
+        function loadNamaRakOptionsForAdd() {
+            const area = $('#dropdown-area').data('getValues')();
+            $('#dropdown-rak').data('reset')();
+            $('#dropdown-barang').data('reset')();
+
+            if (!area || area.length === 0) return;
+
+            $.ajax({
+                url: "{{ route('wsp.stock_opname.soh.getNamaRakList') }}",
+                type: "GET",
+                data: {
+                    area: area
+                },
+                success: function(res) {
+                    if (res.status === 'success' && res.data) {
+                        updateDropdownOptions('dropdown-rak', res.data, 'Pilih Nama Rak...', 'nama_rak');
+                    }
+                }
+            });
+        }
+
+        function loadBarangOptionsForAdd() {
+            const area = $('#dropdown-area').data('getValues')();
+            const namaRak = $('#dropdown-rak').data('getValues')();
+            $('#dropdown-barang').data('reset')();
+
+            if (!area || area.length === 0 || !namaRak || namaRak.length === 0) return;
+
+            $.ajax({
+                url: "{{ route('wsp.stock_opname.soh.getBarangListByLocation') }}",
+                type: "GET",
+                data: {
+                    area: area,
+                    nama_rak: namaRak
+                },
+                success: function(res) {
+                    if (res.status === 'success' && res.data) {
+                        updateDropdownOptions('dropdown-barang', res.data, 'Pilih Barang...', 'barang');
+                    }
+                }
+            });
+        }
+
+        function initDynamicDropdown(id, placeholder, onChange) {
+            const $dropdown = $('#' + id);
+
+            // Search options
+            $dropdown.off('input', '.search-options').on('input', '.search-options', function() {
+                const query = $(this).val().toLowerCase();
+                $dropdown.find('.option-item').each(function() {
+                    const text = $(this).data('text').toString().toLowerCase();
+                    const val = $(this).data('value').toString().toLowerCase();
+                    if (text.indexOf(query) > -1 || val.indexOf(query) > -1) {
+                        $(this).removeClass('d-none');
+                    } else {
+                        $(this).addClass('d-none');
+                    }
+                });
+            });
+
+            // Checkbox changes
+            $dropdown.off('change', '.option-checkbox').on('change', '.option-checkbox', function() {
+                updateLabel();
+            });
+
+            // Select All
+            $dropdown.off('click', '.select-all-options').on('click', '.select-all-options', function(e) {
+                e.preventDefault();
+                $dropdown.find('.option-item:not(.d-none) .option-checkbox').prop('checked', true);
+                updateLabel();
+            });
+
+            // Clear All
+            $dropdown.off('click', '.clear-all-options').on('click', '.clear-all-options', function(e) {
+                e.preventDefault();
+                $dropdown.find('.option-checkbox').prop('checked', false);
+                updateLabel();
+            });
+
+            function updateLabel() {
+                const selected = [];
+                $dropdown.find('.option-checkbox:checked').each(function() {
+                    selected.push($(this).val());
+                });
+
+                const $placeholderSpan = $dropdown.find('.dropdown-placeholder');
+                const $badge = $dropdown.find('.selected-count');
+                if (selected.length === 0) {
+                    $placeholderSpan.text(placeholder);
+                    $badge.addClass('d-none').text('0');
+                } else {
+                    $placeholderSpan.text(`${selected.length} Terpilih`);
+                    $badge.removeClass('d-none').text(selected.length);
+                }
+
+                if (onChange) {
+                    onChange(selected);
+                }
+            }
+
+            // Attach methods
+            $dropdown.data('getValues', function() {
+                const selected = [];
+                $dropdown.find('.option-checkbox:checked').each(function() {
+                    selected.push($(this).val());
+                });
+                return selected;
+            });
+
+            $dropdown.data('reset', function() {
+                $dropdown.find('.option-checkbox').prop('checked', false);
+                $dropdown.find('.search-options').val('').trigger('input');
+                updateLabel();
+            });
+        }
+
+        function updateDropdownOptions(id, data, placeholder, type) {
+            const $dropdown = $('#' + id);
+            const currentValues = $dropdown.data('getValues') ? $dropdown.data('getValues')() : [];
+            let html = '';
+
+            data.forEach(item => {
+                let val, text;
+                if (type === 'barang') {
+                    val = item.id;
+                    text = `${item.mid_barang} - ${item.nama_barang} (${item.uom})`;
+                } else if (type === 'area' || type === 'nama_rak') {
+                    val = item;
+                    text = item;
+                } else {
+                    val = item.rak_id;
+                    text = item.text;
+                }
+
+                let safeVal = val ?? '';
+                let safeText = text ?? '';
+                let safeId = safeVal.toString().replace(/[^a-zA-Z0-9_\-]/g, '_');
+
+                let isSelected = currentValues.includes(safeVal.toString());
+                let checkedAttr = isSelected ? 'checked' : '';
+                html += `
+                    <div class="form-check mb-2 option-item" data-value="${safeVal}" data-text="${safeText}">
+                        <input class="form-check-input option-checkbox" type="checkbox" value="${safeVal}" id="chk-${id}-${safeId}" ${checkedAttr}>
+                        <label class="form-check-label text-truncate w-100" for="chk-${id}-${safeId}">
+                            ${safeText}
+                        </label>
+                    </div>
+                `;
+            });
+
+            $dropdown.find('.options-list').html(html);
+
+            const selectedCount = $dropdown.find('.option-checkbox:checked').length;
+            const $placeholderSpan = $dropdown.find('.dropdown-placeholder');
+            const $badge = $dropdown.find('.selected-count');
+
+            if (selectedCount === 0) {
+                $placeholderSpan.text(placeholder);
+                $badge.addClass('d-none').text('0');
+            } else {
+                $placeholderSpan.text(`${selectedCount} Terpilih`);
+                $badge.removeClass('d-none').text(selectedCount);
+            }
+        }
+
         function loadSOHList(page = 1) {
             const tableBody = $('#tableSOHList tbody');
             const search = $('#searchSOHInput').val();
@@ -519,6 +835,16 @@
                             const uom = item.barang ? item.barang.uom : '';
                             const qtySoh = item.qty_soh.toLocaleString('id-ID');
 
+                            let locationText = '';
+                            const rak = item.location && item.location.rak ? item.location.rak : null;
+                            if (!rak) {
+                                locationText =
+                                    '<span class="badge bg-warning-subtle text-warning">Not Yet</span>';
+                            } else {
+                                locationText =
+                                    `${rak.plant || ''} - ${rak.s_loc || ''} - ${rak.area_rak} - ${rak.nama_rak} - (${rak.kolom_rak || '-'}.${rak.level_rak || '-'}.${rak.box_rak || '-'})`;
+                            }
+
                             const editBtn = `
                                 <button class="btn btn-sm btn-outline-primary me-1"
                                     onclick="editSOH(${item.id})"
@@ -539,6 +865,7 @@
                                     <td class="text-center">${globalIndex}</td>
                                     <td class="text-center">${barangMid}</td>
                                     <td>${barangName}</td>
+                                    <td class="text-start">${locationText}</td>
                                     <td class="text-end fw-bold text-primary">${qtySoh} ${uom}</td>
                                     <td class="text-center">
                                         <button class="btn btn-sm btn-outline-info me-1"
@@ -557,7 +884,7 @@
                     } else {
                         tableBody.append(`
                             <tr>
-                                <td colspan="5" class="text-center py-4 text-muted">Tidak ada data SOH hari ini.</td>
+                                <td colspan="6" class="text-center py-4 text-muted">Tidak ada data SOH hari ini.</td>
                             </tr>
                         `);
                         $('#tableInfo').text('');
@@ -573,10 +900,14 @@
             $('#soh_id').val('');
             $('#sohModalLabel').html('<i class="mdi mdi-plus-circle me-1"></i>Tambah Data SOH');
             $('#btnSaveSOH').html('Simpan');
-            $('#barang_id').val(null).trigger('change');
-            $('#barang_id').prop('disabled', false);
+
+            $('#addSection').show();
+            $('#editSection').hide();
+
             const activeJenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
             $('#soh_jenis_so').val(activeJenisSo).prop('disabled', false);
+
+            loadAreaOptionsForAdd();
             $('#sohModal').modal('show');
         }
 
@@ -590,6 +921,9 @@
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
 
+            $('#addSection').hide();
+            $('#editSection').show();
+
             $.ajax({
                 url: `{{ route('wsp.stock_opname.soh.show', '') }}/${id}`,
                 type: 'GET',
@@ -599,11 +933,20 @@
                         $('#soh_id').val(data.id);
                         $('#soh_jenis_so').val(data.jenis_so).prop('disabled', false);
 
-                        const optionText =
-                            `${data.barang.mid_barang} - ${data.barang.nama_barang} (${data.barang.uom})`;
-                        const option = new Option(optionText, data.barang_id, true, true);
-                        $('#barang_id').append(option).trigger('change');
-                        $('#barang_id').prop('disabled', true);
+                        $('#edit_mid_barang').val(data.barang ?
+                            `${data.barang.mid_barang} - ${data.barang.nama_barang}` : '');
+
+                        // Populate loc_id and location info
+                        const rak = data.location && data.location.rak ? data.location.rak : null;
+                        $('#edit_loc_id').val(data.loc_id || '');
+                        if (rak) {
+                            $('#edit_location_info').html(
+                                `<span class="badge bg-primary-subtle text-primary me-1">${rak.plant || ''} - ${rak.s_loc || ''}</span> <strong>${rak.area_rak}</strong> &gt; ${rak.nama_rak} &gt; ${rak.kolom_rak || '-'}.${rak.level_rak || '-'}.${rak.box_rak || '-'}`
+                                );
+                        } else {
+                            $('#edit_location_info').html(
+                                '<span class="badge bg-warning-subtle text-warning">Not Yet</span>');
+                        }
 
                         $('#unrest').val(data.qty_unrest);
                         $('#qi').val(data.qty_qi);
@@ -627,6 +970,60 @@
                     <div class="bg-primary bg-gradient rounded-3 p-3 mb-4 text-center shadow">
                         <h6 class="d-block mb-1 text-white text-uppercase small font-bold">Total Stock On Hand</h6>
                         <h1 class="mb-0 fw-bold display-4 text-white">${item.qty_soh.toLocaleString('id-ID')} ${uom}</h1>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">
+                            <i class="mdi mdi-map-marker-outline me-1"></i>Lokasi Rak
+                        </h6>
+                        ${(() => {
+                            const rak = item.location && item.location.rak ? item.location.rak : null;
+                            if (!rak) return '<div class="text-center py-2"><span class="badge bg-warning-subtle text-warning fs-6">Not Yet</span></div>';
+                            return `<div class="row g-3">
+                                    <div class="col-6">
+                                        <div class="bg-light rounded-3 p-2 border text-center">
+                                            <div class="small text-muted mb-1 text-uppercase">Plant</div>
+                                            <strong>${rak.plant || '-'}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="bg-light rounded-3 p-2 border text-center">
+                                            <div class="small text-muted mb-1 text-uppercase">S.Loc</div>
+                                            <strong>${rak.s_loc || '-'}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="bg-light rounded-3 p-2 border text-center">
+                                            <div class="small text-muted mb-1 text-uppercase">Area</div>
+                                            <strong>${rak.area_rak || '-'}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="bg-light rounded-3 p-2 border text-center">
+                                            <div class="small text-muted mb-1 text-uppercase">Rak</div>
+                                            <strong>${rak.nama_rak || '-'}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="bg-light rounded-3 p-2 border text-center">
+                                            <div class="small text-muted mb-1 text-uppercase">Kolom</div>
+                                            <strong>${rak.kolom_rak || '-'}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="bg-light rounded-3 p-2 border text-center">
+                                            <div class="small text-muted mb-1 text-uppercase">Level</div>
+                                            <strong>${rak.level_rak || '-'}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="bg-light rounded-3 p-2 border text-center">
+                                            <div class="small text-muted mb-1 text-uppercase">Bin</div>
+                                            <strong>${rak.box_rak || '-'}</strong>
+                                        </div>
+                                    </div>
+                                </div>`;
+                        })()}
                     </div>
                     
                     <div class="mb-4">
@@ -675,7 +1072,6 @@
             const modal = new bootstrap.Modal(document.getElementById('modalSOHDetail'));
             modal.show();
         }
-
 
         function deleteSOH(id) {
             Swal.fire({

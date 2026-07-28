@@ -157,6 +157,11 @@
                                             <th style="width: 50px;">No</th>
                                             <th>MID</th>
                                             <th class="text-start">Nama Barang</th>
+                                            <th>Area</th>
+                                            <th>Nama</th>
+                                            <th>Kolom</th>
+                                            <th>Level</th>
+                                            <th>Bin</th>
                                             <th class="text-end">Qty Sistem</th>
                                             <th class="text-end">Qty Fisik</th>
                                             <th class="text-end">Selisih</th>
@@ -167,7 +172,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="9" class="text-center py-4 text-muted">
+                                            <td colspan="14" class="text-center py-4 text-muted">
                                                 Silakan tentukan tanggal lalu klik <strong>Tampilkan Laporan</strong>.
                                             </td>
                                         </tr>
@@ -267,6 +272,10 @@
                                 <td id="detailNamaBarang"></td>
                             </tr>
                             <tr>
+                                <th>Lokasi Rak</th>
+                                <td id="detailLokasiRak"></td>
+                            </tr>
+                            <tr>
                                 <th>Qty Sistem</th>
                                 <td id="detailQtySistem" class="text-end text-primary fw-semibold"></td>
                             </tr>
@@ -279,8 +288,7 @@
                                                 <tr>
                                                     <th style="width: 50px;">No</th>
                                                     <th>Waktu Input</th>
-                                                    <th>Qty Full Pallet</th>
-                                                    <th>Qty Receh</th>
+                                                    <th>Qty Fisik</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="detailInputsList">
@@ -508,7 +516,7 @@
 
             tableBody.html(`
                 <tr>
-                    <td colspan="9" class="text-center py-4 text-muted">
+                    <td colspan="14" class="text-center py-4 text-muted">
                         <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                         Memuat laporan...
                     </td>
@@ -537,6 +545,12 @@
                             const qtyFisik = item.qty_fisik.toLocaleString('id-ID');
                             const selisih = item.selisih.toLocaleString('id-ID');
                             const note = item.keterangan ? item.keterangan : '-';
+
+                            const area_rak = item.area_rak || '-';
+                            const nama_rak = item.nama_rak || '-';
+                            const kolom_rak = item.kolom_rak || '-';
+                            const level_rak = item.level_rak || '-';
+                            const bin_rak = item.bin_rak || '-';
 
                             let statusBadge = '';
                             if (item.status === 'lebih') {
@@ -572,6 +586,11 @@
                                     <td class="text-center font-semibold">${index + 1}</td>
                                     <td class="text-center">${barangMid}</td>
                                     <td>${barangName}</td>
+                                    <td class="text-center">${area_rak}</td>
+                                    <td class="text-center">${nama_rak}</td>
+                                    <td class="text-center">${kolom_rak}</td>
+                                    <td class="text-center">${level_rak}</td>
+                                    <td class="text-center">${bin_rak}</td>
                                     <td class="text-end">${qtySistem}</td>
                                     <td class="text-end">${qtyFisik}</td>
                                     <td class="text-end fw-bold">${selisih}</td>
@@ -590,7 +609,7 @@
                     } else {
                         tableBody.append(`
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">
+                                <td colspan="14" class="text-center py-4 text-muted">
                                     Laporan SO tidak ditemukan untuk tanggal: <strong>${date}</strong>
                                 </td>
                             </tr>
@@ -601,7 +620,7 @@
                 error: function(xhr) {
                     tableBody.html(`
                         <tr>
-                            <td colspan="9" class="text-center py-4 text-danger">Gagal memuat data laporan dari server.</td>
+                            <td colspan="14" class="text-center py-4 text-danger">Gagal memuat data laporan dari server.</td>
                         </tr>
                     `);
                     checkApprovalStatus(null, date);
@@ -710,6 +729,13 @@
 
                         $('#detailMid').text(sum.barang ? sum.barang.mid_barang : '-');
                         $('#detailNamaBarang').text(sum.barang ? sum.barang.nama_barang : '-');
+                        
+                        const hasLocation = sum.area_rak || sum.nama_rak || sum.kolom_rak || sum.level_rak || sum.bin_rak;
+                        const locationText = hasLocation
+                            ? `${sum.area_rak || '-'}-${sum.nama_rak || '-'}-${sum.kolom_rak || '-'}-${sum.level_rak || '-'}-${sum.bin_rak || '-'}`
+                            : 'Not yet';
+                        $('#detailLokasiRak').text(locationText);
+
                         $('#detailQtySistem').text(sum.qty_sistem.toLocaleString('id-ID') + ' ' + uom);
 
                         let detailRowsHtml = '';
@@ -728,14 +754,13 @@
                                         <td class="text-center fw-semibold">${idx + 1}</td>
                                         <td class="text-center">${inputTime}</td>
                                         <td class="text-end">${det.qty_full.toLocaleString('id-ID')}</td>
-                                        <td class="text-end">${det.qty_receh.toLocaleString('id-ID')}</td>
                                     </tr>
                                 `;
                             });
                         } else {
                             detailRowsHtml += `
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-2">
+                                    <td colspan="3" class="text-center text-muted py-2">
                                         <em>Tidak ada detail input fisik</em>
                                     </td>
                                 </tr>
@@ -806,17 +831,13 @@
                                             </p>
                                             <span class="badge bg-info">Detail Qty</span>
                                         </div>
-                                        <div class="row g-2">
-                                            <div class="col-md-6">
-                                                <label class="form-label small mb-1">Qty Full Pallet</label>
-                                                <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label small mb-1">Qty Receh</label>
-                                                <input type="number" class="form-control qty_receh" name="items[${idx}][qty_receh]" value="${det.qty_receh}" min="0" required>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="btn btn-danger btn-sm mt-2" onclick="deleteReportDetail(${det.id}, this)">
+                                         <div class="row g-2">
+                                             <div class="col-md-12">
+                                                 <label class="form-label small mb-1">Qty Fisik</label>
+                                                 <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" required>
+                                                 <input type="hidden" name="items[${idx}][qty_receh]" value="0">
+                                             </div>
+                                         </div><button type="button" class="btn btn-danger btn-sm mt-2" onclick="deleteReportDetail(${det.id}, this)">
                                             <i class="mdi mdi-delete"></i> Hapus
                                         </button>
                                     </div>
@@ -845,7 +866,7 @@
         };
 
         // Live check for negative inputs in edit report modal
-        $(document).on('input', '#editReportModal .qty_full, #editReportModal .qty_receh',
+        $(document).on('input', '#editReportModal .qty_full',
             function() {
                 if ($(this).val() !== '' && parseInt($(this).val()) < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
@@ -858,32 +879,18 @@
             e.preventDefault();
             const id = $('#editReportId').val();
             let hasNegative = false;
-            let hasZeroBoth = false;
 
             $('#editReportItemsList .report-detail-item').each(function() {
                 const qtyFullVal = parseInt($(this).find('.qty_full')
                     .val()) || 0;
-                const qtyRecehVal = parseInt($(this).find('.qty_receh')
-                    .val()) || 0;
 
-                if (qtyFullVal < 0 || qtyRecehVal < 0) {
+                if (qtyFullVal < 0) {
                     hasNegative = true;
-                }
-
-                if (qtyFullVal === 0 && qtyRecehVal === 0) {
-                    hasZeroBoth = true;
                 }
             });
 
             if (hasNegative) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
-                return;
-            }
-
-            if (hasZeroBoth) {
-                toastr.warning(
-                    'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!'
-                );
                 return;
             }
 

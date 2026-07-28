@@ -4,6 +4,7 @@ namespace App\Models\Wsp\StockOpname;
 
 use App\Models\User;
 use App\Models\Wsp\BarangModel;
+use App\Models\Wsp\stock_manage\StockLocationModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -15,6 +16,7 @@ class WspSohModel extends Model
 
     protected $fillable = [
         'barang_id',
+        'loc_id',
         'jenis_so',
         'user_id',
         'qty_soh',
@@ -27,6 +29,11 @@ class WspSohModel extends Model
     public function barang()
     {
         return $this->belongsTo(BarangModel::class, 'barang_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(StockLocationModel::class, 'loc_id');
     }
 
     public function user()

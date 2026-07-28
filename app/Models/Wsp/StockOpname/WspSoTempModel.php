@@ -16,6 +16,7 @@ class WspSoTempModel extends Model
     protected $fillable = [
         'soh_id',
         'barang_id',
+        'loc_id',
         'qty_full',
         'qty_receh',
         'summary',

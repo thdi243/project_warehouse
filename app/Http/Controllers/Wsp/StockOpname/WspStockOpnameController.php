@@ -142,24 +142,24 @@ class WspStockOpnameController extends Controller
             });
         }
 
-        $sohList = $query->with('barang')->get();
+        $sohList = $query->with(['barang', 'location.rak'])->get();
 
-        // Pull active temp values grouped by barang_id
+        // Pull active temp values grouped by soh_id
         $tempData = WspSoTempModel::whereDate('tgl_opname', $today)
             ->whereHas('soh', function ($q) use ($jenisSo) {
                 $q->where('jenis_so', $jenisSo);
             })
-            ->get()->groupBy('barang_id');
+            ->get()->groupBy('soh_id');
 
         $tempNotes = WspSoTempNoteModel::whereDate('tgl_opname', $today)
             ->whereHas('soh', function ($q) use ($jenisSo) {
                 $q->where('jenis_so', $jenisSo);
             })
-            ->get()->keyBy('barang_id');
+            ->get()->keyBy('soh_id');
 
         $result = $sohList->map(function ($soh) use ($tempData, $tempNotes) {
-            $temps = $tempData->get($soh->barang_id);
-            $note = $tempNotes->get($soh->barang_id);
+            $temps = $tempData->get($soh->id);
+            $note = $tempNotes->get($soh->id);
 
             $isCounted = $temps && $temps->isNotEmpty();
             $qtyFull = $isCounted ? $temps->sum('qty_full') : null;
@@ -171,6 +171,8 @@ class WspStockOpnameController extends Controller
                 $diff = $summary - $soh->qty_soh;
                 $diffStatus = $diff > 0 ? 'lebih' : ($diff < 0 ? 'kurang' : 'match');
             }
+
+            $rak = $soh->location?->rak;
 
             return [
                 'id' => $soh->id,
@@ -189,6 +191,11 @@ class WspStockOpnameController extends Controller
                 'summary' => $summary,
                 'catatan' => $note ? $note->catatan : null,
                 'diff_status' => $diffStatus,
+                'area_rak' => $rak?->area_rak,
+                'nama_rak' => $rak?->nama_rak,
+                'kolom_rak' => $rak?->kolom_rak,
+                'level_rak' => $rak?->level_rak,
+                'bin_rak' => $rak?->box_rak,
             ];
         });
 
@@ -221,28 +228,20 @@ class WspStockOpnameController extends Controller
         $today = now()->toDateString();
 
         $qtyFull = $request->qty_full;
-        $qtyReceh = $request->qty_receh;
+        $qtyReceh = $request->qty_receh ?? 0;
 
-        $hasQty = ($qtyFull !== null && $qtyFull !== '') || ($qtyReceh !== null && $qtyReceh !== '');
+        $hasQty = ($qtyFull !== null && $qtyFull !== '');
         $temp = null;
 
         if ($hasQty) {
-            $qtyFullVal = (int)($qtyFull ?? 0);
-            $qtyRecehVal = (int)($qtyReceh ?? 0);
-            $qtyPallet = (float)($barang->qty_pallet ?? 1);
-
-            if ($qtyRecehVal >= $qtyPallet) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => "Qty Receh ({$qtyRecehVal}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!"
-                ], 422);
-            }
-
-            $summary = ($qtyFullVal * $qtyPallet) + $qtyRecehVal;
+            $qtyFullVal = (int)$qtyFull;
+            $qtyRecehVal = (int)$qtyReceh;
+            $summary = $qtyFullVal;
 
             $temp = WspSoTempModel::create([
                 'soh_id' => $soh->id,
                 'barang_id' => $soh->barang_id,
+                'loc_id' => $soh->loc_id,
                 'qty_full' => $qtyFullVal,
                 'qty_receh' => $qtyRecehVal,
                 'summary' => $summary,
@@ -263,6 +262,7 @@ class WspStockOpnameController extends Controller
                     ],
                     [
                         'catatan' => $catatan,
+                        'loc_id' => $soh->loc_id,
                         'created_by' => $user->id ?? 1,
                     ]
                 );
@@ -429,14 +429,8 @@ class WspStockOpnameController extends Controller
                 if (!$temp || !$temp->barang) continue;
 
                 $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
-                $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
-                $qtyPallet = (float)($temp->barang->qty_pallet ?? 1);
-
-                if ($qtyReceh >= $qtyPallet) {
-                    throw new \Exception("Qty Receh ({$qtyReceh}) pada barang {$temp->barang->mid_barang} tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!");
-                }
-
-                $summary = ($qtyFull * $qtyPallet) + $qtyReceh;
+                $qtyReceh = 0;
+                $summary = $qtyFull;
 
                 $temp->qty_full = $qtyFull;
                 $temp->qty_receh = $qtyReceh;
@@ -557,6 +551,11 @@ class WspStockOpnameController extends Controller
             'qty_full' => 'required|integer|min:0',
             'qty_receh' => 'required|integer|min:0',
             'jenis_so' => 'required|string|in:cycle_count,monthly',
+            'area_rak' => 'nullable|string',
+            'nama_rak' => 'nullable|string',
+            'kolom_rak' => 'nullable|string',
+            'level_rak' => 'nullable|string',
+            'bin_rak' => 'nullable|string',
         ]);
 
         $jenisSo = $request->input('jenis_so', 'cycle_count');
@@ -572,8 +571,39 @@ class WspStockOpnameController extends Controller
         $user = Auth::user();
         $today = now()->toDateString();
 
-        // Validasi jika MID sudah ada hari ini untuk jenis SO ini
+        $area = trim($request->area_rak ?? '');
+        $nama = trim($request->nama_rak ?? '');
+        $kolom = trim($request->kolom_rak ?? '');
+        $level = trim($request->level_rak ?? '');
+        $box = trim($request->bin_rak ?? '');
+
+        // Find or create Rak
+        $rak = \App\Models\Wsp\RakModel::firstOrCreate([
+            'area_rak' => $area,
+            'nama_rak' => $nama,
+            'kolom_rak' => $kolom,
+            'level_rak' => $level,
+            'box_rak' => $box,
+        ], [
+            'plant' => 'WSP',
+            's_loc' => 'WSP',
+            'created_by' => $user->id ?? 1
+        ]);
+
+        // Find or create StockLocation (wsp_stock_location)
+        $stockLocation = \App\Models\Wsp\stock_manage\StockLocationModel::firstOrCreate([
+            'barang_id' => $barang->id,
+            'rak_id' => $rak->id,
+        ], [
+            'status' => 'active',
+            'created_by' => $user->id ?? 1
+        ]);
+
+        $locId = $stockLocation->id;
+
+        // Validasi jika MID + Lokasi sudah ada hari ini untuk jenis SO ini
         $exists = WspSohModel::where('barang_id', $barang->id)
+            ->where('loc_id', $locId)
             ->where('jenis_so', $jenisSo)
             ->whereDate('created_at', $today)
             ->exists();
@@ -581,26 +611,18 @@ class WspStockOpnameController extends Controller
         if ($exists) {
             return response()->json([
                 'status' => 'error',
-                'message' => "MID {$request->mid_barang} sudah ada hari ini."
+                'message' => "MID {$request->mid_barang} di lokasi rak tersebut sudah ada hari ini."
             ], 422);
         }
 
-        $qtyPallet = (float)($barang->qty_pallet ?? 1);
-
-        if ((int)$request->qty_receh >= $qtyPallet) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "Qty Receh ({$request->qty_receh}) tidak boleh melebihi atau sama dengan acuan full pallet ({$qtyPallet})!"
-            ], 422);
-        }
-
-        $summary = ($request->qty_full * $qtyPallet) + $request->qty_receh;
+        $summary = $request->qty_full;
 
         // Create new SOH entry for today
         $soh = WspSohModel::updateOrCreate(
             [
                 'barang_id' => $barang->id,
                 'jenis_so'  => $jenisSo,
+                'loc_id'    => $locId,
                 'created_at' => $today
             ],
             [
@@ -622,8 +644,9 @@ class WspStockOpnameController extends Controller
             ],
             [
                 'qty_full' => $request->qty_full,
-                'qty_receh' => $request->qty_receh,
+                'qty_receh' => 0,
                 'summary' => $summary,
+                'loc_id' => $locId,
                 'created_by' => $user->id ?? 1,
             ]
         );
@@ -700,10 +723,10 @@ class WspStockOpnameController extends Controller
         }
 
         // Fetch all SOH today for this jenis_so
-        $sohData = WspSohModel::whereDate('created_at', $tglOpname)
+        $sohData = WspSohModel::with(['barang', 'location.rak'])->whereDate('created_at', $tglOpname)
             ->where('jenis_so', $jenisSo)
             ->get()
-            ->keyBy('barang_id');
+            ->keyBy('id');
 
         // Pull active temp notes
         $tempNotes = WspSoTempNoteModel::whereDate('tgl_opname', $tglOpname)
@@ -715,12 +738,14 @@ class WspStockOpnameController extends Controller
 
         // Check if there are any items in SOH that haven't been counted yet
         $uncountedItems = [];
-        foreach ($sohData as $barangId => $soh) {
+        foreach ($sohData as $sohId => $soh) {
             $counted = $tempData->firstWhere('soh_id', $soh->id);
             if (!$counted) {
+                $rak = $soh->location?->rak;
+                $locationText = $rak ? "{$rak->area_rak}-{$rak->nama_rak}-{$rak->kolom_rak}-{$rak->level_rak}-{$rak->box_rak}" : '-';
                 $uncountedItems[] = [
-                    'mid' => $soh->barang->mid_barang,
-                    'nama_barang' => $soh->barang->nama_barang,
+                    'mid' => $soh->barang->mid_barang ?? '-',
+                    'nama_barang' => ($soh->barang->nama_barang ?? '-') . " ({$locationText})",
                     'qty_system' => $soh->qty_soh
                 ];
             }
@@ -743,7 +768,7 @@ class WspStockOpnameController extends Controller
         $varianceIssues = [];
         $analysis = [];
         foreach ($groupedTemp as $temp) {
-            $soh = $sohData->get($temp['barang_id']);
+            $soh = $sohData->get($temp['soh_id']);
             $qtySystem = $soh ? $soh->qty_soh : 0;
             $qtyPhysical = $temp['summary'];
             $diff = round($qtyPhysical - $qtySystem, 4);
@@ -753,9 +778,12 @@ class WspStockOpnameController extends Controller
 
             $status = $diff > 0 ? 'lebih' : ($diff < 0 ? 'kurang' : 'match');
 
+            $rak = $soh?->location?->rak;
+
             if ($diff != 0 && empty($comment)) {
+                $locationText = $rak ? "{$rak->area_rak}-{$rak->nama_rak}-{$rak->kolom_rak}-{$rak->level_rak}-{$rak->box_rak}" : '-';
                 $varianceIssues[] = [
-                    'mid' => $temp['barang']->mid_barang,
+                    'mid' => "{$temp['barang']->mid_barang} (Rak: {$locationText})",
                     'selisih' => $diff,
                 ];
             }
@@ -772,6 +800,11 @@ class WspStockOpnameController extends Controller
                 'keterangan' => $comment,
                 'qty_full' => $temp['qty_full'],
                 'qty_receh' => $temp['qty_receh'],
+                'area_rak' => $rak ? $rak->area_rak : null,
+                'nama_rak' => $rak ? $rak->nama_rak : null,
+                'kolom_rak' => $rak ? $rak->kolom_rak : null,
+                'level_rak' => $rak ? $rak->level_rak : null,
+                'bin_rak' => $rak ? $rak->box_rak : null,
             ];
         }
 
@@ -895,9 +928,11 @@ class WspStockOpnameController extends Controller
 
                 // Save details (individual entries from temp!)
                 foreach ($tempData as $temp) {
+                    $soh = $temp->soh;
                     WspSoDetailModel::create([
                         'so_id' => $sop->id,
                         'barang_id' => $temp->barang_id,
+                        'loc_id' => $temp->loc_id ?? ($soh ? $soh->loc_id : null),
                         'qty_full' => $temp->qty_full,
                         'qty_receh' => $temp->qty_receh,
                         'created_at' => $temp->created_at,
@@ -906,9 +941,11 @@ class WspStockOpnameController extends Controller
 
                 // Save summaries
                 foreach ($analysis as $item) {
+                    $soh = $sohData->get($item['soh_id']);
                     WspSoSummariesModel::create([
                         'so_id' => $sop->id,
                         'barang_id' => $item['barang_id'],
+                        'loc_id' => $soh ? $soh->loc_id : null,
                         'qty_fisik' => $item['qty_fisik'],
                         'qty_sistem' => $item['qty_sistem'],
                         'selisih' => $item['selisih'],
@@ -1363,9 +1400,9 @@ class WspStockOpnameController extends Controller
                 if (!$detail) continue;
 
                 $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
-                $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
+                $qtyReceh = 0;
 
-                if ($qtyFull < 0 || $qtyReceh < 0) {
+                if ($qtyFull < 0) {
                     return response()->json([
                         'status' => 'error',
                         'message' => 'Kuantitas tidak boleh negatif/minus!'
@@ -1376,7 +1413,7 @@ class WspStockOpnameController extends Controller
                 $detail->qty_receh = $qtyReceh;
                 $detail->save();
 
-                $totalQtyFisik += ($qtyFull * $qtyPallet) + $qtyReceh;
+                $totalQtyFisik += $qtyFull;
             }
 
             // Calculate new summary values
@@ -1471,10 +1508,9 @@ class WspStockOpnameController extends Controller
                     ->where('barang_id', $summary->barang_id)
                     ->get();
 
-                $qtyPallet = $summary->barang ? $summary->barang->qty_pallet : 1;
                 $totalQtyFisik = 0;
                 foreach ($remainingDetails as $det) {
-                    $totalQtyFisik += ($det->qty_full * $qtyPallet) + $det->qty_receh;
+                    $totalQtyFisik += $det->qty_full;
                 }
 
                 if ($remainingDetails->isEmpty()) {

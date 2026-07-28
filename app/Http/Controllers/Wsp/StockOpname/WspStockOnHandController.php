@@ -3,20 +3,22 @@
 namespace App\Http\Controllers\Wsp\StockOpname;
 
 use App\Http\Controllers\Controller;
-use App\Models\Wsp\StockOpname\WspSohModel;
-use App\Models\Wsp\StockOpname\WspSoModel;
-use App\Models\Wsp\StockOpname\WspSoSummariesModel;
-use App\Models\Wsp\StockOpname\WspSoStatusModel;
 use App\Models\Wsp\BarangModel;
+use App\Models\Wsp\RakModel;
+use App\Models\Wsp\stock_manage\StockLocationModel;
+use App\Models\Wsp\StockOpname\WspSoModel;
+use App\Models\Wsp\StockOpname\WspSoStatusModel;
+use App\Models\Wsp\StockOpname\WspSoSummariesModel;
+use App\Models\Wsp\StockOpname\WspSohModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use Illuminate\Support\Facades\Cache;
 
 class WspStockOnHandController extends Controller
 {
@@ -44,7 +46,8 @@ class WspStockOnHandController extends Controller
 
         $query->with([
             'barang:id,mid_barang,nama_barang,uom,qty_pallet',
-            'user:id,username'
+            'user:id,username',
+            'location.rak',
         ]);
 
         $data = $query->orderBy('wsp_soh.id', 'desc')->paginate($perPage);
@@ -72,9 +75,125 @@ class WspStockOnHandController extends Controller
         ]);
     }
 
+    public function getBarangStockLocation(Request $request)
+    {
+        $barangIds = StockLocationModel::where('status', 'active')->distinct()->pluck('barang_id');
+        $barang = BarangModel::whereIn('id', $barangIds)->select('id', 'mid_barang', 'nama_barang', 'uom', 'qty_pallet')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $barang
+        ]);
+    }
+
+    public function getRakList(Request $request)
+    {
+        $barangId = $request->input('barang_id');
+
+        if (!$barangId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Barang ID diperlukan.'
+            ], 422);
+        }
+
+        $query = StockLocationModel::where('status', 'active');
+        if (is_array($barangId)) {
+            $query->whereIn('barang_id', $barangId);
+        } else {
+            $query->where('barang_id', $barangId);
+        }
+
+        $locations = $query->with('rak')->get()->map(function ($loc) {
+            if (!$loc->rak) return null;
+            return [
+                'id'       => $loc->id,
+                'loc_id'   => $loc->id,
+                'rak_id'   => $loc->rak->id,
+                'barang_id' => $loc->barang_id,
+                'area_rak' => $loc->rak->area_rak,
+                'nama_rak' => $loc->rak->nama_rak,
+                'kolom_rak' => $loc->rak->kolom_rak,
+                'level_rak' => $loc->rak->level_rak,
+                'bin_rak'  => $loc->rak->box_rak,
+                'text'     => "{$loc->rak->plant} - {$loc->rak->s_loc} - {$loc->rak->area_rak}-{$loc->rak->nama_rak}-({$loc->rak->kolom_rak}.{$loc->rak->level_rak}.{$loc->rak->box_rak})"
+            ];
+        })->filter()->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $locations
+        ]);
+    }
+
+    public function getAreaList(Request $request)
+    {
+        $areas = RakModel::distinct()->orderBy('area_rak', 'asc')->pluck('area_rak');
+        return response()->json([
+            'status' => 'success',
+            'data' => $areas
+        ]);
+    }
+
+    public function getNamaRakList(Request $request)
+    {
+        $area = $request->input('area');
+        $query = RakModel::query();
+        if ($area) {
+            if (is_array($area)) {
+                $query->whereIn('area_rak', $area);
+            } else {
+                $query->where('area_rak', $area);
+            }
+        }
+        $racks = $query->distinct()->orderBy('nama_rak', 'asc')->pluck('nama_rak');
+        return response()->json([
+            'status' => 'success',
+            'data' => $racks
+        ]);
+    }
+
+    public function getBarangListByLocation(Request $request)
+    {
+        $area = $request->input('area');
+        $namaRak = $request->input('nama_rak');
+
+        $query = StockLocationModel::where('status', 'active');
+
+        if ($area || $namaRak) {
+            $query->whereHas('rak', function ($q) use ($area, $namaRak) {
+                if ($area) {
+                    if (is_array($area)) {
+                        $q->whereIn('area_rak', $area);
+                    } else {
+                        $q->where('area_rak', $area);
+                    }
+                }
+                if ($namaRak) {
+                    if (is_array($namaRak)) {
+                        $q->whereIn('nama_rak', $namaRak);
+                    } else {
+                        $q->where('nama_rak', $namaRak);
+                    }
+                }
+            });
+        }
+
+        $barangIds = $query->distinct()->pluck('barang_id');
+        $barang = BarangModel::whereIn('id', $barangIds)->select('id', 'mid_barang', 'nama_barang', 'uom', 'qty_pallet')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $barang
+        ]);
+    }
+
     public function show(string $id)
     {
-        $soh = WspSohModel::with('barang:id,mid_barang,nama_barang')->find($id);
+        $soh = WspSohModel::with([
+            'barang:id,mid_barang,nama_barang,uom',
+            'location.rak',
+        ])->find($id);
 
         if (!$soh) {
             return response()->json([
@@ -91,29 +210,199 @@ class WspStockOnHandController extends Controller
 
     public function store(Request $request)
     {
+        // Bulk add — barang_id array + area + nama_rak (atau rak_id langsung)
+        if ($request->has('barang_id') && is_array($request->barang_id)) {
+            $request->validate([
+                'barang_id' => 'required|array',
+                'area'      => 'nullable|array',
+                'nama_rak'  => 'nullable|array',
+                'jenis_so'  => 'required|string|in:cycle_count,monthly',
+            ]);
+
+            $today = now()->toDateString();
+            $jenisSo = $request->jenis_so;
+            $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+
+            $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
+                ->where('jenis_so', $jenisSo)
+                ->first();
+            if ($soStatus && $soStatus->status === 'finished') {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Tidak dapat menambah data SOH karena Stock Opname {$periodeText} telah selesai (finished)."
+                ], 422);
+            }
+
+            if ($jenisSo === 'monthly') {
+                $currentYear  = now()->year;
+                $currentMonth = now()->month;
+                $hasMonthlySo = WspSoStatusModel::where('jenis_so', 'monthly')
+                    ->whereYear('tgl_opname', $currentYear)
+                    ->whereMonth('tgl_opname', $currentMonth)
+                    ->whereDate('tgl_opname', '!=', $today)
+                    ->exists();
+                if ($hasMonthlySo) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Tidak dapat menambah data SOH karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
+                    ], 422);
+                }
+            }
+
+            try {
+                DB::beginTransaction();
+
+                $barangIds = $request->barang_id;
+
+                // Resolve loc_ids dari area + nama_rak yang dipilih
+                $locQuery = StockLocationModel::where('status', 'active')
+                    ->whereIn('barang_id', $barangIds);
+
+                if ($request->has('area') && $request->has('nama_rak')) {
+                    $locQuery->whereHas('rak', function ($q) use ($request) {
+                        $q->whereIn('area_rak', (array)$request->area)
+                            ->whereIn('nama_rak', (array)$request->nama_rak);
+                    });
+                }
+
+                $locationMaps = $locQuery->with('rak')->get()->groupBy('barang_id');
+
+                $countSuccess = 0;
+                $skipped = [];
+
+                foreach ($barangIds as $barangId) {
+                    $maps = $locationMaps->get($barangId, collect());
+
+                    // Query system stock quantities
+                    $systemStock = WspSohModel::where('barang_id', $barangId)->first();
+                    $unrest  = $systemStock ? (int)$systemStock->unrest   : 0;
+                    $qi      = $systemStock ? (int)$systemStock->qual_insp : 0;
+                    $block   = $systemStock ? (int)$systemStock->blocked   : 0;
+                    $qty_soh = $unrest + $qi + $block;
+
+                    if ($maps->isEmpty()) {
+                        // Barang tidak ada di stock location → simpan tanpa loc_id
+                        $exists = WspSohModel::where('barang_id', $barangId)
+                            ->whereNull('loc_id')
+                            ->where('jenis_so', $jenisSo)
+                            ->whereDate('created_at', $today)
+                            ->exists();
+                        if ($exists) {
+                            $skipped[] = "MID barang_id:{$barangId} sudah ada.";
+                            continue;
+                        }
+                        WspSohModel::create([
+                            'barang_id'    => $barangId,
+                            'loc_id'       => null,
+                            'jenis_so'     => $jenisSo,
+                            'user_id'      => Auth::id() ?? 1,
+                            'qty_soh'      => $qty_soh,
+                            'qty_unrest'   => $unrest,
+                            'qty_qi'       => $qi,
+                            'qty_block'    => $block,
+                            'last_updated' => now(),
+                        ]);
+                        $countSuccess++;
+                        continue;
+                    }
+
+                    foreach ($maps as $map) {
+                        $exists = WspSohModel::where('barang_id', $barangId)
+                            ->where('loc_id', $map->id)
+                            ->where('jenis_so', $jenisSo)
+                            ->whereDate('created_at', $today)
+                            ->exists();
+
+                        if ($exists) {
+                            $rak = $map->rak;
+                            $skipped[] = "MID barang_id:{$barangId} di Rak " .
+                                ($rak ? "{$rak->area_rak}-{$rak->nama_rak}" : $map->id) . " sudah ada.";
+                            continue;
+                        }
+
+                        $soh = WspSohModel::create([
+                            'barang_id'    => $barangId,
+                            'loc_id'       => $map->id,
+                            'jenis_so'     => $jenisSo,
+                            'user_id'      => Auth::id() ?? 1,
+                            'qty_soh'      => $qty_soh,
+                            'qty_unrest'   => $unrest,
+                            'qty_qi'       => $qi,
+                            'qty_block'    => $block,
+                            'last_updated' => now(),
+                        ]);
+
+                        // Update summaries jika ada SO aktif hari ini
+                        $sop = WspSoModel::whereDate('tgl_opname', $today)
+                            ->where('jenis_so', $jenisSo)
+                            ->first();
+                        if ($sop) {
+                            $summary = WspSoSummariesModel::where('so_id', $sop->id)
+                                ->where('barang_id', $barangId)
+                                ->where('loc_id', $map->id)
+                                ->first();
+
+                            if ($summary) {
+                                $qtySistem = $qty_soh;
+                                $qtyFisik  = $summary->qty_fisik ?? 0;
+                                $selisih   = $qtyFisik - $qtySistem;
+                                $status    = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
+
+                                $summary->update([
+                                    'qty_sistem' => $qtySistem,
+                                    'selisih'    => $selisih,
+                                    'status'     => $status,
+                                ]);
+                            }
+                        }
+
+                        $countSuccess++;
+                    }
+                }
+
+                DB::commit();
+
+                $msg = "Berhasil menambah $countSuccess data SOH manual.";
+                if (!empty($skipped)) {
+                    $msg .= " Beberapa item dilewati karena sudah ada.";
+                }
+
+                return response()->json(['status' => true, 'message' => $msg], 200);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Gagal menambah data SOH manual: ' . $e->getMessage()
+                ], 500);
+            }
+        }
+
+        // Single manual input — kirim loc_id dari edit form
         $request->validate([
             'barang_id' => 'required|exists:wsp_barang,id',
-            'unrest' => 'nullable|integer|min:0',
-            'qi' => 'nullable|integer|min:0',
-            'block' => 'nullable|integer|min:0',
-            'jenis_so' => 'required|string|in:cycle_count,monthly',
+            'loc_id'    => 'nullable|exists:wsp_stock_location,id',
+            'unrest'    => 'nullable|integer|min:0',
+            'qi'        => 'nullable|integer|min:0',
+            'block'     => 'nullable|integer|min:0',
+            'jenis_so'  => 'required|string|in:cycle_count,monthly',
         ]);
 
         $today = now()->toDateString();
         $jenisSo = $request->jenis_so;
         $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+
         $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
             ->where('jenis_so', $jenisSo)
             ->first();
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => "Tidak dapat menambah data SOH karena Stock Opname {$periodeText} telah selesai (finished)."
             ], 422);
         }
 
         if ($jenisSo === 'monthly') {
-            $currentYear = now()->year;
+            $currentYear  = now()->year;
             $currentMonth = now()->month;
             $hasMonthlySo = WspSoStatusModel::where('jenis_so', 'monthly')
                 ->whereYear('tgl_opname', $currentYear)
@@ -122,7 +411,7 @@ class WspStockOnHandController extends Controller
                 ->exists();
             if ($hasMonthlySo) {
                 return response()->json([
-                    'status' => false,
+                    'status'  => false,
                     'message' => 'Tidak dapat menambah data SOH karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
                 ], 422);
             }
@@ -130,51 +419,49 @@ class WspStockOnHandController extends Controller
 
         try {
             $barangId = $request->barang_id;
-            $barang = BarangModel::findOrFail($barangId);
+            $locId    = $request->loc_id;
+            $barang   = BarangModel::findOrFail($barangId);
 
-            // Validasi jika MID sudah ada hari ini untuk jenis SO ini
             $exists = WspSohModel::where('barang_id', $barangId)
+                ->where('loc_id', $locId)
                 ->where('jenis_so', $jenisSo)
                 ->whereDate('created_at', $today)
                 ->exists();
 
             if ($exists) {
                 return response()->json([
-                    'status' => false,
-                    'message' => "Data SOH untuk MID {$barang->mid_barang} sudah ada {$periodeText}!"
+                    'status'  => false,
+                    'message' => "Data SOH untuk MID {$barang->mid_barang} di lokasi tersebut sudah ada {$periodeText}!"
                 ], 422);
             }
 
             DB::beginTransaction();
 
-            $unrest = (int)($request->unrest ?? 0);
-            $qi     = (int)($request->qi ?? 0);
-            $block  = (int)($request->block ?? 0);
+            $unrest  = (int)($request->unrest ?? 0);
+            $qi      = (int)($request->qi     ?? 0);
+            $block   = (int)($request->block   ?? 0);
             $qty_soh = $unrest + $qi + $block;
 
-            $soh = WspSohModel::updateOrCreate(
-                [
-                    'barang_id' => $barangId,
-                    'jenis_so'  => $jenisSo,
-                    'created_at' => $today
-                ],
-                [
-                    'user_id'      => Auth::id() ?? 1,
-                    'qty_soh'      => $qty_soh,
-                    'qty_unrest'   => $unrest,
-                    'qty_qi'       => $qi,
-                    'qty_block'    => $block,
-                    'last_updated' => now(),
-                ]
-            );
+            $soh = WspSohModel::create([
+                'barang_id'    => $barangId,
+                'loc_id'       => $locId,
+                'jenis_so'     => $jenisSo,
+                'user_id'      => Auth::id() ?? 1,
+                'qty_soh'      => $qty_soh,
+                'qty_unrest'   => $unrest,
+                'qty_qi'       => $qi,
+                'qty_block'    => $block,
+                'last_updated' => now(),
+            ]);
 
-            // Update summaries if there is a running opname today
+            // Update summaries jika ada SO aktif hari ini
             $sop = WspSoModel::whereDate('tgl_opname', $today)
                 ->where('jenis_so', $jenisSo)
                 ->first();
             if ($sop) {
                 $summary = WspSoSummariesModel::where('so_id', $sop->id)
                     ->where('barang_id', $barangId)
+                    ->where('loc_id', $locId)
                     ->first();
 
                 if ($summary) {
@@ -194,15 +481,14 @@ class WspStockOnHandController extends Controller
             DB::commit();
 
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => 'Stock On Hand berhasil dibuat',
-                'data' => $soh
+                'data'    => $soh
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Gagal membuat Stock On Hand: ' . $e->getMessage()
             ], 500);
         }
@@ -219,33 +505,33 @@ class WspStockOnHandController extends Controller
             ->first();
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
             ], 422);
         }
 
         $request->validate([
             'unrest' => 'nullable|integer|min:0',
-            'qi' => 'nullable|integer|min:0',
-            'block' => 'nullable|integer|min:0',
+            'qi'     => 'nullable|integer|min:0',
+            'block'  => 'nullable|integer|min:0',
         ]);
 
         try {
-            $unrest = (int)($request->unrest ?? 0);
-            $qi = (int)($request->qi ?? 0);
-            $block = (int)($request->block ?? 0);
+            $unrest  = (int)($request->unrest ?? 0);
+            $qi      = (int)($request->qi     ?? 0);
+            $block   = (int)($request->block   ?? 0);
             $qty_soh = $unrest + $qi + $block;
 
             $soh->update([
-                'qty_soh' => $qty_soh,
-                'qty_unrest' => $unrest,
-                'qty_qi' => $qi,
-                'qty_block' => $block,
-                'user_id' => Auth::id() ?? $soh->user_id,
+                'qty_soh'      => $qty_soh,
+                'qty_unrest'   => $unrest,
+                'qty_qi'       => $qi,
+                'qty_block'    => $block,
+                'user_id'      => Auth::id() ?? $soh->user_id,
                 'last_updated' => now()
             ]);
 
-            // Update live comparison if a session is currently running
+            // Update live comparison jika ada SO aktif
             $sop = WspSoModel::whereDate('tgl_opname', $today)
                 ->where('jenis_so', $soh->jenis_so)
                 ->first();
@@ -253,13 +539,14 @@ class WspStockOnHandController extends Controller
             if ($sop) {
                 $summary = WspSoSummariesModel::where('so_id', $sop->id)
                     ->where('barang_id', $soh->barang_id)
+                    ->where('loc_id', $soh->loc_id)
                     ->first();
 
                 if ($summary) {
                     $qtySistem = $qty_soh;
-                    $qtyFisik = $summary->qty_fisik ?? 0;
-                    $selisih = $qtyFisik - $qtySistem;
-                    $status = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
+                    $qtyFisik  = $summary->qty_fisik ?? 0;
+                    $selisih   = $qtyFisik - $qtySistem;
+                    $status    = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
 
                     $summary->update([
                         'qty_sistem' => $qtySistem,
@@ -270,13 +557,13 @@ class WspStockOnHandController extends Controller
             }
 
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => 'Stock On Hand berhasil diperbarui',
-                'data' => $soh
+                'data'    => $soh
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Gagal memperbarui Stock On Hand: ' . $e->getMessage()
             ], 500);
         }
@@ -293,14 +580,14 @@ class WspStockOnHandController extends Controller
             ->first();
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => "Tidak dapat menghapus data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
             ], 422);
         }
 
         $soh->delete();
         return response()->json([
-            'status' => true,
+            'status'  => true,
             'message' => 'Stock On Hand berhasil dihapus'
         ]);
     }
@@ -315,7 +602,7 @@ class WspStockOnHandController extends Controller
             ->first();
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => "Tidak dapat mengosongkan data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
             ], 422);
         }
@@ -326,12 +613,12 @@ class WspStockOnHandController extends Controller
                 ->delete();
 
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => "Berhasil menghapus $deleted data SOH untuk {$periodeText}."
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Gagal menghapus data SOH: ' . $e->getMessage()
             ], 500);
         }
@@ -340,25 +627,26 @@ class WspStockOnHandController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls',
+            'file'     => 'required|mimes:xlsx,xls',
             'jenis_so' => 'required|string|in:cycle_count,monthly',
         ]);
 
-        $today = now()->toDateString();
-        $jenisSo = $request->input('jenis_so');
+        $today    = now()->toDateString();
+        $jenisSo  = $request->input('jenis_so');
         $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
+
         $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
             ->where('jenis_so', $jenisSo)
             ->first();
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => "Tidak dapat mengunggah file Excel karena Stock Opname {$periodeText} telah selesai (finished)."
             ], 422);
         }
 
         if ($jenisSo === 'monthly') {
-            $currentYear = now()->year;
+            $currentYear  = now()->year;
             $currentMonth = now()->month;
             $hasMonthlySo = WspSoStatusModel::where('jenis_so', 'monthly')
                 ->whereYear('tgl_opname', $currentYear)
@@ -367,23 +655,22 @@ class WspStockOnHandController extends Controller
                 ->exists();
             if ($hasMonthlySo) {
                 return response()->json([
-                    'status' => false,
+                    'status'  => false,
                     'message' => 'Tidak dapat mengunggah file Excel karena Stock Opname Monthly untuk bulan ini sudah pernah berjalan.'
                 ], 422);
             }
         }
 
         try {
-            $file = $request->file('file');
-            $path = $file->getRealPath();
+            $file  = $request->file('file');
+            $path  = $file->getRealPath();
 
             $spreadsheet = IOFactory::load($path);
             $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray(null, true, true, true);
+            $rows  = $sheet->toArray(null, true, true, true);
 
-            $header = [];
-            $countSuccess = 0;
-            $notFound = [];
+            $header    = [];
+            $notFound  = [];
             $validData = [];
 
             foreach ($rows as $index => $row) {
@@ -394,7 +681,7 @@ class WspStockOnHandController extends Controller
 
                     if (!empty($missing)) {
                         return response()->json([
-                            'status' => false,
+                            'status'  => false,
                             'message' => 'Format file Excel tidak sesuai. Kolom berikut hilang: ' . implode(', ', $missing)
                         ], 422);
                     }
@@ -407,10 +694,14 @@ class WspStockOnHandController extends Controller
 
                 if (empty($data['mid_barang'])) continue;
 
-                $barang = BarangModel::where('mid_barang', $data['mid_barang'])->first();
+                $midBarang = trim($data['mid_barang']);
+                // Skip comment rows in template
+                if (str_starts_with($midBarang, '//')) continue;
+
+                $barang = BarangModel::where('mid_barang', $midBarang)->first();
 
                 if (!$barang) {
-                    $notFound[] = $data['mid_barang'];
+                    $notFound[] = $midBarang;
                     continue;
                 }
 
@@ -423,80 +714,119 @@ class WspStockOnHandController extends Controller
             if (!empty($notFound)) {
                 $notFoundUnique = array_unique($notFound);
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Beberapa MID Barang tidak ditemukan di master barang WSP: ' . implode(', ', $notFoundUnique),
+                    'status'   => false,
+                    'message'  => 'Beberapa MID Barang tidak ditemukan di master barang WSP: ' . implode(', ', $notFoundUnique),
                     'not_found' => $notFoundUnique
                 ], 422);
             }
 
-            // Validasi jika MID sama di hari ini dan sudah ada untuk jenis SO ini
-            $duplicatesInDb = [];
+            // Auto-expand setiap barang ke semua loc aktif di stock_location
+            // Jika barang tidak ada di stock_location → simpan dengan loc_id null (Not Assigned)
+            $toSave = [];
+            foreach ($validData as $item) {
+                $barang    = $item['barang'];
+                $data      = $item['data'];
+                $unrest    = (int)($data['unrest']    ?? 0);
+                $qual_insp = (int)($data['qual_insp'] ?? 0);
+                $blocked   = (int)($data['blocked']   ?? 0);
+
+                $mappings = StockLocationModel::where('barang_id', $barang->id)
+                    ->where('status', 'active')
+                    ->get();
+
+                if ($mappings->count() > 0) {
+                    foreach ($mappings as $map) {
+                        $toSave[] = [
+                            'barang'    => $barang,
+                            'loc_id'    => $map->id,
+                            'unrest'    => $unrest,
+                            'qual_insp' => $qual_insp,
+                            'blocked'   => $blocked,
+                        ];
+                    }
+                } else {
+                    // Tidak ada di stock_location → Not Assigned
+                    $toSave[] = [
+                        'barang'    => $barang,
+                        'loc_id'    => null,
+                        'unrest'    => $unrest,
+                        'qual_insp' => $qual_insp,
+                        'blocked'   => $blocked,
+                    ];
+                }
+            }
+
+            // Cek duplikat
+            $duplicatesInDb   = [];
             $seenCombinations = [];
             $duplicatesInFile = [];
 
-            foreach ($validData as $item) {
+            foreach ($toSave as $item) {
                 $barang = $item['barang'];
-                $combinationKey = $barang->mid_barang;
+                $locId  = $item['loc_id'];
 
-                // Check duplicates in file
+                $combinationKey = "{$barang->mid_barang}|{$locId}";
+
                 if (in_array($combinationKey, $seenCombinations)) {
-                    $duplicatesInFile[] = "MID: {$barang->mid_barang}";
+                    $duplicatesInFile[] = "MID: {$barang->mid_barang} (loc_id: " . ($locId ?? 'null') . ")";
                 } else {
                     $seenCombinations[] = $combinationKey;
                 }
 
-                // Check duplicates in database for today
                 $exists = WspSohModel::where('barang_id', $barang->id)
+                    ->where('loc_id', $locId)
                     ->where('jenis_so', $jenisSo)
                     ->whereDate('created_at', $today)
                     ->exists();
 
                 if ($exists) {
-                    $duplicatesInDb[] = "MID: {$barang->mid_barang}";
+                    $duplicatesInDb[] = "MID: {$barang->mid_barang} (loc_id: " . ($locId ?? 'null') . ")";
                 }
             }
 
             if (!empty($duplicatesInFile) || !empty($duplicatesInDb)) {
                 $allDuplicates = array_unique(array_merge($duplicatesInFile, $duplicatesInDb));
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Terdapat duplikasi data MID untuk hari ini: ' . implode('; ', $allDuplicates),
+                    'status'     => false,
+                    'message'    => 'Terdapat duplikasi data MID + Lokasi untuk hari ini: ' . implode('; ', $allDuplicates),
                     'duplicates' => $allDuplicates
                 ], 422);
             }
 
-            foreach ($validData as $item) {
-                $barang = $item['barang'];
-                $data = $item['data'];
+            $countSuccess = 0;
+            foreach ($toSave as $item) {
+                $barang    = $item['barang'];
+                $locId     = $item['loc_id'];
+                $unrest    = $item['unrest'];
+                $qual_insp = $item['qual_insp'];
+                $blocked   = $item['blocked'];
+                $qty_soh   = $unrest + $qual_insp + $blocked;
 
-                $unrest = (int)($data['unrest'] ?? 0);
-                $qual_insp = (int)($data['qual_insp'] ?? 0);
-                $blocked = (int)($data['blocked'] ?? 0);
-                $qty_soh = $unrest + $qual_insp + $blocked;
-
-                $soh = WspSohModel::updateOrCreate(
+                WspSohModel::updateOrCreate(
                     [
-                        'barang_id' => $barang->id,
-                        'jenis_so'  => $jenisSo,
+                        'barang_id'  => $barang->id,
+                        'jenis_so'   => $jenisSo,
+                        'loc_id'     => $locId,
                         'created_at' => $today
                     ],
                     [
-                        'user_id' => Auth::id() ?? 1,
-                        'qty_soh' => $qty_soh,
-                        'qty_unrest' => $unrest,
-                        'qty_qi' => $qual_insp,
-                        'qty_block' => $blocked,
+                        'user_id'      => Auth::id() ?? 1,
+                        'qty_soh'      => $qty_soh,
+                        'qty_unrest'   => $unrest,
+                        'qty_qi'       => $qual_insp,
+                        'qty_block'    => $blocked,
                         'last_updated' => now(),
                     ]
                 );
 
-                // Update summaries if there is a running opname today
+                // Update summaries
                 $sop = WspSoModel::whereDate('tgl_opname', $today)
                     ->where('jenis_so', $jenisSo)
                     ->first();
                 if ($sop) {
                     $summary = WspSoSummariesModel::where('so_id', $sop->id)
                         ->where('barang_id', $barang->id)
+                        ->where('loc_id', $locId)
                         ->first();
 
                     if ($summary) {
@@ -517,12 +847,12 @@ class WspStockOnHandController extends Controller
             }
 
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => "Berhasil import $countSuccess data Stock On Hand WSP dari Excel."
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Gagal mengimpor file Excel: ' . $e->getMessage()
             ], 500);
         }
@@ -534,25 +864,23 @@ class WspStockOnHandController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         $headers = [
-            'mid_barang',
-            'unrest',
-            'qual_insp',
-            'blocked',
+            'A' => 'mid_barang',
+            'B' => 'unrest',
+            'C' => 'qual_insp',
+            'D' => 'blocked',
         ];
 
-        $columnIndex = 'A';
-        foreach ($headers as $header) {
-            $sheet->setCellValue($columnIndex . '1', strtoupper($header));
-            $sheet->getStyle($columnIndex . '1')->getFont()->setBold(true);
-            $sheet->getColumnDimension($columnIndex)->setAutoSize(true);
-            $columnIndex++;
+        foreach ($headers as $col => $header) {
+            $sheet->setCellValue($col . '1', strtoupper($header));
+            $sheet->getStyle($col . '1')->getFont()->setBold(true);
+            $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Sample data
-        $sheet->setCellValue('A2', '10000001'); // Sample WSP MID
-        $sheet->setCellValue('B2', 50);  // Unrest
-        $sheet->setCellValue('C2', 0);   // QI
-        $sheet->setCellValue('D2', 0);   // Blocked
+        // Sample data row
+        $sheet->setCellValue('A2', '10000001');
+        $sheet->setCellValue('B2', 50);
+        $sheet->setCellValue('C2', 0);
+        $sheet->setCellValue('D2', 0);
 
         $fileName = 'Template_Stock_On_Hand_WSP_' . date('Y-m-d') . '.xlsx';
 
@@ -560,7 +888,7 @@ class WspStockOnHandController extends Controller
             $writer = new Xlsx($spreadsheet);
             $writer->save('php://output');
         }, 200, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => "attachment;filename=\"{$fileName}\"",
         ]);
     }

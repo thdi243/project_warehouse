@@ -184,7 +184,7 @@
                         @csrf
                         <div class="p-3 rounded-3 mb-3 bg-light">
                             <h6 class="fw-bold mb-3 text-secondary"><i class="mdi mdi-database-outline me-1"></i> Data
-                                Barang</h6>
+                                Barang & Lokasi</h6>
                             <div class="row g-3">
                                 <div class="col-md-12">
                                     <label class="form-label fw-semibold">Pilih MID Barang</label>
@@ -192,6 +192,26 @@
                                         style="width:100%">
                                         <option value="">-- Pilih MID --</option>
                                     </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Area Rak</label>
+                                    <input type="text" class="form-control" name="area_rak" placeholder="e.g. FL1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Nama Rak</label>
+                                    <input type="text" class="form-control" name="nama_rak" placeholder="e.g. A">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Kolom Rak</label>
+                                    <input type="text" class="form-control" name="kolom_rak" placeholder="e.g. 2">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Level Rak</label>
+                                    <input type="text" class="form-control" name="level_rak" placeholder="e.g. 3">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Bin Rak</label>
+                                    <input type="text" class="form-control" name="bin_rak" placeholder="e.g. 0">
                                 </div>
                             </div>
                         </div>
@@ -201,8 +221,8 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="form-label">UNREST</label>
-                                    <input type="number" class="form-control" name="unrest" value="0" min="0"
-                                        required>
+                                    <input type="number" class="form-control" name="unrest" value="0"
+                                        min="0" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">QI</label>
@@ -220,15 +240,11 @@
                             <h6 class="fw-bold mb-3 text-warning"><i
                                     class="mdi mdi-checkbox-marked-circle-outline me-1"></i> Perhitungan Fisik</h6>
                             <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Qty Full Pallet</label>
+                                <div class="col-md-12">
+                                    <label class="form-label">Qty Fisik</label>
                                     <input type="number" class="form-control" name="qty_full" value="0"
                                         min="0" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Qty Receh</label>
-                                    <input type="number" class="form-control" name="qty_receh" value="0"
-                                        min="0" required>
+                                    <input type="hidden" name="qty_receh" value="0">
                                 </div>
                             </div>
                         </div>
@@ -377,17 +393,9 @@
 
             $('#btnSaveNewItem').on('click', function() {
                 const qtyFullVal = parseInt($('#formAddItem [name="qty_full"]').val()) || 0;
-                const qtyRecehVal = parseInt($('#formAddItem [name="qty_receh"]').val()) || 0;
 
-                if (qtyFullVal < 0 || qtyRecehVal < 0) {
+                if (qtyFullVal < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
-                    return;
-                }
-
-                if (qtyFullVal === 0 && qtyRecehVal === 0) {
-                    toastr.warning(
-                        'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!'
-                    );
                     return;
                 }
 
@@ -689,8 +697,8 @@
                                     <tr>
                                         <th style="width: 50px;">No</th>
                                         <th class="text-start">MID (Barang)</th>
-                                        <th style="width: 150px;">Qty Full Pallet</th>
-                                        <th style="width: 150px;">Qty Receh</th>
+                                        <th>Lokasi</th>
+                                        <th style="width: 150px;">Qty Fisik</th>
                                         <th>Summary</th>
                                         <th class="d-none">Selisih</th>
                                         <th>Catatan</th>
@@ -726,15 +734,17 @@
                                             <div>
                                                 <span class="d-block fw-bold">${item.mid}</span>
                                                 <span class="d-block text-muted small">${item.nama_barang}</span>
-                                                <span class="badge bg-light text-dark border">Pallet Conv: ${item.qty_pallet} ${item.uom}</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <input type="number" class="form-control text-center qty-full" value="" min="0" placeholder="0">
+                                        ${(item.area_rak || item.nama_rak || item.kolom_rak || item.level_rak || item.bin_rak)
+                                            ? `<span class="badge bg-soft-info text-info border">${item.area_rak || '-'}-${item.nama_rak || '-'}-${item.kolom_rak || '-'}-${item.level_rak || '-'}-${item.bin_rak || '-'}</span>`
+                                            : `<span class="badge bg-soft-warning text-warning border">Not yet</span>`
+                                        }
                                     </td>
                                     <td class="text-center">
-                                        <input type="number" class="form-control text-center qty-receh" value="" min="0" placeholder="0">
+                                        <input type="number" class="form-control text-center qty-fisik" value="" min="0" placeholder="0">
                                     </td>
                                     <td class="text-end fw-bold physical-summary">${isCounted ? summaryVal.toLocaleString('id-ID') : '-'} ${item.uom}</td>
                                     <td class="text-center d-none">
@@ -785,84 +795,48 @@
 
         function attachRowEvents() {
             // Enter key triggers blur (which triggers change)
-            $('.qty-full, .qty-receh, .notes-field').on('keypress', function(e) {
+            $('.qty-fisik, .notes-field').on('keypress', function(e) {
                 if (e.which === 13) {
                     $(this).blur();
                 }
             });
 
             // Live validation & preview on input
-            $('.qty-full, .qty-receh, .notes-field').on('input', function() {
+            $('.qty-fisik, .notes-field').on('input', function() {
                 const row = $(this).closest('tr');
-                const qtyPallet = parseFloat(row.data('qty-pallet')) || 1;
                 const dbSummary = parseFloat(row.attr('data-summary-db')) || 0;
 
-                const fullValStr = row.find('.qty-full').val();
-                const recehValStr = row.find('.qty-receh').val();
+                const fullValStr = row.find('.qty-fisik').val();
 
-                if ((fullValStr !== '' && parseInt(fullValStr) < 0) || (recehValStr !== '' && parseInt(
-                        recehValStr) < 0)) {
+                if (fullValStr !== '' && parseInt(fullValStr) < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                     $(this).val('');
                     return;
                 }
 
-                if (recehValStr !== '') {
-                    const recehVal = parseInt(recehValStr) || 0;
-                    if (recehVal >= qtyPallet) {
-                        toastr.warning(
-                            `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
-                        row.find('.qty-receh').val('');
-                        return;
-                    }
-                }
-
                 const full = parseInt(fullValStr) || 0;
-                const receh = parseInt(recehValStr) || 0;
-
-                if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
-                    toastr.warning(
-                        'Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
-                    row.find('.qty-full').val('');
-                    row.find('.qty-receh').val('');
-                    return;
-                }
 
                 // Calculate preview values
-                const physicalSummary = dbSummary + (full * qtyPallet) + receh;
-                row.find('.physical-summary').text(physicalSummary > 0 ? physicalSummary.toLocaleString('id-ID') :
+                const physicalSummary = dbSummary + full;
+                row.find('.physical-summary').text(physicalSummary > 0 || (fullValStr !== '' && physicalSummary ===
+                        0) ? physicalSummary.toLocaleString('id-ID') :
                     '-');
             });
 
             // Save on change (blur / enter)
-            $('.qty-full, .qty-receh, .notes-field').on('change', function() {
+            $('.qty-fisik, .notes-field').on('change', function() {
                 const row = $(this).closest('tr');
                 const sohId = row.data('id');
-                const qtyPallet = parseFloat(row.data('qty-pallet')) || 1;
 
-                const fullValStr = row.find('.qty-full').val();
-                const recehValStr = row.find('.qty-receh').val();
+                const fullValStr = row.find('.qty-fisik').val();
                 const noteVal = row.find('.notes-field').val();
 
                 // Don't save if all are empty
-                if (fullValStr === '' && recehValStr === '' && noteVal === '') {
+                if (fullValStr === '' && noteVal === '') {
                     return;
                 }
 
                 const full = parseInt(fullValStr) || 0;
-                const receh = parseInt(recehValStr) || 0;
-
-                // Double check validation before sending
-                if (recehValStr !== '' && receh >= qtyPallet) {
-                    toastr.warning(
-                        `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
-                    row.find('.qty-receh').val('');
-                    return;
-                }
-
-                if (full === 0 && receh === 0 && (fullValStr !== '' || recehValStr !== '')) {
-                    return;
-                }
 
                 $.ajax({
                     url: "{{ route('wsp.stock_opname.save-temp') }}",
@@ -871,7 +845,7 @@
                         _token: "{{ csrf_token() }}",
                         soh_id: sohId,
                         qty_full: fullValStr !== '' ? full : null,
-                        qty_receh: recehValStr !== '' ? receh : null,
+                        qty_receh: 0,
                         keterangan: noteVal,
                         jenis_so: $('#jenis_so').val()
                     },
@@ -880,9 +854,8 @@
                             toastr.success('Perubahan draft disimpan.', '', {
                                 timeOut: 800
                             });
-                            if (fullValStr !== '' || recehValStr !== '') {
-                                row.find('.qty-full').val('');
-                                row.find('.qty-receh').val('');
+                            if (fullValStr !== '') {
+                                row.find('.qty-fisik').val('');
                             }
                             loadAllTempData();
                         }
@@ -1028,7 +1001,8 @@
                             const row = $(`.soh-row[data-id="${sohId}"]`);
                             if (row.length) {
                                 const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
-                                row.find('.physical-summary').text(totalSummary > 0 ? totalSummary
+                                const hasHistory = tempItem.history && tempItem.history.length > 0;
+                                row.find('.physical-summary').text(hasHistory ? totalSummary
                                     .toLocaleString('id-ID') + ' ' + uom : '- ' + uom);
                                 row.attr('data-summary-db', totalSummary);
 
@@ -1093,13 +1067,10 @@
                                         <span class="badge bg-info">Qty</span>
                                     </div>
                                     <div class="row g-2">
-                                        <div class="col-md-6">
-                                            <label class="form-label small mb-1">Qty Full Pallet</label>
+                                        <div class="col-md-12">
+                                            <label class="form-label small mb-1">Qty Fisik</label>
                                             <input type="number" class="form-control qty_full" value="${item.qty_full}" min="0">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small mb-1">Qty Receh</label>
-                                            <input type="number" class="form-control qty_receh" value="${item.qty_receh}" min="0">
+                                            <input type="hidden" class="qty_receh" value="0">
                                         </div>
                                     </div>
                                     <button type="button" class="btn btn-danger btn-sm btn-delete-temp mt-2" data-type="qty" data-id="${item.id}">
@@ -1154,7 +1125,7 @@
                         <div class="col-md-3">
                             <div class="p-2 border border-info rounded h-100 bg-light fade show history-card">
                                 <div class="fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center">
-                                    <span>Full: ${h.qty_full}, Receh: ${h.qty_receh}</span>
+                                    <span>Qty: ${h.qty_full}</span>
                                     <span class="badge bg-info">${index + 1}</span>
                                 </div>
                                 <div class="text-muted small">
@@ -1217,23 +1188,13 @@
             });
         });
 
-        // Live check for negative inputs & exceeding qty_pallet in edit modal
-        $(document).on('input', '#editModal .qty_full, #editModal .qty_receh', function() {
+        // Live check for negative inputs in edit modal
+        $(document).on('input', '#editModal .qty_full', function() {
             const val = $(this).val();
             if (val !== '' && parseInt(val) < 0) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                 $(this).val('');
                 return;
-            }
-
-            if ($(this).hasClass('qty_receh') && val !== '') {
-                const tempItem = $(this).closest('.temp-item');
-                const qtyPallet = parseFloat(tempItem.data('qty-pallet')) || 1;
-                if (parseInt(val) >= qtyPallet) {
-                    toastr.warning(
-                        `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${qtyPallet})!`);
-                    $(this).val('');
-                }
             }
         });
 
@@ -1241,52 +1202,26 @@
         $('#saveEditBtn').on('click', function() {
             const updates = [];
             let hasNegative = false;
-            let hasZeroBoth = false;
-            let hasExceededAcuan = false;
-            let acuanLimit = 1;
 
             $('#editModal .temp-item').each(function() {
                 const tempId = $(this).find('.temp_id').val();
                 const qtyFull = $(this).find('.qty_full').val();
-                const qtyReceh = $(this).find('.qty_receh').val();
-                const qtyPallet = parseFloat($(this).data('qty-pallet')) || 1;
 
                 const qtyFullVal = parseInt(qtyFull) || 0;
-                const qtyRecehVal = parseInt(qtyReceh) || 0;
 
-                if (qtyFullVal < 0 || qtyRecehVal < 0) {
+                if (qtyFullVal < 0) {
                     hasNegative = true;
-                }
-
-                if (qtyFullVal === 0 && qtyRecehVal === 0) {
-                    hasZeroBoth = true;
-                }
-
-                if (qtyRecehVal >= qtyPallet) {
-                    hasExceededAcuan = true;
-                    acuanLimit = qtyPallet;
                 }
 
                 updates.push({
                     id: tempId,
                     qty_full: qtyFull,
-                    qty_receh: qtyReceh,
+                    qty_receh: 0,
                 });
             });
 
             if (hasNegative) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
-                return;
-            }
-
-            if (hasExceededAcuan) {
-                toastr.warning(
-                    `Qty Receh tidak boleh melebihi atau sama dengan acuan full pallet (${acuanLimit})!`);
-                return;
-            }
-
-            if (hasZeroBoth) {
-                toastr.warning('Kuantitas tidak boleh 0. Minimal salah satu harus terisi dengan nilai positif!');
                 return;
             }
 

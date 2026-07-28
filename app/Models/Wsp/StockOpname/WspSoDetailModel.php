@@ -16,6 +16,7 @@ class WspSoDetailModel extends Model
     protected $fillable = [
         'so_id',
         'barang_id',
+        'loc_id',
         'qty_full',
         'qty_receh',
         'created_at',
