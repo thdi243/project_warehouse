@@ -118,11 +118,6 @@
             transition: all 0.2s ease;
         }
 
-        .custom-table tbody tr:hover {
-            background: #f8f9ff;
-            transform: scale(1.01);
-        }
-
         .custom-table tbody td {
             padding: 1rem 0.75rem;
             vertical-align: middle;
@@ -401,7 +396,7 @@
                         </small>
                     </div> --}}
                     <div class="table-responsive">
-                        <table class="table custom-table" id="sohTable">
+                        <table class="table table-hover custom-table" id="sohTable">
                             <thead>
                                 <tr>
                                     <th>No</th>
