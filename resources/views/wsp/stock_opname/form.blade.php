@@ -222,17 +222,17 @@
                                 <div class="col-md-4">
                                     <label class="form-label">UNREST</label>
                                     <input type="number" class="form-control" name="unrest" value="0"
-                                        min="0" required>
+                                        min="0" step="any" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">QI</label>
                                     <input type="number" class="form-control" name="qi" value="0"
-                                        min="0" required>
+                                        min="0" step="any" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">BLOCKED</label>
                                     <input type="number" class="form-control" name="blocked" value="0"
-                                        min="0" required>
+                                        min="0" step="any" required>
                                 </div>
                             </div>
                         </div>
@@ -243,7 +243,7 @@
                                 <div class="col-md-12">
                                     <label class="form-label">Qty Fisik</label>
                                     <input type="number" class="form-control" name="qty_full" value="0"
-                                        min="0" required>
+                                        min="0" step="any" required>
                                     <input type="hidden" name="qty_receh" value="0">
                                 </div>
                             </div>
@@ -392,7 +392,7 @@
             });
 
             $('#btnSaveNewItem').on('click', function() {
-                const qtyFullVal = parseInt($('#formAddItem [name="qty_full"]').val()) || 0;
+                const qtyFullVal = parseFloat($('#formAddItem [name="qty_full"]').val()) || 0;
 
                 if (qtyFullVal < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
@@ -744,7 +744,7 @@
                                         }
                                     </td>
                                     <td class="text-center">
-                                        <input type="number" class="form-control text-center qty-fisik" value="" min="0" placeholder="0">
+                                        <input type="number" class="form-control text-center qty-fisik" value="" min="0" step="any" placeholder="0">
                                     </td>
                                     <td class="text-end fw-bold physical-summary">${isCounted ? summaryVal.toLocaleString('id-ID') : '-'} ${item.uom}</td>
                                     <td class="text-center d-none">
@@ -808,13 +808,13 @@
 
                 const fullValStr = row.find('.qty-fisik').val();
 
-                if (fullValStr !== '' && parseInt(fullValStr) < 0) {
+                if (fullValStr !== '' && parseFloat(fullValStr) < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                     $(this).val('');
                     return;
                 }
 
-                const full = parseInt(fullValStr) || 0;
+                const full = parseFloat(fullValStr) || 0;
 
                 // Calculate preview values
                 const physicalSummary = dbSummary + full;
@@ -836,7 +836,7 @@
                     return;
                 }
 
-                const full = parseInt(fullValStr) || 0;
+                const full = parseFloat(fullValStr) || 0;
 
                 $.ajax({
                     url: "{{ route('wsp.stock_opname.save-temp') }}",
@@ -976,7 +976,7 @@
                                 }
                             } else {
                                 group.history.push(tempRecord);
-                                const summary = parseInt(tempRecord.summary) || 0;
+                                const summary = parseFloat(tempRecord.summary) || 0;
                                 group.total_summary += summary;
                             }
                         });
@@ -1011,7 +1011,7 @@
                                 }
 
                                 // Update indicator dot
-                                const qtySoh = parseInt(row.attr('data-qty-soh')) || 0;
+                                const qtySoh = parseFloat(row.attr('data-qty-soh')) || 0;
                                 const diff = totalSummary - qtySoh;
                                 const dot = row.find('.diff-indicator-dot');
                                 dot.removeClass('bg-secondary bg-success bg-danger bg-warning');
@@ -1069,7 +1069,7 @@
                                     <div class="row g-2">
                                         <div class="col-md-12">
                                             <label class="form-label small mb-1">Qty Fisik</label>
-                                            <input type="number" class="form-control qty_full" value="${item.qty_full}" min="0">
+                                            <input type="number" class="form-control qty_full" value="${parseFloat(item.qty_full)}" min="0" step="any">
                                             <input type="hidden" class="qty_receh" value="0">
                                         </div>
                                     </div>
@@ -1125,7 +1125,7 @@
                         <div class="col-md-3">
                             <div class="p-2 border border-info rounded h-100 bg-light fade show history-card">
                                 <div class="fw-semibold text-dark mb-1 d-flex justify-content-between align-items-center">
-                                    <span>Qty: ${h.qty_full}</span>
+                                    <span>Qty: ${parseFloat(h.qty_full).toLocaleString('id-ID')}</span>
                                     <span class="badge bg-info">${index + 1}</span>
                                 </div>
                                 <div class="text-muted small">
@@ -1191,7 +1191,7 @@
         // Live check for negative inputs in edit modal
         $(document).on('input', '#editModal .qty_full', function() {
             const val = $(this).val();
-            if (val !== '' && parseInt(val) < 0) {
+            if (val !== '' && parseFloat(val) < 0) {
                 toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                 $(this).val('');
                 return;
@@ -1207,7 +1207,7 @@
                 const tempId = $(this).find('.temp_id').val();
                 const qtyFull = $(this).find('.qty_full').val();
 
-                const qtyFullVal = parseInt(qtyFull) || 0;
+                const qtyFullVal = parseFloat(qtyFull) || 0;
 
                 if (qtyFullVal < 0) {
                     hasNegative = true;

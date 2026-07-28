@@ -202,7 +202,7 @@ class WcpStockOpnameController extends Controller
     {
         $request->validate([
             'soh_id' => 'required|exists:wcp_soh,id',
-            'qty_receh' => 'nullable|integer|min:0',
+            'qty_receh' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string|max:255'
         ]);
 
@@ -225,7 +225,7 @@ class WcpStockOpnameController extends Controller
         $temp = null;
 
         if ($hasQty) {
-            $qtyRecehVal = (int)($qtyReceh ?? 0);
+            $qtyRecehVal = (float)($qtyReceh ?? 0);
             $summary = $qtyRecehVal;
 
             $temp = WcpSoTempModel::create([
@@ -312,7 +312,7 @@ class WcpStockOpnameController extends Controller
                     'nama_barang' => $barang->nama_barang,
                     'qty_full'    => 0,
                     'qty_receh'   => $rec->qty_receh,
-                    'summary'     => (int) $rec->summary,
+                    'summary'     => (float) $rec->summary,
                     'mode'        => 'qty',
                     'created_at'  => $rec->created_at->toDateTimeString(),
                     'updated_at'  => $rec->updated_at->toDateTimeString(),
@@ -395,7 +395,7 @@ class WcpStockOpnameController extends Controller
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
-            'items.*.qty_receh' => 'nullable|integer|min:0',
+            'items.*.qty_receh' => 'nullable|numeric|min:0',
             'catatan' => 'nullable|string|max:1000',
         ]);
 
@@ -410,7 +410,7 @@ class WcpStockOpnameController extends Controller
                 $temp = WcpSoTempModel::with('barang', 'soh')->find($it['id']);
                 if (!$temp || !$temp->barang) continue;
 
-                $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
+                $qtyReceh = isset($it['qty_receh']) ? (float)$it['qty_receh'] : 0;
                 $summary = $qtyReceh;
 
                 $temp->qty_full = 0;
@@ -522,10 +522,10 @@ class WcpStockOpnameController extends Controller
 
         $request->validate([
             'mid_barang' => 'required|exists:wcp_master_barang,mid',
-            'unrest' => 'required|integer|min:0',
-            'qi' => 'nullable|integer|min:0',
-            'blocked' => 'nullable|integer|min:0',
-            'qty_receh' => 'required|integer|min:0',
+            'unrest' => 'required|numeric|min:0',
+            'qi' => 'nullable|numeric|min:0',
+            'blocked' => 'nullable|numeric|min:0',
+            'qty_receh' => 'required|numeric|min:0',
         ]);
 
         $barang = WcpMasterBarangModel::where('mid', $request->mid_barang)->firstOrFail();
@@ -556,7 +556,7 @@ class WcpStockOpnameController extends Controller
             ],
             [
                 'user_id' => $user->id ?? 1,
-                'qty_soh' => (int)$request->unrest + (int)$request->qi + (int)$request->blocked,
+                'qty_soh' => (float)$request->unrest + (float)($request->qi ?? 0) + (float)($request->blocked ?? 0),
                 'qty_unrest' => $request->unrest,
                 'qty_qi' => $request->qi ?? 0,
                 'qty_block' => $request->blocked ?? 0,
@@ -1273,7 +1273,7 @@ class WcpStockOpnameController extends Controller
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
-            'items.*.qty_receh' => 'nullable|integer|min:0',
+            'items.*.qty_receh' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string|max:1000'
         ]);
 
@@ -1302,7 +1302,7 @@ class WcpStockOpnameController extends Controller
 
                 if (!$detail) continue;
 
-                $qtyReceh = isset($it['qty_receh']) ? (int)$it['qty_receh'] : 0;
+                $qtyReceh = isset($it['qty_receh']) ? (float)$it['qty_receh'] : 0;
 
                 if ($qtyReceh < 0) {
                     return response()->json([

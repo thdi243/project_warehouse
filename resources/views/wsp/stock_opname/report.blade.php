@@ -834,7 +834,7 @@
                                          <div class="row g-2">
                                              <div class="col-md-12">
                                                  <label class="form-label small mb-1">Qty Fisik</label>
-                                                 <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" required>
+                                                 <input type="number" class="form-control qty_full" name="items[${idx}][qty_full]" value="${det.qty_full}" min="0" step="any" required>
                                                  <input type="hidden" name="items[${idx}][qty_receh]" value="0">
                                              </div>
                                          </div><button type="button" class="btn btn-danger btn-sm mt-2" onclick="deleteReportDetail(${det.id}, this)">
@@ -868,7 +868,7 @@
         // Live check for negative inputs in edit report modal
         $(document).on('input', '#editReportModal .qty_full',
             function() {
-                if ($(this).val() !== '' && parseInt($(this).val()) < 0) {
+                if ($(this).val() !== '' && parseFloat($(this).val()) < 0) {
                     toastr.warning('Jumlah kuantitas tidak boleh negatif/minus!');
                     $(this).val('');
                 }
@@ -881,7 +881,7 @@
             let hasNegative = false;
 
             $('#editReportItemsList .report-detail-item').each(function() {
-                const qtyFullVal = parseInt($(this).find('.qty_full')
+                const qtyFullVal = parseFloat($(this).find('.qty_full')
                     .val()) || 0;
 
                 if (qtyFullVal < 0) {

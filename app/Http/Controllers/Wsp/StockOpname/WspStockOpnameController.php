@@ -209,8 +209,8 @@ class WspStockOpnameController extends Controller
     {
         $request->validate([
             'soh_id' => 'required|exists:wsp_soh,id',
-            'qty_full' => 'nullable|integer|min:0',
-            'qty_receh' => 'nullable|integer|min:0',
+            'qty_full' => 'nullable|numeric|min:0',
+            'qty_receh' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string|max:255'
         ]);
 
@@ -234,8 +234,8 @@ class WspStockOpnameController extends Controller
         $temp = null;
 
         if ($hasQty) {
-            $qtyFullVal = (int)$qtyFull;
-            $qtyRecehVal = (int)$qtyReceh;
+            $qtyFullVal = (float)$qtyFull;
+            $qtyRecehVal = (float)$qtyReceh;
             $summary = $qtyFullVal;
 
             $temp = WspSoTempModel::create([
@@ -320,7 +320,7 @@ class WspStockOpnameController extends Controller
                     'nama_barang' => $barang->nama_barang,
                     'qty_full'    => $rec->qty_full,
                     'qty_receh'   => $rec->qty_receh,
-                    'summary'     => (int) $rec->summary,
+                    'summary'     => (float) $rec->summary,
                     'mode'        => 'qty',
                     'created_at'  => $rec->created_at->toDateTimeString(),
                     'updated_at'  => $rec->updated_at->toDateTimeString(),
@@ -392,8 +392,8 @@ class WspStockOpnameController extends Controller
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
-            'items.*.qty_full' => 'nullable|integer|min:0',
-            'items.*.qty_receh' => 'nullable|integer|min:0',
+            'items.*.qty_full' => 'nullable|numeric|min:0',
+            'items.*.qty_receh' => 'nullable|numeric|min:0',
             'catatan' => 'nullable|string|max:1000',
         ]);
 
@@ -428,7 +428,7 @@ class WspStockOpnameController extends Controller
                 $temp = WspSoTempModel::with('barang', 'soh')->find($it['id']);
                 if (!$temp || !$temp->barang) continue;
 
-                $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
+                $qtyFull = isset($it['qty_full']) ? (float)$it['qty_full'] : 0;
                 $qtyReceh = 0;
                 $summary = $qtyFull;
 
@@ -545,11 +545,11 @@ class WspStockOpnameController extends Controller
     {
         $request->validate([
             'mid_barang' => 'required|exists:wsp_barang,mid_barang',
-            'unrest' => 'required|integer|min:0',
-            'qi' => 'nullable|integer|min:0',
-            'blocked' => 'nullable|integer|min:0',
-            'qty_full' => 'required|integer|min:0',
-            'qty_receh' => 'required|integer|min:0',
+            'unrest' => 'required|numeric|min:0',
+            'qi' => 'nullable|numeric|min:0',
+            'blocked' => 'nullable|numeric|min:0',
+            'qty_full' => 'required|numeric|min:0',
+            'qty_receh' => 'required|numeric|min:0',
             'jenis_so' => 'required|string|in:cycle_count,monthly',
             'area_rak' => 'nullable|string',
             'nama_rak' => 'nullable|string',
@@ -627,7 +627,7 @@ class WspStockOpnameController extends Controller
             ],
             [
                 'user_id' => $user->id ?? 1,
-                'qty_soh' => (int)$request->unrest + (int)$request->qi + (int)$request->blocked,
+                'qty_soh' => (float)$request->unrest + (float)($request->qi ?? 0) + (float)($request->blocked ?? 0),
                 'qty_unrest' => $request->unrest,
                 'qty_qi' => $request->qi ?? 0,
                 'qty_block' => $request->blocked ?? 0,
@@ -1368,8 +1368,8 @@ class WspStockOpnameController extends Controller
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
-            'items.*.qty_full' => 'nullable|integer|min:0',
-            'items.*.qty_receh' => 'nullable|integer|min:0',
+            'items.*.qty_full' => 'nullable|numeric|min:0',
+            'items.*.qty_receh' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string|max:1000'
         ]);
 
@@ -1399,7 +1399,7 @@ class WspStockOpnameController extends Controller
 
                 if (!$detail) continue;
 
-                $qtyFull = isset($it['qty_full']) ? (int)$it['qty_full'] : 0;
+                $qtyFull = isset($it['qty_full']) ? (float)$it['qty_full'] : 0;
                 $qtyReceh = 0;
 
                 if ($qtyFull < 0) {

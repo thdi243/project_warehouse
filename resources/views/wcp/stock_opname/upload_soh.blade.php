@@ -488,7 +488,7 @@
                             const barangName = item.barang ? item.barang.nama_barang : 'N/A';
                             const barangMid = item.barang ? item.barang.mid : 'N/A';
                             const uom = item.barang ? item.barang.uom : '';
-                            const qtySoh = item.qty_soh.toLocaleString('id-ID');
+                            const qtySoh = parseFloat(item.qty_soh).toLocaleString('id-ID');
 
                             const editBtn = `
                                         <button class="btn btn-sm btn-outline-primary me-1"
@@ -576,9 +576,9 @@
                             $('#soh_jenis_so').val(data.jenis_so).prop('disabled', false);
                             $('#barang_id').val(data.barang_id).trigger('change').prop('disabled',
                                 true);
-                            $('#unrest').val(data.qty_unrest);
-                            $('#qi').val(data.qty_qi);
-                            $('#block').val(data.qty_block);
+                            $('#unrest').val(parseFloat(data.qty_unrest));
+                            $('#qi').val(parseFloat(data.qty_qi));
+                            $('#block').val(parseFloat(data.qty_block));
                             $('#sohModal').modal('show');
                         }
                     }
@@ -598,7 +598,7 @@
                 <div class="p-4">
                     <div class="bg-primary bg-gradient rounded-3 p-3 mb-4 text-center shadow">
                         <h6 class="d-block mb-1 text-white text-uppercase small font-bold">Total Stock On Hand</h6>
-                        <h1 class="mb-0 fw-bold display-4 text-white">${item.qty_soh.toLocaleString('id-ID')} ${uom}</h1>
+                        <h1 class="mb-0 fw-bold display-4 text-white">${parseFloat(item.qty_soh).toLocaleString('id-ID')} ${uom}</h1>
                     </div>
                     
                     <div class="mb-4">
@@ -609,19 +609,19 @@
                             <div class="col-6">
                                 <div class="bg-light rounded-3 p-3 border">
                                     <div class="small text-muted mb-1 text-uppercase">UNREST</div>
-                                    <strong class="text-success fs-5">${item.qty_unrest.toLocaleString('id-ID')} ${uom}</strong>
+                                    <strong class="text-success fs-5">${parseFloat(item.qty_unrest).toLocaleString('id-ID')} ${uom}</strong>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="bg-light rounded-3 p-3 border">
                                     <div class="small text-muted mb-1 text-uppercase">QI</div>
-                                    <strong class="text-info fs-5">${item.qty_qi.toLocaleString('id-ID')} ${uom}</strong>
+                                    <strong class="text-info fs-5">${parseFloat(item.qty_qi).toLocaleString('id-ID')} ${uom}</strong>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="bg-light rounded-3 p-3 border">
                                     <div class="small text-muted mb-1 text-uppercase">BLOCKED</div>
-                                    <strong class="text-danger fs-5">${item.qty_block.toLocaleString('id-ID')} ${uom}</strong>
+                                    <strong class="text-danger fs-5">${parseFloat(item.qty_block).toLocaleString('id-ID')} ${uom}</strong>
                                 </div>
                             </div>
                         </div>
