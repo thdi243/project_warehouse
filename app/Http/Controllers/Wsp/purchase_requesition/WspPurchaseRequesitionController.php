@@ -1222,8 +1222,7 @@ class WspPurchaseRequesitionController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Aksi berhasil diproses',
-                'data' => WspPurchaseRequesitionModel::with(['items.barang'])->find($id)
+                'message' => 'Aksi berhasil diproses'
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1532,12 +1531,18 @@ class WspPurchaseRequesitionController extends Controller
 
     private function sendNotification($pr, $approval)
     {
+        $t = microtime(true);
+
         if (!$approval->approver_id) return;
+
+        logger()->info('A User::find', ['time' => microtime(true) - $t]);
 
         $user = User::find($approval->approver_id);
         if (!$user || !$user->is_active) return;
 
         $url = "/purchase-requesition/approval?level=" . $approval->level;
+
+        $t = microtime(true);
 
         NotificationsModel::create([
             'user_id' => $approval->approver_id,
@@ -1549,8 +1554,19 @@ class WspPurchaseRequesitionController extends Controller
             'is_read' => false,
         ]);
 
+        logger()->info('B Notification::create', ['time' => microtime(true) - $t]);
+
         if ($user->email) {
-            SendPrApprovalEmail::dispatch($pr, $approval, $user->email)->afterCommit();
+            $t = microtime(true);
+            SendPrApprovalEmail::dispatch(
+                $pr->id,
+                $approval->id,
+                $user->email
+            )->afterCommit();
+
+            logger()->info('C Dispatch', ['time' => microtime(true) - $t]);
         }
+
+        return;
     }
 }

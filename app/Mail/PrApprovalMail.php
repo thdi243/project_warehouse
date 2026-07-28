@@ -2,6 +2,8 @@
 
 namespace App\Mail;
 
+use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionModel;
+use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionApprovalModel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -17,13 +19,13 @@ class PrApprovalMail extends Mailable
     public $approval;
     public $url;
 
-    public function __construct($pr, $approval)
-    {
+    public function __construct(
+        WspPurchaseRequesitionModel $pr,
+        WspPurchaseRequesitionApprovalModel $approval
+    ) {
         $this->pr = $pr;
         $this->approval = $approval;
-
-        $this->url = url("/purchase-requesition/approval");
-        // $this->url = url("/login");
+        $this->url = url('/purchase-requesition/approval');
     }
 
     public function build()

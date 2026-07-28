@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Mail\PrApprovalMail;
+use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionApprovalModel;
+use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionModel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,22 +16,27 @@ class SendPrApprovalEmail implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $pr;
-    protected $approval;
-    protected $email;
+    protected int $prId;
+    protected int $approvalId;
+    protected string $email;
 
-    public function __construct($pr, $approval, $email)
+    public function __construct(int $prId, int $approvalId, string $email)
     {
-        $this->pr = $pr;
-        $this->approval = $approval;
+        $this->prId = $prId;
+        $this->approvalId = $approvalId;
         $this->email = $email;
-
-        $this->afterCommit();
     }
 
-    public function handle()
+    public function handle(): void
     {
+        $pr = WspPurchaseRequesitionModel::find($this->prId);
+        $approval = WspPurchaseRequesitionApprovalModel::find($this->approvalId);
+
+        if (!$pr || !$approval) {
+            return;
+        }
+
         Mail::to($this->email)
-            ->send(new PrApprovalMail($this->pr, $this->approval));
+            ->send(new PrApprovalMail($pr, $approval));
     }
 }
