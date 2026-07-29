@@ -711,27 +711,47 @@
                     cancelButtonColor: '#3085d6'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        $.ajax({
-                            url: "{{ route('wfg.stock_opname.soh.reset_all') }}",
-                            type: "DELETE",
-                            data: {
-                                _token: $('meta[name="csrf-token"]').attr('content'),
-                                jenis_so: jenisSo
-                            },
-                            beforeSend: function() {
+                        performReset(false);
+                    }
+                });
+
+                function performReset(confirmTemp) {
+                    $.ajax({
+                        url: "{{ route('wfg.stock_opname.soh.reset_all') }}",
+                        type: "DELETE",
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                            jenis_so: jenisSo,
+                            confirm_temp: confirmTemp ? 1 : 0
+                        },
+                        beforeSend: function() {
+                            Swal.fire({
+                                title: 'Menghapus data...',
+                                text: 'Mohon tunggu sebentar',
+                                allowOutsideClick: false,
+                                didOpen: () => Swal.showLoading()
+                            });
+                        },
+                        success: function(res) {
+                            if (res.status === 'confirm_temp') {
                                 Swal.fire({
-                                    title: 'Menghapus data...',
-                                    text: 'Mohon tunggu sebentar',
-                                    allowOutsideClick: false,
-                                    didOpen: () => Swal.showLoading()
+                                    title: 'Hapus Semua Data?',
+                                    text: res.message,
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Ya, Hapus Semua',
+                                    cancelButtonText: 'Batal',
+                                    confirmButtonColor: '#d33'
+                                }).then((finalResult) => {
+                                    if (finalResult.isConfirmed) {
+                                        performReset(true);
+                                    }
                                 });
-                            },
-                            success: function(res) {
+                            } else if (res.status) {
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Berhasil!',
-                                    text: res.message ??
-                                        'Data SOH hari ini berhasil dihapus.',
+                                    text: res.message ?? 'Data SOH berhasil dihapus.',
                                     timer: 1500,
                                     showConfirmButton: false
                                 });
@@ -742,18 +762,23 @@
                                 $('#barang_id').val('').trigger('change');
 
                                 loadSOHList();
-                            },
-                            error: function(xhr) {
+                            } else {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Gagal!',
-                                    text: xhr.responseJSON?.message ??
-                                        'Terjadi kesalahan saat menghapus data.'
+                                    text: res.message ?? 'Gagal menghapus data.'
                                 });
                             }
-                        });
-                    }
-                });
+                        },
+                        error: function(xhr) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal!',
+                                text: xhr.responseJSON?.message ?? 'Terjadi kesalahan saat menghapus data.'
+                            });
+                        }
+                    });
+                }
             });
 
             window.loadSOHList = loadSOHList;

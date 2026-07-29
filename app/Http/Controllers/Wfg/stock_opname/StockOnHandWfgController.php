@@ -439,7 +439,16 @@ class StockOnHandWfgController extends Controller
             $jenisSo = $request->input('jenis_so', 'cycle_count');
             $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
 
-            // Jika operator → hapus hanya data milik principal-nya
+            // 1. Build SOH query
+            $query = StockOnHandModel::where('jenis_so', $jenisSo);
+            if ($jenisSo === 'monthly') {
+                $query->whereYear('last_updated', now()->year)
+                    ->whereMonth('last_updated', now()->month);
+            } else {
+                $query->whereDate('last_updated', $today);
+            }
+
+            // 2. Access control and validation
             if ($user->jabatan === 'operator') {
                 $principal = $user->principal?->principal ?? null;
 
@@ -473,26 +482,9 @@ class StockOnHandWfgController extends Controller
                     ], 422);
                 }
 
-                $query = StockOnHandModel::where('principal', $principal)
-                    ->where('jenis_so', $jenisSo);
-                if ($jenisSo === 'monthly') {
-                    $query->whereYear('last_updated', now()->year)
-                        ->whereMonth('last_updated', now()->month);
-                } else {
-                    $query->whereDate('last_updated', $today);
-                }
-                $deleted = $query->delete();
+                $query->where('principal', $principal);
             } else {
-                // Admin atau non-operator bisa hapus semua principal
-                $query = StockOnHandModel::where('jenis_so', $jenisSo);
-                
-                if ($jenisSo === 'monthly') {
-                    $query->whereYear('last_updated', now()->year)
-                        ->whereMonth('last_updated', now()->month);
-                } else {
-                    $query->whereDate('last_updated', $today);
-                }
-
+                // Admin or non-operator
                 if ($request->has('principal')) {
                     $principal = $request->principal;
                     if ($jenisSo === 'monthly') {
@@ -518,8 +510,31 @@ class StockOnHandWfgController extends Controller
                     }
                     $query->where('principal', $principal);
                 }
-                $deleted = $query->delete();
             }
+
+            $sohIds = $query->pluck('id');
+            
+            // Check temp data
+            $hasTemp = \App\Models\Wfg\stock_opname\WfgSopTempModel::whereIn('soh_id', $sohIds)->exists() ||
+                       \App\Models\Wfg\stock_opname\WfgSopTempNoteModel::whereIn('soh_id', $sohIds)->exists();
+
+            if ($hasTemp && !$request->boolean('confirm_temp')) {
+                return response()->json([
+                    'status' => 'confirm_temp',
+                    'message' => "Terdapat data/draft input opname sementara (temp data) yang sedang berjalan untuk {$periodeText}. Jika Anda melanjutkan, data temp tersebut juga akan dihapus. Lanjutkan?"
+                ]);
+            }
+
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            if ($hasTemp) {
+                \App\Models\Wfg\stock_opname\WfgSopTempModel::whereIn('soh_id', $sohIds)->delete();
+                \App\Models\Wfg\stock_opname\WfgSopTempNoteModel::whereIn('soh_id', $sohIds)->delete();
+            }
+
+            $deleted = $query->delete();
+
+            \Illuminate\Support\Facades\DB::commit();
 
             if ($deleted === 0) {
                 return response()->json([
@@ -533,6 +548,7 @@ class StockOnHandWfgController extends Controller
                 'message' => "Berhasil menghapus $deleted data SOH untuk $periodeText."
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus data SOH ' . $periodeText . '.',

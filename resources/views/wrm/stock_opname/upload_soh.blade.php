@@ -637,8 +637,7 @@
                 const jenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
                 Swal.fire({
                     title: 'Kosongkan Data SOH?',
-                    text: 'Seluruh data SOH WRM ' + (jenisSo === 'monthly' ? 'bulan ini' :
-                        'hari ini') + ' akan dihapus permanen.',
+                    text: 'Seluruh data SOH WRM ' + (jenisSo === 'monthly' ? 'bulan ini' : 'hari ini') + ' akan dihapus permanen.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Ya, Hapus',
@@ -646,34 +645,50 @@
                     confirmButtonColor: '#d33'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        $.ajax({
-                            url: "{{ route('wrm.stock_opname.soh.reset_all') }}",
-                            type: "DELETE",
-                            data: {
-                                _token: "{{ csrf_token() }}",
-                                jenis_so: jenisSo
-                            },
-                            success: function(res) {
-                                if (res.status) {
-                                    Swal.fire('Berhasil', res.message, 'success');
-                                    loadSOHList();
-                                } else {
-                                    Swal.fire('Gagal', res.message, 'error');
-                                }
-                            },
-                            error: function(xhr) {
-                                if (xhr.status === 422) {
-                                    Swal.fire('Gagal', xhr.responseJSON.message,
-                                        'error');
-                                } else {
-                                    Swal.fire('Gagal',
-                                        'Terjadi kesalahan saat menghapus data SOH.',
-                                        'error');
-                                }
-                            }
-                        });
+                        performReset(false);
                     }
                 });
+
+                function performReset(confirmTemp) {
+                    $.ajax({
+                        url: "{{ route('wrm.stock_opname.soh.reset_all') }}",
+                        type: "DELETE",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            jenis_so: jenisSo,
+                            confirm_temp: confirmTemp ? 1 : 0
+                        },
+                        success: function(res) {
+                            if (res.status === 'confirm_temp') {
+                                Swal.fire({
+                                    title: 'Hapus Semua Data?',
+                                    text: res.message,
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Ya, Hapus Semua',
+                                    cancelButtonText: 'Batal',
+                                    confirmButtonColor: '#d33'
+                                }).then((finalResult) => {
+                                    if (finalResult.isConfirmed) {
+                                        performReset(true);
+                                    }
+                                });
+                            } else if (res.status) {
+                                Swal.fire('Berhasil', res.message, 'success');
+                                loadSOHList();
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
+                        },
+                        error: function(xhr) {
+                            if (xhr.status === 422) {
+                                Swal.fire('Gagal', xhr.responseJSON.message, 'error');
+                            } else {
+                                Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus data SOH.', 'error');
+                            }
+                        }
+                    });
+                }
             });
         });
 

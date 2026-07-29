@@ -341,13 +341,35 @@ class WpmStockOnHandController extends Controller
             } else {
                 $query->whereDate('created_at', $today);
             }
+
+            $sohIds = $query->pluck('id');
+            $hasTemp = \App\Models\Wpm\StockOpname\WpmSoTempModel::whereIn('soh_id', $sohIds)->exists() ||
+                       \App\Models\Wpm\StockOpname\WpmSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
+
+            if ($hasTemp && !$request->boolean('confirm_temp')) {
+                return response()->json([
+                    'status' => 'confirm_temp',
+                    'message' => "Terdapat data/draft input opname sementara (temp data) yang sedang berjalan untuk {$periodeText}. Jika Anda melanjutkan, data temp tersebut juga akan dihapus. Lanjutkan?"
+                ]);
+            }
+
+            DB::beginTransaction();
+
+            if ($hasTemp) {
+                \App\Models\Wpm\StockOpname\WpmSoTempModel::whereIn('soh_id', $sohIds)->delete();
+                \App\Models\Wpm\StockOpname\WpmSoTempNoteModel::whereIn('soh_id', $sohIds)->delete();
+            }
+
             $deleted = $query->delete();
+
+            DB::commit();
 
             return response()->json([
                 'status' => true,
                 'message' => "Berhasil menghapus $deleted data SOH untuk {$periodeText}."
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus data SOH: ' . $e->getMessage()

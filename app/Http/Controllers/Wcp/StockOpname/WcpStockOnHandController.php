@@ -342,13 +342,35 @@ class WcpStockOnHandController extends Controller
             } else {
                 $query->whereDate('created_at', $today);
             }
+
+            $sohIds = $query->pluck('id');
+            $hasTemp = \App\Models\Wcp\StockOpname\WcpSoTempModel::whereIn('soh_id', $sohIds)->exists() ||
+                       \App\Models\Wcp\StockOpname\WcpSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
+
+            if ($hasTemp && !$request->boolean('confirm_temp')) {
+                return response()->json([
+                    'status' => 'confirm_temp',
+                    'message' => "Terdapat data/draft input opname sementara (temp data) yang sedang berjalan untuk {$periodeText}. Jika Anda melanjutkan, data temp tersebut juga akan dihapus. Lanjutkan?"
+                ]);
+            }
+
+            DB::beginTransaction();
+
+            if ($hasTemp) {
+                \App\Models\Wcp\StockOpname\WcpSoTempModel::whereIn('soh_id', $sohIds)->delete();
+                \App\Models\Wcp\StockOpname\WcpSoTempNoteModel::whereIn('soh_id', $sohIds)->delete();
+            }
+
             $deleted = $query->delete();
+
+            DB::commit();
 
             return response()->json([
                 'status' => true,
                 'message' => "Berhasil menghapus $deleted data SOH untuk {$periodeText}."
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus data SOH: ' . $e->getMessage()
