@@ -553,8 +553,9 @@
 
             currentSaveRequest = $.post("{{ route('wfg.bongkar_muat.save_draft') }}", formData, function(res) {
                 if (res.status) {
-                    if (res.jam_muat) {
-                        $('#jam').val(res.jam_muat);
+                    $('#jam').val(res.jam_muat || '');
+                    if (res.tanggal) {
+                        $('input[name="tanggal"]').val(res.tanggal);
                     }
                     previousGate = $('#gate').val();
                     console.log('Progress saved automatically');

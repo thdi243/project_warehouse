@@ -184,6 +184,14 @@ class BongkarMuatController extends Controller
                 ->with('error', 'Draft tidak ditemukan atau bukan milik Anda.');
         }
 
+        // Jika row item (details) masih kosong, tanggal otomatis selalu ngikutin today saja
+        $hasItems = $draft->details->contains(function ($detail) {
+            return !empty($detail->material_id);
+        });
+        if (!$hasItems) {
+            $draft->update(['tanggal' => date('Y-m-d')]);
+        }
+
         // Load all active drafts for tabs
         $allDrafts = BongkarMuat::where('created_by', Auth::id())
             ->whereIn('status', ['draft', 'submitted', 'approved'])
@@ -300,13 +308,19 @@ class BongkarMuatController extends Controller
                 'checker_id' => Auth::id(),
             ]);
 
-            // Jam muat otomatis ketika item pertama disimpan
+            // Jam muat otomatis ketika item pertama disimpan, reset jika kosong
             $hasMaterialDetails = collect($request->details ?? [])->contains(function ($detail) {
                 return !empty($detail['material_id']);
             });
 
-            if (empty($order->jam_muat) && $hasMaterialDetails) {
-                $order->jam_muat = Carbon::now()->format('H:i:s');
+            if ($hasMaterialDetails) {
+                if (empty($order->jam_muat)) {
+                    $order->jam_muat = Carbon::now()->format('H:i:s');
+                    $order->save();
+                }
+            } else {
+                $order->jam_muat = null;
+                $order->tanggal = date('Y-m-d');
                 $order->save();
             }
 
@@ -365,7 +379,24 @@ class BongkarMuatController extends Controller
             }
 
             DB::commit();
-            return response()->json(['status' => true, 'message' => 'Progress saved.', 'jam_muat' => $order->jam_muat]);
+
+            $formattedTanggal = $order->tanggal;
+            if ($formattedTanggal instanceof \Carbon\Carbon) {
+                $formattedTanggal = $formattedTanggal->format('Y-m-d');
+            } elseif ($formattedTanggal instanceof \DateTimeInterface) {
+                $formattedTanggal = $formattedTanggal->format('Y-m-d');
+            } elseif (is_string($formattedTanggal)) {
+                $formattedTanggal = substr($formattedTanggal, 0, 10);
+            } else {
+                $formattedTanggal = date('Y-m-d');
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Progress saved.',
+                'jam_muat' => $order->jam_muat,
+                'tanggal' => $formattedTanggal
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
