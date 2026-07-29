@@ -207,7 +207,7 @@
                                     <th>NO PR</th>
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
-                                    <th>JENIS</th>
+                                    <th>JENIS PR</th>
                                     <th>STATUS APPROVED</th>
                                     {{-- <th>FLAG</th> --}}
                                     <th class="text-center text-nowrap">AKSI</th>
@@ -611,7 +611,10 @@
                             <td>${pr.pr_number ?? '-'}</td>
                             <td>${pr.requested_by}</td>
                             <td>${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</td>
-                            <td>${pr.jenis}</td>
+                            <td>
+                                <span class="fw-bold text-capitalize">${pr.jenis ?? '-'}</span>
+                                <span class="small">| ${pr.detail_jenis ??'-'}</span>
+                            </td>
                             <td>
                                 <span 
                                     class="badge badge-soft-${badgeClass}" 
@@ -1031,10 +1034,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                                <div class="small mt-1">
-                                                                                                                                                    Catatan: ${a.catatan}
-                                                                                                                                                </div>
-                                                                                                                                            ` : ''}
+                                                                                                                                                                    <div class="small mt-1">
+                                                                                                                                                                        Catatan: ${a.catatan}
+                                                                                                                                                                    </div>
+                                                                                                                                                                ` : ''}
                             </div>
 
                         </div>
