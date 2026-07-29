@@ -2,23 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\User;
-use Illuminate\Http\Request;
 use App\Models\P2h\ForkliftModel;
-use App\Models\Tkbm\bps\TkbmFeeModel;
 use App\Models\P2h\PalletMoverModel;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use App\Models\Wsp\stock_manage\StockOnHandWspModel;
+use App\Models\Tkbm\bps\TkbmFeeModel;
+use App\Models\User;
+use App\Models\Wcp\StockOpname\WcpSohModel;
+use App\Models\Wcp\StockOpname\WcpSoStatusModel;
+use App\Models\Wcp\WcpMasterBarangModel;
 use App\Models\Wfg\BarangWfgModel;
 use App\Models\Wfg\stock_opname\StockOnHandModel;
 use App\Models\Wfg\stock_opname\WfgSopModel;
 use App\Models\Wfg\stock_opname\WfgSopStatusModel;
+use App\Models\Wpm\StockOpname\WpmSohModel;
+use App\Models\Wpm\StockOpname\WpmSoStatusModel;
+use App\Models\Wpm\WpmMasterBarangModel;
+use App\Models\Wrm\MasterBarangModel;
 use App\Models\Wrm\StockOpname\WrmSohModel;
 use App\Models\Wrm\StockOpname\WrmSoModel;
 use App\Models\Wrm\StockOpname\WrmSoStatusModel;
-use App\Models\Wrm\MasterBarangModel;
+use App\Models\Wsp\BarangModel;
+use App\Models\Wsp\stock_manage\StockOnHandWspModel;
+use App\Models\Wsp\StockOpname\WspSohModel;
+use App\Models\Wsp\StockOpname\WspSoStatusModel;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
 
 class WarehouseController extends Controller
 {
@@ -218,8 +227,15 @@ class WarehouseController extends Controller
             }
         }
 
+        $activeSession = WfgSopStatusModel::whereDate('tgl_opname', $today)
+            ->where('user_id', Auth::id())
+            ->where('status', 'started')
+            ->first();
+
+        $activeJenisSo = $activeSession ? $activeSession->jenis_so : 'cycle_count';
+
         $principals = BarangWfgModel::distinct()->pluck('principal');
-        return view('wfg.stock_opname_wfg.form', compact('principals'));
+        return view('wfg.stock_opname_wfg.form', compact('principals', 'activeJenisSo'));
     }
 
     public function uploadSOHWFG()
@@ -345,7 +361,14 @@ class WarehouseController extends Controller
                 ->with('error', "Data Stock On Hand (SOH) WRM pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
         }
 
-        return view('wrm.stock_opname.form');
+        $activeSession = WrmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('user_id', Auth::id())
+            ->where('status', 'started')
+            ->first();
+
+        $activeJenisSo = $activeSession ? $activeSession->jenis_so : 'cycle_count';
+
+        return view('wrm.stock_opname.form', compact('activeJenisSo'));
     }
 
     public function reportSOWRM()
@@ -355,11 +378,11 @@ class WarehouseController extends Controller
 
     public function uploadSOHWPM()
     {
-        $barangCount = \App\Models\Wpm\WpmMasterBarangModel::count();
+        $barangCount = WpmMasterBarangModel::count();
         $error_message = session('error');
 
         $today = Carbon::today()->toDateString();
-        $soStatus = \App\Models\Wpm\StockOpname\WpmSoStatusModel::whereDate('tgl_opname', $today)->first();
+        $soStatus = WpmSoStatusModel::whereDate('tgl_opname', $today)->first();
         $isFinished = $soStatus && $soStatus->status === 'finished';
 
         return view('wpm.stock_opname.upload_soh', compact('barangCount', 'error_message', 'isFinished'));
@@ -368,14 +391,21 @@ class WarehouseController extends Controller
     public function formSOWPM()
     {
         $today = Carbon::today()->format('Y-m-d');
-        $sohExists = \App\Models\Wpm\StockOpname\WpmSohModel::whereDate('created_at', $today)->exists();
+        $sohExists = WpmSohModel::whereDate('created_at', $today)->exists();
 
         if (!$sohExists) {
             return redirect()->route('wpm.stock_opname.soh')
                 ->with('error', "Data Stock On Hand (SOH) WPM pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
         }
 
-        return view('wpm.stock_opname.form');
+        $activeSession = WpmSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('user_id', Auth::id())
+            ->where('status', 'started')
+            ->first();
+
+        $activeJenisSo = $activeSession ? $activeSession->jenis_so : 'cycle_count';
+
+        return view('wpm.stock_opname.form', compact('activeJenisSo'));
     }
 
     public function reportSOWPM()
@@ -385,11 +415,11 @@ class WarehouseController extends Controller
 
     public function uploadSOHWCP()
     {
-        $barangCount = \App\Models\Wcp\WcpMasterBarangModel::count();
+        $barangCount = WcpMasterBarangModel::count();
         $error_message = session('error');
 
         $today = Carbon::today()->toDateString();
-        $soStatus = \App\Models\Wcp\StockOpname\WcpSoStatusModel::whereDate('tgl_opname', $today)->first();
+        $soStatus = WcpSoStatusModel::whereDate('tgl_opname', $today)->first();
         $isFinished = $soStatus && $soStatus->status === 'finished';
 
         return view('wcp.stock_opname.upload_soh', compact('barangCount', 'error_message', 'isFinished'));
@@ -398,14 +428,21 @@ class WarehouseController extends Controller
     public function formSOWCP()
     {
         $today = Carbon::today()->format('Y-m-d');
-        $sohExists = \App\Models\Wcp\StockOpname\WcpSohModel::whereDate('created_at', $today)->exists();
+        $sohExists = WcpSohModel::whereDate('created_at', $today)->exists();
 
         if (!$sohExists) {
             return redirect()->route('wcp.stock_opname.soh')
                 ->with('error', "Data Stock On Hand (SOH) WCP pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
         }
 
-        return view('wcp.stock_opname.form');
+        $activeSession = WcpSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('user_id', Auth::id())
+            ->where('status', 'started')
+            ->first();
+
+        $activeJenisSo = $activeSession ? $activeSession->jenis_so : 'cycle_count';
+
+        return view('wcp.stock_opname.form', compact('activeJenisSo'));
     }
 
     public function reportSOWCP()
@@ -415,7 +452,7 @@ class WarehouseController extends Controller
 
     public function uploadSOHWSP()
     {
-        $barangCount = \App\Models\Wsp\BarangModel::count();
+        $barangCount = BarangModel::count();
         $error_message = session('error');
 
         return view('wsp.stock_opname.upload_soh', compact('barangCount', 'error_message'));
@@ -424,14 +461,21 @@ class WarehouseController extends Controller
     public function formSOWSP()
     {
         $today = Carbon::today()->format('Y-m-d');
-        $sohExists = \App\Models\Wsp\StockOpname\WspSohModel::whereDate('created_at', $today)->exists();
+        $sohExists = WspSohModel::whereDate('created_at', $today)->exists();
 
         if (!$sohExists) {
             return redirect()->route('wsp.stock_opname.soh')
                 ->with('error', "Data Stock On Hand (SOH) WSP pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
         }
 
-        return view('wsp.stock_opname.form');
+        $activeSession = WspSoStatusModel::whereDate('tgl_opname', $today)
+            ->where('user_id', Auth::id())
+            ->where('status', 'started')
+            ->first();
+
+        $activeJenisSo = $activeSession ? $activeSession->jenis_so : 'cycle_count';
+
+        return view('wsp.stock_opname.form', compact('activeJenisSo'));
     }
 
     public function reportSOWSP()

@@ -258,8 +258,8 @@
                                     <div>
                                         <label for="jenis_so" class="form-label fw-semibold">Jenis SO</label>
                                         <select id="jenis_so" name="jenis_so" class="form-select">
-                                            <option value="cycle_count">Cycle Count (Daily)</option>
-                                            <option value="monthly">Monthly SO</option>
+                                            <option value="cycle_count" {{ (isset($activeJenisSo) && $activeJenisSo === 'cycle_count') ? 'selected' : '' }}>Cycle Count (Daily)</option>
+                                            <option value="monthly" {{ (isset($activeJenisSo) && $activeJenisSo === 'monthly') ? 'selected' : '' }}>Monthly SO</option>
                                         </select>
                                     </div>
                                 </div>
