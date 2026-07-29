@@ -31,8 +31,13 @@ class WpmStockOnHandController extends Controller
             ->leftJoin('wpm_master_barang', 'wpm_soh.barang_id', '=', 'wpm_master_barang.id')
             ->leftJoin('users', 'wpm_soh.user_id', '=', 'users.id');
 
-        $query->whereDate('wpm_soh.created_at', $today)
-            ->where('wpm_soh.jenis_so', $jenisSo);
+        if ($jenisSo === 'monthly') {
+            $query->whereYear('wpm_soh.created_at', now()->year)
+                ->whereMonth('wpm_soh.created_at', now()->month);
+        } else {
+            $query->whereDate('wpm_soh.created_at', $today);
+        }
+        $query->where('wpm_soh.jenis_so', $jenisSo);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {

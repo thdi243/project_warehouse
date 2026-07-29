@@ -34,8 +34,13 @@ class WspStockOnHandController extends Controller
             ->leftJoin('wsp_barang', 'wsp_soh.barang_id', '=', 'wsp_barang.id')
             ->leftJoin('users', 'wsp_soh.user_id', '=', 'users.id');
 
-        $query->whereDate('wsp_soh.created_at', $today)
-            ->where('wsp_soh.jenis_so', $jenisSo);
+        if ($jenisSo === 'monthly') {
+            $query->whereYear('wsp_soh.created_at', now()->year)
+                ->whereMonth('wsp_soh.created_at', now()->month);
+        } else {
+            $query->whereDate('wsp_soh.created_at', $today);
+        }
+        $query->where('wsp_soh.jenis_so', $jenisSo);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {

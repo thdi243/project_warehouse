@@ -34,8 +34,13 @@ class WrmStockOnHandController extends Controller
             ->leftJoin('wrm_master_barang', 'wrm_soh.barang_id', '=', 'wrm_master_barang.id')
             ->leftJoin('users', 'wrm_soh.user_id', '=', 'users.id');
 
-        $query->whereDate('wrm_soh.created_at', $today)
-            ->where('wrm_soh.jenis_so', $jenisSo);
+        if ($jenisSo === 'monthly') {
+            $query->whereYear('wrm_soh.created_at', now()->year)
+                ->whereMonth('wrm_soh.created_at', now()->month);
+        } else {
+            $query->whereDate('wrm_soh.created_at', $today);
+        }
+        $query->where('wrm_soh.jenis_so', $jenisSo);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {

@@ -31,8 +31,13 @@ class WcpStockOnHandController extends Controller
             ->leftJoin('wcp_master_barang', 'wcp_soh.barang_id', '=', 'wcp_master_barang.id')
             ->leftJoin('users', 'wcp_soh.user_id', '=', 'users.id');
 
-        $query->whereDate('wcp_soh.created_at', $today)
-            ->where('wcp_soh.jenis_so', $jenisSo);
+        if ($jenisSo === 'monthly') {
+            $query->whereYear('wcp_soh.created_at', now()->year)
+                ->whereMonth('wcp_soh.created_at', now()->month);
+        } else {
+            $query->whereDate('wcp_soh.created_at', $today);
+        }
+        $query->where('wcp_soh.jenis_so', $jenisSo);
 
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {

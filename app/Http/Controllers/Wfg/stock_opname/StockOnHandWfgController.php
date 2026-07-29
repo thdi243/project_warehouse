@@ -209,8 +209,13 @@ class StockOnHandWfgController extends Controller
             ->leftJoin('users', 'wfg_soh.user_id', '=', 'users.id');
 
         // Filter tanggal dan jenis SO
-        $query->whereDate('wfg_soh.last_updated', $today)
-            ->where('wfg_soh.jenis_so', $jenisSo);
+        if ($jenisSo === 'monthly') {
+            $query->whereYear('wfg_soh.last_updated', now()->year)
+                ->whereMonth('wfg_soh.last_updated', now()->month);
+        } else {
+            $query->whereDate('wfg_soh.last_updated', $today);
+        }
+        $query->where('wfg_soh.jenis_so', $jenisSo);
 
         // Filter principal jika operator
         if ($user->jabatan === 'operator') {

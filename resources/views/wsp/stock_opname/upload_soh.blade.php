@@ -882,9 +882,10 @@
                         $('#tableInfo').text(`Showing ${res.from} to ${res.to} of ${res.total} entries`);
                         renderPagination(res);
                     } else {
+                        const emptyMsg = jenisSo === 'monthly' ? 'Tidak ada data SOH bulan ini.' : 'Tidak ada data SOH hari ini.';
                         tableBody.append(`
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">Tidak ada data SOH hari ini.</td>
+                                <td colspan="6" class="text-center py-4 text-muted">${emptyMsg}</td>
                             </tr>
                         `);
                         $('#tableInfo').text('');
