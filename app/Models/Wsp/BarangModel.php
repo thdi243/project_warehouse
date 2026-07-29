@@ -38,6 +38,12 @@ class BarangModel extends Model
         return $this->belongsTo(RakModel::class, 'rak_id');
     }
 
+    public function activeStockLocation()
+    {
+        return $this->hasOne(\App\Models\Wsp\stock_manage\StockLocationModel::class, 'barang_id')
+            ->where('status', 'active');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'created_by');

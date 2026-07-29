@@ -328,7 +328,13 @@ class WspPurchaseRequesitionController extends Controller
 
     public function getDataPR(Request $request)
     {
-        $query = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval.approver');
+        $query = WspPurchaseRequesitionModel::with(
+            'user',
+            'items.barang:id,mid_barang,nama_barang,uom',
+            'items.approval.approval',
+            'approval.approver',
+            'items.barang.activeStockLocation.rak:id,plant,s_loc,area_rak,nama_rak,kolom_rak,level_rak,box_rak'
+        );
 
         if ($request->filled('start_date')) {
             $query->whereDate('pr_date', '>=', $request->start_date);
@@ -369,6 +375,18 @@ class WspPurchaseRequesitionController extends Controller
         $totalItemReservasi = DB::table('wsp_stock_reservations')->whereIn('pr_id', $subquery)->where('status', 'confirmed')->where('type', 'reservation')->count('id') ?? 0;
 
         $pr = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        $pr->getCollection()->each(function ($requisition) {
+            if ($requisition->items) {
+                $requisition->items->each(function ($item) {
+                    if ($item->barang) {
+                        $rak = $item->barang->activeStockLocation->rak ?? null;
+                        $item->barang->setRelation('rak', $rak);
+                        $item->barang->unsetRelation('activeStockLocation');
+                    }
+                });
+            }
+        });
 
         return response()->json([
             'success' => true,

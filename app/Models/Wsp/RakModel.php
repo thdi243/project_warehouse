@@ -24,11 +24,6 @@ class RakModel extends Model
         'created_by',
     ];
 
-    public function transaksi()
-    {
-        return $this->hasMany(TransaksiModel::class);
-    }
-
     public function stock()
     {
         return $this->hasMany(StockOnHandWspModel::class);

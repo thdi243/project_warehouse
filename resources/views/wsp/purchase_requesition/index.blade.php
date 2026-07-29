@@ -1029,10 +1029,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                                <div class="small mt-1">
-                                                                                                                                    Catatan: ${a.catatan}
-                                                                                                                                </div>
-                                                                                                                            ` : ''}
+                                                                                                                                            <div class="small mt-1">
+                                                                                                                                                Catatan: ${a.catatan}
+                                                                                                                                            </div>
+                                                                                                                                        ` : ''}
                             </div>
 
                         </div>
@@ -1048,8 +1048,8 @@
                 items.forEach(item => {
                     const mid = item.barang?.mid_barang ?? '';
                     const qty = item.qty ?? '';
-                    const sLoc = item.barang?.s_loc ?? 'G001';
-                    const plant = item.barang?.plant ?? '1006';
+                    const sLoc = item.barang?.rak?.s_loc ?? 'G001';
+                    const plant = item.barang?.rak?.plant ?? '1006';
                     const noIo = pr.no_io ?? '';
 
                     const row = [
