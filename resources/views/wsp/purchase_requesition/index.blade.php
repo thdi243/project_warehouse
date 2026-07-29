@@ -1029,10 +1029,10 @@
                                 </div>
 
                                 ${a.catatan ? `
-                                                                                                                        <div class="small mt-1">
-                                                                                                                            Catatan: ${a.catatan}
-                                                                                                                        </div>
-                                                                                                                    ` : ''}
+                                                                                                                            <div class="small mt-1">
+                                                                                                                                Catatan: ${a.catatan}
+                                                                                                                            </div>
+                                                                                                                        ` : ''}
                             </div>
 
                         </div>
@@ -1048,8 +1048,8 @@
                 items.forEach(item => {
                     const mid = item.barang?.mid_barang ?? '';
                     const qty = item.qty ?? '';
-                    const sLoc = item.barang?.s_loc ?? '';
-                    const plant = item.barang?.plant ?? '';
+                    const sLoc = item.barang?.s_loc ?? '1006';
+                    const plant = item.barang?.plant ?? 'G001';
                     const noIo = pr.no_io ?? '';
 
                     const row = [
@@ -1306,7 +1306,8 @@
                                 const start = parseInt($(this).data('start'));
                                 const end = parseInt($(this).data('end'));
                                 const chunkItems = prItems.slice(start, end);
-                                const textToCopy = chunkItems.map(item => item.keterangan.trim()).join('\n');
+                                const textToCopy = chunkItems.map(item => item.keterangan
+                                    .trim()).join('\n');
                                 window.copyToClipboard(textToCopy);
                                 Swal.close();
                             });
