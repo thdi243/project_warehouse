@@ -624,6 +624,16 @@
                                 } else {
                                     Swal.fire('Gagal', res.message, 'error');
                                 }
+                            },
+                            error: function(xhr) {
+                                if (xhr.status === 422) {
+                                    Swal.fire('Gagal', xhr.responseJSON.message,
+                                        'error');
+                                } else {
+                                    Swal.fire('Gagal',
+                                        'Terjadi kesalahan saat menghapus data SOH.',
+                                        'error');
+                                }
                             }
                         });
                     }
@@ -882,7 +892,8 @@
                         $('#tableInfo').text(`Showing ${res.from} to ${res.to} of ${res.total} entries`);
                         renderPagination(res);
                     } else {
-                        const emptyMsg = jenisSo === 'monthly' ? 'Tidak ada data SOH bulan ini.' : 'Tidak ada data SOH hari ini.';
+                        const emptyMsg = jenisSo === 'monthly' ? 'Tidak ada data SOH bulan ini.' :
+                            'Tidak ada data SOH hari ini.';
                         tableBody.append(`
                             <tr>
                                 <td colspan="6" class="text-center py-4 text-muted">${emptyMsg}</td>
@@ -981,49 +992,49 @@
                             const rak = item.location && item.location.rak ? item.location.rak : null;
                             if (!rak) return '<div class="text-center py-2"><span class="badge badge-soft-warning fs-6">Not Yet</span></div>';
                             return `<div class="row g-3">
-                                            <div class="col-6">
-                                                <div class="bg-light rounded-3 p-2 border text-center">
-                                                    <div class="small text-muted mb-1 text-uppercase">Plant</div>
-                                                    <strong>${rak.plant || '-'}</strong>
+                                                <div class="col-6">
+                                                    <div class="bg-light rounded-3 p-2 border text-center">
+                                                        <div class="small text-muted mb-1 text-uppercase">Plant</div>
+                                                        <strong>${rak.plant || '-'}</strong>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="bg-light rounded-3 p-2 border text-center">
-                                                    <div class="small text-muted mb-1 text-uppercase">S.Loc</div>
-                                                    <strong>${rak.s_loc || '-'}</strong>
+                                                <div class="col-6">
+                                                    <div class="bg-light rounded-3 p-2 border text-center">
+                                                        <div class="small text-muted mb-1 text-uppercase">S.Loc</div>
+                                                        <strong>${rak.s_loc || '-'}</strong>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="bg-light rounded-3 p-2 border text-center">
-                                                    <div class="small text-muted mb-1 text-uppercase">Area</div>
-                                                    <strong>${rak.area_rak || '-'}</strong>
+                                                <div class="col-4">
+                                                    <div class="bg-light rounded-3 p-2 border text-center">
+                                                        <div class="small text-muted mb-1 text-uppercase">Area</div>
+                                                        <strong>${rak.area_rak || '-'}</strong>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="bg-light rounded-3 p-2 border text-center">
-                                                    <div class="small text-muted mb-1 text-uppercase">Rak</div>
-                                                    <strong>${rak.nama_rak || '-'}</strong>
+                                                <div class="col-4">
+                                                    <div class="bg-light rounded-3 p-2 border text-center">
+                                                        <div class="small text-muted mb-1 text-uppercase">Rak</div>
+                                                        <strong>${rak.nama_rak || '-'}</strong>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="bg-light rounded-3 p-2 border text-center">
-                                                    <div class="small text-muted mb-1 text-uppercase">Kolom</div>
-                                                    <strong>${rak.kolom_rak || '-'}</strong>
+                                                <div class="col-4">
+                                                    <div class="bg-light rounded-3 p-2 border text-center">
+                                                        <div class="small text-muted mb-1 text-uppercase">Kolom</div>
+                                                        <strong>${rak.kolom_rak || '-'}</strong>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="bg-light rounded-3 p-2 border text-center">
-                                                    <div class="small text-muted mb-1 text-uppercase">Level</div>
-                                                    <strong>${rak.level_rak || '-'}</strong>
+                                                <div class="col-6">
+                                                    <div class="bg-light rounded-3 p-2 border text-center">
+                                                        <div class="small text-muted mb-1 text-uppercase">Level</div>
+                                                        <strong>${rak.level_rak || '-'}</strong>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="bg-light rounded-3 p-2 border text-center">
-                                                    <div class="small text-muted mb-1 text-uppercase">Bin</div>
-                                                    <strong>${rak.box_rak || '-'}</strong>
+                                                <div class="col-6">
+                                                    <div class="bg-light rounded-3 p-2 border text-center">
+                                                        <div class="small text-muted mb-1 text-uppercase">Bin</div>
+                                                        <strong>${rak.box_rak || '-'}</strong>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>`;
+                                            </div>`;
                         })()}
                     </div>
                     
@@ -1100,6 +1111,16 @@
                                 loadSOHList();
                             } else {
                                 Swal.fire('Gagal', res.message, 'error');
+                            }
+                        },
+                        error: function(xhr) {
+                            if (xhr.status === 422) {
+                                Swal.fire('Gagal', xhr.responseJSON.message,
+                                    'error');
+                            } else {
+                                Swal.fire('Gagal',
+                                    'Terjadi kesalahan saat menghapus data SOH.',
+                                    'error');
                             }
                         }
                     });

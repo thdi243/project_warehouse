@@ -660,6 +660,16 @@
                                 } else {
                                     Swal.fire('Gagal', res.message, 'error');
                                 }
+                            },
+                            error: function(xhr) {
+                                if (xhr.status === 422) {
+                                    Swal.fire('Gagal', xhr.responseJSON.message,
+                                        'error');
+                                } else {
+                                    Swal.fire('Gagal',
+                                        'Terjadi kesalahan saat menghapus data SOH.',
+                                        'error');
+                                }
                             }
                         });
                     }
@@ -1007,7 +1017,9 @@
                     }
                 }
             });
-        }         function detailSOH(item) {
+        }    
+
+        function detailSOH(item) {
             const barangName = item.barang ? item.barang.nama_barang : 'Stock On Hand';
             const barangMid = item.barang ? item.barang.mid : 'N/A';
             const spb = item.no_spb ? item.no_spb : '-';
@@ -1134,7 +1146,16 @@
                             } else {
                                 Swal.fire('Gagal', res.message, 'error');
                             }
-                        }
+                        },error: function(xhr) {
+                                if (xhr.status === 422) {
+                                    Swal.fire('Gagal', xhr.responseJSON.message,
+                                        'error');
+                                } else {
+                                    Swal.fire('Gagal',
+                                        'Terjadi kesalahan saat menghapus data SOH.',
+                                        'error');
+                                }
+                            }
                     });
                 }
             });

@@ -439,7 +439,7 @@ class StockOnHandWfgController extends Controller
             $jenisSo = $request->input('jenis_so', 'cycle_count');
             $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
 
-            // Jika operator → hapus hanya data hari ini milik principal-nya
+            // Jika operator → hapus hanya data milik principal-nya
             if ($user->jabatan === 'operator') {
                 $principal = $user->principal?->principal ?? null;
 
@@ -450,10 +450,22 @@ class StockOnHandWfgController extends Controller
                     ], 422);
                 }
 
-                $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
-                    ->where('principal', $principal)
-                    ->where('jenis_so', $jenisSo)
-                    ->first();
+                if ($jenisSo === 'monthly') {
+                    $currentYear = now()->year;
+                    $currentMonth = now()->month;
+                    $soStatus = WfgSopStatusModel::where('jenis_so', 'monthly')
+                        ->where('principal', $principal)
+                        ->whereYear('tgl_opname', $currentYear)
+                        ->whereMonth('tgl_opname', $currentMonth)
+                        ->where('status', 'finished')
+                        ->first();
+                } else {
+                    $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+                        ->where('principal', $principal)
+                        ->where('jenis_so', $jenisSo)
+                        ->first();
+                }
+
                 if ($soStatus && $soStatus->status === 'finished') {
                     return response()->json([
                         'status' => false,
@@ -461,19 +473,43 @@ class StockOnHandWfgController extends Controller
                     ], 422);
                 }
 
-                $deleted = StockOnHandModel::where('principal', $principal)
-                    ->where('jenis_so', $jenisSo)
-                    ->whereDate('last_updated', $today)
-                    ->delete();
+                $query = StockOnHandModel::where('principal', $principal)
+                    ->where('jenis_so', $jenisSo);
+                if ($jenisSo === 'monthly') {
+                    $query->whereYear('last_updated', now()->year)
+                        ->whereMonth('last_updated', now()->month);
+                } else {
+                    $query->whereDate('last_updated', $today);
+                }
+                $deleted = $query->delete();
             } else {
-                // Admin atau non-operator bisa hapus semua principal untuk hari ini
-                $query = StockOnHandModel::where('jenis_so', $jenisSo)->whereDate('last_updated', $today);
+                // Admin atau non-operator bisa hapus semua principal
+                $query = StockOnHandModel::where('jenis_so', $jenisSo);
+                
+                if ($jenisSo === 'monthly') {
+                    $query->whereYear('last_updated', now()->year)
+                        ->whereMonth('last_updated', now()->month);
+                } else {
+                    $query->whereDate('last_updated', $today);
+                }
+
                 if ($request->has('principal')) {
                     $principal = $request->principal;
-                    $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
-                        ->where('principal', $principal)
-                        ->where('jenis_so', $jenisSo)
-                        ->first();
+                    if ($jenisSo === 'monthly') {
+                        $currentYear = now()->year;
+                        $currentMonth = now()->month;
+                        $soStatus = WfgSopStatusModel::where('jenis_so', 'monthly')
+                            ->where('principal', $principal)
+                            ->whereYear('tgl_opname', $currentYear)
+                            ->whereMonth('tgl_opname', $currentMonth)
+                            ->where('status', 'finished')
+                            ->first();
+                    } else {
+                        $soStatus = WfgSopStatusModel::whereDate('tgl_opname', $today)
+                            ->where('principal', $principal)
+                            ->where('jenis_so', $jenisSo)
+                            ->first();
+                    }
                     if ($soStatus && $soStatus->status === 'finished') {
                         return response()->json([
                             'status' => false,
@@ -488,18 +524,18 @@ class StockOnHandWfgController extends Controller
             if ($deleted === 0) {
                 return response()->json([
                     'status' => true,
-                    'message' => 'Tidak ada data SOH yang dihapus untuk hari ini.'
+                    'message' => 'Tidak ada data SOH yang dihapus untuk ' . $periodeText . '.'
                 ]);
             }
 
             return response()->json([
                 'status' => true,
-                'message' => "Berhasil menghapus $deleted data SOH untuk tanggal $today."
+                'message' => "Berhasil menghapus $deleted data SOH untuk $periodeText."
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Gagal menghapus data SOH hari ini.',
+                'message' => 'Gagal menghapus data SOH ' . $periodeText . '.',
                 'error' => $e->getMessage()
             ], 500);
         }

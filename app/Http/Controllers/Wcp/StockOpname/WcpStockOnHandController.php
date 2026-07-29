@@ -312,9 +312,21 @@ class WcpStockOnHandController extends Controller
         $today = now()->toDateString();
         $jenisSo = $request->input('jenis_so', 'cycle_count');
         $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
-        $soStatus = WcpSoStatusModel::whereDate('tgl_opname', $today)
-            ->where('jenis_so', $jenisSo)
-            ->first();
+        
+        if ($jenisSo === 'monthly') {
+            $currentYear = now()->year;
+            $currentMonth = now()->month;
+            $soStatus = WcpSoStatusModel::where('jenis_so', 'monthly')
+                ->whereYear('tgl_opname', $currentYear)
+                ->whereMonth('tgl_opname', $currentMonth)
+                ->where('status', 'finished')
+                ->first();
+        } else {
+            $soStatus = WcpSoStatusModel::whereDate('tgl_opname', $today)
+                ->where('jenis_so', $jenisSo)
+                ->first();
+        }
+        
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
                 'status' => false,
@@ -323,9 +335,14 @@ class WcpStockOnHandController extends Controller
         }
 
         try {
-            $deleted = WcpSohModel::whereDate('created_at', $today)
-                ->where('jenis_so', $jenisSo)
-                ->delete();
+            $query = WcpSohModel::where('jenis_so', $jenisSo);
+            if ($jenisSo === 'monthly') {
+                $query->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', now()->month);
+            } else {
+                $query->whereDate('created_at', $today);
+            }
+            $deleted = $query->delete();
 
             return response()->json([
                 'status' => true,

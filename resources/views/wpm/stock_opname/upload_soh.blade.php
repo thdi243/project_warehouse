@@ -120,8 +120,9 @@
                                 </form>
                             </div>
 
-                             @if ($barangCount > 0)
-                                <div class="col-lg-6 col-md-12 d-flex gap-2 justify-content-lg-end" id="soh-actions-container">
+                            @if ($barangCount > 0)
+                                <div class="col-lg-6 col-md-12 d-flex gap-2 justify-content-lg-end"
+                                    id="soh-actions-container">
                                     <div id="soh-actions-wrapper" class="d-flex gap-2 w-100 justify-content-lg-end">
                                         <button class="btn btn-success px-4 w-100" data-bs-toggle="modal"
                                             data-bs-target="#uploadModal">
@@ -137,8 +138,12 @@
                                 </div>
                             @else
                                 <div class="col-lg-6 col-md-12">
-                                    <div class="alert alert-warning py-2 px-3 mb-0 w-100 text-center small border-0 shadow-none">
-                                        <i class="mdi mdi-alert-circle me-1"></i> Data Master Barang kosong. Silakan isi <a href="{{ route('master.wpm.barang.index') }}" class="alert-link text-decoration-underline fw-bold">Master Barang</a> terlebih dahulu.
+                                    <div
+                                        class="alert alert-warning py-2 px-3 mb-0 w-100 text-center small border-0 shadow-none">
+                                        <i class="mdi mdi-alert-circle me-1"></i> Data Master Barang kosong. Silakan isi <a
+                                            href="{{ route('master.wpm.barang.index') }}"
+                                            class="alert-link text-decoration-underline fw-bold">Master Barang</a> terlebih
+                                        dahulu.
                                     </div>
                                 </div>
                             @endif
@@ -153,12 +158,14 @@
                     <!-- Tab Pemilihan Jenis SO -->
                     <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" id="jenisSoTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" data-bs-toggle="tab" data-value="cycle_count" type="button" role="tab">
+                            <button class="nav-link active" data-bs-toggle="tab" data-value="cycle_count" type="button"
+                                role="tab">
                                 <i class="mdi mdi-sync me-1"></i> Cycle Count (Daily)
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-value="monthly" type="button" role="tab">
+                            <button class="nav-link" data-bs-toggle="tab" data-value="monthly" type="button"
+                                role="tab">
                                 <i class="mdi mdi-calendar-month me-1"></i> Monthly SO
                             </button>
                         </li>
@@ -214,8 +221,8 @@
                         </div>
                         <div class="mb-3">
                             <label for="excel_file" class="form-label fw-semibold">Pilih File Excel (.xlsx, .xls)</label>
-                            <input type="file" class="form-control" id="excel_file" name="file" accept=".xlsx, .xls"
-                                required>
+                            <input type="file" class="form-control" id="excel_file" name="file"
+                                accept=".xlsx, .xls" required>
                         </div>
                         <div class="mb-3">
                             <label for="upload_jenis_so" class="form-label fw-semibold">Jenis SO</label>
@@ -345,7 +352,7 @@
             $('#formSOH').on('submit', function(e) {
                 e.preventDefault();
                 const sohId = $('#soh_id').val();
-                
+
                 let postData = $(this).serialize();
                 if ($('#soh_jenis_so').is(':disabled')) {
                     postData += '&jenis_so=' + encodeURIComponent($('#soh_jenis_so').val());
@@ -436,7 +443,8 @@
                 const jenisSo = $('#jenisSoTabs button.active').data('value') || 'cycle_count';
                 Swal.fire({
                     title: 'Kosongkan Data SOH?',
-                    text: 'Seluruh data SOH WPM ' + (jenisSo === 'monthly' ? 'bulan ini' : 'hari ini') + ' akan dihapus permanen.',
+                    text: 'Seluruh data SOH WPM ' + (jenisSo === 'monthly' ? 'bulan ini' :
+                        'hari ini') + ' akan dihapus permanen.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Ya, Hapus',
@@ -457,6 +465,16 @@
                                     loadSOHList();
                                 } else {
                                     Swal.fire('Gagal', res.message, 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                if (xhr.status === 422) {
+                                    Swal.fire('Gagal', xhr.responseJSON.message,
+                                        'error');
+                                } else {
+                                    Swal.fire('Gagal',
+                                        'Terjadi kesalahan saat menghapus data SOH.',
+                                        'error');
                                 }
                             }
                         });
@@ -486,7 +504,10 @@
                             const barangName = item.barang ? item.barang.nama_barang : 'N/A';
                             const barangMid = item.barang ? item.barang.mid : 'N/A';
                             const uom = item.barang ? item.barang.uom : '';
-                            const qtySoh = parseFloat(item.qty_soh).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                            const qtySoh = parseFloat(item.qty_soh).toLocaleString('id-ID', {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 2
+                            });
                             const editBtn = `
                                         <button class="btn btn-sm btn-outline-primary me-1"
                                             onclick="editSOH(${item.id})"
@@ -523,7 +544,8 @@
                         $('#tableInfo').text(`Showing ${res.from} to ${res.to} of ${res.total} entries`);
                         renderPagination(res);
                     } else {
-                        const emptyMsg = jenisSo === 'monthly' ? 'Tidak ada data SOH bulan ini.' : 'Tidak ada data SOH hari ini.';
+                        const emptyMsg = jenisSo === 'monthly' ? 'Tidak ada data SOH bulan ini.' :
+                            'Tidak ada data SOH hari ini.';
                         tableBody.append(`
                             <tr>
                                 <td colspan="5" class="text-center py-4 text-muted">${emptyMsg}</td>
@@ -573,7 +595,8 @@
                             $('#soh_jenis_so').val(data.jenis_so).prop('disabled', false);
                             $('#barang_id').val(data.barang_id).trigger('change').prop('disabled',
                                 true);
-                            $('#unrest').val(data.qty_unrest !== null ? parseFloat(data.qty_unrest) : 0);
+                            $('#unrest').val(data.qty_unrest !== null ? parseFloat(data.qty_unrest) :
+                                0);
                             $('#qi').val(data.qty_qi !== null ? parseFloat(data.qty_qi) : 0);
                             $('#block').val(data.qty_block !== null ? parseFloat(data.qty_block) : 0);
                             $('#sohModal').modal('show');
@@ -693,6 +716,14 @@
                                 loadSOHList();
                             } else {
                                 Swal.fire('Gagal', res.message, 'error');
+                            }
+                        },
+                        error: function(xhr) {
+                            if (xhr.status === 422) {
+                                Swal.fire('Gagal', xhr.responseJSON.message, 'error');
+                            } else {
+                                Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus data SOH.',
+                                    'error');
                             }
                         }
                     });
