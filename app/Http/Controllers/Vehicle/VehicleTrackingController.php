@@ -79,8 +79,24 @@ class VehicleTrackingController extends Controller
 
         // Split into queues for the dashboard tables
         $queues = [
-            'WPM' => $activeTransactions->where('status', 'wpm')->values(),
-            'WRM' => $activeTransactions->whereIn('status', ['antri_sampling', 'sampling', 'wrm_bongkar'])->values(),
+            'WPM' => $activeTransactions->filter(function ($tx) {
+                if ($tx['status'] === 'wpm') {
+                    return true;
+                }
+                if (in_array($tx['status'], ['antri_sampling', 'sampling'])) {
+                    return $tx['target_location_code'] === 'C001';
+                }
+                return false;
+            })->values(),
+            'WRM' => $activeTransactions->filter(function ($tx) {
+                if ($tx['status'] === 'wrm_bongkar') {
+                    return true;
+                }
+                if (in_array($tx['status'], ['antri_sampling', 'sampling'])) {
+                    return $tx['target_location_code'] !== 'C001';
+                }
+                return false;
+            })->values(),
             'WFG' => $activeTransactions->where('status', 'wfg_muat')->values(),
             'SMU' => $activeTransactions->where('status', 'smu')->values(),
         ];
