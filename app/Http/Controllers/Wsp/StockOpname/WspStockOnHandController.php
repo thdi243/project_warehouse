@@ -813,6 +813,7 @@ class WspStockOnHandController extends Controller
                         'rak_id'    => $rak->id,
                     ], [
                         'status' => 'active',
+                        'created_by' => Auth::id() ?? 1,
                     ]);
 
                     if ($stockLoc->status !== 'active') {

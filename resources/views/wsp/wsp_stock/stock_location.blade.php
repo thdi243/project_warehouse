@@ -589,14 +589,14 @@
                     tbody.append(`
                         <tr>
                             <td>${startIndex + index + 1}</td>
-                            <td><strong>${location.barang ? location.barang.mid_barang : '-'}</strong></td>
-                            <td>${location.rak ? location.rak.plant : '-'}</td>
-                            <td>${location.rak ? location.rak.s_loc : '-'}</td>
-                            <td>${location.rak ? location.rak.area_rak : '-'}</td>
-                            <td>${location.rak ? location.rak.nama_rak : '-'}</td>
-                            <td>${location.rak ? location.rak.kolom_rak : '-'}</td>
-                            <td>${location.rak ? location.rak.level_rak : '-'}</td>
-                            <td>${location.rak ? location.rak.box_rak : '-'}</td>
+                            <td><strong>${location.barang?.mid_barang ?? '-'}</strong></td>
+                            <td>${location.rak?.plant ?? '-'}</td>
+                            <td>${location.rak?.s_loc ?? '-'}</td>
+                            <td>${location.rak?.area_rak ?? '-'}</td>
+                            <td>${location.rak?.nama_rak ?? '-'}</td>
+                            <td>${location.rak?.kolom_rak ?? '-'}</td>
+                            <td>${location.rak?.level_rak ?? '-'}</td>
+                            <td>${location.rak?.box_rak ?? '-'}</td>
                             <td>${statusBadge}</td>
                             <td>
                                 <div class="action-btns">
@@ -736,7 +736,9 @@
                         let select = $('#rakIdSelect');
                         select.empty().append('<option value="">-- Pilih Lokasi --</option>');
                         racks.forEach(rak => {
-                            select.append(`<option value="${rak.id}">${rak.plant} | ${rak.s_loc} | Area: ${rak.area_rak} | Rak: ${rak.nama_rak} | Lokasi: ${rak.kolom_rak}.${rak.level_rak}.${rak.box_rak}</option>`);
+                            select.append(
+                                `<option value="${rak.id}">${rak.plant} | ${rak.s_loc} | Area: ${rak.area_rak} | Rak: ${rak.nama_rak} | Lokasi: ${rak.kolom_rak}.${rak.level_rak}.${rak.box_rak}</option>`
+                            );
                         });
 
                         if (select.hasClass("select2-hidden-accessible")) {
@@ -785,7 +787,7 @@
                 if ($('#midBarang').hasClass("select2-hidden-accessible")) {
                     $('#midBarang').select2('destroy');
                 }
-                
+
                 $.ajax({
                     url: "{{ route('stock.loc_show', '') }}/" + id,
                     type: 'GET',
@@ -793,7 +795,7 @@
                         const data = res.data;
 
                         $('#locationId').val(data.id);
-                        
+
                         initSelectBarang();
                         $('#midBarang')
                             .append(new Option(
@@ -803,7 +805,7 @@
                                 true
                             ))
                             .trigger('change');
-                        
+
                         loadRacks(function() {
                             $('#rakIdSelect').val(data.rak_id).trigger('change');
                         });
