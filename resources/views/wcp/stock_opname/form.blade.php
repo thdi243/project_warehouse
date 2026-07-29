@@ -702,9 +702,9 @@
                                         <th class="text-start">MID (Barang)</th>
                                         <th class="text-start">UoM</th>
                                         <th style="width: 150px;">Qty Fisik</th>
-                                        <th>Summary</th>
+                                        <th class="text-end">Summary</th>
                                         <th class="d-none">Selisih</th>
-                                        <th>Catatan</th>
+                                        <th class="text-center">Catatan</th>
                                         <th style="width: 80px;">Aksi</th>
                                     </tr>
                                 </thead>
@@ -741,7 +741,7 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-start">
                                         ${item.uom}
                                     </td>
                                     <td class="text-center">
@@ -825,7 +825,9 @@
 
                 // Calculate preview values
                 const physicalSummary = dbSummary + receh;
-                row.find('.physical-summary').text(physicalSummary > 0 ? physicalSummary.toLocaleString('id-ID') :
+                const uom = row.data('uom') || '';
+                row.find('.physical-summary').text(physicalSummary > 0 || (fullValStr !== '' && physicalSummary ===
+                        0) ? physicalSummary.toLocaleString('id-ID') :
                     '-');
             });
 
@@ -1013,8 +1015,8 @@
                         // Clear all summary cells, notes, and indicators in rows first (to avoid stale data)
                         rows.each(function() {
                             const row = $(this);
-                            const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
-                            row.find('.physical-summary').text('- ' + uom);
+                            const uom = row.data('uom') || '';
+                            row.find('.physical-summary').text('-');
                             row.attr('data-summary-db', 0);
                             row.find('.diff-indicator-dot').removeClass(
                                 'bg-success bg-danger bg-warning').addClass('bg-secondary');
@@ -1029,9 +1031,10 @@
                             const sohId = key.replace('soh_', '');
                             const row = $(`.soh-row[data-id="${sohId}"]`);
                             if (row.length) {
-                                const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
-                                row.find('.physical-summary').text(totalSummary > 0 ? totalSummary
-                                    .toLocaleString('id-ID') + ' ' + uom : '- ' + uom);
+                                const uom = row.data('uom') || '';
+                                const hasHistory = tempItem.history && tempItem.history.length > 0;
+                                row.find('.physical-summary').text(hasHistory ? totalSummary
+                                    .toLocaleString('id-ID') : '-');
                                 row.attr('data-summary-db', totalSummary);
 
                                 if (latestNote) {

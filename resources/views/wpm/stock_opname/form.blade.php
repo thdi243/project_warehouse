@@ -710,7 +710,7 @@
                             }
 
                             html += `
-                                <tr class="soh-row align-middle" data-id="${item.soh_id}" data-qty-pallet="${item.qty_pallet}" data-qty-soh="${item.qty_soh}" data-summary-db="${summaryVal}">
+                                <tr class="soh-row align-middle" data-id="${item.soh_id}" data-qty-pallet="${item.qty_pallet}" data-qty-soh="${item.qty_soh}" data-summary-db="${summaryVal}" data-uom="${item.uom}">
                                     <td class="text-center font-semibold">${index + 1}</td>
                                     <td>
                                         <div class="d-flex align-items-center">
@@ -815,7 +815,9 @@
 
                 // Calculate preview values
                 const physicalSummary = dbSummary + (full * qtyPallet) + receh;
-                row.find('.physical-summary').text(physicalSummary > 0 ? formatDecimal(physicalSummary) :
+                const uom = row.data('uom') || '';
+                row.find('.physical-summary').text(physicalSummary > 0 || (fullValStr !== '' && physicalSummary ===
+                        0) ? physicalSummary.toLocaleString('id-ID') :
                     '-');
             });
 
@@ -1010,8 +1012,8 @@
                         // Clear all summary cells, notes, and indicators in rows first (to avoid stale data)
                         rows.each(function() {
                             const row = $(this);
-                            const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
-                            row.find('.physical-summary').text('- ' + uom);
+                            const uom = row.data('uom') || '';
+                            row.find('.physical-summary').text('-');
                             row.attr('data-summary-db', 0);
                             row.find('.diff-indicator-dot').removeClass(
                                 'bg-success bg-danger bg-warning').addClass('bg-secondary');
@@ -1026,9 +1028,10 @@
                             const sohId = key.replace('soh_', '');
                             const row = $(`.soh-row[data-id="${sohId}"]`);
                             if (row.length) {
-                                const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
-                                row.find('.physical-summary').text(totalSummary > 0 ? formatDecimal(
-                                    totalSummary) + ' ' + uom : '- ' + uom);
+                                const uom = row.data('uom') || '';
+                                const hasHistory = tempItem.history && tempItem.history.length > 0;
+                                row.find('.physical-summary').text(hasHistory ? totalSummary
+                                    .toLocaleString('id-ID') : '-');
                                 row.attr('data-summary-db', totalSummary);
 
                                 if (latestNote) {
