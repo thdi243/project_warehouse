@@ -602,7 +602,7 @@ class WspStockOnHandController extends Controller
         $today = now()->toDateString();
         $jenisSo = $request->input('jenis_so', 'cycle_count');
         $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
-        
+
         if ($jenisSo === 'monthly') {
             $currentYear = now()->year;
             $currentMonth = now()->month;
@@ -616,7 +616,7 @@ class WspStockOnHandController extends Controller
                 ->where('jenis_so', $jenisSo)
                 ->first();
         }
-        
+
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
                 'status'  => false,
@@ -635,7 +635,7 @@ class WspStockOnHandController extends Controller
 
             $sohIds = $query->pluck('id');
             $hasTemp = \App\Models\Wsp\StockOpname\WspSoTempModel::whereIn('soh_id', $sohIds)->exists() ||
-                       \App\Models\Wsp\StockOpname\WspSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
+                \App\Models\Wsp\StockOpname\WspSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
 
             if ($hasTemp && !$request->boolean('confirm_temp')) {
                 return response()->json([
@@ -734,7 +734,16 @@ class WspStockOnHandController extends Controller
 
                 if (empty($row['A'])) continue;
 
-                $data = array_combine($header, array_map('trim', $row));
+                // Safely combine header and row to handle trailing columns
+                $trimmedRow = array_map(fn($val) => $val !== null ? trim($val) : '', $row);
+                $headerCount = count($header);
+                $rowCount = count($trimmedRow);
+                if ($rowCount > $headerCount) {
+                    $trimmedRow = array_slice($trimmedRow, 0, $headerCount);
+                } elseif ($rowCount < $headerCount) {
+                    $trimmedRow = array_pad($trimmedRow, $headerCount, '');
+                }
+                $data = array_combine($header, $trimmedRow);
 
                 if (empty($data['mid_barang'])) continue;
 
@@ -764,8 +773,7 @@ class WspStockOnHandController extends Controller
                 ], 422);
             }
 
-            // Auto-expand setiap barang ke semua loc aktif di stock_location
-            // Jika barang tidak ada di stock_location → simpan dengan loc_id null (Not Assigned)
+            // Auto-expand/map SOH to location
             $toSave = [];
             foreach ($validData as $item) {
                 $barang    = $item['barang'];
@@ -774,29 +782,77 @@ class WspStockOnHandController extends Controller
                 $qual_insp = (int)($data['qual_insp'] ?? 0);
                 $blocked   = (int)($data['blocked']   ?? 0);
 
-                $mappings = StockLocationModel::where('barang_id', $barang->id)
-                    ->where('status', 'active')
-                    ->get();
+                // Read optional location columns
+                $plant = isset($data['plant']) ? trim($data['plant']) : '';
+                $sloc  = isset($data['s_loc']) ? trim($data['s_loc']) : '';
+                $area  = isset($data['area_rak']) ? trim($data['area_rak']) : '';
+                $nama  = isset($data['nama_rak']) ? trim($data['nama_rak']) : '';
+                $kolom = isset($data['kolom_rak']) ? trim($data['kolom_rak']) : '';
+                $level = isset($data['level_rak']) ? trim($data['level_rak']) : '';
+                $box   = isset($data['box_rak']) ? trim($data['box_rak']) : '';
 
-                if ($mappings->count() > 0) {
-                    foreach ($mappings as $map) {
+                $hasLocationInRow = ($plant !== '' || $sloc !== '' || $area !== '' || $nama !== '' || $kolom !== '' || $level !== '' || $box !== '');
+
+                if ($hasLocationInRow) {
+                    // Find or create the Rak record
+                    $rak = RakModel::firstOrCreate([
+                        'plant'     => $plant !== '' ? $plant : null,
+                        's_loc'     => $sloc !== '' ? $sloc : null,
+                        'area_rak'  => $area !== '' ? $area : null,
+                        'nama_rak'  => $nama !== '' ? $nama : null,
+                        'kolom_rak' => $kolom !== '' ? $kolom : null,
+                        'level_rak' => $level !== '' ? $level : null,
+                        'box_rak'   => $box !== '' ? $box : null,
+                    ], [
+                        'created_by' => Auth::id() ?? 1,
+                    ]);
+
+                    // Find or create the Stock Location mapping
+                    $stockLoc = StockLocationModel::firstOrCreate([
+                        'barang_id' => $barang->id,
+                        'rak_id'    => $rak->id,
+                    ], [
+                        'status' => 'active',
+                    ]);
+
+                    if ($stockLoc->status !== 'active') {
+                        $stockLoc->status = 'active';
+                        $stockLoc->save();
+                    }
+
+                    $toSave[] = [
+                        'barang'    => $barang,
+                        'loc_id'    => $stockLoc->id,
+                        'unrest'    => $unrest,
+                        'qual_insp' => $qual_insp,
+                        'blocked'   => $blocked,
+                    ];
+                } else {
+                    // Fallback to active mappings from stock_location
+                    $mappings = StockLocationModel::where('barang_id', $barang->id)
+                        ->where('status', 'active')
+                        ->get();
+
+                    if ($mappings->count() > 0) {
+                        foreach ($mappings as $map) {
+                            $toSave[] = [
+                                'barang'    => $barang,
+                                'loc_id'    => $map->id,
+                                'unrest'    => $unrest,
+                                'qual_insp' => $qual_insp,
+                                'blocked'   => $blocked,
+                            ];
+                        }
+                    } else {
+                        // No mapping found -> Not Assigned
                         $toSave[] = [
                             'barang'    => $barang,
-                            'loc_id'    => $map->id,
+                            'loc_id'    => null,
                             'unrest'    => $unrest,
                             'qual_insp' => $qual_insp,
                             'blocked'   => $blocked,
                         ];
                     }
-                } else {
-                    // Tidak ada di stock_location → Not Assigned
-                    $toSave[] = [
-                        'barang'    => $barang,
-                        'loc_id'    => null,
-                        'unrest'    => $unrest,
-                        'qual_insp' => $qual_insp,
-                        'blocked'   => $blocked,
-                    ];
                 }
             }
 
@@ -912,6 +968,13 @@ class WspStockOnHandController extends Controller
             'B' => 'unrest',
             'C' => 'qual_insp',
             'D' => 'blocked',
+            'E' => 'plant',
+            'F' => 's_loc',
+            'G' => 'area_rak',
+            'H' => 'nama_rak',
+            'I' => 'kolom_rak',
+            'J' => 'level_rak',
+            'K' => 'box_rak',
         ];
 
         foreach ($headers as $col => $header) {
@@ -925,6 +988,13 @@ class WspStockOnHandController extends Controller
         $sheet->setCellValue('B2', 50);
         $sheet->setCellValue('C2', 0);
         $sheet->setCellValue('D2', 0);
+        $sheet->setCellValue('E2', 'PL01');
+        $sheet->setCellValue('F2', 'SL01');
+        $sheet->setCellValue('G2', 'AREA 1');
+        $sheet->setCellValue('H2', 'RAK A');
+        $sheet->setCellValue('I2', '01');
+        $sheet->setCellValue('J2', '02');
+        $sheet->setCellValue('K2', 'BIN 1');
 
         $fileName = 'Template_Stock_On_Hand_WSP_' . date('Y-m-d') . '.xlsx';
 
