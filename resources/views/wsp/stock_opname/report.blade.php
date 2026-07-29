@@ -157,11 +157,7 @@
                                             <th style="width: 50px;">No</th>
                                             <th>MID</th>
                                             <th class="text-start">Nama Barang</th>
-                                            <th>Area</th>
-                                            <th>Nama</th>
-                                            <th>Kolom</th>
-                                            <th>Level</th>
-                                            <th>Bin</th>
+                                            <th>Lokasi</th>
                                             <th class="text-end">Qty Sistem</th>
                                             <th class="text-end">Qty Fisik</th>
                                             <th class="text-end">Selisih</th>
@@ -172,7 +168,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="14" class="text-center py-4 text-muted">
+                                            <td colspan="10" class="text-center py-4 text-muted">
                                                 Silakan tentukan tanggal lalu klik <strong>Tampilkan Laporan</strong>.
                                             </td>
                                         </tr>
@@ -516,7 +512,7 @@
 
             tableBody.html(`
                 <tr>
-                    <td colspan="14" class="text-center py-4 text-muted">
+                    <td colspan="10" class="text-center py-4 text-muted">
                         <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                         Memuat laporan...
                     </td>
@@ -546,11 +542,10 @@
                             const selisih = parseFloat(item.selisih).toLocaleString('id-ID');
                             const note = item.keterangan ? item.keterangan : '-';
 
-                            const area_rak = item.area_rak || '-';
-                            const nama_rak = item.nama_rak || '-';
-                            const kolom_rak = item.kolom_rak || '-';
-                            const level_rak = item.level_rak || '-';
-                            const bin_rak = item.bin_rak || '-';
+                            const hasLocation = item.area_rak || item.nama_rak || item.kolom_rak || item.level_rak || item.bin_rak;
+                            const lokasiHtml = hasLocation ?
+                                `<span class="badge bg-soft-info text-info border">${item.area_rak || '-'}-${item.nama_rak || '-'}-${item.kolom_rak || '-'}-${item.level_rak || '-'}-${item.bin_rak || '-'}</span>` :
+                                `<span class="badge bg-soft-warning text-warning border">Not yet</span>`;
 
                             let statusBadge = '';
                             if (item.status === 'lebih') {
@@ -586,11 +581,7 @@
                                     <td class="text-center font-semibold">${index + 1}</td>
                                     <td class="text-center">${barangMid}</td>
                                     <td>${barangName}</td>
-                                    <td class="text-center">${area_rak}</td>
-                                    <td class="text-center">${nama_rak}</td>
-                                    <td class="text-center">${kolom_rak}</td>
-                                    <td class="text-center">${level_rak}</td>
-                                    <td class="text-center">${bin_rak}</td>
+                                    <td class="text-center">${lokasiHtml}</td>
                                     <td class="text-end">${qtySistem}</td>
                                     <td class="text-end">${qtyFisik}</td>
                                     <td class="text-end fw-bold">${selisih}</td>
@@ -609,7 +600,7 @@
                     } else {
                         tableBody.append(`
                             <tr>
-                                <td colspan="14" class="text-center py-4 text-muted">
+                                <td colspan="10" class="text-center py-4 text-muted">
                                     Laporan SO tidak ditemukan untuk tanggal: <strong>${date}</strong>
                                 </td>
                             </tr>
@@ -620,7 +611,7 @@
                 error: function(xhr) {
                     tableBody.html(`
                         <tr>
-                            <td colspan="14" class="text-center py-4 text-danger">Gagal memuat data laporan dari server.</td>
+                            <td colspan="10" class="text-center py-4 text-danger">Gagal memuat data laporan dari server.</td>
                         </tr>
                     `);
                     checkApprovalStatus(null, date);

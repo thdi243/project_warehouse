@@ -697,6 +697,7 @@
                                     <tr>
                                         <th style="width: 50px;">No</th>
                                         <th class="text-start">MID (Barang)</th>
+                                        <th style="width: 80px;">UOM</th>
                                         <th>Lokasi</th>
                                         <th style="width: 150px;">Qty Fisik</th>
                                         <th>Summary</th>
@@ -726,7 +727,7 @@
                             }
 
                             html += `
-                                <tr class="soh-row align-middle" data-id="${item.soh_id}" data-qty-pallet="${item.qty_pallet}" data-qty-soh="${item.qty_soh}" data-summary-db="${summaryVal}">
+                                <tr class="soh-row align-middle" data-id="${item.soh_id}" data-qty-pallet="${item.qty_pallet}" data-qty-soh="${item.qty_soh}" data-summary-db="${summaryVal}" data-uom="${item.uom}">
                                     <td class="text-center font-semibold">${index + 1}</td>
                                     <td>
                                         <div class="d-flex align-items-center">
@@ -737,6 +738,7 @@
                                             </div>
                                         </div>
                                     </td>
+                                    <td class="text-center fw-bold text-uppercase">${item.uom}</td>
                                     <td class="text-center">
                                         ${(item.area_rak || item.nama_rak || item.kolom_rak || item.level_rak || item.bin_rak)
                                             ? `<span class="badge bg-soft-info text-info border">${item.area_rak || '-'}-${item.nama_rak || '-'}-${item.kolom_rak || '-'}-${item.level_rak || '-'}-${item.bin_rak || '-'}</span>`
@@ -746,7 +748,7 @@
                                     <td class="text-center">
                                         <input type="number" class="form-control text-center qty-fisik" value="" min="0" step="any" placeholder="0">
                                     </td>
-                                    <td class="text-end fw-bold physical-summary">${isCounted ? summaryVal.toLocaleString('id-ID') : '-'} ${item.uom}</td>
+                                    <td class="text-end fw-bold physical-summary">${isCounted ? summaryVal.toLocaleString('id-ID') : '-'}</td>
                                     <td class="text-center d-none">
                                         <span class="badge ${badgeColor} px-2 py-1 diff-value">${isCounted ? diffVal.toLocaleString('id-ID') : '-'}</span>
                                     </td>
@@ -766,7 +768,7 @@
                                     </td>
                                 </tr>
                                 <tr class="collapse" id="history-${item.soh_id}">
-                                    <td colspan="8" class="p-3 text-muted small text-start history-container">
+                                    <td colspan="9" class="p-3 text-muted small text-start history-container">
                                         <em>Belum ada riwayat input.</em>
                                     </td>
                                 </tr>
@@ -984,8 +986,7 @@
                         // Clear all summary cells, notes, and indicators in rows first (to avoid stale data)
                         rows.each(function() {
                             const row = $(this);
-                            const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
-                            row.find('.physical-summary').text('- ' + uom);
+                            row.find('.physical-summary').text('-');
                             row.attr('data-summary-db', 0);
                             row.find('.diff-indicator-dot').removeClass(
                                 'bg-success bg-danger bg-warning').addClass('bg-secondary');
@@ -1000,10 +1001,9 @@
                             const sohId = key.replace('soh_', '');
                             const row = $(`.soh-row[data-id="${sohId}"]`);
                             if (row.length) {
-                                const uom = row.find('td:nth-child(2) .badge').text().split(' ').pop();
                                 const hasHistory = tempItem.history && tempItem.history.length > 0;
                                 row.find('.physical-summary').text(hasHistory ? totalSummary
-                                    .toLocaleString('id-ID') + ' ' + uom : '- ' + uom);
+                                    .toLocaleString('id-ID') : '-');
                                 row.attr('data-summary-db', totalSummary);
 
                                 if (latestNote) {
