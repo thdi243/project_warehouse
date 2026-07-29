@@ -118,8 +118,12 @@
                                 Jenis SO
                             </label>
                             <select id="jenis_so" name="jenis_so" class="form-select">
-                                <option value="cycle_count" {{ (isset($activeJenisSo) && $activeJenisSo === 'cycle_count') ? 'selected' : '' }}>Cycle Count (Daily)</option>
-                                <option value="monthly" {{ (isset($activeJenisSo) && $activeJenisSo === 'monthly') ? 'selected' : '' }}>Monthly SO</option>
+                                <option value="cycle_count"
+                                    {{ isset($activeJenisSo) && $activeJenisSo === 'cycle_count' ? 'selected' : '' }}>
+                                    Cycle Count (Daily)</option>
+                                <option value="monthly"
+                                    {{ isset($activeJenisSo) && $activeJenisSo === 'monthly' ? 'selected' : '' }}>Monthly
+                                    SO</option>
                             </select>
                         </div>
 
@@ -676,11 +680,12 @@
                                     <tr>
                                         <th style="width: 50px;">No</th>
                                         <th class="text-start">MID (Barang)</th>
-                                        <th style="width: 150px;">Qty Full Pallet</th>
-                                        <th style="width: 150px;">Qty Receh</th>
-                                        <th>Summary</th>
+                                        <th class="text-start">UoM</th>
+                                        <th class="text-start" style="width: 150px;">Qty Full Pallet</th>
+                                        <th class="text-start" style="width: 150px;">Qty Receh</th>
+                                        <th class="text-end">Summary</th>
                                         <th class="d-none">Selisih</th>
-                                        <th>Catatan</th>
+                                        <th class="text-start">Catatan</th>
                                         <th style="width: 80px;">Aksi</th>
                                     </tr>
                                 </thead>
@@ -713,17 +718,18 @@
                                             <div>
                                                 <span class="d-block fw-bold">${item.mid}</span>
                                                 <span class="d-block text-muted small">${item.nama_barang}</span>
-                                                <span class="badge bg-light text-dark border">Pallet Conv: ${item.qty_pallet} ${item.uom}</span>
+                                                <span class="badge bg-light text-dark border">Qty Pallet: ${item.qty_pallet}</span>
                                             </div>
                                         </div>
                                     </td>
+                                    <td class="text-start">${item.uom}</td>
                                     <td class="text-center">
                                         <input type="number" class="form-control text-center qty-full" value="" min="0" step="any" placeholder="0">
                                     </td>
                                     <td class="text-center">
                                         <input type="number" class="form-control text-center qty-receh" value="" min="0" step="any" placeholder="0">
                                     </td>
-                                    <td class="text-end fw-bold physical-summary">${isCounted ? formatDecimal(summaryVal) : '-'} ${item.uom}</td>
+                                    <td class="text-end fw-bold physical-summary">${isCounted ? formatDecimal(summaryVal) : '-'}</td>
                                     <td class="text-center d-none">
                                         <span class="badge ${badgeColor} px-2 py-1 diff-value">${isCounted ? formatDecimal(diffVal) : '-'}</span>
                                     </td>

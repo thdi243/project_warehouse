@@ -152,8 +152,12 @@
                                 Jenis SO
                             </label>
                             <select id="jenis_so" name="jenis_so" class="form-select">
-                                <option value="cycle_count" {{ (isset($activeJenisSo) && $activeJenisSo === 'cycle_count') ? 'selected' : '' }}>Cycle Count (Daily)</option>
-                                <option value="monthly" {{ (isset($activeJenisSo) && $activeJenisSo === 'monthly') ? 'selected' : '' }}>Monthly SO</option>
+                                <option value="cycle_count"
+                                    {{ isset($activeJenisSo) && $activeJenisSo === 'cycle_count' ? 'selected' : '' }}>
+                                    Cycle Count (Daily)</option>
+                                <option value="monthly"
+                                    {{ isset($activeJenisSo) && $activeJenisSo === 'monthly' ? 'selected' : '' }}>Monthly
+                                    SO</option>
                             </select>
                         </div>
 
@@ -237,8 +241,8 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="form-label">UNREST</label>
-                                    <input type="number" class="form-control" name="unrest" value="0" min="0" step="any"
-                                        required>
+                                    <input type="number" class="form-control" name="unrest" value="0" min="0"
+                                        step="any" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">QI</label>
@@ -696,6 +700,7 @@
                                     <tr>
                                         <th style="width: 50px;">No</th>
                                         <th class="text-start">MID (Barang)</th>
+                                        <th class="text-start">UoM</th>
                                         <th style="width: 150px;">Qty Fisik</th>
                                         <th>Summary</th>
                                         <th class="d-none">Selisih</th>
@@ -724,7 +729,7 @@
                             }
 
                             html += `
-                                <tr class="soh-row align-middle" data-id="${item.soh_id}" data-qty-pallet="${item.qty_pallet}" data-qty-soh="${item.qty_soh}" data-summary-db="${summaryVal}">
+                                <tr class="soh-row align-middle" data-id="${item.soh_id}" data-qty-pallet="${item.qty_pallet}" data-qty-soh="${item.qty_soh}" data-summary-db="${summaryVal}" data-uom="${item.uom}">
                                     <td class="text-center font-semibold">${index + 1}</td>
                                     <td>
                                         <div class="d-flex align-items-center">
@@ -735,6 +740,9 @@
                                                 
                                             </div>
                                         </div>
+                                    </td>
+                                    <td class="text-center">
+                                        ${item.uom}
                                     </td>
                                     <td class="text-center">
                                         <input type="number" class="form-control text-center qty-receh" value="" min="0" step="any" placeholder="0">
