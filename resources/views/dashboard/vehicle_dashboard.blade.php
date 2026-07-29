@@ -704,9 +704,11 @@
                                     <thead>
                                         <tr>
                                             <th>Check In</th>
+                                            <th>No. SPB</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            <th>Item</th>
+                                            <th>QC Status</th>
+                                            <th>Unloading</th>
                                             <th>Durasi</th>
                                         </tr>
                                     </thead>
@@ -1031,7 +1033,7 @@
 
                         if (totalCount === 0) {
                             let colsCount = 5;
-                            if (key === 'WPM') colsCount = 5;
+                            if (key === 'WPM') colsCount = 7;
                             if (key === 'WRM') colsCount = 7;
                             if (key === 'WFG') colsCount = 6;
                             tbody.html(
@@ -1064,6 +1066,38 @@
 
                             let rowHtml = '';
                             if (key === 'WPM') {
+                                let qcStatusBadge = '';
+                                if (tx.qc_status === 'waiting_dokumen') {
+                                    qcStatusBadge =
+                                        `<span class="badge-status waiting">Waiting Dokumen</span>`;
+                                } else if (tx.qc_status === 'on_check') {
+                                    qcStatusBadge =
+                                        `<span class="badge-status process">On Check</span>`;
+                                } else if (tx.qc_status === 'released') {
+                                    qcStatusBadge =
+                                        `<span class="badge-status success">Released</span>`;
+                                } else if (tx.qc_status === 'rejected') {
+                                    qcStatusBadge = `<span class="badge-status danger">Rejected</span>`;
+                                } else {
+                                    qcStatusBadge =
+                                        `<span class="badge bg-soft-secondary text-secondary">${tx.qc_status}</span>`;
+                                }
+
+                                let unloadingStatusBadge = '';
+                                if (tx.status === 'antri_sampling') {
+                                    unloadingStatusBadge =
+                                        `<span class="badge-status waiting">Menunggu QC</span>`;
+                                } else if (tx.status === 'sampling') {
+                                    unloadingStatusBadge =
+                                        `<span class="badge-status process">Proses Sampling</span>`;
+                                } else if (tx.status === 'wpm') {
+                                    unloadingStatusBadge =
+                                        `<span class="badge-status process">Proses Bongkar</span>`;
+                                } else {
+                                    unloadingStatusBadge =
+                                        `<span class="badge bg-soft-secondary text-secondary">${tx.unloading_status}</span>`;
+                                }
+
                                 rowHtml = `
                                     <tr class="${warningRow}" id="row-tx-${tx.id}">
                                         <td>
@@ -1072,9 +1106,11 @@
                                                 <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
                                             </div>
                                         </td>
+                                        <td><span class="fw-semibold">${tx.no_spb}</span></td>
                                         <td><span class="fw-semibold">${tx.no_pol}</span></td>
                                         <td>${tx.vendor}</td>
-                                        <td><strong>${tx.item}</strong></td>
+                                        <td>${qcStatusBadge}</td>
+                                        <td>${unloadingStatusBadge}</td>
                                         <td>
                                             <span class="dashboard-timer ${durationClass}" data-start="${tx.arrival_time}" data-limit="${tx.limit_minutes}">
                                                 Calculated...
@@ -1192,7 +1228,7 @@
                         if (currentRenderedRows < itemsPerPage) {
                             const paddingRowsNeeded = itemsPerPage - currentRenderedRows;
                             let colsCount = 5;
-                            if (key === 'WPM') colsCount = 5;
+                            if (key === 'WPM') colsCount = 7;
                             if (key === 'WRM') colsCount = 7;
                             if (key === 'WFG') colsCount = 6;
                             for (let i = 0; i < paddingRowsNeeded; i++) {
