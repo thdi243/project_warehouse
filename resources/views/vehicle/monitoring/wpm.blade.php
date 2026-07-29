@@ -24,7 +24,8 @@
                     <div class="card shadow-sm border-0">
                         <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
                             <h4 class="card-title mb-0 flex-grow-1"><i
-                                    class="ri-download-2-line me-2 align-middle text-warning"></i>Antrian Bongkar WPM Area</h4>
+                                    class="ri-download-2-line me-2 align-middle text-warning"></i>Antrian Bongkar WPM Area
+                            </h4>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -109,7 +110,7 @@
                                     <td>${tx.item_name}</td>
                                     <td>
                                         <strong>${tx.no_spb}</strong><br>
-                                        <small class="text-muted">${tx.qty_spb}</small>
+                                        <small class="text-muted">${parseFloat(tx.qty_spb)}</small>
                                     </td>
                                     <td>${tx.arrival_time}</td>
                                     <td>
