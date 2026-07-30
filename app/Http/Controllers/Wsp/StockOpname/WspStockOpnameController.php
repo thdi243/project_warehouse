@@ -1027,7 +1027,7 @@ class WspStockOpnameController extends Controller
         }
 
         $data = WspSoSummariesModel::where('so_id', $sop->id)
-            ->with('barang:id,mid_barang,nama_barang,uom')
+            ->with(['barang:id,mid_barang,nama_barang,uom', 'location.rak'])
             ->get();
 
         return response()->json([
@@ -1347,7 +1347,7 @@ class WspStockOpnameController extends Controller
 
     public function getReportDetail(int $id)
     {
-        $summary = WspSoSummariesModel::with('barang')->findOrFail($id);
+        $summary = WspSoSummariesModel::with(['barang', 'location.rak'])->findOrFail($id);
 
         $details = WspSoDetailModel::where('so_id', $summary->so_id)
             ->where('barang_id', $summary->barang_id)
@@ -1582,7 +1582,7 @@ class WspStockOpnameController extends Controller
         }
 
         $summaries = WspSoSummariesModel::where('so_id', $so->id)
-            ->with('barang:id,mid_barang,nama_barang,uom')
+            ->with(['barang:id,mid_barang,nama_barang,uom', 'location.rak'])
             ->get();
 
         if ($summaries->isEmpty()) {
