@@ -133,7 +133,7 @@ class WcpStockOnHandController extends Controller
         try {
             $barangId = $request->barang_id;
             $barang = WcpMasterBarangModel::findOrFail($barangId);
-            
+
             // Validasi jika MID sudah ada hari ini untuk jenis SO ini
             $exists = WcpSohModel::where('barang_id', $barangId)
                 ->where('jenis_so', $jenisSo)
@@ -200,7 +200,6 @@ class WcpStockOnHandController extends Controller
                 'message' => 'Stock On Hand berhasil dibuat',
                 'data' => $soh
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -215,16 +214,16 @@ class WcpStockOnHandController extends Controller
         $soh = WcpSohModel::findOrFail($id);
 
         $today = now()->toDateString();
-        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
-        $soStatus = WcpSoStatusModel::whereDate('tgl_opname', $today)
-            ->where('jenis_so', $soh->jenis_so)
-            ->first();
-        if ($soStatus && $soStatus->status === 'finished') {
-            return response()->json([
-                'status' => false,
-                'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
-            ], 422);
-        }
+        // $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        // $soStatus = WcpSoStatusModel::whereDate('tgl_opname', $today)
+        //     ->where('jenis_so', $soh->jenis_so)
+        //     ->first();
+        // if ($soStatus && $soStatus->status === 'finished') {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+        //     ], 422);
+        // }
 
         $request->validate([
             'unrest' => 'nullable|integer|min:0',
@@ -312,7 +311,7 @@ class WcpStockOnHandController extends Controller
         $today = now()->toDateString();
         $jenisSo = $request->input('jenis_so', 'cycle_count');
         $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
-        
+
         if ($jenisSo === 'monthly') {
             $currentYear = now()->year;
             $currentMonth = now()->month;
@@ -326,7 +325,7 @@ class WcpStockOnHandController extends Controller
                 ->where('jenis_so', $jenisSo)
                 ->first();
         }
-        
+
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
                 'status' => false,
@@ -345,7 +344,7 @@ class WcpStockOnHandController extends Controller
 
             $sohIds = $query->pluck('id');
             $hasTemp = \App\Models\Wcp\StockOpname\WcpSoTempModel::whereIn('soh_id', $sohIds)->exists() ||
-                       \App\Models\Wcp\StockOpname\WcpSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
+                \App\Models\Wcp\StockOpname\WcpSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
 
             if ($hasTemp && !$request->boolean('confirm_temp')) {
                 return response()->json([
