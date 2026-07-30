@@ -995,7 +995,7 @@ class WspStockOnHandController extends Controller
         $sheet->setCellValue('H2', 'A');
         $sheet->setCellValue('I2', '1');
         $sheet->setCellValue('J2', '2');
-        $sheet->setCellValue('K2', '000');
+        $sheet->setCellValue('K2', '01');
 
         $fileName = 'Template_Stock_On_Hand_WSP_' . date('Y-m-d') . '.xlsx';
 

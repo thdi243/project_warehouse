@@ -42,6 +42,17 @@
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: 36px;
         }
+
+        /* CSS to keep row numbers static during sorting */
+        #tableReportList {
+            counter-reset: rowNumber;
+        }
+        #tableReportList tbody tr {
+            counter-increment: rowNumber;
+        }
+        #tableReportList tbody tr td.row-number::before {
+            content: counter(rowNumber);
+        }
     </style>
 @endsection
 
@@ -151,18 +162,18 @@
                         <!-- Tab 1: Data Opname -->
                         <div class="tab-pane fade show active" id="tabData" role="tabpanel" aria-labelledby="data-tab">
                             <div class="table-responsive">
-                                <table class="table table-striped align-middle mb-0" id="tableReportList">
+                                <table class="table table-striped align-middle mb-0 sortable" id="tableReportList">
                                     <thead class="table-light text-center">
                                         <tr>
-                                            <th style="width: 50px;">No</th>
-                                            <th>MID</th>
-                                            <th class="text-start">Nama Barang</th>
-                                            <th class="text-end">Qty Sistem</th>
-                                            <th class="text-end">Qty Fisik</th>
+                                            <th style="width: 50px;" class="no-sort">No</th>
+                                            <th class="no-sort">MID</th>
+                                            <th class="text-start no-sort">Nama Barang</th>
+                                            <th class="text-end no-sort">Qty Sistem</th>
+                                            <th class="text-end no-sort">Qty Fisik</th>
                                             <th class="text-end">Selisih</th>
-                                            <th>Status</th>
-                                            <th class="text-start">Catatan / Keterangan</th>
-                                            <th style="width: 120px;">Aksi</th>
+                                            <th class="no-sort">Status</th>
+                                            <th class="text-start no-sort">Catatan / Keterangan</th>
+                                            <th style="width: 120px;" class="no-sort">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -578,12 +589,12 @@
 
                             tableBody.append(`  
                                 <tr>
-                                    <td class="text-center font-semibold">${index + 1}</td>
+                                    <td class="text-center font-semibold row-number"></td>
                                     <td class="text-center">${barangMid}</td>
                                     <td>${barangName}</td>
                                     <td class="text-end">${qtySistem}</td>
                                     <td class="text-end">${qtyFisik}</td>
-                                    <td class="text-end fw-bold">${selisih}</td>
+                                    <td class="text-end fw-bold" data-sort="${item.selisih}">${selisih}</td>
                                     <td class="text-center">${statusBadge}</td>
                                     <td>${note}</td>
                                     <td class="text-center text-nowrap">
