@@ -214,16 +214,16 @@ class WpmStockOnHandController extends Controller
         $soh = WpmSohModel::findOrFail($id);
 
         $today = now()->toDateString();
-        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
-        $soStatus = WpmSoStatusModel::whereDate('tgl_opname', $today)
-            ->where('jenis_so', $soh->jenis_so)
-            ->first();
-        if ($soStatus && $soStatus->status === 'finished') {
-            return response()->json([
-                'status' => false,
-                'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
-            ], 422);
-        }
+        // $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        // $soStatus = WpmSoStatusModel::whereDate('tgl_opname', $today)
+        //     ->where('jenis_so', $soh->jenis_so)
+        //     ->first();
+        // if ($soStatus && $soStatus->status === 'finished') {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+        //     ], 422);
+        // }
 
         $request->validate([
             'unrest' => 'nullable|numeric|min:0',
@@ -311,7 +311,7 @@ class WpmStockOnHandController extends Controller
         $today = now()->toDateString();
         $jenisSo = $request->input('jenis_so', 'cycle_count');
         $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
-        
+
         if ($jenisSo === 'monthly') {
             $currentYear = now()->year;
             $currentMonth = now()->month;
@@ -325,7 +325,7 @@ class WpmStockOnHandController extends Controller
                 ->where('jenis_so', $jenisSo)
                 ->first();
         }
-        
+
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
                 'status' => false,
@@ -344,7 +344,7 @@ class WpmStockOnHandController extends Controller
 
             $sohIds = $query->pluck('id');
             $hasTemp = \App\Models\Wpm\StockOpname\WpmSoTempModel::whereIn('soh_id', $sohIds)->exists() ||
-                       \App\Models\Wpm\StockOpname\WpmSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
+                \App\Models\Wpm\StockOpname\WpmSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
 
             if ($hasTemp && !$request->boolean('confirm_temp')) {
                 return response()->json([

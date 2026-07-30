@@ -206,7 +206,7 @@ class WrmStockOnHandController extends Controller
                     $query->where('barang_id', $barangId);
                 }
 
-                 $palletList = $query->whereNotNull('pallet_id')
+                $palletList = $query->whereNotNull('pallet_id')
                     ->where('pallet_id', '!=', '')
                     ->get(['id', 'pallet_id', 'inbound_id', 'barang_id', 'qty', 'loc_id'])
                     ->map(fn($d) => [
@@ -600,16 +600,16 @@ class WrmStockOnHandController extends Controller
         $soh = WrmSohModel::findOrFail($id);
 
         $today = now()->toDateString();
-        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
-        $soStatus = WrmSoStatusModel::whereDate('tgl_opname', $today)
-            ->where('jenis_so', $soh->jenis_so)
-            ->first();
-        if ($soStatus && $soStatus->status === 'finished') {
-            return response()->json([
-                'status' => false,
-                'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
-            ], 422);
-        }
+        // $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        // $soStatus = WrmSoStatusModel::whereDate('tgl_opname', $today)
+        //     ->where('jenis_so', $soh->jenis_so)
+        //     ->first();
+        // if ($soStatus && $soStatus->status === 'finished') {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+        //     ], 422);
+        // }
 
         $request->validate([
             'unrest' => 'nullable|integer|min:0',
@@ -633,7 +633,7 @@ class WrmStockOnHandController extends Controller
                 $barang = MasterBarangModel::find($soh->barang_id);
                 return response()->json([
                     'status' => false,
-                    'message' => "Data SOH untuk MID {$barang->mid} dengan No SPB {$request->no_spb} dan Pallet {$request->pallet} sudah ada {$periodeText} untuk jenis SO ini!"
+                    'message' => "Data SOH untuk MID {$barang->mid} dengan No SPB {$request->no_spb} dan Pallet {$request->pallet} sudah ada untuk jenis SO ini!"
                 ], 422);
             }
 
@@ -778,7 +778,7 @@ class WrmStockOnHandController extends Controller
         $today = now()->toDateString();
         $jenisSo = $request->input('jenis_so', 'cycle_count');
         $periodeText = $jenisSo === 'monthly' ? 'bulan ini' : 'hari ini';
-        
+
         if ($jenisSo === 'monthly') {
             $currentYear = now()->year;
             $currentMonth = now()->month;
@@ -792,7 +792,7 @@ class WrmStockOnHandController extends Controller
                 ->where('jenis_so', $jenisSo)
                 ->first();
         }
-        
+
         if ($soStatus && $soStatus->status === 'finished') {
             return response()->json([
                 'status' => false,
@@ -811,7 +811,7 @@ class WrmStockOnHandController extends Controller
 
             $sohIds = $query->pluck('id');
             $hasTemp = \App\Models\Wrm\StockOpname\WrmSoTempModel::whereIn('soh_id', $sohIds)->exists() ||
-                       \App\Models\Wrm\StockOpname\WrmSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
+                \App\Models\Wrm\StockOpname\WrmSoTempNoteModel::whereIn('soh_id', $sohIds)->exists();
 
             if ($hasTemp && !$request->boolean('confirm_temp')) {
                 return response()->json([

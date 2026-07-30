@@ -504,16 +504,16 @@ class WspStockOnHandController extends Controller
         $soh = WspSohModel::findOrFail($id);
 
         $today = now()->toDateString();
-        $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
-        $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
-            ->where('jenis_so', $soh->jenis_so)
-            ->first();
-        if ($soStatus && $soStatus->status === 'finished') {
-            return response()->json([
-                'status'  => false,
-                'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
-            ], 422);
-        }
+        // $periodeText = $soh->jenis_so === 'monthly' ? 'bulan ini' : 'hari ini';
+        // $soStatus = WspSoStatusModel::whereDate('tgl_opname', $today)
+        //     ->where('jenis_so', $soh->jenis_so)
+        //     ->first();
+        // if ($soStatus && $soStatus->status === 'finished') {
+        //     return response()->json([
+        //         'status'  => false,
+        //         'message' => "Tidak dapat memperbarui data SOH karena Stock Opname {$periodeText} telah selesai (finished) untuk jenis SO ini."
+        //     ], 422);
+        // }
 
         $request->validate([
             'unrest' => 'nullable|integer|min:0',
