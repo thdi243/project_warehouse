@@ -258,7 +258,7 @@
             loadRacks();
 
             // Load data from backend
-            function loadRacks() {
+            function loadRacks(keepPage = false) {
                 $.ajax({
                     url: `/api/wsp/data/all/rak`,
                     type: 'GET',
@@ -278,7 +278,7 @@
                     success: function(res) {
                         if (Array.isArray(res)) {
                             allRacks = res;
-                            applyFilters();
+                            applyFilters(keepPage);
                         } else {
                             $('#wspRakTable tbody').html(
                                 '<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
@@ -299,7 +299,7 @@
             }
 
             // Apply filtering
-            function applyFilters() {
+            function applyFilters(keepPage = false) {
                 const filterArea = $('#filterArea').val();
                 const filterNama = $('#filterNama').val();
 
@@ -317,7 +317,14 @@
                     return matchArea && matchNama;
                 });
 
-                currentPage = 1;
+                if (!keepPage) {
+                    currentPage = 1;
+                } else {
+                    const totalPages = Math.ceil(filteredRacks.length / itemsPerPage);
+                    if (currentPage > totalPages) {
+                        currentPage = totalPages || 1;
+                    }
+                }
                 renderTable();
             }
 
@@ -396,12 +403,12 @@
 
                 // Previous button
                 pagination.append(`
-                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
-                        <i class="mdi mdi-chevron-left"></i>
-                    </a>
-                </li>
-            `);
+                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
+                            <i class="mdi mdi-chevron-left"></i>
+                        </a>
+                    </li>
+                `);
 
                 // Page numbers
                 for (let i = 1; i <= totalPages; i++) {
@@ -418,12 +425,12 @@
 
                 // Next button
                 pagination.append(`
-                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
-                        <i class="mdi mdi-chevron-right"></i>
-                    </a>
-                </li>
-            `);
+                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
+                            <i class="mdi mdi-chevron-right"></i>
+                        </a>
+                    </li>
+                `);
             }
 
             window.changePage = function(page) {
@@ -524,7 +531,7 @@
                     success: function(response) {
                         Swal.fire('Success!', 'Data updated successfully.', 'success');
                         $('#editModal').modal('hide');
-                        loadRacks(); // reload data
+                        loadRacks(true); // reload data
                     },
                     error: function(err) {
                         console.error("Error updating data:", err);
@@ -562,7 +569,7 @@
                                     'Your file has been deleted.',
                                     'success'
                                 );
-                                loadRacks(); // reload data
+                                loadRacks(true); // reload data
                             },
                             error: function(err) {
                                 console.error("Error deleting data:", err);
