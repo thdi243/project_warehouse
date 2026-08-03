@@ -197,11 +197,18 @@ class StockOpnameWfgController extends Controller
             }
         }
 
-        // Check if SOH exists for today for this jenis_so and principal
-        $sohCount = StockOnHandModel::whereDate('last_updated', $today)
-            ->where('principal', $principal)
-            ->where('jenis_so', $jenisSo)
-            ->count();
+        // Check if SOH exists for today (cycle_count) or current month (monthly) for this principal
+        $sohQuery = StockOnHandModel::where('principal', $principal)
+            ->where('jenis_so', $jenisSo);
+
+        if ($jenisSo === 'monthly') {
+            $sohQuery->whereYear('last_updated', Carbon::parse($today)->year)
+                ->whereMonth('last_updated', Carbon::parse($today)->month);
+        } else {
+            $sohQuery->whereDate('last_updated', $today);
+        }
+
+        $sohCount = $sohQuery->count();
 
         if ($sohCount === 0) {
             return response()->json([
@@ -570,6 +577,19 @@ class StockOpnameWfgController extends Controller
             }
         }
 
+        // Resolve YYYY-MM to the actual date in database for monthly SO
+        if ($jenisSo === 'monthly' && strlen($tglOpname) === 7) {
+            $carbonDate = Carbon::parse($tglOpname);
+            $statusRecord = WfgSopStatusModel::where('jenis_so', 'monthly')
+                ->where('principal', $principalFilter)
+                ->whereYear('tgl_opname', $carbonDate->year)
+                ->whereMonth('tgl_opname', $carbonDate->month)
+                ->first();
+            if ($statusRecord) {
+                $tglOpname = $statusRecord->tgl_opname;
+            }
+        }
+
         // Ambil temp data untuk jenis_so tertentu
         $tempData = WfgSopTempModel::query()
             ->when(
@@ -591,12 +611,20 @@ class StockOpnameWfgController extends Controller
             ]);
         }
 
-        // 🔹 Ambil barang SOH hari ini untuk jenis_so tertentu
-        $barangHariIni = StockOnHandModel::with('barang:id,mid_barang,nama_barang,principal')
+        // 🔹 Ambil barang SOH hari ini (cycle count) atau bulan ini (monthly) untuk jenis_so tertentu
+        $barangHariIniQuery = StockOnHandModel::with('barang:id,mid_barang,nama_barang,principal')
             ->whereHas('barang', fn($q) => $q->where('principal', $principalFilter))
-            ->where('jenis_so', $jenisSo)
-            ->whereDate('last_updated', Carbon::today())
-            ->get();
+            ->where('jenis_so', $jenisSo);
+
+        if ($jenisSo === 'monthly') {
+            $carbonDate = Carbon::parse($tglOpname);
+            $barangHariIniQuery->whereYear('last_updated', $carbonDate->year)
+                ->whereMonth('last_updated', $carbonDate->month);
+        } else {
+            $barangHariIniQuery->whereDate('last_updated', Carbon::today());
+        }
+
+        $barangHariIni = $barangHariIniQuery->get();
 
         // 🔹 Cek yang belum di-opname
         $barangBelumOpname = [];
@@ -1265,8 +1293,14 @@ class StockOpnameWfgController extends Controller
                 $selisihSelect,
                 $hasDiffSelect
             )
-            ->whereDate('wfg_soh.last_updated', $today)
             ->where('wfg_soh.jenis_so', $jenisSo);
+
+        if ($jenisSo === 'monthly') {
+            $finalQuery->whereYear('wfg_soh.last_updated', now()->year)
+                ->whereMonth('wfg_soh.last_updated', now()->month);
+        } else {
+            $finalQuery->whereDate('wfg_soh.last_updated', $today);
+        }
 
         // Filter principal
         if ($user->jabatan === 'operator') {
@@ -2543,6 +2577,18 @@ class StockOpnameWfgController extends Controller
         try {
             $userId = Auth::id();
             $tglOpname = $request->tgl_opname;
+
+            if (strlen($tglOpname) === 7) {
+                $carbonDate = Carbon::parse($tglOpname);
+                $statusRecord = WfgSopStatusModel::where('user_id', $userId)
+                    ->where('jenis_so', 'monthly')
+                    ->whereYear('tgl_opname', $carbonDate->year)
+                    ->whereMonth('tgl_opname', $carbonDate->month)
+                    ->first();
+                if ($statusRecord) {
+                    $tglOpname = $statusRecord->tgl_opname;
+                }
+            }
 
             DB::beginTransaction();
 

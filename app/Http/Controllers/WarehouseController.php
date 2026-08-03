@@ -189,41 +189,67 @@ class WarehouseController extends Controller
 
             // === KHUSUS OPERATOR SMU ===
             if ($userPrincipal === 'SMU') {
-                // Cek apakah ADA SETIDAKNYA SATU principal dari list yang punya SOH hari ini
-                $hasAnySoh = StockOnHandModel::whereDate('last_updated', $today)
-                    ->whereHas('barang', function ($query) use ($smuRelevantPrincipals) {
+                // Cek apakah ADA SETIDAKNYA SATU principal dari list yang punya SOH hari ini (Cycle Count) atau bulan ini (Monthly)
+                $hasAnySoh = StockOnHandModel::whereHas('barang', function ($query) use ($smuRelevantPrincipals) {
                         $query->whereIn('principal', $smuRelevantPrincipals); // tanpa UPPER/TRIM karena sudah di-handle di upload
-                        // Kalau mau lebih aman:
-                        // $query->whereRaw('UPPER(TRIM(principal)) IN (' . implode(',', array_fill(0, count($smuRelevantPrincipals), '?')) . ')', $smuRelevantPrincipals);
+                    })
+                    ->where(function ($q) use ($today) {
+                        $q->where(function ($q2) use ($today) {
+                            $q2->where('jenis_so', 'cycle_count')
+                               ->whereDate('last_updated', $today);
+                        })->orWhere(function ($q2) {
+                            $q2->where('jenis_so', 'monthly')
+                               ->whereYear('last_updated', now()->year)
+                               ->whereMonth('last_updated', now()->month);
+                        });
                     })
                     ->exists();
 
                 if (!$hasAnySoh) {
                     $listText = implode(', ', $smuRelevantPrincipals);
                     return redirect()->route('wfg.stock_opname.soh')
-                        ->with('error', "Belum ada data Stock On Hand (SOH) hari ini ({$today}) dari principal manapun ({$listText}). Silakan unggah setidaknya satu data SOH terlebih dahulu sebelum melanjutkan.");
+                        ->with('error', "Belum ada data Stock On Hand (SOH) hari ini (Cycle Count) atau bulan ini (Monthly) dari principal manapun ({$listText}). Silakan unggah setidaknya satu data SOH terlebih dahulu sebelum melanjutkan.");
                 }
 
                 // Jika ADA minimal satu → boleh lanjut
             } else {
                 // Untuk operator BAS → tetap cek hanya BAS saja
-                $sohExists = StockOnHandModel::whereDate('last_updated', $today)
-                    ->whereHas('barang', function ($query) use ($userPrincipal) {
+                $sohExists = StockOnHandModel::whereHas('barang', function ($query) use ($userPrincipal) {
                         $query->whereRaw('UPPER(TRIM(principal)) = ?', [$userPrincipal]);
+                    })
+                    ->where(function ($q) use ($today) {
+                        $q->where(function ($q2) use ($today) {
+                            $q2->where('jenis_so', 'cycle_count')
+                               ->whereDate('last_updated', $today);
+                        })->orWhere(function ($q2) {
+                            $q2->where('jenis_so', 'monthly')
+                               ->whereYear('last_updated', now()->year)
+                               ->whereMonth('last_updated', now()->month);
+                        });
                     })
                     ->exists();
 
                 if (!$sohExists) {
                     return redirect()->route('wfg.stock_opname.soh')
-                        ->with('error', "Data Stock On Hand (SOH) untuk principal {$userPrincipal} pada tanggal {$today} belum diunggah. Silakan unggah data Anda terlebih dahulu.");
+                        ->with('error', "Data Stock On Hand (SOH) untuk principal {$userPrincipal} hari ini (Cycle Count) atau bulan ini (Monthly) belum diunggah. Silakan unggah data Anda terlebih dahulu.");
                 }
             }
         } else {
-            $hasAnySoh = StockOnHandModel::whereDate('last_updated', $today)->exists();
+            $hasAnySoh = StockOnHandModel::where(function ($q) use ($today) {
+                    $q->where(function ($q2) use ($today) {
+                        $q2->where('jenis_so', 'cycle_count')
+                           ->whereDate('last_updated', $today);
+                    })->orWhere(function ($q2) {
+                        $q2->where('jenis_so', 'monthly')
+                           ->whereYear('last_updated', now()->year)
+                           ->whereMonth('last_updated', now()->month);
+                    });
+                })
+                ->exists();
 
             if (!$hasAnySoh) {
                 return redirect()->route('wfg.stock_opname.soh')
-                    ->with('error', "Belum ada data Stock On Hand (SOH) hari ini ({$today}). Silakan tunggu data diunggah.");
+                    ->with('error', "Belum ada data Stock On Hand (SOH) hari ini (Cycle Count) atau bulan ini (Monthly). Silakan tunggu data diunggah.");
             }
         }
 

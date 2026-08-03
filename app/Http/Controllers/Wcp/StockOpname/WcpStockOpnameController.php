@@ -632,6 +632,18 @@ class WcpStockOpnameController extends Controller
         $user = Auth::user();
         $tglOpname = $request->tgl_opname;
 
+        // Resolve YYYY-MM to the actual date in database for monthly SO
+        if ($jenisSo === 'monthly' && strlen($tglOpname) === 7) {
+            $carbonDate = Carbon::parse($tglOpname);
+            $statusRecord = WcpSoStatusModel::where('jenis_so', 'monthly')
+                ->whereYear('tgl_opname', $carbonDate->year)
+                ->whereMonth('tgl_opname', $carbonDate->month)
+                ->first();
+            if ($statusRecord) {
+                $tglOpname = $statusRecord->tgl_opname;
+            }
+        }
+
         // Fetch temp data
         $tempData = WcpSoTempModel::with('barang')
             ->where('tgl_opname', $tglOpname)
