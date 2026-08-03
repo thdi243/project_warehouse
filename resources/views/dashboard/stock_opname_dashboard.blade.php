@@ -257,18 +257,26 @@
                             </div>
                         </div>
                         <div>
-                            <h3 class="dashboard-header-title mb-1">Daily Stock Opname Dashboard</h3>
-                            <p class="text-muted mb-0 fw-medium">Analisa progress & akurasi stock gudang secara
-                                harian</p>
+                            <h3 class="dashboard-header-title mb-1" id="dashboardTitle">Daily Stock Opname Dashboard</h3>
+                            <p class="text-muted mb-0 fw-medium" id="dashboardSubtitle">Analisa progress & akurasi stock gudang secara harian</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-sm-4 text-sm-end mt-3 mt-sm-0">
-                    <span
-                        class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12 px-3 py-2 rounded-3">
-                        <i class="mdi mdi-calendar-text me-1"></i> Tanggal Opname : <span id="lblTanggalOpname"
-                            class="fw-bold">-</span>
-                    </span>
+                    <div class="d-inline-flex align-items-center gap-2">
+                        <div class="btn-group btn-group-sm me-1" role="group" aria-label="Jenis SO Switch">
+                            <input type="radio" class="btn-check" name="jenis_so_switch" id="switchDaily" value="cycle_count" checked>
+                            <label class="btn btn-outline-primary px-3 fw-semibold" for="switchDaily">Daily</label>
+
+                            <input type="radio" class="btn-check" name="jenis_so_switch" id="switchMonthly" value="monthly">
+                            <label class="btn btn-outline-primary px-3 fw-semibold" for="switchMonthly">Monthly</label>
+                        </div>
+                        <span
+                            class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12 px-3 py-2 rounded-3">
+                            <i class="mdi mdi-calendar-text me-1"></i> Tanggal Opname : <span id="lblTanggalOpname"
+                                class="fw-bold">-</span>
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -498,6 +506,36 @@
                 loadDashboardData();
             });
 
+            // Switch Daily / Monthly SO
+            $('input[name="jenis_so_switch"]').on('change', function() {
+                const val = $(this).val();
+                const dateInput = $('#filterTgl');
+                let dateVal = dateInput.val();
+
+                if (val === 'monthly') {
+                    $('#dashboardTitle').text('Monthly Stock Opname Dashboard');
+                    $('#dashboardSubtitle').text('Analisa progress & akurasi stock gudang secara bulanan');
+                    dateInput.attr('type', 'month');
+                    if (dateVal && dateVal.length === 10) {
+                        dateInput.val(dateVal.substring(0, 7));
+                    } else if (!dateVal) {
+                        const t = new Date();
+                        dateInput.val(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0'));
+                    }
+                } else {
+                    $('#dashboardTitle').text('Daily Stock Opname Dashboard');
+                    $('#dashboardSubtitle').text('Analisa progress & akurasi stock gudang secara harian');
+                    dateInput.attr('type', 'date');
+                    if (dateVal && dateVal.length === 7) {
+                        dateInput.val(dateVal + '-01');
+                    } else if (!dateVal) {
+                        const t = new Date();
+                        dateInput.val(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'));
+                    }
+                }
+                loadDashboardData();
+            });
+
             // Form submit handles search bar refresh
             $('#filterForm').on('submit', function(e) {
                 e.preventDefault();
@@ -525,6 +563,7 @@
             const pic = $('#filterPic').val();
             const status = $('#filterStatus').val();
             const barang = $('#filterBarang').val();
+            const jenisSo = $('input[name="jenis_so_switch"]:checked').val() || 'cycle_count';
 
             $.ajax({
                 url: "{{ route('dashboard.stock-opname.data') }}",
@@ -534,7 +573,8 @@
                     section: section,
                     pic: pic,
                     status: status,
-                    barang: barang
+                    barang: barang,
+                    jenis_so: jenisSo
                 },
                 success: function(res) {
                     if (res.status === 'success') {
@@ -581,14 +621,14 @@
                         <span class="text-success fw-bold">
                             <i class="mdi mdi-arrow-up-bold me-1"></i>+${diffFormatted}
                         </span>
-                        <span class="text-muted ms-1 small">dari kemarin</span>
+                        <span class="text-muted ms-1 small">${kpis.yesterday_label}</span>
                     `);
                 } else if (diff < 0) {
                     compareContainer.html(`
                         <span class="text-danger fw-bold">
                             <i class="mdi mdi-arrow-down-bold me-1"></i>-${diffFormatted}
                         </span>
-                        <span class="text-muted ms-1 small">dari kemarin</span>
+                        <span class="text-muted ms-1 small">${kpis.yesterday_label}</span>
                     `);
                 } else {
                     compareContainer.html(`
@@ -600,7 +640,7 @@
             } else {
                 compareContainer.html(`
                     <span class="text-muted small">
-                        <i class="mdi mdi-information-outline me-1"></i>Data kemarin tidak tersedia
+                        <i class="mdi mdi-information-outline me-1"></i>Data ${kpis.yesterday_label.replace('dari ', '')} tidak tersedia
                     </span>
                 `);
             }

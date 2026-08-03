@@ -87,16 +87,21 @@ class StockOpnameDashboardController extends Controller
     public function getData(Request $request)
     {
         $tglOpname = $request->input('tgl_opname', Carbon::now()->format('Y-m-d'));
+        $jenisSo = $request->input('jenis_so', 'cycle_count');
         $sectionFilter = $request->input('section'); // WSP, WRM, WPM, WCP, WFG_BAS, WFG_SMU
         $picFilter = $request->input('pic'); // user_id
         $statusFilter = $request->input('status'); // belum, progress, selesai
         $barangFilter = $request->input('barang'); // search text for MID or Nama Barang
 
+        $parsedDate = Carbon::parse($tglOpname);
+        $year = $parsedDate->year;
+        $month = $parsedDate->month;
+
         // 1. Get dynamically all active sections
         $allSections = $this->getAllSectionsList();
         $sectionTargetCount = count($allSections);
 
-        // 2. Query summaries per warehouse/section on $tglOpname (using robust whereDate and filtered by cycle_count)
+        // 2. Query summaries per warehouse/section on $tglOpname (using robust whereDate and filtered by $jenisSo)
         $wspSummaries = collect();
         $wrmSummaries = collect();
         $wpmSummaries = collect();
@@ -105,9 +110,13 @@ class StockOpnameDashboardController extends Controller
 
         // Check if section filter allows loading each area
         if (!$sectionFilter || $sectionFilter === 'all' || $sectionFilter === 'WSP') {
-            $wspQuery = WspSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $picFilter) {
-                $q->whereDate('tgl_opname', $tglOpname)
-                  ->where('jenis_so', 'cycle_count');
+            $wspQuery = WspSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $jenisSo, $picFilter, $year, $month) {
+                if ($jenisSo === 'monthly') {
+                    $q->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $q->whereDate('tgl_opname', $tglOpname);
+                }
+                $q->where('jenis_so', $jenisSo);
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -122,9 +131,13 @@ class StockOpnameDashboardController extends Controller
         }
 
         if (!$sectionFilter || $sectionFilter === 'all' || $sectionFilter === 'WRM') {
-            $wrmQuery = WrmSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $picFilter) {
-                $q->whereDate('tgl_opname', $tglOpname)
-                  ->where('jenis_so', 'cycle_count');
+            $wrmQuery = WrmSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $jenisSo, $picFilter, $year, $month) {
+                if ($jenisSo === 'monthly') {
+                    $q->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $q->whereDate('tgl_opname', $tglOpname);
+                }
+                $q->where('jenis_so', $jenisSo);
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -139,16 +152,20 @@ class StockOpnameDashboardController extends Controller
         }
 
         if (!$sectionFilter || $sectionFilter === 'all' || $sectionFilter === 'WPM') {
-            $wpmQuery = WpmSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $picFilter) {
-                $q->whereDate('tgl_opname', $tglOpname)
-                  ->where('jenis_so', 'cycle_count');
+            $wpmQuery = WpmSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $jenisSo, $picFilter, $year, $month) {
+                if ($jenisSo === 'monthly') {
+                    $q->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $q->whereDate('tgl_opname', $tglOpname);
+                }
+                $q->where('jenis_so', $jenisSo);
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
             });
             if ($barangFilter) {
                 $wpmQuery->whereHas('barang', function ($q) use ($barangFilter) {
-                    $q->where('mid', 'like', "%{$barangFilter}%")
+                    $q->where('mid_barang', 'like', "%{$barangFilter}%")
                         ->orWhere('nama_barang', 'like', "%{$barangFilter}%");
                 });
             }
@@ -156,9 +173,13 @@ class StockOpnameDashboardController extends Controller
         }
 
         if (!$sectionFilter || $sectionFilter === 'all' || $sectionFilter === 'WCP') {
-            $wcpQuery = WcpSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $picFilter) {
-                $q->whereDate('tgl_opname', $tglOpname)
-                  ->where('jenis_so', 'cycle_count');
+            $wcpQuery = WcpSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $jenisSo, $picFilter, $year, $month) {
+                if ($jenisSo === 'monthly') {
+                    $q->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $q->whereDate('tgl_opname', $tglOpname);
+                }
+                $q->where('jenis_so', $jenisSo);
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -173,9 +194,13 @@ class StockOpnameDashboardController extends Controller
         }
 
         if (!$sectionFilter || $sectionFilter === 'all' || strpos($sectionFilter, 'WFG_') === 0 || $sectionFilter === 'WFG') {
-            $wfgQuery = WfgSopSummariesModel::whereHas('sop', function ($q) use ($tglOpname, $picFilter, $sectionFilter) {
-                $q->whereDate('tgl_opname', $tglOpname)
-                  ->where('jenis_so', 'cycle_count');
+            $wfgQuery = WfgSopSummariesModel::whereHas('sop', function ($q) use ($tglOpname, $jenisSo, $picFilter, $sectionFilter, $year, $month) {
+                if ($jenisSo === 'monthly') {
+                    $q->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $q->whereDate('tgl_opname', $tglOpname);
+                }
+                $q->where('jenis_so', $jenisSo);
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -221,13 +246,23 @@ class StockOpnameDashboardController extends Controller
             $endTime = null;
 
             if ($key === 'WSP') {
-                $hasDoc = WspSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->exists();
-                $statusRecord = WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->first();
-                $hasTemp = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
-                    ->whereHas('soh', function ($q) {
-                        $q->where('jenis_so', 'cycle_count');
-                    })
-                    ->exists();
+                if ($jenisSo === 'monthly') {
+                    $hasDoc = WspSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WspSoStatusModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WspSoTempModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                } else {
+                    $hasDoc = WspSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                }
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -242,38 +277,58 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $wspSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wspSummaries->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_unrest');
-                $qtyQi = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_qi');
-                $qtyBlock = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_block');
+                if ($jenisSo === 'monthly') {
+                    $qtyUnrest = (int) WspSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WspSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WspSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_block');
+                } else {
+                    $qtyUnrest = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_block');
+                }
 
                 $batches = null;
                 $pallets = null;
 
-                $wspSoIds = WspSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wspSoIds = WspSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wspSoIds = WspSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->pluck('id');
+                }
                 if ($wspSoIds->isNotEmpty()) {
                     $startTime = WspSoDetailModel::whereIn('so_id', $wspSoIds)->min('created_at');
                     $endTime = WspSoDetailModel::whereIn('so_id', $wspSoIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->min('created_at');
-                    $endTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->max('created_at');
+                    $tempQuery = WspSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $startTime = $tempQuery->min('created_at');
+                    $endTime = $tempQuery->max('created_at');
                 }
             } elseif ($key === 'WRM') {
-                $hasDoc = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->exists();
-                $statusRecord = WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->first();
-                $hasTemp = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                    ->whereHas('soh', function ($q) {
-                        $q->where('jenis_so', 'cycle_count');
-                    })
-                    ->exists();
+                if ($jenisSo === 'monthly') {
+                    $hasDoc = WrmSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WrmSoStatusModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WrmSoTempModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                } else {
+                    $hasDoc = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                }
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -288,11 +343,21 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $wrmSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wrmSummaries->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_unrest');
-                $qtyQi = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_qi');
-                $qtyBlock = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_block');
+                if ($jenisSo === 'monthly') {
+                    $qtyUnrest = (int) WrmSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WrmSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WrmSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_block');
+                } else {
+                    $qtyUnrest = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_block');
+                }
 
-                $wrmSoIdsForMeta = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wrmSoIdsForMeta = WrmSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wrmSoIdsForMeta = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->pluck('id');
+                }
                 $batches = 0;
                 $pallets = 0;
                 if ($wrmSoIdsForMeta->isNotEmpty()) {
@@ -300,43 +365,57 @@ class StockOpnameDashboardController extends Controller
                     $pallets = WrmSoDetailModel::whereIn('so_id', $wrmSoIdsForMeta)->count();
                 }
                 if ($batches === 0 && $pallets === 0) {
-                    $batches = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->whereNotNull('no_spb')->where('no_spb', '!=', '')->distinct('no_spb')->count('no_spb');
-                    $pallets = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->count();
+                    $tempQuery = WrmSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $batches = (clone $tempQuery)->whereNotNull('no_spb')->where('no_spb', '!=', '')->distinct('no_spb')->count('no_spb');
+                    $pallets = $tempQuery->count();
                 }
 
-                $wrmSoIds = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wrmSoIds = WrmSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wrmSoIds = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->pluck('id');
+                }
                 if ($wrmSoIds->isNotEmpty()) {
                     $startTime = WrmSoDetailModel::whereIn('so_id', $wrmSoIds)->min('created_at');
                     $endTime = WrmSoDetailModel::whereIn('so_id', $wrmSoIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->min('created_at');
-                    $endTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->max('created_at');
+                    $tempQuery = WrmSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $startTime = $tempQuery->min('created_at');
+                    $endTime = $tempQuery->max('created_at');
                 }
             } elseif ($key === 'WPM') {
-                $hasDoc = WpmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->exists();
-                $statusRecord = WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->first();
-                $hasTemp = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                    ->whereHas('soh', function ($q) {
-                        $q->where('jenis_so', 'cycle_count');
-                    })
-                    ->exists();
+                if ($jenisSo === 'monthly') {
+                    $hasDoc = WpmSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WpmSoStatusModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WpmSoTempModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                } else {
+                    $hasDoc = WpmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                }
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -351,38 +430,58 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $wpmSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wpmSummaries->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_unrest');
-                $qtyQi = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_qi');
-                $qtyBlock = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_block');
+                if ($jenisSo === 'monthly') {
+                    $qtyUnrest = (int) WpmSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WpmSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WpmSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_block');
+                } else {
+                    $qtyUnrest = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_block');
+                }
 
                 $batches = null;
                 $pallets = null;
 
-                $wpmSoIds = WpmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wpmSoIds = WpmSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wpmSoIds = WpmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->pluck('id');
+                }
                 if ($wpmSoIds->isNotEmpty()) {
                     $startTime = WpmSoDetailModel::whereIn('so_id', $wpmSoIds)->min('created_at');
                     $endTime = WpmSoDetailModel::whereIn('so_id', $wpmSoIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->min('created_at');
-                    $endTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->max('created_at');
+                    $tempQuery = WpmSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $startTime = $tempQuery->min('created_at');
+                    $endTime = $tempQuery->max('created_at');
                 }
             } elseif ($key === 'WCP') {
-                $hasDoc = WcpSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->exists();
-                $statusRecord = WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->first();
-                $hasTemp = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
-                    ->whereHas('soh', function ($q) {
-                        $q->where('jenis_so', 'cycle_count');
-                    })
-                    ->exists();
+                if ($jenisSo === 'monthly') {
+                    $hasDoc = WcpSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WcpSoStatusModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WcpSoTempModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                } else {
+                    $hasDoc = WcpSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                }
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -397,38 +496,58 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $wcpSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wcpSummaries->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_unrest');
-                $qtyQi = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_qi');
-                $qtyBlock = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_block');
+                if ($jenisSo === 'monthly') {
+                    $qtyUnrest = (int) WcpSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WcpSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WcpSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('jenis_so', $jenisSo)->sum('qty_block');
+                } else {
+                    $qtyUnrest = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', $jenisSo)->sum('qty_block');
+                }
 
                 $batches = null;
                 $pallets = null;
 
-                $wcpSoIds = WcpSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wcpSoIds = WcpSoModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wcpSoIds = WcpSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', $jenisSo)->pluck('id');
+                }
                 if ($wcpSoIds->isNotEmpty()) {
                     $startTime = WcpSoDetailModel::whereIn('so_id', $wcpSoIds)->min('created_at');
                     $endTime = WcpSoDetailModel::whereIn('so_id', $wcpSoIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->min('created_at');
-                    $endTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->max('created_at');
+                    $tempQuery = WcpSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $startTime = $tempQuery->min('created_at');
+                    $endTime = $tempQuery->max('created_at');
                 }
             } elseif ($key === 'WFG_BAS') {
-                $hasDoc = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->exists();
-                $statusRecord = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->first();
-                $hasTemp = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
-                    ->whereHas('soh', function ($q) {
-                        $q->where('jenis_so', 'cycle_count');
-                    })
-                    ->exists();
+                if ($jenisSo === 'monthly') {
+                    $hasDoc = WfgSopModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WfgSopStatusModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WfgSopTempModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', 'BAS')
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                } else {
+                    $hasDoc = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->exists();
+                    $statusRecord = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->first();
+                    $hasTemp = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
+                }
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -447,59 +566,86 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $filteredWfg->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $filteredWfg->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_unrest');
-                $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_qi');
-                $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_block');
+                if ($jenisSo === 'monthly') {
+                    $qtyUnrest = (int) WfgSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WfgSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WfgSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_block');
+                } else {
+                    $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_block');
+                }
 
                 $batches = null;
                 $pallets = 0;
-                $wfgBasSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wfgBasSopIdsForMeta = WfgSopModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wfgBasSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->pluck('id');
+                }
+
                 if ($wfgBasSopIdsForMeta->isNotEmpty()) {
                     $fullPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIdsForMeta)->sum('qty_full');
                     $recehPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIdsForMeta)->where('qty_receh', '>', 0)->count();
                     $pallets = $fullPallets + $recehPallets;
                 }
                 if ($pallets === 0) {
-                    $fullPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->sum('qty_full');
-                    $recehPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->where('qty_receh', '>', 0)->count();
+                    $tempQuery = WfgSopTempModel::where('principal', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $fullPallets = (int) (clone $tempQuery)->sum('qty_full');
+                    $recehPallets = (int) $tempQuery->where('qty_receh', '>', 0)->count();
                     $pallets = $fullPallets + $recehPallets;
                 }
 
-                $wfgBasSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wfgBasSopIds = WfgSopModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wfgBasSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', $jenisSo)->pluck('id');
+                }
                 if ($wfgBasSopIds->isNotEmpty()) {
                     $startTime = WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIds)->min('created_at');
                     $endTime = WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->min('created_at');
-                    $endTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->max('created_at');
+                    $tempQuery = WfgSopTempModel::where('principal', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $startTime = $tempQuery->min('created_at');
+                    $endTime = $tempQuery->max('created_at');
                 }
             } elseif ($key === 'WFG_SMU') {
-                $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->exists()
-                    || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->where('jenis_so', 'cycle_count')->exists();
+                if ($jenisSo === 'monthly') {
+                    $hasFinishedSMU = WfgSopModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->exists()
+                        || WfgSopStatusModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', '!=', 'BAS')->where('status', 'finished')->where('jenis_so', $jenisSo)->exists();
 
-                $hasStartedSMU = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', 'cycle_count')->exists()
-                    || WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->exists();
+                    $hasStartedSMU = WfgSopStatusModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', $jenisSo)->exists()
+                        || WfgSopTempModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', '!=', 'BAS')
+                            ->whereHas('soh', function ($q) use ($jenisSo) {
+                                $q->where('jenis_so', $jenisSo);
+                            })
+                            ->exists();
+                } else {
+                    $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->exists()
+                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->where('jenis_so', $jenisSo)->exists();
+
+                    $hasStartedSMU = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', $jenisSo)->exists()
+                        || WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
+                            ->whereHas('soh', function ($q) use ($jenisSo) {
+                                $q->where('jenis_so', $jenisSo);
+                            })
+                            ->exists();
+                }
 
                 if ($hasFinishedSMU && !$hasStartedSMU) {
                     $status = 'finished';
@@ -518,48 +664,63 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $filteredWfg->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $filteredWfg->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_unrest');
-                $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_qi');
-                $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_block');
+                if ($jenisSo === 'monthly') {
+                    $qtyUnrest = (int) WfgSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WfgSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WfgSohModel::whereYear('created_at', $year)->whereMonth('created_at', $month)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_block');
+                } else {
+                    $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_unrest');
+                    $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_qi');
+                    $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->sum('qty_block');
+                }
 
                 $batches = null;
                 $pallets = 0;
-                $wfgSmuSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wfgSmuSopIdsForMeta = WfgSopModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wfgSmuSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->pluck('id');
+                }
+
                 if ($wfgSmuSopIdsForMeta->isNotEmpty()) {
                     $fullPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIdsForMeta)->sum('qty_full');
                     $recehPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIdsForMeta)->where('qty_receh', '>', 0)->count();
                     $pallets = $fullPallets + $recehPallets;
                 }
                 if ($pallets === 0) {
-                    $fullPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->sum('qty_full');
-                    $recehPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->where('qty_receh', '>', 0)->count();
+                    $tempQuery = WfgSopTempModel::where('principal', '!=', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $fullPallets = (int) (clone $tempQuery)->sum('qty_full');
+                    $recehPallets = (int) $tempQuery->where('qty_receh', '>', 0)->count();
                     $pallets = $fullPallets + $recehPallets;
                 }
 
-                $wfgSmuSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->pluck('id');
+                if ($jenisSo === 'monthly') {
+                    $wfgSmuSopIds = WfgSopModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->pluck('id');
+                } else {
+                    $wfgSmuSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->pluck('id');
+                }
                 if ($wfgSmuSopIds->isNotEmpty()) {
                     $startTime = WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIds)->min('created_at');
                     $endTime = WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->min('created_at');
-                    $endTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->max('created_at');
+                    $tempQuery = WfgSopTempModel::where('principal', '!=', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        });
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+                    $startTime = $tempQuery->min('created_at');
+                    $endTime = $tempQuery->max('created_at');
                 }
             }
 
@@ -691,7 +852,7 @@ class StockOpnameDashboardController extends Controller
             $trendCategories[] = $dateObj->translatedFormat('d M');
 
             // 1. WSP
-            $wspSo = WspSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', 'cycle_count');
+            $wspSo = WspSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', $jenisSo);
             if ($picFilter && $picFilter !== 'all') {
                 $wspSo->where('user_id', $picFilter);
             }
@@ -705,7 +866,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 2. WRM
-            $wrmSo = WrmSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', 'cycle_count');
+            $wrmSo = WrmSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', $jenisSo);
             if ($picFilter && $picFilter !== 'all') {
                 $wrmSo->where('user_id', $picFilter);
             }
@@ -719,7 +880,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 3. WPM
-            $wpmSo = WpmSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', 'cycle_count');
+            $wpmSo = WpmSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', $jenisSo);
             if ($picFilter && $picFilter !== 'all') {
                 $wpmSo->where('user_id', $picFilter);
             }
@@ -733,7 +894,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 4. WCP
-            $wcpSo = WcpSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', 'cycle_count');
+            $wcpSo = WcpSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', $jenisSo);
             if ($picFilter && $picFilter !== 'all') {
                 $wcpSo->where('user_id', $picFilter);
             }
@@ -747,7 +908,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 5. WFG BAS
-            $wfgBasSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', 'BAS')->where('jenis_so', 'cycle_count');
+            $wfgBasSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', 'BAS')->where('jenis_so', $jenisSo);
             if ($picFilter && $picFilter !== 'all') {
                 $wfgBasSop->where('user_id', $picFilter);
             }
@@ -761,7 +922,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 6. WFG SMU
-            $wfgSmuSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count');
+            $wfgSmuSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo);
             if ($picFilter && $picFilter !== 'all') {
                 $wfgSmuSop->where('user_id', $picFilter);
             }
@@ -787,37 +948,61 @@ class StockOpnameDashboardController extends Controller
             $soDoc = null;
 
             if ($key === 'WSP') {
-                $soDoc = WspSoModel::with(['user', 'approvals.approver'])
-                    ->whereDate('tgl_opname', $tglOpname)
-                    ->where('jenis_so', 'cycle_count')
-                    ->first();
+                $soDocQuery = WspSoModel::with(['user', 'approvals.approver'])
+                    ->where('jenis_so', $jenisSo);
+                if ($jenisSo === 'monthly') {
+                    $soDocQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $soDocQuery->whereDate('tgl_opname', $tglOpname);
+                }
+                $soDoc = $soDocQuery->first();
             } elseif ($key === 'WRM') {
-                $soDoc = WrmSoModel::with(['user', 'approvals.approver'])
-                    ->whereDate('tgl_opname', $tglOpname)
-                    ->where('jenis_so', 'cycle_count')
-                    ->first();
+                $soDocQuery = WrmSoModel::with(['user', 'approvals.approver'])
+                    ->where('jenis_so', $jenisSo);
+                if ($jenisSo === 'monthly') {
+                    $soDocQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $soDocQuery->whereDate('tgl_opname', $tglOpname);
+                }
+                $soDoc = $soDocQuery->first();
             } elseif ($key === 'WPM') {
-                $soDoc = WpmSoModel::with(['user', 'approvals.approver'])
-                    ->whereDate('tgl_opname', $tglOpname)
-                    ->where('jenis_so', 'cycle_count')
-                    ->first();
+                $soDocQuery = WpmSoModel::with(['user', 'approvals.approver'])
+                    ->where('jenis_so', $jenisSo);
+                if ($jenisSo === 'monthly') {
+                    $soDocQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $soDocQuery->whereDate('tgl_opname', $tglOpname);
+                }
+                $soDoc = $soDocQuery->first();
             } elseif ($key === 'WCP') {
-                $soDoc = WcpSoModel::with(['user', 'approvals.approver'])
-                    ->whereDate('tgl_opname', $tglOpname)
-                    ->where('jenis_so', 'cycle_count')
-                    ->first();
+                $soDocQuery = WcpSoModel::with(['user', 'approvals.approver'])
+                    ->where('jenis_so', $jenisSo);
+                if ($jenisSo === 'monthly') {
+                    $soDocQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $soDocQuery->whereDate('tgl_opname', $tglOpname);
+                }
+                $soDoc = $soDocQuery->first();
             } elseif ($key === 'WFG_BAS') {
-                $soDoc = WfgSopModel::with(['user', 'approvals.approver'])
-                    ->whereDate('tgl_opname', $tglOpname)
+                $soDocQuery = WfgSopModel::with(['user', 'approvals.approver'])
                     ->where('principal', 'BAS')
-                    ->where('jenis_so', 'cycle_count')
-                    ->first();
+                    ->where('jenis_so', $jenisSo);
+                if ($jenisSo === 'monthly') {
+                    $soDocQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $soDocQuery->whereDate('tgl_opname', $tglOpname);
+                }
+                $soDoc = $soDocQuery->first();
             } elseif ($key === 'WFG_SMU') {
-                $soDoc = WfgSopModel::with(['user', 'approvals.approver'])
-                    ->whereDate('tgl_opname', $tglOpname)
+                $soDocQuery = WfgSopModel::with(['user', 'approvals.approver'])
                     ->where('principal', '!=', 'BAS')
-                    ->where('jenis_so', 'cycle_count')
-                    ->first();
+                    ->where('jenis_so', $jenisSo);
+                if ($jenisSo === 'monthly') {
+                    $soDocQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                } else {
+                    $soDocQuery->whereDate('tgl_opname', $tglOpname);
+                }
+                $soDoc = $soDocQuery->first();
             }
 
             $statusApproval = 'Belum Mulai';
@@ -857,47 +1042,95 @@ class StockOpnameDashboardController extends Controller
             } else {
                 $hasStarted = false;
                 if ($key === 'WSP') {
-                    $hasStarted = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->exists()
-                        || WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
+                    $tempQuery = WspSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    });
+                    $statusQuery = WspSoStatusModel::where('status', 'started')->where('jenis_so', $jenisSo);
+
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                        $statusQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                        $statusQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+
+                    $hasStarted = $tempQuery->exists() || $statusQuery->exists();
                 } elseif ($key === 'WRM') {
-                    $hasStarted = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->exists()
-                        || WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
+                    $tempQuery = WrmSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    });
+                    $statusQuery = WrmSoStatusModel::where('status', 'started')->where('jenis_so', $jenisSo);
+
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                        $statusQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                        $statusQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+
+                    $hasStarted = $tempQuery->exists() || $statusQuery->exists();
                 } elseif ($key === 'WPM') {
-                    $hasStarted = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->exists()
-                        || WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
+                    $tempQuery = WpmSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    });
+                    $statusQuery = WpmSoStatusModel::where('status', 'started')->where('jenis_so', $jenisSo);
+
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                        $statusQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                        $statusQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+
+                    $hasStarted = $tempQuery->exists() || $statusQuery->exists();
                 } elseif ($key === 'WCP') {
-                    $hasStarted = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->exists()
-                        || WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
+                    $tempQuery = WcpSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    });
+                    $statusQuery = WcpSoStatusModel::where('status', 'started')->where('jenis_so', $jenisSo);
+
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                        $statusQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                        $statusQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+
+                    $hasStarted = $tempQuery->exists() || $statusQuery->exists();
                 } elseif ($key === 'WFG_BAS') {
-                    $hasStarted = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->exists()
-                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
+                    $tempQuery = WfgSopTempModel::where('principal', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    });
+                    $statusQuery = WfgSopStatusModel::where('principal', 'BAS')->where('status', 'started')->where('jenis_so', $jenisSo);
+
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                        $statusQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                        $statusQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+
+                    $hasStarted = $tempQuery->exists() || $statusQuery->exists();
                 } elseif ($key === 'WFG_SMU') {
-                    $hasStarted = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
-                        ->whereHas('soh', function ($q) {
-                            $q->where('jenis_so', 'cycle_count');
-                        })
-                        ->exists()
-                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
+                    $tempQuery = WfgSopTempModel::where('principal', '!=', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
+                        $q->where('jenis_so', $jenisSo);
+                    });
+                    $statusQuery = WfgSopStatusModel::where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', $jenisSo);
+
+                    if ($jenisSo === 'monthly') {
+                        $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                        $statusQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
+                    } else {
+                        $tempQuery->whereDate('tgl_opname', $tglOpname);
+                        $statusQuery->whereDate('tgl_opname', $tglOpname);
+                    }
+
+                    $hasStarted = $tempQuery->exists() || $statusQuery->exists();
                 }
 
                 $statusApproval = $hasStarted ? 'On Progress' : 'Belum Mulai';
@@ -933,33 +1166,64 @@ class StockOpnameDashboardController extends Controller
             })->values()->all();
         }
 
-        // Yesterday's Stock Accuracy (filtered by cycle_count)
-        $yesterday = Carbon::parse($tglOpname)->subDay()->format('Y-m-d');
+        // Yesterday's Stock Accuracy (filtered by $jenisSo)
+        if ($jenisSo === 'monthly') {
+            $prevDateObj = Carbon::parse($tglOpname)->subMonth();
+            $prevYear = $prevDateObj->year;
+            $prevMonth = $prevDateObj->month;
 
-        // Wsp
-        $wspYesSoIds = WspSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
-        $wspYesDi = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->count();
-        $wspYesMa = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->where('status', 'match')->count();
+            // Wsp
+            $wspYesSoIds = WspSoModel::whereYear('tgl_opname', $prevYear)->whereMonth('tgl_opname', $prevMonth)->where('jenis_so', $jenisSo)->pluck('id');
+            $wspYesDi = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->count();
+            $wspYesMa = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->where('status', 'match')->count();
 
-        // Wrm
-        $wrmYesSoIds = WrmSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
-        $wrmYesDi = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->count();
-        $wrmYesMa = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->where('status', 'match')->count();
+            // Wrm
+            $wrmYesSoIds = WrmSoModel::whereYear('tgl_opname', $prevYear)->whereMonth('tgl_opname', $prevMonth)->where('jenis_so', $jenisSo)->pluck('id');
+            $wrmYesDi = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->count();
+            $wrmYesMa = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->where('status', 'match')->count();
 
-        // Wpm
-        $wpmYesSoIds = WpmSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
-        $wpmYesDi = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->count();
-        $wpmYesMa = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->where('status', 'match')->count();
+            // Wpm
+            $wpmYesSoIds = WpmSoModel::whereYear('tgl_opname', $prevYear)->whereMonth('tgl_opname', $prevMonth)->where('jenis_so', $jenisSo)->pluck('id');
+            $wpmYesDi = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->count();
+            $wpmYesMa = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->where('status', 'match')->count();
 
-        // Wcp
-        $wcpYesSoIds = WcpSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
-        $wcpYesDi = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->count();
-        $wcpYesMa = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->where('status', 'match')->count();
+            // Wcp
+            $wcpYesSoIds = WcpSoModel::whereYear('tgl_opname', $prevYear)->whereMonth('tgl_opname', $prevMonth)->where('jenis_so', $jenisSo)->pluck('id');
+            $wcpYesDi = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->count();
+            $wcpYesMa = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->where('status', 'match')->count();
 
-        // Wfg Bas & Smu
-        $wfgYesSopIds = WfgSopModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
-        $wfgYesDi = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->count();
-        $wfgYesMa = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->where('status', 'match')->count();
+            // Wfg Bas & Smu
+            $wfgYesSopIds = WfgSopModel::whereYear('tgl_opname', $prevYear)->whereMonth('tgl_opname', $prevMonth)->where('jenis_so', $jenisSo)->pluck('id');
+            $wfgYesDi = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->count();
+            $wfgYesMa = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->where('status', 'match')->count();
+        } else {
+            $yesterday = Carbon::parse($tglOpname)->subDay()->format('Y-m-d');
+
+            // Wsp
+            $wspYesSoIds = WspSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', $jenisSo)->pluck('id');
+            $wspYesDi = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->count();
+            $wspYesMa = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->where('status', 'match')->count();
+
+            // Wrm
+            $wrmYesSoIds = WrmSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', $jenisSo)->pluck('id');
+            $wrmYesDi = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->count();
+            $wrmYesMa = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->where('status', 'match')->count();
+
+            // Wpm
+            $wpmYesSoIds = WpmSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', $jenisSo)->pluck('id');
+            $wpmYesDi = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->count();
+            $wpmYesMa = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->where('status', 'match')->count();
+
+            // Wcp
+            $wcpYesSoIds = WcpSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', $jenisSo)->pluck('id');
+            $wcpYesDi = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->count();
+            $wcpYesMa = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->where('status', 'match')->count();
+
+            // Wfg Bas & Smu
+            $wfgYesSopIds = WfgSopModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', $jenisSo)->pluck('id');
+            $wfgYesDi = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->count();
+            $wfgYesMa = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->where('status', 'match')->count();
+        }
 
         $totalYesDi = $wspYesDi + $wrmYesDi + $wpmYesDi + $wcpYesDi + $wfgYesDi;
         $totalYesMa = $wspYesMa + $wrmYesMa + $wpmYesMa + $wcpYesMa + $wfgYesMa;
@@ -970,7 +1234,9 @@ class StockOpnameDashboardController extends Controller
             'status' => 'success',
             'data' => [
                 'kpis' => [
-                    'tanggal_formatted' => Carbon::parse($tglOpname)->translatedFormat('d F Y'),
+                    'tanggal_formatted' => $jenisSo === 'monthly'
+                        ? Carbon::parse($tglOpname)->translatedFormat('F Y')
+                        : Carbon::parse($tglOpname)->translatedFormat('d F Y'),
                     'section_target' => $sectionTargetCount,
                     'section_selesai' => $sectionSelesaiCount,
                     'progress_pct' => $progressPct,
