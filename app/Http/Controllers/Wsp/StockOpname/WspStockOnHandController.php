@@ -807,14 +807,17 @@ class WspStockOnHandController extends Controller
                         'created_by' => Auth::id() ?? 1,
                     ]);
 
-                    // Find or create the Stock Location mapping
-                    $stockLoc = StockLocationModel::firstOrCreate([
-                        'barang_id' => $barang->id,
-                        'rak_id'    => $rak->id,
-                    ], [
-                        'status' => 'active',
-                        'created_by' => Auth::id() ?? 1,
-                    ]);
+                    // Find existing Stock Location mapping by barang_id to prevent duplicates
+                    $stockLoc = StockLocationModel::where('barang_id', $barang->id)->first();
+
+                    if (!$stockLoc) {
+                        $stockLoc = StockLocationModel::create([
+                            'barang_id'  => $barang->id,
+                            'rak_id'     => $rak->id,
+                            'status'     => 'active',
+                            'created_by' => Auth::id() ?? 1,
+                        ]);
+                    }
 
                     if ($stockLoc->status !== 'active') {
                         $stockLoc->status = 'active';
