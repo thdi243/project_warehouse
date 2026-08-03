@@ -1155,6 +1155,7 @@
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
                 const tanggal = $('#filter_tanggal').val();
+                const jenisSo = $('#jenis_so').val();
                 $.ajax({
                     // url: `{{ url('api/wfg/sop/report/getData') }}`,
                     url: "{{ route('wfg.stock_opname.report.getData') }}",
@@ -1162,7 +1163,8 @@
                     dataType: 'json',
                     data: {
                         tanggal: tanggal,
-                        principal: currentPrincipal
+                        principal: currentPrincipal,
+                        jenis_so: jenisSo
                     },
                     success: function(response) {
                         if (response.status === 'success') {

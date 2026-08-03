@@ -96,7 +96,7 @@ class StockOpnameDashboardController extends Controller
         $allSections = $this->getAllSectionsList();
         $sectionTargetCount = count($allSections);
 
-        // 2. Query summaries per warehouse/section on $tglOpname (using robust whereDate)
+        // 2. Query summaries per warehouse/section on $tglOpname (using robust whereDate and filtered by cycle_count)
         $wspSummaries = collect();
         $wrmSummaries = collect();
         $wpmSummaries = collect();
@@ -106,7 +106,8 @@ class StockOpnameDashboardController extends Controller
         // Check if section filter allows loading each area
         if (!$sectionFilter || $sectionFilter === 'all' || $sectionFilter === 'WSP') {
             $wspQuery = WspSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $picFilter) {
-                $q->whereDate('tgl_opname', $tglOpname);
+                $q->whereDate('tgl_opname', $tglOpname)
+                  ->where('jenis_so', 'cycle_count');
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -122,7 +123,8 @@ class StockOpnameDashboardController extends Controller
 
         if (!$sectionFilter || $sectionFilter === 'all' || $sectionFilter === 'WRM') {
             $wrmQuery = WrmSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $picFilter) {
-                $q->whereDate('tgl_opname', $tglOpname);
+                $q->whereDate('tgl_opname', $tglOpname)
+                  ->where('jenis_so', 'cycle_count');
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -138,7 +140,8 @@ class StockOpnameDashboardController extends Controller
 
         if (!$sectionFilter || $sectionFilter === 'all' || $sectionFilter === 'WPM') {
             $wpmQuery = WpmSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $picFilter) {
-                $q->whereDate('tgl_opname', $tglOpname);
+                $q->whereDate('tgl_opname', $tglOpname)
+                  ->where('jenis_so', 'cycle_count');
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -154,7 +157,8 @@ class StockOpnameDashboardController extends Controller
 
         if (!$sectionFilter || $sectionFilter === 'all' || $sectionFilter === 'WCP') {
             $wcpQuery = WcpSoSummariesModel::whereHas('so', function ($q) use ($tglOpname, $picFilter) {
-                $q->whereDate('tgl_opname', $tglOpname);
+                $q->whereDate('tgl_opname', $tglOpname)
+                  ->where('jenis_so', 'cycle_count');
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -170,7 +174,8 @@ class StockOpnameDashboardController extends Controller
 
         if (!$sectionFilter || $sectionFilter === 'all' || strpos($sectionFilter, 'WFG_') === 0 || $sectionFilter === 'WFG') {
             $wfgQuery = WfgSopSummariesModel::whereHas('sop', function ($q) use ($tglOpname, $picFilter, $sectionFilter) {
-                $q->whereDate('tgl_opname', $tglOpname);
+                $q->whereDate('tgl_opname', $tglOpname)
+                  ->where('jenis_so', 'cycle_count');
                 if ($picFilter && $picFilter !== 'all') {
                     $q->where('user_id', $picFilter);
                 }
@@ -216,9 +221,13 @@ class StockOpnameDashboardController extends Controller
             $endTime = null;
 
             if ($key === 'WSP') {
-                $hasDoc = WspSoModel::whereDate('tgl_opname', $tglOpname)->exists();
-                $statusRecord = WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
-                $hasTemp = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->exists();
+                $hasDoc = WspSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->exists();
+                $statusRecord = WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->first();
+                $hasTemp = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
+                    ->whereHas('soh', function ($q) {
+                        $q->where('jenis_so', 'cycle_count');
+                    })
+                    ->exists();
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -233,26 +242,38 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $wspSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wspSummaries->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WspSohModel::whereDate('created_at', $tglOpname)->sum('qty_unrest');
-                $qtyQi = (int) WspSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
-                $qtyBlock = (int) WspSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
+                $qtyUnrest = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_unrest');
+                $qtyQi = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_qi');
+                $qtyBlock = (int) WspSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_block');
 
                 $batches = null;
                 $pallets = null;
 
-                $wspSoIds = WspSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                $wspSoIds = WspSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
                 if ($wspSoIds->isNotEmpty()) {
                     $startTime = WspSoDetailModel::whereIn('so_id', $wspSoIds)->min('created_at');
                     $endTime = WspSoDetailModel::whereIn('so_id', $wspSoIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
-                    $endTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->max('created_at');
+                    $startTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->min('created_at');
+                    $endTime = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->max('created_at');
                 }
             } elseif ($key === 'WRM') {
-                $hasDoc = WrmSoModel::whereDate('tgl_opname', $tglOpname)->exists();
-                $statusRecord = WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
-                $hasTemp = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->exists();
+                $hasDoc = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->exists();
+                $statusRecord = WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->first();
+                $hasTemp = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                    ->whereHas('soh', function ($q) {
+                        $q->where('jenis_so', 'cycle_count');
+                    })
+                    ->exists();
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -267,11 +288,11 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $wrmSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wrmSummaries->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WrmSohModel::whereDate('created_at', $tglOpname)->sum('qty_unrest');
-                $qtyQi = (int) WrmSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
-                $qtyBlock = (int) WrmSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
+                $qtyUnrest = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_unrest');
+                $qtyQi = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_qi');
+                $qtyBlock = (int) WrmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_block');
 
-                $wrmSoIdsForMeta = WrmSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                $wrmSoIdsForMeta = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
                 $batches = 0;
                 $pallets = 0;
                 if ($wrmSoIdsForMeta->isNotEmpty()) {
@@ -279,23 +300,43 @@ class StockOpnameDashboardController extends Controller
                     $pallets = WrmSoDetailModel::whereIn('so_id', $wrmSoIdsForMeta)->count();
                 }
                 if ($batches === 0 && $pallets === 0) {
-                    $batches = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->whereNotNull('no_spb')->where('no_spb', '!=', '')->distinct('no_spb')->count('no_spb');
-                    $pallets = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->count();
+                    $batches = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->whereNotNull('no_spb')->where('no_spb', '!=', '')->distinct('no_spb')->count('no_spb');
+                    $pallets = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->count();
                 }
 
-                $wrmSoIds = WrmSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                $wrmSoIds = WrmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
                 if ($wrmSoIds->isNotEmpty()) {
                     $startTime = WrmSoDetailModel::whereIn('so_id', $wrmSoIds)->min('created_at');
                     $endTime = WrmSoDetailModel::whereIn('so_id', $wrmSoIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
-                    $endTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->max('created_at');
+                    $startTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->min('created_at');
+                    $endTime = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->max('created_at');
                 }
             } elseif ($key === 'WPM') {
-                $hasDoc = WpmSoModel::whereDate('tgl_opname', $tglOpname)->exists();
-                $statusRecord = WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
-                $hasTemp = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->exists();
+                $hasDoc = WpmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->exists();
+                $statusRecord = WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->first();
+                $hasTemp = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                    ->whereHas('soh', function ($q) {
+                        $q->where('jenis_so', 'cycle_count');
+                    })
+                    ->exists();
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -310,26 +351,38 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $wpmSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wpmSummaries->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WpmSohModel::whereDate('created_at', $tglOpname)->sum('qty_unrest');
-                $qtyQi = (int) WpmSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
-                $qtyBlock = (int) WpmSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
+                $qtyUnrest = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_unrest');
+                $qtyQi = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_qi');
+                $qtyBlock = (int) WpmSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_block');
 
                 $batches = null;
                 $pallets = null;
 
-                $wpmSoIds = WpmSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                $wpmSoIds = WpmSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
                 if ($wpmSoIds->isNotEmpty()) {
                     $startTime = WpmSoDetailModel::whereIn('so_id', $wpmSoIds)->min('created_at');
                     $endTime = WpmSoDetailModel::whereIn('so_id', $wpmSoIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
-                    $endTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->max('created_at');
+                    $startTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->min('created_at');
+                    $endTime = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->max('created_at');
                 }
             } elseif ($key === 'WCP') {
-                $hasDoc = WcpSoModel::whereDate('tgl_opname', $tglOpname)->exists();
-                $statusRecord = WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->first();
-                $hasTemp = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->exists();
+                $hasDoc = WcpSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->exists();
+                $statusRecord = WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->first();
+                $hasTemp = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
+                    ->whereHas('soh', function ($q) {
+                        $q->where('jenis_so', 'cycle_count');
+                    })
+                    ->exists();
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -344,26 +397,38 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $wcpSummaries->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $wcpSummaries->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WcpSohModel::whereDate('created_at', $tglOpname)->sum('qty_unrest');
-                $qtyQi = (int) WcpSohModel::whereDate('created_at', $tglOpname)->sum('qty_qi');
-                $qtyBlock = (int) WcpSohModel::whereDate('created_at', $tglOpname)->sum('qty_block');
+                $qtyUnrest = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_unrest');
+                $qtyQi = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_qi');
+                $qtyBlock = (int) WcpSohModel::whereDate('created_at', $tglOpname)->where('jenis_so', 'cycle_count')->sum('qty_block');
 
                 $batches = null;
                 $pallets = null;
 
-                $wcpSoIds = WcpSoModel::whereDate('tgl_opname', $tglOpname)->pluck('id');
+                $wcpSoIds = WcpSoModel::whereDate('tgl_opname', $tglOpname)->where('jenis_so', 'cycle_count')->pluck('id');
                 if ($wcpSoIds->isNotEmpty()) {
                     $startTime = WcpSoDetailModel::whereIn('so_id', $wcpSoIds)->min('created_at');
                     $endTime = WcpSoDetailModel::whereIn('so_id', $wcpSoIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->min('created_at');
-                    $endTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->max('created_at');
+                    $startTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->min('created_at');
+                    $endTime = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->max('created_at');
                 }
             } elseif ($key === 'WFG_BAS') {
-                $hasDoc = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->exists();
-                $statusRecord = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->first();
-                $hasTemp = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->exists();
+                $hasDoc = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->exists();
+                $statusRecord = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->first();
+                $hasTemp = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
+                    ->whereHas('soh', function ($q) {
+                        $q->where('jenis_so', 'cycle_count');
+                    })
+                    ->exists();
 
                 if ($hasDoc || ($statusRecord && $statusRecord->status === 'finished')) {
                     $status = 'finished';
@@ -382,39 +447,59 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $filteredWfg->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $filteredWfg->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->sum('qty_unrest');
-                $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->sum('qty_qi');
-                $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->sum('qty_block');
+                $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_unrest');
+                $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_qi');
+                $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_block');
 
                 $batches = null;
                 $pallets = 0;
-                $wfgBasSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->pluck('id');
+                $wfgBasSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->pluck('id');
                 if ($wfgBasSopIdsForMeta->isNotEmpty()) {
                     $fullPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIdsForMeta)->sum('qty_full');
                     $recehPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIdsForMeta)->where('qty_receh', '>', 0)->count();
                     $pallets = $fullPallets + $recehPallets;
                 }
                 if ($pallets === 0) {
-                    $fullPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->sum('qty_full');
-                    $recehPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('qty_receh', '>', 0)->count();
+                    $fullPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->sum('qty_full');
+                    $recehPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->where('qty_receh', '>', 0)->count();
                     $pallets = $fullPallets + $recehPallets;
                 }
 
-                $wfgBasSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->pluck('id');
+                $wfgBasSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('jenis_so', 'cycle_count')->pluck('id');
                 if ($wfgBasSopIds->isNotEmpty()) {
                     $startTime = WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIds)->min('created_at');
                     $endTime = WfgSopDetailModel::whereIn('sop_id', $wfgBasSopIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->min('created_at');
-                    $endTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->max('created_at');
+                    $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->min('created_at');
+                    $endTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->max('created_at');
                 }
             } elseif ($key === 'WFG_SMU') {
-                $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists()
-                    || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->exists();
+                $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->exists()
+                    || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->where('jenis_so', 'cycle_count')->exists();
 
-                $hasStartedSMU = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->exists()
-                    || WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists();
+                $hasStartedSMU = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', 'cycle_count')->exists()
+                    || WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->exists();
 
                 if ($hasFinishedSMU && !$hasStartedSMU) {
                     $status = 'finished';
@@ -433,32 +518,48 @@ class StockOpnameDashboardController extends Controller
                 $qtyLebih = $filteredWfg->where('selisih', '>', 0)->sum('selisih');
                 $qtyKurang = $filteredWfg->where('selisih', '<', 0)->sum('selisih');
 
-                $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_unrest');
-                $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_qi');
-                $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_block');
+                $qtyUnrest = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_unrest');
+                $qtyQi = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_qi');
+                $qtyBlock = (int) WfgSohModel::whereDate('created_at', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->sum('qty_block');
 
                 $batches = null;
                 $pallets = 0;
-                $wfgSmuSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->pluck('id');
+                $wfgSmuSopIdsForMeta = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->pluck('id');
                 if ($wfgSmuSopIdsForMeta->isNotEmpty()) {
                     $fullPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIdsForMeta)->sum('qty_full');
                     $recehPallets = (int) WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIdsForMeta)->where('qty_receh', '>', 0)->count();
                     $pallets = $fullPallets + $recehPallets;
                 }
                 if ($pallets === 0) {
-                    $fullPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->sum('qty_full');
-                    $recehPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('qty_receh', '>', 0)->count();
+                    $fullPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->sum('qty_full');
+                    $recehPallets = (int) WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->where('qty_receh', '>', 0)->count();
                     $pallets = $fullPallets + $recehPallets;
                 }
 
-                $wfgSmuSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->pluck('id');
+                $wfgSmuSopIds = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count')->pluck('id');
                 if ($wfgSmuSopIds->isNotEmpty()) {
                     $startTime = WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIds)->min('created_at');
                     $endTime = WfgSopDetailModel::whereIn('sop_id', $wfgSmuSopIds)->max('created_at');
                 }
                 if (!$startTime) {
-                    $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->min('created_at');
-                    $endTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->max('created_at');
+                    $startTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->min('created_at');
+                    $endTime = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->max('created_at');
                 }
             }
 
@@ -590,7 +691,7 @@ class StockOpnameDashboardController extends Controller
             $trendCategories[] = $dateObj->translatedFormat('d M');
 
             // 1. WSP
-            $wspSo = WspSoModel::whereDate('tgl_opname', $dStr);
+            $wspSo = WspSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', 'cycle_count');
             if ($picFilter && $picFilter !== 'all') {
                 $wspSo->where('user_id', $picFilter);
             }
@@ -604,7 +705,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 2. WRM
-            $wrmSo = WrmSoModel::whereDate('tgl_opname', $dStr);
+            $wrmSo = WrmSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', 'cycle_count');
             if ($picFilter && $picFilter !== 'all') {
                 $wrmSo->where('user_id', $picFilter);
             }
@@ -618,7 +719,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 3. WPM
-            $wpmSo = WpmSoModel::whereDate('tgl_opname', $dStr);
+            $wpmSo = WpmSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', 'cycle_count');
             if ($picFilter && $picFilter !== 'all') {
                 $wpmSo->where('user_id', $picFilter);
             }
@@ -632,7 +733,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 4. WCP
-            $wcpSo = WcpSoModel::whereDate('tgl_opname', $dStr);
+            $wcpSo = WcpSoModel::whereDate('tgl_opname', $dStr)->where('jenis_so', 'cycle_count');
             if ($picFilter && $picFilter !== 'all') {
                 $wcpSo->where('user_id', $picFilter);
             }
@@ -646,7 +747,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 5. WFG BAS
-            $wfgBasSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', 'BAS');
+            $wfgBasSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', 'BAS')->where('jenis_so', 'cycle_count');
             if ($picFilter && $picFilter !== 'all') {
                 $wfgBasSop->where('user_id', $picFilter);
             }
@@ -660,7 +761,7 @@ class StockOpnameDashboardController extends Controller
             ];
 
             // 6. WFG SMU
-            $wfgSmuSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', '!=', 'BAS');
+            $wfgSmuSop = WfgSopModel::whereDate('tgl_opname', $dStr)->where('principal', '!=', 'BAS')->where('jenis_so', 'cycle_count');
             if ($picFilter && $picFilter !== 'all') {
                 $wfgSmuSop->where('user_id', $picFilter);
             }
@@ -688,28 +789,34 @@ class StockOpnameDashboardController extends Controller
             if ($key === 'WSP') {
                 $soDoc = WspSoModel::with(['user', 'approvals.approver'])
                     ->whereDate('tgl_opname', $tglOpname)
+                    ->where('jenis_so', 'cycle_count')
                     ->first();
             } elseif ($key === 'WRM') {
                 $soDoc = WrmSoModel::with(['user', 'approvals.approver'])
                     ->whereDate('tgl_opname', $tglOpname)
+                    ->where('jenis_so', 'cycle_count')
                     ->first();
             } elseif ($key === 'WPM') {
                 $soDoc = WpmSoModel::with(['user', 'approvals.approver'])
                     ->whereDate('tgl_opname', $tglOpname)
+                    ->where('jenis_so', 'cycle_count')
                     ->first();
             } elseif ($key === 'WCP') {
                 $soDoc = WcpSoModel::with(['user', 'approvals.approver'])
                     ->whereDate('tgl_opname', $tglOpname)
+                    ->where('jenis_so', 'cycle_count')
                     ->first();
             } elseif ($key === 'WFG_BAS') {
                 $soDoc = WfgSopModel::with(['user', 'approvals.approver'])
                     ->whereDate('tgl_opname', $tglOpname)
                     ->where('principal', 'BAS')
+                    ->where('jenis_so', 'cycle_count')
                     ->first();
             } elseif ($key === 'WFG_SMU') {
                 $soDoc = WfgSopModel::with(['user', 'approvals.approver'])
                     ->whereDate('tgl_opname', $tglOpname)
                     ->where('principal', '!=', 'BAS')
+                    ->where('jenis_so', 'cycle_count')
                     ->first();
             }
 
@@ -750,23 +857,47 @@ class StockOpnameDashboardController extends Controller
             } else {
                 $hasStarted = false;
                 if ($key === 'WSP') {
-                    $hasStarted = WspSoTempModel::whereDate('tgl_opname', $tglOpname)->exists()
-                        || WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->exists();
+                    $hasStarted = WspSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->exists()
+                        || WspSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
                 } elseif ($key === 'WRM') {
-                    $hasStarted = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)->exists()
-                        || WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->exists();
+                    $hasStarted = WrmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->exists()
+                        || WrmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
                 } elseif ($key === 'WPM') {
-                    $hasStarted = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)->exists()
-                        || WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->exists();
+                    $hasStarted = WpmSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->exists()
+                        || WpmSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
                 } elseif ($key === 'WCP') {
-                    $hasStarted = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)->exists()
-                        || WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->exists();
+                    $hasStarted = WcpSoTempModel::whereDate('tgl_opname', $tglOpname)
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->exists()
+                        || WcpSoStatusModel::whereDate('tgl_opname', $tglOpname)->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
                 } elseif ($key === 'WFG_BAS') {
-                    $hasStarted = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->exists()
-                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('status', 'started')->exists();
+                    $hasStarted = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->exists()
+                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', 'BAS')->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
                 } elseif ($key === 'WFG_SMU') {
-                    $hasStarted = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->exists()
-                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->exists();
+                    $hasStarted = WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
+                        ->whereHas('soh', function ($q) {
+                            $q->where('jenis_so', 'cycle_count');
+                        })
+                        ->exists()
+                        || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', 'cycle_count')->exists();
                 }
 
                 $statusApproval = $hasStarted ? 'On Progress' : 'Belum Mulai';
@@ -802,31 +933,31 @@ class StockOpnameDashboardController extends Controller
             })->values()->all();
         }
 
-        // Yesterday's Stock Accuracy
+        // Yesterday's Stock Accuracy (filtered by cycle_count)
         $yesterday = Carbon::parse($tglOpname)->subDay()->format('Y-m-d');
 
         // Wsp
-        $wspYesSoIds = WspSoModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wspYesSoIds = WspSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
         $wspYesDi = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->count();
         $wspYesMa = WspSoSummariesModel::whereIn('so_id', $wspYesSoIds)->where('status', 'match')->count();
 
         // Wrm
-        $wrmYesSoIds = WrmSoModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wrmYesSoIds = WrmSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
         $wrmYesDi = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->count();
         $wrmYesMa = WrmSoSummariesModel::whereIn('so_id', $wrmYesSoIds)->where('status', 'match')->count();
 
         // Wpm
-        $wpmYesSoIds = WpmSoModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wpmYesSoIds = WpmSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
         $wpmYesDi = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->count();
         $wpmYesMa = WpmSoSummariesModel::whereIn('so_id', $wpmYesSoIds)->where('status', 'match')->count();
 
         // Wcp
-        $wcpYesSoIds = WcpSoModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wcpYesSoIds = WcpSoModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
         $wcpYesDi = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->count();
         $wcpYesMa = WcpSoSummariesModel::whereIn('so_id', $wcpYesSoIds)->where('status', 'match')->count();
 
         // Wfg Bas & Smu
-        $wfgYesSopIds = WfgSopModel::whereDate('tgl_opname', $yesterday)->pluck('id');
+        $wfgYesSopIds = WfgSopModel::whereDate('tgl_opname', $yesterday)->where('jenis_so', 'cycle_count')->pluck('id');
         $wfgYesDi = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->count();
         $wfgYesMa = WfgSopSummariesModel::whereIn('sop_id', $wfgYesSopIds)->where('status', 'match')->count();
 
