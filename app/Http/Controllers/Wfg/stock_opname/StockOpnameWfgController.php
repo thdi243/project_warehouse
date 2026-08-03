@@ -1686,15 +1686,8 @@ class StockOpnameWfgController extends Controller
             'sop.user:id,username,nama_lengkap',
         ])
             ->whereIn('wfg_sop_approvals.status', ['pending', 'read'])
-            ->when($user->jabatan !== 'operator', function ($query) use ($user) {
-                $query->where('approver_id', $user->id);
-            })
-            ->whereHas('sop', function ($query) use ($user, $principalFilter) {
+            ->whereHas('sop', function ($query) use ($principalFilter) {
                 $query->where('jenis_so', 'monthly');
-                if ($user->jabatan === 'operator') {
-                    $query->where('principal', optional($user->principal)->principal);
-                    return;
-                }
 
                 if (!empty($principalFilter)) {
                     $query->where('principal', $principalFilter);
