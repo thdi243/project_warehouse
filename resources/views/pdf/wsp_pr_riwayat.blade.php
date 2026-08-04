@@ -205,13 +205,13 @@
                 @foreach ($pr->items as $item)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $item->barang ? ($item->barang->mid_barang ?? '-') : '-' }}</td>
+                        <td>{{ $item->barang ? $item->barang->mid_barang ?? '-' : '-' }}</td>
                         <td style="text-align: left; padding-left: 5px; font-size: 10px;">
-                            {{ $item->barang ? ($item->barang->nama_barang ?? '-') : ($item->desc ?? '-') }}
+                            {{ $item->barang ? $item->barang->nama_barang ?? '-' : $item->desc ?? '-' }}
                         </td>
-                        <td>{{ $item->barang ? ($item->barang->uom ?? '-') : '-' }}</td>
+                        <td>{{ $item->barang ? $item->barang->uom ?? '-' : '-' }}</td>
                         <td style="padding-right: 5px;">
-                            {{ rtrim(rtrim($item->qty ?? 0, '0'), '.') }}
+                            {{ rtrim(rtrim(number_format($item->qty ?? 0, 2, '.', ''), '0'), '.') }}
                         </td>
                         <td style="padding-right: 5px;">
 
