@@ -1094,9 +1094,17 @@
                     const qtyBox = parseFloat(item.barang.qty_box || 0);
 
                     // Pallet used = sum of qty_full + (1 if qty_receh > 0)
-                    const palletCount = qtyFull + (qtyReceh > 0 ? 1 : 0);
+                    let palletCount = qtyFull + (qtyReceh > 0 ? 1 : 0);
                     // Total boxes = (qty_full * qty_box) + qty_receh
-                    const totalBoxes = (qtyFull * qtyBox) + qtyReceh;
+                    let totalBoxes = (qtyFull * qtyBox) + qtyReceh;
+
+                    // Apply multiplier of 2 for PAS & TAS under SMU filter
+                    const activePrincipal = response.sop && response.sop.principal ? response.sop.principal.trim().toUpperCase() : '';
+                    const itemPrincipal = item.barang && item.barang.principal ? item.barang.principal.trim().toUpperCase() : '';
+                    if (activePrincipal === 'SMU' && (itemPrincipal === 'PAS' || itemPrincipal === 'TAS')) {
+                        palletCount *= 2;
+                        totalBoxes *= 2;
+                    }
 
                     if (!grouped[barangId]) {
                         grouped[barangId] = {
