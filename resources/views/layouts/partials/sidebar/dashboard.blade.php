@@ -58,7 +58,7 @@
                             <i class="mdi mdi-truck-delivery"></i> Vehicle Monitoring </a>
                     </li>
                 @endcan
-                @can('permission', 'dashboard')
+                @can('permission', 'dashboard-stock-opname')
                     <li class="nav-item">
                         <a href="{{ route('dashboard.stock-opname') }}"
                             class="nav-link {{ request()->routeIs('dashboard.stock-opname') ? 'active' : '' }}">
