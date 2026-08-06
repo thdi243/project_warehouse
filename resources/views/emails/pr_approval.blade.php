@@ -162,7 +162,9 @@
             <div class="content">
                 <p class="greeting">Yth. Bapak/Ibu {{ $approval->approver->nama_lengkap }},</p>
 
-                <p>Ada Purchase Requesition baru yang membutuhkan persetujuan Anda sebagai <strong>{{ $approval->role }}</strong>:</p>
+                <p>Ada Purchase Requesition baru yang membutuhkan persetujuan Anda sebagai
+                    <strong>{{ $approval->role }}</strong>:
+                </p>
 
                 <!-- Info Card -->
                 <div class="info-card">
@@ -185,8 +187,8 @@
                             <span>{{ \Carbon\Carbon::parse($pr->pr_date)->format('d F Y') }}</span>
                         </li>
                         <li>
-                            <strong>Jenis</strong>
-                            <span>{{ $pr->jenis }}</span>
+                            <strong>Jenis / Detail</strong>
+                            <span>{{ $pr->jenis . ' / ' . $pr->detail_jenis }}</span>
                         </li>
                     </ul>
                 </div>
@@ -199,7 +201,7 @@
                 </div>
 
                 <p>Terima kasih atas perhatian dan kerjasamanya.</p>
-                <p>Hormat kami,<br><strong>System Purchase Requisition</strong></p>
+                <p>Hormat kami,<br><strong>DWM</strong></p>
             </div>
 
             <!-- Footer -->

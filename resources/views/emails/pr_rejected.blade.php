@@ -162,7 +162,10 @@
             <div class="content">
                 <p class="greeting">Yth. Bapak/Ibu {{ $pr->user->nama_lengkap }},</p>
 
-                <p>Kami ingin menginformasikan bahwa pengajuan Purchase Requisition Anda berikut ini <strong>Ditolak</strong> oleh <strong>{{ $approval->approver->nama_lengkap }} ({{ $approval->role }})</strong>:</p>
+                <p>Kami ingin menginformasikan bahwa pengajuan Purchase Requisition Anda berikut ini
+                    <strong>Ditolak</strong> oleh <strong>{{ $approval->approver->nama_lengkap }}
+                        ({{ $approval->role }})</strong>:
+                </p>
 
                 <!-- Info Card -->
                 <div class="info-card">
@@ -181,11 +184,11 @@
                             <span>{{ \Carbon\Carbon::parse($pr->pr_date)->format('d F Y') }}</span>
                         </li>
                         <li>
-                            <strong>Jenis</strong>
-                            <span>{{ $pr->jenis }}</span>
+                            <strong>Jenis / Detail</strong>
+                            <span>{{ $pr->jenis . ' / ' . $pr->detail_jenis }}</span>
                         </li>
                         <li>
-                            <strong>Catatan Penolakan</strong>
+                            <strong>Catatan</strong>
                             <span style="color: #c9302c; font-weight: bold;">{{ $approval->catatan ?? '-' }}</span>
                         </li>
                     </ul>
