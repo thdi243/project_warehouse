@@ -27,6 +27,14 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Display the Animated Visual Map Dashboard.
+     */
+    public function visualDashboard()
+    {
+        return view('dashboard.vehicle_visual');
+    }
+
+    /**
      * Get real-time data for the dashboard via AJAX.
      */
     public function dashboardData()
@@ -97,7 +105,7 @@ class VehicleTrackingController extends Controller
                 }
                 return false;
             })->values(),
-            'WFG' => $activeTransactions->where('status', 'wfg_muat')->values(),
+            'WFG' => $activeTransactions->where('status', 'wfg')->values(),
             'SMU' => $activeTransactions->where('status', 'smu')->values(),
         ];
 
@@ -380,7 +388,7 @@ class VehicleTrackingController extends Controller
                 $initialQcStatus = 'waiting_dokumen';
                 $currentLocId = $targetLoc->id;
             } elseif ($targetLoc->s_loc === 'A001') {
-                $newStatus = 'wfg_muat';
+                $newStatus = 'wfg';
             }
 
             // Update transaction to target location
@@ -889,7 +897,7 @@ class VehicleTrackingController extends Controller
     public function wfgData()
     {
         $queue = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
-            ->where('status', 'wfg_muat')
+            ->where('status', 'wfg')
             ->orderBy('check_in_time', 'asc')
             ->get()
             ->map(function ($tx) {
@@ -1178,7 +1186,7 @@ class VehicleTrackingController extends Controller
                     $initialQcStatus = 'waiting_dokumen';
                     $currentLocId = $targetLoc->id;
                 } elseif ($targetLoc->s_loc === 'A001') {
-                    $newStatus = 'wfg_muat';
+                    $newStatus = 'wfg';
                 }
 
                 // Conclude current target tracking log (if active is at target, or update the active tracking)
@@ -1491,7 +1499,7 @@ class VehicleTrackingController extends Controller
                 // Determine if this is a QC track
                 $isQcTrack = false;
                 if ($track->status_notes && (
-                    str_contains($track->status_notes, 'QC Hasil') || 
+                    str_contains($track->status_notes, 'QC Hasil') ||
                     str_contains($track->status_notes, 'Sampling') ||
                     str_contains($track->status_notes, 'Dokumen')
                 )) {
