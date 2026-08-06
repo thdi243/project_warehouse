@@ -11,14 +11,14 @@
             <ul class="nav nav-sm flex-column">
                 <li class="nav-item">
                     <a href="{{ route('vehicle.monitoring.history') }}"
-                        class="nav-link {{ request()->routeIs('vehicle.monitoring.history') ? 'active' : '' }}">
+                        class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.history') ? 'active' : '' }}">
                         <i class="ri-history-line fs-12"></i>Report
                     </a>
                 </li>
                 @can('permission', 'vehicle-monitoring-timbangan')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.timbangan') }}"
-                            class="nav-link {{ request()->routeIs('vehicle.monitoring.timbangan') ? 'active' : '' }}">
+                            class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.timbangan') ? 'active' : '' }}">
                             <i class="ri-scales-3-line fs-12"></i> Timbangan
                         </a>
                     </li>
@@ -26,7 +26,7 @@
                 @can('permission', 'vehicle-monitoring-qc')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.qc') }}"
-                            class="nav-link {{ request()->routeIs('vehicle.monitoring.qc') ? 'active' : '' }}">
+                            class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.qc') ? 'active' : '' }}">
                             <i class="ri-flask-line fs-12"></i> QC Area
                         </a>
                     </li>
@@ -34,7 +34,7 @@
                 @can('permission', 'vehicle-monitoring-wpm')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.wpm') }}"
-                            class="nav-link {{ request()->routeIs('vehicle.monitoring.wpm') ? 'active' : '' }}">
+                            class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.wpm') ? 'active' : '' }}">
                             <i class="ri-download-2-line fs-12"></i> WPM Area
                         </a>
                     </li>
@@ -42,7 +42,7 @@
                 @can('permission', 'vehicle-monitoring-wrm')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.wrm') }}"
-                            class="nav-link {{ request()->routeIs('vehicle.monitoring.wrm') ? 'active' : '' }}">
+                            class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.wrm') ? 'active' : '' }}">
                             <i class="ri-download-2-line fs-12"></i> WRM Area
                         </a>
                     </li>
@@ -50,7 +50,7 @@
                 @can('permission', 'vehicle-monitoring-wfg')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.wfg') }}"
-                            class="nav-link {{ request()->routeIs('vehicle.monitoring.wfg') ? 'active' : '' }}">
+                            class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.wfg') ? 'active' : '' }}">
                             <i class="ri-upload-2-line fs-12"></i> WFG Area
                         </a>
                     </li>
@@ -58,7 +58,7 @@
                 @can('permission', 'vehicle-monitoring-smu')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.smu') }}"
-                            class="nav-link {{ request()->routeIs('vehicle.monitoring.smu') ? 'active' : '' }}">
+                            class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.smu') ? 'active' : '' }}">
                             <i class="ri-database-2-line fs-12"></i> SMU Area
                         </a>
                     </li>
@@ -66,7 +66,7 @@
                 @can('permission', 'vehicle-monitoring-master')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.master.items') }}"
-                            class="nav-link {{ request()->routeIs('vehicle.monitoring.master.items') ? 'active' : '' }}">
+                            class="nav-link menu-link {{ request()->routeIs('vehicle.monitoring.master.items') ? 'active' : '' }}">
                             <i class="ri-price-tag-3-line fs-12"></i> Master Item & Sloc
                         </a>
                     </li>

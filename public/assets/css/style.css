@@ -1,19 +1,19 @@
 :root {
     --vz-vertical-menu-bg: #fff;
-    --vz-vertical-menu-item-color: #4b38b3;
-    --vz-vertical-menu-item-hover-color: #4b38b3;
-    --vz-vertical-menu-item-active-color: #4b38b3;
+    --vz-vertical-menu-item-color: #c0392b;
+    --vz-vertical-menu-item-hover-color: #c0392b;
+    --vz-vertical-menu-item-active-color: #c0392b;
     --vz-vertical-menu-sub-item-color: #7c7f90;
-    --vz-vertical-menu-sub-item-hover-color: #4b38b3;
-    --vz-vertical-menu-sub-item-active-color: #4b38b3;
+    --vz-vertical-menu-sub-item-hover-color: #c0392b;
+    --vz-vertical-menu-sub-item-active-color: #c0392b;
     --vz-vertical-menu-title-color: #fff;
     --vz-vertical-menu-bg-dark: #fff;
     --vz-vertical-menu-item-color-dark: #051720;
-    --vz-vertical-menu-item-hover-color-dark: #000;
-    --vz-vertical-menu-item-active-color-dark: #4b38b3;
+    --vz-vertical-menu-item-hover-color-dark: #c0392b;
+    --vz-vertical-menu-item-active-color-dark: #c0392b;
     --vz-vertical-menu-sub-item-color-dark: #051720;
-    --vz-vertical-menu-sub-item-hover-color-dark: #4b38b3;
-    --vz-vertical-menu-sub-item-active-color-dark: #4b38b3;
+    --vz-vertical-menu-sub-item-hover-color-dark: #c0392b;
+    --vz-vertical-menu-sub-item-active-color-dark: #c0392b;
     --vz-vertical-menu-title-color-dark: rgb(68, 76, 79);
     --vz-header-bg: #fff;
     --vz-header-item-color: #e9ecef;
@@ -26,7 +26,7 @@
     --vz-footer-color: #98a6ad;
     --vz-topnav-bg: #fff;
     --vz-topnav-item-color: #6d7080;
-    --vz-topnav-item-color-active: #4b38b3;
+    --vz-topnav-item-color-active: #c0392b;
     --vz-twocolumn-menu-iconview-bg: #fff;
     --vz-twocolumn-menu-bg: #fff;
     --vz-twocolumn-menu-iconview-bg-dark: var(--vz-vertical-menu-bg-dark);
@@ -59,11 +59,22 @@
     align-items: center;
 }
 
-/* Active effect untuk menu utama (level 1) */
-a.nav-link.menu-link.active {
-    background: linear-gradient(135deg, #4b38b3, #7968f6) !important;
-    color: #fff !important;
-    border-radius: 6px;
+/* Active / Expanded level 1 menu links (only on the parent link itself) */
+.navbar-menu .navbar-nav .nav-item a.nav-link.menu-link.active,
+.navbar-menu .navbar-nav .nav-item:has(.menu-dropdown .active)>a.nav-link.menu-link,
+.navbar-menu .navbar-nav .nav-item a.nav-link.menu-link[aria-expanded="true"] {
+    background: rgba(192, 57, 43, 0.8) !important;
+    /* Darker soft orange for header */
+    color: #c0392b !important;
+    border-left: 4px solid #c0392b !important;
+    border-radius: 6px !important;
+}
+
+/* Ensure active parent icons are also orange */
+.navbar-menu .navbar-nav .nav-item a.nav-link.menu-link.active i,
+.navbar-menu .navbar-nav .nav-item:has(.menu-dropdown .active)>a.nav-link.menu-link i,
+.navbar-menu .navbar-nav .nav-item a.nav-link.menu-link[aria-expanded="true"] i {
+    color: #c0392b !important;
 }
 
 a.nav-link.menu-link,
@@ -73,23 +84,23 @@ a.nav-link.menu-link,
     padding: 0.5rem !important;
 }
 
-/* Submenu level 2 (misal: P2H Online) → tidak ada background */
-.navbar-nav .menu-dropdown>.nav-item>.nav-link.active {
-    background: transparent !important;
-    color: #fff !important;
-    font-weight: 600;
+/* Submenu active items - soft orange background for active child */
+.navbar-menu .navbar-nav .menu-dropdown .nav-link.active {
+    background: rgba(192, 57, 43, 0.08) !important;
+    color: #c0392b !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
 }
 
-/* Sub-submenu level 3 → hanya item diklik yg aktif */
-.navbar-nav .menu-dropdown .nav-sm .nav-link.active {
-    background: linear-gradient(135deg, #4b38b3, #7d6cfa) !important;
-    color: #fff !important;
-    border-radius: 6px;
+/* Ensure nested active submenu collapses also have orange text */
+.navbar-menu .navbar-nav .menu-dropdown .nav-link[aria-expanded="true"] {
+    color: #c0392b !important;
+    font-weight: 600 !important;
 }
 
 .navbar-menu .navbar-nav .nav-link:hover {
-    background: #d2c8ff !important;
-    color: #fff !important;
+    background: rgba(192, 57, 43, 0.12) !important;
+    color: #c0392b !important;
     border-radius: 6px;
     transition: all 0.3s ease;
 }
@@ -99,11 +110,11 @@ a.nav-link.menu-link,
 }
 
 [data-layout=vertical][data-sidebar=dark] .navbar-nav .nav-link[data-bs-toggle=collapse][aria-expanded=true] {
-    color: #4b38b3;
+    color: #c0392b;
 }
 
 [data-layout=vertical][data-sidebar-size=sm] .navbar-menu .navbar-nav .nav-item:hover>a.menu-link {
-    color: #4b38b3;
+    color: #c0392b;
 }
 
 .select2-container--default .select2-selection--single {

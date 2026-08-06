@@ -65,6 +65,40 @@
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
+        <!-- custom CSS overrides to bypass cache -->
+        <style>
+            /* Active / Expanded level 1 menu links (only on the parent link itself) */
+            .navbar-menu .navbar-nav .nav-item a.nav-link.menu-link.active,
+            .navbar-menu .navbar-nav .nav-item:has(.menu-dropdown .active)>a.nav-link.menu-link,
+            .navbar-menu .navbar-nav .nav-item a.nav-link.menu-link[aria-expanded="true"] {
+                background: rgba(192, 57, 43, 0.1) !important;
+                color: #c0392b !important;
+                border-left: 4px solid #c0392b !important;
+                border-radius: 6px !important;
+            }
+
+            /* Ensure active parent icons are also orange */
+            .navbar-menu .navbar-nav .nav-item a.nav-link.menu-link.active i,
+            .navbar-menu .navbar-nav .nav-item:has(.menu-dropdown .active)>a.nav-link.menu-link i,
+            .navbar-menu .navbar-nav .nav-item a.nav-link.menu-link[aria-expanded="true"] i {
+                color: #c0392b !important;
+            }
+
+            /* Submenu active items - soft orange background for active child */
+            .navbar-menu .navbar-nav .menu-dropdown .nav-link.active {
+                background: rgba(192, 57, 43, 0.1) !important;
+                color: #c0392b !important;
+                font-weight: 600 !important;
+                border-radius: 6px !important;
+            }
+
+            /* Ensure nested active submenu collapses also have orange text */
+            .navbar-menu .navbar-nav .menu-dropdown .nav-link[aria-expanded="true"] {
+                color: #c0392b !important;
+                font-weight: 600 !important;
+            }
+        </style>
+
         @yield('styles')
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>

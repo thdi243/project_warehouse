@@ -1009,6 +1009,11 @@
                         text = 'Rejected';
                     }
 
+                    const catatan = a.catatan ? `
+                                <div class="small mt-1">
+                                    Catatan: ${a.catatan}
+                                </div>` : '';
+
                     html += `
                         <div class="d-flex align-items-start mb-3 border-bottom pb-2">
                             
@@ -1033,13 +1038,8 @@
                                     ${a.approver ? a.approver.nama_lengkap : '-'} | ${a.approver && a.approver.departemen ? a.approver.departemen.replace(/_/g, ' ').toUpperCase() : '-'}
                                 </div>
 
-                                ${a.catatan ? `
-                                                                                                                                                                    <div class="small mt-1">
-                                                                                                                                                                        Catatan: ${a.catatan}
-                                                                                                                                                                    </div>
-                                                                                                                                                                ` : ''}
+                                ${catatan}
                             </div>
-
                         </div>
                     `;
                 });
@@ -1140,12 +1140,13 @@
                 const deptMap = {
                     engineering: 'BAS-ENG',
                     warehouse: 'BAS-WRH',
-                    ite: 'BAS-ITE',
+                    ite: 'BAS-ENG',
                     produksi: 'BAS-PRD',
                     quality_control: 'BAS-QC',
                     hrga: 'BAS-HRGA',
                     expedisi: 'BAS-EXP',
-                    timbangan: 'BAS-EXP'
+                    timbangan: 'BAS-EXP',
+                    hse: 'BAS-HSE'
                 };
 
                 const deptCode = deptMap[pr.department] ?? 'BAS-Dept User';

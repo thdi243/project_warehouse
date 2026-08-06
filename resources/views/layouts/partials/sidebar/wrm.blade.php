@@ -117,7 +117,7 @@
                                 @can('permission', 'stock-opname-wrm-upload')
                                     <li class="nav-item">
                                         <a href="{{ route('wrm.stock_opname.soh') }}"
-                                            class="nav-link {{ request()->routeIs('wrm.stock_opname.soh') ? 'active' : '' }}">
+                                            class="nav-link menu-link {{ request()->routeIs('wrm.stock_opname.soh') ? 'active' : '' }}">
                                             <i class="bx bx-git-commit fs-12"></i>SOH Upload
                                         </a>
                                     </li>
@@ -125,7 +125,7 @@
                                 @can('permission', 'stock-opname-wrm-form')
                                     <li class="nav-item">
                                         <a href="{{ route('wrm.stock_opname.form') }}"
-                                            class="nav-link {{ request()->routeIs('wrm.stock_opname.form') ? 'active' : '' }}">
+                                            class="nav-link menu-link {{ request()->routeIs('wrm.stock_opname.form') ? 'active' : '' }}">
                                             <i class="bx bx-git-commit fs-12"></i> SO Form
                                         </a>
                                     </li>
@@ -133,7 +133,7 @@
                                 @can('permission', 'stock-opname-wrm-report')
                                     <li class="nav-item">
                                         <a href="{{ route('wrm.stock_opname.report') }}"
-                                            class="nav-link {{ request()->routeIs('wrm.stock_opname.report') ? 'active' : '' }}">
+                                            class="nav-link menu-link {{ request()->routeIs('wrm.stock_opname.report') ? 'active' : '' }}">
                                             <i class="bx bx-git-commit fs-12"></i> SO Report
                                         </a>
                                     </li>
