@@ -63,7 +63,7 @@
 .navbar-menu .navbar-nav .nav-item a.nav-link.menu-link.active,
 .navbar-menu .navbar-nav .nav-item:has(.menu-dropdown .active)>a.nav-link.menu-link,
 .navbar-menu .navbar-nav .nav-item a.nav-link.menu-link[aria-expanded="true"] {
-    background: rgba(192, 57, 43, 0.8) !important;
+    background: rgba(192, 57, 43, 0.08) !important;
     /* Darker soft orange for header */
     color: #c0392b !important;
     border-left: 4px solid #c0392b !important;

@@ -504,6 +504,10 @@
                         <i class="bx bx-fullscreen me-1 align-middle" style="font-size: 14px;"></i>
                         <span class="fullscreen-text">Fullscreen</span>
                     </button>
+                    {{-- <a href="{{ route('dashboard.vehicle.visual') }}" class="btn btn-sm btn-outline-info px-3">
+                        <i class="ri-map-2-line me-1 align-middle" style="font-size: 14px;"></i>
+                        <span>Visual Map</span>
+                    </a> --}}
                     <button class="btn btn-sm btn-outline-secondary px-3" id="btnRefreshData">
                         <i class="ri-refresh-line me-1 align-middle"></i> Reload
                     </button>
@@ -1173,12 +1177,23 @@
                                 `;
                             } else if (key === 'WFG') {
                                 let statusWfgBadge;
-                                if (tx.status === 'wfg_muat') {
-                                    statusWfgBadge =
-                                        `<span class="badge-status waiting">Antri Muat</span>`;
+                                const jenis = (tx.jenis || '').toLowerCase();
+                                if (jenis === 'bongkaran') {
+                                    if (tx.status === 'wfg') {
+                                        statusWfgBadge =
+                                            `<span class="badge-status waiting">Antri Bongkar</span>`;
+                                    } else {
+                                        statusWfgBadge =
+                                            `<span class="badge-status process">Proses Bongkar</span>`;
+                                    }
                                 } else {
-                                    statusWfgBadge =
-                                        `<span class="badge-status process">Proses Muat</span>`;
+                                    if (tx.status === 'wfg') {
+                                        statusWfgBadge =
+                                            `<span class="badge-status waiting">Antri Muat</span>`;
+                                    } else {
+                                        statusWfgBadge =
+                                            `<span class="badge-status process">Proses Muat</span>`;
+                                    }
                                 }
                                 rowHtml = `
                                     <tr class="${warningRow}" id="row-tx-${tx.id}">
