@@ -7,63 +7,69 @@
         </a>
         <div class="collapse menu-dropdown {{ request()->routeIs('p2h.*') ? 'show' : '' }}" id="sideBarP2h">
             <ul class="nav nav-sm flex-column">
-                @can('permission', 'p2h-form')
-                    @if ($jabatan === 'operator')
+
+                @if ($jabatan === 'operator')
+                    <li class="nav-item">
+                        <a href="{{ route('p2h.online.index') }}"
+                            class="nav-link {{ request()->routeIs('p2h.online.index') ? 'active' : '' }}"
+                            data-key="t-input-p2h">
+                            <i class="bx bx-git-commit fs-12"></i>Form P2H
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('p2h.online.data') }}"
+                            class="nav-link {{ request()->routeIs('p2h.online.data') ? 'active' : '' }}" data-key="t-chat">
+                            <i class="bx bx-git-commit fs-12"></i>Data P2H
+                        </a>
+                    </li>
+                    @can('permission', 'p2h-summary')
                         <li class="nav-item">
-                            <a href="{{ route('p2h.online.index') }}"
-                                class="nav-link {{ request()->routeIs('p2h.online.index') ? 'active' : '' }}"
-                                data-key="t-input-p2h">
-                                <i class="bx bx-git-commit fs-12"></i>Form P2H
+                            <a href="{{ route('p2h.online.summary') }}"
+                                class="nav-link {{ request()->routeIs('p2h.online.summary') ? 'active' : '' }}"
+                                data-key="t-summary-p2h">
+                                <i class="bx bx-git-commit fs-12"></i>Summary P2H
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a href="{{ route('p2h.online.data') }}"
-                                class="nav-link {{ request()->routeIs('p2h.online.data') ? 'active' : '' }}" data-key="t-chat">
-                                <i class="bx bx-git-commit fs-12"></i>Data P2H
-                            </a>
-                        </li>
-                        @can('permission', 'p2h-summary')
-                            <li class="nav-item">
-                                <a href="{{ route('p2h.online.summary') }}"
-                                    class="nav-link {{ request()->routeIs('p2h.online.summary') ? 'active' : '' }}"
-                                    data-key="t-summary-p2h">
-                                    <i class="bx bx-git-commit fs-12"></i>Summary P2H
-                                </a>
-                            </li>
-                        @endcan
-                    @else
-                        <li class="nav-item">
-                            <a href="#" data-bs-target="#sidebarP2hOnline" data-bs-toggle="collapse" role="button"
-                                aria-expanded="{{ request()->routeIs('p2h.online.*') ? 'true' : 'false' }}"
-                                aria-controls="sidebarP2hOnline" class="nav-link" data-key="t-m-tkbm">
-                                <i class="bx bx-git-commit fs-12"></i>P2H Online
-                            </a>
-                            <div class="collapse menu-dropdown {{ request()->routeIs('p2h.online.*') ? 'show' : '' }}"
-                                id="sidebarP2hOnline">
-                                <ul class="nav nav-sm flex-column">
+                    @endcan
+                @else
+                    <li class="nav-item">
+                        <a href="#" data-bs-target="#sidebarP2hOnline" data-bs-toggle="collapse" role="button"
+                            aria-expanded="{{ request()->routeIs('p2h.online.*') ? 'true' : 'false' }}"
+                            aria-controls="sidebarP2hOnline" class="nav-link" data-key="t-m-tkbm">
+                            <i class="bx bx-git-commit fs-12"></i>P2H Online
+                        </a>
+                        <div class="collapse menu-dropdown {{ request()->routeIs('p2h.online.*') ? 'show' : '' }}"
+                            id="sidebarP2hOnline">
+                            <ul class="nav nav-sm flex-column">
+                                @can('permission', 'p2h-form')
                                     <li class="nav-item">
                                         <a href="{{ route('p2h.online.index') }}"
                                             class="nav-link {{ request()->routeIs('p2h.online.index') ? 'active' : '' }}"
                                             data-key="t-input-p2h">
                                             Form P2H </a>
                                     </li>
+                                @endcan
+                                @can('permission', 'p2h-data')
                                     <li class="nav-item">
                                         <a href="{{ route('p2h.online.data') }}"
                                             class="nav-link {{ request()->routeIs('p2h.online.data') ? 'active' : '' }}"
                                             data-key="t-chat">
                                             Data P2H </a>
                                     </li>
+                                @endcan
+                                @can('permission', 'p2h-summary')
                                     <li class="nav-item">
                                         <a href="{{ route('p2h.online.summary') }}"
                                             class="nav-link {{ request()->routeIs('p2h.online.summary') ? 'active' : '' }}"
                                             data-key="t-summary-p2h">
                                             Summary P2H </a>
                                     </li>
-                                </ul>
-                            </div>
-                        </li>
-                    @endif
-                @endcan
+                                @endcan
+                            </ul>
+                        </div>
+                    </li>
+                @endif
+
                 @can('permission', 'p2h-unit-regis')
                     <li class="nav-item">
                         <a href="#" data-bs-target="#sidebarRegUnitP2h" data-bs-toggle="collapse" role="button"

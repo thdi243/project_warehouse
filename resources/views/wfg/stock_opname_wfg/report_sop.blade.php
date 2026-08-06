@@ -548,7 +548,8 @@
                 } else {
                     dateInput.attr('type', 'date');
                     const t = new Date();
-                    const todayStr = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+                    const todayStr = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') +
+                        '-' + String(t.getDate()).padStart(2, '0');
                     if (val && val.length === 10) dateInput.val(val);
                     else dateInput.val(todayStr);
                     approvalTabBtn.addClass('d-none');
@@ -1047,7 +1048,9 @@
                                     <button class="btn btn-outline-primary btn-sm"  onclick="showDetail(${summary.id})">
                                         <i class="mdi mdi-eye-outline"></i> Detail
                                     </button>
-                                    ${editButton}
+                                    @can('permission', 'report-stock-opname-wfg-plus')
+                                        ${editButton}
+                                    @endcan
                                 </div>
                             </td>
                         </tr>
@@ -1099,8 +1102,10 @@
                     let totalBoxes = (qtyFull * qtyBox) + qtyReceh;
 
                     // Apply multiplier of 2 for PAS & TAS under SMU filter
-                    const activePrincipal = response.sop && response.sop.principal ? response.sop.principal.trim().toUpperCase() : '';
-                    const itemPrincipal = item.barang && item.barang.principal ? item.barang.principal.trim().toUpperCase() : '';
+                    const activePrincipal = response.sop && response.sop.principal ? response.sop.principal
+                        .trim().toUpperCase() : '';
+                    const itemPrincipal = item.barang && item.barang.principal ? item.barang.principal
+                    .trim().toUpperCase() : '';
                     if (activePrincipal === 'SMU' && (itemPrincipal === 'PAS' || itemPrincipal === 'TAS')) {
                         palletCount *= 2;
                         totalBoxes *= 2;

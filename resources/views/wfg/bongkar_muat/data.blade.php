@@ -505,7 +505,7 @@
                                     <button type="button" class="btn btn-soft-info btn-sm btn-detail" data-order="${orderJson}" title="Quick View Items">
                                         <i class="ri-eye-line"></i>
                                     </button>
-                                    @can('permission', 'bongkar-muat-plus')
+                                    @can('permission', 'data-bongkar-muat-plus')
                                         ${order.status === 'draft' ? 
                                             `<a href="${editUrl}" class="btn btn-soft-primary btn-sm" title="Resume Draft"><i class="ri-edit-line"></i></a>` : 
                                             `<button type="button" class="btn btn-soft-primary btn-sm btn-edit" data-order="${orderJson}" title="Edit Items"><i class="ri-edit-line"></i></button>`

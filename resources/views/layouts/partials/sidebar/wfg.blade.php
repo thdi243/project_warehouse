@@ -18,18 +18,22 @@
                         <div class="collapse menu-dropdown {{ request()->routeIs('wfg.bongkar_muat.*') ? 'show' : '' }}"
                             id="sidebarWFGLO">
                             <ul class="nav nav-sm flex-column">
-                                <li class="nav-item">
-                                    <a href="{{ route('wfg.bongkar_muat.form') }}"
-                                        class="nav-link {{ request()->routeIs('wfg.bongkar_muat.form') ? 'active' : '' }}">
-                                        <i class="bx bx-git-commit fs-12"></i> Form Muat
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('wfg.bongkar_muat.index') }}"
-                                        class="nav-link {{ request()->routeIs('wfg.bongkar_muat.index') ? 'active' : '' }}">
-                                        <i class="bx bx-git-commit fs-12"></i>Data Monitoring
-                                    </a>
-                                </li>
+                                @can('permission', 'form-bongkar-muat')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wfg.bongkar_muat.form') }}"
+                                            class="nav-link {{ request()->routeIs('wfg.bongkar_muat.form') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> Form Muat
+                                        </a>
+                                    </li>
+                                @endcan
+                                @can('permission', 'data-bongkar-muat')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wfg.bongkar_muat.index') }}"
+                                            class="nav-link {{ request()->routeIs('wfg.bongkar_muat.index') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i>Data Monitoring
+                                        </a>
+                                    </li>
+                                @endcan
                                 @can('permission', 'approval-bongkar-muat')
                                     <li class="nav-item">
                                         <a href="{{ route('wfg.bongkar_muat.approval') }}"
@@ -54,24 +58,30 @@
                         <div class="collapse menu-dropdown {{ request()->routeIs('wfg.stock_opname.*') ? 'show' : '' }}"
                             id="sidebarWFGSO">
                             <ul class="nav nav-sm flex-column">
-                                <li class="nav-item">
-                                    <a href="{{ route('wfg.stock_opname.soh') }}"
-                                        class="nav-link {{ request()->routeIs('wfg.stock_opname.soh') ? 'active' : '' }}">
-                                        <i class="bx bx-git-commit fs-12"></i>SOH Upload
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('wfg.stock_opname.form') }}"
-                                        class="nav-link {{ request()->routeIs('wfg.stock_opname.form') ? 'active' : '' }}">
-                                        <i class="bx bx-git-commit fs-12"></i> SO Form
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('wfg.stock_opname.report') }}"
-                                        class="nav-link {{ request()->routeIs('wfg.stock_opname.report') ? 'active' : '' }}">
-                                        <i class="bx bx-git-commit fs-12"></i> SO Report
-                                    </a>
-                                </li>
+                                @can('permission', 'stock-opname-wfg-soh')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wfg.stock_opname.soh') }}"
+                                            class="nav-link {{ request()->routeIs('wfg.stock_opname.soh') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i>SOH Upload
+                                        </a>
+                                    </li>
+                                @endcan
+                                @can('permission', 'stock-opname-wfg-form')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wfg.stock_opname.form') }}"
+                                            class="nav-link {{ request()->routeIs('wfg.stock_opname.form') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> SO Form
+                                        </a>
+                                    </li>
+                                @endcan
+                                @can('permission', 'stock-opname-wfg-report')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wfg.stock_opname.report') }}"
+                                            class="nav-link {{ request()->routeIs('wfg.stock_opname.report') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> SO Report
+                                        </a>
+                                    </li>
+                                @endcan
                             </ul>
                         </div>
                     </li>
