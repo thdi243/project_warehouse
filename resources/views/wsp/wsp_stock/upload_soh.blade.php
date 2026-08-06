@@ -392,47 +392,52 @@
                 });
             }
 
+            async function copyTextToClipboard(text) {
+                if (!text) return false;
+
+                // Coba navigator.clipboard
+                try {
+                    if (navigator.clipboard) {
+                        await navigator.clipboard.writeText(text);
+                        return true;
+                    }
+                } catch (err) {
+                    console.warn("navigator.clipboard failed, using fallback", err);
+                }
+
+                // Fallback: textarea
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    textArea.style.position = "fixed";
+                    textArea.style.top = "0";
+                    textArea.style.left = "0";
+                    textArea.style.width = "2em";
+                    textArea.style.height = "2em";
+                    textArea.style.padding = "0";
+                    textArea.style.border = "none";
+                    textArea.style.outline = "none";
+                    textArea.style.boxShadow = "none";
+                    textArea.style.background = "transparent";
+                    textArea.style.opacity = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    const successful = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    return successful;
+                } catch (err) {
+                    console.error("Fallback copy failed: ", err);
+                    return false;
+                }
+            }
+
             let currentMidsToCopy = '';
             window.copyMidsToClipboard = async function(link) {
                 const textToCopy = currentMidsToCopy;
                 if (!textToCopy) return;
 
-                let copied = false;
-                try {
-                    if (navigator.clipboard && window.isSecureContext) {
-                        await navigator.clipboard.writeText(textToCopy);
-                        copied = true;
-                    }
-                } catch (err) {
-                    console.warn("navigator.clipboard failed, trying fallback...", err);
-                }
-
-                if (!copied) {
-                    try {
-                        const textArea = document.createElement("textarea");
-                        textArea.value = textToCopy;
-                        // Keep it invisible and small, but in-place inside the link to avoid browser scroll jumps
-                        textArea.style.position = "absolute";
-                        textArea.style.width = "0";
-                        textArea.style.height = "0";
-                        textArea.style.padding = "0";
-                        textArea.style.margin = "0";
-                        textArea.style.border = "none";
-                        textArea.style.opacity = "0";
-                        textArea.style.pointerEvents = "none";
-                        
-                        link.appendChild(textArea);
-                        textArea.focus({ preventScroll: true });
-                        textArea.select();
-                        const success = document.execCommand('copy');
-                        textArea.remove();
-                        if (success) {
-                            copied = true;
-                        }
-                    } catch (e) {
-                        console.error("Fallback copy failed: ", e);
-                    }
-                }
+                const copied = await copyTextToClipboard(textToCopy);
 
                 if (copied) {
                     try {
@@ -472,11 +477,14 @@
                 }
             };
 
-            function showNotFoundWarning(res) {
+            async function showNotFoundWarning(res) {
                 const notFoundList = res.not_found || [];
                 const count = notFoundList.length;
                 const totalChecked = res.total_checked || '–';
                 currentMidsToCopy = notFoundList.join('\n');
+
+                // Salin otomatis langsung dari data response
+                const copiedAuto = await copyTextToClipboard(currentMidsToCopy);
 
                 Swal.fire({
                     icon: 'warning',
@@ -497,8 +505,8 @@
                     `,
                     footer: `
                         <a href="javascript:void(0)" id="copy-mid-link" onclick="copyMidsToClipboard(this)"
-                        style="font-weight:600; color:#6c757d; text-decoration:none;">
-                            📋 Copy daftar MID
+                        style="font-weight:600; color:${copiedAuto ? '#28a745' : '#6c757d'}; text-decoration:none;">
+                            ${copiedAuto ? '✔ MID sudah di-copy otomatis' : '📋 Copy daftar MID'}
                         </a>
                     `,
                     confirmButtonText: 'Oke, Saya Perbaiki',
