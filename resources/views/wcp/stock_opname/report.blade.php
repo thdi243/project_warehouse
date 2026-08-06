@@ -47,9 +47,11 @@
         #tableReportList {
             counter-reset: rowNumber;
         }
+
         #tableReportList tbody tr {
             counter-increment: rowNumber;
         }
+
         #tableReportList tbody tr td.row-number::before {
             content: counter(rowNumber);
         }
@@ -169,7 +171,9 @@
                                             <th class="text-end">Selisih</th>
                                             <th class="no-sort">Status</th>
                                             <th class="text-start no-sort">Catatan / Keterangan</th>
-                                            <th style="width: 120px;" class="no-sort">Aksi</th>
+                                            @can('permission', 'stock-opname-wcp-report-plus')
+                                                <th style="width: 120px;" class="no-sort">Aksi</th>
+                                            @endcan
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -585,7 +589,9 @@
                                         <button type="button" class="btn btn-sm btn-outline-info me-1" onclick="viewDetailReport(${item.id})" title="Detail">
                                             <i class="mdi mdi-eye-outline"></i>
                                         </button>
-                                        ${actionButtons}
+                                        @can('permission', 'stock-opname-wcp-report-plus')
+                                            ${actionButtons}
+                                        @endcan
                                     </td>
                                 </tr>
                             `);

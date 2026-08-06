@@ -47,9 +47,11 @@
         #tableReportList {
             counter-reset: rowNumber;
         }
+
         #tableReportList tbody tr {
             counter-increment: rowNumber;
         }
+
         #tableReportList tbody tr td.row-number::before {
             content: counter(rowNumber);
         }
@@ -174,7 +176,9 @@
                                             <th class="text-end">Selisih</th>
                                             <th class="no-sort">Status</th>
                                             <th class="text-start no-sort">Catatan / Keterangan</th>
-                                            <th style="width: 120px;" class="no-sort">Aksi</th>
+                                            @can('permission', 'stock-opname-wsp-report-plus')
+                                                <th style="width: 120px;" class="no-sort">Aksi</th>
+                                            @endcan
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -553,7 +557,8 @@
                             const selisih = parseFloat(item.selisih).toLocaleString('id-ID');
                             const note = item.keterangan ? item.keterangan : '-';
 
-                            const hasLocation = item.area_rak || item.nama_rak || item.kolom_rak || item.level_rak || item.bin_rak;
+                            const hasLocation = item.area_rak || item.nama_rak || item.kolom_rak || item
+                                .level_rak || item.bin_rak;
                             const lokasiHtml = hasLocation ?
                                 `<span class="badge bg-soft-info text-info border">${item.area_rak || '-'}-${item.nama_rak || '-'}-${item.kolom_rak || '-'}-${item.level_rak || '-'}-${item.bin_rak || '-'}</span>` :
                                 `<span class="badge bg-soft-warning text-warning border">Not yet</span>`;
@@ -602,7 +607,9 @@
                                         <button type="button" class="btn btn-sm btn-outline-info me-1" onclick="viewDetailReport(${item.id})" title="Detail">
                                             <i class="mdi mdi-eye-outline"></i>
                                         </button>
-                                        ${actionButtons}
+                                        @can('permission', 'stock-opname-wsp-report-plus')
+                                            ${actionButtons}
+                                        @endcan
                                     </td>
                                 </tr>
                             `);
