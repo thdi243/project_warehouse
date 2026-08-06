@@ -31,9 +31,11 @@
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h4 class="card-title mb-0">Report Ikat Terpal</h4>
                             <div>
-                                <a href="{{ route('tkbm.ikat-terpal.index') }}" class="btn btn-primary me-2">
-                                    <i class="mdi mdi-plus"></i> Tambah Data Baru
-                                </a>
+                                @can('permission', 'tkbm-ikat-terpal-form')
+                                    <a href="{{ route('tkbm.ikat-terpal.index') }}" class="btn btn-primary me-2">
+                                        <i class="mdi mdi-plus"></i> Tambah Data Baru
+                                    </a>
+                                @endcan
                                 @can('permission', 'tkbm-ikat-terpal-plus')
                                     <button type="button" class="btn btn-success" id="btn-print-pdf">
                                         <i class="mdi mdi-printer"></i> Print PDF
