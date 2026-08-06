@@ -14,7 +14,7 @@ class ApiWpmContoller extends Controller
     public function getMasterBarang(Request $request)
     {
         try {
-            $query = WpmMasterBarangModel::select('id', 'mid', 'nama_barang', 'uom');
+            $query = WpmMasterBarangModel::select('mid', 'nama_barang', 'uom');
 
             // Search by mid or nama_barang if filled
             if ($request->filled('search')) {
