@@ -22,6 +22,7 @@ use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
+use App\Http\Controllers\Api\Wpm\ApiWpmContoller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -186,3 +187,7 @@ Route::get('/data/summary-stock/group', [MonitoringController::class, 'getSummar
 Route::get('/data/summary-stock/group-meta', [MonitoringController::class, 'getSummaryStockGroupMeta'])->name('wrm.inventory.monitoring.summary-stock.group-meta');
 // SSO callback is now in web.php as a GET request
 // Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);
+
+Route::prefix('wpm')->group(function () {
+    Route::get('/master-barang', [ApiWpmContoller::class, 'getMasterBarang']);
+});
