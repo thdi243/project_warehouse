@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Wsp\purchase_requesition;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendPrApprovalEmail;
+use App\Jobs\SendPrRejectedEmail;
 use App\Models\NotificationsModel;
 use App\Models\User;
 use App\Models\UserSignatureModel;
@@ -1362,6 +1363,9 @@ class WspPurchaseRequesitionController extends Controller
             if ($currentLevel == 5) {
                 $pr->items()->update(['status' => false]);
             }
+
+            // Send notification and email to the creator of the PR
+            $this->sendRejectionNotification($pr, $approval);
         } else if ($status === 'approved') {
             if ($currentLevel == 4) {
                 $pr->update(['status' => 'approved']);
@@ -1569,6 +1573,40 @@ class WspPurchaseRequesitionController extends Controller
 
         if ($user->email) {
             SendPrApprovalEmail::dispatch(
+                $pr->id,
+                $approval->id,
+                $user->email
+            )->afterCommit();
+        }
+
+        return;
+    }
+
+    private function sendRejectionNotification($pr, $approval)
+    {
+        if (!$pr->user_id) return;
+
+        $user = User::find($pr->user_id);
+        if (!$user || !$user->is_active) return;
+
+        $url = "/purchase-requesition/history";
+
+        // Ambil nama approver yang menolak
+        $approverName = $approval->approver ? $approval->approver->nama_lengkap : 'Approver';
+        $reason = $approval->catatan ? " dengan alasan: \"{$approval->catatan}\"" : "";
+
+        NotificationsModel::create([
+            'user_id' => $pr->user_id,
+            'notifiable_type' => WspPurchaseRequesitionModel::class,
+            'notifiable_id' => $pr->id,
+            'title'   => "PR Ditolak - {$pr->no_doc}",
+            'message' => "Permintaan PR Anda dengan No. Doc {$pr->no_doc} ditolak oleh {$approverName} ({$approval->role}){$reason}.",
+            'url'     => $url,
+            'is_read' => false,
+        ]);
+
+        if ($user->email) {
+            SendPrRejectedEmail::dispatch(
                 $pr->id,
                 $approval->id,
                 $user->email
