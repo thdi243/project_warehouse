@@ -1048,7 +1048,7 @@
                                     <button class="btn btn-outline-primary btn-sm"  onclick="showDetail(${summary.id})">
                                         <i class="mdi mdi-eye-outline"></i> Detail
                                     </button>
-                                    @can('permission', 'report-stock-opname-wfg-plus')
+                                    @can('permission', 'stock-opname-wfg-report-plus')
                                         ${editButton}
                                     @endcan
                                 </div>
@@ -1105,7 +1105,7 @@
                     const activePrincipal = response.sop && response.sop.principal ? response.sop.principal
                         .trim().toUpperCase() : '';
                     const itemPrincipal = item.barang && item.barang.principal ? item.barang.principal
-                    .trim().toUpperCase() : '';
+                        .trim().toUpperCase() : '';
                     if (activePrincipal === 'SMU' && (itemPrincipal === 'PAS' || itemPrincipal === 'TAS')) {
                         palletCount *= 2;
                         totalBoxes *= 2;

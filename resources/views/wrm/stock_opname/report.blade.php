@@ -289,9 +289,7 @@
                                             <th class="text-end">Selisih (Kg)</th>
                                             <th class="no-sort">Status</th>
                                             <th class="no-sort">Catatan / Keterangan</th>
-                                            @can('permission', 'stock-opname-wrm-report-plus')
-                                                <th style="width: 120px;" class="no-sort">Aksi</th>
-                                            @endcan
+                                            <th style="width: 120px;" class="no-sort">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
