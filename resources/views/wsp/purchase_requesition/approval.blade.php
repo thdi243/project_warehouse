@@ -89,7 +89,9 @@
                 $isSupervisor = $user->jabatan === 'supervisor';
                 $isDeptHead = $user->jabatan === 'dept_head';
                 $isWarehouseHead = $isDeptHead && $user->departemen === 'warehouse';
-                $isForeman = ($user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart') || $user->hasRole('level_5_pr');
+                $isForeman =
+                    ($user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart') ||
+                    $user->hasRole('level_5_pr');
                 $firstTab = true;
             @endphp
             @if ($isSupervisor || $isDeptHead || $isWarehouseHead || $isForeman)
@@ -258,7 +260,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Catatan / Alasan</label>
-                            <textarea class="form-control" id="actionComment" rows="3" placeholder="Opsional..."></textarea>
+                            <textarea class="form-control" id="actionComment" rows="3" placeholder="Alasan..."></textarea>
                         </div>
                         <div class="mb-0" id="signatureWrapper">
                             <label class="form-label fw-bold d-block mb-2">Tanda Tangan Digital</label>
@@ -511,10 +513,10 @@
                                     <i class="mdi mdi-check"></i> ${approveText}
                                 </button>
                                 ${!isLevel5 ? `
-                                            <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
-                                                <i class="mdi mdi-close"></i> Reject
-                                            </button>
-                                            ` : ''}
+                                                    <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
+                                                        <i class="mdi mdi-close"></i> Reject
+                                                    </button>
+                                                    ` : ''}
                             </div>
                         </td>
                     </tr>
@@ -615,7 +617,8 @@
                     myApproval.role === 'Foreman Wsp'
                 );
                 const isLevel5 = myApproval && (myApproval.level == 5 || myApproval.role === 'Foreman Wsp');
-                const isLevel4 = myApproval && (myApproval.level == 4 || myApproval.role === 'Manager Warehouse');
+                const isLevel4 = myApproval && (myApproval.level == 4 || myApproval.role ===
+                    'Manager Warehouse');
                 const isLevel2Or3 = myApproval && (
                     myApproval.level == 2 ||
                     myApproval.level == 3 ||
@@ -688,16 +691,16 @@
                         <td>${item.barang?.uom || '-'}</td>
                         <td class="col-keterangan" data-val="${escapeHtmlAttribute(item.keterangan || '')}">
                             ${item.keterangan ? `
-                                        <div class="d-flex align-items-center justify-content-between gap-2">
-                                            <span class="text-keterangan">${item.keterangan}</span>
-                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                    style="flex-shrink: 0;"
-                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                    title="Copy Keterangan">
-                                                <i class="mdi mdi-content-copy"></i>
-                                            </button>
-                                        </div>
-                                    ` : '-'}
+                                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                                    <span class="text-keterangan">${item.keterangan}</span>
+                                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                            style="flex-shrink: 0;"
+                                                            data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                            title="Copy Keterangan">
+                                                        <i class="mdi mdi-content-copy"></i>
+                                                    </button>
+                                                </div>
+                                            ` : '-'}
                         </td>
                         <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
                         <td class="level5-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>
@@ -839,6 +842,7 @@
                 const useStored = $('#useStoredSignature').val() == '1';
                 const isLevel5 = currentFilterLevel == 5;
                 const noPr = $('#actionNoPr').val().trim();
+                const comment = $('#actionComment').val().trim();
 
                 if (currentAction === 'approved' && !useStored && signaturePad.isEmpty()) {
                     Swal.fire('Error', 'Tanda tangan wajib diisi untuk approval.', 'error');
@@ -847,6 +851,11 @@
 
                 if (isLevel5 && currentAction === 'approved' && !noPr) {
                     Swal.fire('Error', 'No PR wajib diisi.', 'error');
+                    return;
+                }
+
+                if (currentAction === 'rejected' && !comment) {
+                    Swal.fire('Error', 'Catatan wajib diisi untuk penolakan (Reject).', 'error');
                     return;
                 }
 
@@ -984,10 +993,14 @@
                 const currentKet = ketCell.data('val');
 
                 // Change Qty to Input
-                qtyCell.html(`<input type="number" min="1" class="form-control form-control-sm edit-qty-input" value="${currentQty}" style="width: 80px;">`);
+                qtyCell.html(
+                    `<input type="number" min="1" class="form-control form-control-sm edit-qty-input" value="${currentQty}" style="width: 80px;">`
+                );
 
                 // Change Keterangan to Input
-                ketCell.html(`<input type="text" class="form-control form-control-sm edit-ket-input" value="${escapeHtmlAttribute(currentKet || '')}">`);
+                ketCell.html(
+                    `<input type="text" class="form-control form-control-sm edit-ket-input" value="${escapeHtmlAttribute(currentKet || '')}">`
+                );
 
                 // Replace Action cell buttons
                 tr.find('.edit-item-col').html(`

@@ -1209,7 +1209,7 @@ class WspPurchaseRequesitionController extends Controller
     {
         $request->validate([
             'status'  => 'required|in:approved,rejected',
-            'comment' => 'nullable|string|max:500',
+            'comment' => $request->status === 'rejected' ? 'required|string|max:500' : 'nullable|string|max:500',
             'ttd'     => 'required_if:status,approved|nullable',
             'no_pr'   => 'nullable',
             'items'   => 'nullable|array',
@@ -1433,7 +1433,7 @@ class WspPurchaseRequesitionController extends Controller
             'ids' => 'required|array',
             'ids.*' => 'exists:wsp_purchase_requesition,id',
             'status' => 'required|in:approved,rejected',
-            'comment' => 'nullable|string|max:500',
+            'comment' => $request->status === 'rejected' ? 'required|string|max:500' : 'nullable|string|max:500',
             'ttd' => 'nullable|string', // bulk approval might share one signature
             'no_pr' => 'nullable|string',
             'update_signature' => 'nullable'
