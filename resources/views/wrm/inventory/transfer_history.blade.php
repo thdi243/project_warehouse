@@ -70,7 +70,9 @@
                                     <th>Qty Susut</th>
                                     <th>Lama Simpan</th>
                                     <th>% Susut</th>
-                                    <th class="text-center">Action</th>
+                                    @can('permission', 'wrm-inventory-soh-plus')
+                                        <th class="text-center">Action</th>
+                                    @endcan
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -204,11 +206,13 @@
                                 <td class="text-danger">${numberFormat(d.qty_susut_simpan)}</td>
                                 <td>${d.lama_simpan || 0}</td>
                                 <td>${d.persen_susut || 0}%</td>
-                                <td class="text-center">
-                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteTransfer(${d.id})">
-                                        <i class="mdi mdi-trash-can-outline"></i>
-                                    </button>
-                                </td>
+                                @can('permission', 'wrm-inventory-soh-plus')
+                                    <td class="text-center">
+                                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTransfer(${d.id})">
+                                            <i class="mdi mdi-trash-can-outline"></i>
+                                        </button>
+                                    </td>
+                                @endcan
                             </tr>
                         `;
                         });
@@ -220,7 +224,7 @@
                     if (res.data.total > 0) {
                         $('#paginationInfo').text(
                             `Showing ${res.data.from} to ${res.data.to} of ${res.data.total} entries`
-                            );
+                        );
                     } else {
                         $('#paginationInfo').text('');
                     }
