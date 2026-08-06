@@ -410,11 +410,11 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold">Historical Inbound Data</h5>
-                    <div class="d-flex gap-2">
+                    {{-- <div class="d-flex gap-2">
                         <a href="{{ route('wrm.inventory.index-upload') }}" class="btn btn-primary">
                             <i class="mdi mdi-upload me-1"></i> New Inbound
                         </a>
-                    </div>
+                    </div> --}}
                 </div>
                 <div class="card-body">
                     <div class="table-responsive py-2">
