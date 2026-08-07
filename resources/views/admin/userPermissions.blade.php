@@ -361,18 +361,20 @@
                     $('#permissionModalLabel').text('Set Permission untuk: ' + response.user.name +
                         ' (' + response.user.jabatan + ')');
 
-                    // Sort permissions alphabetically A-Z by name
-                    if (Array.isArray(response.permissions)) {
-                        response.permissions.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                    }
-
                     // Group permissions by section
                     const grouped = {};
-                    response.permissions.forEach(perm => {
-                        const section = perm.section || 'General / Other';
-                        if (!grouped[section]) grouped[section] = [];
-                        grouped[section].push(perm);
-                    });
+                    if (Array.isArray(response.permissions)) {
+                        response.permissions.forEach(perm => {
+                            const section = perm.section || 'General / Other';
+                            if (!grouped[section]) grouped[section] = [];
+                            grouped[section].push(perm);
+                        });
+                    }
+
+                    // Sort permissions alphabetically A-Z inside each section
+                    for (const section in grouped) {
+                        grouped[section].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    }
 
                     let checkboxesHtml = '';
                     // Define display names for sections if needed, or just format the string
