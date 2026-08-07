@@ -361,6 +361,11 @@
                     $('#permissionModalLabel').text('Set Permission untuk: ' + response.user.name +
                         ' (' + response.user.jabatan + ')');
 
+                    // Sort permissions alphabetically A-Z by name
+                    if (Array.isArray(response.permissions)) {
+                        response.permissions.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    }
+
                     // Group permissions by section
                     const grouped = {};
                     response.permissions.forEach(perm => {
