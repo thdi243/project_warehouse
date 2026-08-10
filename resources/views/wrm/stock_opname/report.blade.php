@@ -709,7 +709,7 @@
                             const canEdit =
                                 {{ Auth::user()->jabatan !== 'operator' ? 'true' : 'false' }};
 
-                            const actioButtons = canEdit ?
+                            const actionButtons = canEdit ?
                                 `<button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editReportRow(${item.id})" title="Edit">
                                     <i class="mdi mdi-pencil-outline"></i>
                                 </button>
