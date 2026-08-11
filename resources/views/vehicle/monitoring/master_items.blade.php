@@ -83,6 +83,7 @@
                                                 <tr>
                                                     <th class="text-center" width="70">No</th>
                                                     <th>Item Name</th>
+                                                    <th>Area (Sloc)</th>
                                                     <th class="text-center" width="120">Actions</th>
                                                 </tr>
                                             </thead>
@@ -91,12 +92,20 @@
                                                     <tr>
                                                         <td class="text-center">{{ $index + 1 }}</td>
                                                         <td>{{ $item->name }}</td>
+                                                        <td>
+                                                            @if ($item->location)
+                                                                <span class="badge bg-soft-info text-info">{{ $item->location->s_loc }} - {{ $item->location->name }}</span>
+                                                            @else
+                                                                <span class="text-muted">-</span>
+                                                            @endif
+                                                        </td>
                                                         <td class="text-center">
                                                             <div class="d-flex gap-1 justify-content-center">
                                                                 <button type="button"
                                                                     class="btn btn-soft-primary btn-sm btn-edit"
                                                                     data-id="{{ $item->id }}"
-                                                                    data-name="{{ $item->name }}" title="Edit">
+                                                                    data-name="{{ $item->name }}"
+                                                                    data-location-id="{{ $item->location_id }}" title="Edit">
                                                                     <i class="ri-edit-line"></i>
                                                                 </button>
                                                                 <form
@@ -114,7 +123,7 @@
                                                     </tr>
                                                 @empty
                                                     <tr>
-                                                        <td colspan="3" class="text-center text-muted py-4">Belum ada
+                                                        <td colspan="4" class="text-center text-muted py-4">Belum ada
                                                             item terdaftar.</td>
                                                     </tr>
                                                 @endforelse
@@ -124,7 +133,7 @@
                                 </div>
                             </div>
                         </div>
-
+ 
                         <div class="col-md-5">
                             <div class="card shadow-sm border-0" id="formCard">
                                 <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
@@ -136,13 +145,25 @@
                                         @csrf
                                         <input type="hidden" name="_method" id="formMethod" value="POST">
                                         <div class="mb-3">
-                                            <label for="name" class="form-label">Item Name</label>
+                                            <label for="name" class="form-label">Item Name <span class="text-danger">*</span></label>
                                             <input type="text" class="form-control" id="name" name="name"
                                                 required placeholder="Contoh: Gula Pasir">
                                             @error('name')
                                                 @if (!$errors->has('s_loc') && !$errors->has('vendor_name'))
                                                     <div class="text-danger small mt-1">{{ $message }}</div>
                                                 @endif
+                                            @enderror
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="location_id" class="form-label">Area (Sloc)</label>
+                                            <select class="form-select" id="location_id" name="location_id">
+                                                <option value="" selected>Semua Area / General</option>
+                                                @foreach ($locations as $loc)
+                                                    <option value="{{ $loc->id }}">{{ $loc->s_loc }} - {{ $loc->name }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('location_id')
+                                                <div class="text-danger small mt-1">{{ $message }}</div>
                                             @enderror
                                         </div>
                                         <div class="d-flex gap-2 justify-content-end mt-4">
@@ -419,18 +440,24 @@
                 let html = '';
                 if (allItems.length === 0) {
                     html = `<tr>
-                        <td colspan="3" class="text-center text-muted py-4">Belum ada item terdaftar.</td>
+                        <td colspan="4" class="text-center text-muted py-4">Belum ada item terdaftar.</td>
                     </tr>`;
                 } else {
                     allItems.forEach(function(item, index) {
+                        const areaText = item.location ? 
+                            `<span class="badge bg-soft-info text-info">${item.location.s_loc} - ${item.location.name}</span>` : 
+                            `<span class="text-muted">-</span>`;
+
                         html += `<tr>
                             <td class="text-center">${index + 1}</td>
                             <td>${item.name}</td>
+                            <td>${areaText}</td>
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-center">
                                     <button type="button" class="btn btn-soft-primary btn-sm btn-edit"
                                         data-id="${item.id}"
-                                        data-name="${item.name}" title="Edit">
+                                        data-name="${item.name}"
+                                        data-location-id="${item.location_id || ''}" title="Edit">
                                         <i class="ri-edit-line"></i>
                                     </button>
                                     <button type="button" class="btn btn-soft-danger btn-sm btn-delete-item"
@@ -541,9 +568,11 @@
             $(document).on('click', '.btn-edit', function() {
                 const id = $(this).data('id');
                 const name = $(this).data('name');
+                const locationId = $(this).data('location-id');
 
                 $('#formTitle').text('Edit Item');
                 $('#name').val(name);
+                $('#location_id').val(locationId || '');
 
                 // Change form action to update
                 $('#itemForm').attr('action', `{{ url('vehicle-monitoring/master/items/update') }}/${id}`);
@@ -562,6 +591,7 @@
             $('#btnCancel').on('click', function() {
                 $('#formTitle').text('Tambah Item Baru');
                 $('#name').val('');
+                $('#location_id').val('');
 
                 // Restore form action to store
                 $('#itemForm').attr('action', `{{ route('vehicle.monitoring.master.items.store') }}`);

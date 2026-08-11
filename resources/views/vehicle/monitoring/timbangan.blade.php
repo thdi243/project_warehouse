@@ -147,7 +147,7 @@
                                         <select class="form-select select2" id="item_id" name="item_id" required>
                                             <option value="" selected disabled>Pilih Item</option>
                                             @foreach ($items as $item)
-                                                <option value="{{ $item->id }}">{{ $item->name }}</option>
+                                                <option value="{{ $item->id }}" data-location-id="{{ $item->location_id }}">{{ $item->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -273,8 +273,7 @@
                                         class="text-danger">*</span></label>
                                 <select class="form-select select2-edit" id="edit_item_id" name="item_id" required>
                                     @foreach ($items as $item)
-                                        <option value="{{ $item->id }}">{{ $item->name }}
-                                        </option>
+                                        <option value="{{ $item->id }}" data-location-id="{{ $item->location_id }}">{{ $item->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -681,6 +680,7 @@
                             $('#edit_jenis').val(tx.jenis.toLowerCase());
                             filterTargetLocations('#edit_jenis', '#edit_target_location_id');
                             $('#edit_target_location_id').val(tx.target_loc);
+                            filterItemsByLocation('#edit_target_location_id', '#edit_item_id');
                             $('#edit_item_id').val(tx.item_id).trigger('change');
 
                             if (tx.vendor) {
@@ -840,6 +840,44 @@
             $('#edit_jenis').on('change', function() {
                 filterTargetLocations('#edit_jenis', '#edit_target_location_id');
             });
+
+            // Register change handlers for filtering items by Sloc
+            $('#target_location_id').on('change', function() {
+                filterItemsByLocation('#target_location_id', '#item_id');
+            });
+
+            $('#edit_target_location_id').on('change', function() {
+                filterItemsByLocation('#edit_target_location_id', '#edit_item_id');
+            });
+
+            const allItemsList = @json($items);
+
+            function filterItemsByLocation(targetSelectId, itemSelectId) {
+                const targetLocId = $(targetSelectId).val();
+                const itemSelect = $(itemSelectId);
+                const currentVal = itemSelect.val();
+                
+                // Clear all options
+                itemSelect.empty();
+                itemSelect.append('<option value="" selected disabled>Pilih Item</option>');
+                
+                // Filter matching options from cache
+                let matchedItems = allItemsList;
+                if (targetLocId) {
+                    matchedItems = allItemsList.filter(function(item) {
+                        return !item.location_id || String(item.location_id) === String(targetLocId);
+                    });
+                }
+                
+                matchedItems.forEach(function(item) {
+                    const isSelected = (currentVal && String(item.id) === String(currentVal));
+                    const option = new Option(item.name, item.id, isSelected, isSelected);
+                    $(option).attr('data-location-id', item.location_id);
+                    itemSelect.append(option);
+                });
+                
+                itemSelect.trigger('change.select2');
+            }
 
             // AJAX Check-Out Confirmation
             $(document).on('click', '.btn-checkout-ajax', function() {

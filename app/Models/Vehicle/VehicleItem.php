@@ -14,5 +14,11 @@ class VehicleItem extends Model
     protected $fillable = [
         // 'sku',
         'name',
+        'location_id',
     ];
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class, 'location_id');
+    }
 }

@@ -1556,7 +1556,7 @@ class VehicleTrackingController extends Controller
      */
     public function masterItemsIndex()
     {
-        $items = VehicleItem::orderBy('id')->get();
+        $items = VehicleItem::with('location')->orderBy('id')->get();
         $locations = Location::orderBy('id')->get();
         $vendors = VehicleVendor::orderBy('id')->get();
         return view('vehicle.monitoring.master_items', compact('items', 'locations', 'vendors'));
@@ -1567,7 +1567,7 @@ class VehicleTrackingController extends Controller
      */
     public function masterItemsData()
     {
-        $items = VehicleItem::orderBy('id')->get();
+        $items = VehicleItem::with('location')->orderBy('id')->get();
         $locations = Location::orderBy('id')->get();
         $vendors = VehicleVendor::orderBy('id')->get();
         return response()->json([
@@ -1585,10 +1585,12 @@ class VehicleTrackingController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:100',
+            'location_id' => 'nullable|exists:locations,id',
         ]);
 
         $item = VehicleItem::create([
             'name' => $request->name,
+            'location_id' => $request->location_id,
         ]);
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -1609,11 +1611,13 @@ class VehicleTrackingController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:100',
+            'location_id' => 'nullable|exists:locations,id',
         ]);
 
         $item = VehicleItem::findOrFail($id);
         $item->update([
             'name' => $request->name,
+            'location_id' => $request->location_id,
         ]);
 
         if ($request->ajax() || $request->wantsJson()) {
