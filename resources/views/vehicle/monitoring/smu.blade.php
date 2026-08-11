@@ -25,13 +25,18 @@
                         <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
                             <h4 class="card-title mb-0 flex-grow-1"><i
                                     class="ri-database-2-line me-2 align-middle text-warning"></i>Antrian Data SMU Area</h4>
+                            <div class="flex-shrink-0">
+                                <div style="width: 250px;">
+                                    <input type="text" class="form-control" id="search_table" placeholder="Cari No. Polisi / Vendor...">
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle text-nowrap" id="smuTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Antrian</th>
+                                            <th class="text-center" style="width: 120px;">No. Antrian</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
                                             <th>Item</th>
@@ -54,6 +59,7 @@
             </div>
         </div>
     </div>
+
 @endsection
 
 @section('scripts')
@@ -89,52 +95,86 @@
                 });
             }
 
+            let allSmuData = [];
+            let searchQuery = '';
+
+            function renderSmuTable() {
+                let filtered = allSmuData;
+                if (searchQuery) {
+                    filtered = allSmuData.filter(function(tx) {
+                        const noPol = (tx.no_pol || '').toLowerCase();
+                        const vendor = (tx.vendor || '').toLowerCase();
+                        return noPol.includes(searchQuery) || vendor.includes(searchQuery);
+                    });
+                }
+
+                let html = '';
+                if (filtered.length === 0) {
+                    html = `<tr>
+                        <td colspan="8" class="text-center py-4 text-muted">Tidak ada kendaraan yang sesuai pencarian.</td>
+                    </tr>`;
+                } else {
+                    filtered.forEach(function(tx) {
+                        const antrianBadge = tx.no_antrian ? 
+                            `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">
+                                ${tx.no_antrian}
+                            </span>` :
+                            `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
+                                Ambil Antrian
+                            </button>`;
+
+                        const completeBtn = tx.no_antrian ? 
+                            `<button type="button" class="btn btn-sm btn-warning btn-complete-smu" 
+                                data-id="${tx.id}" 
+                                data-nopol="${tx.no_pol}">
+                                <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai
+                            </button>` : '';
+
+                        html += `<tr id="row-${tx.id}">
+                            <td class="text-center">${antrianBadge}</td>
+                            <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
+                            <td>${tx.vendor || '-'}</td>
+                            <td>${tx.item_name}</td>
+                            <td>
+                                <strong>${tx.no_spb}</strong><br>
+                                <small class="text-muted">${tx.qty_spb}</small>
+                            </td>
+                            <td>${tx.arrival_time}</td>
+                            <td>
+                                <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
+                                    Calculated...
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                ${completeBtn}
+                            </td>
+                        </tr>`;
+                    });
+                }
+                $('#smuTable tbody').html(html);
+                updateTimers();
+            }
+
             // AJAX Data Loader
             function loadSmuData() {
                 $.ajax({
                     url: "{{ route('vehicle.monitoring.smu.data') }}",
                     type: 'GET',
                     success: function(response) {
-                        let html = '';
-                        if (response.queue.length === 0) {
-                            html = `<tr>
-                                <td colspan="8" class="text-center py-4 text-muted">Tidak ada kendaraan aktif di area SMU.</td>
-                            </tr>`;
-                        } else {
-                            response.queue.forEach(function(tx, index) {
-                                html += `<tr id="row-${tx.id}">
-                                    <td class="text-center fw-bold" width="80">#${index + 1}</td>
-                                    <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
-                                    <td>${tx.vendor || '-'}</td>
-                                    <td>${tx.item_name}</td>
-                                    <td>
-                                        <strong>${tx.no_spb}</strong><br>
-                                        <small class="text-muted">${tx.qty_spb}</small>
-                                    </td>
-                                    <td>${tx.arrival_time}</td>
-                                    <td>
-                                        <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
-                                            Calculated...
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-warning btn-complete-smu" 
-                                            data-id="${tx.id}" 
-                                            data-nopol="${tx.no_pol}">
-                                            <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai
-                                        </button>
-                                    </td>
-                                </tr>`;
-                            });
-                        }
-                        $('#smuTable tbody').html(html);
-                        updateTimers();
+                        allSmuData = response.queue;
+                        renderSmuTable();
                     },
                     error: function(xhr) {
                         console.error('Gagal mengambil data SMU:', xhr);
                     }
                 });
             }
+
+            // Handle search
+            $('#search_table').on('keyup', function() {
+                searchQuery = $(this).val().toLowerCase();
+                renderSmuTable();
+            });
 
             // Initial load
             loadSmuData();
@@ -193,6 +233,40 @@
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message ||
                                     'Gagal memproses permintaan.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Ambil Antrian Click Handler
+            $(document).on('click', '.btn-get-queue', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+
+                Swal.fire({
+                    title: 'Ambil Nomor Antrian?',
+                    text: `Ambil nomor antrian otomatis untuk truk ${nopol}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3577f1',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Ya, Ambil!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/update-queue') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                Swal.fire('Berhasil!', response.message, 'success');
+                                loadSmuData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal mengambil nomor antrian.', 'error');
                             }
                         });
                     }

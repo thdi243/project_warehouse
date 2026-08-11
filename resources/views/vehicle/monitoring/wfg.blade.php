@@ -24,15 +24,21 @@
                     <div class="card shadow-sm border-0">
                         <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
                             <h4 class="card-title mb-0 flex-grow-1"><i
-                                    class="ri-upload-2-line me-2 align-middle text-info"></i>Antrian Muat Finished
-                                Goods</h4>
+                                    class="ri-upload-2-line me-2 align-middle text-info"></i>Antrian Muat Finished Goods
+                            </h4>
+                            <div class="flex-shrink-0">
+                                <div style="width: 250px;">
+                                    <input type="text" class="form-control" id="search_table"
+                                        placeholder="Cari No. Polisi / Vendor...">
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle text-nowrap" id="wfgTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="text-center">No</th>
+                                            <th class="text-center" style="width: 120px;">No. Antrian</th>
                                             <th>Check In</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
@@ -56,6 +62,7 @@
             </div>
         </div>
     </div>
+
 @endsection
 
 @section('scripts')
@@ -91,50 +98,84 @@
                 });
             }
 
+            let allWfgData = [];
+            let searchQuery = '';
+
+            function renderWfgTable() {
+                let filtered = allWfgData;
+                if (searchQuery) {
+                    filtered = allWfgData.filter(function(tx) {
+                        const noPol = (tx.no_pol || '').toLowerCase();
+                        const vendor = (tx.vendor || '').toLowerCase();
+                        return noPol.includes(searchQuery) || vendor.includes(searchQuery);
+                    });
+                }
+
+                let html = '';
+                if (filtered.length === 0) {
+                    html = `<tr>
+                        <td colspan="9" class="text-center py-4 text-muted">Tidak ada kendaraan yang sesuai pencarian.</td>
+                    </tr>`;
+                } else {
+                    filtered.forEach(function(tx) {
+                        const antrianBadge = tx.no_antrian ?
+                            `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">
+                                ${tx.no_antrian}
+                            </span>` :
+                            `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
+                                Ambil Antrian
+                            </button>`;
+
+                        const completeBtn = tx.no_antrian ?
+                            `<button type="button" class="btn btn-sm btn-info btn-complete-loading" 
+                                data-id="${tx.id}" 
+                                data-nopol="${tx.no_pol}">
+                                <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai Muat
+                            </button>` : '';
+
+                        html += `<tr id="row-${tx.id}">
+                            <td class="text-center">${antrianBadge}</td>
+                            <td>${tx.arrival_time}</td>
+                            <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
+                            <td>${tx.vendor || '-'}</td>
+                            <td>${tx.item_name}</td>
+                            <td>${tx.no_spb}</td>
+                            <td>${tx.qty_spb}</td>
+                            <td>
+                                <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
+                                    Calculated...
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                ${completeBtn}
+                            </td>
+                        </tr>`;
+                    });
+                }
+                $('#wfgTable tbody').html(html);
+                updateTimers();
+            }
+
             // AJAX Data Loader
             function loadWfgData() {
                 $.ajax({
                     url: "{{ route('vehicle.monitoring.wfg.data') }}",
                     type: 'GET',
                     success: function(response) {
-                        let html = '';
-                        if (response.queue.length === 0) {
-                            html = `<tr>
-                                <td colspan="9" class="text-center py-4 text-muted">Tidak ada kendaraan dalam proses bongkar/muat WFG.</td>
-                            </tr>`;
-                        } else {
-                            response.queue.forEach(function(tx, index) {
-                                html += `<tr id="row-${tx.id}">
-                                    <td class="text-center fw-bold" width="80">${index + 1}</td>
-                                    <td>${tx.arrival_time}</td>
-                                    <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
-                                    <td>${tx.vendor || '-'}</td>
-                                    <td>${tx.item_name}</td>
-                                    <td>${tx.no_spb}</td>
-                                    <td>${tx.qty_spb}</td>
-                                    <td>
-                                        <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
-                                            Calculated...
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-info btn-complete-loading" 
-                                            data-id="${tx.id}" 
-                                            data-nopol="${tx.no_pol}">
-                                            <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai Muat
-                                        </button>
-                                    </td>
-                                </tr>`;
-                            });
-                        }
-                        $('#wfgTable tbody').html(html);
-                        updateTimers();
+                        allWfgData = response.queue;
+                        renderWfgTable();
                     },
                     error: function(xhr) {
                         console.error('Gagal mengambil data WFG:', xhr);
                     }
                 });
             }
+
+            // Handle search
+            $('#search_table').on('keyup', function() {
+                searchQuery = $(this).val().toLowerCase();
+                renderWfgTable();
+            });
 
             // Initial load
             loadWfgData();
@@ -193,6 +234,40 @@
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message ||
                                     'Gagal memproses permintaan.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Ambil Antrian Click Handler
+            $(document).on('click', '.btn-get-queue', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+
+                Swal.fire({
+                    title: 'Ambil Nomor Antrian?',
+                    text: `Ambil nomor antrian otomatis untuk truk ${nopol}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3577f1',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Ya, Ambil!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/update-queue') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                Swal.fire('Berhasil!', response.message, 'success');
+                                loadWfgData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal mengambil nomor antrian.', 'error');
                             }
                         });
                     }

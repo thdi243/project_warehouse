@@ -649,7 +649,7 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/delete/rak/{id}', [WspRakController::class, 'destroy'])->name('wsp.delete.rak');
                 Route::post('/upload/rak', [WspRakController::class, 'upload'])->name('wsp.rak.upload');
                 Route::get('/download-template/rak', [WspRakController::class, 'downloadTemplate'])->name('wsp.rak.download-template');
-             });
+            });
 
             // Master WFG
             Route::prefix('wfg')->middleware(['permission:master-wfg'])->group(function () {
@@ -829,70 +829,75 @@ Route::middleware('auth')->group(function () {
 
         // Timbangan (Scales)
         Route::middleware(['permission:vehicle-monitoring-timbangan'])->group(function () {
-            Route::get('/timbangan', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganIndex'])->name('timbangan');
-            Route::get('/timbangan/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganData'])->name('timbangan.data');
-            Route::post('/timbangan/check-in', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganCheckIn'])->name('timbangan.check_in');
-            Route::put('/timbangan/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganUpdate'])->name('timbangan.update');
-            Route::delete('/timbangan/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganDestroy'])->name('timbangan.delete');
-            Route::post('/timbangan/check-out/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'timbanganCheckOut'])->name('timbangan.check_out');
-            Route::get('/timbangan/autocomplete-vehicle', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'autocompleteVehicle'])->name('timbangan.autocomplete_vehicle');
+            Route::get('/timbangan', [VehicleTrackingController::class, 'timbanganIndex'])->name('timbangan');
+            Route::get('/timbangan/data', [VehicleTrackingController::class, 'timbanganData'])->name('timbangan.data');
+            Route::get('/timbangan/show/{id}', [VehicleTrackingController::class, 'timbanganShow'])->name('timbangan.show');
+            Route::post('/timbangan/check-in', [VehicleTrackingController::class, 'timbanganCheckIn'])->name('timbangan.check_in');
+            Route::put('/timbangan/update/{id}', [VehicleTrackingController::class, 'timbanganUpdate'])->name('timbangan.update');
+            Route::delete('/timbangan/delete/{id}', [VehicleTrackingController::class, 'timbanganDestroy'])->name('timbangan.delete');
+            Route::post('/timbangan/check-out/{id}', [VehicleTrackingController::class, 'timbanganCheckOut'])->name('timbangan.check_out');
+            Route::get('/timbangan/autocomplete-vehicle', [VehicleTrackingController::class, 'autocompleteVehicle'])->name('timbangan.autocomplete_vehicle');
+            Route::get('/timbangan/supplier-data', [VehicleTrackingController::class, 'getSupplierData'])->name('timbangan.supplier_data');
         });
+
+        Route::post('/update-queue/{id}', [VehicleTrackingController::class, 'updateQueueNumber'])->name('update_queue');
 
         // QC Area
         Route::middleware(['permission:vehicle-monitoring-qc'])->group(function () {
-            Route::get('/qc', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'qcIndex'])->name('qc');
-            Route::get('/qc/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'qcData'])->name('qc.data');
-            Route::post('/qc/update-qc/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'qcUpdateQC'])->name('qc.update_qc');
-            Route::post('/qc/update-queue/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'qcUpdateQueueNumber'])->name('qc.update_queue');
+            Route::get('/qc', [VehicleTrackingController::class, 'qcIndex'])->name('qc');
+            Route::get('/qc/data', [VehicleTrackingController::class, 'qcData'])->name('qc.data');
+            Route::post('/qc/update-qc/{id}', [VehicleTrackingController::class, 'qcUpdateQC'])->name('qc.update_qc');
+            Route::post('/qc/update-queue/{id}', [VehicleTrackingController::class, 'qcUpdateQueueNumber'])->name('qc.update_queue');
         });
 
         // WPM (Unloading Area)
         Route::middleware(['permission:vehicle-monitoring-wpm'])->group(function () {
-            Route::get('/wpm', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmIndex'])->name('wpm');
-            Route::get('/wpm/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmData'])->name('wpm.data');
-            Route::post('/wpm/complete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wpmComplete'])->name('wpm.complete');
+            Route::get('/wpm', [VehicleTrackingController::class, 'wpmIndex'])->name('wpm');
+            Route::get('/wpm/data', [VehicleTrackingController::class, 'wpmData'])->name('wpm.data');
+            Route::post('/wpm/complete/{id}', [VehicleTrackingController::class, 'wpmComplete'])->name('wpm.complete');
         });
 
         // WRM (Unloading Area)
         Route::middleware(['permission:vehicle-monitoring-wrm'])->group(function () {
-            Route::get('/wrm', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wrmIndex'])->name('wrm');
-            Route::get('/wrm/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wrmData'])->name('wrm.data');
-            Route::post('/wrm/update-unloading/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wrmUpdateUnloading'])->name('wrm.update_unloading');
+            Route::get('/wrm', [VehicleTrackingController::class, 'wrmIndex'])->name('wrm');
+            Route::get('/wrm/data', [VehicleTrackingController::class, 'wrmData'])->name('wrm.data');
+            Route::post('/wrm/update-unloading/{id}', [VehicleTrackingController::class, 'wrmUpdateUnloading'])->name('wrm.update_unloading');
         });
 
         // WFG (Bongkar Muat Finished Goods Area)
         Route::middleware(['permission:vehicle-monitoring-wfg'])->group(function () {
-            Route::get('/wfg', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wfgIndex'])->name('wfg');
-            Route::get('/wfg/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wfgData'])->name('wfg.data');
-            Route::post('/wfg/update-loading/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'wfgUpdateLoading'])->name('wfg.update_loading');
+            Route::get('/wfg', [VehicleTrackingController::class, 'wfgIndex'])->name('wfg');
+            Route::get('/wfg/data', [VehicleTrackingController::class, 'wfgData'])->name('wfg.data');
+            Route::post('/wfg/update-loading/{id}', [VehicleTrackingController::class, 'wfgUpdateLoading'])->name('wfg.update_loading');
         });
 
         // SMU Area
         Route::middleware(['permission:vehicle-monitoring-smu'])->group(function () {
-            Route::get('/smu', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'smuIndex'])->name('smu');
-            Route::get('/smu/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'smuData'])->name('smu.data');
-            Route::post('/smu/complete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'smuComplete'])->name('smu.complete');
+            Route::get('/smu', [VehicleTrackingController::class, 'smuIndex'])->name('smu');
+            Route::get('/smu/data', [VehicleTrackingController::class, 'smuData'])->name('smu.data');
+            Route::post('/smu/complete/{id}', [VehicleTrackingController::class, 'smuComplete'])->name('smu.complete');
         });
 
         // Master Items CRUD (SKUs)
         Route::middleware(['permission:vehicle-monitoring-master'])->group(function () {
-            Route::get('/master/items', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsIndex'])->name('master.items');
-            Route::post('/master/items/store', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsStore'])->name('master.items.store');
-            Route::put('/master/items/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsUpdate'])->name('master.items.update');
-            Route::delete('/master/items/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterItemsDestroy'])->name('master.items.delete');
+            Route::get('/master/items', [VehicleTrackingController::class, 'masterItemsIndex'])->name('master.items');
+            Route::get('/master/items/data', [VehicleTrackingController::class, 'masterItemsData'])->name('master.items.data');
+            Route::post('/master/items/store', [VehicleTrackingController::class, 'masterItemsStore'])->name('master.items.store');
+            Route::put('/master/items/update/{id}', [VehicleTrackingController::class, 'masterItemsUpdate'])->name('master.items.update');
+            Route::delete('/master/items/delete/{id}', [VehicleTrackingController::class, 'masterItemsDestroy'])->name('master.items.delete');
 
             // Sloc CRUD
-            Route::post('/master/sloc/store', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterSlocStore'])->name('master.sloc.store');
-            Route::put('/master/sloc/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterSlocUpdate'])->name('master.sloc.update');
-            Route::delete('/master/sloc/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterSlocDestroy'])->name('master.sloc.delete');
+            Route::post('/master/sloc/store', [VehicleTrackingController::class, 'masterSlocStore'])->name('master.sloc.store');
+            Route::put('/master/sloc/update/{id}', [VehicleTrackingController::class, 'masterSlocUpdate'])->name('master.sloc.update');
+            Route::delete('/master/sloc/delete/{id}', [VehicleTrackingController::class, 'masterSlocDestroy'])->name('master.sloc.delete');
 
             // Vendor CRUD
-            Route::post('/master/vendor/store', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterVendorStore'])->name('master.vendor.store');
-            Route::put('/master/vendor/update/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterVendorUpdate'])->name('master.vendor.update');
-            Route::delete('/master/vendor/delete/{id}', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'masterVendorDestroy'])->name('master.vendor.delete');
+            Route::post('/master/vendor/store', [VehicleTrackingController::class, 'masterVendorStore'])->name('master.vendor.store');
+            Route::put('/master/vendor/update/{id}', [VehicleTrackingController::class, 'masterVendorUpdate'])->name('master.vendor.update');
+            Route::delete('/master/vendor/delete/{id}', [VehicleTrackingController::class, 'masterVendorDestroy'])->name('master.vendor.delete');
         });
 
         // General Report/History Data
-        Route::get('/history/data', [App\Http\Controllers\Vehicle\VehicleTrackingController::class, 'historyData'])->name('history.data');
+        Route::get('/history/data', [VehicleTrackingController::class, 'historyData'])->name('history.data');
     });
 });

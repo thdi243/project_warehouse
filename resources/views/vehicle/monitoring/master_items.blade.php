@@ -409,8 +409,136 @@
                 }
             @endif
 
+            // Local data cache
+            let allItems = [];
+            let allLocations = [];
+            let allVendors = [];
+
+            // Helper to render Items Table
+            function renderItemsTable() {
+                let html = '';
+                if (allItems.length === 0) {
+                    html = `<tr>
+                        <td colspan="3" class="text-center text-muted py-4">Belum ada item terdaftar.</td>
+                    </tr>`;
+                } else {
+                    allItems.forEach(function(item, index) {
+                        html += `<tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td>${item.name}</td>
+                            <td class="text-center">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <button type="button" class="btn btn-soft-primary btn-sm btn-edit"
+                                        data-id="${item.id}"
+                                        data-name="${item.name}" title="Edit">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-soft-danger btn-sm btn-delete-item"
+                                        data-id="${item.id}" title="Delete">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    });
+                }
+                $('#itemsTable tbody').html(html);
+            }
+
+            // Helper to render Slocs Table
+            function renderSlocsTable() {
+                let html = '';
+                if (allLocations.length === 0) {
+                    html = `<tr>
+                        <td colspan="5" class="text-center text-muted py-4">Belum ada Sloc terdaftar.</td>
+                    </tr>`;
+                } else {
+                    allLocations.forEach(function(loc, index) {
+                        html += `<tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td><span class="badge bg-soft-info text-info fs-12">${loc.s_loc}</span></td>
+                            <td>${loc.name}</td>
+                            <td class="text-wrap">${loc.description || '-'}</td>
+                            <td class="text-center">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <button type="button" class="btn btn-soft-primary btn-sm btn-edit-sloc"
+                                        data-id="${loc.id}"
+                                        data-sloc="${loc.s_loc}"
+                                        data-name="${loc.name}"
+                                        data-description="${loc.description || ''}"
+                                        title="Edit">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-soft-danger btn-sm btn-delete-sloc"
+                                        data-id="${loc.id}" title="Delete">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    });
+                }
+                $('#slocsTable tbody').html(html);
+            }
+
+            // Helper to render Vendors Table
+            function renderVendorsTable() {
+                let html = '';
+                if (allVendors.length === 0) {
+                    html = `<tr>
+                        <td colspan="4" class="text-center text-muted py-4">Belum ada vendor terdaftar.</td>
+                    </tr>`;
+                } else {
+                    allVendors.forEach(function(v, index) {
+                        html += `<tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td><strong class="text-primary">${v.name}</strong></td>
+                            <td class="text-wrap">${v.description || '-'}</td>
+                            <td class="text-center">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <button type="button" class="btn btn-soft-primary btn-sm btn-edit-vendor"
+                                        data-id="${v.id}"
+                                        data-name="${v.name}"
+                                        data-description="${v.description || ''}"
+                                        title="Edit">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-soft-danger btn-sm btn-delete-vendor"
+                                        data-id="${v.id}" title="Delete">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    });
+                }
+                $('#vendorsTable tbody').html(html);
+            }
+
+            // AJAX Data Loader
+            function loadMasterData() {
+                $.ajax({
+                    url: "{{ route('vehicle.monitoring.master.items.data') }}",
+                    type: "GET",
+                    success: function(response) {
+                        allItems = response.items;
+                        allLocations = response.locations;
+                        allVendors = response.vendors;
+                        renderItemsTable();
+                        renderSlocsTable();
+                        renderVendorsTable();
+                    },
+                    error: function(xhr) {
+                        console.error("Gagal memuat data master:", xhr);
+                    }
+                });
+            }
+
+            // Load initial master data via AJAX
+            loadMasterData();
+
             // Edit Item button handler
-            $('.btn-edit').on('click', function() {
+            $(document).on('click', '.btn-edit', function() {
                 const id = $(this).data('id');
                 const name = $(this).data('name');
 
@@ -443,10 +571,45 @@
                 $('#btnSubmit').text('Simpan Item').removeClass('btn-success').addClass('btn-primary');
             });
 
-            // SweetAlert Delete confirmation for Item
-            $('.form-delete').on('submit', function(e) {
+            // Submit Item Form via AJAX
+            $('#itemForm').on('submit', function(e) {
                 e.preventDefault();
-                const form = this;
+                const form = $(this);
+                const url = form.attr('action');
+                const method = $('#formMethod').val();
+                
+                $('#btnSubmit').prop('disabled', true).text('Saving...');
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: form.serialize(),
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: response.message
+                        });
+                        $('#btnCancel').click();
+                        loadMasterData();
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: xhr.responseJSON?.message || 'Gagal menyimpan item.'
+                        });
+                    },
+                    complete: function() {
+                        $('#btnSubmit').prop('disabled', false).text(method === 'PUT' ? 'Perbarui Item' : 'Simpan Item');
+                    }
+                });
+            });
+
+            // SweetAlert Delete confirmation for Item
+            $(document).on('click', '.btn-delete-item', function() {
+                const id = $(this).data('id');
+                const url = `{{ url('vehicle-monitoring/master/items/delete') }}/${id}`;
 
                 Swal.fire({
                     title: 'Hapus Item?',
@@ -459,13 +622,35 @@
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        form.submit();
+                        $.ajax({
+                            url: url,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                _method: "DELETE"
+                            },
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil',
+                                    text: response.message
+                                });
+                                loadMasterData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: xhr.responseJSON?.message || 'Gagal menghapus item.'
+                                });
+                            }
+                        });
                     }
                 });
             });
 
             // Edit Sloc button handler
-            $('.btn-edit-sloc').on('click', function() {
+            $(document).on('click', '.btn-edit-sloc', function() {
                 const id = $(this).data('id');
                 const sloc = $(this).data('sloc');
                 const name = $(this).data('name');
@@ -481,8 +666,7 @@
                 $('#slocFormMethod').val('PUT');
 
                 $('#btnCancelSloc').show();
-                $('#btnSubmitSloc').text('Perbarui Sloc').removeClass('btn-primary').addClass(
-                'btn-success');
+                $('#btnSubmitSloc').text('Perbarui Sloc').removeClass('btn-primary').addClass('btn-success');
 
                 // Scroll to form card on mobile
                 $('html, body').animate({
@@ -505,10 +689,45 @@
                 $('#btnSubmitSloc').text('Simpan Sloc').removeClass('btn-success').addClass('btn-primary');
             });
 
-            // SweetAlert Delete confirmation for Sloc
-            $('.form-delete-sloc').on('submit', function(e) {
+            // Submit Sloc Form via AJAX
+            $('#slocForm').on('submit', function(e) {
                 e.preventDefault();
-                const form = this;
+                const form = $(this);
+                const url = form.attr('action');
+                const method = $('#slocFormMethod').val();
+
+                $('#btnSubmitSloc').prop('disabled', true).text('Saving...');
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: form.serialize(),
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: response.message
+                        });
+                        $('#btnCancelSloc').click();
+                        loadMasterData();
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: xhr.responseJSON?.message || 'Gagal menyimpan Sloc.'
+                        });
+                    },
+                    complete: function() {
+                        $('#btnSubmitSloc').prop('disabled', false).text(method === 'PUT' ? 'Perbarui Sloc' : 'Simpan Sloc');
+                    }
+                });
+            });
+
+            // SweetAlert Delete confirmation for Sloc
+            $(document).on('click', '.btn-delete-sloc', function() {
+                const id = $(this).data('id');
+                const url = `{{ url('vehicle-monitoring/master/sloc/delete') }}/${id}`;
 
                 Swal.fire({
                     title: 'Hapus Sloc?',
@@ -521,13 +740,35 @@
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        form.submit();
+                        $.ajax({
+                            url: url,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                _method: "DELETE"
+                            },
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil',
+                                    text: response.message
+                                });
+                                loadMasterData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: xhr.responseJSON?.message || 'Gagal menghapus Sloc.'
+                                });
+                            }
+                        });
                     }
                 });
             });
 
             // Edit Vendor button handler
-            $('.btn-edit-vendor').on('click', function() {
+            $(document).on('click', '.btn-edit-vendor', function() {
                 const id = $(this).data('id');
                 const name = $(this).data('name');
                 const description = $(this).data('description');
@@ -563,10 +804,45 @@
                 $('#btnSubmitVendor').text('Simpan Vendor').removeClass('btn-success').addClass('btn-primary');
             });
 
-            // SweetAlert Delete confirmation for Vendor
-            $('.form-delete-vendor').on('submit', function(e) {
+            // Submit Vendor Form via AJAX
+            $('#vendorForm').on('submit', function(e) {
                 e.preventDefault();
-                const form = this;
+                const form = $(this);
+                const url = form.attr('action');
+                const method = $('#vendorFormMethod').val();
+
+                $('#btnSubmitVendor').prop('disabled', true).text('Saving...');
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: form.serialize(),
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: response.message
+                        });
+                        $('#btnCancelVendor').click();
+                        loadMasterData();
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: xhr.responseJSON?.message || 'Gagal menyimpan vendor.'
+                        });
+                    },
+                    complete: function() {
+                        $('#btnSubmitVendor').prop('disabled', false).text(method === 'PUT' ? 'Perbarui Vendor' : 'Simpan Vendor');
+                    }
+                });
+            });
+
+            // SweetAlert Delete confirmation for Vendor
+            $(document).on('click', '.btn-delete-vendor', function() {
+                const id = $(this).data('id');
+                const url = `{{ url('vehicle-monitoring/master/vendor/delete') }}/${id}`;
 
                 Swal.fire({
                     title: 'Hapus Vendor?',
@@ -579,10 +855,31 @@
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        form.submit();
+                        $.ajax({
+                            url: url,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                _method: "DELETE"
+                            },
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil',
+                                    text: response.message
+                                });
+                                loadMasterData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: xhr.responseJSON?.message || 'Gagal menghapus vendor.'
+                                });
+                            }
+                        });
                     }
                 });
             });
-        });
-    </script>
+        });</script>
 @endsection

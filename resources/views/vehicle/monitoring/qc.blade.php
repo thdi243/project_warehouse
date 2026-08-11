@@ -28,6 +28,12 @@
                                 <i class="ri-file-list-3-line me-2 align-middle text-warning"></i>Antrian Dokumen (Waiting
                                 Dokumen)
                             </h4>
+                            <div class="flex-shrink-0">
+                                <div style="width: 250px;">
+                                    <input type="text" class="form-control" id="search_waiting"
+                                        placeholder="Cari No. Polisi / Vendor / SPB...">
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -37,6 +43,7 @@
                                             <th>Check In</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
+                                            <th>Lokasi Tujuan</th>
                                             <th>No SPB</th>
                                             <th>Qty SPB</th>
                                             <th>Item</th>
@@ -51,6 +58,17 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="text-muted small" id="waiting-pagination-info">
+                                    Showing 0 to 0 of 0 entries
+                                </div>
+                                <nav aria-label="Waiting Table Pagination">
+                                    <ul class="pagination pagination-rounded justify-content-end mb-0"
+                                        id="waiting-pagination">
+                                        <!-- Dynamic links -->
+                                    </ul>
+                                </nav>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -62,6 +80,12 @@
                             <h4 class="card-title mb-0 flex-grow-1">
                                 <i class="ri-flask-line me-2 align-middle text-success"></i>Proses Sampling QC
                             </h4>
+                            <div class="flex-shrink-0">
+                                <div style="width: 250px;">
+                                    <input type="text" class="form-control" id="search_qc"
+                                        placeholder="Cari No. Polisi / Vendor / SPB...">
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -72,6 +96,7 @@
                                             <th>Check In</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
+                                            <th>Lokasi Tujuan</th>
                                             <th>No SPB</th>
                                             <th>Qty SPB</th>
                                             <th>Item</th>
@@ -85,6 +110,16 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="text-muted small" id="qc-pagination-info">
+                                    Showing 0 to 0 of 0 entries
+                                </div>
+                                <nav aria-label="QC Table Pagination">
+                                    <ul class="pagination pagination-rounded justify-content-end mb-0" id="qc-pagination">
+                                        <!-- Dynamic links -->
+                                    </ul>
+                                </nav>
                             </div>
                         </div>
                     </div>
@@ -145,38 +180,6 @@
         </div>
     </div>
 
-    <!-- Queue Update Modal -->
-    <div class="modal fade" id="queueModal" tabindex="-1" aria-labelledby="queueModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-light border-0">
-                    <h5 class="modal-title" id="queueModalLabel">Input Nomor Antrian QC</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="queueForm">
-                    @csrf
-                    <input type="hidden" id="queue-transaction-id" name="id">
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label d-block text-muted small fw-bold text-uppercase">Kendaraan</label>
-                            <h4 id="queue-nopol-text" class="text-primary">-</h4>
-                        </div>
-                        <div class="mb-3">
-                            <label for="no_antrian" class="form-label">Nomor Antrian <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="no_antrian" name="no_antrian" required
-                                placeholder="Contoh: A01, 002, dll.">
-                        </div>
-                    </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary" id="btnQueueSubmit">Simpan & Mulai
-                            Sampling</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @section('scripts')
@@ -212,80 +215,178 @@
                 });
             }
 
+            let allWaitingData = [];
+            let allQcData = [];
+            let waitingCurrentPage = 1;
+            let qcCurrentPage = 1;
+            const itemsPerPage = 10;
+            let waitingSearchQuery = '';
+            let qcSearchQuery = '';
+
+            function buildPaginationHTML(totalItems, currentPage, itemsPerPage) {
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+                let html = '';
+                if (totalPages <= 1) return '';
+
+                html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0);" data-page="${currentPage - 1}">Previous</a>
+                </li>`;
+
+                for (let i = 1; i <= totalPages; i++) {
+                    html += `<li class="page-item ${currentPage === i ? 'active' : ''}">
+                        <a class="page-link" href="javascript:void(0);" data-page="${i}">${i}</a>
+                    </li>`;
+                }
+
+                html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0);" data-page="${currentPage + 1}">Next</a>
+                </li>`;
+
+                return html;
+            }
+
+            function renderWaitingTable() {
+                let filtered = allWaitingData;
+                if (waitingSearchQuery) {
+                    filtered = allWaitingData.filter(function(tx) {
+                        const noPol = (tx.no_pol || '').toLowerCase();
+                        const vendor = (tx.vendor || '').toLowerCase();
+                        const noSpb = (tx.no_spb || '').toLowerCase();
+                        return noPol.includes(waitingSearchQuery) || vendor.includes(waitingSearchQuery) ||
+                            noSpb.includes(waitingSearchQuery);
+                    });
+                }
+
+                const totalItems = filtered.length;
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+                if (waitingCurrentPage > totalPages) {
+                    waitingCurrentPage = totalPages;
+                }
+                if (waitingCurrentPage < 1) {
+                    waitingCurrentPage = 1;
+                }
+
+                const startIndex = (waitingCurrentPage - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+                const paginated = filtered.slice(startIndex, endIndex);
+
+                let waitingHtml = '';
+                if (paginated.length === 0) {
+                    waitingHtml = `<tr>
+                        <td colspan="8" class="text-center py-4 text-muted">Tidak ada kendaraan yang menunggu dokumen.</td>
+                    </tr>`;
+                    $('#waiting-pagination-info').text('Showing 0 to 0 of 0 entries');
+                } else {
+                    paginated.forEach(function(tx) {
+                        waitingHtml += `<tr id="row-${tx.id}">
+                            <td>${tx.arrival_time}</td>
+                            <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
+                            <td>${tx.vendor || '-'}</td>
+                            <td>${tx.lokasi_tujuan || '-'}</td>
+                            <td>${tx.no_spb || '-'}</td>
+                            <td>${tx.qty_spb || '-'}</td>
+                            <td>${tx.item_name}</td>
+                            <td>
+                                <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
+                                    Calculated...
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-warning btn-get-queue"
+                                    data-id="${tx.id}"
+                                    data-nopol="${tx.no_pol}">
+                                    <i class="ri-edit-box-line me-1 align-middle"></i>
+                                    Ambil Antrian
+                                </button>
+                            </td>
+                        </tr>`;
+                    });
+                    $('#waiting-pagination-info').text(
+                        `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`);
+                }
+                $('#waitingTable tbody').html(waitingHtml);
+                $('#waiting-pagination').html(buildPaginationHTML(totalItems, waitingCurrentPage, itemsPerPage));
+                updateTimers();
+            }
+
+            function renderQcTable() {
+                let filtered = allQcData;
+                if (qcSearchQuery) {
+                    filtered = allQcData.filter(function(tx) {
+                        const noPol = (tx.no_pol || '').toLowerCase();
+                        const vendor = (tx.vendor || '').toLowerCase();
+                        const noSpb = (tx.no_spb || '').toLowerCase();
+                        return noPol.includes(qcSearchQuery) || vendor.includes(qcSearchQuery) || noSpb
+                            .includes(qcSearchQuery);
+                    });
+                }
+
+                const totalItems = filtered.length;
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+                if (qcCurrentPage > totalPages) {
+                    qcCurrentPage = totalPages;
+                }
+                if (qcCurrentPage < 1) {
+                    qcCurrentPage = 1;
+                }
+
+                const startIndex = (qcCurrentPage - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+                const paginated = filtered.slice(startIndex, endIndex);
+
+                let qcHtml = '';
+                if (paginated.length === 0) {
+                    qcHtml = `<tr>
+                        <td colspan="9" class="text-center py-4 text-muted">Tidak ada kendaraan dalam proses sampling QC.</td>
+                    </tr>`;
+                    $('#qc-pagination-info').text('Showing 0 to 0 of 0 entries');
+                } else {
+                    paginated.forEach(function(tx) {
+                        qcHtml += `<tr id="row-${tx.id}">
+                            <td class="text-center fw-bold fs-13 text-primary" width="100">
+                                #${tx.no_antrian}
+                            </td>
+                            <td>${tx.arrival_time}</td>
+                            <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
+                            <td>${tx.vendor || '-'}</td>
+                            <td>${tx.lokasi_tujuan || '-'}</td>
+                            <td>${tx.no_spb || '-'}</td>
+                            <td>${tx.qty_spb || '-'}</td>
+                            <td>${tx.item_name}</td>
+                            <td>
+                                <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
+                                    Calculated...
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-success btn-qc-update"
+                                    data-id="${tx.id}"
+                                    data-nopol="${tx.no_pol}">
+                                    <i class="ri-edit-box-line me-1 align-middle"></i> Update QC
+                                </button>
+                            </td>
+                        </tr>`;
+                    });
+                    $('#qc-pagination-info').text(
+                        `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`);
+                }
+                $('#qcTable tbody').html(qcHtml);
+                $('#qc-pagination').html(buildPaginationHTML(totalItems, qcCurrentPage, itemsPerPage));
+                updateTimers();
+            }
+
             // AJAX Data Loader
             function loadQcData() {
                 $.ajax({
                     url: "{{ route('vehicle.monitoring.qc.data') }}",
                     type: 'GET',
                     success: function(response) {
-                        // Render waiting table
-                        let waitingHtml = '';
-                        if (response.antriSampling.length === 0) {
-                            waitingHtml = `<tr>
-                                <td colspan="8" class="text-center py-4 text-muted">Tidak ada kendaraan yang menunggu dokumen.</td>
-                            </tr>`;
-                        } else {
-                            response.antriSampling.forEach(function(tx) {
-                                waitingHtml += `<tr id="row-${tx.id}">
-                                    <td>${tx.arrival_time}</td>
-                                    <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
-                                    <td>${tx.vendor || '-'}</td>
-                                    <td>${tx.no_spb}</td>
-                                    <td>${tx.qty_spb}</td>
-                                    <td>${tx.item_name}</td>
-                                    <td>
-                                        <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
-                                            Calculated...
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-warning btn-update-queue"
-                                            data-id="${tx.id}"
-                                            data-nopol="${tx.no_pol}">
-                                            <i class="ri-edit-box-line me-1 align-middle"></i> Input No. Antrian
-                                        </button>
-                                    </td>
-                                </tr>`;
-                            });
-                        }
-                        $('#waitingTable tbody').html(waitingHtml);
-
-                        // Render QC table
-                        let qcHtml = '';
-                        if (response.prosesSample.length === 0) {
-                            qcHtml = `<tr>
-                                <td colspan="9" class="text-center py-4 text-muted">Tidak ada kendaraan dalam proses sampling QC.</td>
-                            </tr>`;
-                        } else {
-                            response.prosesSample.forEach(function(tx) {
-                                qcHtml += `<tr id="row-${tx.id}">
-                                    <td class="text-center fw-bold fs-13 text-primary" width="100">
-                                        #${tx.no_antrian}
-                                    </td>
-                                    <td>${tx.arrival_time}</td>
-                                    <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
-                                    <td>${tx.vendor || '-'}</td>
-                                    <td>${tx.no_spb || '-'}</td>
-                                    <td>${tx.qty_spb || '-'}</td>
-                                    <td>${tx.item_name}</td>
-                                    <td>
-                                        <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
-                                            Calculated...
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-success btn-qc-update"
-                                            data-id="${tx.id}"
-                                            data-nopol="${tx.no_pol}">
-                                            <i class="ri-edit-box-line me-1 align-middle"></i> Update QC
-                                        </button>
-                                    </td>
-                                </tr>`;
-                            });
-                        }
-                        $('#qcTable tbody').html(qcHtml);
-
-                        updateTimers();
+                        allWaitingData = response.antriSampling;
+                        allQcData = response.prosesSample;
+                        renderWaitingTable();
+                        renderQcTable();
                     },
                     error: function(xhr) {
                         console.error('Gagal mengambil data QC:', xhr);
@@ -317,56 +418,37 @@
             }
             setupRealtimeEcho();
 
-            // Open Queue modal
-            $(document).on('click', '.btn-update-queue', function() {
+            // Ambil Antrian Click Handler
+            $(document).on('click', '.btn-get-queue', function() {
                 const id = $(this).data('id');
                 const nopol = $(this).data('nopol');
 
-                $('#queue-transaction-id').val(id);
-                $('#queue-nopol-text').text(nopol);
-                $('#no_antrian').val('');
-
-                $('#queueModal').modal('show');
-            });
-
-            // Submit Queue form
-            $('#queueForm').on('submit', function(e) {
-                e.preventDefault();
-
-                const id = $('#queue-transaction-id').val();
-                const noAntrian = $('#no_antrian').val();
-
-                $('#btnQueueSubmit').prop('disabled', true).text('Loading...');
-
-                $.ajax({
-                    url: `{{ url('vehicle-monitoring/qc/update-queue') }}/${id}`,
-                    type: 'POST',
-                    data: {
-                        _token: "{{ csrf_token() }}",
-                        no_antrian: noAntrian
-                    },
-                    success: function(response) {
-                        $('#queueModal').modal('hide');
-                        Swal.fire({
-                            icon: response.success ? 'success' : 'error',
-                            title: response.success ? 'Berhasil' : 'Gagal',
-                            text: response.message
-                        }).then(() => {
-                            loadQcData();
+                Swal.fire({
+                    title: 'Ambil Nomor Antrian?',
+                    text: `Ambil nomor antrian otomatis untuk truk ${nopol}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3577f1',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Ya, Ambil!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/qc/update-queue') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                Swal.fire('Berhasil!', response.message, 'success');
+                                loadQcData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal mengambil nomor antrian.', 'error');
+                            }
                         });
-                    },
-                    error: function(xhr) {
-                        $('#queueModal').modal('hide');
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: xhr.responseJSON?.message ||
-                                'Terjadi kesalahan sistem.'
-                        });
-                    },
-                    complete: function() {
-                        $('#btnQueueSubmit').prop('disabled', false).text(
-                            'Simpan & Mulai Sampling');
                     }
                 });
             });
@@ -427,6 +509,38 @@
                         $('#btnQcSubmit').prop('disabled', false).text('Simpan Status QC');
                     }
                 });
+            });
+
+            // Handle searches
+            $('#search_waiting').on('keyup', function() {
+                waitingSearchQuery = $(this).val().toLowerCase();
+                waitingCurrentPage = 1;
+                renderWaitingTable();
+            });
+
+            $('#search_qc').on('keyup', function() {
+                qcSearchQuery = $(this).val().toLowerCase();
+                qcCurrentPage = 1;
+                renderQcTable();
+            });
+
+            // Handle pagination clicks
+            $(document).on('click', '#waiting-pagination .page-link', function(e) {
+                e.preventDefault();
+                const page = $(this).data('page');
+                if (page) {
+                    waitingCurrentPage = parseInt(page);
+                    renderWaitingTable();
+                }
+            });
+
+            $(document).on('click', '#qc-pagination .page-link', function(e) {
+                e.preventDefault();
+                const page = $(this).data('page');
+                if (page) {
+                    qcCurrentPage = parseInt(page);
+                    renderQcTable();
+                }
             });
         });
     </script>

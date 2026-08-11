@@ -98,9 +98,10 @@
                                 <div class="mb-3">
                                     <label for="no_pol" class="form-label">No. Polisi (Plate Number) <span
                                             class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="no_pol" name="no_pol" required
-                                        placeholder="Contoh: B1234CD" style="text-transform: uppercase;">
-                                    <small class="text-muted">Ketik untuk mencari nopol yang sudah terdaftar.</small>
+                                    <select class="form-select" id="no_pol" name="no_pol" required>
+                                        <option value="" selected disabled>Pilih atau Ketik No. Polisi</option>
+                                    </select>
+                                    <small class="text-muted">Pilih no. polisi dari data supplier atau ketik baru.</small>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
@@ -120,14 +121,16 @@
                                             required>
                                             <option value="" selected disabled>Pilih Tujuan Area</option>
                                             @foreach ($targetLocations as $loc)
-                                                <option value="{{ $loc->id }}">{{ $loc->s_loc }} -
+                                                <option value="{{ $loc->id }}" data-sloc="{{ $loc->s_loc }}">
+                                                    {{ $loc->s_loc }} -
                                                     {{ $loc->name }}
                                                 </option>
                                             @endforeach
                                         </select>
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label for="vendor" class="form-label">Nama Vendor</label>
+                                        <label for="vendor" class="form-label">Nama Vendor <span
+                                                class="text-danger">*</span></label>
                                         <select class="form-select" id="vendor" name="vendor">
                                             <option value="" selected disabled>Pilih Vendor</option>
                                             @foreach ($vendors as $vendor)
@@ -175,14 +178,12 @@
                     <div class="card shadow-sm border-0">
                         <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
                             <h4 class="card-title mb-0 flex-grow-1"><i
-                                    class="ri-table-line me-2 align-middle text-success"></i>Data Check-In Harian
+                                    class="ri-table-line me-2 align-middle text-success"></i>Data Kendaraan Aktif
                             </h4>
                             <div class="flex-shrink-0">
-                                <div class="d-flex align-items-center gap-2">
-                                    <label for="filter_date" class="form-label mb-0 text-muted small text-nowrap">Pilih
-                                        Tanggal:</label>
-                                    <input type="date" class="form-control form-control-sm" id="filter_date"
-                                        name="date" value="{{ Carbon\Carbon::now()->format('Y-m-d') }}">
+                                <div style="width: 250px;">
+                                    <input type="text" class="form-control" id="search_table"
+                                        placeholder="Cari No. Polisi / Vendor...">
                                 </div>
                             </div>
                         </div>
@@ -191,7 +192,7 @@
                                 <table class="table table-hover align-middle text-nowrap">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>No. Transaksi</th>
+                                            <th class="text-center">No</th>
                                             <th>No. Polisi</th>
                                             <th>Jenis</th>
                                             <th>Vendor</th>
@@ -206,6 +207,15 @@
                                     <tbody id="timbanganTableBody">
                                     </tbody>
                                 </table>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="text-muted small" id="paginationInfo">
+                                    Showing 0 to 0 of 0 entries
+                                </div>
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination pagination-rounded mb-0" id="paginationLinks">
+                                    </ul>
+                                </nav>
                             </div>
                         </div>
                     </div>
@@ -250,7 +260,8 @@
                                 <select class="form-select" id="edit_target_location_id" name="target_location_id"
                                     required>
                                     @foreach ($targetLocations as $loc)
-                                        <option value="{{ $loc->id }}">{{ $loc->s_loc }} - {{ $loc->name }}
+                                        <option value="{{ $loc->id }}" data-sloc="{{ $loc->s_loc }}">
+                                            {{ $loc->s_loc }} - {{ $loc->name }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -262,7 +273,7 @@
                                         class="text-danger">*</span></label>
                                 <select class="form-select select2-edit" id="edit_item_id" name="item_id" required>
                                     @foreach ($items as $item)
-                                        <option value="{{ $item->id }}">{{ $item->sku }} - {{ $item->name }}
+                                        <option value="{{ $item->id }}">{{ $item->name }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -318,14 +329,12 @@
 
             // Initialize Select2 for Edit Modal
             $('#edit_item_id').select2({
-                theme: 'bootstrap-5',
                 dropdownParent: $('#editModal'),
                 allowClear: true,
                 width: '100%'
             });
 
             $('#edit_vendor').select2({
-                theme: 'bootstrap-5',
                 dropdownParent: $('#editModal'),
                 tags: true,
                 placeholder: 'Pilih atau Ketik Vendor Baru',
@@ -354,37 +363,132 @@
                 if (currentEditVal) $('#edit_vendor').val(currentEditVal).trigger('change');
             }
 
-            // Autocomplete plate numbers
-            $("#no_pol").autocomplete({
-                source: "{{ route('vehicle.monitoring.timbangan.autocomplete_vehicle') }}",
-                minLength: 2,
-                select: function(event, ui) {
-                    if (ui.item.vendor) {
-                        if ($("#vendor").find("option[value='" + ui.item.vendor + "']").length === 0) {
-                            var newOption = new Option(ui.item.vendor, ui.item.vendor, true, true);
-                            $("#vendor").append(newOption).trigger('change');
-                        } else {
-                            $("#vendor").val(ui.item.vendor).trigger('change');
+            // Initialize Select2 for Plate Number (no_pol) with tagging
+            $('#no_pol').select2({
+                tags: true,
+                placeholder: 'Pilih atau Ketik No. Polisi Baru',
+                allowClear: true,
+                width: '100%',
+                createTag: function(params) {
+                    var term = $.trim(params.term);
+                    if (term === '') {
+                        return null;
+                    }
+                    // Format plate number: uppercase and remove all spaces
+                    var cleanedTerm = term.toUpperCase().replace(/\s+/g, '');
+                    return {
+                        id: cleanedTerm,
+                        text: cleanedTerm,
+                        newTag: true
+                    };
+                }
+            });
+
+            // Global variable to store supplier data from API
+            let supplierDataList = [];
+
+            // Function to fetch supplier data from proxy route
+            function loadSupplierData() {
+                $.ajax({
+                    url: "{{ route('vehicle.monitoring.timbangan.supplier_data') }}",
+                    type: 'GET',
+                    success: function(response) {
+                        if (response && response.success && Array.isArray(response.data)) {
+                            supplierDataList = response.data;
+
+                            // Rebuild select options
+                            const noPolSelect = $('#no_pol');
+                            const currentVal = noPolSelect.val();
+
+                            noPolSelect.empty().append(
+                                '<option value="" selected disabled>Pilih atau Ketik No. Polisi</option>'
+                            );
+
+                            supplierDataList.forEach(function(item) {
+                                // Clean spaces from plate number
+                                const cleanedNopol = item.nopol.toUpperCase().replace(/\s+/g,
+                                    '');
+                                const optionText = cleanedNopol + ' (' + item.nama_perusahaan +
+                                    ')';
+
+                                // Create option if not already exists in the select
+                                if (noPolSelect.find("option[value='" + cleanedNopol + "']")
+                                    .length === 0) {
+                                    const option = new Option(optionText, cleanedNopol, false,
+                                        false);
+                                    noPolSelect.append(option);
+                                }
+                            });
+
+                            // Restore value if still valid
+                            if (currentVal) {
+                                noPolSelect.val(currentVal).trigger('change.select2');
+                            } else {
+                                noPolSelect.trigger('change.select2');
+                            }
                         }
+                    },
+                    error: function(xhr) {
+                        console.error('Gagal mengambil data supplier dari API:', xhr);
+                    }
+                });
+            }
+
+            // Load on init
+            loadSupplierData();
+
+            // Handle plate selection change to auto populate vendor name
+            $('#no_pol').on('change', function() {
+                const selectedNopol = $(this).val();
+                if (!selectedNopol) return;
+
+                // Find the matched supplier item from the API response
+                const matchedSupplier = supplierDataList.find(function(item) {
+                    return item.nopol.toUpperCase().replace(/\s+/g, '') === selectedNopol
+                        .toUpperCase().replace(/\s+/g, '');
+                });
+
+                if (matchedSupplier && matchedSupplier.nama_perusahaan) {
+                    // Clean company name (remove leading '- ' if any)
+                    let vendorName = matchedSupplier.nama_perusahaan.trim();
+                    if (vendorName.startsWith('- ')) {
+                        vendorName = vendorName.substring(2).trim();
+                    } else if (vendorName.startsWith('-')) {
+                        vendorName = vendorName.substring(1).trim();
+                    }
+
+                    // Auto populate vendor Select2
+                    if ($("#vendor").find("option[value='" + vendorName + "']").length === 0) {
+                        const newOption = new Option(vendorName, vendorName, true, true);
+                        $("#vendor").append(newOption).trigger('change');
                     } else {
-                        $("#vendor").val(null).trigger('change');
+                        $("#vendor").val(vendorName).trigger('change');
                     }
                 }
             });
 
             fetchTransactions();
 
+            // Handle table search
+            $('#search_table').on('keyup', function() {
+                searchQuery = $(this).val().toLowerCase();
+                currentPage = 1; // Reset to page 1 on search
+                renderTransactions();
+            });
+
+            let allTransactions = [];
+            let currentPage = 1;
+            const itemsPerPage = 10;
+            let searchQuery = '';
+
             // Fetch transaction data via AJAX
             function fetchTransactions() {
-                const selectedDate = $('#filter_date').val();
                 $.ajax({
                     url: "{{ route('vehicle.monitoring.timbangan.data') }}",
                     type: 'GET',
-                    data: {
-                        date: selectedDate
-                    },
                     success: function(data) {
-                        renderTransactions(data, selectedDate);
+                        allTransactions = data;
+                        renderTransactions();
                     },
                     error: function(xhr) {
                         console.error('Failed to load transaction data', xhr);
@@ -393,30 +497,72 @@
             }
 
             // Render transaction table rows
-            function renderTransactions(transactions, selectedDate) {
+            function renderTransactions() {
                 const tbody = $('#timbanganTableBody');
                 tbody.empty();
 
-                if (transactions.length === 0) {
-                    let dateObj = moment(selectedDate, "YYYY-MM-DD");
-                    let formattedDate = dateObj.isValid() ? dateObj.format("DD-MM-YYYY") : selectedDate;
-
+                if (allTransactions.length === 0) {
                     tbody.html(`
                         <tr>
-                            <td colspan="10" class="text-center py-4 text-muted">Belum ada transaksi pada tanggal ${formattedDate}.</td>
+                            <td colspan="10" class="text-center py-4 text-muted">Belum ada transaksi aktif saat ini.</td>
                         </tr>
                     `);
+                    $('#paginationInfo').text('Showing 0 to 0 of 0 entries');
+                    $('#paginationLinks').empty();
                     return;
                 }
 
-                transactions.forEach(function(tx) {
+                // Filter transactions based on search query
+                let filteredTransactions = allTransactions;
+                if (searchQuery) {
+                    filteredTransactions = allTransactions.filter(function(tx) {
+                        const nopol = (tx.no_pol || '').toLowerCase();
+                        const vendor = (tx.vendor || '').toLowerCase();
+                        return nopol.includes(searchQuery) || vendor.includes(searchQuery);
+                    });
+                }
+
+                if (filteredTransactions.length === 0) {
+                    tbody.html(`
+                        <tr>
+                            <td colspan="10" class="text-center py-4 text-muted">Tidak ditemukan data yang cocok dengan pencarian Anda.</td>
+                        </tr>
+                    `);
+                    $('#paginationInfo').text('Showing 0 to 0 of 0 entries');
+                    $('#paginationLinks').empty();
+                    return;
+                }
+
+                // Calculate pagination ranges
+                const totalItems = filteredTransactions.length;
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+                // Adjust currentPage if out of bounds
+                if (currentPage > totalPages) {
+                    currentPage = totalPages;
+                }
+                if (currentPage < 1) {
+                    currentPage = 1;
+                }
+
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+                const paginatedItems = filteredTransactions.slice(startIndex, endIndex);
+
+                paginatedItems.forEach(function(tx, index) {
                     const statusBadge = tx.status === 'completed' ?
                         '<span class="badge bg-success">Out</span>' :
                         `<span class="badge bg-warning">${tx.status.toUpperCase()}</span>`;
 
+                    const checkOutButton = tx.status.toLowerCase() === 'timbangan_out' ?
+                        `<button type="button" class="btn btn-outline-success btn-sm btn-checkout-ajax" data-id="${tx.id}" data-nopol="${tx.no_pol}">
+                            Check-Out
+                        </button>` : '';
+
                     const row = `
                         <tr>
-                            <td><small class="fw-bold">${tx.no_transaction}</small></td>
+                            <td class="text-center"><small class="fw-bold">${index + (currentPage - 1) * itemsPerPage + 1}</small></td>
                             <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
                             <td>${tx.jenis}</td>
                             <td>${tx.vendor || '-'}</td>
@@ -429,20 +575,14 @@
                             <td>${tx.check_in_time}</td>
                             <td>${tx.check_out_time}</td>
                             <td class="text-center">
-                                <div class="d-flex gap-1 justify-content-center">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    ${checkOutButton}
                                     <button type="button"
-                                        class="btn btn-soft-warning btn-sm btn-edit-ajax"
-                                        data-id="${tx.id}"
-                                        data-nopol="${tx.no_pol}"
-                                        data-jenis="${tx.jenis.toLowerCase()}"
-                                        data-target-loc="${tx.target_loc}"
-                                        data-item-id="${tx.item_id}"
-                                        data-vendor="${tx.vendor || ''}"
-                                        data-no-spb="${tx.no_spb === '-' ? '' : tx.no_spb}"
-                                        data-qty-spb="${tx.qty_spb === '-' ? '' : tx.qty_spb}">
+                                        class="btn btn-outline-warning btn-sm btn-edit-ajax"
+                                        data-id="${tx.id}">
                                         <i class="ri-edit-line"></i>
                                     </button>
-                                    <button type="button" class="btn btn-soft-danger btn-sm btn-delete-ajax" data-id="${tx.id}">
+                                    <button type="button" class="btn btn-outline-danger btn-sm btn-delete-ajax" data-id="${tx.id}">
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
                                 </div>
@@ -451,12 +591,40 @@
                     `;
                     tbody.append(row);
                 });
-            }
 
-            // On Date Picker change
-            $('#filter_date').on('change', function() {
-                fetchTransactions();
-            });
+                // Update pagination info
+                $('#paginationInfo').text(`Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`);
+
+                // Build pagination links
+                const paginationLinks = $('#paginationLinks');
+                paginationLinks.empty();
+
+                // Previous button
+                const prevDisabled = currentPage === 1 ? 'disabled' : '';
+                paginationLinks.append(`
+                    <li class="page-item ${prevDisabled}">
+                        <a class="page-link" href="javascript:void(0);" data-page="${currentPage - 1}">Previous</a>
+                    </li>
+                `);
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    const activeClass = i === currentPage ? 'active' : '';
+                    paginationLinks.append(`
+                        <li class="page-item ${activeClass}">
+                            <a class="page-link" href="javascript:void(0);" data-page="${i}">${i}</a>
+                        </li>
+                    `);
+                }
+
+                // Next button
+                const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+                paginationLinks.append(`
+                    <li class="page-item ${nextDisabled}">
+                        <a class="page-link" href="javascript:void(0);" data-page="${currentPage + 1}">Next</a>
+                    </li>
+                `);
+            }
 
             // Intercept Check-In Form Submit
             $('#checkInForm').on('submit', function(e) {
@@ -473,7 +641,7 @@
                         }
 
                         // Clear form inputs
-                        $('#no_pol').val('');
+                        $('#no_pol').val(null).trigger('change');
                         $('#jenis').val('').trigger('change');
                         $('#target_location_id').val('').trigger('change');
                         $('#item_id').val(null).trigger('change');
@@ -483,6 +651,7 @@
 
                         Swal.fire('Berhasil!', response.message, 'success');
                         fetchTransactions();
+                        loadSupplierData();
                     },
                     error: function(xhr) {
                         Swal.fire('Error!', xhr.responseJSON?.message ||
@@ -494,42 +663,62 @@
             // Edit button handler (supports dynamically rendered elements)
             $(document).on('click', '.btn-edit-ajax', function() {
                 const id = $(this).data('id');
-                const nopol = $(this).data('nopol');
-                const jenis = $(this).data('jenis');
-                const targetLoc = $(this).data('target-loc');
-                const itemId = $(this).data('item-id');
-                const vendor = $(this).data('vendor');
-                const noSpb = $(this).data('no-spb');
-                const qtySpb = $(this).data('qty-spb');
+                const btn = $(this);
 
-                $('#edit_no_pol').val(nopol);
-                $('#edit_jenis').val(jenis);
-                $('#edit_target_location_id').val(targetLoc);
-                $('#edit_item_id').val(itemId).trigger('change');
+                // Disable button to prevent double clicks
+                btn.prop('disabled', true);
 
-                if (vendor) {
-                    if ($("#edit_vendor").find("option[value='" + vendor + "']").length === 0) {
-                        var newOption = new Option(vendor, vendor, true, true);
-                        $("#edit_vendor").append(newOption).trigger('change');
-                    } else {
-                        $("#edit_vendor").val(vendor).trigger('change');
+                $.ajax({
+                    url: `{{ url('vehicle-monitoring/timbangan/show') }}/${id}`,
+                    type: 'GET',
+                    success: function(response) {
+                        btn.prop('disabled', false);
+
+                        if (response.success && response.data) {
+                            const tx = response.data;
+
+                            $('#edit_no_pol').val(tx.no_pol);
+                            $('#edit_jenis').val(tx.jenis.toLowerCase());
+                            filterTargetLocations('#edit_jenis', '#edit_target_location_id');
+                            $('#edit_target_location_id').val(tx.target_loc);
+                            $('#edit_item_id').val(tx.item_id).trigger('change');
+
+                            if (tx.vendor) {
+                                if ($("#edit_vendor").find("option[value='" + tx.vendor + "']")
+                                    .length === 0) {
+                                    var newOption = new Option(tx.vendor, tx.vendor, true,
+                                        true);
+                                    $("#edit_vendor").append(newOption).trigger('change');
+                                } else {
+                                    $("#edit_vendor").val(tx.vendor).trigger('change');
+                                }
+                            } else {
+                                $("#edit_vendor").val(null).trigger('change');
+                            }
+
+                            $('#edit_no_spb').val(tx.no_spb === '-' ? '' : tx.no_spb);
+                            $('#edit_qty_spb').val(tx.qty_spb === '-' ? '' : tx.qty_spb);
+
+                            // Set form action route dynamically
+                            const actionUrl =
+                                `{{ url('vehicle-monitoring/timbangan/update') }}/${id}`;
+                            $('#editForm').attr('action', actionUrl);
+
+                            // Show modal
+                            var myModal = new bootstrap.Modal(document.getElementById(
+                                'editModal'));
+                            myModal.show();
+                        } else {
+                            Swal.fire('Error!', response.message ||
+                                'Gagal memuat data transaksi.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false);
+                        Swal.fire('Error!', xhr.responseJSON?.message ||
+                            'Gagal mengambil data dari server.', 'error');
                     }
-                } else {
-                    $("#edit_vendor").val(null).trigger('change');
-                }
-
-                $('#edit_no_spb').val(noSpb);
-                $('#edit_qty_spb').val(qtySpb);
-
-                // Set form action route dynamically with date query parameter if present
-                const selectedDate = $('#filter_date').val();
-                const actionUrl = `{{ url('vehicle-monitoring/timbangan/update') }}/${id}` + (
-                    selectedDate ? `?date=${selectedDate}` : '');
-                $('#editForm').attr('action', actionUrl);
-
-                // Show modal
-                var myModal = new bootstrap.Modal(document.getElementById('editModal'));
-                myModal.show();
+                });
             });
 
             // Intercept Edit Form Submit
@@ -554,6 +743,7 @@
 
                         Swal.fire('Berhasil!', response.message, 'success');
                         fetchTransactions();
+                        loadSupplierData();
                     },
                     error: function(xhr) {
                         Swal.fire('Error!', xhr.responseJSON?.message ||
@@ -565,8 +755,6 @@
             // AJAX Delete Confirmation (supports dynamically rendered elements)
             $(document).on('click', '.btn-delete-ajax', function() {
                 const id = $(this).data('id');
-                const selectedDate = $('#filter_date').val();
-
                 Swal.fire({
                     title: 'Hapus Transaksi?',
                     text: "Apakah Anda yakin ingin menghapus data check-in kendaraan ini? Seluruh riwayat perpindahan juga akan terhapus.",
@@ -583,12 +771,12 @@
                             type: 'POST',
                             data: {
                                 _method: 'DELETE',
-                                _token: "{{ csrf_token() }}",
-                                date: selectedDate
+                                _token: "{{ csrf_token() }}"
                             },
                             success: function(response) {
                                 Swal.fire('Dihapus!', response.message, 'success');
                                 fetchTransactions();
+                                loadSupplierData();
                             },
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message ||
@@ -597,6 +785,113 @@
                         });
                     }
                 });
+            });
+
+            // Function to filter target locations based on selected jenis
+            function filterTargetLocations(jenisSelectId, targetSelectId) {
+                const jenis = $(jenisSelectId).val();
+                const targetSelect = $(targetSelectId);
+                const currentVal = targetSelect.val();
+                let hasValidSelection = false;
+
+                // Show/hide options based on logic
+                targetSelect.find('option').each(function() {
+                    const option = $(this);
+                    const sloc = option.data('sloc');
+
+                    if (!sloc) {
+                        // Keep placeholder option
+                        option.prop('disabled', false).show();
+                        return;
+                    }
+
+                    let isAllowed = true;
+                    if (jenis === 'bongkaran') {
+                        if (sloc === 'A001') {
+                            isAllowed = false;
+                        }
+                    } else if (jenis === 'slipsheet' || jenis === 'curah') {
+                        if (sloc !== 'A001' && sloc !== 'SMU' && sloc !== 'A002') {
+                            isAllowed = false;
+                        }
+                    }
+
+                    if (isAllowed) {
+                        option.prop('disabled', false).show();
+                        if (currentVal && option.val() == currentVal) {
+                            hasValidSelection = true;
+                        }
+                    } else {
+                        option.prop('disabled', true).hide();
+                    }
+                });
+
+                // If currently selected value is no longer allowed, reset selection
+                if (currentVal && !hasValidSelection) {
+                    targetSelect.val('').trigger('change');
+                }
+            }
+
+            // Register change handlers for both check-in form and edit modal
+            $('#jenis').on('change', function() {
+                filterTargetLocations('#jenis', '#target_location_id');
+            });
+
+            $('#edit_jenis').on('change', function() {
+                filterTargetLocations('#edit_jenis', '#edit_target_location_id');
+            });
+
+            // AJAX Check-Out Confirmation
+            $(document).on('click', '.btn-checkout-ajax', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+
+                Swal.fire({
+                    title: 'Check-Out Kendaraan?',
+                    text: `Apakah Anda yakin ingin melakukan Timbang Keluar (Check-Out) untuk kendaraan ${nopol}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0ab39c',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Check-Out!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/timbangan/check-out') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                Swal.fire('Berhasil!', response.message ||
+                                    'Truk berhasil Check-Out.', 'success');
+                                fetchTransactions();
+                                loadSupplierData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal melakukan check-out.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Handle page clicks for pagination
+            $(document).on('click', '#paginationLinks .page-link', function(e) {
+                e.preventDefault();
+                const targetPage = $(this).data('page');
+
+                // Do nothing if disabled or parent is disabled
+                if ($(this).closest('.page-item').hasClass('disabled')) {
+                    return;
+                }
+
+                if (targetPage) {
+                    currentPage = parseInt(targetPage);
+                    renderTransactions();
+                }
             });
         });
     </script>

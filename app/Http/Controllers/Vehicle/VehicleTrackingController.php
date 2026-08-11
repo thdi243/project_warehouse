@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class VehicleTrackingController extends Controller
 {
@@ -217,35 +218,27 @@ class VehicleTrackingController extends Controller
         ]);
     }
 
-    /**
-     * Timbangan (Scale) View.
-     */
     public function timbanganIndex(Request $request)
     {
         $items = VehicleItem::orderBy('name')->get();
         $targetLocations = Location::where('s_loc', '!=', 'TMB')->get();
         $vendors = VehicleVendor::orderBy('name')->get();
 
-        $filterDate = $request->input('date', Carbon::today()->format('Y-m-d'));
-
         $todayTransactions = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])
-            ->whereDate('check_in_time', $filterDate)
+            ->whereNull('check_out_time')
             ->latest()
             ->get();
 
-        return view('vehicle.monitoring.timbangan', compact('items', 'targetLocations', 'vendors', 'todayTransactions', 'filterDate'));
+        return view('vehicle.monitoring.timbangan', compact('items', 'targetLocations', 'vendors', 'todayTransactions'));
     }
 
     /**
-     * Get Timbangan daily transaction data via AJAX.
+     * Get Timbangan active transaction data via AJAX (not checked out).
      */
     public function timbanganData(Request $request)
     {
-        $filterDate = $request->input('date', Carbon::today()->format('Y-m-d'));
-
         $transactions = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])
-            ->whereDate('check_in_time', $filterDate)
-            ->where('status', '!=', 'completed')
+            ->whereNull('check_out_time')
             ->latest()
             ->get()
             ->map(function ($tx) {
@@ -270,6 +263,34 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Show details of a single transaction for editing.
+     */
+    public function timbanganShow($id)
+    {
+        try {
+            $transaction = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])->findOrFail($id);
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $transaction->id,
+                    'no_pol' => $transaction->vehicle->no_pol,
+                    'jenis' => $transaction->jenis,
+                    'target_loc' => $transaction->target_location_id,
+                    'item_id' => $transaction->item_id,
+                    'vendor' => $transaction->vendor,
+                    'no_spb' => $transaction->no_spb,
+                    'qty_spb' => $transaction->qty_spb,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data transaksi tidak ditemukan: ' . $e->getMessage()
+            ], 404);
+        }
+    }
+
+    /**
      * Autocomplete for vehicle search.
      */
     public function autocompleteVehicle(Request $request)
@@ -287,6 +308,61 @@ class VehicleTrackingController extends Controller
             });
 
         return response()->json($vehicles);
+    }
+
+    /**
+     * Get supplier data from external API.
+     */
+    public function getSupplierData(Request $request)
+    {
+        try {
+            $response = Http::timeout(5)
+                ->get('http://10.11.11.10:8093/api/supplier-data');
+
+            if ($response->successful()) {
+                $payload = $response->json();
+
+                if (isset($payload['success']) && $payload['success'] && isset($payload['data']) && is_array($payload['data'])) {
+                    // Fetch plate numbers of vehicles currently in the yard (not completed)
+                    $activeNopols = VehicleTransaction::where('status', '!=', 'completed')
+                        ->with('vehicle')
+                        ->get()
+                        ->map(function ($tx) {
+                            return $tx->vehicle ? strtoupper(str_replace(' ', '', $tx->vehicle->no_pol)) : null;
+                        })
+                        ->filter()
+                        ->toArray();
+
+                    // Filter out vehicles that are already active in the local tracking system
+                    $filteredData = array_values(array_filter($payload['data'], function ($item) use ($activeNopols) {
+                        if (!isset($item['nopol'])) {
+                            return true;
+                        }
+                        $cleanNopol = strtoupper(str_replace(' ', '', $item['nopol']));
+                        return !in_array($cleanNopol, $activeNopols);
+                    }));
+
+                    $payload['data'] = $filteredData;
+                    if (isset($payload['count'])) {
+                        $payload['count'] = count($filteredData);
+                    }
+                }
+
+                return response()->json($payload);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'API returned status code ' . $response->status(),
+                'data' => []
+            ], $response->status());
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to connect to supplier API: ' . $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
     }
 
     /**
@@ -309,6 +385,19 @@ class VehicleTrackingController extends Controller
 
             $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
 
+            // Validate target area based on jenis
+            $targetLoc = Location::findOrFail($request->target_location_id);
+            $jenis = $request->jenis;
+            if ($jenis === 'bongkaran') {
+                if ($targetLoc->s_loc === 'A001') {
+                    throw new \Exception('Untuk jenis bongkaran, tidak boleh memilih tujuan area WFG (A001).');
+                }
+            } elseif (in_array($jenis, ['slipsheet', 'curah'])) {
+                if (!in_array($targetLoc->s_loc, ['A001', 'SMU', 'A002'])) {
+                    throw new \Exception('Untuk jenis slipsheet atau curah, hanya boleh memilih tujuan area WFG (A001) atau SMU.');
+                }
+            }
+
             $vendorName = trim($request->vendor);
             if ($vendorName) {
                 VehicleVendor::firstOrCreate(['name' => $vendorName]);
@@ -324,8 +413,19 @@ class VehicleTrackingController extends Controller
 
             // Generate transaction number: TRX-YYYYMMDD-XXXX
             $datePrefix = Carbon::now()->format('Ymd');
-            $todayCount = VehicleTransaction::where('no_transaction', 'LIKE', 'VHC-' . $datePrefix . '-%')->count();
-            $sequence = str_pad($todayCount + 1, 4, '0', STR_PAD_LEFT);
+            $maxTransaction = VehicleTransaction::where('no_transaction', 'LIKE', 'VHC-' . $datePrefix . '-%')
+                ->orderBy('no_transaction', 'desc')
+                ->first();
+
+            if ($maxTransaction) {
+                $parts = explode('-', $maxTransaction->no_transaction);
+                $lastSequence = intval(end($parts));
+                $sequenceNum = $lastSequence + 1;
+            } else {
+                $sequenceNum = 1;
+            }
+
+            $sequence = str_pad($sequenceNum, 4, '0', STR_PAD_LEFT);
             $noTransaction = 'VHC-' . $datePrefix . '-' . $sequence;
 
             $timbanganLoc = Location::where('s_loc', 'TMB')->first();
@@ -368,7 +468,6 @@ class VehicleTrackingController extends Controller
             ]));
 
             // 3. Immediately dispatch vehicle to target queue (departure from Timbangan)
-            $targetLoc = Location::findOrFail($request->target_location_id);
 
             // Conclude Timbangan tracking
             $timbanganTrack->update([
@@ -495,31 +594,44 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => 'Aktivitas WPM Selesai. Transaksi selesai dan keluar area.'
+                    'status_notes' => 'Aktivitas WPM Selesai. Truk kembali ke Timbangan.'
                 ]);
             }
 
             $noPol = $transaction->vehicle->no_pol;
 
-            // Update transaction to completed
+            $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+            if (!$timbanganLoc) {
+                throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
+            }
+
+            // Update transaction to timbangan_out
             $transaction->update([
                 'unloading_status' => 'completed',
-                'status' => 'completed',
-                'check_out_time' => $now,
+                'current_location_id' => $timbanganLoc->id,
+                'status' => 'timbangan_out',
                 'updated_by' => Auth::id()
+            ]);
+
+            // Create new tracking log for Timbangan
+            VehicleTracking::create([
+                'vehicle_transaction_id' => $transaction->id,
+                'location_id' => $timbanganLoc->id,
+                'arrival_time' => $now,
+                'created_by' => Auth::id(),
             ]);
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'OUT',
-                'status' => 'completed',
-                'message' => "Proses Truk {$noPol} di WPM selesai. Selesai dan keluar area.",
+                'current_location' => 'TIMBANGAN',
+                'status' => 'timbangan_out',
+                'message' => "Proses Truk {$noPol} di WPM selesai. Truk kembali ke Timbangan untuk Check-Out.",
                 'time' => $now->format('H:i:s')
             ]));
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di WPM. Transaksi selesai.']);
+            return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di WPM. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal memproses WPM: ' . $e->getMessage()], 500);
@@ -550,6 +662,7 @@ class VehicleTrackingController extends Controller
                     'id' => $tx->id,
                     'no_pol' => $tx->vehicle->no_pol,
                     'vendor' => $tx->vendor,
+                    'lokasi_tujuan' => $tx->targetLocation->s_loc,
                     'no_spb' => $tx->no_spb,
                     'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 0, ',', '.') : '-',
                     'item_name' => $tx->item ? $tx->item->name : 'N/A',
@@ -570,6 +683,7 @@ class VehicleTrackingController extends Controller
                     'no_antrian' => $tx->no_antrian,
                     'no_pol' => $tx->vehicle->no_pol,
                     'vendor' => $tx->vendor,
+                    'lokasi_tujuan' => $tx->targetLocation->s_loc,
                     'no_spb' => $tx->no_spb,
                     'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 0, ',', '.') : '-',
                     'item_name' => $tx->item ? $tx->item->name : 'N/A',
@@ -589,41 +703,26 @@ class VehicleTrackingController extends Controller
      */
     public function qcUpdateQueueNumber(Request $request, $id)
     {
-        $request->validate([
-            'no_antrian' => 'required|string|max:50',
-        ]);
-
         try {
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
 
-            // cek no antrian apakah sudah ada
-            $existingAntrian = VehicleTransaction::where('no_antrian', $request->no_antrian)
-                ->where('qc_status', 'on_check')
-                ->first();
-
-            if ($existingAntrian) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No Antrian sudah ada.'
-                ], 422);
-            }
-
-            // Ambil no antrian terbesar yang masih pending
+            // Auto-assign queue number: find max in QC Active Sampling (qc_status = 'on_check')
             $maxAntrian = VehicleTransaction::where('qc_status', 'on_check')
-                ->max('no_antrian');
+                ->whereNotNull('no_antrian')
+                ->get()
+                ->map(function ($tx) {
+                    return (int)$tx->no_antrian;
+                })
+                ->max();
 
-            if ($maxAntrian && $request->no_antrian <= $maxAntrian) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "No Antrian harus lebih besar dari {$maxAntrian}."
-                ], 422);
-            }
+            $nextAntrian = $maxAntrian ? $maxAntrian + 1 : 1;
+            $formattedAntrian = str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
 
             // Update transaction to Proses Sampling status
             $transaction->update([
-                'no_antrian' => $request->no_antrian,
+                'no_antrian' => $formattedAntrian,
                 'status' => 'sampling',
                 'qc_status' => 'on_check',
                 'updated_by' => Auth::id()
@@ -638,7 +737,7 @@ class VehicleTrackingController extends Controller
 
             if ($activeTrack) {
                 $activeTrack->update([
-                    'status_notes' => 'Dokumen diterima. No Antrian: ' . $request->no_antrian . '. Masuk Proses Sampling.'
+                    'status_notes' => 'Dokumen diterima. No Antrian: ' . $formattedAntrian . '. Masuk Proses Sampling.'
                 ]);
             }
 
@@ -652,12 +751,12 @@ class VehicleTrackingController extends Controller
                 'no_pol' => $noPol,
                 'current_location' => $sLoc,
                 'status' => 'sampling',
-                'message' => "Truk {$noPol} dokumen telah diterima. No Antrian: {$request->no_antrian}. Masuk Proses Sampling.",
+                'message' => "Truk {$noPol} dokumen telah diterima. No Antrian: {$formattedAntrian}. Masuk Proses Sampling.",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'No Antrian berhasil diupdate. Kendaraan masuk proses sampling.']);
+            return response()->json(['success' => true, 'message' => "No Antrian {$formattedAntrian} berhasil diset otomatis. Kendaraan masuk proses sampling."]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal mengupdate No Antrian: ' . $e->getMessage()], 500);
@@ -678,6 +777,21 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+
+            $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
+
+            // Shift remaining active QC sampling queues
+            if ($completedAntrian > 0) {
+                $otherActive = VehicleTransaction::where('qc_status', 'on_check')
+                    ->whereNotNull('no_antrian')
+                    ->get();
+                foreach ($otherActive as $tx) {
+                    $currAntrian = (int)$tx->no_antrian;
+                    if ($currAntrian > $completedAntrian) {
+                        $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
+                    }
+                }
+            }
 
             // Find active QC tracking log
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -761,24 +875,38 @@ class VehicleTrackingController extends Controller
                     $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke RELEASED. Truk diarahkan ke WRM Bongkar.';
                 }
             } else {
-                // Rejected, direct completed check-out (exits premises)
+                $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+                if (!$timbanganLoc) {
+                    throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
+                }
+
+                // Rejected, goes back to timbangan for check-out
                 $transaction->update([
                     'qc_status' => 'rejected',
-                    'status' => 'completed',
-                    'check_out_time' => $now,
+                    'status' => 'timbangan_out',
+                    'current_location_id' => $timbanganLoc->id,
+                    'no_antrian' => null, // Clear QC queue
                     'updated_by' => Auth::id()
+                ]);
+
+                // Create tracking log for Timbangan
+                VehicleTracking::create([
+                    'vehicle_transaction_id' => $transaction->id,
+                    'location_id' => $timbanganLoc->id,
+                    'arrival_time' => $now,
+                    'created_by' => Auth::id(),
                 ]);
 
                 event(new VehicleStatusUpdated([
                     'transaction_id' => $transaction->id,
                     'no_pol' => $noPol,
-                    'current_location' => 'OUT',
-                    'status' => 'completed',
-                    'message' => "Truk {$noPol} ditolak QC (Rejected) -> Selesai dan keluar area.",
+                    'current_location' => 'TIMBANGAN',
+                    'status' => 'timbangan_out',
+                    'message' => "Truk {$noPol} ditolak QC (Rejected) -> Diarahkan kembali ke Timbangan untuk Check-Out.",
                     'time' => $now->format('H:i:s')
                 ]));
 
-                $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED. Truk telah check-out dan dipersilakan keluar.';
+                $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED. Truk diarahkan kembali ke Timbangan untuk Check-Out.';
             }
 
             DB::commit();
@@ -852,31 +980,44 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => 'Pembongkaran Selesai. Transaksi selesai dan keluar area.'
+                    'status_notes' => 'Pembongkaran Selesai. Truk kembali ke Timbangan.'
                 ]);
             }
 
             $noPol = $transaction->vehicle->no_pol;
 
-            // Update transaction to completed
+            $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+            if (!$timbanganLoc) {
+                throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
+            }
+
+            // Update transaction to timbangan_out
             $transaction->update([
                 'unloading_status' => 'completed',
-                'status' => 'completed',
-                'check_out_time' => $now,
+                'current_location_id' => $timbanganLoc->id,
+                'status' => 'timbangan_out',
                 'updated_by' => Auth::id()
+            ]);
+
+            // Create new tracking log for Timbangan
+            VehicleTracking::create([
+                'vehicle_transaction_id' => $transaction->id,
+                'location_id' => $timbanganLoc->id,
+                'arrival_time' => $now,
+                'created_by' => Auth::id(),
             ]);
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'OUT',
-                'status' => 'completed',
-                'message' => "Proses bongkar Truk {$noPol} di WRM telah selesai. Selesai dan keluar area.",
+                'current_location' => 'TIMBANGAN',
+                'status' => 'timbangan_out',
+                'message' => "Proses bongkar Truk {$noPol} di WRM telah selesai. Truk kembali ke Timbangan untuk Check-Out.",
                 'time' => $now->format('H:i:s')
             ]));
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Status bongkaran truk ' . $noPol . ' diperbarui ke Selesai. Transaksi selesai.']);
+            return response()->json(['success' => true, 'message' => 'Status bongkaran truk ' . $noPol . ' diperbarui ke Selesai. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal menyelesaikan bongkaran: ' . $e->getMessage()], 500);
@@ -898,7 +1039,7 @@ class VehicleTrackingController extends Controller
     {
         $queue = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
             ->where('status', 'wfg')
-            ->orderBy('check_in_time', 'asc')
+            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, no_antrian ASC, check_in_time ASC')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
@@ -907,6 +1048,7 @@ class VehicleTrackingController extends Controller
 
                 return [
                     'id' => $tx->id,
+                    'no_antrian' => $tx->no_antrian,
                     'no_pol' => $tx->vehicle->no_pol,
                     'vendor' => $tx->vendor,
                     'item_name' => $tx->item ? $tx->item->name : 'N/A',
@@ -946,31 +1088,60 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => 'Proses Bongkar/Muat WFG Selesai. Transaksi selesai dan keluar area.'
+                    'status_notes' => 'Proses Bongkar/Muat WFG Selesai. Truk kembali ke Timbangan.'
                 ]);
             }
 
             $noPol = $transaction->vehicle->no_pol;
 
-            // Update transaction to completed
+            $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+            if (!$timbanganLoc) {
+                throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
+            }
+
+            $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
+
+            // Update transaction to timbangan_out
             $transaction->update([
                 'unloading_status' => 'completed',
-                'status' => 'completed',
-                'check_out_time' => $now,
+                'current_location_id' => $timbanganLoc->id,
+                'status' => 'timbangan_out',
+                'no_antrian' => null, // Clear its own queue
                 'updated_by' => Auth::id()
+            ]);
+
+            // Shift remaining active queues in WFG
+            if ($completedAntrian > 0) {
+                $otherActive = VehicleTransaction::where('status', 'wfg')
+                    ->whereNotNull('no_antrian')
+                    ->get();
+                foreach ($otherActive as $tx) {
+                    $currAntrian = (int)$tx->no_antrian;
+                    if ($currAntrian > $completedAntrian) {
+                        $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
+                    }
+                }
+            }
+
+            // Create new tracking log for Timbangan
+            VehicleTracking::create([
+                'vehicle_transaction_id' => $transaction->id,
+                'location_id' => $timbanganLoc->id,
+                'arrival_time' => $now,
+                'created_by' => Auth::id(),
             ]);
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'OUT',
-                'status' => 'completed',
-                'message' => "Proses Bongkar/Muat Truk {$noPol} di WFG telah selesai. Selesai dan keluar area.",
+                'current_location' => 'TIMBANGAN',
+                'status' => 'timbangan_out',
+                'message' => "Proses Bongkar/Muat Truk {$noPol} di WFG telah selesai. Truk kembali ke Timbangan untuk Check-Out.",
                 'time' => $now->format('H:i:s')
             ]));
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Status bongkar/muat truk ' . $noPol . ' diperbarui ke Selesai. Transaksi selesai.']);
+            return response()->json(['success' => true, 'message' => 'Status bongkar/muat truk ' . $noPol . ' diperbarui ke Selesai. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal menyelesaikan bongkar/muat: ' . $e->getMessage()], 500);
@@ -992,7 +1163,7 @@ class VehicleTrackingController extends Controller
     {
         $queue = VehicleTransaction::with(['vehicle', 'item', 'activeTracking'])
             ->where('status', 'smu')
-            ->orderBy('check_in_time', 'asc')
+            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, no_antrian ASC, check_in_time ASC')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
@@ -1001,6 +1172,7 @@ class VehicleTrackingController extends Controller
 
                 return [
                     'id' => $tx->id,
+                    'no_antrian' => $tx->no_antrian,
                     'no_pol' => $tx->vehicle->no_pol,
                     'vendor' => $tx->vendor,
                     'item_name' => $tx->item ? $tx->item->name : 'N/A',
@@ -1040,31 +1212,60 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => 'Aktivitas SMU Selesai. Transaksi selesai dan keluar area.'
+                    'status_notes' => 'Aktivitas SMU Selesai. Truk kembali ke Timbangan.'
                 ]);
             }
 
             $noPol = $transaction->vehicle->no_pol;
 
-            // Update transaction to completed
+            $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+            if (!$timbanganLoc) {
+                throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
+            }
+
+            $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
+
+            // Update transaction to timbangan_out
             $transaction->update([
                 'unloading_status' => 'completed',
-                'status' => 'completed',
-                'check_out_time' => $now,
+                'current_location_id' => $timbanganLoc->id,
+                'status' => 'timbangan_out',
+                'no_antrian' => null, // Clear its own queue
                 'updated_by' => Auth::id()
+            ]);
+
+            // Shift remaining active queues in SMU
+            if ($completedAntrian > 0) {
+                $otherActive = VehicleTransaction::where('status', 'smu')
+                    ->whereNotNull('no_antrian')
+                    ->get();
+                foreach ($otherActive as $tx) {
+                    $currAntrian = (int)$tx->no_antrian;
+                    if ($currAntrian > $completedAntrian) {
+                        $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
+                    }
+                }
+            }
+
+            // Create new tracking log for Timbangan
+            VehicleTracking::create([
+                'vehicle_transaction_id' => $transaction->id,
+                'location_id' => $timbanganLoc->id,
+                'arrival_time' => $now,
+                'created_by' => Auth::id(),
             ]);
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'OUT',
-                'status' => 'completed',
-                'message' => "Proses Truk {$noPol} di SMU selesai. Selesai dan keluar area.",
+                'current_location' => 'TIMBANGAN',
+                'status' => 'timbangan_out',
+                'message' => "Proses Truk {$noPol} di SMU selesai. Truk kembali ke Timbangan untuk Check-Out.",
                 'time' => $now->format('H:i:s')
             ]));
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di SMU. Transaksi selesai.']);
+            return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di SMU. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal memproses SMU: ' . $e->getMessage()], 500);
@@ -1118,10 +1319,77 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Truk ' . $noPol . ' berhasil Timbang Keluar (Check-Out).'
+                ]);
+            }
             return redirect()->route('vehicle.monitoring.timbangan')->with('success', 'Truk ' . $noPol . ' berhasil Timbang Keluar (Check-Out).');
         } catch (\Exception $e) {
             DB::rollBack();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal Check-Out: ' . $e->getMessage()
+                ], 500);
+            }
             return redirect()->route('vehicle.monitoring.timbangan')->with('error', 'Gagal Check-Out: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update queue number for a transaction (generic).
+     */
+    public function updateQueueNumber(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction = VehicleTransaction::findOrFail($id);
+
+            // Auto-assign queue number: find max in current status
+            $status = $transaction->status;
+            $maxAntrian = VehicleTransaction::where('status', $status)
+                ->whereNotNull('no_antrian')
+                ->get()
+                ->map(function ($tx) {
+                    return (int)$tx->no_antrian;
+                })
+                ->max();
+
+            $nextAntrian = $maxAntrian ? $maxAntrian + 1 : 1;
+            $formattedAntrian = str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
+
+            // Update queue number
+            $transaction->update([
+                'no_antrian' => $formattedAntrian,
+                'updated_by' => Auth::id()
+            ]);
+
+            // Broadcast change
+            $noPol = $transaction->vehicle->no_pol;
+            $currentLoc = $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'N/A';
+            event(new VehicleStatusUpdated([
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'current_location' => $currentLoc,
+                'status' => $transaction->status,
+                'message' => "Nomor antrian Truk {$noPol} diset otomatis menjadi {$formattedAntrian}.",
+                'time' => Carbon::now()->format('H:i:s')
+            ]));
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Nomor antrian Truk {$noPol} berhasil diset ke {$formattedAntrian}."
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui nomor antrian: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -1146,6 +1414,19 @@ class VehicleTrackingController extends Controller
             $transaction = VehicleTransaction::findOrFail($id);
 
             $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
+
+            // Validate target area based on jenis
+            $targetLoc = Location::findOrFail($request->target_location_id);
+            $jenis = $request->jenis;
+            if ($jenis === 'bongkaran') {
+                if ($targetLoc->s_loc === 'A001') {
+                    throw new \Exception('Untuk jenis bongkaran, tidak boleh memilih tujuan area WFG (A001).');
+                }
+            } elseif (in_array($jenis, ['slipsheet', 'curah'])) {
+                if (!in_array($targetLoc->s_loc, ['A001', 'SMU', 'A002'])) {
+                    throw new \Exception('Untuk jenis slipsheet atau curah, hanya boleh memilih tujuan area WFG (A001) atau SMU.');
+                }
+            }
 
             $vendorName = trim($request->vendor);
             if ($vendorName) {
@@ -1173,7 +1454,6 @@ class VehicleTrackingController extends Controller
 
             // If target location changed, update the active tracking location to match the new destination
             if ($oldTargetId != $request->target_location_id && $transaction->status !== 'completed') {
-                $targetLoc = Location::findOrFail($request->target_location_id);
 
                 // Map target location to transaction status
                 $newStatus = 'smu';
@@ -1283,19 +1563,41 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Get all Master Data as JSON.
+     */
+    public function masterItemsData()
+    {
+        $items = VehicleItem::orderBy('id')->get();
+        $locations = Location::orderBy('id')->get();
+        $vendors = VehicleVendor::orderBy('id')->get();
+        return response()->json([
+            'success' => true,
+            'items' => $items,
+            'locations' => $locations,
+            'vendors' => $vendors
+        ]);
+    }
+
+    /**
      * Store Master SKU.
      */
     public function masterItemsStore(Request $request)
     {
         $request->validate([
-            // 'sku' => 'required|string|max:50|unique:vehicle_items,sku',
             'name' => 'required|string|max:100',
         ]);
 
-        VehicleItem::create([
-            // 'sku' => strtoupper($request->sku),
+        $item = VehicleItem::create([
             'name' => $request->name,
         ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Item SKU berhasil ditambahkan.',
+                'item' => $item
+            ]);
+        }
 
         return redirect()->route('vehicle.monitoring.master.items')->with('success', 'Item SKU berhasil ditambahkan.');
     }
@@ -1306,15 +1608,21 @@ class VehicleTrackingController extends Controller
     public function masterItemsUpdate(Request $request, $id)
     {
         $request->validate([
-            // 'sku' => 'required|string|max:50|unique:vehicle_items,sku,' . $id,
             'name' => 'required|string|max:100',
         ]);
 
         $item = VehicleItem::findOrFail($id);
         $item->update([
-            // 'sku' => strtoupper($request->sku),
             'name' => $request->name,
         ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Item SKU berhasil diperbarui.',
+                'item' => $item
+            ]);
+        }
 
         return redirect()->route('vehicle.monitoring.master.items')->with('success', 'Item SKU berhasil diperbarui.');
     }
@@ -1327,8 +1635,20 @@ class VehicleTrackingController extends Controller
         try {
             $item = VehicleItem::findOrFail($id);
             $item->delete();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Item SKU berhasil dihapus.'
+                ]);
+            }
             return redirect()->route('vehicle.monitoring.master.items')->with('success', 'Item SKU berhasil dihapus.');
         } catch (\Exception $e) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghapus Item SKU: ' . $e->getMessage()
+                ], 500);
+            }
             return redirect()->route('vehicle.monitoring.master.items')->with('error', 'Gagal menghapus Item SKU: ' . $e->getMessage());
         }
     }
@@ -1344,11 +1664,19 @@ class VehicleTrackingController extends Controller
             'description' => 'nullable|string|max:255',
         ]);
 
-        Location::create([
+        $location = Location::create([
             's_loc' => strtoupper($request->s_loc),
             'name' => $request->name,
             'description' => $request->description,
         ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sloc berhasil ditambahkan.',
+                'sloc' => $location
+            ]);
+        }
 
         return redirect()->route('vehicle.monitoring.master.items')
             ->with('success', 'Sloc berhasil ditambahkan.')
@@ -1373,6 +1701,14 @@ class VehicleTrackingController extends Controller
             'description' => $request->description,
         ]);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sloc berhasil diperbarui.',
+                'sloc' => $location
+            ]);
+        }
+
         return redirect()->route('vehicle.monitoring.master.items')
             ->with('success', 'Sloc berhasil diperbarui.')
             ->with('tab', 'sloc');
@@ -1386,10 +1722,22 @@ class VehicleTrackingController extends Controller
         try {
             $location = Location::findOrFail($id);
             $location->delete();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Sloc berhasil dihapus.'
+                ]);
+            }
             return redirect()->route('vehicle.monitoring.master.items')
                 ->with('success', 'Sloc berhasil dihapus.')
                 ->with('tab', 'sloc');
         } catch (\Exception $e) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghapus Sloc: ' . $e->getMessage()
+                ], 500);
+            }
             return redirect()->route('vehicle.monitoring.master.items')
                 ->with('error', 'Gagal menghapus Sloc: ' . $e->getMessage())
                 ->with('tab', 'sloc');
@@ -1406,10 +1754,18 @@ class VehicleTrackingController extends Controller
             'description' => 'nullable|string|max:255',
         ]);
 
-        VehicleVendor::create([
+        $vendor = VehicleVendor::create([
             'name' => $request->vendor_name,
             'description' => $request->description,
         ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Vendor berhasil ditambahkan.',
+                'vendor' => $vendor
+            ]);
+        }
 
         return redirect()->route('vehicle.monitoring.master.items')
             ->with('success', 'Vendor berhasil ditambahkan.')
@@ -1432,6 +1788,14 @@ class VehicleTrackingController extends Controller
             'description' => $request->description,
         ]);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Vendor berhasil diperbarui.',
+                'vendor' => $vendor
+            ]);
+        }
+
         return redirect()->route('vehicle.monitoring.master.items')
             ->with('success', 'Vendor berhasil diperbarui.')
             ->with('tab', 'vendor');
@@ -1445,10 +1809,22 @@ class VehicleTrackingController extends Controller
         try {
             $vendor = VehicleVendor::findOrFail($id);
             $vendor->delete();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Vendor berhasil dihapus.'
+                ]);
+            }
             return redirect()->route('vehicle.monitoring.master.items')
                 ->with('success', 'Vendor berhasil dihapus.')
                 ->with('tab', 'vendor');
         } catch (\Exception $e) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghapus Vendor: ' . $e->getMessage()
+                ], 500);
+            }
             return redirect()->route('vehicle.monitoring.master.items')
                 ->with('error', 'Gagal menghapus Vendor: ' . $e->getMessage())
                 ->with('tab', 'vendor');
