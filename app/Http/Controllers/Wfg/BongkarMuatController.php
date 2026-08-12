@@ -12,6 +12,10 @@ use App\Models\Wfg\BongkarMuat;
 use App\Models\Wfg\BongkarMuatDetail;
 use App\Models\Wfg\MasterDestinasi;
 use App\Models\Wrm\Inventory\StockOnHand;
+use App\Models\Vehicle\Location;
+use App\Models\Vehicle\VehicleTracking;
+use App\Models\Vehicle\VehicleTransaction;
+use App\Events\VehicleStatusUpdated;
 use Barryvdh\DomPDF\Facade\Pdf;
 // use Barryvdh\DomPDF\PDF;
 use Carbon\Carbon;
@@ -742,6 +746,90 @@ class BongkarMuatController extends Controller
                 'url' => route('wfg.bongkar_muat.show', $order->id),
                 'is_read' => false,
             ]);
+        }
+
+        // Auto finish vehicle tracking if active transaction exists matching no_mobil
+        if ($order->no_mobil) {
+            $cleanNoMobil = strtoupper(str_replace([' ', '-'], '', $order->no_mobil));
+            $transaction = VehicleTransaction::where('status', 'wfg')
+                ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+                    $q->whereRaw("REPLACE(REPLACE(no_pol, ' ', ''), '-', '') = ?", [$cleanNoMobil]);
+                })
+                ->first();
+
+            if ($transaction) {
+                try {
+                    DB::beginTransaction();
+
+                    // Conclude WFG tracking
+                    $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                        ->where('location_id', $transaction->current_location_id)
+                        ->whereNull('departure_time')
+                        ->latest()
+                        ->first();
+
+                    $now = Carbon::now();
+                    $duration = $activeTrack ? $now->diffInSeconds($activeTrack->arrival_time) : 0;
+
+                    if ($activeTrack) {
+                        $activeTrack->update([
+                            'departure_time' => $now,
+                            'duration_seconds' => $duration,
+                            'status_notes' => 'Proses Bongkar/Muat WFG Selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan.'
+                        ]);
+                    }
+
+                    $noPol = $transaction->vehicle->no_pol;
+
+                    $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+                    if ($timbanganLoc) {
+                        $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
+
+                        // Update transaction to timbangan_out
+                        $transaction->update([
+                            'unloading_status' => 'completed',
+                            'current_location_id' => $timbanganLoc->id,
+                            'status' => 'timbangan_out',
+                            'no_antrian' => null, // Clear its own queue
+                        ]);
+
+                        // Shift remaining active queues in WFG
+                        if ($completedAntrian > 0) {
+                            $otherActive = VehicleTransaction::where('status', 'wfg')
+                                ->whereNotNull('no_antrian')
+                                ->get();
+                            foreach ($otherActive as $tx) {
+                                $currAntrian = (int)$tx->no_antrian;
+                                if ($currAntrian > $completedAntrian) {
+                                    $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
+                                }
+                            }
+                        }
+
+                        // Create new tracking log for Timbangan
+                        VehicleTracking::create([
+                            'vehicle_transaction_id' => $transaction->id,
+                            'location_id' => $timbanganLoc->id,
+                            'arrival_time' => $now,
+                            'created_by' => Auth::id(),
+                        ]);
+
+                        event(new VehicleStatusUpdated([
+                            'transaction_id' => $transaction->id,
+                            'no_pol' => $noPol,
+                            'current_location' => 'TIMBANGAN',
+                            'status' => 'timbangan_out',
+                            'message' => "Proses Bongkar/Muat Truk {$noPol} di WFG telah selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan untuk Check-Out.",
+                            'time' => $now->format('H:i:s')
+                        ]));
+                    }
+
+                    DB::commit();
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Auto finish vehicle tracking error: ' . $e->getMessage());
+                }
+            }
         }
 
         return back()->with('success', 'Driver approved successfully.');
