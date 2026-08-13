@@ -1085,7 +1085,7 @@ class WspPurchaseRequesitionController extends Controller
             ], 422);
         }
 
-        // Foreman WSP / User with role 'level_5_pr'
+        // Admin WSP / User with role 'level_5_pr'
         $foreman = User::role('level_5_pr')
             ->where('is_active', true)
             ->first();
@@ -1100,7 +1100,7 @@ class WspPurchaseRequesitionController extends Controller
         if (!$foreman) {
             return response()->json([
                 'success' => false,
-                'message' => 'Approver Level 5 (Foreman WSP / Role level_5_pr) tidak ditemukan',
+                'message' => 'Approver Level 5 (Admin WSP / Role level_5_pr) tidak ditemukan',
             ], 422);
         }
 
@@ -1147,7 +1147,7 @@ class WspPurchaseRequesitionController extends Controller
             ],
             [
                 'level'       => 5,
-                'role'        => 'Foreman Wsp',
+                'role'        => 'Admin Wsp',
                 'approver_id' => $foreman->id,
                 'status'      => 'pending',
             ],
