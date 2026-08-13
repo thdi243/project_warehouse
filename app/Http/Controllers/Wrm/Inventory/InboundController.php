@@ -786,16 +786,16 @@ class InboundController extends Controller
             }
 
             // Cek apakah pallet_id baru bentrok dengan pallet lain di SPB yang sama
-            if ($detail->no_spb) {
-                $isPalletDuplicate = StockOnHand::where('no_spb', $detail->no_spb)
-                    ->where('pallet_id', $request->pallet_id)
-                    ->where('id', '!=', $id)
-                    ->exists();
+            // if ($detail->no_spb) {
+            //     $isPalletDuplicate = StockOnHand::where('no_spb', $detail->no_spb)
+            //         ->where('pallet_id', $request->pallet_id)
+            //         ->where('id', '!=', $id)
+            //         ->exists();
 
-                if ($isPalletDuplicate) {
-                    throw new \Exception("Pallet ID {$request->pallet_id} sudah digunakan dalam No SPB ini.");
-                }
-            }
+            //     if ($isPalletDuplicate) {
+            //         throw new \Exception("Pallet ID {$request->pallet_id} sudah digunakan dalam No SPB ini.");
+            //     }
+            // }
 
             // Combine selected date with current time
             $incomingDateWithTime = ($request->incoming_date ?? date('Y-m-d')) . ' ' . date('H:i:s');
@@ -834,7 +834,7 @@ class InboundController extends Controller
             // Sync Balances
             \App\Models\Wrm\Inventory\StockBalance::recalculate($barangId);
             \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $incomingDateWithTime);
-            
+
             $oldDate = $detail->getOriginal('incoming_date') ?? $incomingDateWithTime;
             if ($oldDate !== $incomingDateWithTime) {
                 \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $oldDate);
