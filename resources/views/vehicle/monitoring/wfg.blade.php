@@ -137,7 +137,10 @@
                             <td class="text-center">${antrianBadge}</td>
                             <td>${tx.arrival_time}</td>
                             <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
-                            <td>${tx.vendor || '-'}</td>
+                            <td>
+                                <strong>${tx.vendor || '-'}</strong><br>
+                                <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
+                            </td>
                             <td>${tx.item_name}</td>
                             <td>${tx.no_spb}</td>
                             <td>${tx.qty_spb}</td>

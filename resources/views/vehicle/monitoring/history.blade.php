@@ -120,7 +120,8 @@
                                     <td><small class="fw-bold">${tx.no_transaction}</small></td>
                                     <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
                                     <td>
-                                        <strong>${tx.vendor}</strong>
+                                        <strong>${tx.vendor}</strong><br>
+                                        <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
                                     </td>
                                     <td>
                                         <strong>${tx.jenis.toUpperCase()}</strong><br>

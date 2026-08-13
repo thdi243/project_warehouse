@@ -147,7 +147,9 @@
                                         <select class="form-select select2" id="item_id" name="item_id" required>
                                             <option value="" selected disabled>Pilih Item</option>
                                             @foreach ($items as $item)
-                                                <option value="{{ $item->id }}" data-location-id="{{ $item->location_id }}">{{ $item->name }}</option>
+                                                <option value="{{ $item->id }}"
+                                                    data-location-id="{{ $item->location_id }}">{{ $item->name }}
+                                                </option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -162,9 +164,13 @@
                                             step="any" placeholder="Kuantitas SPB">
                                     </div>
                                 </div>
-                                <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary"><i
-                                            class="ri-save-line me-1 align-middle"></i>Submit</button>
+                                <div class="row">
+                                    <input type="hidden" id="nama_driver" name="nama_driver">
+                                    <input type="hidden" id="no_hp_driver" name="no_hp_driver">
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary"><i
+                                                class="ri-save-line me-1 align-middle"></i>Submit</button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
@@ -273,7 +279,8 @@
                                         class="text-danger">*</span></label>
                                 <select class="form-select select2-edit" id="edit_item_id" name="item_id" required>
                                     @foreach ($items as $item)
-                                        <option value="{{ $item->id }}" data-location-id="{{ $item->location_id }}">{{ $item->name }}</option>
+                                        <option value="{{ $item->id }}" data-location-id="{{ $item->location_id }}">
+                                            {{ $item->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -299,6 +306,8 @@
                                     step="any" placeholder="Kuantitas SPB">
                             </div>
                         </div>
+                        <input type="hidden" id="edit_nama_driver" name="nama_driver">
+                        <input type="hidden" id="edit_no_hp_driver" name="no_hp_driver">
                     </div>
                     <div class="modal-footer border-0 bg-light p-3">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
@@ -439,7 +448,11 @@
             // Handle plate selection change to auto populate vendor name
             $('#no_pol').on('change', function() {
                 const selectedNopol = $(this).val();
-                if (!selectedNopol) return;
+                if (!selectedNopol) {
+                    $('#nama_driver').val('');
+                    $('#no_hp_driver').val('');
+                    return;
+                }
 
                 // Find the matched supplier item from the API response
                 const matchedSupplier = supplierDataList.find(function(item) {
@@ -447,22 +460,31 @@
                         .toUpperCase().replace(/\s+/g, '');
                 });
 
-                if (matchedSupplier && matchedSupplier.nama_perusahaan) {
-                    // Clean company name (remove leading '- ' if any)
-                    let vendorName = matchedSupplier.nama_perusahaan.trim();
-                    if (vendorName.startsWith('- ')) {
-                        vendorName = vendorName.substring(2).trim();
-                    } else if (vendorName.startsWith('-')) {
-                        vendorName = vendorName.substring(1).trim();
+                if (matchedSupplier) {
+                    if (matchedSupplier.nama_perusahaan) {
+                        // Clean company name (remove leading '- ' if any)
+                        let vendorName = matchedSupplier.nama_perusahaan.trim();
+                        if (vendorName.startsWith('- ')) {
+                            vendorName = vendorName.substring(2).trim();
+                        } else if (vendorName.startsWith('-')) {
+                            vendorName = vendorName.substring(1).trim();
+                        }
+
+                        // Auto populate vendor Select2
+                        if ($("#vendor").find("option[value='" + vendorName + "']").length === 0) {
+                            const newOption = new Option(vendorName, vendorName, true, true);
+                            $("#vendor").append(newOption).trigger('change');
+                        } else {
+                            $("#vendor").val(vendorName).trigger('change');
+                        }
                     }
 
-                    // Auto populate vendor Select2
-                    if ($("#vendor").find("option[value='" + vendorName + "']").length === 0) {
-                        const newOption = new Option(vendorName, vendorName, true, true);
-                        $("#vendor").append(newOption).trigger('change');
-                    } else {
-                        $("#vendor").val(vendorName).trigger('change');
-                    }
+                    // Auto populate driver name & phone
+                    $('#nama_driver').val(matchedSupplier.nama_driver || '');
+                    $('#no_hp_driver').val(matchedSupplier.no_hp_driver || '');
+                } else {
+                    $('#nama_driver').val('');
+                    $('#no_hp_driver').val('');
                 }
             });
 
@@ -564,7 +586,10 @@
                             <td class="text-center"><small class="fw-bold">${index + (currentPage - 1) * itemsPerPage + 1}</small></td>
                             <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
                             <td>${tx.jenis}</td>
-                            <td>${tx.vendor || '-'}</td>
+                            <td>
+                                <strong>${tx.vendor || '-'}</strong><br>
+                                <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
+                            </td>
                             <td>
                                 <strong>${tx.no_spb || '-'}</strong><br>
                                 <small class="text-muted">${tx.qty_spb || '-'}</small>
@@ -647,6 +672,8 @@
                         $('#vendor').val(null).trigger('change');
                         $('#no_spb').val('');
                         $('#qty_spb').val('');
+                        $('#nama_driver').val('');
+                        $('#no_hp_driver').val('');
 
                         Swal.fire('Berhasil!', response.message, 'success');
                         fetchTransactions();
@@ -698,6 +725,8 @@
 
                             $('#edit_no_spb').val(tx.no_spb === '-' ? '' : tx.no_spb);
                             $('#edit_qty_spb').val(tx.qty_spb === '-' ? '' : tx.qty_spb);
+                            $('#edit_nama_driver').val(tx.nama_driver || '');
+                            $('#edit_no_hp_driver').val(tx.no_hp_driver || '');
 
                             // Set form action route dynamically
                             const actionUrl =
@@ -856,11 +885,11 @@
                 const targetLocId = $(targetSelectId).val();
                 const itemSelect = $(itemSelectId);
                 const currentVal = itemSelect.val();
-                
+
                 // Clear all options
                 itemSelect.empty();
                 itemSelect.append('<option value="" selected disabled>Pilih Item</option>');
-                
+
                 // Filter matching options from cache
                 let matchedItems = allItemsList;
                 if (targetLocId) {
@@ -868,14 +897,14 @@
                         return !item.location_id || String(item.location_id) === String(targetLocId);
                     });
                 }
-                
+
                 matchedItems.forEach(function(item) {
                     const isSelected = (currentVal && String(item.id) === String(currentVal));
                     const option = new Option(item.name, item.id, isSelected, isSelected);
                     $(option).attr('data-location-id', item.location_id);
                     itemSelect.append(option);
                 });
-                
+
                 itemSelect.trigger('change.select2');
             }
 

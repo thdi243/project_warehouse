@@ -17,6 +17,8 @@ class VehicleTransaction extends Model
         'vehicle_id',
         'jenis',
         'vendor',
+        'nama_driver',
+        'no_hp_driver',
         'item_id',
         'no_spb',
         'qty_spb',
