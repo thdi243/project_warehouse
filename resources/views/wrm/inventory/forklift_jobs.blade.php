@@ -2,7 +2,7 @@
 
 @section('sidebar-size', 'sm')
 
-@section('title', ' | Pekerjaan Forklift Driver')
+@section('title', ' | Transfer Stock Outbound')
 
 @section('styles')
     <style>
@@ -78,8 +78,8 @@
             <div class="row mb-4">
                 <div class="col-12 d-flex justify-content-between align-items-center">
                     <div>
-                        <h4 class="mb-1 fw-bold text-dark">Pekerjaan Forklift Driver</h4>
-                        <p class="text-muted mb-0">Self-service pemindahan stock outbound yang ditugaskan ke Anda.</p>
+                        <h4 class="mb-1 fw-bold text-dark">Transfer Stock Outbound Forklift</h4>
+                        <p class="text-muted mb-0">Self-service transfer stock outbound yang ditugaskan ke Anda.</p>
                     </div>
                     <div>
                         <button class="btn btn-primary btn-md" id="btnRefresh">
@@ -142,8 +142,7 @@
 
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped table-hover align-middle text-nowrap"
-                            id="tableJobs">
+                        <table class="table table-striped table-hover align-middle text-nowrap" id="tableJobs">
                             <thead class="table-light">
                                 <tr>
                                     {{-- <th class="text-center" style="width: 50px;">
@@ -448,7 +447,7 @@
                                         title: 'Berhasil',
                                         text: res.message ||
                                             'Item berhasil diselesaikan.',
-                                        timer: 2000,
+                                        timer: 1500,
                                         showConfirmButton: false
                                     }).then(() => {
                                         loadJobs();
@@ -475,7 +474,7 @@
 
                 Swal.fire({
                     title: 'Konfirmasi Pemindahan',
-                    text: 'Apakah Anda sudah memindahkan item ini ke area pemrosesan?',
+                    text: 'Apakah Anda sudah memindahkan item ini ke area tujuan?',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#10b981',
