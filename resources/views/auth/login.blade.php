@@ -497,7 +497,7 @@
                             <div class="mb-form">
                                 <label for="username" class="form-label-custom">Username / NIK</label>
                                 <input type="text" class="form-control-custom" id="username" name="username"
-                                    required placeholder="Masukkan username atau NIK" autocomplete="username">
+                                    required placeholder="Masukkan username atau NIK" autocomplete="username" autofocus>
                             </div>
 
                             <div class="mb-form">
@@ -551,6 +551,8 @@
 
             // Login form
             $(document).ready(function() {
+                $('#username').focus();
+
                 $('#loginForm').submit(function(e) {
                     e.preventDefault();
 
