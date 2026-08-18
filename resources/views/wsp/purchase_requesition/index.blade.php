@@ -208,7 +208,10 @@
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>JENIS PR</th>
-                                    <th>STATUS APPROVED</th>
+                                    <th onclick="toggleSort('status_approved')" style="cursor: pointer; user-select: none;">
+                                        STATUS APPROVED
+                                        <i class="mdi mdi-sort ms-1" id="sortIcon-status_approved"></i>
+                                    </th>
                                     {{-- <th>FLAG</th> --}}
                                     <th class="text-center text-nowrap">AKSI</th>
                                     @can('permission', 'wsp-data-pr-plus')
@@ -419,6 +422,30 @@
         $(document).ready(function() {
             let allPR = [];
             let currentPage = 1;
+            let sortBy = 'created_at';
+            let sortDir = 'desc';
+
+            window.toggleSort = function(column) {
+                if (sortBy === column) {
+                    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortBy = column;
+                    sortDir = 'asc';
+                }
+
+                // Update sort icons
+                $('[id^="sortIcon-"]').removeClass('mdi-sort-ascending mdi-sort-descending').addClass('mdi-sort');
+                const icon = $(`#sortIcon-${column}`);
+                if (icon.length) {
+                    if (sortDir === 'asc') {
+                        icon.removeClass('mdi-sort').addClass('mdi-sort-ascending');
+                    } else {
+                        icon.removeClass('mdi-sort').addClass('mdi-sort-descending');
+                    }
+                }
+
+                window.loadPRData(1);
+            };
 
             window.loadPRData = function(page = 1) {
                 const search = $('#searchInput').val().trim();
@@ -440,7 +467,9 @@
                         status: status,
                         departemen: departemen,
                         start_date: startDate,
-                        end_date: endDate
+                        end_date: endDate,
+                        sort_by: sortBy,
+                        sort_dir: sortDir
                     },
                     dataType: "json",
                     beforeSend: function() {
@@ -776,6 +805,12 @@
                 $('#filterDepartemen').val('all');
                 $('#filterStartDate').val('');
                 $('#filterEndDate').val('');
+                
+                // Reset sorting
+                sortBy = 'created_at';
+                sortDir = 'desc';
+                $('[id^="sortIcon-"]').removeClass('mdi-sort-ascending mdi-sort-descending').addClass('mdi-sort');
+
                 loadPRData(1);
             });
 

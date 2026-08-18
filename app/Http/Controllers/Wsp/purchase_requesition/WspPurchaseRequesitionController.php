@@ -375,7 +375,37 @@ class WspPurchaseRequesitionController extends Controller
         $totalItemPR = DB::table('wsp_purchase_requesition_items')->whereIn('pr_id', $subquery)->where('jenis', 'pr')->count('id') ?? 0;
         $totalItemReservasi = DB::table('wsp_stock_reservations')->whereIn('pr_id', $subquery)->where('status', 'confirmed')->where('type', 'reservation')->count('id') ?? 0;
 
-        $pr = $query->orderBy('created_at', 'desc')->paginate(15);
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDir = $request->input('sort_dir', 'desc');
+
+        if (!in_array($sortDir, ['asc', 'desc'])) {
+            $sortDir = 'desc';
+        }
+
+        if ($sortBy === 'status_approved') {
+            $query->orderBy(DB::raw("
+                CASE 
+                    WHEN wsp_purchase_requesition.status = 'rejected' THEN 0
+                    ELSE COALESCE(
+                        (SELECT MAX(level) 
+                         FROM wsp_purchase_requesition_approval 
+                         WHERE wsp_purchase_requesition_approval.pr_id = wsp_purchase_requesition.id 
+                           AND wsp_purchase_requesition_approval.status = 'approved'
+                        ), 
+                        1
+                    )
+                END
+            "), $sortDir);
+        } else {
+            $validSortColumns = ['created_at', 'pr_date', 'no_doc', 'pr_number', 'requested_by', 'department', 'jenis'];
+            if (in_array($sortBy, $validSortColumns)) {
+                $query->orderBy($sortBy, $sortDir);
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
+        }
+
+        $pr = $query->paginate(15);
 
         $pr->getCollection()->each(function ($requisition) {
             if ($requisition->items) {
