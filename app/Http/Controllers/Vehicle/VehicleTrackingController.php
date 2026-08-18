@@ -322,7 +322,8 @@ class VehicleTrackingController extends Controller
     public function getSupplierData(Request $request)
     {
         try {
-            $response = Http::timeout(5)
+            $response = Http::connectTimeout(5)
+                ->timeout(10)
                 ->get('http://10.11.11.10:8093/api/supplier-data');
 
             if ($response->successful()) {
