@@ -613,6 +613,7 @@
             // Update Comparison with Yesterday
             const compareContainer = $('#lblStockAccuracyCompare');
             compareContainer.empty();
+            const yLabel = kpis.yesterday_label || 'dari kemarin';
             if (kpis.yesterday_accuracy !== null) {
                 const diff = parseFloat(kpis.stock_accuracy) - parseFloat(kpis.yesterday_accuracy);
                 const diffFormatted = Math.abs(diff).toFixed(2) + '%';
@@ -621,26 +622,26 @@
                         <span class="text-success fw-bold">
                             <i class="mdi mdi-arrow-up-bold me-1"></i>+${diffFormatted}
                         </span>
-                        <span class="text-muted ms-1 small">${kpis.yesterday_label}</span>
+                        <span class="text-muted ms-1 small">${yLabel}</span>
                     `);
                 } else if (diff < 0) {
                     compareContainer.html(`
                         <span class="text-danger fw-bold">
                             <i class="mdi mdi-arrow-down-bold me-1"></i>-${diffFormatted}
                         </span>
-                        <span class="text-muted ms-1 small">${kpis.yesterday_label}</span>
+                        <span class="text-muted ms-1 small">${yLabel}</span>
                     `);
                 } else {
                     compareContainer.html(`
                         <span class="text-muted fw-bold">
-                            <i class="mdi mdi-minus me-1"></i>Sama dengan kemarin
+                            <i class="mdi mdi-minus me-1"></i>Sama dengan ${yLabel.replace('dari ', '')}
                         </span>
                     `);
                 }
             } else {
                 compareContainer.html(`
                     <span class="text-muted small">
-                        <i class="mdi mdi-information-outline me-1"></i>Data ${kpis.yesterday_label.replace('dari ', '')} tidak tersedia
+                        <i class="mdi mdi-information-outline me-1"></i>Data ${yLabel.replace('dari ', '')} tidak tersedia
                     </span>
                 `);
             }

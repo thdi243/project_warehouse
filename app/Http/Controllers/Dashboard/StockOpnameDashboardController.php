@@ -1244,6 +1244,7 @@ class StockOpnameDashboardController extends Controller
                     'item_selisih' => number_format($itemSelisih, 0, ',', '.'),
                     'stock_accuracy' => $stockAccuracy,
                     'yesterday_accuracy' => $yesterdayAccuracy,
+                    'yesterday_label' => $jenisSo === 'monthly' ? 'dari bulan lalu' : 'dari kemarin',
                     'selisih_qty_pos' => $totalQtyLebih > 0 ? '+' . number_format($totalQtyLebih, 0, ',', '.') : '0',
                     'selisih_qty_neg' => $totalQtyKurang < 0 ? number_format($totalQtyKurang, 0, ',', '.') : '0',
                 ],
