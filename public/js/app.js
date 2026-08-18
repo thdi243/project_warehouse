@@ -95,6 +95,7 @@ $(document).ready(function () {
         },
     });
 
+    // Session expired or unauthorized AJAX request handling
     $(document).ajaxError(function (event, xhr) {
         if (xhr.status === 401 || xhr.status === 419) {
             window.location.href = "/login";
