@@ -464,16 +464,29 @@ class WrmStockOnHandController extends Controller
             $items = $request->items;
         }
 
-        // Validasi existing (barang, spb, pallet, jenis_so, today)
+        // Validasi existing (barang, spb, pallet, qty_soh, jenis_so, today)
         $existingItems = [];
         foreach ($items as $item) {
             $bId = $item['barang_id'];
             $spb = $item['no_spb'];
             $pallet = $item['pallet_id'];
+            $qty = (float)$item['qty'];
+            $status = strtoupper($item['status']);
+
+            $unrest = $status === 'UNREST' ? $qty : 0;
+            $qi     = $status === 'QI' ? $qty : 0;
+            $block  = $status === 'BLOCKED' ? $qty : 0;
+
+            if (!in_array($status, ['UNREST', 'QI', 'BLOCKED'])) {
+                $unrest = $qty;
+            }
+
+            $qty_soh = $unrest + $qi + $block;
 
             $exists = WrmSohModel::where('barang_id', $bId)
                 ->where('no_spb', $spb)
                 ->where('pallet', $pallet)
+                ->where('qty_soh', $qty_soh)
                 ->where('jenis_so', $jenisSo)
                 ->where('jenis_data', $jenisData)
                 ->whereDate('created_at', $today)
@@ -482,7 +495,7 @@ class WrmStockOnHandController extends Controller
             if ($exists) {
                 $barang = MasterBarangModel::find($bId);
                 $mid = $barang ? $barang->mid : $bId;
-                $existingItems[] = "Barang: {$mid}, SPB: {$spb}, Pallet: {$pallet}";
+                $existingItems[] = "Barang: {$mid}, SPB: {$spb}, Pallet: {$pallet}, Qty: {$qty_soh}";
             }
         }
 
@@ -534,12 +547,12 @@ class WrmStockOnHandController extends Controller
                         'no_spb'    => $noSpb,
                         'pallet'    => $pallet,
                         'loc_id'    => $locId,
+                        'qty_soh'   => $qty_soh,
                         'jenis_so'  => $jenisSo,
                         'created_at' => $today
                     ],
                     [
                         'user_id'      => Auth::id() ?? 1,
-                        'qty_soh'      => $qty_soh,
                         'qty_unrest'   => $unrest,
                         'qty_qi'       => $qi,
                         'qty_block'    => $block,
@@ -620,10 +633,16 @@ class WrmStockOnHandController extends Controller
         ]);
 
         try {
-            // Validasi jika MID, no_spb, dan pallet sama di hari ini dan sudah ada (selain record ini) untuk jenis SO ini
+            $unrest = (int)($request->unrest ?? 0);
+            $qi = (int)($request->qi ?? 0);
+            $block = (int)($request->block ?? 0);
+            $qty_soh = $unrest + $qi + $block;
+
+            // Validasi jika MID, no_spb, pallet, dan qty_soh sama di hari ini dan sudah ada (selain record ini) untuk jenis SO ini
             $exists = WrmSohModel::where('barang_id', $soh->barang_id)
                 ->where('no_spb', $request->no_spb)
                 ->where('pallet', $request->pallet)
+                ->where('qty_soh', $qty_soh)
                 ->where('jenis_so', $soh->jenis_so)
                 ->whereDate('created_at', $soh->created_at)
                 ->where('id', '!=', $soh->id)
@@ -633,14 +652,9 @@ class WrmStockOnHandController extends Controller
                 $barang = MasterBarangModel::find($soh->barang_id);
                 return response()->json([
                     'status' => false,
-                    'message' => "Data SOH untuk MID {$barang->mid} dengan No SPB {$request->no_spb} dan Pallet {$request->pallet} sudah ada untuk jenis SO ini!"
+                    'message' => "Data SOH untuk MID {$barang->mid} dengan No SPB {$request->no_spb}, Pallet {$request->pallet}, dan Qty {$qty_soh} sudah ada untuk jenis SO ini!"
                 ], 422);
             }
-
-            $unrest = (int)($request->unrest ?? 0);
-            $qi = (int)($request->qi ?? 0);
-            $block = (int)($request->block ?? 0);
-            $qty_soh = $unrest + $qi + $block;
 
             $soh->update([
                 'no_spb' => $request->no_spb,
@@ -936,7 +950,7 @@ class WrmStockOnHandController extends Controller
                 ], 422);
             }
 
-            // Validasi jika MID, no_spb dan pallet sama di hari ini dan sudah ada untuk jenis SO ini
+            // Validasi jika MID, no_spb, pallet, dan qty_soh sama di hari ini dan sudah ada untuk jenis SO ini
             $duplicatesInDb = [];
             $seenCombinations = [];
             $duplicatesInFile = [];
@@ -947,11 +961,17 @@ class WrmStockOnHandController extends Controller
 
                 $noSpb = empty($data['no_spb']) ? null : (string)$data['no_spb'];
                 $pallet = isset($data['pallet_id']) ? (string)$data['pallet_id'] : null;
-                $combinationKey = $barang->mid . '-' . $noSpb . '-' . $pallet;
+                
+                $unrest = (int)($data['unrest'] ?? 0);
+                $qual_insp = (int)($data['qual_insp'] ?? 0);
+                $blocked = (int)($data['blocked'] ?? 0);
+                $qty_soh = $unrest + $qual_insp + $blocked;
+
+                $combinationKey = $barang->mid . '-' . $noSpb . '-' . $pallet . '-' . $qty_soh;
 
                 // Check duplicates in file
                 if (in_array($combinationKey, $seenCombinations)) {
-                    $duplicatesInFile[] = "MID: {$barang->mid}, SPB: " . ($noSpb ?? '-') . ", Pallet: " . ($pallet ?? '-');
+                    $duplicatesInFile[] = "MID: {$barang->mid}, SPB: " . ($noSpb ?? '-') . ", Pallet: " . ($pallet ?? '-') . ", Qty: {$qty_soh}";
                 } else {
                     $seenCombinations[] = $combinationKey;
                 }
@@ -960,12 +980,13 @@ class WrmStockOnHandController extends Controller
                 $exists = WrmSohModel::where('barang_id', $barang->id)
                     ->where('no_spb', $noSpb)
                     ->where('pallet', $pallet)
+                    ->where('qty_soh', $qty_soh)
                     ->where('jenis_so', $jenisSo)
                     ->whereDate('created_at', $today)
                     ->exists();
 
                 if ($exists) {
-                    $duplicatesInDb[] = "MID: {$barang->mid}, SPB: " . ($noSpb ?? '-') . ", Pallet: " . ($pallet ?? '-');
+                    $duplicatesInDb[] = "MID: {$barang->mid}, SPB: " . ($noSpb ?? '-') . ", Pallet: " . ($pallet ?? '-') . ", Qty: {$qty_soh}";
                 }
             }
 
@@ -973,7 +994,7 @@ class WrmStockOnHandController extends Controller
                 $allDuplicates = array_unique(array_merge($duplicatesInFile, $duplicatesInDb));
                 return response()->json([
                     'status' => false,
-                    'message' => 'Terdapat duplikasi data MID, No SPB, dan Pallet untuk hari ini: ' . implode('; ', $allDuplicates),
+                    'message' => 'Terdapat duplikasi data MID, No SPB, Pallet, dan Qty untuk hari ini: ' . implode('; ', $allDuplicates),
                     'duplicates' => $allDuplicates
                 ], 422);
             }
@@ -1002,6 +1023,7 @@ class WrmStockOnHandController extends Controller
                         'no_spb'    => $noSpb,
                         'pallet'    => $pallet,
                         'loc_id'    => $locId,
+                        'qty_soh'   => $qty_soh,
                         'jenis_so'  => $jenisSo,
                         'created_at' => $today
                     ],

@@ -582,10 +582,13 @@ class WrmStockOpnameController extends Controller
         $user = Auth::user();
         $today = now()->toDateString();
 
-        // Validasi jika MID, no_spb dan pallet sudah ada hari ini untuk jenis SO ini
+        $qty_soh = (int)($request->unrest ?? 0) + (int)($request->qi ?? 0) + (int)($request->blocked ?? 0);
+
+        // Validasi jika MID, no_spb, pallet, dan qty_soh sudah ada hari ini untuk jenis SO ini
         $exists = WrmSohModel::where('barang_id', $barang->id)
             ->where('no_spb', $request->no_spb)
             ->where('pallet', $request->pallet)
+            ->where('qty_soh', $qty_soh)
             ->where('jenis_so', $jenisSo)
             ->whereDate('created_at', $today)
             ->exists();
@@ -593,7 +596,7 @@ class WrmStockOpnameController extends Controller
         if ($exists) {
             return response()->json([
                 'status' => 'error',
-                'message' => "MID {$request->mid_barang} dengan No SPB " . ($request->no_spb ?? '-') . " dan Pallet {$request->pallet} sudah ada hari ini."
+                'message' => "MID {$request->mid_barang} dengan No SPB " . ($request->no_spb ?? '-') . ", Pallet {$request->pallet}, dan Qty {$qty_soh} sudah ada hari ini."
             ], 422);
         }
 
@@ -614,12 +617,12 @@ class WrmStockOpnameController extends Controller
                 'no_spb'    => $request->no_spb,
                 'pallet'    => $request->pallet,
                 'loc_id'    => $locId,
+                'qty_soh'   => $qty_soh,
                 'jenis_so'  => $jenisSo,
                 'created_at' => $today
             ],
             [
                 'user_id' => $user->id ?? 1,
-                'qty_soh' => (int)$request->unrest + (int)$request->qi + (int)$request->blocked,
                 'qty_unrest' => $request->unrest,
                 'qty_qi' => $request->qi ?? 0,
                 'qty_block' => $request->blocked ?? 0,
