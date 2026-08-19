@@ -1408,6 +1408,14 @@ class InboundController extends Controller
     {
         $locIdInput = $request->loc_id;
         $noSpb = $request->no_spb;
+        $excludeBinIds = (array) ($request->exclude_bin_ids ?? []);
+        $tempIds = (array) ($request->temp_ids ?? []);
+
+        if (empty($tempIds)) {
+            return response()->json([
+                'data' => []
+            ]);
+        }
 
         $data = TempUploadModel::when(strtolower(Auth::user()->jabatan ?? '') === 'operator', function ($q) {
             return $q->where('created_by', Auth::id());
@@ -1415,9 +1423,14 @@ class InboundController extends Controller
             ->when($noSpb, function ($q) use ($noSpb) {
                 $q->where('no_spb', $noSpb);
             })
+            ->whereIn('id', $tempIds)
             ->get();
 
         $usedBinIds = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])->pluck('loc_id')->toArray();
+
+        if (!empty($excludeBinIds)) {
+            $usedBinIds = array_unique(array_merge($usedBinIds, $excludeBinIds));
+        }
 
         $usedDetails = StockOnHand::with(['barang:id,mid', 'bin:id,loc_id,kolom'])
             ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])

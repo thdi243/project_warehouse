@@ -1,21 +1,18 @@
 @extends('layouts.app')
 @section('styles')
     <style>
-        .select2-container--bootstrap-5 .select2-selection {
-            font-size: 0.85rem !important;
-            min-height: 38px !important;
-            display: flex !important;
-            align-items: center !important;
+        .select2-container--default .select2-selection--single {
+            min-height: 38px;
+            border: 1px solid #ced4da;
+            border-radius: .375rem;
         }
 
-        .select2-container--bootstrap-5 .select2-dropdown .select2-results__options {
-            font-size: 0.85rem !important;
-            max-height: 250px !important;
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px;
         }
 
-        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-            line-height: normal !important;
-            padding-left: 0.75rem !important;
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px;
         }
     </style>
 @endsection
@@ -54,7 +51,7 @@
                                         class="text-danger">*</span></label>
                                 <!-- @if (strtolower(Auth::user()->jabatan ?? '') == 'operator')
     <input type="date" name="incoming_date" id="incoming_date" class="form-control bg-light" value="{{ date('Y-m-d') }}" readonly>
-                                <small class="text-muted">Hanya dapat diubah oleh Admin/Supervisor</small>
+                                        <small class="text-muted">Hanya dapat diubah oleh Admin/Supervisor</small>
 @else
     <input type="date" name="incoming_date" id="incoming_date" class="form-control" value="{{ date('Y-m-d') }}" required>
     @endif -->
@@ -85,8 +82,15 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label for="location" class="form-label fw-bold">Lokasi <span
-                                        class="text-danger">*</span></label>
+                                <label for="location"
+                                    class="form-label fw-bold d-flex justify-content-between align-items-center">
+                                    <span>Lokasi <span class="text-danger">*</span></span>
+                                    <button type="button" id="btnResetLocations"
+                                        class="btn btn-link text-danger p-0 text-decoration-none"
+                                        style="font-size: 0.8rem;">
+                                        <i class="mdi mdi-refresh"></i> Reset Pilihan
+                                    </button>
+                                </label>
                                 <select id="locationSelect" class="form-select">
                                     <option value="">Pilih Lokasi per Bin</option>
                                     @foreach ($zones as $zone)
@@ -100,7 +104,7 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-bordered align-middle">
+                            <table class="table align-middle">
                                 <thead class="table-light align-middle">
                                     <tr>
                                         <th class="text-center">No</th>
@@ -205,6 +209,9 @@
 
     <script>
         $(document).ready(function() {
+            // Save original options of locationSelect
+            const originalLocationOptions = $('#locationSelect').html();
+
             // Initialize Select2
             $('#supplier, #pallet, #locationSelect').select2({
                 theme: 'bootstrap-5',
@@ -387,17 +394,65 @@
                 });
             });
 
+            // Handle Reset button click
+            $('#btnResetLocations').on('click', function() {
+                Swal.fire({
+                    title: 'Reset Pilihan?',
+                    text: 'Apakah Anda yakin ingin mengosongkan semua pilihan lokasi pada tabel?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Reset',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $('.manual-loc-select').val(null).trigger('change');
+                        // Restore original options in dropdown
+                        $('#locationSelect').html(originalLocationOptions).val('').trigger(
+                            'change.select2');
+                    }
+                });
+            });
+
             $('#locationSelect').change(function() {
                 let locationId = $(this).val();
                 if (!locationId) return;
 
-                // Clear all current selections first or we can keep them?
-                // User requested: "lebihan itu dibikin select manual saja"
-                // So we fill what we can from plot-location result.
+                let excludeBinIds = [];
+                let emptyTempIds = [];
+
+                $('tbody tr').each(function() {
+                    let select = $(this).find('.manual-loc-select');
+                    let val = select.val();
+                    let name = select.attr('name');
+                    if (!name) return;
+                    let match = name.match(/\[(\d+)\]/);
+                    if (!match) return;
+                    let tempId = parseInt(match[1]);
+
+                    if (val) {
+                        excludeBinIds.push(val);
+                    } else {
+                        emptyTempIds.push(tempId);
+                    }
+                });
+
+                if (emptyTempIds.length === 0) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Info',
+                        text: 'Semua baris sudah memiliki lokasi. Silahkan gunakan "Reset Pilihan" jika ingin mengisi ulang secara massal.'
+                    });
+                    $('#locationSelect').val('').trigger('change.select2');
+                    return;
+                }
 
                 $.get("{{ route('wrm.inventory.plot-location') }}", {
                     loc_id: locationId,
-                    no_spb: "{{ $currentNoSpb }}"
+                    no_spb: "{{ $currentNoSpb }}",
+                    exclude_bin_ids: excludeBinIds,
+                    temp_ids: emptyTempIds
                 }, function(res) {
                     // Create a mapping by temp_id for fast lookup
                     let locationMap = {};
@@ -424,11 +479,14 @@
                             // Create the option and append to Select2
                             let newOption = new Option(text, loc.loc_id, true, true);
                             select.empty().append(newOption).trigger('change');
-                        } else {
-                            // If no location assigned (bins ran out), leave it empty for manual selection
-                            select.val(null).trigger('change');
                         }
                     });
+
+                    // Remove the plotted location from dropdown options so it won't be selectable again
+                    $(`#locationSelect option[value="${locationId}"]`).remove();
+
+                    // Clear dropdown so it can be selected again for another bin
+                    $('#locationSelect').val('').trigger('change.select2');
                 });
             });
         });
