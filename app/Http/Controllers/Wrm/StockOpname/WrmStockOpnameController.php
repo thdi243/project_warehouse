@@ -146,27 +146,22 @@ class WrmStockOpnameController extends Controller
 
         $sohList = $query->with(['barang', 'bin.location'])->get();
 
-        // Pull active temp values grouped by barang_id, no_spb and pallet
+        // Pull active temp values grouped by soh_id
         $tempData = WrmSoTempModel::whereDate('tgl_opname', $today)
             ->whereHas('soh', function ($q) use ($jenisSo) {
                 $q->where('jenis_so', $jenisSo);
             })
-            ->get()->groupBy(function ($item) {
-                return $item->barang_id . '-' . $item->no_spb . '-' . $item->pallet;
-            });
+            ->get()->groupBy('soh_id');
 
         $tempNotes = WrmSoTempNoteModel::whereDate('tgl_opname', $today)
             ->whereHas('soh', function ($q) use ($jenisSo) {
                 $q->where('jenis_so', $jenisSo);
             })
-            ->get()->keyBy(function ($item) {
-                return $item->barang_id . '-' . $item->no_spb . '-' . $item->pallet;
-            });
+            ->get()->keyBy('soh_id');
 
         $result = $sohList->map(function ($soh) use ($tempData, $tempNotes) {
-            $key = $soh->barang_id . '-' . $soh->no_spb . '-' . $soh->pallet;
-            $temps = $tempData->get($key);
-            $note = $tempNotes->get($key);
+            $temps = $tempData->get($soh->id);
+            $note = $tempNotes->get($soh->id);
 
             $isCounted = $temps && $temps->isNotEmpty();
             $qtyFull = $isCounted ? $temps->sum('qty_full') : null;
@@ -734,9 +729,7 @@ class WrmStockOpnameController extends Controller
         $sohData = WrmSohModel::whereDate('created_at', $tglOpname)
             ->where('jenis_so', $jenisSo)
             ->get()
-            ->keyBy(function ($item) {
-                return $item->barang_id . '-' . $item->no_spb . '-' . $item->pallet . '-' . $item->loc_id;
-            });
+            ->keyBy('id');
 
         // Pull active temp notes
         $tempNotes = WrmSoTempNoteModel::whereDate('tgl_opname', $tglOpname)
@@ -765,7 +758,7 @@ class WrmStockOpnameController extends Controller
         // Group temp counts by soh_id to sum their values
         $groupedTemp = $tempData->groupBy('soh_id')->map(function ($items) use ($sohData) {
             $first = $items->first();
-            $soh   = $sohData->get($first->barang_id . '-' . $first->no_spb . '-' . $first->pallet . '-' . $first->soh->loc_id);
+            $soh   = $sohData->get($first->soh_id);
             return [
                 'soh_id'     => $first->soh_id,
                 'barang_id'  => $first->barang_id,
@@ -784,7 +777,7 @@ class WrmStockOpnameController extends Controller
         $varianceIssues = [];
         $analysis = [];
         foreach ($groupedTemp as $temp) {
-            $soh = $sohData->get($temp['barang_id'] . '-' . $temp['no_spb'] . '-' . $temp['pallet'] . '-' . $temp['loc_id']);
+            $soh = $sohData->get($temp['soh_id']);
             $qtySystem = $soh ? $soh->qty_soh : 0;
             $qtyPhysical = $temp['summary'];
             $diff = round($qtyPhysical - $qtySystem, 4);
@@ -943,7 +936,7 @@ class WrmStockOpnameController extends Controller
 
                 // Save details (individual entries from temp!)
                 foreach ($tempData as $temp) {
-                    $soh = $sohData->get($temp->barang_id . '-' . $temp->no_spb . '-' . $temp->pallet . '-' . $temp->soh->loc_id);
+                    $soh = $sohData->get($temp->soh_id);
                     WrmSoDetailModel::create([
                         'so_id'      => $sop->id,
                         'barang_id'  => $temp->barang_id,

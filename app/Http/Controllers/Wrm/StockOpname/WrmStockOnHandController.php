@@ -656,6 +656,10 @@ class WrmStockOnHandController extends Controller
                 ], 422);
             }
 
+            $oldNoSpb = $soh->no_spb;
+            $oldPallet = $soh->pallet;
+            $oldQtySoh = $soh->qty_soh;
+
             $soh->update([
                 'no_spb' => $request->no_spb,
                 'pallet' => $request->pallet,
@@ -675,8 +679,9 @@ class WrmStockOnHandController extends Controller
             if ($sop) {
                 $summary = WrmSoSummariesModel::where('so_id', $sop->id)
                     ->where('barang_id', $soh->barang_id)
-                    ->where('no_spb', $soh->no_spb)
-                    ->where('pallet', $soh->pallet)
+                    ->where('no_spb', $oldNoSpb)
+                    ->where('pallet', $oldPallet)
+                    ->where('qty_sistem', $oldQtySoh)
                     ->first();
 
                 if ($summary) {
@@ -686,6 +691,8 @@ class WrmStockOnHandController extends Controller
                     $status    = $selisih > 0 ? 'lebih' : ($selisih < 0 ? 'kurang' : 'match');
 
                     $summary->update([
+                        'no_spb'     => $request->no_spb,
+                        'pallet'     => $request->pallet,
                         'qty_sistem' => $qtySistem,
                         'selisih'    => $selisih,
                         'status'     => $status,
