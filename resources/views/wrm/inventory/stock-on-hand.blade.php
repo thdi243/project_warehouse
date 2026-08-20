@@ -1,43 +1,7 @@
 @extends('layouts.app')
+
 @section('styles')
     <style>
-        /* .select2-container--bootstrap-5 .select2-selection {
-                                    font-size: 0.85rem !important;
-                                    min-height: 38px !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                }
-
-                                .select2-container--bootstrap-5 .select2-dropdown .select2-results__options {
-                                    font-size: 0.85rem !important;
-                                    max-height: 250px !important;
-                                }
-
-                                .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-                                    line-height: normal !important;
-                                    padding-left: 0.75rem !important;
-                                } */
-
-        /* Style for Multiple Select choices */
-        /* .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
-                                    background-color: #0d6efd !important;
-                                    color: #fff !important;
-                                    border: none !important;
-                                    font-size: 0.75rem !important;
-                                    padding: 2px 8px !important;
-                                    border-radius: 4px !important;
-                                }
-
-                                .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
-                                    color: #fff !important;
-                                    margin-right: 5px !important;
-                                }
-
-                                .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
-                                    color: #ffc107 !important;
-                                    background-color: transparent !important;
-                                } */
-
         /* Modern Checkbox Style */
         .checkbox-xl {
             width: 1.4rem;
@@ -136,7 +100,7 @@
         /* Custom dropdown styles */
         .custom-filter-dropdown .dropdown-toggle {
             /* border: 1px solid #ced4da;
-                        border-radius: 0.25rem; */
+                                border-radius: 0.25rem; */
             padding: 0.47rem 0.75rem;
             font-size: 0.875rem;
             box-shadow: 0 0 0 0 !important;
@@ -610,7 +574,8 @@
                                     <th>Uom</th>
                                     <th>Group</th>
                                     <th>Pallet ID</th>
-                                    <th>Qty</th>
+                                    <th>Qty (Kg)</th>
+                                    <th>Qty Zak/Drum/Dus</th>
                                     <th>Status</th>
                                     <th>Location</th>
                                     <th>Supplier</th>
@@ -1051,7 +1016,8 @@
                                     <td>${d.barang.uom}</td>
                                     <td>${d.group ?? '-'}</td>
                                     <td>${d.pallet_id}</td>
-                                    <td>${numberFormat(d.qty)}</td>
+                                    <td class="text-end">${numberFormat(d.qty)}</td>
+                                    <td class="text-end">${numberFormat(d.qty_zak)} ${d.uom_zak ?? ''}</td>
                                     <td class='text-center'>${badgeStatus}</td>
                                     <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>
                                     <td>${d.supplier}</td>

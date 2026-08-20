@@ -593,6 +593,12 @@ class InboundController extends Controller
 
         $data = $query->paginate($request->per_page ?? 25);
 
+        $data->getCollection()->transform(function ($item) {
+            $item->qty_zak = $this->getZakDrumQty($item);
+            $item->uom_zak = $this->getZakDrumUnit($item);
+            return $item;
+        });
+
         return response()->json([
             'status' => true,
             'message' => 'Data stock inventory berhasil diambil',
@@ -1997,48 +2003,71 @@ class InboundController extends Controller
 
         if ($mid) {
             switch ($mid) {
-                case '20000812': // GULA KELAPA
-                case '20001270': // GULA KELAPA GRADE B
-                    $conversion = 25; // 25 kg per zak (900 kg / 36 = 25)
-                    break;
-                case '20000860': // GULA TEBU
-                    $conversion = 50; // 50 kg per zak (1000 kg / 20 = 50)
-                    break;
+                case '20000054': // GULA PASIR
                 case '20000156': // GARAM HALUS
-                    $conversion = 25; // 25 kg per zak
+                    $conversion = 50;
                     break;
                 case '20000057': // MSG
-                    $conversion = 25; // 25 kg per zak (625 kg / 25 = 25)
-                    break;
-                case '20001351': // LIQUID CARAMEL COLOR CLASS III
-                    $conversion = 280; // 280 kg per drum (560 kg / 2 = 280)
-                    break;
-                case '20001400': // LIQUID CARAMEL COLOR CLASS IV
-                    $conversion = 260; // 260 kg per drum (520 kg / 2 = 260)
+                case '20000311': // ND 17103
+                    $conversion = 25;
                     break;
                 case '20000097': // ND 08505
-                    $conversion = 25; // 25 kg per zak (250 / 10 = 25)
+                    $conversion = 10;
                     break;
-                case '20000311': // ND 17103
-                    $conversion = 25; // 25 kg per zak
+                case '20000812': // GULA KELAPA
+                case '20000860': // GULA TEBU
+                case '20001270': // GULA KELAPA GRADE B
+                case '20002021': // GULA TEBU MALANG
+                    $conversion = 50;
+                    $fullZak = floor($qty / 50);
+                    $leftover = $qty - ($fullZak * 50);
+                    return $fullZak + ($leftover >= 40 ? 1 : 0);
+                case '20000813': // SKM KIMLAN
+                    $conversion = 237;
                     break;
-                case '20001730': // PREMIUM BLACK BEAN SOY SAUCE
-                case '20001731': // PREMIUM YELLOW BEAN SOY SAUCE
-                    $conversion = 230; // 230 kg per drum (920 / 4 = 230)
+                case '20001200': // SKM BLACK BEAN
+                    $conversion = 235;
                     break;
-                case '20000813': // SKM KIM LAN
-                    $conversion = 237; // (474 / 2 = 237)
+                case '20001351': // LIQUID CARAMEL COLOR CLASS III
+                    $conversion = 280;
+                    break;
+                case '20001400': // LIQUID CARAMEL COLOR CLASS IV
+                    $conversion = 260;
                     break;
                 case '20001571': // SKM QIANHE
-                    $conversion = 250; // (500 / 2 = 250)
+                    $conversion = 250;
+                    break;
+                case '20001730': // PREMIUM BLACK BEAN
+                case '20001731': // PREMIUM YELLOW BEAN
+                    $conversion = 230;
                     break;
                 default:
-                    $conversion = 25; // default to 25
+                    $conversion = 25; // default fallback
                     break;
             }
         }
 
         return $qty / $conversion;
+    }
+
+    private function getZakDrumUnit($item)
+    {
+        $mid = $item->barang?->mid;
+        if ($mid) {
+            switch ($mid) {
+                case '20000097': // ND 08505
+                    return 'Dus';
+                case '20000813': // SKM KIMLAN
+                case '20001200': // SKM BLACK BEAN
+                case '20001351': // LIQUID CARAMEL COLOR CLASS III
+                case '20001400': // LIQUID CARAMEL COLOR CLASS IV
+                case '20001571': // SKM QIANHE
+                case '20001730': // PREMIUM BLACK BEAN
+                case '20001731': // PREMIUM YELLOW BEAN
+                    return 'Drum';
+            }
+        }
+        return 'Zak';
     }
 
     public function exportListExcel(Request $request)
