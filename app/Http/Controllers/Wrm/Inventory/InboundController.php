@@ -1764,6 +1764,7 @@ class InboundController extends Controller
 
     public function exportExcel(Request $request)
     {
+        ini_set('memory_limit', '1024M');
         $query = StockOnHand::query()
             ->with([
                 'barang:id,mid,nama_barang,uom',
@@ -1931,17 +1932,6 @@ class InboundController extends Controller
                 $sheet->setCellValue("G{$currentRow}", "QTY");
                 $sheet->setCellValue("H{$currentRow}", "UOM");
 
-                // Apply borders to header row
-                $styleArrayHeader = [
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                            'color' => ['argb' => '00000000'],
-                        ],
-                    ],
-                ];
-                $sheet->getStyle("A{$currentRow}:H{$currentRow}")->applyFromArray($styleArrayHeader);
-
                 $currentRow++;
                 $lastZona = $zona;
             }
@@ -1966,7 +1956,12 @@ class InboundController extends Controller
             // Set row height to 20 for data rows
             $sheet->getRowDimension($currentRow)->setRowHeight(20);
 
-            // Apply borders to data row
+            $currentRow++;
+        }
+
+        // Apply borders to all rows at once
+        $lastRow = $currentRow - 1;
+        if ($lastRow >= 1) {
             $styleArray = [
                 'borders' => [
                     'allBorders' => [
@@ -1975,9 +1970,7 @@ class InboundController extends Controller
                     ],
                 ],
             ];
-            $sheet->getStyle("A{$currentRow}:H{$currentRow}")->applyFromArray($styleArray);
-
-            $currentRow++;
+            $sheet->getStyle("A1:H{$lastRow}")->applyFromArray($styleArray);
         }
 
         // Clear output buffer
@@ -2050,6 +2043,7 @@ class InboundController extends Controller
 
     public function exportListExcel(Request $request)
     {
+        ini_set('memory_limit', '1024M');
         $query = StockOnHand::query()
             ->with([
                 'barang:id,mid,nama_barang,uom',
@@ -2218,7 +2212,12 @@ class InboundController extends Controller
             // Set row height to 20 for data rows
             $sheet->getRowDimension($currentRow)->setRowHeight(20);
 
-            // Apply borders to data row
+            $currentRow++;
+        }
+
+        // Apply borders to the entire generated data range at once
+        $lastRow = $currentRow - 1;
+        if ($lastRow >= 2) {
             $styleArray = [
                 'borders' => [
                     'allBorders' => [
@@ -2227,9 +2226,7 @@ class InboundController extends Controller
                     ],
                 ],
             ];
-            $sheet->getStyle("A{$currentRow}:N{$currentRow}")->applyFromArray($styleArray);
-
-            $currentRow++;
+            $sheet->getStyle("A2:N{$lastRow}")->applyFromArray($styleArray);
         }
 
         // Clear output buffer
