@@ -411,6 +411,9 @@ $(document).ready(function () {
     const inboundMonthlyLength = 15;
     let activeMonthsGlobal = [];
 
+    let supplierStart = 0;
+    const supplierLength = 15;
+
     let isResetting = false;
 
     // Initialize all custom dropdown filters
@@ -448,6 +451,14 @@ $(document).ready(function () {
 
     initCustomDropdown('dropdown-year-inbound', 'Pilih Tahun...', function () {
         loadInboundMonthlyTable(0, true);
+    });
+
+    initCustomDropdown('dropdown-mid-supplier', 'Pilih MID...', function () {
+        loadSupplierTable(0);
+    });
+
+    initCustomDropdown('dropdown-supplier-supplier', 'Pilih Supplier...', function () {
+        loadSupplierTable(0);
     });
 
     // Table loaders
@@ -729,6 +740,77 @@ $(document).ready(function () {
         }
     }
 
+    function loadSupplierTable(start = 0) {
+        supplierStart = start;
+        const mids = $('#dropdown-mid-supplier').data('getValues')();
+        const suppliers = $('#dropdown-supplier-supplier').data('getValues')();
+
+        const $tbody = $('#table-summary-supplier tbody');
+        $tbody.html(
+            '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="ri-loader-4-line ri-spin me-2 fs-5"></i>Loading data...</td></tr>'
+        );
+
+        $.ajax({
+            url: "/wrm/inventory/monitoring/data/summary-stock/supplier",
+            type: 'GET',
+            data: {
+                draw: 1,
+                start: supplierStart,
+                length: supplierLength,
+                mids: mids,
+                suppliers: suppliers
+            },
+            dataType: 'json',
+            success: function (response) {
+                $tbody.empty();
+                const data = response.data || [];
+
+                if (data.length === 0) {
+                    $tbody.html(
+                        '<tr><td colspan="8" class="text-center py-4 text-muted">Tidak ada data.</td></tr>'
+                    );
+                    $('#table-supplier-footer').empty();
+                    $('#table-supplier-pagination').empty();
+                    return;
+                }
+
+                let html = '';
+                data.forEach(function (row) {
+                    const total = parseFloat(row.qty_unrest || 0) + parseFloat(row.qty_qi || 0) + parseFloat(row.qty_blocked || 0);
+                    html += `
+                        <tr>
+                            <td>${row.mid || '-'}</td>
+                            <td>${row.nama_barang || '-'}</td>
+                            <td>${row.supplier || '-'}</td>
+                            <td>${row.uom || '-'}</td>
+                            <td class="text-end">${formatNumber.display(row.qty_unrest)}</td>
+                            <td class="text-end">${formatNumber.display(row.qty_qi)}</td>
+                            <td class="text-end">${formatNumber.display(row.qty_blocked)}</td>
+                            <td class="text-end fw-bold">${formatNumber.display(total)}</td>
+                        </tr>
+                    `;
+                });
+                $tbody.html(html);
+
+                // Render Footer (Page Totals)
+                const pageTotals = calculatePageTotalsPerUom(data);
+                renderPageFooter('#table-supplier-footer', pageTotals, 3);
+
+                // Render Pagination
+                renderPagination('#table-supplier-pagination', response.recordsTotal, supplierStart,
+                    supplierLength,
+                    function (newStart) {
+                        loadSupplierTable(newStart);
+                    });
+            },
+            error: function (xhr, status, error) {
+                $tbody.html(
+                    `<tr><td colspan="8" class="text-center text-danger py-4">Gagal memuat data: ${error}</td></tr>`
+                );
+            }
+        });
+    }
+
     function loadMaTable(start = 0) {
         maStart = start;
         const mids = $('#dropdown-mid-ma').data('getValues')();
@@ -932,6 +1014,7 @@ $(document).ready(function () {
             $('#summary-item-table-tab').addClass('active show');
             $('#summary-spb-table-tab').removeClass('active show');
             $('#summary-group-table-tab').removeClass('active show');
+            $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
             loadItemTable(0);
@@ -941,6 +1024,7 @@ $(document).ready(function () {
             $('#summary-spb-table-tab').addClass('active show');
             $('#summary-item-table-tab').removeClass('active show');
             $('#summary-group-table-tab').removeClass('active show');
+            $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
             loadSpbTable(0);
@@ -950,9 +1034,20 @@ $(document).ready(function () {
             $('#summary-group-table-tab').addClass('active show');
             $('#summary-item-table-tab').removeClass('active show');
             $('#summary-spb-table-tab').removeClass('active show');
+            $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
             loadGroupTable(0, true);
+        }
+
+        if (target === '#summary-supplier-tab') {
+            $('#summary-supplier-table-tab').addClass('active show');
+            $('#summary-item-table-tab').removeClass('active show');
+            $('#summary-spb-table-tab').removeClass('active show');
+            $('#summary-group-table-tab').removeClass('active show');
+            $('#summary-moving-average-table-tab').removeClass('active show');
+            $('#summary-inbound-monthly-table-tab').removeClass('active show');
+            loadSupplierTable(0);
         }
 
         if (target === '#summary-moving-average-tab') {
@@ -960,6 +1055,7 @@ $(document).ready(function () {
             $('#summary-item-table-tab').removeClass('active show');
             $('#summary-spb-table-tab').removeClass('active show');
             $('#summary-group-table-tab').removeClass('active show');
+            $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
             loadMaTable(0);
         }
@@ -969,6 +1065,7 @@ $(document).ready(function () {
             $('#summary-item-table-tab').removeClass('active show');
             $('#summary-spb-table-tab').removeClass('active show');
             $('#summary-group-table-tab').removeClass('active show');
+            $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
             loadInboundMonthlyTable(0, true);
         }
@@ -985,6 +1082,10 @@ $(document).ready(function () {
 
     $('#btn-filter-group').on('click', function () {
         loadGroupTable(0, true);
+    });
+
+    $('#btn-filter-supplier').on('click', function () {
+        loadSupplierTable(0);
     });
 
     $('#btn-filter-ma').on('click', function () {
@@ -1024,6 +1125,15 @@ $(document).ready(function () {
         $('#dropdown-mid-group').data('reset')();
         isResetting = false;
         loadGroupTable(0, true);
+    });
+
+    // Reset button handlers for Supplier
+    $('#btnResetSupplier').on('click', function () {
+        isResetting = true;
+        $('#dropdown-mid-supplier').data('reset')();
+        $('#dropdown-supplier-supplier').data('reset')();
+        isResetting = false;
+        loadSupplierTable(0);
     });
 
     // Reset button handlers for Moving Average

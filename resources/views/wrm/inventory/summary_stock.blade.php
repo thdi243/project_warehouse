@@ -47,6 +47,14 @@
                                         </a>
                                     </li>
                                 @endcan
+                                @can('permission', 'wrm-summary-stock-by-supplier')
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link" data-bs-toggle="tab" href="#summary-supplier-tab" role="tab"
+                                            aria-selected="false">
+                                            By Supplier
+                                        </a>
+                                    </li>
+                                @endcan
                                 <li class="nav-item" role="presentation">
                                     <a class="nav-link" data-bs-toggle="tab" href="#summary-moving-average-tab"
                                         role="tab" aria-selected="false">
@@ -361,6 +369,119 @@
                                     </form>
                                 </div>
 
+                                <div class="tab-pane" id="summary-supplier-tab" role="tabpanel">
+                                    <form id="filter-supplier-form">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-xxl-4 col-sm-4">
+                                                <label class="form-label fw-semibold">Filter MID</label>
+                                                <div class="dropdown custom-filter-dropdown" id="dropdown-mid-supplier">
+                                                    <button
+                                                        class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                                        type="button" data-bs-toggle="dropdown"
+                                                        data-bs-auto-close="outside" aria-expanded="false">
+                                                        <span class="dropdown-placeholder text-muted">Pilih MID...</span>
+                                                        <span
+                                                            class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                                    </button>
+                                                    <div class="dropdown-menu p-3 shadow-lg border-0"
+                                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                                        <div class="mb-2">
+                                                            <input type="text"
+                                                                class="form-control form-control-sm search-options"
+                                                                placeholder="Cari MID...">
+                                                        </div>
+                                                        <div class="d-flex justify-content-between mb-2">
+                                                            <button type="button"
+                                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                                All</button>
+                                                            <button type="button"
+                                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                                All</button>
+                                                        </div>
+                                                        <hr class="dropdown-divider my-2">
+                                                        <div class="options-list"
+                                                            style="max-height: 250px; overflow-y: auto;">
+                                                            @foreach ($mids as $m)
+                                                                <div class="form-check mb-2 option-item"
+                                                                    data-value="{{ $m->mid }}"
+                                                                    data-text="{{ $m->mid }} - {{ $m->nama_barang }}">
+                                                                    <input class="form-check-input option-checkbox"
+                                                                        type="checkbox" value="{{ $m->mid }}"
+                                                                        id="chk-mid-supplier-{{ $m->mid }}">
+                                                                    <label class="form-check-label text-truncate w-100"
+                                                                        for="chk-mid-supplier-{{ $m->mid }}">
+                                                                        {{ $m->mid }} - {{ $m->nama_barang }}
+                                                                    </label>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-xxl-4 col-sm-4">
+                                                <label class="form-label fw-semibold">Filter Supplier</label>
+                                                <div class="dropdown custom-filter-dropdown" id="dropdown-supplier-supplier">
+                                                    <button
+                                                        class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                                        type="button" data-bs-toggle="dropdown"
+                                                        data-bs-auto-close="outside" aria-expanded="false">
+                                                        <span class="dropdown-placeholder text-muted">Pilih Supplier...</span>
+                                                        <span
+                                                            class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                                    </button>
+                                                    <div class="dropdown-menu p-3 shadow-lg border-0"
+                                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                                        <div class="mb-2">
+                                                            <input type="text"
+                                                                class="form-control form-control-sm search-options"
+                                                                placeholder="Cari Supplier...">
+                                                        </div>
+                                                        <div class="d-flex justify-content-between mb-2">
+                                                            <button type="button"
+                                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                                All</button>
+                                                            <button type="button"
+                                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                                All</button>
+                                                        </div>
+                                                        <hr class="dropdown-divider my-2">
+                                                        <div class="options-list"
+                                                            style="max-height: 250px; overflow-y: auto;">
+                                                            @foreach ($suppliers as $s)
+                                                                <div class="form-check mb-2 option-item"
+                                                                    data-value="{{ $s }}"
+                                                                    data-text="{{ $s }}">
+                                                                    <input class="form-check-input option-checkbox"
+                                                                        type="checkbox" value="{{ $s }}"
+                                                                        id="chk-supplier-{{ $s }}">
+                                                                    <label class="form-check-label text-truncate w-100"
+                                                                        for="chk-supplier-{{ $s }}">
+                                                                        {{ $s }}
+                                                                    </label>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-xxl-2 col-sm-4">
+                                                <div class="d-flex gap-2">
+                                                    <button type="button" class="btn btn-primary flex-fill"
+                                                        id="btn-filter-supplier">
+                                                        <i class="ri-equalizer-fill me-1 align-bottom"></i>
+                                                        Filter
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger flex-fill"
+                                                        id="btnResetSupplier">
+                                                        <i class="ri-refresh me-1 align-bottom"></i>
+                                                        Reset
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+
                                 <div class="tab-pane" id="summary-moving-average-tab" role="tabpanel">
                                     <form id="filter-moving-average-form">
                                         <div class="row g-3 align-items-end">
@@ -645,6 +766,33 @@
                                         </table>
                                     </div>
                                     <div id="table-group-pagination" class="px-3 pb-3"></div>
+                                </div>
+
+                                <div class="tab-pane" id="summary-supplier-table-tab" role="tabpanel">
+                                    <div class="table-responsive table-card mb-4">
+                                        <table class="table table-striped align-middle table-nowrap mb-0"
+                                            id="table-summary-supplier">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>MID</th>
+                                                    <th>Nama Barang</th>
+                                                    <th>Supplier</th>
+                                                    <th>UoM</th>
+                                                    <th class="text-end">Qty Unrest</th>
+                                                    <th class="text-end">Qty QI</th>
+                                                    <th class="text-end">Qty Blocked</th>
+                                                    <th class="text-end">Total Qty</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {{-- Data will be loaded via Ajax --}}
+                                            </tbody>
+                                            <tfoot class="table-light fw-semibold" id="table-supplier-footer">
+                                                {{-- Footer rows will be generated dynamically --}}
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                    <div id="table-supplier-pagination" class="px-3 pb-3"></div>
                                 </div>
 
                                 <div class="tab-pane" id="summary-moving-average-table-tab" role="tabpanel">

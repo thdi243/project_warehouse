@@ -51,6 +51,14 @@ class MonitoringController extends Controller
             ->orderBy('no_spb', 'asc')
             ->pluck('no_spb');
 
+        $suppliers = StockOnHand::whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->whereNotNull('supplier')
+            ->where('supplier', '<>', '')
+            ->select('supplier')
+            ->distinct()
+            ->orderBy('supplier', 'asc')
+            ->pluck('supplier');
+
         // Dynamic list of years from wrm_stock_inbound
         $inboundYears = DB::table('wrm_stock_inbound')
             ->whereNotNull('incoming_date')
@@ -92,7 +100,7 @@ class MonitoringController extends Controller
         $defaultYears = array_unique($defaultYears);
 
         return view('wrm.inventory.summary_stock', compact(
-            'mids', 'groups', 'spbs',
+            'mids', 'groups', 'spbs', 'suppliers',
             'inboundYears', 'inboundMonths', 'defaultMonths', 'defaultYears'
         ));
     }
@@ -198,6 +206,68 @@ class MonitoringController extends Controller
         $length = $request->length ?? 15;
 
         $data = $query->orderBy($sortColumn)->skip($start)->take($length)->get();
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'grand_total_per_uom' => $totalsPerUom->map(function ($item) {
+                return [
+                    'uom' => $item->uom,
+                    'unrest' => $item->total_unrest ?? 0,
+                    'qi' => $item->total_qi ?? 0,
+                    'blocked' => $item->total_blocked ?? 0,
+                    'all' => ($item->total_unrest ?? 0) + ($item->total_qi ?? 0) + ($item->total_blocked ?? 0)
+                ];
+            })
+        ]);
+    }
+
+    public function getSummaryStockSupplierData(Request $request)
+    {
+        $query = StockOnHand::query()
+            ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
+            ->selectRaw("
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'UNREST' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_unrest,
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'QI' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_qi,
+                SUM(CASE WHEN wrm_stock_on_hand.status = 'BLOCKED' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_blocked
+            ")
+            ->whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING']);
+
+        $query->addSelect('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom', 'wrm_stock_on_hand.supplier')
+            ->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom', 'wrm_stock_on_hand.supplier');
+
+        $sortColumn = 'wrm_master_barang.mid';
+
+        if ($request->filled('mids')) {
+            $query->whereIn('wrm_master_barang.mid', (array)$request->mids);
+        }
+
+        if ($request->filled('suppliers')) {
+            $query->whereIn('wrm_stock_on_hand.supplier', (array)$request->suppliers);
+        }
+
+        // Count for pagination and grand totals
+        $recordsTotal = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->count();
+
+        $totalsPerUom = DB::query()
+            ->fromSub(clone $query, 'sub')
+            ->select(
+                'uom',
+                DB::raw("SUM(qty_unrest) as total_unrest"),
+                DB::raw("SUM(qty_qi) as total_qi"),
+                DB::raw("SUM(qty_blocked) as total_blocked")
+            )
+            ->groupBy('uom')
+            ->get();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $data = $query->orderBy($sortColumn)->orderBy('wrm_stock_on_hand.supplier')->skip($start)->take($length)->get();
 
         return response()->json([
             'draw' => intval($request->draw),

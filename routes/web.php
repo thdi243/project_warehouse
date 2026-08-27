@@ -340,6 +340,7 @@ Route::middleware('auth')->group(function () {
                     Route::get('/data/summary-stock/spb', [MonitoringController::class, 'getSummaryStockSpbData'])->name('wrm.inventory.monitoring.summary-stock.spb-data');
                     Route::get('/data/summary-stock/group', [MonitoringController::class, 'getSummaryStockGroupData'])->name('wrm.inventory.monitoring.summary-stock.group-data');
                     Route::get('/data/summary-stock/group-meta', [MonitoringController::class, 'getSummaryStockGroupMeta'])->name('wrm.inventory.monitoring.summary-stock.group-meta');
+                    Route::get('/data/summary-stock/supplier', [MonitoringController::class, 'getSummaryStockSupplierData'])->name('wrm.inventory.monitoring.summary-stock.supplier-data');
                     Route::get('/data/spb-detail', [MonitoringController::class, 'getSpbDetailData'])->name('wrm.inventory.monitoring.spb-detail.data');
                     Route::get('/data/moving-average', [MonitoringController::class, 'getMovingAverageData'])->name('wrm.inventory.monitoring.moving-average.data');
                     Route::get('/data/summary-stock/inbound-monthly', [MonitoringController::class, 'getSummaryStockInboundMonthlyData'])->name('wrm.inventory.monitoring.summary-stock.inbound-monthly-data');
