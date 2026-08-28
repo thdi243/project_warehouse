@@ -18,14 +18,17 @@ class PrApprovalMail extends Mailable
     public $pr;
     public $approval;
     public $url;
+    public $recipientName;
 
     public function __construct(
         WspPurchaseRequesitionModel $pr,
-        WspPurchaseRequesitionApprovalModel $approval
+        WspPurchaseRequesitionApprovalModel $approval,
+        $recipientName = null
     ) {
         $this->pr = $pr;
         $this->approval = $approval;
         $this->url = url('/purchase-requesition/approval');
+        $this->recipientName = $recipientName ?: ($approval->approver ? $approval->approver->nama_lengkap : 'Approver');
     }
 
     public function build()

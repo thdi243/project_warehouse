@@ -208,7 +208,8 @@
                                     <th>NAMA PEMINTA</th>
                                     <th>DEPARTEMEN</th>
                                     <th>JENIS PR</th>
-                                    <th onclick="toggleSort('status_approved')" style="cursor: pointer; user-select: none;">
+                                    <th onclick="toggleSort('status_approved')"
+                                        style="cursor: pointer; user-select: none;">
                                         STATUS APPROVED
                                         <i class="mdi mdi-sort ms-1" id="sortIcon-status_approved"></i>
                                     </th>
@@ -434,7 +435,8 @@
                 }
 
                 // Update sort icons
-                $('[id^="sortIcon-"]').removeClass('mdi-sort-ascending mdi-sort-descending').addClass('mdi-sort');
+                $('[id^="sortIcon-"]').removeClass('mdi-sort-ascending mdi-sort-descending').addClass(
+                    'mdi-sort');
                 const icon = $(`#sortIcon-${column}`);
                 if (icon.length) {
                     if (sortDir === 'asc') {
@@ -805,11 +807,12 @@
                 $('#filterDepartemen').val('all');
                 $('#filterStartDate').val('');
                 $('#filterEndDate').val('');
-                
+
                 // Reset sorting
                 sortBy = 'created_at';
                 sortDir = 'desc';
-                $('[id^="sortIcon-"]').removeClass('mdi-sort-ascending mdi-sort-descending').addClass('mdi-sort');
+                $('[id^="sortIcon-"]').removeClass('mdi-sort-ascending mdi-sort-descending').addClass(
+                    'mdi-sort');
 
                 loadPRData(1);
             });
@@ -1092,9 +1095,15 @@
                     const plant = item.barang?.rak?.plant ?? '1006';
                     const noIo = pr.no_io ?? '';
 
+                    let colA = pr.jenis == 'Jasa' ? 'K' : '';
+                    let colB = pr.jenis == 'Jasa' ? 'D' : '';
+                    let colD = pr.jenis == 'Jasa' ? item.desc : '';
+
                     const row = [
+                        colA,
+                        colB,
                         mid,
-                        '',
+                        colD,
                         qty,
                         '',
                         '',

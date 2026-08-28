@@ -19,12 +19,14 @@ class SendPrApprovalEmail implements ShouldQueue
     protected int $prId;
     protected int $approvalId;
     protected string $email;
+    protected ?string $recipientName;
 
-    public function __construct(int $prId, int $approvalId, string $email)
+    public function __construct(int $prId, int $approvalId, string $email, ?string $recipientName = null)
     {
         $this->prId = $prId;
         $this->approvalId = $approvalId;
         $this->email = $email;
+        $this->recipientName = $recipientName;
     }
 
     public function handle(): void
@@ -37,6 +39,6 @@ class SendPrApprovalEmail implements ShouldQueue
         }
 
         Mail::to($this->email)
-            ->send(new PrApprovalMail($pr, $approval));
+            ->send(new PrApprovalMail($pr, $approval, $this->recipientName));
     }
 }

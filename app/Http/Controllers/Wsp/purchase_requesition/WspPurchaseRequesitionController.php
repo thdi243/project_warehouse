@@ -1397,6 +1397,42 @@ class WspPurchaseRequesitionController extends Controller
             // Send notification and email to the creator of the PR
             $this->sendRejectionNotification($pr, $approval);
         } else if ($status === 'approved') {
+            if ($currentLevel == 3) {
+                // Auto-approve level 4 (Manager Warehouse)
+                $level4Approval = $pr->approval()
+                    ->where('level', 4)
+                    ->where('status', 'pending')
+                    ->first();
+
+                if ($level4Approval) {
+                    $level4Approval->update([
+                        'status'    => 'approved',
+                        'action_at' => now(),
+                        'action_by' => $userId,
+                        'catatan'   => 'Auto Approved'
+                    ]);
+
+                    // Copy item approval status/catatan from level 3 to level 4
+                    $level3ItemApprovals = WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)->get();
+                    if ($level3ItemApprovals->isNotEmpty()) {
+                        foreach ($level3ItemApprovals as $l3ItemApproval) {
+                            WspPurchaseRequesitionItemApprovalModel::where('approval_id', $level4Approval->id)
+                                ->where('pr_item_id', $l3ItemApproval->pr_item_id)
+                                ->update([
+                                    'status'  => $l3ItemApproval->status,
+                                    'catatan' => $l3ItemApproval->catatan ?: 'Auto Approved'
+                                ]);
+                        }
+                    } else {
+                        WspPurchaseRequesitionItemApprovalModel::where('approval_id', $level4Approval->id)
+                            ->update([
+                                'status'  => 'approved',
+                                'catatan' => 'Auto Approved'
+                            ]);
+                    }
+                }
+            }
+
             if ($currentLevel == 4) {
                 $pr->update(['status' => 'approved']);
             } else if ($currentLevel == 5) {
@@ -1413,10 +1449,10 @@ class WspPurchaseRequesitionController extends Controller
                 }
             }
 
-            // Notify next level
+            // Notify next level (find next pending level dynamically)
             $nextApproval = $pr->approval()
                 ->where('status', 'pending')
-                ->where('level', $currentLevel + 1)
+                ->orderBy('level', 'asc')
                 ->first();
 
             if ($nextApproval) {
@@ -1607,6 +1643,26 @@ class WspPurchaseRequesitionController extends Controller
                 $approval->id,
                 $user->email
             )->afterCommit();
+        }
+
+        // Send to foreman warehouse_sparepart (only email) if this is level 5
+        if ($approval->level == 5) {
+            $foremanUsers = User::where('jabatan', 'foreman')
+                ->where('bagian', 'warehouse_sparepart')
+                ->where('is_active', true)
+                ->get();
+
+            foreach ($foremanUsers as $foremanUser) {
+                // Don't send duplicate email if the foreman is the main approver
+                if ($foremanUser->email && $foremanUser->email !== $user->email) {
+                    SendPrApprovalEmail::dispatch(
+                        $pr->id,
+                        $approval->id,
+                        $foremanUser->email,
+                        $foremanUser->nama_lengkap
+                    )->afterCommit();
+                }
+            }
         }
 
         return;

@@ -160,7 +160,7 @@
 
             <!-- Content -->
             <div class="content">
-                <p class="greeting">Yth. Bapak/Ibu {{ $approval->approver->nama_lengkap }},</p>
+                <p class="greeting">Yth. Bapak/Ibu {{ $recipientName }},</p>
 
                 <p>Ada Purchase Requesition baru yang membutuhkan persetujuan Anda sebagai
                     <strong>{{ $approval->role }}</strong>:
