@@ -331,6 +331,7 @@ class WspPurchaseRequesitionController extends Controller
     {
         $query = WspPurchaseRequesitionModel::with(
             'user',
+            'items:id,pr_id,barang_id,jenis,qty,alasan,keterangan,desc',
             'items.barang:id,mid_barang,nama_barang,uom',
             'items.approval.approval',
             'approval.approver',

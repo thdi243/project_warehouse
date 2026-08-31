@@ -149,12 +149,12 @@
                     </div>
                     <h6 class="mb-2 fw-bold"><i class="mdi mdi-format-list-bulleted me-2"></i>Detail Items</h6>
                     <div class="table-responsive">
-                        <table class="table table-bordered table-sm">
+                        <table class="table">
                             <thead class="table-light align-middle">
                                 <tr>
                                     <th>No</th>
                                     <th>MID</th>
-                                    <th>Nama Barang</th>
+                                    <th>Desc</th>
                                     <th>Qty</th>
                                     <th>UOM</th>
                                     <th>Jenis</th>
@@ -393,27 +393,30 @@
                             return `<span class="badge badge-soft-${bg}">${status}</span>`;
                         };
 
+                        const desc = pr.jenis === 'Jasa' ? (item.desc || '-') : (item.barang
+                            ?.nama_barang || item.desc || '-');
+
                         tbody.append(`
                             <tr>
                                 <td>${i + 1}</td>
                                 <td>${item.barang?.mid_barang ?? '-'}</td>
-                                <td>${item.barang?.nama_barang ?? '-'}</td>
+                                <td>${desc}</td>
                                 <td>${item.qty}</td>
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
                                 <td>
                                     ${item.keterangan ? `
-                                                        <div class="d-flex align-items-center justify-content-between gap-2">
-                                                            <span>${item.keterangan}</span>
-                                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                                    style="flex-shrink: 0;"
-                                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                                    title="Copy Keterangan">
-                                                                <i class="mdi mdi-content-copy"></i>
-                                                            </button>
-                                                        </div>
-                                                    ` : '-'}
+                                                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                                                        <span>${item.keterangan}</span>
+                                                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                                                style="flex-shrink: 0;"
+                                                                                data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                                title="Copy Keterangan">
+                                                                            <i class="mdi mdi-content-copy"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                ` : '-'}
                                 </td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
                                 <td class="text-center">${formatBadge(statusWrh)}</td>

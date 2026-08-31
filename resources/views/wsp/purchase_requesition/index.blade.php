@@ -370,7 +370,7 @@
                                 <tr>
                                     <th>No</th>
                                     <th>MID Barang</th>
-                                    <th>Nama Barang</th>
+                                    <th>Desc</th>
                                     <th>Qty</th>
                                     <th>UOM</th>
                                     <th>Keterangan</th>
@@ -866,12 +866,12 @@
                 );
 
 
-                renderDetailItems(pr.items);
+                renderDetailItems(pr.items, pr.jenis);
 
                 $('#modalDetailPR').modal('show');
             };
 
-            function renderDetailItems(items) {
+            function renderDetailItems(items, prJenis = '') {
                 const tbody = $('#detailItems');
                 tbody.empty();
 
@@ -918,11 +918,13 @@
                             </div>` :
                             '-';
 
+                        const desc = prJenis === 'Jasa' ? (item.desc || '-') : (item.barang?.nama_barang || item.desc || '-');
+
                         tbody.append(`
                             <tr>
                                 <td>${i + 1}</td>
                                 <td>${item.barang?.mid_barang ?? '-'}</td>
-                                <td>${item.barang?.nama_barang ?? '-'}</td>
+                                <td>${desc}</td>
                                 <td>${item.qty}</td>
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td>${keteranganHtml}</td>
