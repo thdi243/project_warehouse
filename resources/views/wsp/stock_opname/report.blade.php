@@ -555,10 +555,10 @@
                             const selisih = parseFloat(item.selisih).toLocaleString('id-ID');
                             const note = item.keterangan ? item.keterangan : '-';
 
-                            const hasLocation = item.area_rak || item.nama_rak || item.kolom_rak || item
-                                .level_rak || item.bin_rak;
+                            const hasLocation = item.detail_loc || (item.location && item.location.rak);
+                            const locStr = item.detail_loc ? `${item.plant || ''} - ${item.s_loc || ''} - ${item.detail_loc}` : (item.location && item.location.rak ? `${item.location.rak.plant} - ${item.location.rak.s_loc} - ${item.location.rak.detail_loc}` : '');
                             const lokasiHtml = hasLocation ?
-                                `<span class="badge bg-soft-info text-info border">${item.area_rak || '-'}-${item.nama_rak || '-'}-${item.kolom_rak || '-'}-${item.level_rak || '-'}-${item.bin_rak || '-'}</span>` :
+                                `<span class="badge bg-soft-info text-info border">${locStr}</span>` :
                                 `<span class="badge bg-soft-warning text-warning border">Not yet</span>`;
 
                             let statusBadge = '';
@@ -737,10 +737,9 @@
                         $('#detailMid').text(sum.barang ? sum.barang.mid_barang : '-');
                         $('#detailNamaBarang').text(sum.barang ? sum.barang.nama_barang : '-');
 
-                        const hasLocation = sum.area_rak || sum.nama_rak || sum.kolom_rak || sum
-                            .level_rak || sum.bin_rak;
+                        const hasLocation = sum.detail_loc || (sum.location && sum.location.rak);
                         const locationText = hasLocation ?
-                            `${sum.area_rak || '-'}-${sum.nama_rak || '-'}-${sum.kolom_rak || '-'}-${sum.level_rak || '-'}-${sum.bin_rak || '-'}` :
+                            (sum.detail_loc ? `${sum.plant || ''} - ${sum.s_loc || ''} - ${sum.detail_loc}` : `${sum.location.rak.plant} - ${sum.location.rak.s_loc} - ${sum.location.rak.detail_loc}`) :
                             'Not yet';
                         $('#detailLokasiRak').text(locationText);
 

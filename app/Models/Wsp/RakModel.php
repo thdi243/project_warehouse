@@ -16,11 +16,7 @@ class RakModel extends Model
     protected $fillable = [
         'plant',
         's_loc',
-        'area_rak',
-        'nama_rak',
-        'kolom_rak',
-        'level_rak',
-        'box_rak',
+        'detail_loc',
         'created_by',
     ];
 

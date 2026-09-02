@@ -3,14 +3,12 @@
 @section('styles')
     <style>
         .page-title {
-            /* color: #2d3748; */
             font-weight: 700;
             font-size: 1.75rem;
             margin-bottom: 0.5rem;
         }
 
         .page-subtitle {
-            /* color: #718096; */
             font-size: 0.95rem;
         }
 
@@ -57,7 +55,6 @@
         }
 
         .table-card {
-            /* background: white; */
             border-radius: 1rem;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             overflow: hidden;
@@ -65,14 +62,12 @@
         }
 
         .table-header {
-            /* background: linear-gradient(135deg, #f8f9fa, #e9ecef); */
             padding: 1.25rem 1.5rem;
             border-bottom: 2px solid #dee2e6;
         }
 
         .table-header h5 {
             margin: 0;
-            /* color: #2d3748; */
             font-weight: 600;
             font-size: 1.1rem;
         }
@@ -86,8 +81,6 @@
         }
 
         .custom-table thead th {
-            /* background: #f8f9fa; */
-            /* color: #495057; */
             font-weight: 600;
             font-size: 0.875rem;
             text-transform: uppercase;
@@ -104,7 +97,6 @@
         .custom-table tbody td {
             padding: 1rem 0.75rem;
             vertical-align: middle;
-            /* color: #4a5568; */
             font-size: 0.875rem;
         }
 
@@ -168,18 +160,15 @@
 
         .empty-state i {
             font-size: 4rem;
-            /* color: #cbd5e0; */
             margin-bottom: 1rem;
         }
 
         .empty-state h6 {
-            /* color: #4a5568; */
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
 
         .empty-state p {
-            /* color: #a0aec0; */
             font-size: 0.875rem;
         }
 
@@ -191,20 +180,17 @@
         }
 
         .modal-header {
-            /* background: linear-gradient(135deg, #f8f9fa, #e9ecef); */
             border-bottom: 2px solid #dee2e6;
             border-radius: 1rem 1rem 0 0;
             padding: 1.25rem 1.5rem;
         }
 
         .modal-title {
-            /* color: #2d3748; */
             font-weight: 700;
             font-size: 1.25rem;
         }
 
         .form-label {
-            /* color: #4a5568; */
             font-weight: 600;
             font-size: 0.875rem;
             margin-bottom: 0.5rem;
@@ -276,7 +262,6 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-
             .page-title {
                 font-size: 1.5rem;
             }
@@ -362,7 +347,7 @@
                         <div class="col-md-6 mt-3 mt-md-0">
                             <div class="search-box ms-auto">
                                 <i class="mdi mdi-magnify"></i>
-                                <input type="text" class="form-control" id="searchInput" placeholder="Cari Mid...">
+                                <input type="text" class="form-control" id="searchInput" placeholder="Cari MID / Nama Barang...">
                             </div>
                         </div>
                     </div>
@@ -373,28 +358,24 @@
                         <table class="table table-hover custom-table" id="locationTable">
                             <thead>
                                 <tr>
-                                    <th>No</th>
-                                    <th>Mid Barang</th>
-                                    <th>Plant</th>
-                                    <th>S Loc</th>
-                                    <th>Area Rak</th>
-                                    <th>Nama Rak</th>
-                                    <th>Kolom</th>
-                                    <th>Level</th>
-                                    <th>Box</th>
-                                    <th>Status</th>
-                                    <th>Aksi</th>
+                                    <th style="width: 5%;">No</th>
+                                    <th style="width: 15%;">MID Barang</th>
+                                    <th style="width: 25%;">Nama Barang</th>
+                                    <th style="width: 10%;">Plant</th>
+                                    <th style="width: 10%;">S Loc</th>
+                                    <th style="width: 20%;">Detail Loc</th>
+                                    <th style="width: 5%;">Status</th>
+                                    <th style="width: 10%;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
                                 <!-- Data will be loaded here -->
                                 <tr class="empty-state-row">
-                                    <td colspan="11">
+                                    <td colspan="8">
                                         <div class="empty-state">
                                             <i class="mdi mdi-package-variant-closed"></i>
                                             <h6>Belum Ada Data</h6>
-                                            <p>Klik tombol "Tambah Data" atau "Upload Excel" untuk menambahkan lokasi
-                                                stok</p>
+                                            <p>Klik tombol "Tambah Data" atau "Upload Excel" untuk menambahkan lokasi stok</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -475,7 +456,7 @@
                         </div>
                         <div class="alert alert-info mb-3">
                             <i class="mdi mdi-information-outline me-2"></i>
-                            <small>Pastikan format file sesuai dengan template yang telah disediakan</small>
+                            <small>Pastikan format kolom file sesuai: <strong>A: MID Barang | B: Plant | C: S Loc | D: Detail Loc</strong></small>
                         </div>
                         <!-- Download Template -->
                         <div class="row g-2 mb-2 text-nowrap">
@@ -523,7 +504,7 @@
                     beforeSend: function() {
                         $('#tableBody').html(`
                             <tr>
-                                <td colspan="11" class="text-center py-4">
+                                <td colspan="8" class="text-center py-4">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -539,7 +520,7 @@
                             renderTable();
                         } else {
                             $('#tableBody').html(
-                                '<tr><td colspan="11" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
+                                '<tr><td colspan="8" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
                             );
                         }
                     },
@@ -547,7 +528,7 @@
                         console.error(xhr);
                         $('#tableBody').html(`
                             <tr>
-                                <td colspan="11" class="text-center text-danger py-3">
+                                <td colspan="8" class="text-center text-danger py-3">
                                     <i class="mdi mdi-alert-circle-outline me-1"></i> Gagal memuat data dari server.
                                 </td>
                             </tr>
@@ -564,7 +545,7 @@
                 if (filteredLocations.length === 0) {
                     tbody.html(`
                         <tr class="empty-state-row">
-                            <td colspan="11">
+                            <td colspan="8">
                                 <div class="empty-state">
                                     <i class="mdi mdi-package-variant-closed"></i>
                                     <h6>Tidak Ada Data</h6>
@@ -590,13 +571,10 @@
                         <tr>
                             <td>${startIndex + index + 1}</td>
                             <td><strong>${location.barang?.mid_barang ?? '-'}</strong></td>
+                            <td>${location.barang?.nama_barang ?? '-'}</td>
                             <td>${location.rak?.plant ?? '-'}</td>
                             <td>${location.rak?.s_loc ?? '-'}</td>
-                            <td>${location.rak?.area_rak ?? '-'}</td>
-                            <td>${location.rak?.nama_rak ?? '-'}</td>
-                            <td>${location.rak?.kolom_rak ?? '-'}</td>
-                            <td>${location.rak?.level_rak ?? '-'}</td>
-                            <td>${location.rak?.box_rak ?? '-'}</td>
+                            <td>${location.rak?.detail_loc ?? '-'}</td>
                             <td>${statusBadge}</td>
                             <td>
                                 <div class="action-btns">
@@ -679,9 +657,9 @@
                     filteredLocations = allLocations; // reset
                 } else {
                     filteredLocations = allLocations.filter(item =>
-                        item.barang &&
-                        item.barang.mid_barang &&
-                        item.barang.mid_barang.toLowerCase().includes(keyword)
+                        (item.barang && item.barang.mid_barang && item.barang.mid_barang.toLowerCase().includes(keyword)) ||
+                        (item.barang && item.barang.nama_barang && item.barang.nama_barang.toLowerCase().includes(keyword)) ||
+                        (item.rak && item.rak.detail_loc && item.rak.detail_loc.toLowerCase().includes(keyword))
                     );
                 }
 
@@ -737,7 +715,7 @@
                         select.empty().append('<option value="">-- Pilih Lokasi --</option>');
                         racks.forEach(rak => {
                             select.append(
-                                `<option value="${rak.id}">${rak.plant} | ${rak.s_loc} | Area: ${rak.area_rak} | Rak: ${rak.nama_rak} | Lokasi: ${rak.kolom_rak}.${rak.level_rak}.${rak.box_rak}</option>`
+                                `<option value="${rak.id}">${rak.plant} | ${rak.s_loc} | ${rak.detail_loc}</option>`
                             );
                         });
 
@@ -799,7 +777,7 @@
                         initSelectBarang();
                         $('#midBarang')
                             .append(new Option(
-                                `${data.mid_barang}`,
+                                `${data.mid_barang} — ${data.nama_barang}`,
                                 data.mid_barang,
                                 true,
                                 true
@@ -838,6 +816,9 @@
                         $.ajax({
                             url: "{{ route('stock.loc_delete', '') }}/" + id,
                             type: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
                             success: function(res) {
                                 toastr.success(res.message || 'Data berhasil dihapus');
                                 loadStockLocation(); // reload tabel
@@ -860,7 +841,7 @@
 
                 const id = $('#locationId').val();
                 const payload = {
-                    mid_barang: $('#midBarang').val().trim(),
+                    mid_barang: $('#midBarang').val() ? $('#midBarang').val().trim() : '',
                     rak_id: $('#rakIdSelect').val(),
                 };
 
@@ -879,6 +860,9 @@
                     url: url,
                     type: method,
                     data: payload,
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
                     success: function(res) {
                         toastr.success(res.message || 'Data berhasil disimpan');
                         $('#modalForm').modal('hide');
@@ -925,6 +909,9 @@
                     data: formData,
                     contentType: false,
                     processData: false,
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
                     beforeSend: function() {
                         $('#btnUploadSubmit').prop('disabled', true).text('Uploading...');
                     },

@@ -24,11 +24,9 @@ class WspSoSummariesModel extends Model
     ];
 
     protected $appends = [
-        'area_rak',
-        'nama_rak',
-        'kolom_rak',
-        'level_rak',
-        'bin_rak',
+        'plant',
+        's_loc',
+        'detail_loc',
     ];
 
     public function so()
@@ -46,28 +44,18 @@ class WspSoSummariesModel extends Model
         return $this->belongsTo(\App\Models\Wsp\stock_manage\StockLocationModel::class, 'loc_id');
     }
 
-    public function getAreaRakAttribute()
+    public function getPlantAttribute()
     {
-        return $this->location?->rak?->area_rak;
+        return $this->location?->rak?->plant;
     }
 
-    public function getNamaRakAttribute()
+    public function getSLocAttribute()
     {
-        return $this->location?->rak?->nama_rak;
+        return $this->location?->rak?->s_loc;
     }
 
-    public function getKolomRakAttribute()
+    public function getDetailLocAttribute()
     {
-        return $this->location?->rak?->kolom_rak;
-    }
-
-    public function getLevelRakAttribute()
-    {
-        return $this->location?->rak?->level_rak;
-    }
-
-    public function getBinRakAttribute()
-    {
-        return $this->location?->rak?->box_rak;
+        return $this->location?->rak?->detail_loc;
     }
 }

@@ -38,29 +38,28 @@
                         <div class="card-body">
                             <div class="row mb-3">
                                 <div class="col-md-3">
-                                    <select id="filterArea" class="form-select">
-                                        <option value="">-- All Area --</option>
+                                    <select id="filterPlant" class="form-select">
+                                        <option value="">-- All Plant --</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <select id="filterNama" class="form-select">
-                                        <option value="">-- All Nama --</option>
+                                    <select id="filterSLoc" class="form-select">
+                                        <option value="">-- All S Loc --</option>
                                     </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" id="filterSearch" class="form-control" placeholder="Cari Detail Loc...">
                                 </div>
                             </div>
                             <table class="table table-striped table-hover text-nowrap" id="wspRakTable" style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th class="text-center">No</th>
-                                        <th>Plant</th>
-                                        <th>S Loc</th>
-                                        <th>Area Rak</th>
-                                        <th>Nama Rak</th>
-                                        <th>Kolom Rak</th>
-                                        <th>Level Rak</th>
-                                        <th>Box Rak</th>
+                                        <th class="text-center" style="width: 5%;">No</th>
+                                        <th style="width: 15%;">Plant</th>
+                                        <th style="width: 15%;">S Loc</th>
+                                        <th style="width: 45%;">Detail Loc</th>
                                         @if (Session::get('jabatan') !== 'operator')
-                                            <th data-orderable="false" class="text-center">Action</th>
+                                            <th data-orderable="false" class="text-center" style="width: 20%;">Action</th>
                                         @endif
                                     </tr>
                                 </thead>
@@ -90,7 +89,7 @@
 
     {{-- Modal Registasi Rack --}}
     <div class="modal fade" id="modalRegistrasi" tabindex="-1" aria-labelledby="modalRegistrasiLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-md modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalRegistrasiLabel">Registrasi Rack</h5>
@@ -99,7 +98,7 @@
 
                 <form id="formRegistrasiRack" enctype="multipart/form-data">
                     <div class="modal-body">
-                        <div class="row gy-4">
+                        <div class="row gy-3">
                             <div class="col-md-6">
                                 <label for="plant" class="form-label"> <span class="text-danger">*</span> Plant</label>
                                 <input type="text" class="form-control" id="plant" name="plant"
@@ -112,35 +111,10 @@
                                     placeholder="Cth: G001" required>
                             </div>
 
-                            <div class="col-md-6">
-                                <label for="areaRak" class="form-label"><span class="text-danger">*</span> Area Rak</label>
-                                <input type="text" class="form-control" id="areaRak" name="areaRak"
-                                    placeholder="Cth: FL1" required>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="namaRak" class="form-label"><span class="text-danger">*</span> Nama
-                                    Rak</label>
-                                <input type="text" class="form-control" id="namaRak" name="namaRak"
-                                    placeholder="Cth: A" required>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="kolomRak" class="form-label">Kolom Rak</label>
-                                <input type="number" class="form-control" id="kolomRak" name="kolomRak"
-                                    placeholder="Cth: 1" min="1">
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="levelRak" class="form-label">Level Rak</label>
-                                <input type="number" class="form-control" id="levelRak" name="levelRak"
-                                    placeholder="Cth: 1" min="1">
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="boxRak" class="form-label">Box Rak</label>
-                                <input type="text" class="form-control" id="boxRak" name="boxRak"
-                                    placeholder="Cth: 000">
+                            <div class="col-md-12">
+                                <label for="detailLoc" class="form-label"><span class="text-danger">*</span> Detail Loc</label>
+                                <input type="text" class="form-control" id="detailLoc" name="detailLoc"
+                                    placeholder="Cth: FL1-A-1.1.000" required>
                             </div>
                         </div>
                     </div>
@@ -157,7 +131,7 @@
 
     {{-- modal edit --}}
     <div class="modal fade" id="editModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-md">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Update Data Rak</h5>
@@ -166,39 +140,18 @@
                 <form id="editForm" enctype="multipart/form-data">
                     <div class="modal-body">
                         <input type="hidden" id="editId" name="id">
-                        <div class="row gy-4">
+                        <div class="row gy-3">
                             <div class="col-md-6">
-                                <label for="plantEdit" class="form-label"><span class="text-danger">*</span>
-                                    Plant</label>
+                                <label for="plantEdit" class="form-label"><span class="text-danger">*</span> Plant</label>
                                 <input type="text" class="form-control" id="plantEdit" name="plantEdit" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="sLocEdit" class="form-label"><span class="text-danger">*</span> S Loc</label>
                                 <input type="text" class="form-control" id="sLocEdit" name="sLocEdit" required>
                             </div>
-                            <div class="col-md-6">
-                                <label for="areaRakEdit" class="form-label"><span class="text-danger">*</span> Area
-                                    Rak</label>
-                                <input type="text" class="form-control" id="areaRakEdit" name="areaRakEdit" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="namaRakEdit" class="form-label"><span class="text-danger">*</span> Nama
-                                    Rak</label>
-                                <input type="text" class="form-control" id="namaRakEdit" name="namaRakEdit" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="kolomRakEdit" class="form-label">Kolom Rak</label>
-                                <input type="number" class="form-control" id="kolomRakEdit" name="kolomRakEdit"
-                                    min="1">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="levelRakEdit" class="form-label">Level Rak</label>
-                                <input type="number" class="form-control" id="levelRakEdit" name="levelRakEdit"
-                                    min="1">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="boxRakEdit" class="form-label">Box Rak</label>
-                                <input type="text" class="form-control" id="boxRakEdit" name="boxRakEdit">
+                            <div class="col-md-12">
+                                <label for="detailLocEdit" class="form-label"><span class="text-danger">*</span> Detail Loc</label>
+                                <input type="text" class="form-control" id="detailLocEdit" name="detailLocEdit" required>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -231,8 +184,7 @@
                             <small>
                                 <i class="mdi mdi-information-outline me-1"></i>
                                 Pastikan format kolom Excel sesuai template: <br>
-                                <strong>A: Plant | B: S Loc | C: Area Rak | D: Nama Rak | E: Kolom | F: Level | G:
-                                    Box</strong>
+                                <strong>A: Plant | B: S Loc | C: Detail Loc</strong>
                             </small>
                         </div>
                     </div>
@@ -266,7 +218,7 @@
                     beforeSend: function() {
                         $('#wspRakTable tbody').html(`
                         <tr>
-                            <td colspan="9" class="text-center py-4">
+                            <td colspan="5" class="text-center py-4">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
@@ -281,7 +233,7 @@
                             applyFilters(keepPage);
                         } else {
                             $('#wspRakTable tbody').html(
-                                '<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
+                                '<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
                             );
                         }
                     },
@@ -289,7 +241,7 @@
                         console.error(err);
                         $('#wspRakTable tbody').html(`
                         <tr>
-                            <td colspan="6" class="text-center text-danger py-3">
+                            <td colspan="5" class="text-center text-danger py-3">
                                 <i class="mdi mdi-alert-circle-outline me-1"></i> Gagal memuat data.
                             </td>
                         </tr>
@@ -300,21 +252,26 @@
 
             // Apply filtering
             function applyFilters(keepPage = false) {
-                const filterArea = $('#filterArea').val();
-                const filterNama = $('#filterNama').val();
+                const filterPlant = $('#filterPlant').val();
+                const filterSLoc = $('#filterSLoc').val();
+                const filterSearch = $('#filterSearch').val().toLowerCase().trim();
 
                 filteredRacks = allRacks.filter(item => {
-                    let matchArea = true;
-                    let matchNama = true;
+                    let matchPlant = true;
+                    let matchSLoc = true;
+                    let matchSearch = true;
 
-                    if (filterArea) {
-                        matchArea = item.area_rak === filterArea;
+                    if (filterPlant) {
+                        matchPlant = item.plant === filterPlant;
                     }
-                    if (filterNama) {
-                        matchNama = item.nama_rak === filterNama;
+                    if (filterSLoc) {
+                        matchSLoc = item.s_loc === filterSLoc;
+                    }
+                    if (filterSearch) {
+                        matchSearch = (item.detail_loc && item.detail_loc.toLowerCase().includes(filterSearch));
                     }
 
-                    return matchArea && matchNama;
+                    return matchPlant && matchSLoc && matchSearch;
                 });
 
                 if (!keepPage) {
@@ -336,7 +293,7 @@
                 if (filteredRacks.length === 0) {
                     tbody.html(`
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
+                        <td colspan="5" class="text-center text-muted py-4">
                             Tidak ada data yang cocok dengan filter.
                         </td>
                     </tr>
@@ -366,13 +323,9 @@
                     tbody.append(`
                     <tr>
                         <td class="text-center">${startIndex + index + 1}</td>
-                        <td>${rak.plant || '-'}</td>
+                        <td><strong>${rak.plant || '-'}</strong></td>
                         <td>${rak.s_loc || '-'}</td>
-                        <td>${rak.area_rak || '-'}</td>
-                        <td>${rak.nama_rak || '-'}</td>
-                        <td>${rak.kolom_rak || '-'}</td>
-                        <td>${rak.level_rak || '-'}</td>
-                        <td>${rak.box_rak || '-'}</td>
+                        <td>${rak.detail_loc || '-'}</td>
                         @if (Session::get('jabatan') !== 'operator')
                             <td class="text-center">
                                 <div class="d-flex gap-2 justify-content-center">
@@ -448,6 +401,9 @@
                     url: `/master/wsp/store/rak`,
                     type: 'POST',
                     data: $(this).serialize(),
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
                     success: function(response) {
                         Swal.fire({
                             icon: 'success',
@@ -457,6 +413,7 @@
                         $('#formRegistrasiRack')[0].reset();
                         $('#modalRegistrasi').modal('hide');
                         loadRacks(); // reload data
+                        getFilters();
                     },
                     error: function(xhr) {
                         let res = xhr.responseJSON;
@@ -495,11 +452,7 @@
                         $('#editId').val(data.id);
                         $('#plantEdit').val(data.plant);
                         $('#sLocEdit').val(data.s_loc);
-                        $('#areaRakEdit').val(data.area_rak);
-                        $('#namaRakEdit').val(data.nama_rak);
-                        $('#kolomRakEdit').val(data.kolom_rak);
-                        $('#levelRakEdit').val(data.level_rak);
-                        $('#boxRakEdit').val(data.box_rak);
+                        $('#detailLocEdit').val(data.detail_loc);
 
                         // buka modal
                         $('#editModal').modal('show');
@@ -532,6 +485,7 @@
                         Swal.fire('Success!', 'Data updated successfully.', 'success');
                         $('#editModal').modal('hide');
                         loadRacks(true); // reload data
+                        getFilters();
                     },
                     error: function(err) {
                         console.error("Error updating data:", err);
@@ -570,6 +524,7 @@
                                     'success'
                                 );
                                 loadRacks(true); // reload data
+                                getFilters();
                             },
                             error: function(err) {
                                 console.error("Error deleting data:", err);
@@ -586,22 +541,30 @@
 
             // Filtering
             function getFilters() {
-                $('#filterArea').empty().append('<option value="">-- All Area --</option>');
-                $('#filterNama').empty().append('<option value="">-- All Nama --</option>');
+                $('#filterPlant').empty().append('<option value="">-- All Plant --</option>');
+                $('#filterSLoc').empty().append('<option value="">-- All S Loc --</option>');
 
                 $.get("/api/wsp/rak/filters", function(res) {
-                    res.area.forEach(function(item) {
-                        $('#filterArea').append(`<option value="${item}">${item}</option>`);
-                    });
+                    if (res.plants) {
+                        res.plants.forEach(function(item) {
+                            if (item) $('#filterPlant').append(`<option value="${item}">${item}</option>`);
+                        });
+                    }
 
-                    res.nama.forEach(function(item) {
-                        $('#filterNama').append(`<option value="${item}">${item}</option>`);
-                    });
+                    if (res.s_locs) {
+                        res.s_locs.forEach(function(item) {
+                            if (item) $('#filterSLoc').append(`<option value="${item}">${item}</option>`);
+                        });
+                    }
                 });
             }
 
             // Apply filter
-            $('#filterArea, #filterNama').on('change', function() {
+            $('#filterPlant, #filterSLoc').on('change', function() {
+                applyFilters();
+            });
+
+            $('#filterSearch').on('input', function() {
                 applyFilters();
             });
 
@@ -641,6 +604,7 @@
                         });
 
                         loadRacks(); // reload data table
+                        getFilters();
                     },
                     error: function(xhr) {
                         $('#btnProsesUpload').prop('disabled', false).text('Upload');

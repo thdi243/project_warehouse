@@ -335,7 +335,7 @@ class WspPurchaseRequesitionController extends Controller
             'items.barang:id,mid_barang,nama_barang,uom',
             'items.approval.approval',
             'approval.approver',
-            'items.barang.activeStockLocation.rak:id,plant,s_loc,area_rak,nama_rak,kolom_rak,level_rak,box_rak'
+            'items.barang.activeStockLocation.rak:id,plant,s_loc,detail_loc'
         );
 
         if ($request->filled('start_date')) {

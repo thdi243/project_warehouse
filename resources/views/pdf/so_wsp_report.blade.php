@@ -199,11 +199,7 @@
                             {{ $dt->barang->nama_barang }}
                         </td>
                         <td>
-                            @php
-                                $locParts = array_filter([$dt->area_rak, $dt->nama_rak, $dt->kolom_rak, $dt->level_rak, $dt->bin_rak]);
-                                $locStr = count($locParts) > 0 ? implode('-', $locParts) : '-';
-                            @endphp
-                            {{ $locStr }}
+                            {{ $dt->detail_loc ?? '-' }}
                         </td>
                         <td>{{ $dt->barang->uom }}</td>
                         <td style="padding-right: 5px;">

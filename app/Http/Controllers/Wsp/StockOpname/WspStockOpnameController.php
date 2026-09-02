@@ -191,11 +191,9 @@ class WspStockOpnameController extends Controller
                 'summary' => $summary,
                 'catatan' => $note ? $note->catatan : null,
                 'diff_status' => $diffStatus,
-                'area_rak' => $rak?->area_rak,
-                'nama_rak' => $rak?->nama_rak,
-                'kolom_rak' => $rak?->kolom_rak,
-                'level_rak' => $rak?->level_rak,
-                'bin_rak' => $rak?->box_rak,
+                'plant'       => $rak?->plant,
+                's_loc'       => $rak?->s_loc,
+                'detail_loc'  => $rak?->detail_loc,
             ];
         });
 
@@ -545,17 +543,15 @@ class WspStockOpnameController extends Controller
     {
         $request->validate([
             'mid_barang' => 'required|exists:wsp_barang,mid_barang',
-            'unrest' => 'required|numeric|min:0',
-            'qi' => 'nullable|numeric|min:0',
-            'blocked' => 'nullable|numeric|min:0',
-            'qty_full' => 'required|numeric|min:0',
-            'qty_receh' => 'required|numeric|min:0',
-            'jenis_so' => 'required|string|in:cycle_count,monthly',
-            'area_rak' => 'nullable|string',
-            'nama_rak' => 'nullable|string',
-            'kolom_rak' => 'nullable|string',
-            'level_rak' => 'nullable|string',
-            'bin_rak' => 'nullable|string',
+            'unrest'     => 'required|numeric|min:0',
+            'qi'         => 'nullable|numeric|min:0',
+            'blocked'    => 'nullable|numeric|min:0',
+            'qty_full'   => 'required|numeric|min:0',
+            'qty_receh'  => 'required|numeric|min:0',
+            'jenis_so'   => 'required|string|in:cycle_count,monthly',
+            'plant'      => 'nullable|string',
+            's_loc'      => 'nullable|string',
+            'detail_loc' => 'nullable|string',
         ]);
 
         $jenisSo = $request->input('jenis_so', 'cycle_count');
@@ -571,31 +567,25 @@ class WspStockOpnameController extends Controller
         $user = Auth::user();
         $today = now()->toDateString();
 
-        $area = trim($request->area_rak ?? '');
-        $nama = trim($request->nama_rak ?? '');
-        $kolom = trim($request->kolom_rak ?? '');
-        $level = trim($request->level_rak ?? '');
-        $box = trim($request->bin_rak ?? '');
+        $plant = trim($request->plant ?? '1006');
+        $sLoc = trim($request->s_loc ?? 'G001');
+        $detailLoc = trim($request->detail_loc ?? $request->area_rak ?? 'LOC');
 
         // Find or create Rak
         $rak = \App\Models\Wsp\RakModel::firstOrCreate([
-            'area_rak' => $area,
-            'nama_rak' => $nama,
-            'kolom_rak' => $kolom,
-            'level_rak' => $level,
-            'box_rak' => $box,
+            'plant'      => strtoupper($plant),
+            's_loc'      => strtoupper($sLoc),
+            'detail_loc' => strtoupper($detailLoc),
         ], [
-            'plant' => 'WSP',
-            's_loc' => 'WSP',
             'created_by' => $user->id ?? 1
         ]);
 
         // Find or create StockLocation (wsp_stock_location)
         $stockLocation = \App\Models\Wsp\stock_manage\StockLocationModel::firstOrCreate([
             'barang_id' => $barang->id,
-            'rak_id' => $rak->id,
+            'rak_id'    => $rak->id,
         ], [
-            'status' => 'active',
+            'status'     => 'active',
             'created_by' => $user->id ?? 1
         ]);
 
@@ -754,7 +744,7 @@ class WspStockOpnameController extends Controller
             $counted = $tempData->firstWhere('soh_id', $soh->id);
             if (!$counted) {
                 $rak = $soh->location?->rak;
-                $locationText = $rak ? "{$rak->area_rak}-{$rak->nama_rak}-{$rak->kolom_rak}-{$rak->level_rak}-{$rak->box_rak}" : '-';
+                $locationText = $rak ? "{$rak->plant}-{$rak->s_loc}-{$rak->detail_loc}" : '-';
                 $uncountedItems[] = [
                     'mid' => $soh->barang->mid_barang ?? '-',
                     'nama_barang' => ($soh->barang->nama_barang ?? '-') . " ({$locationText})",
@@ -793,7 +783,7 @@ class WspStockOpnameController extends Controller
             $rak = $soh?->location?->rak;
 
             if ($diff != 0 && empty($comment)) {
-                $locationText = $rak ? "{$rak->area_rak}-{$rak->nama_rak}-{$rak->kolom_rak}-{$rak->level_rak}-{$rak->box_rak}" : '-';
+                $locationText = $rak ? "{$rak->plant}-{$rak->s_loc}-{$rak->detail_loc}" : '-';
                 $varianceIssues[] = [
                     'mid' => "{$temp['barang']->mid_barang} (Rak: {$locationText})",
                     'selisih' => $diff,
@@ -812,11 +802,9 @@ class WspStockOpnameController extends Controller
                 'keterangan' => $comment,
                 'qty_full' => $temp['qty_full'],
                 'qty_receh' => $temp['qty_receh'],
-                'area_rak' => $rak ? $rak->area_rak : null,
-                'nama_rak' => $rak ? $rak->nama_rak : null,
-                'kolom_rak' => $rak ? $rak->kolom_rak : null,
-                'level_rak' => $rak ? $rak->level_rak : null,
-                'bin_rak' => $rak ? $rak->box_rak : null,
+                'plant' => $rak ? $rak->plant : null,
+                's_loc' => $rak ? $rak->s_loc : null,
+                'detail_loc' => $rak ? $rak->detail_loc : null,
             ];
         }
 

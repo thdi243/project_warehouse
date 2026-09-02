@@ -112,16 +112,14 @@ class WspStockOnHandController extends Controller
         $locations = $query->with('rak')->get()->map(function ($loc) {
             if (!$loc->rak) return null;
             return [
-                'id'       => $loc->id,
-                'loc_id'   => $loc->id,
-                'rak_id'   => $loc->rak->id,
-                'barang_id' => $loc->barang_id,
-                'area_rak' => $loc->rak->area_rak,
-                'nama_rak' => $loc->rak->nama_rak,
-                'kolom_rak' => $loc->rak->kolom_rak,
-                'level_rak' => $loc->rak->level_rak,
-                'bin_rak'  => $loc->rak->box_rak,
-                'text'     => "{$loc->rak->plant} - {$loc->rak->s_loc} - {$loc->rak->area_rak}-{$loc->rak->nama_rak}-({$loc->rak->kolom_rak}.{$loc->rak->level_rak}.{$loc->rak->box_rak})"
+                'id'         => $loc->id,
+                'loc_id'     => $loc->id,
+                'rak_id'     => $loc->rak->id,
+                'barang_id'  => $loc->barang_id,
+                'plant'      => $loc->rak->plant,
+                's_loc'      => $loc->rak->s_loc,
+                'detail_loc' => $loc->rak->detail_loc,
+                'text'       => "{$loc->rak->plant} - {$loc->rak->s_loc} - {$loc->rak->detail_loc}"
             ];
         })->filter()->values();
 
@@ -133,53 +131,34 @@ class WspStockOnHandController extends Controller
 
     public function getAreaList(Request $request)
     {
-        $areas = RakModel::distinct()->orderBy('area_rak', 'asc')->pluck('area_rak');
+        $locations = RakModel::distinct()->orderBy('detail_loc', 'asc')->pluck('detail_loc');
         return response()->json([
             'status' => 'success',
-            'data' => $areas
+            'data' => $locations
         ]);
     }
 
     public function getNamaRakList(Request $request)
     {
-        $area = $request->input('area');
-        $query = RakModel::query();
-        if ($area) {
-            if (is_array($area)) {
-                $query->whereIn('area_rak', $area);
-            } else {
-                $query->where('area_rak', $area);
-            }
-        }
-        $racks = $query->distinct()->orderBy('nama_rak', 'asc')->pluck('nama_rak');
+        $locations = RakModel::distinct()->orderBy('detail_loc', 'asc')->pluck('detail_loc');
         return response()->json([
             'status' => 'success',
-            'data' => $racks
+            'data' => $locations
         ]);
     }
 
     public function getBarangListByLocation(Request $request)
     {
-        $area = $request->input('area');
-        $namaRak = $request->input('nama_rak');
+        $detailLoc = $request->input('detail_loc') ?? $request->input('area') ?? $request->input('nama_rak');
 
         $query = StockLocationModel::where('status', 'active');
 
-        if ($area || $namaRak) {
-            $query->whereHas('rak', function ($q) use ($area, $namaRak) {
-                if ($area) {
-                    if (is_array($area)) {
-                        $q->whereIn('area_rak', $area);
-                    } else {
-                        $q->where('area_rak', $area);
-                    }
-                }
-                if ($namaRak) {
-                    if (is_array($namaRak)) {
-                        $q->whereIn('nama_rak', $namaRak);
-                    } else {
-                        $q->where('nama_rak', $namaRak);
-                    }
+        if ($detailLoc) {
+            $query->whereHas('rak', function ($q) use ($detailLoc) {
+                if (is_array($detailLoc)) {
+                    $q->whereIn('detail_loc', $detailLoc);
+                } else {
+                    $q->where('detail_loc', $detailLoc);
                 }
             });
         }
@@ -218,10 +197,11 @@ class WspStockOnHandController extends Controller
         // Bulk add — barang_id array + area + nama_rak (atau rak_id langsung)
         if ($request->has('barang_id') && is_array($request->barang_id)) {
             $request->validate([
-                'barang_id' => 'required|array',
-                'area'      => 'nullable|array',
-                'nama_rak'  => 'nullable|array',
-                'jenis_so'  => 'required|string|in:cycle_count,monthly',
+                'barang_id'  => 'required|array',
+                'detail_loc' => 'nullable|array',
+                'area'       => 'nullable|array',
+                'nama_rak'   => 'nullable|array',
+                'jenis_so'   => 'required|string|in:cycle_count,monthly',
             ]);
 
             $today = now()->toDateString();
@@ -259,14 +239,14 @@ class WspStockOnHandController extends Controller
 
                 $barangIds = $request->barang_id;
 
-                // Resolve loc_ids dari area + nama_rak yang dipilih
+                // Resolve loc_ids dari detail_loc yang dipilih
                 $locQuery = StockLocationModel::where('status', 'active')
                     ->whereIn('barang_id', $barangIds);
 
-                if ($request->has('area') && $request->has('nama_rak')) {
-                    $locQuery->whereHas('rak', function ($q) use ($request) {
-                        $q->whereIn('area_rak', (array)$request->area)
-                            ->whereIn('nama_rak', (array)$request->nama_rak);
+                $detailLocs = $request->detail_loc ?? $request->nama_rak ?? $request->area;
+                if ($detailLocs) {
+                    $locQuery->whereHas('rak', function ($q) use ($detailLocs) {
+                        $q->whereIn('detail_loc', (array)$detailLocs);
                     });
                 }
 
@@ -320,8 +300,8 @@ class WspStockOnHandController extends Controller
 
                         if ($exists) {
                             $rak = $map->rak;
-                            $skipped[] = "MID barang_id:{$barangId} di Rak " .
-                                ($rak ? "{$rak->area_rak}-{$rak->nama_rak}" : $map->id) . " sudah ada.";
+                            $skipped[] = "MID barang_id:{$barangId} di Lokasi " .
+                                ($rak ? "{$rak->plant}-{$rak->s_loc}-{$rak->detail_loc}" : $map->id) . " sudah ada.";
                             continue;
                         }
 
@@ -783,26 +763,18 @@ class WspStockOnHandController extends Controller
                 $blocked   = (int)($data['blocked']   ?? 0);
 
                 // Read optional location columns
-                $plant = isset($data['plant']) ? trim($data['plant']) : '';
-                $sloc  = isset($data['s_loc']) ? trim($data['s_loc']) : '';
-                $area  = isset($data['area_rak']) ? trim($data['area_rak']) : '';
-                $nama  = isset($data['nama_rak']) ? trim($data['nama_rak']) : '';
-                $kolom = isset($data['kolom_rak']) ? trim($data['kolom_rak']) : '';
-                $level = isset($data['level_rak']) ? trim($data['level_rak']) : '';
-                $box   = isset($data['box_rak']) ? trim($data['box_rak']) : '';
+                $plant     = isset($data['plant']) ? trim($data['plant']) : '';
+                $sloc      = isset($data['s_loc']) ? trim($data['s_loc']) : '';
+                $detailLoc = isset($data['detail_loc']) ? trim($data['detail_loc']) : '';
 
-                $hasLocationInRow = ($plant !== '' || $sloc !== '' || $area !== '' || $nama !== '' || $kolom !== '' || $level !== '' || $box !== '');
+                $hasLocationInRow = ($plant !== '' || $sloc !== '' || $detailLoc !== '');
 
                 if ($hasLocationInRow) {
                     // Find or create the Rak record
                     $rak = RakModel::firstOrCreate([
-                        'plant'     => $plant !== '' ? $plant : null,
-                        's_loc'     => $sloc !== '' ? $sloc : null,
-                        'area_rak'  => $area !== '' ? $area : null,
-                        'nama_rak'  => $nama !== '' ? $nama : null,
-                        'kolom_rak' => $kolom !== '' ? $kolom : null,
-                        'level_rak' => $level !== '' ? $level : null,
-                        'box_rak'   => $box !== '' ? $box : null,
+                        'plant'      => $plant !== '' ? strtoupper($plant) : '1006',
+                        's_loc'      => $sloc !== '' ? strtoupper($sloc) : 'G001',
+                        'detail_loc' => $detailLoc !== '' ? strtoupper($detailLoc) : 'LOC',
                     ], [
                         'created_by' => Auth::id() ?? 1,
                     ]);
@@ -974,11 +946,7 @@ class WspStockOnHandController extends Controller
             'D' => 'blocked',
             'E' => 'plant',
             'F' => 's_loc',
-            'G' => 'area_rak',
-            'H' => 'nama_rak',
-            'I' => 'kolom_rak',
-            'J' => 'level_rak',
-            'K' => 'box_rak',
+            'G' => 'detail_loc',
         ];
 
         foreach ($headers as $col => $header) {
@@ -994,11 +962,7 @@ class WspStockOnHandController extends Controller
         $sheet->setCellValue('D2', 0);
         $sheet->setCellValue('E2', '1006');
         $sheet->setCellValue('F2', 'G001');
-        $sheet->setCellValue('G2', 'FL1');
-        $sheet->setCellValue('H2', 'A');
-        $sheet->setCellValue('I2', '1');
-        $sheet->setCellValue('J2', '2');
-        $sheet->setCellValue('K2', '01');
+        $sheet->setCellValue('G2', 'FL1-A-1.1.000');
 
         $fileName = 'Template_Stock_On_Hand_WSP_' . date('Y-m-d') . '.xlsx';
 

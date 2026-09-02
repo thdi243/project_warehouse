@@ -36,13 +36,9 @@ class WspRakController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'plant'    => 'required|string|max:50',
-            'sLoc'     => 'required|string|max:50',
-            'areaRak'  => 'required|string|max:50',
-            'namaRak'  => 'required|string|max:50',
-            'kolomRak' => 'nullable',
-            'levelRak' => 'nullable',
-            'boxRak'   => 'nullable|string',
+            'plant'     => 'required|string|max:50',
+            'sLoc'      => 'required|string|max:50',
+            'detailLoc' => 'required|string|max:100',
         ]);
 
         try {
@@ -50,11 +46,7 @@ class WspRakController extends Controller
                 'created_by' => Auth::id() ?? 1,
                 'plant'      => strtoupper(trim($request->plant)),
                 's_loc'      => strtoupper(trim($request->sLoc)),
-                'area_rak'   => strtoupper(trim($request->areaRak)),
-                'nama_rak'   => strtoupper(trim($request->namaRak)),
-                'kolom_rak'  => $request->kolomRak ?? null,
-                'level_rak'  => $request->levelRak ?? null,
-                'box_rak'    => $request->boxRak ?? null,
+                'detail_loc' => strtoupper(trim($request->detailLoc)),
             ]);
 
             return response()->json([
@@ -76,7 +68,6 @@ class WspRakController extends Controller
             ], 500);
         }
     }
-
 
     /**
      * Display the specified resource.
@@ -108,20 +99,19 @@ class WspRakController extends Controller
 
     public function getFilters()
     {
-        $area = RakModel::select('area_rak')
+        $plants = RakModel::select('plant')
             ->distinct()
-            ->pluck('area_rak');
+            ->pluck('plant');
 
-        $nama = RakModel::select('nama_rak')
+        $sLocs = RakModel::select('s_loc')
             ->distinct()
-            ->pluck('nama_rak');
+            ->pluck('s_loc');
 
         return response()->json([
-            'area' => $area,
-            'nama' => $nama
+            'plants' => $plants,
+            's_locs' => $sLocs
         ]);
     }
-
 
     /**
      * Update the specified resource in storage.
@@ -131,11 +121,7 @@ class WspRakController extends Controller
         $request->validate([
             'plantEdit'     => 'required|string|max:50',
             'sLocEdit'      => 'required|string|max:50',
-            'areaRakEdit'   => 'required|string|max:50',
-            'namaRakEdit'   => 'required|string|max:50',
-            'kolomRakEdit'  => 'nullable',
-            'levelRakEdit'  => 'nullable',
-            'boxRakEdit'    => 'nullable|string',
+            'detailLocEdit' => 'required|string|max:100',
         ]);
 
         try {
@@ -144,13 +130,9 @@ class WspRakController extends Controller
 
             // Update datanya
             $rak->update([
-                'plant'     => strtoupper(trim($request->plantEdit)),
-                's_loc'     => strtoupper(trim($request->sLocEdit)),
-                'area_rak'  => strtoupper(trim($request->areaRakEdit)),
-                'nama_rak'  => strtoupper(trim($request->namaRakEdit)),
-                'kolom_rak' => $request->kolomRakEdit ?? null,
-                'level_rak' => $request->levelRakEdit ?? null,
-                'box_rak'   => $request->boxRakEdit ?? null,
+                'plant'      => strtoupper(trim($request->plantEdit)),
+                's_loc'      => strtoupper(trim($request->sLocEdit)),
+                'detail_loc' => strtoupper(trim($request->detailLocEdit)),
             ]);
 
             return response()->json([
@@ -216,54 +198,38 @@ class WspRakController extends Controller
             foreach ($rows as $index => $row) {
                 if ($index === 1) continue;
 
-                $plant     = isset($row['A']) ? trim((string)$row['A']) : '';
-                $s_loc     = isset($row['B']) ? trim((string)$row['B']) : '';
-                $area_rak  = isset($row['C']) ? trim((string)$row['C']) : '';
-                $nama_rak  = isset($row['D']) ? trim((string)$row['D']) : '';
-                $kolom_rak = isset($row['E']) ? trim((string)$row['E']) : '';
-                $level_rak = isset($row['F']) ? trim((string)$row['F']) : '';
-                $box_rak   = isset($row['G']) ? trim((string)$row['G']) : '';
+                $plant      = isset($row['A']) ? trim((string)$row['A']) : '';
+                $s_loc      = isset($row['B']) ? trim((string)$row['B']) : '';
+                $detail_loc = isset($row['C']) ? trim((string)$row['C']) : '';
 
-                if ($plant === '' && $s_loc === '' && $area_rak === '' && $nama_rak === '') {
+                if ($plant === '' && $s_loc === '' && $detail_loc === '') {
                     continue;
                 }
 
-                if ($plant === '' || $s_loc === '' || $area_rak === '' || $nama_rak === '' || $kolom_rak === '' || $level_rak === '') {
-                    $skipped[] = "Baris " . $index . ": Kolom wajib ada tidak lengkap.";
+                if ($plant === '' || $s_loc === '' || $detail_loc === '') {
+                    $skipped[] = "Baris " . $index . ": Kolom wajib ada (Plant, S Loc, Detail Loc) tidak lengkap.";
                     continue;
                 }
 
-                $plant     = strtoupper($plant);
-                $s_loc     = strtoupper($s_loc);
-                $area_rak  = strtoupper($area_rak);
-                $nama_rak  = strtoupper($nama_rak);
-                $kolom_rak = intval($kolom_rak);
-                $level_rak = intval($level_rak);
-                $box_rak   = $box_rak !== '' ? $box_rak : '000';
+                $plant      = strtoupper($plant);
+                $s_loc      = strtoupper($s_loc);
+                $detail_loc = strtoupper($detail_loc);
 
                 // Cek duplikat
                 $exists = RakModel::where('plant', $plant)
                     ->where('s_loc', $s_loc)
-                    ->where('area_rak', $area_rak)
-                    ->where('nama_rak', $nama_rak)
-                    ->where('kolom_rak', $kolom_rak)
-                    ->where('level_rak', $level_rak)
-                    ->where('box_rak', $box_rak)
+                    ->where('detail_loc', $detail_loc)
                     ->exists();
 
                 if ($exists) {
-                    $skipped[] = "Baris " . $index . ": Data rak {$plant}-{$s_loc}-{$area_rak}-{$nama_rak}-({$kolom_rak}.{$level_rak}.{$box_rak}) sudah terdaftar.";
+                    $skipped[] = "Baris " . $index . ": Data rak {$plant}-{$s_loc}-{$detail_loc} sudah terdaftar.";
                     continue;
                 }
 
                 RakModel::create([
                     'plant'      => $plant,
                     's_loc'      => $s_loc,
-                    'area_rak'   => $area_rak,
-                    'nama_rak'   => $nama_rak,
-                    'kolom_rak'  => $kolom_rak ?? null,
-                    'level_rak'  => $level_rak ?? null,
-                    'box_rak'    => $box_rak ?? null,
+                    'detail_loc' => $detail_loc,
                     'created_by' => Auth::id() ?? 1,
                 ]);
 
@@ -295,20 +261,12 @@ class WspRakController extends Controller
         // Headers
         $sheet->setCellValue('A1', 'Plant');
         $sheet->setCellValue('B1', 'S Loc');
-        $sheet->setCellValue('C1', 'Area Rak');
-        $sheet->setCellValue('D1', 'Nama Rak');
-        $sheet->setCellValue('E1', 'Kolom');
-        $sheet->setCellValue('F1', 'Level');
-        $sheet->setCellValue('G1', 'Box');
+        $sheet->setCellValue('C1', 'Detail Loc');
 
         // Example row
         $sheet->setCellValue('A2', '1006');
         $sheet->setCellValue('B2', 'G001');
-        $sheet->setCellValue('C2', 'FL1');
-        $sheet->setCellValue('D2', 'A');
-        $sheet->setCellValue('E2', '1');
-        $sheet->setCellValue('F2', '1');
-        $sheet->setCellValue('G2', '000');
+        $sheet->setCellValue('C2', 'FL1-A-1.1.000');
 
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $fileName = 'Template_Master_Rak_Wsp_' . date('Y-m-d') . '.xlsx';

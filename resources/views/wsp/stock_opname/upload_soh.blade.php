@@ -296,49 +296,20 @@
                         <!-- ADD SECTION -->
                         <div id="addSection">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Pilih Area</label>
+                                <label class="form-label fw-semibold">Pilih Detail Loc / Lokasi</label>
                                 <div class="dropdown custom-filter-dropdown" id="dropdown-area">
                                     <button
                                         class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
                                         type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                                         aria-expanded="false">
-                                        <span class="dropdown-placeholder text-muted">Pilih Area...</span>
+                                        <span class="dropdown-placeholder text-muted">Pilih Detail Loc...</span>
                                         <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                     </button>
                                     <div class="dropdown-menu p-3 border"
                                         style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
                                         <div class="mb-2">
                                             <input type="text" class="form-control form-control-sm search-options"
-                                                placeholder="Cari Area...">
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <button type="button"
-                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
-                                                All</button>
-                                            <button type="button"
-                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
-                                                All</button>
-                                        </div>
-                                        <hr class="dropdown-divider my-2">
-                                        <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Pilih Nama Rak</label>
-                                <div class="dropdown custom-filter-dropdown" id="dropdown-rak">
-                                    <button
-                                        class="btn btn-light dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
-                                        type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                                        aria-expanded="false">
-                                        <span class="dropdown-placeholder text-muted">Pilih Nama Rak...</span>
-                                        <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
-                                    </button>
-                                    <div class="dropdown-menu p-3 border"
-                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-                                        <div class="mb-2">
-                                            <input type="text" class="form-control form-control-sm search-options"
-                                                placeholder="Cari Nama Rak...">
+                                                placeholder="Cari Detail Loc...">
                                         </div>
                                         <div class="d-flex justify-content-between mb-2">
                                             <button type="button"
@@ -457,8 +428,7 @@
 
         $(document).ready(function() {
             // Initialize custom dropdowns
-            initDynamicDropdown('dropdown-area', 'Pilih Area...', loadNamaRakOptionsForAdd);
-            initDynamicDropdown('dropdown-rak', 'Pilih Nama Rak...', loadBarangOptionsForAdd);
+            initDynamicDropdown('dropdown-area', 'Pilih Detail Loc...', loadBarangOptionsForAdd);
             initDynamicDropdown('dropdown-barang', 'Pilih Barang...', null);
 
             // Load SOH list initially
@@ -485,12 +455,10 @@
 
                 if (mode === 'add') {
                     const barangId = $('#dropdown-barang').data('getValues')();
-                    const area = $('#dropdown-area').data('getValues')();
-                    const namaRak = $('#dropdown-rak').data('getValues')();
+                    const detailLoc = $('#dropdown-area').data('getValues')();
 
-                    if (!barangId || barangId.length === 0 || !area || area.length === 0 || !namaRak ||
-                        namaRak.length === 0) {
-                        Swal.fire('Peringatan', 'Barang, Area, dan Nama Rak harus dipilih!', 'warning');
+                    if (!barangId || barangId.length === 0 || !detailLoc || detailLoc.length === 0) {
+                        Swal.fire('Peringatan', 'Barang dan Detail Loc harus dipilih!', 'warning');
                         return;
                     }
 
@@ -498,8 +466,7 @@
                         _token: "{{ csrf_token() }}",
                         jenis_so: $('#soh_jenis_so').val(),
                         barang_id: barangId,
-                        area: area,
-                        nama_rak: namaRak
+                        detail_loc: detailLoc
                     });
                     contentType = 'application/json';
                     processData = false;
@@ -658,7 +625,6 @@
 
         function loadAreaOptionsForAdd() {
             $('#dropdown-area').data('reset')();
-            $('#dropdown-rak').data('reset')();
             $('#dropdown-barang').data('reset')();
 
             $.ajax({
@@ -666,46 +632,23 @@
                 type: "GET",
                 success: function(res) {
                     if (res.status === 'success' && res.data) {
-                        updateDropdownOptions('dropdown-area', res.data, 'Pilih Area...', 'area');
-                    }
-                }
-            });
-        }
-
-        function loadNamaRakOptionsForAdd() {
-            const area = $('#dropdown-area').data('getValues')();
-            $('#dropdown-rak').data('reset')();
-            $('#dropdown-barang').data('reset')();
-
-            if (!area || area.length === 0) return;
-
-            $.ajax({
-                url: "{{ route('wsp.stock_opname.soh.getNamaRakList') }}",
-                type: "GET",
-                data: {
-                    area: area
-                },
-                success: function(res) {
-                    if (res.status === 'success' && res.data) {
-                        updateDropdownOptions('dropdown-rak', res.data, 'Pilih Nama Rak...', 'nama_rak');
+                        updateDropdownOptions('dropdown-area', res.data, 'Pilih Detail Loc...', 'area');
                     }
                 }
             });
         }
 
         function loadBarangOptionsForAdd() {
-            const area = $('#dropdown-area').data('getValues')();
-            const namaRak = $('#dropdown-rak').data('getValues')();
+            const detailLoc = $('#dropdown-area').data('getValues')();
             $('#dropdown-barang').data('reset')();
 
-            if (!area || area.length === 0 || !namaRak || namaRak.length === 0) return;
+            if (!detailLoc || detailLoc.length === 0) return;
 
             $.ajax({
                 url: "{{ route('wsp.stock_opname.soh.getBarangListByLocation') }}",
                 type: "GET",
                 data: {
-                    area: area,
-                    nama_rak: namaRak
+                    detail_loc: detailLoc
                 },
                 success: function(res) {
                     if (res.status === 'success' && res.data) {
@@ -867,7 +810,7 @@
                                     '<span class="badge badge-soft-warning">Not Yet</span>';
                             } else {
                                 locationText =
-                                    `${rak.plant || ''} - ${rak.s_loc || ''} - ${rak.area_rak} - ${rak.nama_rak} - (${rak.kolom_rak || '-'}.${rak.level_rak || '-'}.${rak.box_rak || '-'})`;
+                                    `${rak.plant || ''} - ${rak.s_loc || ''} - ${rak.detail_loc || ''}`;
                             }
 
                             const editBtn = `
@@ -968,7 +911,7 @@
                         $('#edit_loc_id').val(data.loc_id || '');
                         if (rak) {
                             $('#edit_location_info').html(
-                                `<span class="badge bg-primary-subtle text-primary me-1">${rak.plant || ''} - ${rak.s_loc || ''}</span> <strong>${rak.area_rak}</strong> &gt; ${rak.nama_rak} &gt; ${rak.kolom_rak || '-'}.${rak.level_rak || '-'}.${rak.box_rak || '-'}`
+                                `<span class="badge bg-primary-subtle text-primary me-1">${rak.plant || ''} - ${rak.s_loc || ''}</span> <strong>${rak.detail_loc || '-'}</strong>`
                             );
                         } else {
                             $('#edit_location_info').html(
@@ -1007,49 +950,25 @@
                             const rak = item.location && item.location.rak ? item.location.rak : null;
                             if (!rak) return '<div class="text-center py-2"><span class="badge badge-soft-warning fs-6">Not Yet</span></div>';
                             return `<div class="row g-3">
-                                                <div class="col-6">
-                                                    <div class="bg-light rounded-3 p-2 border text-center">
-                                                        <div class="small text-muted mb-1 text-uppercase">Plant</div>
-                                                        <strong>${rak.plant || '-'}</strong>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="bg-light rounded-3 p-2 border text-center">
-                                                        <div class="small text-muted mb-1 text-uppercase">S.Loc</div>
-                                                        <strong>${rak.s_loc || '-'}</strong>
-                                                    </div>
-                                                </div>
-                                                <div class="col-4">
-                                                    <div class="bg-light rounded-3 p-2 border text-center">
-                                                        <div class="small text-muted mb-1 text-uppercase">Area</div>
-                                                        <strong>${rak.area_rak || '-'}</strong>
-                                                    </div>
-                                                </div>
-                                                <div class="col-4">
-                                                    <div class="bg-light rounded-3 p-2 border text-center">
-                                                        <div class="small text-muted mb-1 text-uppercase">Rak</div>
-                                                        <strong>${rak.nama_rak || '-'}</strong>
-                                                    </div>
-                                                </div>
-                                                <div class="col-4">
-                                                    <div class="bg-light rounded-3 p-2 border text-center">
-                                                        <div class="small text-muted mb-1 text-uppercase">Kolom</div>
-                                                        <strong>${rak.kolom_rak || '-'}</strong>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="bg-light rounded-3 p-2 border text-center">
-                                                        <div class="small text-muted mb-1 text-uppercase">Level</div>
-                                                        <strong>${rak.level_rak || '-'}</strong>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="bg-light rounded-3 p-2 border text-center">
-                                                        <div class="small text-muted mb-1 text-uppercase">Bin</div>
-                                                        <strong>${rak.box_rak || '-'}</strong>
-                                                    </div>
-                                                </div>
-                                            </div>`;
+                                        <div class="col-4">
+                                            <div class="bg-light rounded-3 p-2 border text-center">
+                                                <div class="small text-muted mb-1 text-uppercase">Plant</div>
+                                                <strong>${rak.plant || '-'}</strong>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="bg-light rounded-3 p-2 border text-center">
+                                                <div class="small text-muted mb-1 text-uppercase">S.Loc</div>
+                                                <strong>${rak.s_loc || '-'}</strong>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="bg-light rounded-3 p-2 border text-center">
+                                                <div class="small text-muted mb-1 text-uppercase">Detail Loc</div>
+                                                <strong>${rak.detail_loc || '-'}</strong>
+                                            </div>
+                                        </div>
+                                    </div>`;
                         })()}
                     </div>
                     

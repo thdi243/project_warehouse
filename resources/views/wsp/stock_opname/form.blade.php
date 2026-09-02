@@ -194,24 +194,16 @@
                                     </select>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">Area Rak</label>
-                                    <input type="text" class="form-control" name="area_rak" placeholder="e.g. FL1">
+                                    <label class="form-label">Plant</label>
+                                    <input type="text" class="form-control" name="plant" placeholder="e.g. 1006" value="1006">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">Nama Rak</label>
-                                    <input type="text" class="form-control" name="nama_rak" placeholder="e.g. A">
+                                    <label class="form-label">S Loc</label>
+                                    <input type="text" class="form-control" name="s_loc" placeholder="e.g. G001" value="G001">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">Kolom Rak</label>
-                                    <input type="text" class="form-control" name="kolom_rak" placeholder="e.g. 2">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Level Rak</label>
-                                    <input type="text" class="form-control" name="level_rak" placeholder="e.g. 3">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Bin Rak</label>
-                                    <input type="text" class="form-control" name="bin_rak" placeholder="e.g. 0">
+                                    <label class="form-label">Detail Loc</label>
+                                    <input type="text" class="form-control" name="detail_loc" placeholder="e.g. FL1-A-1.1.000">
                                 </div>
                             </div>
                         </div>
@@ -740,8 +732,8 @@
                                     </td>
                                     <td class="text-center fw-bold text-uppercase">${item.uom}</td>
                                     <td class="text-center">
-                                        ${(item.area_rak || item.nama_rak || item.kolom_rak || item.level_rak || item.bin_rak)
-                                            ? `<span class="badge bg-soft-info text-info border">${item.area_rak || '-'}-${item.nama_rak || '-'}-${item.kolom_rak || '-'}-${item.level_rak || '-'}-${item.bin_rak || '-'}</span>`
+                                        ${(item.detail_loc)
+                                            ? `<span class="badge bg-soft-info text-info border">${item.plant || ''} - ${item.s_loc || ''} - ${item.detail_loc}</span>`
                                             : `<span class="badge bg-soft-warning text-warning border">Not yet</span>`
                                         }
                                     </td>

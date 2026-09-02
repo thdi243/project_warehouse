@@ -63,10 +63,10 @@ class StockLocationController extends Controller
 
         $formatted = $barang->map(function ($item) {
             return [
-                'id'   => $item->mid_barang,
+                'id'          => $item->mid_barang,
                 'mid_barang'  => $item->mid_barang,
                 'nama_barang' => $item->nama_barang,
-                'text' => $item->nama_barang,
+                'text'        => $item->nama_barang,
             ];
         });
 
@@ -207,24 +207,19 @@ class StockLocationController extends Controller
 
             // Lewati header (baris pertama)
             foreach ($rows as $index => $row) {
-
                 if ($index == 1) continue;
 
                 $mid_barang = isset($row['A']) ? trim((string)$row['A']) : null;
                 $plant      = isset($row['B']) ? trim((string)$row['B']) : null;
                 $s_loc      = isset($row['C']) ? trim((string)$row['C']) : null;
-                $area_rak   = isset($row['D']) ? trim((string)$row['D']) : null;
-                $nama_rak   = isset($row['E']) ? trim((string)$row['E']) : null;
-                $kolom_rak  = isset($row['F']) ? trim((string)$row['F']) : null;
-                $level_rak  = isset($row['G']) ? trim((string)$row['G']) : null;
-                $box_rak    = isset($row['H']) ? trim((string)$row['H']) : '000';
+                $detail_loc = isset($row['D']) ? trim((string)$row['D']) : null;
 
-                if ($mid_barang === '' && $area_rak === '' && $nama_rak === '') {
+                if ($mid_barang === '' && $plant === '' && $s_loc === '' && $detail_loc === '') {
                     continue;
                 }
 
-                if ($mid_barang === '' || $plant === '' || $s_loc === '' || $area_rak === '' || $nama_rak === '' || $kolom_rak === '' || $level_rak === '') {
-                    $skipped[] = "Baris " . $index . ": Kolom wajib ada tidak lengkap.";
+                if ($mid_barang === '' || $plant === '' || $s_loc === '' || $detail_loc === '') {
+                    $skipped[] = "Baris " . $index . ": Kolom wajib ada (MID Barang, Plant, S Loc, Detail Loc) tidak lengkap.";
                     continue;
                 }
 
@@ -234,23 +229,15 @@ class StockLocationController extends Controller
                     continue;
                 }
 
-                $plant     = strtoupper($plant);
-                $s_loc     = strtoupper($s_loc);
-                $area_rak  = strtoupper($area_rak);
-                $nama_rak  = strtoupper($nama_rak);
-                $kolom_rak = $kolom_rak !== '' ? intval($kolom_rak) : 1;
-                $level_rak = $level_rak !== '' ? intval($level_rak) : 1;
-                $box_rak   = $box_rak !== '' ? $box_rak : '000';
+                $plant      = strtoupper($plant);
+                $s_loc      = strtoupper($s_loc);
+                $detail_loc = strtoupper($detail_loc);
 
-                // Cari atau buat rak dengan semua koordinatnya
+                // Cari atau buat rak
                 $rak = RakModel::firstOrCreate([
-                    'plant'     => $plant,
-                    's_loc'     => $s_loc,
-                    'area_rak'  => $area_rak,
-                    'nama_rak'  => $nama_rak,
-                    'kolom_rak' => $kolom_rak,
-                    'level_rak' => $level_rak,
-                    'box_rak'   => $box_rak,
+                    'plant'      => $plant,
+                    's_loc'      => $s_loc,
+                    'detail_loc' => $detail_loc,
                 ], [
                     'created_by' => Auth::id() ?? 1,
                 ]);
@@ -260,7 +247,7 @@ class StockLocationController extends Controller
                     ->exists();
 
                 if ($exists) {
-                    $skipped[] = "Baris " . $index . ": Barang sudah ada di lokasi rak.";
+                    $skipped[] = "Baris " . $index . ": Barang sudah ada di lokasi rak {$plant}-{$s_loc}-{$detail_loc}.";
                     continue;
                 }
 
@@ -300,21 +287,13 @@ class StockLocationController extends Controller
         $sheet->setCellValue('A1', 'MID Barang');
         $sheet->setCellValue('B1', 'Plant');
         $sheet->setCellValue('C1', 'S Loc');
-        $sheet->setCellValue('D1', 'Area Rak');
-        $sheet->setCellValue('E1', 'Nama Rak');
-        $sheet->setCellValue('F1', 'Kolom');
-        $sheet->setCellValue('G1', 'Level');
-        $sheet->setCellValue('H1', 'Box');
+        $sheet->setCellValue('D1', 'Detail Loc');
 
         // Example row
         $sheet->setCellValue('A2', '123456');
-        $sheet->setCellValue('B2', 'GP01');
-        $sheet->setCellValue('C2', 'SL01');
-        $sheet->setCellValue('D2', 'FL1');
-        $sheet->setCellValue('E2', 'A');
-        $sheet->setCellValue('F2', '1');
-        $sheet->setCellValue('G2', '1');
-        $sheet->setCellValue('H2', '000');
+        $sheet->setCellValue('B2', '1006');
+        $sheet->setCellValue('C2', 'G001');
+        $sheet->setCellValue('D2', 'FL1-A-1.1.000');
 
         $writer = new Xlsx($spreadsheet);
         $fileName = 'Template_Stock_Location_Wsp_' . date('Y-m-d') . '.xlsx';
