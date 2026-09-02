@@ -36,6 +36,14 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Display the Dedicated Kantong Parkir Dashboard.
+     */
+    public function parkirDashboard()
+    {
+        return view('dashboard.vehicle_parkir');
+    }
+
+    /**
      * Get real-time data for the dashboard via AJAX.
      */
     public function dashboardData()
@@ -216,8 +224,35 @@ class VehicleTrackingController extends Controller
         return response()->json([
             'queues' => $queues,
             'counts' => $counts,
-            'activities' => $recentActivities
+            'activities' => $recentActivities,
+            'transactions' => $activeTransactions
         ]);
+    }
+
+    /**
+     * Get real-time Parking Pocket (Kantong Parkir) and slot data directly from API.
+     */
+    public function kantongParkirData(Request $request)
+    {
+        try {
+            $response = Http::timeout(5)->get('http://10.11.11.10:8093/api/kantong-parkir');
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'API Kantong Parkir merespon dengan status: ' . $response->status(),
+                'data' => []
+            ], $response->status());
+        } catch (\Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal terhubung ke API Kantong Parkir (10.11.11.10:8093): ' . $th->getMessage(),
+                'data' => []
+            ], 500);
+        }
     }
 
     public function timbanganIndex(Request $request)

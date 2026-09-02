@@ -131,6 +131,10 @@ Route::middleware('auth')->group(function () {
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
             Route::get('/vehicle/visual', [VehicleTrackingController::class, 'visualDashboard'])->name('dashboard.vehicle.visual')
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
+            Route::get('/vehicle/parkir', [VehicleTrackingController::class, 'parkirDashboard'])->name('dashboard.vehicle.parkir')
+                ->middleware(['permission:dashboard-vehicle-monitoring']);
+            Route::get('/vehicle/kantong-parkir-data', [VehicleTrackingController::class, 'kantongParkirData'])->name('dashboard.vehicle.kantong_parkir')
+                ->middleware(['permission:dashboard-vehicle-monitoring']);
 
             // Stock Opname Dashboard
             Route::get('/stock-opname', [StockOpnameDashboardController::class, 'index'])->name('dashboard.stock-opname')

@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="en" data-layout-mode="dark">
+<html lang="id" data-layout-mode="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>3D Yard Live Visualizer — Warehouse Monitoring</title>
+    <title>Vehicle Yard & Loading Docks — Real-Time Monitoring</title>
 
     <link rel="shortcut icon" href="{{ asset('assets/images/logo/kecap.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <link href="{{ asset('material/assets/css/bootstrap.min.css') }}" rel="stylesheet" type="text/css" />
     <link href="{{ asset('material/assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
@@ -19,264 +19,620 @@
 
     <style>
         :root {
-            --bg-dark: #090d16;
-            --card-bg: rgba(15, 23, 42, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-primary: #f8fafc;
-            --text-muted: #475569;
-            --primary: #3b82f6;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --info: #06b6d4;
+            --bg-deep: #090d16;
+            --bg-card: rgba(15, 23, 42, 0.85);
+            --border-subtle: rgba(255, 255, 255, 0.1);
+            --border-accent: rgba(59, 130, 246, 0.4);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background: var(--bg-dark);
-            color: var(--text-primary);
+            background-color: var(--bg-deep);
+            color: var(--text-main);
             font-family: 'Outfit', sans-serif;
             min-height: 100vh;
-            overflow: hidden;
+            overflow-x: hidden;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
         }
 
-        /* ── Floating Interface Panels ──────── */
-        .header-panel {
-            position: absolute;
-            top: 20px; left: 24px;
-            z-index: 10;
-            background: rgba(15, 23, 42, 0.85);
+        /* ── Top Header Navigation Bar ── */
+        .top-navbar {
+            background: rgba(15, 23, 42, 0.92);
             backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 16px 20px;
-            width: 320px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 14px 28px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .logo-title {
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-size: 19px;
             font-weight: 800;
-            font-size: 18px;
-            background: linear-gradient(135deg, #fff 30%, #3b82f6 100%);
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 40%, #60a5fa 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
         }
 
-        .control-panel {
-            position: absolute;
-            bottom: 24px; left: 24px;
-            z-index: 10;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 14px 18px;
-            width: 320px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        .nav-switch-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-sub);
+            border-radius: 10px;
+            padding: 7px 14px;
+            font-size: 12.5px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
 
-        .kpi-panel {
-            position: absolute;
-            top: 20px; right: 24px;
-            z-index: 10;
+        .nav-switch-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            border-color: var(--border-accent);
+        }
+
+        .nav-switch-btn.active {
+            background: rgba(59, 130, 246, 0.25);
+            border-color: #3b82f6;
+            color: #60a5fa;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+
+        /* ── Yard Buildings Container ── */
+        .yard-container {
+            max-width: 1400px;
+            margin: 24px auto;
+            padding: 0 20px 60px 20px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            width: 200px;
+            gap: 32px;
         }
 
-        .kpi-card {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 10px 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .kpi-label { font-size: 10px; font-weight: 600; text-transform: uppercase; color: #64748b; }
-        .kpi-val { font-size: 18px; font-weight: 800; }
-        .kpi-val.total { color: #f8fafc; }
-        .kpi-val.wpm { color: #34d399; }
-        .kpi-val.wrm { color: #fbbf24; }
-        .kpi-val.wfg { color: #22d3ee; }
-        .kpi-val.smu { color: #a78bfa; }
-        .kpi-val.gate { color: #94a3b8; }
-
-        /* ── WebGL Canvas Viewport ──────────── */
-        .viewport-3d {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            z-index: 1;
-            outline: none;
-        }
-
-        /* ── Floating HTML Labels Overlay ───── */
-        #labels-overlay {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 5;
+        /* ── Building Block + Loading Dock Card (Image 1 Blueprint) ── */
+        .building-card-wrapper {
+            background: #ffffff;
+            border: 2px solid #0f172a;
+            border-radius: 8px;
             overflow: hidden;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+            transition: all 0.3s ease;
         }
 
-        .truck-billboard {
+        /* Building Top Header Block (Warehouse Industrial Corrugated Roof Style) */
+        .building-header-block {
+            background-color: #1e293b;
+            /* Corrugated metal roof pattern with ridge highlights, valleys, and shadows */
+            background-image: 
+                linear-gradient(to bottom, rgba(15, 23, 42, 0.5) 0%, transparent 25%, transparent 75%, rgba(15, 23, 42, 0.7) 100%),
+                repeating-linear-gradient(90deg, 
+                    #0f172a 0px, 
+                    #1e293b 4px, 
+                    #334155 10px, 
+                    #475569 14px, 
+                    #1e293b 18px, 
+                    #0f172a 20px
+                );
+            border-bottom: 3px solid #0f172a;
+            padding: 32px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Top Roof Ridge Cap */
+        .building-header-block::before {
+            content: '';
             position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 7px;
+            background: linear-gradient(90deg, #475569, #94a3b8, #cbd5e1, #94a3b8, #475569);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+            z-index: 1;
+        }
+
+        /* Bottom Eaves Shadow */
+        .building-header-block::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
             background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 6px;
-            padding: 3px 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            white-space: nowrap;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transform: translate(-50%, -100%);
-            transition: left 0.1s ease-out, top 0.1s ease-out;
+            z-index: 1;
         }
 
-        .billboard-plate {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 10px;
+        .building-title-pill {
+            display: inline-block;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            padding: 8px 28px;
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+            position: relative;
+            z-index: 2;
+        }
+
+        .building-title-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        .building-badge-count {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
             font-weight: 700;
-            color: #f1f5f9;
+            padding: 6px 14px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 3;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
-        .billboard-timer {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 8px;
-            padding: 1px 4px;
-            border-radius: 3px;
-            background: rgba(255,255,255,0.06);
+        /* Loading Dock Attached Lower Section */
+        .loading-dock-section {
+            background: #ffffff;
+            padding: 16px 20px 20px 20px;
+            position: relative;
+        }
+
+        .dock-section-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            text-align: right;
+            margin-bottom: 12px;
+        }
+
+        /* Grid of Dock Bays (Fits 10 Docks in a single row) */
+        .dock-bays-grid {
+            display: grid;
+            grid-template-columns: repeat(10, minmax(0, 1fr));
+            gap: 10px;
+            background: #ffffff;
+            border: 1.5px solid #0f172a;
+            padding: 14px 12px;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 1250px) {
+            .dock-bays-grid {
+                grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+            }
+        }
+
+        /* Single Dock Bay */
+        .dock-bay {
+            height: 165px;
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 6px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            overflow: hidden;
+            padding: 8px 4px;
+        }
+
+        .dock-bay:hover {
+            border-color: #3b82f6;
+            background: #f0f9ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .dock-bay.occupied {
+            border-style: solid;
+            border-color: #0f172a;
+            background: #ffffff;
+        }
+
+        .dock-bay-num {
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 800;
             color: #64748b;
-        }
-        .billboard-timer.tw { color: #fbbf24; background: rgba(245,158,11,0.15); }
-        .billboard-timer.tc { color: #f87171; background: rgba(239,68,68,0.15); animation: blinker 1.2s linear infinite; }
-
-        @keyframes blinker { 50% { opacity: 0.25; } }
-
-        .truck-billboard.bottleneck {
-            border-color: rgba(239, 68, 68, 0.5);
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+            z-index: 5;
         }
 
-        .info-row {
+        .dock-empty-placeholder {
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        /* ── Truck Sprite in Dock ── */
+        .dock-truck-sprite {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           ANIMASI MAJU MASUK DOCK & MUNDUR KELUAR DOCK
+           ══════════════════════════════════════════════════════════════════ */
+
+        /* 1. Animasi Maju Masuk ke Dock (Drive In Forward) */
+        .truck-anim-enter {
+            animation: driveInForward 1.8s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+        }
+
+        @keyframes driveInForward {
+            0% {
+                transform: translateY(110px) scale(0.85);
+                opacity: 0;
+                filter: blur(2px);
+            }
+            35% {
+                opacity: 1;
+                filter: blur(0px);
+            }
+            85% {
+                transform: translateY(-4px) scale(1.02);
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* 2. Animasi Mundur Keluar dari Dock (Drive Out Backward / Reverse) */
+        .truck-anim-exit {
+            animation: driveOutBackward 2.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            pointer-events: none;
+        }
+
+        @keyframes driveOutBackward {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            25% {
+                transform: translateY(-5px) scale(1);
+                filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8));
+            }
+            60% {
+                transform: translateY(45px) scale(0.95);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(130px) scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        /* Status Indicator Pill */
+        .anim-status-tag {
+            position: absolute;
+            bottom: 6px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 8.5px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            z-index: 6;
+        }
+
+        .anim-status-tag.entering {
+            background: #10b981;
+            color: #ffffff;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+        }
+
+        .anim-status-tag.exiting {
+            background: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+            animation: pulseBlink 0.4s infinite alternate;
+        }
+
+        @keyframes pulseBlink {
+            from { opacity: 1; }
+            to { opacity: 0.4; }
+        }
+
+        /* SVG Top-down Vehicle Graphic */
+        .truck-svg-icon {
+            width: 36px;
+            height: 60px;
+            flex-shrink: 0;
+            filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+        }
+
+        .truck-plate-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            background: #0f172a;
+            color: #38bdf8;
+            border: 1.5px solid rgba(56, 189, 248, 0.4);
+            padding: 2.5px 6px;
+            border-radius: 5px;
+            margin-top: 4px;
+            white-space: nowrap;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+            letter-spacing: 0.4px;
+            text-align: center;
+        }
+
+        .truck-queue-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9.5px;
+            font-weight: 800;
+            background: #f59e0b;
+            color: #000000;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-top: 2px;
+            box-shadow: 0 2px 5px rgba(245, 158, 11, 0.3);
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        /* Inspector Modal */
+        .truck-inspector-modal {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            width: 360px;
+            z-index: 200;
+            display: none;
+            background: var(--bg-card);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--border-accent);
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(40px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .inspector-row {
             display: flex;
             justify-content: space-between;
+            padding: 6px 0;
             font-size: 12px;
-            margin-bottom: 6px;
-            color: #94a3b8;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
         }
-        .info-row strong { color: #f1f5f9; }
-
-        .live-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 11px;
-            color: #10b981;
-            font-weight: 600;
-        }
-
-        .live-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            box-shadow: 0 0 8px #10b981;
-            animation: pulse-live 1.5s infinite;
-        }
-
-        @keyframes pulse-live {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.5; }
-        }
+        .inspector-row .label { color: var(--text-sub); }
+        .inspector-row .val { font-weight: 600; color: #ffffff; text-align: right; }
     </style>
 </head>
 
 <body>
 
-    <!-- ── Floating Panel: Header & Summary ── -->
-    <div class="header-panel">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div class="logo-title">VEHICLE YARD MAP</div>
-            <div class="live-status">
-                <div class="live-dot"></div> Live
-            </div>
-        </div>
-        <div style="font-size:10px;text-transform:uppercase;color:#475569;letter-spacing:0.1em;margin-bottom:14px;">WebGL Yard Live Visualizer</div>
-        
-        <div class="info-row">
-            <span>Clock:</span>
-            <strong id="live-clock" style="font-family:'Share Tech Mono';">00:00:00</strong>
-        </div>
-        <div class="info-row">
-            <span>Last Update:</span>
-            <strong id="live-lastupdate">—</strong>
-        </div>
-        <div class="info-row">
-            <span>Total Active Trucks:</span>
-            <strong id="live-total">0</strong>
+    <!-- ── Top Navigation Bar ── -->
+    <div class="top-navbar">
+        <div class="brand-logo">
+            <div class="brand-title">VEHICLE YARD MONITORING</div>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size:11px;">
+                <i class="ri-radar-line me-1"></i> Live Docks Animation
+            </span>
         </div>
 
-        <div style="margin-top:14px;display:flex;gap:8px;">
-            <a href="{{ route('dashboard.vehicle') }}" class="btn btn-xs btn-outline-secondary w-50 py-1" style="font-size:11px;">
-                <i class="ri-table-line me-1"></i> Table View
+        <!-- View Navigation Switcher & Simulation Controls -->
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('dashboard.vehicle.visual') }}" class="nav-switch-btn active">
+                <i class="ri-building-line"></i> 1. Vehicle Yard Docks
             </a>
-            <button class="btn btn-xs btn-outline-secondary w-50 py-1" id="btnRefresh" style="font-size:11px;">
-                <i class="ri-refresh-line me-1"></i> Refresh
+            <a href="{{ route('dashboard.vehicle.parkir') }}" class="nav-switch-btn">
+                <i class="ri-parking-box-line"></i> 2. Kantong Parkir
+            </a>
+            <a href="{{ route('dashboard.vehicle') }}" class="nav-switch-btn">
+                <i class="ri-table-line"></i> Table View
+            </a>
+
+            <!-- Interactive Simulation Buttons -->
+            <button class="nav-switch-btn text-success border-success-subtle" id="btnSimulateEnter" title="Simulasi Truk Masuk Maju ke Dock">
+                <i class="ri-arrow-up-circle-fill text-success"></i> Simulasi Masuk
+            </button>
+            <button class="nav-switch-btn text-danger border-danger-subtle" id="btnSimulateExit" title="Simulasi Truk Mundur Keluar Dock">
+                <i class="ri-arrow-down-circle-fill text-danger"></i> Simulasi Keluar
+            </button>
+
+            <button class="nav-switch-btn" id="btnRefresh" title="Refresh Data">
+                <i class="ri-refresh-line"></i>
             </button>
         </div>
-    </div>
 
-    <!-- ── Floating Panel: Area KPIs ── -->
-    <div class="kpi-panel">
-        <div class="kpi-card">
-            <span class="kpi-label">Gate / Queue</span>
-            <span class="kpi-val gate" id="kpi-gate">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">WPM (Yellow)</span>
-            <span class="kpi-val wpm" id="kpi-wpm">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">WRM (Orange)</span>
-            <span class="kpi-val wrm" id="kpi-wrm">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">WFG (Green)</span>
-            <span class="kpi-val wfg" id="kpi-wfg">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">SMU (Blue)</span>
-            <span class="kpi-val smu" id="kpi-smu">0</span>
+        <!-- Status / Clock -->
+        <div class="d-flex align-items-center gap-3">
+            <div style="font-size:11px;color:var(--text-sub);">
+                <span>Clock: </span>
+                <strong id="live-clock" style="font-family:'JetBrains Mono';color:#ffffff;font-size:12px;">00:00:00</strong>
+            </div>
+            <div style="font-size:11px;color:var(--text-sub);">
+                <span>Total Yard: </span>
+                <strong id="total-yard-trucks" style="color:#60a5fa;font-family:'JetBrains Mono';font-size:13px;">0 Truk</strong>
+            </div>
         </div>
     </div>
 
-    <!-- ── Floating Panel: Navigation Controls ── -->
-    <div class="control-panel">
-        <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;letter-spacing:0.05em;">Map Navigation</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
-            <button class="btn btn-sm btn-dark" id="btnZoomIn" style="font-size:11px;"><i class="ri-zoom-in-line"></i> Zoom In</button>
-            <button class="btn btn-sm btn-dark" id="btnZoomOut" style="font-size:11px;"><i class="ri-zoom-out-line"></i> Zoom Out</button>
+    <!-- ── Yard Buildings List (Exact Match to User Blueprint Sketch) ── -->
+    <div class="yard-container">
+
+        <!-- 1. GEDUNG WRM (Raw Material) -->
+        <div class="building-card-wrapper" id="card-wrm">
+            <div class="building-header-block">
+                <div class="building-title-pill">
+                    <div class="building-title-text">GEDUNG WRM</div>
+                </div>
+                <div class="building-badge-count" id="count-wrm">0 TRUK AKTIF</div>
+            </div>
+            <div class="loading-dock-section">
+                <div class="dock-section-label">LOADING DOCK</div>
+                <div class="dock-bays-grid" id="docks-wrm">
+                    <!-- Dynamic dock bays rendered here by DockAnimationService -->
+                </div>
+            </div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:right;font-size:11px;color:#64748b;">
-            <button class="btn btn-link btn-xs p-0 text-decoration-none" id="btnResetView" style="font-size:11px;color:#3b82f6;">Reset View</button>
+
+        <!-- 2. GEDUNG WPM (Packaging Material) -->
+        <div class="building-card-wrapper" id="card-wpm">
+            <div class="building-header-block">
+                <div class="building-title-pill">
+                    <div class="building-title-text">GEDUNG WPM</div>
+                </div>
+                <div class="building-badge-count" id="count-wpm">0 TRUK AKTIF</div>
+            </div>
+            <div class="loading-dock-section">
+                <div class="dock-section-label">LOADING DOCK</div>
+                <div class="dock-bays-grid" id="docks-wpm">
+                    <!-- Dynamic dock bays rendered here by DockAnimationService -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. GEDUNG WFG (Finished Goods) -->
+        <div class="building-card-wrapper" id="card-wfg">
+            <div class="building-header-block">
+                <div class="building-title-pill">
+                    <div class="building-title-text">GEDUNG WFG</div>
+                </div>
+                <div class="building-badge-count" id="count-wfg">0 TRUK AKTIF</div>
+            </div>
+            <div class="loading-dock-section">
+                <div class="dock-section-label">LOADING DOCK</div>
+                <div class="dock-bays-grid" id="docks-wfg">
+                    <!-- Dynamic dock bays rendered here by DockAnimationService -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. GEDUNG SMU & WSP (Utility & Spareparts) -->
+        <div class="building-card-wrapper" id="card-smu">
+            <div class="building-header-block">
+                <div class="building-title-pill">
+                    <div class="building-title-text">GEDUNG SMU & WSP</div>
+                </div>
+                <div class="building-badge-count" id="count-smu">0 TRUK AKTIF</div>
+            </div>
+            <div class="loading-dock-section">
+                <div class="dock-section-label">LOADING DOCK</div>
+                <div class="dock-bays-grid" id="docks-smu">
+                    <!-- Dynamic dock bays rendered here by DockAnimationService -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. TIMBANGAN AREA -->
+        <div class="building-card-wrapper" id="card-tmb">
+            <div class="building-header-block">
+                <div class="building-title-pill">
+                    <div class="building-title-text">AREA TIMBANGAN (WEIGHBRIDGE)</div>
+                </div>
+                <div class="building-badge-count" id="count-tmb">0 TRUK AKTIF</div>
+            </div>
+            <div class="loading-dock-section">
+                <div class="dock-section-label">SCALE PLATFORMS</div>
+                <div class="dock-bays-grid" id="docks-tmb">
+                    <!-- Dynamic dock bays rendered here by DockAnimationService -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. AREA PARKIR / BUFFER (MENUNGGU ANTRIAN / UNKNOWN PARKIR) -->
+        <div class="building-card-wrapper" id="card-parkir">
+            <div class="building-header-block" style="background-color: #1e1b4b; background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0.6) 0%, transparent 25%, transparent 75%, rgba(15, 23, 42, 0.7) 100%), repeating-linear-gradient(90deg, #0f172a 0px, #1e1b4b 4px, #312e81 10px, #4338ca 14px, #1e1b4b 18px, #0f172a 20px);">
+                <div class="building-title-pill" style="border-color: rgba(168, 85, 247, 0.4);">
+                    <div class="building-title-text" style="color: #d8b4fe;"><i class="ri-parking-box-line me-2"></i>AREA PARKIR & BUFFER (MENUNGGU PANGGILAN ANTRIAN)</div>
+                </div>
+                <div class="building-badge-count" id="count-parkir" style="background: rgba(168, 85, 247, 0.25); border-color: #a855f7;">0 TRUK MENUNGGU</div>
+            </div>
+            <div class="loading-dock-section">
+                <div class="dock-section-label" style="color: #a855f7;">PARKING BAYS / BUFFER SLOTS</div>
+                <div class="dock-bays-grid" id="docks-parkir">
+                    <!-- Dynamic dock bays rendered here by DockAnimationService -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── TRUCK INSPECTOR MODAL DRAWER ── -->
+    <div class="truck-inspector-modal" id="truckInspector">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+            <div>
+                <div style="font-size:10px;text-transform:uppercase;color:var(--text-sub);font-weight:700;">Detail Kendaraan</div>
+                <div id="insp-plat" style="font-family:'JetBrains Mono';font-size:20px;font-weight:800;color:#60a5fa;">-</div>
+            </div>
+            <button class="btn-close btn-close-white" id="btnCloseInspector" style="font-size:10px;"></button>
+        </div>
+        <div>
+            <div class="inspector-row"><span class="label">No. Antrian</span><span class="val" id="insp-antrian" style="color:#f59e0b;font-weight:800;font-size:14px;">-</span></div>
+            <div class="inspector-row"><span class="label">Status</span><span class="val" id="insp-status">-</span></div>
+            <div class="inspector-row"><span class="label">Lokasi Saat Ini</span><span class="val" id="insp-loc" style="color:#38bdf8;">-</span></div>
+            <div class="inspector-row"><span class="label">Gedung Tujuan</span><span class="val" id="insp-target" style="color:#10b981;">-</span></div>
+            <div class="inspector-row"><span class="label">Driver</span><span class="val" id="insp-driver">-</span></div>
+            <div class="inspector-row"><span class="label">Vendor</span><span class="val" id="insp-vendor">-</span></div>
+            <div class="inspector-row"><span class="label">Item</span><span class="val" id="insp-item">-</span></div>
+            <div class="inspector-row"><span class="label">Check-In</span><span class="val" id="insp-checkin">-</span></div>
+            <div class="inspector-row" style="border:none;"><span class="label">Durasi</span><span class="val" id="insp-durasi" style="color:#f43f5e;font-weight:700;">-</span></div>
         </div>
     </div>
 
-    <!-- ── ThreeJS WebGL Canvas ── -->
-    <div class="viewport-3d" id="threejs-canvas-container"></div>
-
-    <!-- ── Projected Labels Overlay ── -->
-    <div id="labels-overlay"></div>
-
-    <!-- ── Scripts ── -->
+    <!-- ── SCRIPTS ── -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ asset('material/assets/libs/moment/min/moment.min.js') }}"></script>
     <script src="{{ asset('material/assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
@@ -284,465 +640,467 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
 
-    <!-- ThreeJS dependencies -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
     <script>
-    $(function () {
-        // Live clock
-        function tickClock() {
-            $('#live-clock').text(new Date().toLocaleTimeString('en-US', { hour12: false }));
-        }
-        setInterval(tickClock, 1000);
-        tickClock();
+    const API_DASHBOARD_DATA = "{{ route('dashboard.vehicle.data') }}";
+    let activeVehicles = {};
 
-        // ── ThreeJS Scene Initialization ───────────────────────
-        const container = document.getElementById('threejs-canvas-container');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x090d16);
+    function updateClock() {
+        $('#live-clock').text(moment().format('HH:mm:ss'));
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
 
-        // Perspective camera positioned straight up, looking down
-        const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 10, 3000);
-        camera.position.set(0, 950, 0); // Directly above center
+    /**
+     * Top-Down Truck SVG Vector (Silhouette with details)
+     */
+    function getTruckSVG() {
+        return `
+            <svg viewBox="0 0 50 90" class="truck-svg-icon">
+                <!-- Drop shadow -->
+                <rect x="7" y="10" width="36" height="74" rx="5" fill="rgba(0,0,0,0.25)" />
+                <!-- Truck Trailer Container -->
+                <rect x="8" y="24" width="34" height="58" rx="3" fill="#111827" stroke="#000000" stroke-width="1.5" />
+                <line x1="8" y1="42" x2="42" y2="42" stroke="#374151" stroke-width="1" />
+                <line x1="8" y1="60" x2="42" y2="60" stroke="#374151" stroke-width="1" />
+                <!-- Truck Cab -->
+                <rect x="11" y="6" width="28" height="22" rx="4" fill="#1f2937" stroke="#000000" stroke-width="1.5" />
+                <!-- Windshield Front -->
+                <path d="M 14 11 Q 25 8 36 11 L 34 16 Q 25 14 16 16 Z" fill="#60a5fa" />
+                <!-- Roof -->
+                <rect x="16" y="17" width="18" height="8" rx="1.5" fill="#111827" />
+                <!-- Mirrors -->
+                <rect x="7" y="11" width="3" height="6" rx="1" fill="#000000" />
+                <rect x="40" y="11" width="3" height="6" rx="1" fill="#000000" />
+                <!-- Headlights -->
+                <circle cx="14" cy="7" r="1.5" fill="#fef08a" />
+                <circle cx="36" cy="7" r="1.5" fill="#fef08a" />
+                <!-- Wheels -->
+                <rect x="5" y="14" width="3" height="8" rx="1" fill="#000000" />
+                <rect x="42" y="14" width="3" height="8" rx="1" fill="#000000" />
+                <rect x="5" y="64" width="3" height="9" rx="1" fill="#000000" />
+                <rect x="42" y="64" width="3" height="9" rx="1" fill="#000000" />
+                <rect x="5" y="74" width="3" height="9" rx="1" fill="#000000" />
+                <rect x="42" y="74" width="3" height="9" rx="1" fill="#000000" />
+            </svg>
+        `;
+    }
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        container.appendChild(renderer.domElement);
+    // ══════════════════════════════════════════════════════════════════
+    // DOCK ANIMATION & TRANSITION SERVICE
+    // Manages Enter (Drive-In Forward) and Exit (Drive-Out Reverse) Delays
+    // ══════════════════════════════════════════════════════════════════
+    const DockAnimationService = {
+        // Persistent dock bay slots per building key (10 bays per building)
+        buildings: {
+            WRM: { containerId: 'docks-wrm', countId: 'count-wrm', minSlots: 10, slots: [] },
+            WPM: { containerId: 'docks-wpm', countId: 'count-wpm', minSlots: 10, slots: [] },
+            WFG: { containerId: 'docks-wfg', countId: 'count-wfg', minSlots: 10, slots: [] },
+            SMU: { containerId: 'docks-smu', countId: 'count-smu', minSlots: 10, slots: [] },
+            TMB: { containerId: 'docks-tmb', countId: 'count-tmb', minSlots: 6, slots: [] },
+            PARKIR: { containerId: 'docks-parkir', countId: 'count-parkir', minSlots: 10, slots: [] }
+        },
 
-        // Limit OrbitControls to panning and zooming (disable rotation for flat view)
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableRotate = false; // View from top only
-        controls.enableZoom = true;
-        controls.minDistance = 300;
-        controls.maxDistance = 1500;
-        controls.target.set(0, 0, 0);
-        controls.update();
-
-        // ── Lighting ───────────────────────────────────────────
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.4);
-        dirLight.position.set(100, 300, 50);
-        scene.add(dirLight);
-
-        // ── Draw Map Plane & Roads ─────────────────────────────
-        // Main Ground Plane (-475 to 475)
-        const groundGeo = new THREE.PlaneGeometry(950, 950);
-        const groundMat = new THREE.MeshLambertMaterial({ color: 0x0f1624 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2; // Flat on floor
-        scene.add(ground);
-
-        // Helpers to draw floor rectangles
-        function addFloorPlane(px, py, w, d, color, heightOffset = 0.2) {
-            const geo = new THREE.PlaneGeometry(w, d);
-            const mat = new THREE.MeshLambertMaterial({ color: color });
-            const plane = new THREE.Mesh(geo, mat);
-            plane.rotation.x = -Math.PI / 2;
-            // Shift 2D offset to WebGL coordinates centered at (0, 0)
-            plane.position.set(px + w/2 - 475, heightOffset, py + d/2 - 475);
-            scene.add(plane);
-        }
-
-        // Add asphalt roads
-        const ROAD_COLOR = 0x151d30;
-        addFloorPlane(560, 0, 60, 350, ROAD_COLOR);     // entrance road
-        addFloorPlane(620, 130, 220, 100, ROAD_COLOR);  // timbangan lane
-        addFloorPlane(340, 350, 500, 160, ROAD_COLOR);  // open yard area
-        addFloorPlane(340, 250, 60, 600, ROAD_COLOR);   // left road
-        addFloorPlane(780, 250, 60, 600, ROAD_COLOR);   // right road
-        addFloorPlane(100, 800, 740, 100, ROAD_COLOR);  // loading lanes
-
-        // Add lawns
-        const LAWN_COLOR = 0x032a15;
-        addFloorPlane(20, 20, 320, 200, LAWN_COLOR, 0.1);
-        addFloorPlane(380, 20, 140, 140, LAWN_COLOR, 0.1);
-        addFloorPlane(860, 20, 70, 910, LAWN_COLOR, 0.1);
-        addFloorPlane(420, 250, 340, 80, LAWN_COLOR, 0.1);
-        addFloorPlane(20, 390, 50, 440, LAWN_COLOR, 0.1);
-        addFloorPlane(80, 530, 240, 250, LAWN_COLOR, 0.1);
-        addFloorPlane(20, 920, 910, 20, LAWN_COLOR, 0.1);
-
-        // ── extruded 3D Buildings ─────────────────────────────
-        function create3DBuilding(name, px, py, w, d, h, roofColor) {
-            const geometry = new THREE.BoxGeometry(w, h, d);
-            const sideMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
-            const roofMat = new THREE.MeshLambertMaterial({ color: roofColor });
-            
-            // Materials: right, left, top, bottom, front, back
-            const materials = [sideMat, sideMat, roofMat, sideMat, sideMat, sideMat];
-            
-            const mesh = new THREE.Mesh(geometry, materials);
-            mesh.position.set(px + w/2 - 475, h/2, py + d/2 - 475);
-            scene.add(mesh);
-        }
-
-        // Build warehouses matching schematic map colors
-        create3DBuilding('PRODUKSI', 80, 250, 200, 450, 60, 0x1f2937); // Grey
-        create3DBuilding('SMU', 380, 170, 200, 160, 60, 0x0f172a);       // Blue
-        create3DBuilding('TIMBANGAN', 720, 130, 110, 80, 30, 0x111827);  // Dark Grey
-        create3DBuilding('WFG', 380, 530, 360, 80, 50, 0x022c22);        // Green
-        create3DBuilding('WRM', 380, 630, 360, 80, 50, 0x451a03);        // Orange
-        create3DBuilding('WPM', 120, 730, 240, 80, 50, 0x422006);        // Yellow
-        create3DBuilding('WRM2', 480, 730, 260, 80, 50, 0x451a03);       // Orange
-
-        // ── Parking Docks Slot Coordinates ─────────────────────
-        const SLOT_COORDINATES = {
-            gate: [
-                { x: 590, y: 30,  rot: Math.PI / 2 },
-                { x: 590, y: 90,  rot: Math.PI / 2 },
-                { x: 590, y: 150, rot: Math.PI / 2 },
-                { x: 670, y: 170, rot: 0 },
-                { x: 740, y: 170, rot: 0 }
-            ],
-            wpm: [
-                { x: 160, y: 840, rot: Math.PI / 2 },
-                { x: 230, y: 840, rot: Math.PI / 2 },
-                { x: 300, y: 840, rot: Math.PI / 2 }
-            ],
-            wrm: [
-                { x: 420, y: 550, rot: 0 },
-                { x: 500, y: 550, rot: 0 },
-                { x: 580, y: 550, rot: 0 },
-                { x: 520, y: 840, rot: Math.PI / 2 },
-                { x: 620, y: 840, rot: Math.PI / 2 }
-            ],
-            wfg: [
-                { x: 420, y: 450, rot: 0 },
-                { x: 500, y: 450, rot: 0 },
-                { x: 580, y: 450, rot: 0 }
-            ],
-            smu: [
-                { x: 400, y: 310, rot: 0 },
-                { x: 480, y: 310, rot: 0 },
-                { x: 560, y: 310, rot: 0 }
-            ]
-        };
-
-        const ZONE_TESTS = [
-            {
-                key: 'gate',
-                test: (tx) => {
-                    const activeStatuses = ['wpm','wrm_bongkar','antri_sampling','sampling','wfg_muat','smu'];
-                    return !activeStatuses.includes(tx.status);
+        init() {
+            // Pre-populate empty slots for each building
+            Object.keys(this.buildings).forEach(bKey => {
+                const b = this.buildings[bKey];
+                b.slots = [];
+                for (let i = 0; i < b.minSlots; i++) {
+                    b.slots.push({
+                        bayIndex: i,
+                        truckId: null,
+                        truck: null,
+                        state: 'empty', // 'empty' | 'entering' | 'parked' | 'exiting'
+                        animTimer: null
+                    });
                 }
-            },
-            {
-                key: 'wpm',
-                test: (tx) => tx.status === 'wpm' ||
-                    (['antri_sampling','sampling'].includes(tx.status) && tx.target_location_code === 'C001')
-            },
-            {
-                key: 'wrm',
-                test: (tx) => tx.status === 'wrm_bongkar' ||
-                    (['antri_sampling','sampling'].includes(tx.status) && tx.target_location_code !== 'C001')
-            },
-            {
-                key: 'wfg',
-                test: (tx) => tx.status === 'wfg_muat'
-            },
-            {
-                key: 'smu',
-                test: (tx) => tx.status === 'smu'
-            }
-        ];
+                this.renderBuilding(bKey);
+            });
+        },
 
-        // ── Spawning 3D Truck Group ───────────────────────────
-        const TRUCK_COLORS = {
-            gate: { cab: 0x64748b, trailer: 0x334155 },
-            wpm:  { cab: 0x10b981, trailer: 0x064e3b },
-            wrm:  { cab: 0xf59e0b, trailer: 0x78350f },
-            wfg:  { cab: 0x06b6d4, trailer: 0x164e63 },
-            smu:  { cab: 0x8b5cf6, trailer: 0x4c1d95 },
-            bottleneck: { cab: 0xef4444, trailer: 0x7f1d1d }
-        };
+        /**
+         * Update building slots with latest server transactions
+         * Handles Drive-In Animation on arrival, and Delayed Drive-Out Animation on exit
+         */
+        syncBuildingData(buildingKey, latestTrucks) {
+            const b = this.buildings[buildingKey];
+            if (!b) return;
 
-        function create3DTruckMesh(zone, isBottleneck) {
-            const group = new THREE.Group();
-            const colors = isBottleneck ? TRUCK_COLORS.bottleneck : (TRUCK_COLORS[zone] || TRUCK_COLORS.gate);
+            const latestIds = new Set(latestTrucks.map(t => t.id));
+            const latestMap = {};
+            latestTrucks.forEach(t => { latestMap[t.id] = t; });
 
-            // Container (26x14x16)
-            const trailerGeo = new THREE.BoxGeometry(26, 14, 14);
-            const trailerMat = new THREE.MeshLambertMaterial({ color: colors.trailer });
-            const trailer = new THREE.Mesh(trailerGeo, trailerMat);
-            trailer.position.set(-8, 7, 0); // Offset backward
-            group.add(trailer);
+            // 1. Detect Exits: Any truck currently in a slot that is NO LONGER in latestTrucks
+            b.slots.forEach(slot => {
+                if (slot.truckId && !latestIds.has(slot.truckId) && slot.state !== 'exiting') {
+                    // Start delayed drive-out reverse animation
+                    this.triggerDriveOut(buildingKey, slot.bayIndex, slot.truck);
+                }
+            });
 
-            // Cab (12x12x12)
-            const cabGeo = new THREE.BoxGeometry(10, 12, 12);
-            const cabMat = new THREE.MeshLambertMaterial({ color: colors.cab });
-            const cab = new THREE.Mesh(cabGeo, cabMat);
-            cab.position.set(10, 6, 0); // Offset forward
-            group.add(cab);
-
-            // Small wheels (Cylinders)
-            const wheelGeo = new THREE.CylinderGeometry(3.5, 3.5, 2, 8);
-            const wheelMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
-
-            function addWheel(x, z) {
-                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-                wheel.rotation.x = Math.PI / 2;
-                wheel.position.set(x, 3.5, z);
-                group.add(wheel);
-            }
-            addWheel(-14, 7);
-            addWheel(-14, -7);
-            addWheel(-2, 7);
-            addWheel(-2, -7);
-            addWheel(10, 7);
-            addWheel(10, -7);
-
-            scene.add(group);
-            return group;
-        }
-
-        // Active trucks dictionary
-        let activeTrucks = {};
-
-        // ── Render 3D Scene based on AJAX data ───────────────
-        function processRender(trucks) {
-            const overlay = $('#labels-overlay');
-            const usedIds = {};
-            let gateTotal = 0, wpmTotal = 0, wrmTotal = 0, wfgTotal = 0, smuTotal = 0;
-
-            ZONE_TESTS.forEach(({ key, test }) => {
-                const zoneTrucks = trucks.filter(test);
-
-                if (key === 'gate')  gateTotal = zoneTrucks.length;
-                if (key === 'wpm')   wpmTotal  = zoneTrucks.length;
-                if (key === 'wrm')   wrmTotal  = zoneTrucks.length;
-                if (key === 'wfg')   wfgTotal  = zoneTrucks.length;
-                if (key === 'smu')   smuTotal  = zoneTrucks.length;
-
-                zoneTrucks.forEach((tx, idx) => {
-                    usedIds[tx.id] = true;
-                    
-                    const slots = SLOT_COORDINATES[key] || [{ x: 0, y: 0, rot: 0 }];
-                    const coord = slots[idx % slots.length] || slots[0];
-                    const isBn = !!tx.is_bottleneck;
-
-                    // Apply queue line coordinates
-                    const extraOffset = idx >= slots.length ? (idx - slots.length + 1) * -45 : 0;
-                    let targetX = coord.x;
-                    let targetZ = coord.y;
-                    if (coord.rot === Math.PI / 2) targetZ += extraOffset;
-                    else targetX += extraOffset;
-
-                    // Convert to centered WebGL units
-                    targetX = targetX - 475;
-                    targetZ = targetZ - 475;
-
-                    let truckObj = activeTrucks[tx.id];
-
-                    if (!truckObj) {
-                        // Spawn new truck mesh & label
-                        const mesh = create3DTruckMesh(key, isBn);
-                        mesh.position.set(targetX, 0, targetZ);
-                        mesh.rotation.y = coord.rot;
-
-                        const labelHtml = `
-                        <div class="truck-billboard ${isBn ? 'bottleneck' : ''}" id="lbl-${tx.id}">
-                            <span class="billboard-plate">${tx.no_pol || '—'}</span>
-                            <span class="billboard-timer" data-start="${tx.arrival_time || ''}" data-limit="${tx.limit_minutes || 0}">—</span>
-                        </div>`;
-                        overlay.append(labelHtml);
-
-                        truckObj = {
-                            mesh: mesh,
-                            label: document.getElementById(`lbl-${tx.id}`),
-                            targetPos: new THREE.Vector3(targetX, 0, targetZ),
-                            targetRot: coord.rot
+            // 2. Detect Entries: Any truck in latestTrucks not yet assigned to a slot in this building
+            latestTrucks.forEach(t => {
+                const existingSlot = b.slots.find(s => s.truckId === t.id);
+                if (existingSlot) {
+                    // Update metadata if already parked or entering
+                    existingSlot.truck = t;
+                    activeVehicles[t.id] = t;
+                } else {
+                    // Find first available empty slot
+                    let targetSlot = b.slots.find(s => s.state === 'empty');
+                    if (!targetSlot) {
+                        // Expand dock bays if capacity exceeded
+                        const newIdx = b.slots.length;
+                        targetSlot = {
+                            bayIndex: newIdx,
+                            truckId: null,
+                            truck: null,
+                            state: 'empty',
+                            animTimer: null
                         };
-                        activeTrucks[tx.id] = truckObj;
-                    } else {
-                        // Update existing truck targets
-                        truckObj.targetPos.set(targetX, 0, targetZ);
-                        truckObj.targetRot = coord.rot;
+                        b.slots.push(targetSlot);
                     }
-                });
-            });
 
-            // Clean up removed trucks
-            Object.keys(activeTrucks).forEach(id => {
-                if (!usedIds[id]) {
-                    scene.remove(activeTrucks[id].mesh);
-                    if (activeTrucks[id].label) {
-                        activeTrucks[id].label.remove();
-                    }
-                    delete activeTrucks[id];
+                    // Start delayed drive-in forward animation
+                    this.triggerDriveIn(buildingKey, targetSlot.bayIndex, t);
                 }
             });
 
-            // Update stats
-            $('#kpi-gate').text(gateTotal);
-            $('#kpi-wpm').text(wpmTotal);
-            $('#kpi-wrm').text(wrmTotal);
-            $('#kpi-wfg').text(wfgTotal);
-            $('#kpi-smu').text(smuTotal);
-            $('#live-total').text(trucks.length);
-            $('#live-lastupdate').text(moment().format('HH:mm:ss'));
-        }
+            // Update badge count
+            const activeCount = b.slots.filter(s => s.state === 'parked' || s.state === 'entering').length;
+            $(`#${b.countId}`).text(`${activeCount} TRUK ${buildingKey === 'PARKIR' ? 'MENUNGGU' : 'AKTIF'}`);
+        },
 
-        // Load AJAX data
-        function loadData() {
-            $.ajax({
-                url: "{{ route('dashboard.vehicle.data') }}",
-                type: 'GET',
-                dataType: 'json',
-                success: function (res) {
-                    const queues = res.queues || {};
-                    const trucks = [];
-                    ['WPM','WRM','WFG','SMU'].forEach(k => {
-                        (queues[k] || []).forEach(tx => trucks.push(tx));
-                    });
-                    processRender(trucks);
-                },
-                error: function (xhr) {
-                    console.error('Gagal memuat data visual', xhr);
-                }
-            });
-        }
+        /**
+         * Trigger Maju Masuk (Drive-In Forward) Animation
+         */
+        triggerDriveIn(buildingKey, bayIndex, truckData) {
+            const b = this.buildings[buildingKey];
+            const slot = b.slots[bayIndex];
+            if (!slot) return;
 
-        // ── Camera Project 3D Vector to 2D Screen ──────────────
-        const tempV = new THREE.Vector3();
-        function updateBillboardsProjected() {
-            Object.keys(activeTrucks).forEach(id => {
-                const t = activeTrucks[id];
-                if (!t.label) return;
+            if (slot.animTimer) clearTimeout(slot.animTimer);
 
-                t.mesh.getWorldPosition(tempV);
-                tempV.y += 18; // Float above truck
-                tempV.project(camera);
+            slot.truckId = truckData.id;
+            slot.truck = truckData;
+            slot.state = 'entering';
+            activeVehicles[truckData.id] = truckData;
 
-                const x = (tempV.x * .5 + .5) * window.innerWidth;
-                const y = (tempV.y * -.5 + .5) * window.innerHeight;
+            this.renderSlotDOM(buildingKey, bayIndex);
 
-                t.label.style.left = `${x}px`;
-                t.label.style.top = `${y}px`;
-            });
-        }
+            // Complete entry animation after 1.8s
+            slot.animTimer = setTimeout(() => {
+                slot.state = 'parked';
+                this.renderSlotDOM(buildingKey, bayIndex);
+            }, 1800);
+        },
 
-        // ── Zoom Controls ─────────────────────────────────────
-        $('#btnZoomIn').on('click', () => {
-            const dist = camera.position.y;
-            camera.position.y = Math.max(300, dist - 100);
-            controls.update();
-        });
-        
-        $('#btnZoomOut').on('click', () => {
-            const dist = camera.position.y;
-            camera.position.y = Math.min(1500, dist + 100);
-            controls.update();
-        });
+        /**
+         * Trigger Mundur Keluar (Drive-Out Reverse) Animation with Delay
+         */
+        triggerDriveOut(buildingKey, bayIndex, truckData) {
+            const b = this.buildings[buildingKey];
+            const slot = b.slots[bayIndex];
+            if (!slot || slot.state === 'empty' || slot.state === 'exiting') return;
 
-        $('#btnResetView').on('click', () => {
-            camera.position.set(0, 950, 0);
-            controls.target.set(0, 0, 0);
-            controls.update();
-        });
+            if (slot.animTimer) clearTimeout(slot.animTimer);
 
-        // ── Animation / Loop ──────────────────────────────────
-        function animate() {
-            requestAnimationFrame(animate);
+            slot.state = 'exiting';
+            this.renderSlotDOM(buildingKey, bayIndex);
 
-            // Smoothly move meshes (lerp position and angle)
-            Object.keys(activeTrucks).forEach(id => {
-                const t = activeTrucks[id];
-                t.mesh.position.lerp(t.targetPos, 0.1);
-                
-                // Rotational lerp
-                let diff = t.targetRot - t.mesh.rotation.y;
-                // Normalize diff to -PI to PI
-                diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-                t.mesh.rotation.y += diff * 0.1;
-            });
+            // Complete exit animation after 2.0s delay, then free up slot
+            slot.animTimer = setTimeout(() => {
+                slot.truckId = null;
+                slot.truck = null;
+                slot.state = 'empty';
+                slot.animTimer = null;
+                this.renderSlotDOM(buildingKey, bayIndex);
 
-            controls.update();
-            renderer.render(scene, camera);
+                const activeCount = b.slots.filter(s => s.state === 'parked' || s.state === 'entering').length;
+                $(`#${b.countId}`).text(`${activeCount} TRUK ${buildingKey === 'PARKIR' ? 'MENUNGGU' : 'AKTIF'}`);
+            }, 2000);
+        },
 
-            // Sync projected labels
-            updateBillboardsProjected();
-        }
-        animate();
-
-        // ── Timers Tick ───────────────────────────────────────
-        function updateTimers() {
-            $('.billboard-timer').each(function () {
-                const startStr = $(this).data('start');
-                if (!startStr) return;
-
-                const limit   = parseInt($(this).data('limit')) || 0;
-                const arrival = moment(startStr, 'YYYY-MM-DD HH:mm:ss');
-                const diffSec = moment().diff(arrival, 'seconds');
-                if (diffSec < 0) return;
-
-                const h = Math.floor(diffSec / 3600);
-                const m = Math.floor((diffSec % 3600) / 60);
-                const s = diffSec % 60;
-
-                let str = '';
-                if (h > 0) str += h + 'j ';
-                str += m + 'm ' + s + 'd';
-                $(this).text(str);
-
-                $(this).removeClass('tw tc');
-                if (limit > 0) {
-                    const diffMin = Math.floor(diffSec / 60);
-                    if (diffMin >= limit) $(this).addClass('tc');
-                    else if (diffMin >= Math.floor(limit * 0.75)) $(this).addClass('tw');
-                }
-            });
-        }
-        setInterval(updateTimers, 1000);
-
-        // ── Live Echo ─────────────────────────────────────────
-        function setupEcho() {
-            if (typeof window.Echo === 'function') {
-                window.Pusher = Pusher;
-                window.Echo = new window.Echo({
-                    broadcaster: 'reverb',
-                    key: '{{ config('broadcasting.connections.reverb.key') }}',
-                    wsHost: '{{ config('broadcasting.connections.reverb.options.host') }}' || window.location.hostname,
-                    wsPort: {{ config('broadcasting.connections.reverb.options.port', 8080) }},
-                    wssPort: {{ config('broadcasting.connections.reverb.options.port', 8080) }},
-                    forceTLS: '{{ config('broadcasting.connections.reverb.options.scheme', 'http') }}' === 'https',
-                    enabledTransports: ['ws', 'wss'],
-                });
+        /**
+         * Render single dock bay slot in DOM
+         */
+        renderSlotDOM(buildingKey, bayIndex) {
+            const b = this.buildings[buildingKey];
+            const slot = b.slots[bayIndex];
+            const bayEl = $(`#bay-${buildingKey}-${bayIndex}`);
+            if (!bayEl.length) {
+                this.renderBuilding(buildingKey);
+                return;
             }
 
-            if (window.Echo && typeof window.Echo.channel === 'function') {
-                window.Echo.channel('vehicle-tracking')
-                    .listen('.vehicle.updated', (payload) => {
-                        if (window.toastr) {
-                            toastr.info(payload.message || 'Data lokasi truk diupdate', 'Update Truk');
-                        }
-                        loadData();
-                    });
+            const bayNum = buildingKey === 'PARKIR' ? `SLOT ${bayIndex + 1}` : (buildingKey === 'TMB' ? `SCALE ${bayIndex + 1}` : `DOCK ${bayIndex + 1}`);
+
+            if (slot.state === 'empty') {
+                bayEl.attr('class', 'dock-bay').removeAttr('onclick');
+                bayEl.html(`
+                    <span class="dock-bay-num">${bayNum}</span>
+                    <span class="dock-empty-placeholder">KOSONG</span>
+                `);
             } else {
-                setTimeout(setupEcho, 200);
+                const tx = slot.truck;
+                let animClass = '';
+                let statusTagHtml = '';
+
+                if (slot.state === 'entering') {
+                    animClass = 'truck-anim-enter';
+                    statusTagHtml = `<span class="anim-status-tag entering"><i class="ri-arrow-up-line"></i> MASUK</span>`;
+                } else if (slot.state === 'exiting') {
+                    animClass = 'truck-anim-exit';
+                    statusTagHtml = `<span class="anim-status-tag exiting"><i class="ri-arrow-down-line"></i> KELUAR</span>`;
+                }
+
+                bayEl.attr('class', 'dock-bay occupied')
+                     .attr('onclick', `inspectTruck(${tx.id})`)
+                     .attr('title', `Klik untuk detail ${tx.no_pol}`);
+
+                // Hide Queue Number when at Timbangan (in/out) or before queue number is called
+                const isTimbangan = (buildingKey === 'TMB' || tx.current_location_code === 'TMB' || ['timbangan_in', 'timbangan_out'].includes(tx.status));
+                const isParkir = (buildingKey === 'PARKIR');
+                const showQueueBadge = tx.no_antrian && !isTimbangan && !isParkir;
+
+                let bottomBadgeHtml = '';
+                if (showQueueBadge) {
+                    bottomBadgeHtml = `<div class="truck-queue-badge">ANTRIAN ${tx.no_antrian}</div>`;
+                } else if (isParkir) {
+                    bottomBadgeHtml = `<div class="truck-queue-badge" style="background:#6366f1;color:#ffffff;font-size:9px;">${tx.parking_status_label || 'UNKNOWN PARKIR'}</div>`;
+                }
+
+                bayEl.html(`
+                    <span class="dock-bay-num">${bayNum}</span>
+                    <div class="dock-truck-sprite ${animClass}">
+                        ${getTruckSVG()}
+                        <div class="truck-plate-tag">${tx.no_pol || 'TRUK'}</div>
+                        ${bottomBadgeHtml}
+                    </div>
+                    ${statusTagHtml}
+                `);
             }
+        },
+
+        /**
+         * Render entire building grid
+         */
+        renderBuilding(buildingKey) {
+            const b = this.buildings[buildingKey];
+            const container = $(`#${b.containerId}`);
+            let html = '';
+
+            b.slots.forEach(slot => {
+                const bayNum = buildingKey === 'PARKIR' ? `SLOT ${slot.bayIndex + 1}` : (buildingKey === 'TMB' ? `SCALE ${slot.bayIndex + 1}` : `DOCK ${slot.bayIndex + 1}`);
+                if (slot.state === 'empty') {
+                    html += `
+                        <div id="bay-${buildingKey}-${slot.bayIndex}" class="dock-bay">
+                            <span class="dock-bay-num">${bayNum}</span>
+                            <span class="dock-empty-placeholder">KOSONG</span>
+                        </div>
+                    `;
+                } else {
+                    const tx = slot.truck;
+                    let animClass = slot.state === 'entering' ? 'truck-anim-enter' : (slot.state === 'exiting' ? 'truck-anim-exit' : '');
+                    let statusTagHtml = '';
+                    if (slot.state === 'entering') statusTagHtml = `<span class="anim-status-tag entering"><i class="ri-arrow-up-line"></i> MASUK</span>`;
+                    else if (slot.state === 'exiting') statusTagHtml = `<span class="anim-status-tag exiting"><i class="ri-arrow-down-line"></i> KELUAR</span>`;
+
+                    const isTimbangan = (buildingKey === 'TMB' || tx.current_location_code === 'TMB' || ['timbangan_in', 'timbangan_out'].includes(tx.status));
+                    const isParkir = (buildingKey === 'PARKIR');
+                    const showQueueBadge = tx.no_antrian && !isTimbangan && !isParkir;
+
+                    let bottomBadgeHtml = '';
+                    if (showQueueBadge) {
+                        bottomBadgeHtml = `<div class="truck-queue-badge">ANTRIAN ${tx.no_antrian}</div>`;
+                    } else if (isParkir) {
+                        bottomBadgeHtml = `<div class="truck-queue-badge" style="background:#6366f1;color:#ffffff;font-size:9px;">${tx.parking_status_label || 'UNKNOWN PARKIR'}</div>`;
+                    }
+
+                    html += `
+                        <div id="bay-${buildingKey}-${slot.bayIndex}" class="dock-bay occupied" onclick="inspectTruck(${tx.id})" title="Klik untuk detail ${tx.no_pol}">
+                            <span class="dock-bay-num">${bayNum}</span>
+                            <div class="dock-truck-sprite ${animClass}">
+                                ${getTruckSVG()}
+                                <div class="truck-plate-tag">${tx.no_pol || 'TRUK'}</div>
+                                ${bottomBadgeHtml}
+                            </div>
+                            ${statusTagHtml}
+                        </div>
+                    `;
+                }
+            });
+
+            container.html(html);
         }
+    };
 
-        // ── Window Resize ─────────────────────────────────────
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+    /**
+     * Load & Sync Active Vehicle Data from Server
+     */
+    function loadYardData() {
+        $.ajax({
+            url: API_DASHBOARD_DATA,
+            type: 'GET',
+            dataType: 'json',
+            success: function(res) {
+                const transactions = res.transactions || [];
+
+                // Group transactions by building
+                const wrmTrucks = [];
+                const wpmTrucks = [];
+                const wfgTrucks = [];
+                const smuTrucks = [];
+                const tmbTrucks = [];
+                const parkirTrucks = [];
+
+                transactions.forEach(tx => {
+                    const targetLoc = (tx.target_location_code || tx.target_sloc || '').toUpperCase();
+                    const status = (tx.status || '').toLowerCase();
+                    const currentLoc = (tx.current_location_code || '').toUpperCase();
+                    const hasQueue = !!tx.no_antrian;
+
+                    if (currentLoc === 'TMB' || status === 'timbangan_in' || status === 'timbangan_out') {
+                        // Truck currently at Timbangan scale
+                        tmbTrucks.push(tx);
+                    } else if (hasQueue || ['wrm_bongkar', 'wfg', 'smu', 'wpm'].includes(status)) {
+                        // Truck ONLY enters building loading dock if it has a queue number or is actively unloading/loading
+                        if (targetLoc.includes('B006') || targetLoc.includes('WRM') || status.includes('wrm')) {
+                            wrmTrucks.push(tx);
+                        } else if (targetLoc.includes('C001') || targetLoc.includes('WPM') || status.includes('wpm')) {
+                            wpmTrucks.push(tx);
+                        } else if (targetLoc.includes('A001') || targetLoc.includes('WFG') || status.includes('wfg')) {
+                            wfgTrucks.push(tx);
+                        } else if (targetLoc.includes('SMU') || targetLoc.includes('WSP') || status.includes('smu')) {
+                            smuTrucks.push(tx);
+                        } else {
+                            wrmTrucks.push(tx);
+                        }
+                    } else {
+                        // Has NOT been called / no queue number yet -> Parked in Kantong Parkir / Buffer
+                        tx.parking_status_label = tx.current_slot || 'UNKNOWN PARKIR';
+                        parkirTrucks.push(tx);
+                    }
+                });
+
+                // Feed into Animation Service
+                DockAnimationService.syncBuildingData('WRM', wrmTrucks);
+                DockAnimationService.syncBuildingData('WPM', wpmTrucks);
+                DockAnimationService.syncBuildingData('WFG', wfgTrucks);
+                DockAnimationService.syncBuildingData('SMU', smuTrucks);
+                DockAnimationService.syncBuildingData('TMB', tmbTrucks);
+                DockAnimationService.syncBuildingData('PARKIR', parkirTrucks);
+
+                $('#total-yard-trucks').text(`${transactions.length} Truk`);
+            }
         });
+    }
 
-        // Initial Boot
-        loadData();
-        setupEcho();
-        setInterval(loadData, 30000); // Polling fallback
+    /**
+     * Inspector Modal Drawer
+     */
+    window.inspectTruck = function(txId) {
+        const tx = activeVehicles[txId];
+        if (!tx) return;
 
-        $('#btnRefresh').on('click', function () {
-            loadData();
-            if (window.toastr) toastr.success('Data berhasil diperbarui.');
-        });
+        const isTimbangan = (tx.current_location_code === 'TMB' || ['timbangan_in', 'timbangan_out'].includes(tx.status));
+
+        $('#insp-plat').text(tx.no_pol || '-');
+        $('#insp-antrian').text(isTimbangan ? 'Proses Timbangan (Tanpa Antrian)' : (tx.no_antrian ? `NO. ${tx.no_antrian}` : 'Menunggu / Belum Dipanggil'));
+        $('#insp-status').text(tx.status ? tx.status.toUpperCase() : '-');
+        $('#insp-loc').text(tx.current_location_name || tx.current_location_code || '-');
+        $('#insp-target').text(tx.target_location_name || tx.target_location_code || '-');
+        $('#insp-driver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
+        $('#insp-vendor').text(tx.vendor || '-');
+        $('#insp-item').text(tx.item || '-');
+        $('#insp-checkin').text(tx.check_in_time || '-');
+        $('#insp-durasi').text(tx.duration_seconds ? `${Math.floor(tx.duration_seconds / 60)} Menit` : '-');
+
+        $('#truckInspector').fadeIn(200);
+    };
+
+    $('#btnCloseInspector').on('click', () => { $('#truckInspector').fadeOut(150); });
+    $('#btnRefresh').on('click', () => {
+        loadYardData();
+        toastr.success('Data Yard Loading Docks diperbarui', 'Refreshed');
+    });
+
+    /**
+     * Interactive Simulation Buttons
+     */
+    let simCounter = 900;
+    $('#btnSimulateEnter').on('click', function() {
+        simCounter++;
+        const demoPlat = `B ${Math.floor(1000 + Math.random() * 9000)} DEMO`;
+        const demoTx = {
+            id: simCounter,
+            no_pol: demoPlat,
+            no_antrian: `Q-0${(simCounter % 9) + 1}`,
+            status: 'wrm_bongkar',
+            target_location_name: 'Gedung WRM',
+            current_location_name: 'Loading Dock WRM',
+            nama_driver: 'Driver Demo',
+            no_hp_driver: '08123456789',
+            vendor: 'PT Demo Logistics',
+            item: 'Kedelai Import Premium',
+            check_in_time: moment().format('YYYY-MM-DD HH:mm:ss'),
+            duration_seconds: 120
+        };
+
+        // Find empty slot in WRM
+        const emptySlot = DockAnimationService.buildings.WRM.slots.find(s => s.state === 'empty');
+        if (emptySlot) {
+            toastr.info(`Truk ${demoPlat} sedang meluncur maju ke Dock ${emptySlot.bayIndex + 1}...`, 'Simulasi Masuk Dock');
+            DockAnimationService.triggerDriveIn('WRM', emptySlot.bayIndex, demoTx);
+        } else {
+            toastr.warning('Semua dock WRM sedang terisi.', 'Perhatian');
+        }
+    });
+
+    $('#btnSimulateExit').on('click', function() {
+        // Find occupied slot in WRM
+        const occupiedSlot = DockAnimationService.buildings.WRM.slots.find(s => s.state === 'parked');
+        if (occupiedSlot) {
+            toastr.warning(`Truk ${occupiedSlot.truck.no_pol} sedang mundur keluar dari Dock ${occupiedSlot.bayIndex + 1}...`, 'Simulasi Keluar Dock');
+            DockAnimationService.triggerDriveOut('WRM', occupiedSlot.bayIndex, occupiedSlot.truck);
+        } else {
+            toastr.info('Tidak ada truk yang sedang parkir di dock WRM untuk simulasi keluar.', 'Info');
+        }
+    });
+
+    /**
+     * Laravel Reverb WebSocket Listener
+     */
+    function initReverb() {
+        try {
+            window.Pusher = Pusher;
+            window.Echo = new Echo({
+                broadcaster: 'reverb',
+                key: "{{ env('REVERB_APP_KEY') }}",
+                wsHost: "{{ env('REVERB_HOST') ?: request()->getHost() }}",
+                wsPort: {{ env('REVERB_PORT') ?: 8080 }},
+                wssPort: {{ env('REVERB_PORT') ?: 8080 }},
+                forceTLS: {{ env('REVERB_SCHEME') === 'https' ? 'true' : 'false' }},
+                enabledTransports: ['ws', 'wss'],
+            });
+
+            window.Echo.channel('vehicle-tracking')
+                .listen('.vehicle.updated', (payload) => {
+                    toastr.info(payload.message || 'Pergerakan kendaraan diperbarui', 'Vehicle Tracking');
+                    setTimeout(loadYardData, 500);
+                });
+        } catch (e) {
+            console.warn('Reverb init failed:', e);
+        }
+    }
+
+    $(function() {
+        DockAnimationService.init();
+        loadYardData();
+        initReverb();
+        setInterval(loadYardData, 5000);
     });
     </script>
 </body>
+
 </html>
