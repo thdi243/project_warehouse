@@ -359,7 +359,20 @@ class WspPurchaseRequesitionController extends Controller
         }
 
         if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
+            if ($request->status === 'rejected') {
+                $query->where('status', 'rejected');
+            } elseif (in_array((string)$request->status, ['1', '2', '3', '4', '5'])) {
+                $level = (int)$request->status;
+                $query->where('status', '!=', 'rejected')
+                    ->whereRaw("COALESCE((
+                        SELECT MAX(level) 
+                        FROM wsp_purchase_requesition_approval 
+                        WHERE wsp_purchase_requesition_approval.pr_id = wsp_purchase_requesition.id 
+                          AND wsp_purchase_requesition_approval.status = 'approved'
+                    ), 1) = ?", [$level]);
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         if ($request->filled('jenis') && $request->jenis !== 'all') {

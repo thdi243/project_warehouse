@@ -138,13 +138,15 @@
                             </select>
                         </div> --}}
                         <div class="col-md-3">
-                            <label class="form-label mb-1 small text-muted">Status</label>
+                            <label class="form-label mb-1 small text-muted">Level Approval</label>
                             <select id="filterStatusPR" class="form-select">
-                                <option value="all">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
+                                <option value="all">All Level</option>
+                                <option value="1">Level 1</option>
+                                <option value="2">Level 2</option>
+                                <option value="3">Level 3</option>
+                                <option value="4">Level 4</option>
+                                <option value="5">Level 5</option>
                                 <option value="rejected">Rejected</option>
-                                <option value="finished">Finished</option>
                             </select>
                         </div>
                         <div class="col-md-4">
