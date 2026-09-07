@@ -1223,17 +1223,31 @@ class WspPurchaseRequesitionController extends Controller
         $pr = WspPurchaseRequesitionModel::with(['items.barang.stock', 'approval.approver'])
             ->findOrFail($id);
 
-        $currentUserId = Auth::id();
+        $currentUser = Auth::user();
+        $currentUserId = $currentUser->id;
+        $isLevel5Role = $currentUser->hasRole('level_5_pr') || ($currentUser->jabatan === 'foreman' && $currentUser->bagian === 'warehouse_sparepart');
 
         // 1. Apakah user ini masih bisa approve?
         $canApprove = $pr->approval()
-            ->where('approver_id', $currentUserId)
+            ->where(function ($q) use ($currentUserId, $isLevel5Role) {
+                $q->where('approver_id', $currentUserId);
+                if ($isLevel5Role) {
+                    $q->orWhere('level', 5);
+                }
+            })
             ->where('status', 'pending')
             ->exists();
 
         // 2. Apakah user ini sudah pernah action (approve/reject)?
         $userApproval = $pr->approval()
-            ->where('approver_id', $currentUserId)
+            ->where(function ($q) use ($currentUserId, $isLevel5Role) {
+                $q->where('approver_id', $currentUserId);
+                if ($isLevel5Role) {
+                    $q->orWhere(function ($sub) use ($currentUserId) {
+                        $sub->where('level', 5)->where('action_by', $currentUserId);
+                    });
+                }
+            })
             ->whereIn('status', ['approved', 'rejected'])
             ->with('approver') // pastikan approver di-load
             ->first(); // ambil satu record (harusnya cuma satu)
@@ -1300,8 +1314,16 @@ class WspPurchaseRequesitionController extends Controller
     {
         $pr = WspPurchaseRequesitionModel::with('approval')->findOrFail($prId);
 
+        $currentUser = Auth::user();
+        $isLevel5Role = $currentUser->hasRole('level_5_pr') || ($currentUser->jabatan === 'foreman' && $currentUser->bagian === 'warehouse_sparepart');
+
         $approval = $pr->approval()
-            ->where('approver_id', $userId)
+            ->where(function ($q) use ($userId, $isLevel5Role) {
+                $q->where('approver_id', $userId);
+                if ($isLevel5Role) {
+                    $q->orWhere('level', 5);
+                }
+            })
             ->where('status', 'pending')
             ->first();
 
@@ -1312,12 +1334,31 @@ class WspPurchaseRequesitionController extends Controller
             ];
         }
 
-        // Hapus notifikasi untuk user ini terkait PR ini (Role spesifik)
-        NotificationsModel::where('user_id', $userId)
-            ->where('notifiable_id', $prId)
-            ->where('notifiable_type', WspPurchaseRequesitionModel::class)
-            ->where('message', 'like', '%' . $approval->role . '%')
-            ->delete();
+        // Hapus notifikasi terkait PR ini untuk level ini
+        if ($approval->level == 5) {
+            $level5UserIds = User::role('level_5_pr')->where('is_active', true)->pluck('id')
+                ->merge(
+                    User::where('jabatan', 'foreman')
+                        ->where('bagian', 'warehouse_sparepart')
+                        ->where('is_active', true)
+                        ->pluck('id')
+                )->unique()->values();
+
+            NotificationsModel::whereIn('user_id', $level5UserIds)
+                ->where('notifiable_id', $prId)
+                ->where('notifiable_type', WspPurchaseRequesitionModel::class)
+                ->where(function ($q) use ($approval) {
+                    $q->where('message', 'like', '%' . $approval->role . '%')
+                        ->orWhere('url', 'like', '%level=5%');
+                })
+                ->delete();
+        } else {
+            NotificationsModel::where('user_id', $userId)
+                ->where('notifiable_id', $prId)
+                ->where('notifiable_type', WspPurchaseRequesitionModel::class)
+                ->where('message', 'like', '%' . $approval->role . '%')
+                ->delete();
+        }
 
         $currentLevel = $approval->level;
 
@@ -1390,12 +1431,18 @@ class WspPurchaseRequesitionController extends Controller
             }
         }
 
-        $approval->update([
-            'status'  => $status,
-            'catatan' => $comment,
+        $approvalUpdateData = [
+            'status'    => $status,
+            'catatan'   => $comment,
             'action_at' => now(),
             'action_by' => $userId,
-        ]);
+        ];
+
+        if ($approval->level == 5) {
+            $approvalUpdateData['approver_id'] = $userId;
+        }
+
+        $approval->update($approvalUpdateData);
 
         if ($noPr) {
             $pr->update(['pr_number' => $noPr]);
@@ -1479,20 +1526,31 @@ class WspPurchaseRequesitionController extends Controller
 
     public function getPendingApprovals()
     {
-        $userId = Auth::id();
+        $user = Auth::user();
+        $userId = $user->id;
+        $isLevel5Role = $user->hasRole('level_5_pr') || ($user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart');
 
-        // Ambil PR yang user terlibat sebagai approver pending
-        $prs = WspPurchaseRequesitionModel::whereHas('approval', function ($q) use ($userId) {
-            $q->where('approver_id', $userId)
-                ->where('status', 'pending');
+        // Ambil PR yang user terlibat sebagai approver pending, atau jika user punya role level 5, sertakan juga level 5 pending
+        $prs = WspPurchaseRequesitionModel::whereHas('approval', function ($q) use ($userId, $isLevel5Role) {
+            $q->where(function ($sub) use ($userId, $isLevel5Role) {
+                $sub->where('approver_id', $userId);
+                if ($isLevel5Role) {
+                    $sub->orWhere('level', 5);
+                }
+            })->where('status', 'pending');
         })
             ->with(['approval', 'items.barang', 'user'])
             ->latest()
             ->get();
 
         // Filter: hanya yang level sebelumnya sudah approved
-        $filtered = $prs->filter(function ($pr) use ($userId) {
-            $myApproval = $pr->approval->where('approver_id', $userId)->where('status', 'pending')->first();
+        $filtered = $prs->filter(function ($pr) use ($userId, $isLevel5Role) {
+            $myApproval = $pr->approval->first(function ($a) use ($userId, $isLevel5Role) {
+                if ($a->status !== 'pending') return false;
+                if ($a->approver_id == $userId) return true;
+                if ($isLevel5Role && $a->level == 5) return true;
+                return false;
+            });
             if (!$myApproval) return false;
 
             $currentLevel = $myApproval->level;
@@ -1633,6 +1691,39 @@ class WspPurchaseRequesitionController extends Controller
 
     private function sendNotification($pr, $approval)
     {
+        if ($approval->level == 5) {
+            $level5Users = User::role('level_5_pr')->where('is_active', true)->get();
+            $foremanUsers = User::where('jabatan', 'foreman')
+                ->where('bagian', 'warehouse_sparepart')
+                ->where('is_active', true)
+                ->get();
+            $allLevel5Users = $level5Users->merge($foremanUsers)->unique('id');
+
+            $url = "/purchase-requesition/approval?level=5";
+
+            foreach ($allLevel5Users as $user) {
+                NotificationsModel::create([
+                    'user_id' => $user->id,
+                    'notifiable_type' => WspPurchaseRequesitionModel::class,
+                    'notifiable_id' => $pr->id,
+                    'title'   => "Approval PR - {$pr->no_doc}",
+                    'message' => "Anda approve sebagai {$approval->role}. PR dari {$pr->requested_by} dept. {$pr->department} menunggu persetujuan Anda",
+                    'url'     => $url,
+                    'is_read' => false,
+                ]);
+
+                if ($user->email) {
+                    SendPrApprovalEmail::dispatch(
+                        $pr->id,
+                        $approval->id,
+                        $user->email,
+                        $user->nama_lengkap
+                    )->afterCommit();
+                }
+            }
+
+            return;
+        }
 
         if (!$approval->approver_id) return;
 
@@ -1657,26 +1748,6 @@ class WspPurchaseRequesitionController extends Controller
                 $approval->id,
                 $user->email
             )->afterCommit();
-        }
-
-        // Send to foreman warehouse_sparepart (only email) if this is level 5
-        if ($approval->level == 5) {
-            $foremanUsers = User::where('jabatan', 'foreman')
-                ->where('bagian', 'warehouse_sparepart')
-                ->where('is_active', true)
-                ->get();
-
-            foreach ($foremanUsers as $foremanUser) {
-                // Don't send duplicate email if the foreman is the main approver
-                if ($foremanUser->email && $foremanUser->email !== $user->email) {
-                    SendPrApprovalEmail::dispatch(
-                        $pr->id,
-                        $approval->id,
-                        $foremanUser->email,
-                        $foremanUser->nama_lengkap
-                    )->afterCommit();
-                }
-            }
         }
 
         return;

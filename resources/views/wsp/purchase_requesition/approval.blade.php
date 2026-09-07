@@ -355,6 +355,7 @@
             let currentAction = ''; // 'approved' or 'rejected'
             let signaturePad;
             const hasStoredSignature = {{ $signature ? 'true' : 'false' }};
+            const isLevel5Role = {{ $isForeman ? 'true' : 'false' }};
 
             // Initialize Signature Pad
             const canvas = document.getElementById('signaturePad');
@@ -446,7 +447,7 @@
                 }).length;
 
                 const count5 = data.filter(pr => {
-                    const myApp = pr.approval.find(a => a.approver_id == userId && a.status === 'pending');
+                    const myApp = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level == 5)) && a.status === 'pending');
                     return myApp && myApp.level == 5;
                 }).length;
 
@@ -472,7 +473,7 @@
 
                 const userId = {{ Auth::id() }};
                 const filteredByLevel = data.filter(pr => {
-                    const myApp = pr.approval.find(a => a.approver_id == userId && a.status === 'pending');
+                    const myApp = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level == 5)) && a.status === 'pending');
                     return myApp && myApp.level == currentFilterLevel;
                 });
 
@@ -484,8 +485,7 @@
                 }
 
                 filteredByLevel.forEach((pr, idx) => {
-                    const myApproval = pr.approval.find(a => a.approver_id == userId && a.status ===
-                        'pending');
+                    const myApproval = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level == 5)) && a.status === 'pending');
                     const roleName = myApproval ? myApproval.role : '-';
                     const isLevel5 = currentFilterLevel == 5;
                     const approveText = isLevel5 ? 'Confirm' : 'Approve';
@@ -609,7 +609,7 @@
                 `);
 
                 const userId = {{ Auth::id() }};
-                const myApproval = pr.approval.find(a => a.approver_id == userId && a.status === 'pending');
+                const myApproval = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level == 5)) && a.status === 'pending');
                 const isLevel3Or5 = myApproval && (
                     myApproval.level == 3 ||
                     myApproval.level == 5 ||
