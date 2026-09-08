@@ -131,7 +131,7 @@
                             <hr class="mt-5 mb-4 border-dashed">
 
                             <!-- Material Summary Table (Grouped by MID) -->
-                            <div class="mb-5 {{ in_array($order->status, ['finished', 'verified']) ? 'd-none' : '' }}">
+                            <div class="mb-5 {{ in_array($order->status, ['verified']) ? 'd-none' : '' }}">
                                 <h6 class="text-uppercase fw-bold mb-3"><i class="ri-pie-chart-line me-1"></i> Bongkar Muat
                                     Summary (Per Material)</h6>
                                 <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
@@ -619,7 +619,8 @@
                 tempCanvas.height = croppedHeight;
 
                 const tempCtx = tempCanvas.getContext('2d');
-                tempCtx.drawImage(canvas, minX, minY, croppedWidth, croppedHeight, 0, 0, croppedWidth, croppedHeight);
+                tempCtx.drawImage(canvas, minX, minY, croppedWidth, croppedHeight, 0, 0, croppedWidth,
+                    croppedHeight);
 
                 return tempCanvas.toDataURL();
             }
@@ -632,7 +633,8 @@
                         e.preventDefault();
                         Swal.fire('Error', 'Signature is required.', 'error');
                     } else {
-                        document.getElementById('checker-signature-data').value = trimCanvas(document.getElementById('checker-signature-pad'));
+                        document.getElementById('checker-signature-data').value = trimCanvas(document
+                            .getElementById('checker-signature-pad'));
                     }
                 });
             @elseif ($order->status == 'approved')
@@ -643,7 +645,8 @@
                         e.preventDefault();
                         Swal.fire('Error', 'Signature is required.', 'error');
                     } else {
-                        document.getElementById('driver-signature-data').value = trimCanvas(document.getElementById('driver-signature-pad'));
+                        document.getElementById('driver-signature-data').value = trimCanvas(document
+                            .getElementById('driver-signature-pad'));
                     }
                 });
             @elseif ($order->status == 'finished' && auth()->user()->hasRole('verificator-bongkar-muat-wfg'))
@@ -678,7 +681,8 @@
                             e.preventDefault();
                             Swal.fire('Peringatan', 'Tanda tangan wajib diisi.', 'warning');
                         } else {
-                            document.getElementById('verificator-signature-data').value = trimCanvas(document.getElementById('verificator-signature-pad'));
+                            document.getElementById('verificator-signature-data').value = trimCanvas(
+                                document.getElementById('verificator-signature-pad'));
                         }
                     }
                 });
