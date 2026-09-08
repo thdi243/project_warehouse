@@ -828,12 +828,13 @@
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
                                             <th>Item</th>
+                                            <th>Status</th>
                                             <th>Durasi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="body-smu">
                                         <tr>
-                                            <td colspan="5" class="text-center text-muted py-4">Mengambil data...
+                                            <td colspan="6" class="text-center text-muted py-4">Mengambil data...
                                             </td>
                                         </tr>
                                     </tbody>
@@ -1044,6 +1045,7 @@
                             if (key === 'WPM') colsCount = 7;
                             if (key === 'WRM') colsCount = 7;
                             if (key === 'WFG') colsCount = 6;
+                            if (key === 'SMU') colsCount = 6;
                             tbody.html(
                                 `<tr><td colspan="${colsCount}" class="text-center text-muted py-4 small text-uppercase" style="height: 225px; vertical-align: middle;">Kosong</td></tr>`
                             );
@@ -1182,21 +1184,28 @@
                             } else if (key === 'WFG') {
                                 let statusWfgBadge;
                                 const jenis = (tx.jenis || '').toLowerCase();
+                                const isProcess = tx.unloading_status === 'process';
                                 if (jenis === 'bongkaran') {
-                                    if (tx.status === 'wfg') {
-                                        statusWfgBadge =
-                                            `<span class="badge-status waiting">Antri Bongkar</span>`;
-                                    } else {
+                                    if (isProcess) {
                                         statusWfgBadge =
                                             `<span class="badge-status process">Proses Bongkar</span>`;
-                                    }
-                                } else {
-                                    if (tx.status === 'wfg') {
+                                    } else if (tx.no_antrian) {
                                         statusWfgBadge =
-                                            `<span class="badge-status waiting">Antri Muat</span>`;
+                                            `<span class="badge-status waiting">Antri Bongkar (${tx.no_antrian})</span>`;
                                     } else {
                                         statusWfgBadge =
+                                            `<span class="badge-status waiting">Menunggu Antrian</span>`;
+                                    }
+                                } else {
+                                    if (isProcess) {
+                                        statusWfgBadge =
                                             `<span class="badge-status process">Proses Muat</span>`;
+                                    } else if (tx.no_antrian) {
+                                        statusWfgBadge =
+                                            `<span class="badge-status waiting">Antri Muat (${tx.no_antrian})</span>`;
+                                    } else {
+                                        statusWfgBadge =
+                                            `<span class="badge-status waiting">Menunggu Antrian</span>`;
                                     }
                                 }
                                 rowHtml = `
@@ -1219,6 +1228,21 @@
                                     </tr>
                                 `;
                             } else if (key === 'SMU') {
+                                let statusSmuBadge;
+                                const jenis = (tx.jenis || '').toLowerCase();
+                                const isProcess = tx.unloading_status === 'process';
+                                const processName = jenis === 'slipsheet' ? 'Muat' : 'Bongkar';
+                                if (isProcess) {
+                                    statusSmuBadge =
+                                        `<span class="badge-status process">Proses ${processName}</span>`;
+                                } else if (tx.no_antrian) {
+                                    statusSmuBadge =
+                                        `<span class="badge-status waiting">Antri (${tx.no_antrian})</span>`;
+                                } else {
+                                    statusSmuBadge =
+                                        `<span class="badge-status waiting">Menunggu Antrian</span>`;
+                                }
+
                                 rowHtml = `
                                     <tr class="${warningRow}" id="row-tx-${tx.id}">
                                         <td>
@@ -1230,6 +1254,7 @@
                                         <td><span class="fw-semibold">${tx.no_pol}</span></td>
                                         <td>${tx.vendor}</td>
                                         <td><strong>${tx.item}</strong></td>
+                                        <td>${statusSmuBadge}</td>
                                         <td>
                                             <span class="dashboard-timer ${durationClass}" data-start="${tx.arrival_time}" data-limit="${tx.limit_minutes}">
                                                 Calculated...
@@ -1250,6 +1275,7 @@
                             if (key === 'WPM') colsCount = 7;
                             if (key === 'WRM') colsCount = 7;
                             if (key === 'WFG') colsCount = 6;
+                            if (key === 'SMU') colsCount = 6;
                             for (let i = 0; i < paddingRowsNeeded; i++) {
                                 tbody.append(`
                                     <tr style="height: 38px; border-bottom: 1px solid rgba(255, 255, 255, 0.015);">

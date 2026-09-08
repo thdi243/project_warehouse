@@ -205,8 +205,8 @@
                                             <th>No. SPB / Qty</th>
                                             <th>Tujuan Sloc</th>
                                             <th>Status</th>
-                                            <th>Jam Masuk</th>
-                                            <th>Jam Keluar</th>
+                                            <th>Waktu Masuk</th>
+                                            <th>Waktu Keluar</th>
                                             <th class="text-center">Action</th>
                                         </tr>
                                     </thead>
@@ -596,8 +596,12 @@
                             </td>
                             <td><span class="badge bg-soft-info text-info">${tx.target_sloc}</span></td>
                             <td>${statusBadge}</td>
-                            <td>${tx.check_in_time}</td>
-                            <td>${tx.check_out_time}</td>
+                            <td>
+                                ${tx.check_in_date && tx.check_in_date !== '-' ? `<span class="fw-medium text-dark">${tx.check_in_date}</span><br><small class="text-muted"><i class="ri-time-line me-1"></i>${tx.check_in_clock}</small>` : (tx.check_in_time || '-')}
+                            </td>
+                            <td>
+                                ${tx.check_out_date && tx.check_out_date !== '-' ? `<span class="fw-medium text-dark">${tx.check_out_date}</span><br><small class="text-muted"><i class="ri-time-line me-1"></i>${tx.check_out_clock}</small>` : (tx.check_out_time || '-')}
+                            </td>
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-end">
                                     ${checkOutButton}

@@ -405,6 +405,11 @@
             <div class="inspector-row"><span class="label">Waktu Masuk</span><span class="val" id="insp-checkin">-</span></div>
             <div class="inspector-row" style="border:none;"><span class="label">Zona</span><span class="val" id="insp-zona">-</span></div>
         </div>
+        <div id="insp-action-wrapper" class="mt-3 pt-2 border-top border-secondary border-opacity-25 text-center" style="display:none;">
+            <button type="button" class="btn btn-sm btn-outline-danger w-100" id="btnReleaseParkingSlot">
+                <i class="ri-logout-box-r-line me-1"></i> Release / Kosongkan Slot
+            </button>
+        </div>
     </div>
 
     <!-- ── SCRIPTS ── -->
@@ -412,6 +417,7 @@
     <script src="{{ asset('material/assets/libs/moment/min/moment.min.js') }}"></script>
     <script src="{{ asset('material/assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
 
@@ -484,7 +490,8 @@
             let labelsHtml = '';
 
             slots.forEach(s => {
-                const isOccupied = s.status_slot === 'terisi' || (s.active_vehicle && s.active_vehicle.no_pol);
+                const vehiclePlate = s.active_vehicle ? (s.active_vehicle.no_polisi || s.active_vehicle.no_pol || '') : '';
+                const isOccupied = s.status_slot === 'terisi' || !!vehiclePlate;
                 allSlotsState[s.id] = { slot: s, zone: zone };
 
                 slotsHtml += `
@@ -492,7 +499,7 @@
                         ${isOccupied ? `
                             <div class="slot-truck-sprite">
                                 ${getTruckSVG()}
-                                <div class="slot-plate-text">${s.active_vehicle ? s.active_vehicle.no_pol : 'TERISI'}</div>
+                                <div class="slot-plate-text">${vehiclePlate || 'TERISI'}</div>
                             </div>
                         ` : ''}
                     </div>
@@ -553,7 +560,7 @@
                 $('#api-status-badge').text('Offline').css('color', '#ef4444');
                 $('#dynamic-zones-list').html(`
                     <div class="alert alert-danger text-center" role="alert">
-                        <i class="ri-error-warning-line me-1"></i> Gagal terhubung ke API Kantong Parkir (10.11.11.10:8093). Pastikan jaringan atau server API aktif.
+                        <i class="ri-error-warning-line me-1"></i> Gagal terhubung ke API Kantong Parkir. Pastikan jaringan atau server API aktif.
                     </div>
                 `);
             }
@@ -576,21 +583,34 @@
         $('#insp-status').text(s.status_slot ? s.status_slot.toUpperCase() : 'KOSONG');
 
         if (v) {
-            $('#insp-plat').text(v.no_pol || '-');
-            $('#insp-antrian').text(v.no_antrian ? `NO. ${v.no_antrian}` : 'Belum Dipanggil');
-            $('#insp-target').text(v.target_location || '-');
-            $('#insp-driver').text(`${v.nama_driver || '-'} (${v.no_hp_driver || '-'})`);
-            $('#insp-vendor').text(v.vendor || '-');
-            $('#insp-item').text(v.item || '-');
-            $('#insp-checkin').text(v.check_in_time || '-');
+            const plate = v.no_polisi || v.no_pol || '-';
+            const driverInfo = v.nama_driver ? `${v.nama_driver}${v.no_hp_driver ? ' (' + v.no_hp_driver + ')' : ''}` : '-';
+            const checkInFormatted = v.waktu_masuk ? moment(v.waktu_masuk).format('DD-MM-YYYY HH:mm') : (v.check_in_time || '-');
+
+            $('#insp-plat').text(plate);
+            $('#insp-antrian').text(v.no_antrian ? `NO. ${v.no_antrian}` : (v.status_assignment ? v.status_assignment.toUpperCase() : 'Belum Dipanggil'));
+            $('#insp-target').text(v.target_location || v.target_sloc || '-');
+            $('#insp-driver').text(driverInfo);
+            $('#insp-vendor').text(v.vendor || v.nama_perusahaan || '-');
+            $('#insp-item').text(v.item || v.jenis_kendaraan || '-');
+            $('#insp-checkin').text(checkInFormatted);
         } else {
             $('#insp-plat').text('SLOT KOSONG');
             $('#insp-antrian').text('-');
             $('#insp-target').text('-');
-            $('#insp-driver').text('-');
             $('#insp-vendor').text('-');
             $('#insp-item').text('-');
             $('#insp-checkin').text('-');
+        }
+
+        if (s.status_slot === 'terisi' || v) {
+            $('#insp-action-wrapper').show();
+            $('#btnReleaseParkingSlot')
+                .data('slot-id', s.id)
+                .data('slot-code', s.kode_slot || '-')
+                .data('nopol', v ? (v.no_polisi || v.no_pol || '') : '');
+        } else {
+            $('#insp-action-wrapper').hide();
         }
 
         $('#truckInspector').fadeIn(200);
@@ -600,6 +620,45 @@
     $('#btnRefresh').on('click', () => {
         loadParkirData();
         toastr.success('Data Kantong Parkir diperbarui', 'Refreshed');
+    });
+
+    // Handle Manual Release Slot Button
+    $('#btnReleaseParkingSlot').on('click', function() {
+        const slotId = $(this).data('slot-id');
+        const slotCode = $(this).data('slot-code');
+        const nopol = $(this).data('nopol');
+
+        Swal.fire({
+            title: 'Release Slot Parkir?',
+            text: `Kosongkan slot ${slotCode} ${nopol ? '(Kendaraan ' + nopol + ')' : ''}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Release!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "{{ route('dashboard.vehicle.kantong_parkir_release') }}",
+                    type: 'POST',
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        slot_id: slotId,
+                        no_polisi: nopol,
+                        keterangan: 'Manual release dari dashboard kantong parkir'
+                    },
+                    success: function(res) {
+                        Swal.fire('Berhasil!', res.message || 'Slot parkir berhasil dikosongkan.', 'success');
+                        $('#truckInspector').fadeOut(150);
+                        loadParkirData();
+                    },
+                    error: function(err) {
+                        Swal.fire('Error!', err.responseJSON?.message || 'Gagal me-release slot parkir.', 'error');
+                    }
+                });
+            }
+        });
     });
 
     /**

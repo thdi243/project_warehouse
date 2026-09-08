@@ -135,6 +135,8 @@ Route::middleware('auth')->group(function () {
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
             Route::get('/vehicle/kantong-parkir-data', [VehicleTrackingController::class, 'kantongParkirData'])->name('dashboard.vehicle.kantong_parkir')
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
+            Route::post('/vehicle/kantong-parkir-release', [VehicleTrackingController::class, 'kantongParkirRelease'])->name('dashboard.vehicle.kantong_parkir_release')
+                ->middleware(['permission:dashboard-vehicle-monitoring']);
 
             // Stock Opname Dashboard
             Route::get('/stock-opname', [StockOpnameDashboardController::class, 'index'])->name('dashboard.stock-opname')
@@ -873,6 +875,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware(['permission:vehicle-monitoring-wfg'])->group(function () {
             Route::get('/wfg', [VehicleTrackingController::class, 'wfgIndex'])->name('wfg');
             Route::get('/wfg/data', [VehicleTrackingController::class, 'wfgData'])->name('wfg.data');
+            Route::post('/wfg/start-loading/{id}', [VehicleTrackingController::class, 'wfgStartLoading'])->name('wfg.start_loading');
             Route::post('/wfg/update-loading/{id}', [VehicleTrackingController::class, 'wfgUpdateLoading'])->name('wfg.update_loading');
         });
 
@@ -880,6 +883,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware(['permission:vehicle-monitoring-smu'])->group(function () {
             Route::get('/smu', [VehicleTrackingController::class, 'smuIndex'])->name('smu');
             Route::get('/smu/data', [VehicleTrackingController::class, 'smuData'])->name('smu.data');
+            Route::post('/smu/start-loading/{id}', [VehicleTrackingController::class, 'smuStartLoading'])->name('smu.start_loading');
             Route::post('/smu/complete/{id}', [VehicleTrackingController::class, 'smuComplete'])->name('smu.complete');
         });
 

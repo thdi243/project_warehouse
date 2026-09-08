@@ -28,6 +28,9 @@ class VehicleTransaction extends Model
         'qc_status',
         'unloading_status',
         'no_antrian',
+        'queue_taken_time',
+        'start_loading_time',
+        'finish_loading_time',
         'check_in_time',
         'check_out_time',
         'created_by',
@@ -37,6 +40,9 @@ class VehicleTransaction extends Model
     protected $casts = [
         'check_in_time' => 'datetime',
         'check_out_time' => 'datetime',
+        'queue_taken_time' => 'datetime',
+        'start_loading_time' => 'datetime',
+        'finish_loading_time' => 'datetime',
         'qty_spb' => 'decimal:2',
     ];
 

@@ -23,6 +23,7 @@ use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\Api\Wpm\ApiWpmContoller;
+use App\Http\Controllers\Api\vehicle\ApiVehicleController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -191,4 +192,9 @@ Route::get('/data/summary-stock/supplier', [MonitoringController::class, 'getSum
 
 Route::prefix('wpm')->group(function () {
     Route::get('/master-barang', [ApiWpmContoller::class, 'getMasterBarang']);
+});
+Route::prefix('vehicle')->group(function () {
+    Route::get('/transactions', [ApiVehicleController::class, 'index']);
+    Route::post('/transactions/batch', [ApiVehicleController::class, 'batch']);
+    Route::get('/transaction/{nopol}', [ApiVehicleController::class, 'showByNopol']);
 });

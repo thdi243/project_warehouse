@@ -88,6 +88,9 @@ class VehicleTrackingController extends Controller
                 'qc_status' => $tx->qc_status,
                 'unloading_status' => $tx->unloading_status,
                 'no_antrian' => $tx->no_antrian,
+                'queue_taken_time' => $tx->queue_taken_time ? $tx->queue_taken_time->format('Y-m-d H:i:s') : null,
+                'start_loading_time' => $tx->start_loading_time ? $tx->start_loading_time->format('Y-m-d H:i:s') : null,
+                'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('Y-m-d H:i:s') : null,
                 'check_in_time' => $tx->check_in_time->format('Y-m-d H:i:s'),
                 'arrival_time' => $currentTracking ? $currentTracking->arrival_time->format('Y-m-d H:i:s') : $tx->check_in_time->format('Y-m-d H:i:s'),
                 'duration_seconds' => $durationSeconds,
@@ -235,7 +238,8 @@ class VehicleTrackingController extends Controller
     public function kantongParkirData(Request $request)
     {
         try {
-            $response = Http::timeout(5)->get('http://10.11.11.10:8093/api/kantong-parkir');
+            $baseUrl = env('MYBAS_API_URL', 'http://127.0.0.1:8081');
+            $response = Http::timeout(5)->get(rtrim($baseUrl, '/') . '/api/kantong-parkir');
 
             if ($response->successful()) {
                 return response()->json($response->json());
@@ -249,9 +253,50 @@ class VehicleTrackingController extends Controller
         } catch (\Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal terhubung ke API Kantong Parkir (10.11.11.10:8093): ' . $th->getMessage(),
+                'message' => 'Gagal terhubung ke API Kantong Parkir: ' . $th->getMessage(),
                 'data' => []
             ], 500);
+        }
+    }
+
+    /**
+     * Release a slot in Kantong Parkir via API proxy to MyBAS.
+     */
+    public function kantongParkirRelease(Request $request)
+    {
+        try {
+            $baseUrl = env('MYBAS_API_URL', 'http://127.0.0.1:8081');
+            $response = Http::timeout(5)->post(rtrim($baseUrl, '/') . '/api/kantong-parkir/release', [
+                'no_polisi' => $request->input('no_polisi'),
+                'slot_id' => $request->input('slot_id'),
+                'keterangan' => $request->input('keterangan') ?? 'Release manual dari warehouse dashboard'
+            ]);
+
+            return response()->json($response->json(), $response->status());
+        } catch (\Throwable $th) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal terhubung ke API MyBAS: ' . $th->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Internal helper to release vehicle from external Kantong Parkir slot in MyBAS.
+     */
+    private function releaseKantongParkirSlot($noPol, $keterangan = null)
+    {
+        try {
+            if (!$noPol) return;
+            $baseUrl = env('MYBAS_API_URL', 'http://127.0.0.1:8081');
+            $url = rtrim($baseUrl, '/') . '/api/kantong-parkir/release';
+
+            Http::timeout(3)->post($url, [
+                'no_polisi' => $noPol,
+                'keterangan' => $keterangan ?? 'Dipanggil ke dock / antrian warehouse'
+            ]);
+        } catch (\Throwable $th) {
+            \Log::warning("Gagal mengirim release parkir ke MyBAS untuk {$noPol}: " . $th->getMessage());
         }
     }
 
@@ -293,8 +338,12 @@ class VehicleTrackingController extends Controller
                     'target_loc' => $tx->target_location_id,
                     'target_sloc' => $tx->targetLocation->s_loc,
                     'status' => $tx->status,
-                    'check_in_time' => $tx->check_in_time ? $tx->check_in_time->format('H:i') : '-',
-                    'check_out_time' => $tx->check_out_time ? $tx->check_out_time->format('H:i') : '-',
+                    'check_in_time' => $tx->check_in_time ? $tx->check_in_time->format('d-m-Y H:i') : '-',
+                    'check_out_time' => $tx->check_out_time ? $tx->check_out_time->format('d-m-Y H:i') : '-',
+                    'check_in_date' => $tx->check_in_time ? $tx->check_in_time->format('d-m-Y') : '-',
+                    'check_in_clock' => $tx->check_in_time ? $tx->check_in_time->format('H:i') : '-',
+                    'check_out_date' => $tx->check_out_time ? $tx->check_out_time->format('d-m-Y') : '-',
+                    'check_out_clock' => $tx->check_out_time ? $tx->check_out_time->format('H:i') : '-',
                 ];
             });
 
@@ -359,7 +408,8 @@ class VehicleTrackingController extends Controller
         try {
             $response = Http::connectTimeout(5)
                 ->timeout(10)
-                ->get('http://10.11.11.10:8093/api/supplier-data');
+                // ->get('http://10.11.11.10:8093/api/supplier-data');
+                ->get('http://localhost:8081/api/supplier-data');
 
             if ($response->successful()) {
                 $payload = $response->json();
@@ -775,6 +825,7 @@ class VehicleTrackingController extends Controller
             // Update transaction to Proses Sampling status
             $transaction->update([
                 'no_antrian' => $formattedAntrian,
+                'queue_taken_time' => $transaction->queue_taken_time ?? Carbon::now(),
                 'status' => 'sampling',
                 'qc_status' => 'on_check',
                 'updated_by' => Auth::id()
@@ -867,6 +918,9 @@ class VehicleTrackingController extends Controller
             $noPol = $transaction->vehicle->no_pol;
 
             if ($request->qc_status === 'released') {
+                // Release kendaraan dari slot kantong parkir saat QC lolos ke dock
+                $this->releaseKantongParkirSlot($noPol, 'QC Lolos (Released) -> Menuju Dock Bongkar');
+
                 // Dynamically route to WRM (B006) or WPM (C001) depending on target
                 $targetLoc = Location::find($transaction->target_location_id);
                 if (!$targetLoc) {
@@ -1107,17 +1161,79 @@ class VehicleTrackingController extends Controller
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
                     'no_hp_driver' => $tx->no_hp_driver,
+                    'jenis' => $tx->jenis,
                     'item_name' => $tx->item ? $tx->item->name : 'N/A',
                     'no_spb' => $tx->no_spb ?? '-',
                     'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 2) : '-',
+                    'unloading_status' => $tx->unloading_status,
                     'arrival_time' => $arrivalTime->format('d-m-Y H:i'),
                     'arrival_timestamp' => $arrivalTime->timestamp,
+                    'queue_taken_time' => $tx->queue_taken_time ? $tx->queue_taken_time->format('H:i') : null,
+                    'queue_taken_timestamp' => $tx->queue_taken_time ? $tx->queue_taken_time->timestamp : null,
+                    'start_loading_time' => $tx->start_loading_time ? $tx->start_loading_time->format('H:i') : null,
+                    'start_loading_timestamp' => $tx->start_loading_time ? $tx->start_loading_time->timestamp : null,
+                    'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : null,
+                    'finish_loading_timestamp' => $tx->finish_loading_time ? $tx->finish_loading_time->timestamp : null,
                 ];
             });
 
         return response()->json([
             'queue' => $queue
         ]);
+    }
+
+    /**
+     * Start WFG loading/unloading process.
+     */
+    public function wfgStartLoading(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction = VehicleTransaction::findOrFail($id);
+
+            $transaction->update([
+                'unloading_status' => 'process',
+                'start_loading_time' => $transaction->start_loading_time ?? Carbon::now(),
+                'updated_by' => Auth::id()
+            ]);
+
+            $actionName = $transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
+            $noPol = $transaction->vehicle->no_pol;
+
+            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                ->where('location_id', $transaction->current_location_id)
+                ->whereNull('departure_time')
+                ->latest()
+                ->first();
+
+            if ($activeTrack) {
+                $activeTrack->update([
+                    'status_notes' => "Mulai Proses {$actionName} di WFG."
+                ]);
+            }
+
+            // Pastikan ter-release dari slot parkir
+            $this->releaseKantongParkirSlot($noPol, "Mulai proses {$actionName} di WFG");
+
+            event(new VehicleStatusUpdated([
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'current_location' => 'A001',
+                'status' => 'wfg',
+                'message' => "Truk {$noPol} mulai proses {$actionName} di WFG.",
+                'time' => Carbon::now()->format('H:i:s')
+            ]));
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Proses {$actionName} untuk truk {$noPol} berhasil dimulai."
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal memulai proses: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -1160,6 +1276,7 @@ class VehicleTrackingController extends Controller
             // Update transaction to timbangan_out
             $transaction->update([
                 'unloading_status' => 'completed',
+                'finish_loading_time' => $now,
                 'current_location_id' => $timbanganLoc->id,
                 'status' => 'timbangan_out',
                 'no_antrian' => null, // Clear its own queue
@@ -1233,17 +1350,79 @@ class VehicleTrackingController extends Controller
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
                     'no_hp_driver' => $tx->no_hp_driver,
+                    'jenis' => $tx->jenis,
                     'item_name' => $tx->item ? $tx->item->name : 'N/A',
                     'no_spb' => $tx->no_spb ?? '-',
                     'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 2) : '-',
+                    'unloading_status' => $tx->unloading_status,
                     'arrival_time' => $arrivalTime->format('H:i'),
                     'arrival_timestamp' => $arrivalTime->timestamp,
+                    'queue_taken_time' => $tx->queue_taken_time ? $tx->queue_taken_time->format('H:i') : null,
+                    'queue_taken_timestamp' => $tx->queue_taken_time ? $tx->queue_taken_time->timestamp : null,
+                    'start_loading_time' => $tx->start_loading_time ? $tx->start_loading_time->format('H:i') : null,
+                    'start_loading_timestamp' => $tx->start_loading_time ? $tx->start_loading_time->timestamp : null,
+                    'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : null,
+                    'finish_loading_timestamp' => $tx->finish_loading_time ? $tx->finish_loading_time->timestamp : null,
                 ];
             });
 
         return response()->json([
             'queue' => $queue
         ]);
+    }
+
+    /**
+     * Start SMU process.
+     */
+    public function smuStartLoading(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction = VehicleTransaction::findOrFail($id);
+
+            $transaction->update([
+                'unloading_status' => 'process',
+                'start_loading_time' => $transaction->start_loading_time ?? Carbon::now(),
+                'updated_by' => Auth::id()
+            ]);
+
+            $actionName = $transaction->jenis === 'slipsheet' ? 'Muat' : 'Bongkar';
+            $noPol = $transaction->vehicle->no_pol;
+
+            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                ->where('location_id', $transaction->current_location_id)
+                ->whereNull('departure_time')
+                ->latest()
+                ->first();
+
+            if ($activeTrack) {
+                $activeTrack->update([
+                    'status_notes' => "Mulai Proses {$actionName} di SMU."
+                ]);
+            }
+
+            // Pastikan ter-release dari slot parkir
+            $this->releaseKantongParkirSlot($noPol, "Mulai proses {$actionName} di SMU");
+
+            event(new VehicleStatusUpdated([
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'current_location' => 'SMU',
+                'status' => 'smu',
+                'message' => "Truk {$noPol} mulai proses {$actionName} di SMU.",
+                'time' => Carbon::now()->format('H:i:s')
+            ]));
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Proses {$actionName} untuk truk {$noPol} berhasil dimulai."
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal memulai proses: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -1286,6 +1465,7 @@ class VehicleTrackingController extends Controller
             // Update transaction to timbangan_out
             $transaction->update([
                 'unloading_status' => 'completed',
+                'finish_loading_time' => $now,
                 'current_location_id' => $timbanganLoc->id,
                 'status' => 'timbangan_out',
                 'no_antrian' => null, // Clear its own queue
@@ -1422,12 +1602,16 @@ class VehicleTrackingController extends Controller
             // Update queue number
             $transaction->update([
                 'no_antrian' => $formattedAntrian,
+                'queue_taken_time' => $transaction->queue_taken_time ?? Carbon::now(),
                 'updated_by' => Auth::id()
             ]);
 
-            // Broadcast change
+            // Release kendaraan dari slot kantong parkir saat mengambil antrian
             $noPol = $transaction->vehicle->no_pol;
             $currentLoc = $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'N/A';
+            $this->releaseKantongParkirSlot($noPol, "Dapat nomor antrian {$formattedAntrian} di area {$currentLoc}");
+
+            // Broadcast change
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,

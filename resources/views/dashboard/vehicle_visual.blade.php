@@ -867,7 +867,7 @@
                 if (showQueueBadge) {
                     bottomBadgeHtml = `<div class="truck-queue-badge">ANTRIAN ${tx.no_antrian}</div>`;
                 } else if (isParkir) {
-                    bottomBadgeHtml = `<div class="truck-queue-badge" style="background:#6366f1;color:#ffffff;font-size:9px;">${tx.parking_status_label || 'UNKNOWN PARKIR'}</div>`;
+                    bottomBadgeHtml = `<div class="truck-queue-badge" style="background:#6366f1;color:#ffffff;font-size:8.5px;padding:2px 4px;white-space:nowrap;max-width:85px;overflow:hidden;text-overflow:ellipsis;" title="${tx.parking_status_label || 'BUFFER PARKIR'}">${tx.parking_status_label || 'BUFFER PARKIR'}</div>`;
                 }
 
                 bayEl.html(`
@@ -914,7 +914,7 @@
                     if (showQueueBadge) {
                         bottomBadgeHtml = `<div class="truck-queue-badge">ANTRIAN ${tx.no_antrian}</div>`;
                     } else if (isParkir) {
-                        bottomBadgeHtml = `<div class="truck-queue-badge" style="background:#6366f1;color:#ffffff;font-size:9px;">${tx.parking_status_label || 'UNKNOWN PARKIR'}</div>`;
+                        bottomBadgeHtml = `<div class="truck-queue-badge" style="background:#6366f1;color:#ffffff;font-size:8.5px;padding:2px 4px;white-space:nowrap;max-width:85px;overflow:hidden;text-overflow:ellipsis;" title="${tx.parking_status_label || 'BUFFER PARKIR'}">${tx.parking_status_label || 'BUFFER PARKIR'}</div>`;
                     }
 
                     html += `
@@ -958,28 +958,64 @@
                     const targetLoc = (tx.target_location_code || tx.target_sloc || '').toUpperCase();
                     const status = (tx.status || '').toLowerCase();
                     const currentLoc = (tx.current_location_code || '').toUpperCase();
+                    const qcStatus = (tx.qc_status || '').toLowerCase();
                     const hasQueue = !!tx.no_antrian;
 
+                    // 1. Timbangan scale (aktif proses timbang masuk / keluar)
                     if (currentLoc === 'TMB' || status === 'timbangan_in' || status === 'timbangan_out') {
-                        // Truck currently at Timbangan scale
                         tmbTrucks.push(tx);
-                    } else if (hasQueue || ['wrm_bongkar', 'wfg', 'smu', 'wpm'].includes(status)) {
-                        // Truck ONLY enters building loading dock if it has a queue number or is actively unloading/loading
-                        if (targetLoc.includes('B006') || targetLoc.includes('WRM') || status.includes('wrm')) {
+                        return;
+                    }
+
+                    // 2. Identifikasi area tujuan
+                    const isWRM = targetLoc.includes('B006') || targetLoc.includes('WRM') || status.includes('wrm');
+                    const isWPM = targetLoc.includes('C001') || targetLoc.includes('WPM') || status.includes('wpm');
+                    const isWFG = targetLoc.includes('A001') || targetLoc.includes('WFG') || status.includes('wfg');
+                    const isSMU = targetLoc.includes('SMU') || targetLoc.includes('WSP') || status.includes('smu');
+
+                    // 3. Evaluasi izin masuk dock vs menunggu di buffer parkir
+                    if (isWRM) {
+                        // WRM: Hanya masuk dock jika sudah release QC
+                        const isQcReleased = qcStatus.includes('release') || status === 'wrm_bongkar';
+                        if (isQcReleased) {
                             wrmTrucks.push(tx);
-                        } else if (targetLoc.includes('C001') || targetLoc.includes('WPM') || status.includes('wpm')) {
+                        } else {
+                            tx.parking_status_label = qcStatus ? `QC: ${qcStatus.toUpperCase().replace('_', ' ')}` : 'WAITING QC';
+                            parkirTrucks.push(tx);
+                        }
+                    } else if (isWPM) {
+                        // WPM: Hanya masuk dock jika sudah release QC
+                        const isQcReleased = qcStatus.includes('release') || status === 'wpm';
+                        if (isQcReleased) {
                             wpmTrucks.push(tx);
-                        } else if (targetLoc.includes('A001') || targetLoc.includes('WFG') || status.includes('wfg')) {
+                        } else {
+                            tx.parking_status_label = qcStatus ? `QC: ${qcStatus.toUpperCase().replace('_', ' ')}` : 'WAITING QC';
+                            parkirTrucks.push(tx);
+                        }
+                    } else if (isWFG) {
+                        // WFG: Hanya masuk dock jika sudah ambil nomor antrian
+                        if (hasQueue) {
                             wfgTrucks.push(tx);
-                        } else if (targetLoc.includes('SMU') || targetLoc.includes('WSP') || status.includes('smu')) {
+                        } else {
+                            tx.parking_status_label = 'TUNGGU ANTRIAN WFG';
+                            parkirTrucks.push(tx);
+                        }
+                    } else if (isSMU) {
+                        // SMU: Hanya masuk dock jika sudah ambil nomor antrian
+                        if (hasQueue) {
                             smuTrucks.push(tx);
                         } else {
-                            wrmTrucks.push(tx);
+                            tx.parking_status_label = 'TUNGGU ANTRIAN SMU';
+                            parkirTrucks.push(tx);
                         }
                     } else {
-                        // Has NOT been called / no queue number yet -> Parked in Kantong Parkir / Buffer
-                        tx.parking_status_label = tx.current_slot || 'UNKNOWN PARKIR';
-                        parkirTrucks.push(tx);
+                        // Default fallback
+                        if (hasQueue) {
+                            wrmTrucks.push(tx);
+                        } else {
+                            tx.parking_status_label = 'BUFFER PARKIR';
+                            parkirTrucks.push(tx);
+                        }
                     }
                 });
 
@@ -1007,8 +1043,18 @@
 
         $('#insp-plat').text(tx.no_pol || '-');
         $('#insp-antrian').text(isTimbangan ? 'Proses Timbangan (Tanpa Antrian)' : (tx.no_antrian ? `NO. ${tx.no_antrian}` : 'Menunggu / Belum Dipanggil'));
-        $('#insp-status').text(tx.status ? tx.status.toUpperCase() : '-');
-        $('#insp-loc').text(tx.current_location_name || tx.current_location_code || '-');
+        let displayStatus = tx.status ? tx.status.toUpperCase() : '-';
+        if (tx.unloading_status === 'process') {
+            displayStatus += ' (PROSES)';
+        } else if (tx.no_antrian && !isTimbangan) {
+            displayStatus += ' (ANTRIAN)';
+        }
+        if (tx.parking_status_label) {
+            displayStatus += ` [${tx.parking_status_label}]`;
+        }
+        $('#insp-status').text(displayStatus);
+        const locationText = tx.parking_status_label ? `Buffer Parkir (${tx.parking_status_label})` : (tx.current_location_name || tx.current_location_code || '-');
+        $('#insp-loc').text(locationText);
         $('#insp-target').text(tx.target_location_name || tx.target_location_code || '-');
         $('#insp-driver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
         $('#insp-vendor').text(tx.vendor || '-');

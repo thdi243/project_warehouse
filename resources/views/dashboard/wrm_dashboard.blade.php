@@ -275,6 +275,167 @@
             margin-right: 4px;
             align-self: center;
         }
+
+        /* === Top-Down (Tampak Atas) Floor Plan Styles === */
+        .map-view-pills .nav-link {
+            color: #64748b;
+            background: transparent;
+            border: 1px solid transparent;
+            font-size: 12px;
+            padding: 5px 14px;
+            transition: all 0.2s;
+        }
+
+        .map-view-pills .nav-link.active {
+            color: #fff;
+            background-color: #3b82f6;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+        }
+
+        .topdown-floor-canvas {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .topdown-zone-block {
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            transition: border-color 0.2s;
+        }
+
+        .topdown-zone-block:hover {
+            border-color: #cbd5e1;
+        }
+
+        .topdown-zone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed #f1f5f9;
+        }
+
+        .topdown-rack-row {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .topdown-rack-row:hover {
+            background: #ffffff;
+            border-color: #93c5fd;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .topdown-rack-label {
+            min-width: 110px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .topdown-bays-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .topdown-col-bay {
+            width: 58px;
+            min-height: 64px;
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 5px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+        }
+
+        .topdown-col-bay:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.12);
+            border-color: #3b82f6;
+            z-index: 20;
+        }
+
+        .topdown-bay-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #475569;
+            letter-spacing: 0.5px;
+        }
+
+        .topdown-level-stack {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 2px;
+            width: 100%;
+            margin: 4px 0;
+        }
+
+        .topdown-level-bar {
+            height: 6px;
+            width: 100%;
+            border-radius: 2px;
+            transition: opacity 0.2s;
+        }
+
+        .topdown-bay-badge {
+            font-size: 9px;
+            font-weight: 700;
+            border-radius: 4px;
+            padding: 1px 4px;
+            line-height: 1.2;
+        }
+
+        .topdown-aisle-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 6px 0;
+            margin: 10px 0;
+            background: repeating-linear-gradient(45deg, #f8fafc, #f8fafc 10px, #e2e8f0 10px, #e2e8f0 20px);
+            border-radius: 6px;
+            border: 1px dashed #cbd5e1;
+        }
+
+        .topdown-col-bay .rack-cell-tooltip {
+            min-width: 220px;
+            max-width: 340px;
+            white-space: normal;
+            line-height: 1.4;
+        }
+
+        .topdown-col-bay:hover .rack-cell-tooltip {
+            display: block;
+        }
     </style>
 @endsection
 
@@ -524,8 +685,23 @@
                                 <div>
                                     <h6 class="card-title mb-0 fw-bold"><i
                                             class="bx bx-grid-alt me-2 text-primary"></i>Warehouse Location Map</h6>
-                                    <p class="text-muted small mb-0 mt-1">Real-time zone utilization visualization. Click a
-                                        zone to view detailed bins.</p>
+                                    <p class="text-muted small mb-0 mt-1">Real-time warehouse visualization. Beralih antara tampak samping dan denah tampak atas.</p>
+                                </div>
+                                <div>
+                                    <ul class="nav nav-pills map-view-pills bg-light p-1 rounded-pill border" id="mapViewTabs" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active rounded-pill fw-semibold" id="tabSampingBtn" data-bs-toggle="pill"
+                                                data-bs-target="#tabViewSamping" type="button" role="tab" aria-selected="true">
+                                                <i class="bx bx-layer me-1"></i> Tampak Samping
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link rounded-pill fw-semibold" id="tabAtasBtn" data-bs-toggle="pill"
+                                                data-bs-target="#tabViewAtas" type="button" role="tab" aria-selected="false">
+                                                <i class="bx bx-grid-alt me-1"></i> Tampak Atas (Denah 2D)
+                                            </button>
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -555,11 +731,26 @@
                                 </div>
                             </div>
 
-                            {{-- Grid Container --}}
-                            <div id="locationMapContainer" class="p-2">
-                                <div class="text-center text-muted py-5">
-                                    <i class="bx bx-loader bx-spin" style="font-size:32px;"></i>
-                                    <p class="mt-2 mb-0">Rendering warehouse map...</p>
+                            {{-- Tab Panes --}}
+                            <div class="tab-content" id="mapViewTabContent">
+                                {{-- Tampak Samping (Zona & Elevasi) --}}
+                                <div class="tab-pane fade show active" id="tabViewSamping" role="tabpanel" aria-labelledby="tabSampingBtn">
+                                    <div id="locationMapContainer" class="p-2">
+                                        <div class="text-center text-muted py-5">
+                                            <i class="bx bx-loader bx-spin" style="font-size:32px;"></i>
+                                            <p class="mt-2 mb-0">Rendering warehouse map...</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Tampak Atas (Denah Lantai 2D) --}}
+                                <div class="tab-pane fade" id="tabViewAtas" role="tabpanel" aria-labelledby="tabAtasBtn">
+                                    <div id="topDownMapContainer" class="p-2">
+                                        <div class="text-center text-muted py-5">
+                                            <i class="bx bx-loader bx-spin" style="font-size:32px;"></i>
+                                            <p class="mt-2 mb-0">Rendering top-down floor plan...</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1055,9 +1246,14 @@
             }
 
             function fetchLocationLayout(params) {
-                const $container = $('#locationMapContainer');
-                $container.html(
+                const $containerSamping = $('#locationMapContainer');
+                const $containerAtas = $('#topDownMapContainer');
+
+                $containerSamping.html(
                     `<div class="text-center text-muted py-5"><i class="bx bx-loader bx-spin fs-1"></i><p class="mt-2 text-sm">Rendering warehouse visualizer...</p></div>`
+                );
+                $containerAtas.html(
+                    `<div class="text-center text-muted py-5"><i class="bx bx-loader bx-spin fs-1"></i><p class="mt-2 text-sm">Rendering top-down floor plan...</p></div>`
                 );
 
                 $.ajax({
@@ -1074,9 +1270,9 @@
                         $('#sumAvailable').text(res.summary.available);
 
                         if (res.data.length === 0) {
-                            $container.html(
-                                `<div class="text-center text-muted py-5"><i class="bx bx-cube fs-1 text-light"></i><p class="mt-2 text-sm">No bin visualization data found for these filters.</p></div>`
-                            );
+                            const emptyHtml = `<div class="text-center text-muted py-5"><i class="bx bx-cube fs-1 text-light"></i><p class="mt-2 text-sm">No bin visualization data found for these filters.</p></div>`;
+                            $containerSamping.html(emptyHtml);
+                            $containerAtas.html(emptyHtml);
                             return;
                         }
 
@@ -1113,80 +1309,315 @@
                         globalLocationData = byGudang;
                         globalUsedMids = usedMids;
 
-                        // Render Gudang and Zonas
-                        let html = '';
-                        for (const [gudangKey, zonas] of Object.entries(byGudang)) {
-                            // Gather all unique MIDs for this specific Gudang
-                            const gudangMids = {};
-                            for (const zInfo of Object.values(zonas)) {
-                                zInfo.mids.forEach(mid => {
-                                    if (usedMids[mid]) {
-                                        gudangMids[mid] = usedMids[mid];
-                                    }
-                                });
-                            }
-
-                            // Generate legend HTML for this specific Gudang
-                            let legendHtml = '';
-                            const midEntries = Object.entries(gudangMids);
-                            if (midEntries.length > 0) {
-                                legendHtml = `<div class="d-flex flex-wrap gap-2 mb-3 p-2 rounded-3 bg-light border align-items-center">
-                                    <b class="small text-muted me-2 align-self-center">Item Legend:</b>`;
-                                for (const [mid, info] of midEntries) {
-                                    legendHtml += `
-                                        <div class="d-flex align-items-center px-2 py-1 rounded shadow-sm border bg-white" style="font-size:11px;">
-                                            <div style="width:12px;height:12px;background-color:${info.color};border-radius:3px;margin-right:6px;"></div>
-                                            <span class="fw-semibold">${mid}</span><span class="text-muted ms-1 d-none d-sm-inline">- ${info.name}</span>
-                                        </div>
-                                    `;
-                                }
-                                legendHtml += `</div>`;
-                            }
-
-                            html += `<div class="mb-5">
-                                    <div class="d-flex align-items-center gap-2 mb-3">
-                                        <h6 class="mb-0 fw-bold"><i class="bx bx-buildings text-primary me-2"></i>${gudangKey}</h6>
-                                        <div class="flex-grow-1 border-bottom border-dashed border-secondary opacity-25"></div>
-                                    </div>
-                                    ${legendHtml}
-                                    <div class="d-flex flex-wrap gap-3">`;
-
-                            // Render each Zona as a box
-                            for (const [zonaName, zInfo] of Object.entries(zonas)) {
-                                // Determine item colors for stripes
-                                let stripesHtml = '';
-                                const itemsArr = Array.from(zInfo.mids);
-
-                                if (itemsArr.length > 0) {
-                                    itemsArr.forEach(mid => {
-                                        stripesHtml +=
-                                            `<div class="zona-box-color-stripe" style="background-color: ${usedMids[mid].color};"></div>`;
-                                    });
-
-                                    html += `<div class="zona-box" onclick="openZonaModal('${gudangKey}', '${zonaName}')">
-                                            <div class="zona-box-label">ZONA ${zonaName}</div>
-                                            <div class="zona-box-colors">
-                                                ${stripesHtml}
-                                            </div>
-                                            <div class="zona-box-stats"><i class="bx bx-package"></i> ${zInfo.totalOccupied}</div>
-                                         </div>`;
-                                } else {
-                                    html += `<div class="zona-box" onclick="openZonaModal('${gudangKey}', '${zonaName}')">
-                                            <div class="zona-box-label text-muted">ZONA ${zonaName}</div>
-                                            <div class="zona-box-empty">
-                                                <i class="bx bx-grid-empty" style="font-size:32px;"></i>
-                                            </div>
-                                         </div>`;
-                                }
-                            }
-
-                            html += `   </div>
-                                 </div>`;
-                        }
-
-                        $container.html(html);
+                        // Render both views
+                        renderSampingView(byGudang, usedMids);
+                        renderTopDownView(byGudang, usedMids);
+                    },
+                    error: function() {
+                        const errHtml = `<div class="text-center text-danger py-5"><i class="bx bx-error fs-1"></i><p class="mt-2 text-sm">Gagal memuat visualisasi lokasi rak.</p></div>`;
+                        $containerSamping.html(errHtml);
+                        $containerAtas.html(errHtml);
                     }
                 });
+            }
+
+            function renderSampingView(byGudang, usedMids) {
+                const $container = $('#locationMapContainer');
+                let html = '';
+                for (const [gudangKey, zonas] of Object.entries(byGudang)) {
+                    // Gather all unique MIDs for this specific Gudang
+                    const gudangMids = {};
+                    for (const zInfo of Object.values(zonas)) {
+                        zInfo.mids.forEach(mid => {
+                            if (usedMids[mid]) {
+                                gudangMids[mid] = usedMids[mid];
+                            }
+                        });
+                    }
+
+                    // Generate legend HTML for this specific Gudang
+                    let legendHtml = '';
+                    const midEntries = Object.entries(gudangMids);
+                    if (midEntries.length > 0) {
+                        legendHtml = `<div class="d-flex flex-wrap gap-2 mb-3 p-2 rounded-3 bg-light border align-items-center">
+                            <b class="small text-muted me-2 align-self-center">Item Legend:</b>`;
+                        for (const [mid, info] of midEntries) {
+                            legendHtml += `
+                                <div class="d-flex align-items-center px-2 py-1 rounded shadow-sm border bg-white" style="font-size:11px;">
+                                    <div style="width:12px;height:12px;background-color:${info.color};border-radius:3px;margin-right:6px;"></div>
+                                    <span class="fw-semibold">${mid}</span><span class="text-muted ms-1 d-none d-sm-inline">- ${info.name}</span>
+                                </div>
+                            `;
+                        }
+                        legendHtml += `</div>`;
+                    }
+
+                    html += `<div class="mb-5">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <h6 class="mb-0 fw-bold"><i class="bx bx-buildings text-primary me-2"></i>${gudangKey}</h6>
+                                <div class="flex-grow-1 border-bottom border-dashed border-secondary opacity-25"></div>
+                            </div>
+                            ${legendHtml}
+                            <div class="d-flex flex-wrap gap-3">`;
+
+                    // Render each Zona as a box
+                    for (const [zonaName, zInfo] of Object.entries(zonas)) {
+                        // Determine item colors for stripes
+                        let stripesHtml = '';
+                        const itemsArr = Array.from(zInfo.mids);
+
+                        if (itemsArr.length > 0) {
+                            itemsArr.forEach(mid => {
+                                stripesHtml +=
+                                    `<div class="zona-box-color-stripe" style="background-color: ${usedMids[mid].color};"></div>`;
+                            });
+
+                            html += `<div class="zona-box" onclick="openZonaModal('${gudangKey}', '${zonaName}')">
+                                    <div class="zona-box-label">ZONA ${zonaName}</div>
+                                    <div class="zona-box-colors">
+                                        ${stripesHtml}
+                                    </div>
+                                    <div class="zona-box-stats"><i class="bx bx-package"></i> ${zInfo.totalOccupied}</div>
+                                 </div>`;
+                        } else {
+                            html += `<div class="zona-box" onclick="openZonaModal('${gudangKey}', '${zonaName}')">
+                                    <div class="zona-box-label text-muted">ZONA ${zonaName}</div>
+                                    <div class="zona-box-empty">
+                                        <i class="bx bx-grid-empty" style="font-size:32px;"></i>
+                                    </div>
+                                 </div>`;
+                        }
+                    }
+
+                    html += `   </div>
+                         </div>`;
+                }
+
+                $container.html(html);
+            }
+
+            function renderTopDownView(byGudang, usedMids) {
+                const $container = $('#topDownMapContainer');
+                let html = '';
+
+                for (const [gudangKey, zonas] of Object.entries(byGudang)) {
+                    // Gather all unique MIDs for this specific Gudang
+                    const gudangMids = {};
+                    let gudangTotalBins = 0;
+                    let gudangTotalOccupied = 0;
+
+                    for (const zInfo of Object.values(zonas)) {
+                        zInfo.mids.forEach(mid => {
+                            if (usedMids[mid]) {
+                                gudangMids[mid] = usedMids[mid];
+                            }
+                        });
+                        zInfo.racks.forEach(r => {
+                            gudangTotalBins += r.cells.length;
+                        });
+                        gudangTotalOccupied += zInfo.totalOccupied;
+                    }
+
+                    // Legend HTML for this Gudang
+                    let legendHtml = '';
+                    const midEntries = Object.entries(gudangMids);
+                    if (midEntries.length > 0) {
+                        legendHtml = `<div class="d-flex flex-wrap gap-2 mb-3 p-2 rounded-3 bg-white border align-items-center">
+                            <b class="small text-muted me-2 align-self-center"><i class="bx bx-palette me-1"></i>Item Legend:</b>`;
+                        for (const [mid, info] of midEntries) {
+                            legendHtml += `
+                                <div class="d-flex align-items-center px-2 py-1 rounded shadow-sm border bg-light" style="font-size:11px;">
+                                    <div style="width:12px;height:12px;background-color:${info.color};border-radius:3px;margin-right:6px;"></div>
+                                    <span class="fw-semibold">${mid}</span><span class="text-muted ms-1 d-none d-sm-inline">- ${info.name}</span>
+                                </div>
+                            `;
+                        }
+                        legendHtml += `</div>`;
+                    }
+
+                    const occPct = gudangTotalBins > 0 ? Math.round((gudangTotalOccupied / gudangTotalBins) * 100) : 0;
+
+                    html += `
+                    <div class="mb-5">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <h6 class="mb-0 fw-bold"><i class="bx bx-buildings text-primary me-2"></i>${gudangKey}</h6>
+                                <span class="badge bg-soft-blue text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1 small">
+                                    Denah Lantai 2D
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 small text-muted">
+                                <span>Total Bins: <b>${gudangTotalBins}</b></span> |
+                                <span>Occupancy: <b class="text-primary">${gudangTotalOccupied}</b> (${occPct}%)</span>
+                            </div>
+                        </div>
+                        ${legendHtml}
+                        <div class="topdown-floor-canvas shadow-sm">
+                    `;
+
+                    // Render each Zona
+                    for (const [zonaName, zInfo] of Object.entries(zonas)) {
+                        let zonaTotalBins = 0;
+                        zInfo.racks.forEach(r => zonaTotalBins += r.cells.length);
+                        const zOccPct = zonaTotalBins > 0 ? Math.round((zInfo.totalOccupied / zonaTotalBins) * 100) : 0;
+
+                        html += `
+                        <div class="topdown-zone-block">
+                            <div class="topdown-zone-header">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary px-3 py-1.5 fs-6 fw-bold shadow-sm">ZONA ${zonaName}</span>
+                                    <span class="text-muted small fw-medium">
+                                        <i class="bx bx-layer me-1"></i>${zInfo.racks.length} Racks &bull; 
+                                        <i class="bx bx-package me-1 text-primary"></i>${zInfo.totalOccupied}/${zonaTotalBins} Bins (${zOccPct}%)
+                                    </span>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2.5 fw-semibold" style="font-size:11px;" onclick="openZonaModal('${gudangKey}', '${zonaName}')">
+                                        <i class="bx bx-expand-alt me-1"></i>Detail Elevasi Rak
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column gap-2">
+                        `;
+
+                        // Sort racks naturally by bin name
+                        const sortedRacks = [...zInfo.racks].sort((a, b) => {
+                            const numA = parseInt(a.bin.replace(/\D/g, '')) || 0;
+                            const numB = parseInt(b.bin.replace(/\D/g, '')) || 0;
+                            if (numA !== numB) return numA - numB;
+                            return a.bin.localeCompare(b.bin);
+                        });
+
+                        sortedRacks.forEach((loc, rIdx) => {
+                            const maxKolom = Math.max(...loc.cells.map(c => parseInt(c.kolom) || 0), 0);
+                            const maxLevel = Math.max(...loc.cells.map(c => parseInt(c.level) || 0), 0);
+
+                            // Group cells by column
+                            const colMap = {};
+                            loc.cells.forEach(c => {
+                                const colKey = parseInt(c.kolom) || 1;
+                                if (!colMap[colKey]) colMap[colKey] = [];
+                                colMap[colKey].push(c);
+                            });
+
+                            let baysHtml = '';
+                            for (let col = 1; col <= maxKolom; col++) {
+                                const cellsInCol = colMap[col] || [];
+                                // sort by level descending (highest level on top)
+                                cellsInCol.sort((a, b) => (parseInt(b.level) || 0) - (parseInt(a.level) || 0));
+
+                                let occCount = 0;
+                                let reservedCount = 0;
+                                let levelsHtml = '';
+                                let tooltipItems = '';
+
+                                cellsInCol.forEach(c => {
+                                    let barBg = '#e2e8f0';
+                                    let barBorder = 'border: 1px dashed #cbd5e1;';
+                                    if (c.status === 'occupied') {
+                                        occCount++;
+                                        const color = usedMids[c.mid] ? usedMids[c.mid].color : '#3b82f6';
+                                        barBg = color;
+                                        barBorder = 'border: 1px solid rgba(0,0,0,0.15);';
+                                        tooltipItems += `
+                                            <div class="mt-1 pt-1 border-top border-secondary border-opacity-25" style="font-size:10.5px;">
+                                                <span class="badge bg-primary px-1 py-0 me-1" style="font-size:9px;">L${c.level}</span>
+                                                <b class="text-white">${c.mid}</b> &bull; ${c.nama_barang}<br/>
+                                                <span class="text-muted small">SPB: ${c.no_spb || '-'} | Pallet: ${c.pallet_id || '-'} | Qty: ${formatQty(c.qty)}</span>
+                                            </div>
+                                        `;
+                                    } else if (c.status === 'reserved') {
+                                        reservedCount++;
+                                        barBg = '#8b5cf6';
+                                        barBorder = 'border: 1px solid #7c3aed;';
+                                        tooltipItems += `
+                                            <div class="mt-1 pt-1 border-top border-secondary border-opacity-25" style="font-size:10.5px;">
+                                                <span class="badge px-1 py-0 me-1" style="font-size:9px;background:#8b5cf6;color:#fff;">L${c.level}</span>
+                                                <span class="text-warning">Pending Outbound</span>
+                                            </div>
+                                        `;
+                                    } else {
+                                        tooltipItems += `
+                                            <div class="mt-1 pt-1 border-top border-secondary border-opacity-25 text-muted" style="font-size:10.5px;">
+                                                <span class="badge bg-secondary px-1 py-0 me-1" style="font-size:9px;">L${c.level}</span>
+                                                Empty (Kosong)
+                                            </div>
+                                        `;
+                                    }
+
+                                    levelsHtml += `<div class="topdown-level-bar" style="background-color: ${barBg}; ${barBorder}" title="Level ${c.level}: ${c.status}"></div>`;
+                                });
+
+                                const totalLvls = cellsInCol.length || maxLevel || 1;
+                                const bayBadgeClass = occCount > 0 
+                                    ? 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25' 
+                                    : (reservedCount > 0 ? 'bg-purple bg-opacity-10 text-purple' : 'bg-light text-muted border');
+
+                                const tooltipHtml = `
+                                    <div class="fw-bold pb-1 border-bottom border-secondary border-opacity-50 d-flex justify-content-between">
+                                        <span><i class="bx bx-grid-small text-primary"></i> ${loc.bin} - Kolom C${col}</span>
+                                        <span class="badge ${bayBadgeClass} ms-2">${occCount}/${totalLvls} Filled</span>
+                                    </div>
+                                    <div class="mt-1">
+                                        ${tooltipItems}
+                                    </div>
+                                    <div class="mt-2 text-center text-muted border-top border-secondary border-opacity-25 pt-1" style="font-size:9.5px;">
+                                        <i class="bx bx-pointer me-1"></i>Klik untuk buka tampilan elevasi
+                                    </div>
+                                `;
+
+                                baysHtml += `
+                                    <div class="topdown-col-bay" onclick="openZonaModal('${gudangKey}', '${zonaName}')">
+                                        <div class="topdown-bay-title">C${col}</div>
+                                        <div class="topdown-level-stack">
+                                            ${levelsHtml}
+                                        </div>
+                                        <div class="topdown-bay-badge ${bayBadgeClass}">
+                                            ${occCount}/${totalLvls}
+                                        </div>
+                                        <div class="rack-cell-tooltip text-start">${tooltipHtml}</div>
+                                    </div>
+                                `;
+                            }
+
+                            html += `
+                                <div class="topdown-rack-row">
+                                    <div class="topdown-rack-label">
+                                        <div class="d-flex align-items-center gap-1">
+                                            <i class="bx bx-barcode-reader text-primary"></i>
+                                            <span>Rack <b>${loc.bin}</b></span>
+                                        </div>
+                                        <div class="text-muted small fw-normal" style="font-size:10px;">${maxKolom} Kolom &bull; ${maxLevel} Level</div>
+                                    </div>
+                                    <div class="topdown-bays-container">
+                                        ${baysHtml}
+                                    </div>
+                                </div>
+                            `;
+
+                            // Add an Aisle indicator between rack pairs for realism
+                            if (rIdx < sortedRacks.length - 1 && (rIdx + 1) % 2 === 0) {
+                                html += `
+                                    <div class="topdown-aisle-divider">
+                                        <i class="bx bx-transfer-alt"></i> AISLE / LORONG FORKLIFT <i class="bx bx-transfer-alt"></i>
+                                    </div>
+                                `;
+                            }
+                        });
+
+                        html += `
+                            </div>
+                        </div>
+                        `;
+                    }
+
+                    html += `
+                        </div>
+                    </div>
+                    `;
+                }
+
+                $container.html(html);
             }
 
             // --- EXPOSE to Global Context for Inline OnClick ---

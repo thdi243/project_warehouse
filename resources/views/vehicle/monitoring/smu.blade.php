@@ -41,14 +41,15 @@
                                             <th>Vendor</th>
                                             <th>Item</th>
                                             <th>No. SPB / Qty</th>
-                                            <th>Waktu Tiba</th>
+                                            <th>Waktu</th>
+                                            <th>Status</th>
                                             <th>Durasi Aktivitas</th>
-                                            <th class="text-center">Aksi Selesai</th>
+                                            <th class="text-center">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="8" class="text-center py-4 text-muted">Loading data...</td>
+                                            <td colspan="9" class="text-center py-4 text-muted">Loading data...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -65,12 +66,25 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            function formatDuration(diffSeconds) {
+                if (isNaN(diffSeconds) || diffSeconds < 0) return '0d';
+                const hours = Math.floor(diffSeconds / 3600);
+                const minutes = Math.floor((diffSeconds % 3600) / 60);
+                const seconds = diffSeconds % 60;
+                let res = '';
+                if (hours > 0) res += hours + 'j ';
+                if (minutes > 0 || hours > 0) res += minutes + 'm ';
+                res += seconds + 'd';
+                return res;
+            }
+
             // Setup real-time timers
             function updateTimers() {
                 $('.timer').each(function() {
                     const startTimestamp = parseInt($(this).data('start'));
+                    if (!startTimestamp || isNaN(startTimestamp)) return;
                     const nowTimestamp = Math.floor(Date.now() / 1000);
-                    const diffSeconds = nowTimestamp - startTimestamp;
+                    const diffSeconds = Math.max(0, nowTimestamp - startTimestamp);
 
                     const hours = Math.floor(diffSeconds / 3600);
                     const minutes = Math.floor((diffSeconds % 3600) / 60);
@@ -83,15 +97,6 @@
                     timeStr += minutes + 'm ' + seconds + 'd';
 
                     $(this).text(timeStr);
-
-                    // Highlight if waiting too long (e.g. over 30 mins limit in SMU)
-                    if (minutes >= 30) {
-                        $(this).removeClass('bg-soft-light text-muted').addClass(
-                            'bg-soft-danger text-danger border border-danger-subtle');
-                    } else if (minutes >= 20) {
-                        $(this).removeClass('bg-soft-light text-muted').addClass(
-                            'bg-soft-warning text-warning');
-                    }
                 });
             }
 
@@ -111,24 +116,99 @@
                 let html = '';
                 if (filtered.length === 0) {
                     html = `<tr>
-                        <td colspan="8" class="text-center py-4 text-muted">Tidak ada kendaraan yang sesuai pencarian.</td>
+                        <td colspan="9" class="text-center py-4 text-muted">Tidak ada kendaraan yang sesuai pencarian.</td>
                     </tr>`;
                 } else {
                     filtered.forEach(function(tx) {
-                        const antrianBadge = tx.no_antrian ? 
-                            `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">
-                                ${tx.no_antrian}
-                            </span>` :
-                            `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
+                        const isSlipsheet = (tx.jenis || '').toLowerCase() === 'slipsheet';
+                        const actionLabel = isSlipsheet ? 'Muat' : 'Bongkar';
+                        const isProcess = tx.unloading_status === 'process';
+
+                        let antrianBadge = '';
+                        if (tx.no_antrian) {
+                            antrianBadge = `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">${tx.no_antrian}</span>`;
+                        } else {
+                            antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
                                 Ambil Antrian
                             </button>`;
+                        }
 
-                        const completeBtn = tx.no_antrian ? 
-                            `<button type="button" class="btn btn-sm btn-warning btn-complete-smu" 
+                        let statusBadge = '';
+                        if (!tx.no_antrian) {
+                            statusBadge = `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
+                        } else if (!isProcess) {
+                            statusBadge = `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian ${tx.no_antrian}</span>`;
+                        } else {
+                            statusBadge = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel}</span>`;
+                        }
+
+                        let actionBtn = '';
+                        if (!tx.no_antrian) {
+                            actionBtn = `<span class="text-muted small">-</span>`;
+                        } else if (!isProcess) {
+                            actionBtn = `<button type="button" class="btn btn-sm btn-primary btn-start-smu" 
+                                data-id="${tx.id}" 
+                                data-nopol="${tx.no_pol}"
+                                data-action="Mulai ${actionLabel}">
+                                <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
+                            </button>`;
+                        } else {
+                            actionBtn = `<button type="button" class="btn btn-sm btn-warning btn-complete-smu" 
                                 data-id="${tx.id}" 
                                 data-nopol="${tx.no_pol}">
                                 <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai
-                            </button>` : '';
+                            </button>`;
+                        }
+
+                        // Timeline breakdown
+                        let timelineHtml = `<div class="d-flex flex-column gap-1">
+                            <span class="fs-12 text-muted">Tiba: <strong class="text-dark">${tx.arrival_time}</strong></span>`;
+                        if (tx.queue_taken_time) {
+                            timelineHtml += `<span class="fs-12 text-muted">Antri: <strong class="text-warning">${tx.queue_taken_time}</strong></span>`;
+                        }
+                        if (tx.start_loading_time) {
+                            timelineHtml += `<span class="fs-12 text-muted">Mulai: <strong class="text-info">${tx.start_loading_time}</strong></span>`;
+                        }
+                        timelineHtml += `</div>`;
+
+                        // Phase Duration breakdown
+                        let durasiHtml = '';
+                        if (!tx.no_antrian) {
+                            durasiHtml = `
+                                <div>
+                                    <span class="timer badge bg-soft-secondary text-secondary fs-12 px-2 py-1" data-start="${tx.arrival_timestamp}">
+                                        0m 0d
+                                    </span>
+                                    <div style="font-size: 10.5px;" class="text-muted mt-1"><i class="ri-hourglass-line me-1"></i>Tunggu Antri</div>
+                                </div>
+                            `;
+                        } else if (!isProcess) {
+                            const waitToQueueSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx.arrival_timestamp) : 0;
+                            const startTimerFrom = tx.queue_taken_timestamp || tx.arrival_timestamp;
+                            durasiHtml = `
+                                <div>
+                                    <span class="timer badge bg-soft-warning text-warning fs-12 px-2 py-1" data-start="${startTimerFrom}">
+                                        0m 0d
+                                    </span>
+                                    <div style="font-size: 10.5px;" class="text-warning fw-medium mt-1"><i class="ri-time-line me-1"></i>Durasi Antri</div>
+                                    ${waitToQueueSec > 0 ? `<div style="font-size: 10px;" class="text-muted">Tunggu Antri: ${formatDuration(waitToQueueSec)}</div>` : ''}
+                                </div>
+                            `;
+                        } else {
+                            const antriDurationSec = (tx.start_loading_timestamp && tx.queue_taken_timestamp)
+                                ? Math.max(0, tx.start_loading_timestamp - tx.queue_taken_timestamp)
+                                : (tx.start_loading_timestamp ? Math.max(0, tx.start_loading_timestamp - tx.arrival_timestamp) : 0);
+                            const startProcessFrom = tx.start_loading_timestamp || tx.arrival_timestamp;
+                            durasiHtml = `
+                                <div>
+                                    <span class="timer badge bg-soft-info text-info fs-12 px-2 py-1" data-start="${startProcessFrom}">
+                                        0m 0d
+                                    </span>
+                                    <div style="font-size: 10.5px;" class="text-info fw-medium mt-1"><i class="ri-loader-4-line ri-spin me-1"></i>Durasi ${actionLabel}</div>
+                                    ${antriDurationSec > 0 ? `<div style="font-size: 10px;" class="text-muted">Durasi Antri: ${formatDuration(antriDurationSec)}</div>` : ''}
+                                </div>
+                            `;
+                        }
 
                         html += `<tr id="row-${tx.id}">
                             <td class="text-center">${antrianBadge}</td>
@@ -142,14 +222,11 @@
                                 <strong>${tx.no_spb}</strong><br>
                                 <small class="text-muted">${tx.qty_spb}</small>
                             </td>
-                            <td>${tx.arrival_time}</td>
-                            <td>
-                                <span class="timer badge bg-soft-light text-muted" data-start="${tx.arrival_timestamp}">
-                                    Calculated...
-                                </span>
-                            </td>
+                            <td>${timelineHtml}</td>
+                            <td>${statusBadge}</td>
+                            <td>${durasiHtml}</td>
                             <td class="text-center">
-                                ${completeBtn}
+                                ${actionBtn}
                             </td>
                         </tr>`;
                     });
@@ -203,13 +280,50 @@
             }
             setupRealtimeEcho();
 
+            // Start SMU loading/unloading
+            $(document).on('click', '.btn-start-smu', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+                const action = $(this).data('action') || 'Mulai Proses';
+
+                Swal.fire({
+                    title: `${action}?`,
+                    text: `Konfirmasi untuk ${action.toLowerCase()} untuk truk ${nopol} di SMU?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3577f1',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Ya, Mulai!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/smu/start-loading') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                Swal.fire('Dimulai!', response.message, 'success');
+                                loadSmuData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal memulai proses.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
             // Complete SMU action
             $(document).on('click', '.btn-complete-smu', function() {
                 const id = $(this).data('id');
                 const nopol = $(this).data('nopol');
+                const action = $(this).data('action') || 'Selesai';
 
                 Swal.fire({
-                    title: 'Selesai di SMU?',
+                    title: `${action}?`,
                     text: `Apakah truk ${nopol} telah menyelesaikan proses di SMU?`,
                     icon: 'question',
                     showCancelButton: true,
