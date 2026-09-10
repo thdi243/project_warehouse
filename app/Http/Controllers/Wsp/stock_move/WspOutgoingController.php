@@ -15,7 +15,7 @@ class WspOutgoingController extends Controller
 {
     public function viewOutgoing()
     {
-        return view('wsp.wsp_stock.stock_move.outgoing');
+        return view('wsp.wsp_stock.outgoing');
     }
 
     public function getDataOutgoing(Request $request)

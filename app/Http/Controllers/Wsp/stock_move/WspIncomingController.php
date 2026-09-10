@@ -18,7 +18,7 @@ class WspIncomingController extends Controller
 {
     public function viewIncoming()
     {
-        return view('wsp.wsp_stock.stock_move.incoming');
+        return view('wsp.wsp_stock.incoming');
     }
 
     public function getDataIncoming(Request $request)
