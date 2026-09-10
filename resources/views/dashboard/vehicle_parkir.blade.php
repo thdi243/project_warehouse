@@ -327,6 +327,9 @@
             <a href="{{ route('dashboard.vehicle.parkir') }}" class="nav-switch-btn active">
                 <i class="ri-parking-box-line"></i> 2. Kantong Parkir
             </a>
+            <a href="/app/vehicle-live-view" class="nav-switch-btn" style="border-color: rgba(16, 185, 129, 0.4); color: #34d399;">
+                <i class="ri-map-pin-range-line text-success"></i> 3. Denah 2D Live View
+            </a>
             <a href="{{ route('dashboard.vehicle') }}" class="nav-switch-btn">
                 <i class="ri-table-line"></i> Table View
             </a>

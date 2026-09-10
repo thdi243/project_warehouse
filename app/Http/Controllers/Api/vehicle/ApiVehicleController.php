@@ -199,6 +199,8 @@ class ApiVehicleController extends Controller
 
         $startLoading = $transaction->start_loading_time;
         $finishLoading = $transaction->finish_loading_time;
+        $startSampling = $transaction->start_sampling_time;
+        $finishSampling = $transaction->finish_sampling_time;
         $checkIn = $transaction->check_in_time;
         $checkOut = $transaction->check_out_time;
         $createdAt = $transaction->created_at;
@@ -234,6 +236,8 @@ class ApiVehicleController extends Controller
             'no_antrian'          => $transaction->no_antrian,
             'queue_taken_time'    => $queueTakenFormatted,
             'queue_taken_human'   => $queueTakenHuman,
+            'start_sampling_time' => (is_object($startSampling) ? $startSampling->format('Y-m-d H:i:s') : $startSampling),
+            'finish_sampling_time'=> (is_object($finishSampling) ? $finishSampling->format('Y-m-d H:i:s') : $finishSampling),
             'start_loading_time'  => (is_object($startLoading) ? $startLoading->format('Y-m-d H:i:s') : $startLoading),
             'finish_loading_time' => (is_object($finishLoading) ? $finishLoading->format('Y-m-d H:i:s') : $finishLoading),
             'check_in_time'       => (is_object($checkIn) ? $checkIn->format('Y-m-d H:i:s') : $checkIn),

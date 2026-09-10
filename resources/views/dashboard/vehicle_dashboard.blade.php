@@ -512,6 +512,10 @@
                         <i class="ri-parking-box-line me-1 align-middle" style="font-size: 14px;"></i>
                         <span>2. Kantong Parkir</span>
                     </a>
+                    <a href="/app/vehicle-live-view" class="btn btn-sm btn-outline-success px-3">
+                        <i class="ri-map-pin-range-line me-1 align-middle" style="font-size: 14px;"></i>
+                        <span>3. Denah 2D Live View</span>
+                    </a>
                     <button class="btn btn-sm btn-outline-secondary px-3" id="btnRefreshData">
                         <i class="ri-refresh-line me-1 align-middle"></i> Reload
                     </button>

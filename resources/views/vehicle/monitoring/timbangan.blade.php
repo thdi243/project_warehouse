@@ -517,6 +517,140 @@
                 });
             }
 
+            // Generate detailed multi-stage status badge
+            function renderDetailedStatusBadge(tx) {
+                let html = '<div class="d-flex flex-column gap-1 align-items-start">';
+                const status = (tx.status || '').toLowerCase();
+                const jenisRaw = (tx.jenis_raw || tx.jenis || '').toLowerCase();
+                const actionLabel = jenisRaw === 'bongkaran' ? 'Bongkar' : 'Muat';
+
+                // 1. Primary Status Badge
+                if (status === 'completed') {
+                    html +=
+                        `<span class="badge bg-soft-success text-success fs-12 px-2 py-1"><i class="ri-checkbox-circle-line me-1 align-middle"></i>Selesai (Out)</span>`;
+                } else if (status === 'timbangan_out') {
+                    html +=
+                        `<span class="badge bg-soft-success text-success fs-12 fw-bold px-2 py-1"><i class="ri-scales-3-line me-1 align-middle"></i>Siap Check-Out</span>`;
+                    html +=
+                        `<small class="text-muted"><i class="ri-map-pin-line me-1"></i>Timbangan Keluar</small>`;
+                } else if (status === 'antri_sampling') {
+                    const antrianText = tx.no_antrian ? ` #${tx.no_antrian}` : '';
+                    html +=
+                        `<span class="badge bg-soft-warning text-warning fs-12 px-2 py-1"><i class="ri-time-line me-1 align-middle"></i>Antri QC${antrianText}</span>`;
+                    html += `<small class="text-muted"><i class="ri-flask-line me-1"></i>Menunggu Sampling</small>`;
+                } else if (status === 'sampling' || tx.qc_status === 'on_check') {
+                    html +=
+                        `<span class="badge bg-soft-info text-info fs-12 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Sampling QC</span>`;
+                    if (tx.start_sampling_time) {
+                        html +=
+                            `<small class="text-muted"><i class="ri-time-line me-1"></i>Mulai: <strong>${tx.start_sampling_time}</strong></small>`;
+                    } else {
+                        html +=
+                            `<small class="text-muted"><i class="ri-test-tube-line me-1"></i>Sedang Diperiksa</small>`;
+                    }
+                } else if (status === 'wrm_bongkar' || tx.target_sloc === 'B006') {
+                    if (tx.unloading_status === 'process') {
+                        html +=
+                            `<span class="badge bg-soft-info text-info fs-12 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel} WRM</span>`;
+                        if (tx.start_loading_time) {
+                            html +=
+                                `<small class="text-muted"><i class="ri-time-line me-1"></i>Mulai: <strong>${tx.start_loading_time}</strong></small>`;
+                        }
+                    } else if (tx.unloading_status === 'completed') {
+                        html +=
+                            `<span class="badge bg-soft-success text-success fs-12 px-2 py-1"><i class="ri-checkbox-circle-line me-1 align-middle"></i>Selesai ${actionLabel} WRM</span>`;
+                    } else {
+                        html +=
+                            `<span class="badge bg-soft-secondary text-secondary fs-12 px-2 py-1"><i class="ri-hourglass-line me-1 align-middle"></i>Menunggu ${actionLabel} WRM</span>`;
+                        html +=
+                            `<small class="text-muted"><i class="ri-map-pin-line me-1"></i>B006 - WRM Area</small>`;
+                    }
+                } else if (status === 'wpm' || tx.target_sloc === 'C001') {
+                    if (tx.unloading_status === 'process') {
+                        html +=
+                            `<span class="badge bg-soft-info text-info fs-12 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses Bongkar WPM</span>`;
+                        if (tx.start_loading_time) {
+                            html +=
+                                `<small class="text-muted"><i class="ri-time-line me-1"></i>Mulai: <strong>${tx.start_loading_time}</strong></small>`;
+                        }
+                    } else if (tx.unloading_status === 'completed') {
+                        html +=
+                            `<span class="badge bg-soft-success text-success fs-12 px-2 py-1"><i class="ri-checkbox-circle-line me-1 align-middle"></i>Selesai Bongkar WPM</span>`;
+                    } else {
+                        html +=
+                            `<span class="badge bg-soft-secondary text-secondary fs-12 px-2 py-1"><i class="ri-hourglass-line me-1 align-middle"></i>Menunggu Bongkar WPM</span>`;
+                        html +=
+                            `<small class="text-muted"><i class="ri-map-pin-line me-1"></i>C001 - WPM Area</small>`;
+                    }
+                } else if (status === 'wfg' || tx.target_sloc === 'A001') {
+                    if (tx.unloading_status === 'process') {
+                        html +=
+                            `<span class="badge bg-soft-info text-info fs-12 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel} WFG</span>`;
+                        if (tx.start_loading_time) {
+                            html +=
+                                `<small class="text-muted"><i class="ri-time-line me-1"></i>Mulai: <strong>${tx.start_loading_time}</strong></small>`;
+                        }
+                    } else if (tx.no_antrian) {
+                        html +=
+                            `<span class="badge bg-soft-warning text-warning fs-12 px-2 py-1"><i class="ri-time-line me-1 align-middle"></i>Antri WFG #${tx.no_antrian}</span>`;
+                        html +=
+                            `<small class="text-muted"><i class="ri-map-pin-line me-1"></i>A001 - WFG Area</small>`;
+                    } else {
+                        html +=
+                            `<span class="badge bg-soft-secondary text-secondary fs-12 px-2 py-1"><i class="ri-hourglass-line me-1 align-middle"></i>Menunggu Antri WFG</span>`;
+                        html +=
+                            `<small class="text-muted"><i class="ri-map-pin-line me-1"></i>A001 - WFG Area</small>`;
+                    }
+                } else if (status === 'smu' || tx.target_sloc === 'SMU') {
+                    if (tx.unloading_status === 'process') {
+                        html +=
+                            `<span class="badge bg-soft-info text-info fs-12 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel} SMU</span>`;
+                        if (tx.start_loading_time) {
+                            html +=
+                                `<small class="text-muted"><i class="ri-time-line me-1"></i>Mulai: <strong>${tx.start_loading_time}</strong></small>`;
+                        }
+                    } else if (tx.no_antrian) {
+                        html +=
+                            `<span class="badge bg-soft-warning text-warning fs-12 px-2 py-1"><i class="ri-time-line me-1 align-middle"></i>Antri SMU #${tx.no_antrian}</span>`;
+                        html += `<small class="text-muted"><i class="ri-map-pin-line me-1"></i>SMU Area</small>`;
+                    } else {
+                        html +=
+                            `<span class="badge bg-soft-secondary text-secondary fs-12 px-2 py-1"><i class="ri-hourglass-line me-1 align-middle"></i>Menunggu Antri SMU</span>`;
+                        html += `<small class="text-muted"><i class="ri-map-pin-line me-1"></i>SMU Area</small>`;
+                    }
+                } else if (status === 'timbangan_in') {
+                    html +=
+                        `<span class="badge bg-soft-primary text-primary fs-12 px-2 py-1"><i class="ri-login-box-line me-1 align-middle"></i>Baru Check-In</span>`;
+                    html += `<small class="text-muted"><i class="ri-map-pin-line me-1"></i>Timbangan Masuk</small>`;
+                } else {
+                    html +=
+                        `<span class="badge bg-soft-secondary text-secondary fs-12 px-2 py-1">${(tx.status || '').toUpperCase()}</span>`;
+                }
+
+                // 2. Sub-badge QC Status (if relevant and not already covered by primary sampling status)
+                if (tx.qc_status && tx.qc_status !== 'not_required') {
+                    if (tx.qc_status === 'released') {
+                        html +=
+                            `<span class="badge bg-soft-success text-success fs-10 px-2 py-1 mt-1"><i class="ri-checkbox-circle-line me-1"></i>QC: Released</span>`;
+                    } else if (tx.qc_status === 'rejected') {
+                        html +=
+                            `<span class="badge bg-soft-danger text-danger fs-10 px-2 py-1 mt-1"><i class="ri-close-circle-line me-1"></i>QC: Rejected</span>`;
+                    } else if (tx.qc_status === 'on_check' && status !== 'sampling') {
+                        html +=
+                            `<span class="badge bg-soft-info text-info fs-10 px-2 py-1 mt-1"><i class="ri-loader-4-line ri-spin me-1"></i>QC: Sampling</span>`;
+                    } else if (tx.qc_status === 'waiting_sampling' && status !== 'antri_sampling') {
+                        html +=
+                            `<span class="badge bg-soft-warning text-warning fs-10 px-2 py-1 mt-1"><i class="ri-time-line me-1"></i>QC: Antri</span>`;
+                    } else if (tx.qc_status === 'waiting_dokumen' && status !== 'antri_sampling') {
+                        html +=
+                            `<span class="badge bg-soft-secondary text-secondary fs-10 px-2 py-1 mt-1"><i class="ri-file-list-line me-1"></i>QC: Waiting Dokumen</span>`;
+                    }
+                }
+
+                html += '</div>';
+                return html;
+            }
+
             // Render transaction table rows
             function renderTransactions() {
                 const tbody = $('#timbanganTableBody');
@@ -539,7 +673,12 @@
                     filteredTransactions = allTransactions.filter(function(tx) {
                         const nopol = (tx.no_pol || '').toLowerCase();
                         const vendor = (tx.vendor || '').toLowerCase();
-                        return nopol.includes(searchQuery) || vendor.includes(searchQuery);
+                        const driver = (tx.nama_driver || '').toLowerCase();
+                        const spb = (tx.no_spb || '').toLowerCase();
+                        const item = (tx.item_name || '').toLowerCase();
+                        return nopol.includes(searchQuery) || vendor.includes(searchQuery) || driver
+                            .includes(searchQuery) || spb.includes(searchQuery) || item.includes(
+                                searchQuery);
                     });
                 }
 
@@ -572,30 +711,41 @@
                 const paginatedItems = filteredTransactions.slice(startIndex, endIndex);
 
                 paginatedItems.forEach(function(tx, index) {
-                    const statusBadge = tx.status === 'completed' ?
-                        '<span class="badge bg-success">Out</span>' :
-                        `<span class="badge bg-warning">${tx.status.toUpperCase()}</span>`;
+                    const statusBadgeHtml = renderDetailedStatusBadge(tx);
+
+                    let jenisBadge = 'bg-soft-secondary text-secondary';
+                    if (tx.jenis_raw === 'bongkaran') jenisBadge = 'bg-soft-warning text-warning';
+                    else if (tx.jenis_raw === 'slipsheet') jenisBadge = 'bg-soft-success text-success';
+                    else if (tx.jenis_raw === 'curah') jenisBadge = 'bg-soft-primary text-primary';
 
                     const checkOutButton = tx.status.toLowerCase() === 'timbangan_out' ?
-                        `<button type="button" class="btn btn-outline-success btn-sm btn-checkout-ajax" data-id="${tx.id}" data-nopol="${tx.no_pol}">
-                            Check-Out
+                        `<button type="button" class="btn btn-success btn-sm btn-checkout-ajax shadow-sm fw-medium" data-id="${tx.id}" data-nopol="${tx.no_pol}" title="Check-Out Kendaraan">
+                            <i class="ri-logout-box-r-line me-1 align-middle"></i>Check-Out
                         </button>` : '';
 
                     const row = `
                         <tr>
                             <td class="text-center"><small class="fw-bold">${index + (currentPage - 1) * itemsPerPage + 1}</small></td>
-                            <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
-                            <td>${tx.jenis}</td>
+                            <td><span class="badge bg-soft-primary text-primary fs-12 fw-bold">${tx.no_pol}</span></td>
+                            <td>
+                                ${tx.item_name && tx.item_name !== '-' ? `<small class="text-dark fw-semibold">${tx.item_name}</small>` : ''}
+                                <br><small class="text-muted">${tx.jenis}</small>
+                            </td>
                             <td>
                                 <strong>${tx.vendor || '-'}</strong><br>
-                                <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
+                                <small class="text-muted"><i class="ri-user-line me-1"></i>${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
                             </td>
                             <td>
                                 <strong>${tx.no_spb || '-'}</strong><br>
-                                <small class="text-muted">${tx.qty_spb || '-'}</small>
+                                <small class="text-muted">
+                                    ${tx.qty_spb != null ? parseFloat(String(tx.qty_spb).replace(/,/g, '')) : '-'} Kg
+                                </small>
                             </td>
-                            <td><span class="badge bg-soft-info text-info">${tx.target_sloc}</span></td>
-                            <td>${statusBadge}</td>
+                            <td>
+                                <span class="badge bg-soft-info text-info fs-11 px-2 py-1">${tx.target_sloc}</span>
+                                ${tx.target_name && tx.target_name !== '-' ? `<br><small class="text-muted">${tx.target_name}</small>` : ''}
+                            </td>
+                            <td>${statusBadgeHtml}</td>
                             <td>
                                 ${tx.check_in_date && tx.check_in_date !== '-' ? `<span class="fw-medium text-dark">${tx.check_in_date}</span><br><small class="text-muted"><i class="ri-time-line me-1"></i>${tx.check_in_clock}</small>` : (tx.check_in_time || '-')}
                             </td>
@@ -607,10 +757,11 @@
                                     ${checkOutButton}
                                     <button type="button"
                                         class="btn btn-outline-warning btn-sm btn-edit-ajax"
-                                        data-id="${tx.id}">
+                                        data-id="${tx.id}"
+                                        title="Edit Transaksi">
                                         <i class="ri-edit-line"></i>
                                     </button>
-                                    <button type="button" class="btn btn-outline-danger btn-sm btn-delete-ajax" data-id="${tx.id}">
+                                    <button type="button" class="btn btn-outline-danger btn-sm btn-delete-ajax" data-id="${tx.id}" title="Hapus Transaksi">
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
                                 </div>
@@ -964,6 +1115,15 @@
                     renderTransactions();
                 }
             });
+
+            // Listen to real-time events via Reverb / Laravel Echo
+            if (typeof window.Echo !== 'undefined') {
+                window.Echo.channel('vehicle-tracking')
+                    .listen('.vehicle.updated', function(data) {
+                        fetchTransactions();
+                        loadSupplierData();
+                    });
+            }
         });
     </script>
 @endsection

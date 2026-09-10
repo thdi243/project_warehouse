@@ -22,6 +22,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -383,6 +384,11 @@ class BongkarMuatController extends Controller
             }
 
             DB::commit();
+
+            // Sinkronisasi status proses muat ke Vehicle Monitoring (WFG & SMU - slipsheet & curah)
+            if (!empty($order->no_mobil)) {
+                $this->syncVehicleDraftLoading($order->no_mobil);
+            }
 
             $formattedTanggal = $order->tanggal;
             if ($formattedTanggal instanceof \Carbon\Carbon) {
@@ -748,88 +754,9 @@ class BongkarMuatController extends Controller
             ]);
         }
 
-        // Auto finish vehicle tracking if active transaction exists matching no_mobil
-        if ($order->no_mobil) {
-            $cleanNoMobil = strtoupper(str_replace([' ', '-'], '', $order->no_mobil));
-            $transaction = VehicleTransaction::where('status', 'wfg')
-                ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
-                    $q->whereRaw("REPLACE(REPLACE(no_pol, ' ', ''), '-', '') = ?", [$cleanNoMobil]);
-                })
-                ->first();
-
-            if ($transaction) {
-                try {
-                    DB::beginTransaction();
-
-                    // Conclude WFG tracking
-                    $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
-                        ->where('location_id', $transaction->current_location_id)
-                        ->whereNull('departure_time')
-                        ->latest()
-                        ->first();
-
-                    $now = Carbon::now();
-                    $duration = $activeTrack ? $now->diffInSeconds($activeTrack->arrival_time) : 0;
-
-                    if ($activeTrack) {
-                        $activeTrack->update([
-                            'departure_time' => $now,
-                            'duration_seconds' => $duration,
-                            'status_notes' => 'Proses Bongkar/Muat WFG Selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan.'
-                        ]);
-                    }
-
-                    $noPol = $transaction->vehicle->no_pol;
-
-                    $timbanganLoc = Location::where('s_loc', 'TMB')->first();
-                    if ($timbanganLoc) {
-                        $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
-
-                        // Update transaction to timbangan_out
-                        $transaction->update([
-                            'unloading_status' => 'completed',
-                            'current_location_id' => $timbanganLoc->id,
-                            'status' => 'timbangan_out',
-                            'no_antrian' => null, // Clear its own queue
-                        ]);
-
-                        // Shift remaining active queues in WFG
-                        if ($completedAntrian > 0) {
-                            $otherActive = VehicleTransaction::where('status', 'wfg')
-                                ->whereNotNull('no_antrian')
-                                ->get();
-                            foreach ($otherActive as $tx) {
-                                $currAntrian = (int)$tx->no_antrian;
-                                if ($currAntrian > $completedAntrian) {
-                                    $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
-                                }
-                            }
-                        }
-
-                        // Create new tracking log for Timbangan
-                        VehicleTracking::create([
-                            'vehicle_transaction_id' => $transaction->id,
-                            'location_id' => $timbanganLoc->id,
-                            'arrival_time' => $now,
-                            'created_by' => Auth::id(),
-                        ]);
-
-                        event(new VehicleStatusUpdated([
-                            'transaction_id' => $transaction->id,
-                            'no_pol' => $noPol,
-                            'current_location' => 'TIMBANGAN',
-                            'status' => 'timbangan_out',
-                            'message' => "Proses Bongkar/Muat Truk {$noPol} di WFG telah selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan untuk Check-Out.",
-                            'time' => $now->format('H:i:s')
-                        ]));
-                    }
-
-                    DB::commit();
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    Log::error('Auto finish vehicle tracking error: ' . $e->getMessage());
-                }
-            }
+        // Auto finish vehicle tracking if active transaction exists matching no_mobil (WFG & SMU, slipsheet & curah)
+        if (!empty($order->no_mobil)) {
+            $this->syncVehicleFinishLoading($order->no_mobil);
         }
 
         return back()->with('success', 'Driver approved successfully.');
@@ -1194,5 +1121,242 @@ class BongkarMuatController extends Controller
             return null;
         }
         return $val;
+    }
+
+    /**
+     * Sinkronisasi status proses muat ke Vehicle Monitoring saat draft disimpan di form Bongkar Muat.
+     * Hanya berlaku untuk kendaraan WFG & SMU dengan jenis slipsheet atau curah.
+     */
+    private function syncVehicleDraftLoading($noMobil)
+    {
+        try {
+            if (!$noMobil) return;
+
+            $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $noMobil));
+
+            // Cari transaksi aktif kendaraan WFG atau SMU dengan jenis slipsheet / curah
+            $transaction = VehicleTransaction::whereIn('status', ['wfg', 'smu'])
+                ->whereIn('jenis', ['slipsheet', 'curah'])
+                ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+                    $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
+                })
+                ->where('unloading_status', '!=', 'completed')
+                ->first();
+
+            if (!$transaction) {
+                $transaction = VehicleTransaction::whereNotIn('status', ['completed', 'timbangan_out'])
+                    ->whereIn('jenis', ['slipsheet', 'curah'])
+                    ->whereHas('targetLocation', function ($tl) {
+                        $tl->whereIn('s_loc', ['A001', 'SMU', 'A002']);
+                    })
+                    ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+                        $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
+                    })
+                    ->where('unloading_status', '!=', 'completed')
+                    ->first();
+            }
+
+            if ($transaction && ($transaction->unloading_status !== 'process' || empty($transaction->no_antrian))) {
+                DB::beginTransaction();
+
+                $now = Carbon::now();
+                $targetSloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : ($transaction->status === 'smu' ? 'SMU' : 'A001');
+                $areaName = $targetSloc === 'SMU' ? 'SMU' : 'WFG';
+                $newStatus = $targetSloc === 'SMU' ? 'smu' : 'wfg';
+
+                // Isi nomor antrian urut otomatis jika belum ada nomor antrian
+                $assignedAntrian = $transaction->no_antrian;
+                if (empty($assignedAntrian)) {
+                    $maxAntrian = VehicleTransaction::where(function ($q) use ($newStatus) {
+                        $q->where('status', $newStatus)
+                          ->orWhereHas('targetLocation', function ($tl) use ($newStatus) {
+                              $sloc = $newStatus === 'smu' ? 'SMU' : 'A001';
+                              $tl->where('s_loc', $sloc);
+                          });
+                    })
+                        ->whereNotNull('no_antrian')
+                        ->get()
+                        ->map(function ($tx) {
+                            return (int)$tx->no_antrian;
+                        })
+                        ->max();
+
+                    $nextAntrian = $maxAntrian ? $maxAntrian + 1 : 1;
+                    $assignedAntrian = str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
+                }
+
+                $transaction->update([
+                    'status' => $newStatus,
+                    'no_antrian' => $assignedAntrian,
+                    'queue_taken_time' => $transaction->queue_taken_time ?? $now,
+                    'unloading_status' => 'process',
+                    'start_loading_time' => $transaction->start_loading_time ?? $now,
+                    'updated_by' => Auth::id()
+                ]);
+
+                $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                    ->where('location_id', $transaction->current_location_id)
+                    ->whereNull('departure_time')
+                    ->latest()
+                    ->first();
+
+                if ($activeTrack) {
+                    $activeTrack->update([
+                        'status_notes' => "Mulai Proses Muat di {$areaName} - Antrian #{$assignedAntrian} (Sinkron dari Form Bongkar Muat Draft)."
+                    ]);
+                }
+
+                $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : $noMobil;
+
+                // Release dari kantong parkir jika masih menempati slot
+                $this->releaseKantongParkirSlot($noPol, "Mulai proses Muat di {$areaName} (Form Bongkar Muat Draft)");
+
+                event(new VehicleStatusUpdated([
+                    'transaction_id' => $transaction->id,
+                    'no_pol' => $noPol,
+                    'current_location' => $targetSloc,
+                    'status' => $newStatus,
+                    'no_antrian' => $assignedAntrian,
+                    'message' => "Truk {$noPol} mulai proses Muat di {$areaName} (Antrian #{$assignedAntrian} - Sinkron dari Form Bongkar Muat Draft).",
+                    'time' => $now->format('H:i:s')
+                ]));
+
+                DB::commit();
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::warning("Gagal sinkronisasi draft ke Vehicle Monitoring untuk {$noMobil}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Sinkronisasi selesai muat ke Vehicle Monitoring saat driver approve (status finished).
+     * Truk diarahkan kembali ke Timbangan Out.
+     */
+    private function syncVehicleFinishLoading($noMobil)
+    {
+        try {
+            if (!$noMobil) return;
+
+            $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $noMobil));
+
+            // Cari transaksi aktif kendaraan WFG atau SMU dengan jenis slipsheet / curah
+            $transaction = VehicleTransaction::whereIn('status', ['wfg', 'smu'])
+                ->whereIn('jenis', ['slipsheet', 'curah'])
+                ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+                    $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
+                })
+                ->where('status', '!=', 'completed')
+                ->first();
+
+            if (!$transaction) {
+                $transaction = VehicleTransaction::whereNotIn('status', ['completed', 'timbangan_out'])
+                    ->whereIn('jenis', ['slipsheet', 'curah'])
+                    ->whereHas('targetLocation', function ($tl) {
+                        $tl->whereIn('s_loc', ['A001', 'SMU', 'A002']);
+                    })
+                    ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+                        $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
+                    })
+                    ->first();
+            }
+
+            if ($transaction) {
+                DB::beginTransaction();
+
+                $now = Carbon::now();
+                $currentStatus = $transaction->status;
+                $targetSloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : ($currentStatus === 'smu' ? 'SMU' : 'A001');
+                $areaName = $targetSloc === 'SMU' ? 'SMU' : 'WFG';
+
+                // Conclude active tracking di WFG / SMU
+                $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                    ->where('location_id', $transaction->current_location_id)
+                    ->whereNull('departure_time')
+                    ->latest()
+                    ->first();
+
+                $duration = $activeTrack ? abs($now->diffInSeconds($activeTrack->arrival_time, false)) : 0;
+
+                if ($activeTrack) {
+                    $activeTrack->update([
+                        'departure_time' => $now,
+                        'duration_seconds' => $duration,
+                        'status_notes' => "Proses Muat di {$areaName} Selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan."
+                    ]);
+                }
+
+                $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : $noMobil;
+
+                $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+                if ($timbanganLoc) {
+                    $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
+
+                    // Update transaction to timbangan_out
+                    $transaction->update([
+                        'unloading_status' => 'completed',
+                        'finish_loading_time' => $now,
+                        'current_location_id' => $timbanganLoc->id,
+                        'status' => 'timbangan_out',
+                        'no_antrian' => null, // Clear queue
+                        'updated_by' => Auth::id()
+                    ]);
+
+                    // Shift remaining active queues in area tersebut
+                    if ($completedAntrian > 0) {
+                        $otherActive = VehicleTransaction::where('status', $currentStatus)
+                            ->whereNotNull('no_antrian')
+                            ->get();
+                        foreach ($otherActive as $tx) {
+                            $currAntrian = (int)$tx->no_antrian;
+                            if ($currAntrian > $completedAntrian) {
+                                $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
+                            }
+                        }
+                    }
+
+                    // Create new tracking log for Timbangan Out
+                    VehicleTracking::create([
+                        'vehicle_transaction_id' => $transaction->id,
+                        'location_id' => $timbanganLoc->id,
+                        'arrival_time' => $now,
+                        'created_by' => Auth::id(),
+                    ]);
+
+                    event(new VehicleStatusUpdated([
+                        'transaction_id' => $transaction->id,
+                        'no_pol' => $noPol,
+                        'current_location' => 'TIMBANGAN',
+                        'status' => 'timbangan_out',
+                        'message' => "Proses Muat Truk {$noPol} di {$areaName} telah selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan untuk Check-Out.",
+                        'time' => $now->format('H:i:s')
+                    ]));
+                }
+
+                DB::commit();
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::warning("Gagal sinkronisasi finish ke Vehicle Monitoring untuk {$noMobil}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Internal helper to release vehicle from external Kantong Parkir slot in MyBAS.
+     */
+    private function releaseKantongParkirSlot($noPol, $keterangan = null)
+    {
+        try {
+            if (!$noPol) return;
+            $baseUrl = env('MYBAS_API_URL', 'http://127.0.0.1:8081');
+            $url = rtrim($baseUrl, '/') . '/api/kantong-parkir/release';
+
+            Http::timeout(3)->post($url, [
+                'no_polisi' => $noPol,
+                'keterangan' => $keterangan ?? 'Dipanggil ke dock / antrian warehouse'
+            ]);
+        } catch (\Throwable $th) {
+            Log::warning("Gagal mengirim release parkir ke MyBAS untuk {$noPol}: " . $th->getMessage());
+        }
     }
 }

@@ -131,6 +131,10 @@ Route::middleware('auth')->group(function () {
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
             Route::get('/vehicle/visual', [VehicleTrackingController::class, 'visualDashboard'])->name('dashboard.vehicle.visual')
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
+            Route::get('/vehicle/live-view', function () {
+                return redirect('/app/vehicle-live-view');
+            })->name('dashboard.vehicle.live_view')
+                ->middleware(['permission:dashboard-vehicle-monitoring']);
             Route::get('/vehicle/parkir', [VehicleTrackingController::class, 'parkirDashboard'])->name('dashboard.vehicle.parkir')
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
             Route::get('/vehicle/kantong-parkir-data', [VehicleTrackingController::class, 'kantongParkirData'])->name('dashboard.vehicle.kantong_parkir')
@@ -853,6 +857,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware(['permission:vehicle-monitoring-qc'])->group(function () {
             Route::get('/qc', [VehicleTrackingController::class, 'qcIndex'])->name('qc');
             Route::get('/qc/data', [VehicleTrackingController::class, 'qcData'])->name('qc.data');
+            Route::post('/qc/start-sampling/{id}', [VehicleTrackingController::class, 'qcStartSampling'])->name('qc.start_sampling');
             Route::post('/qc/update-qc/{id}', [VehicleTrackingController::class, 'qcUpdateQC'])->name('qc.update_qc');
             Route::post('/qc/update-queue/{id}', [VehicleTrackingController::class, 'qcUpdateQueueNumber'])->name('qc.update_queue');
         });
@@ -861,6 +866,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware(['permission:vehicle-monitoring-wpm'])->group(function () {
             Route::get('/wpm', [VehicleTrackingController::class, 'wpmIndex'])->name('wpm');
             Route::get('/wpm/data', [VehicleTrackingController::class, 'wpmData'])->name('wpm.data');
+            Route::post('/wpm/start-loading/{id}', [VehicleTrackingController::class, 'wpmStartLoading'])->name('wpm.start_loading');
             Route::post('/wpm/complete/{id}', [VehicleTrackingController::class, 'wpmComplete'])->name('wpm.complete');
         });
 
@@ -868,6 +874,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware(['permission:vehicle-monitoring-wrm'])->group(function () {
             Route::get('/wrm', [VehicleTrackingController::class, 'wrmIndex'])->name('wrm');
             Route::get('/wrm/data', [VehicleTrackingController::class, 'wrmData'])->name('wrm.data');
+            Route::post('/wrm/start-loading/{id}', [VehicleTrackingController::class, 'wrmStartLoading'])->name('wrm.start_loading');
             Route::post('/wrm/update-unloading/{id}', [VehicleTrackingController::class, 'wrmUpdateUnloading'])->name('wrm.update_unloading');
         });
 
