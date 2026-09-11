@@ -276,10 +276,10 @@ class VehicleTrackingController extends Controller
                         ->where('status', '!=', 'completed')
                         ->where(function ($q) {
                             $q->whereIn('status', ['check_in', 'antri_sampling', 'parkir', 'timbangan_in', 'sampling'])
-                              ->orWhere(function ($sub) {
-                                  $sub->whereIn('status', ['wfg', 'smu', 'wpm', 'wrm'])
-                                      ->whereNull('start_loading_time');
-                              });
+                                ->orWhere(function ($sub) {
+                                    $sub->whereIn('status', ['wfg', 'smu', 'wpm', 'wrm'])
+                                        ->whereNull('start_loading_time');
+                                });
                         })
                         ->orderBy('id', 'desc')
                         ->get();
@@ -420,10 +420,10 @@ class VehicleTrackingController extends Controller
             ->where('status', '!=', 'completed')
             ->where(function ($q) {
                 $q->whereIn('status', ['check_in', 'antri_sampling', 'parkir', 'timbangan_in', 'sampling'])
-                  ->orWhere(function ($sub) {
-                      $sub->whereIn('status', ['wfg', 'smu', 'wpm', 'wrm'])
-                          ->whereNull('start_loading_time');
-                  });
+                    ->orWhere(function ($sub) {
+                        $sub->whereIn('status', ['wfg', 'smu', 'wpm', 'wrm'])
+                            ->whereNull('start_loading_time');
+                    });
             })
             ->orderBy('id', 'desc')
             ->get();
@@ -666,8 +666,8 @@ class VehicleTrackingController extends Controller
         try {
             $response = Http::connectTimeout(5)
                 ->timeout(10)
-                // ->get('http://10.11.11.10:8093/api/supplier-data');
-                ->get('http://localhost:8081/api/supplier-data');
+                ->get('http://10.11.11.10:8093/api/supplier-data');
+            // ->get('http://localhost:8081/api/supplier-data');
 
             if ($response->successful()) {
                 $payload = $response->json();
@@ -906,9 +906,9 @@ class VehicleTrackingController extends Controller
         $queue = VehicleTransaction::with(['vehicle', 'item', 'activeTracking', 'targetLocation'])
             ->where(function ($q) {
                 $q->where('status', 'wpm')
-                  ->orWhereHas('targetLocation', function ($tl) {
-                      $tl->where('s_loc', 'C001');
-                  });
+                    ->orWhereHas('targetLocation', function ($tl) {
+                        $tl->where('s_loc', 'C001');
+                    });
             })
             ->whereNotIn('status', ['completed', 'timbangan_out'])
             ->orderBy('check_in_time', 'asc')
@@ -1082,10 +1082,10 @@ class VehicleTrackingController extends Controller
         $queue = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
             ->where(function ($q) {
                 $q->whereIn('status', ['antri_sampling', 'sampling'])
-                  ->orWhere(function ($sub) {
-                      $sub->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
-                          ->whereNotIn('status', ['completed', 'timbangan_out']);
-                  });
+                    ->orWhere(function ($sub) {
+                        $sub->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
+                            ->whereNotIn('status', ['completed', 'timbangan_out']);
+                    });
             })
             ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, no_antrian ASC, check_in_time ASC')
             ->get()
@@ -1382,9 +1382,9 @@ class VehicleTrackingController extends Controller
         $queue = VehicleTransaction::with(['vehicle', 'item', 'activeTracking', 'targetLocation'])
             ->where(function ($q) {
                 $q->where('status', 'wrm_bongkar')
-                  ->orWhereHas('targetLocation', function ($tl) {
-                      $tl->where('s_loc', 'B006');
-                  });
+                    ->orWhereHas('targetLocation', function ($tl) {
+                        $tl->where('s_loc', 'B006');
+                    });
             })
             ->whereNotIn('status', ['completed', 'timbangan_out'])
             ->orderBy('check_in_time', 'asc')
