@@ -167,6 +167,8 @@
                                 <div class="row">
                                     <input type="hidden" id="nama_driver" name="nama_driver">
                                     <input type="hidden" id="no_hp_driver" name="no_hp_driver">
+                                    <input type="hidden" id="checkin_pos1" name="checkin_pos1">
+                                    <input type="hidden" id="trnvisitorid" name="trnvisitorid">
                                     <div class="d-grid">
                                         <button type="submit" class="btn btn-primary"><i
                                                 class="ri-save-line me-1 align-middle"></i>Submit</button>
@@ -232,7 +234,7 @@
 
     <!-- Edit Transaction Modal -->
     <div class="modal fade" id="editModal" aria-labelledby="editModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-0 bg-light">
                     <h5 class="modal-title" id="editModalLabel">
@@ -244,11 +246,34 @@
                     @csrf
                     @method('PUT')
                     <div class="modal-body p-4">
-                        <div class="mb-3">
-                            <label for="edit_no_pol" class="form-label">No. Polisi <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="edit_no_pol" name="no_pol" required
-                                style="text-transform: uppercase;">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_no_pol" class="form-label">No. Polisi <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="edit_no_pol" name="no_pol" required
+                                    style="text-transform: uppercase;">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_vendor" class="form-label">Nama Vendor</label>
+                                <select class="form-select" id="edit_vendor" name="vendor">
+                                    <option value="" selected disabled>Pilih Vendor</option>
+                                    @foreach ($vendors as $vendor)
+                                        <option value="{{ $vendor->name }}">{{ $vendor->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_nama_driver" class="form-label">Nama Driver</label>
+                                <input type="text" class="form-control" id="edit_nama_driver" name="nama_driver"
+                                    placeholder="Masukkan nama driver">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_no_hp_driver" class="form-label">No. HP Driver</label>
+                                <input type="text" class="form-control" id="edit_no_hp_driver" name="no_hp_driver"
+                                    placeholder="Contoh: 08123456789">
+                            </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -274,22 +299,13 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-12 mb-3">
                                 <label for="edit_item_id" class="form-label">Item <span
                                         class="text-danger">*</span></label>
                                 <select class="form-select select2-edit" id="edit_item_id" name="item_id" required>
                                     @foreach ($items as $item)
                                         <option value="{{ $item->id }}" data-location-id="{{ $item->location_id }}">
                                             {{ $item->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="edit_vendor" class="form-label">Nama Vendor</label>
-                                <select class="form-select" id="edit_vendor" name="vendor">
-                                    <option value="" selected disabled>Pilih Vendor</option>
-                                    @foreach ($vendors as $vendor)
-                                        <option value="{{ $vendor->name }}">{{ $vendor->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -303,11 +319,11 @@
                             <div class="col-md-6 mb-3">
                                 <label for="edit_qty_spb" class="form-label">Qty SPB</label>
                                 <input type="number" class="form-control" id="edit_qty_spb" name="qty_spb"
-                                    step="any" placeholder="Kuantitas SPB">
+                                    step="any" placeholder="10000">
                             </div>
                         </div>
-                        <input type="hidden" id="edit_nama_driver" name="nama_driver">
-                        <input type="hidden" id="edit_no_hp_driver" name="no_hp_driver">
+                        <input type="hidden" id="edit_checkin_pos1" name="checkin_pos1">
+                        <input type="hidden" id="edit_trnvisitorid" name="trnvisitorid">
                     </div>
                     <div class="modal-footer border-0 bg-light p-3">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
@@ -479,12 +495,16 @@
                         }
                     }
 
-                    // Auto populate driver name & phone
+                    // Auto populate driver name, phone & supplier check-in pos 1
                     $('#nama_driver').val(matchedSupplier.nama_driver || '');
                     $('#no_hp_driver').val(matchedSupplier.no_hp_driver || '');
+                    $('#checkin_pos1').val(matchedSupplier.checkin_pos1 || '');
+                    $('#trnvisitorid').val(matchedSupplier.trnvisitorid || '');
                 } else {
                     $('#nama_driver').val('');
                     $('#no_hp_driver').val('');
+                    $('#checkin_pos1').val('');
+                    $('#trnvisitorid').val('');
                 }
             });
 
@@ -748,9 +768,10 @@
                             <td>${statusBadgeHtml}</td>
                             <td>
                                 ${tx.check_in_date && tx.check_in_date !== '-' ? `<span class="fw-medium text-dark">${tx.check_in_date}</span><br><small class="text-muted"><i class="ri-time-line me-1"></i>${tx.check_in_clock}</small>` : (tx.check_in_time || '-')}
+                                ${tx.checkin_pos1 && tx.checkin_pos1 !== '-' ? `<br><small class="text-info" title="Check-In Pos 1"><i class="ri-shield-check-line me-1"></i>Pos 1: ${tx.checkin_pos1_clock || tx.checkin_pos1}</small>` : ''}
                             </td>
                             <td>
-                                ${tx.check_out_date && tx.check_out_date !== '-' ? `<span class="fw-medium text-dark">${tx.check_out_date}</span><br><small class="text-muted"><i class="ri-time-line me-1"></i>${tx.check_out_clock}</small>` : (tx.check_out_time || '-')}
+                                ${tx.check_out_date && tx.check_out_date !== '-' ? `<span class="fw-medium text-dark">${tx.check_out_date}</span><br><small class="text-muted"><i class="ri-time-line me-1"></i>${tx.check_out_clock}</small>` : (tx.status.toLowerCase() === 'timbangan_out' && tx.timbangan_out_clock && tx.timbangan_out_clock !== '-' ? `<span class="badge bg-soft-warning text-warning fs-11 px-2 py-1" title="Tiba di Timbangan Out (Antre)"><i class="ri-time-line me-1"></i>Antre: ${tx.timbangan_out_clock}</span>` : (tx.check_out_time || '-'))}
                             </td>
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-end">
@@ -829,6 +850,8 @@
                         $('#qty_spb').val('');
                         $('#nama_driver').val('');
                         $('#no_hp_driver').val('');
+                        $('#checkin_pos1').val('');
+                        $('#trnvisitorid').val('');
 
                         Swal.fire('Berhasil!', response.message, 'success');
                         fetchTransactions();
@@ -882,6 +905,8 @@
                             $('#edit_qty_spb').val(tx.qty_spb === '-' ? '' : tx.qty_spb);
                             $('#edit_nama_driver').val(tx.nama_driver || '');
                             $('#edit_no_hp_driver').val(tx.no_hp_driver || '');
+                            $('#edit_checkin_pos1').val(tx.checkin_pos1 || '');
+                            $('#edit_trnvisitorid').val(tx.trnvisitorid || '');
 
                             // Set form action route dynamically
                             const actionUrl =

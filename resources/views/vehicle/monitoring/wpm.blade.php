@@ -53,7 +53,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="9" class="text-center py-4 text-muted">Loading data...</td>
+                                            <td colspan="10" class="text-center py-4 text-muted">Loading data...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -122,7 +122,7 @@
                 let html = '';
                 if (filtered.length === 0) {
                     html = `<tr>
-                        <td colspan="9" class="text-center py-4 text-muted">Tidak ada kendaraan aktif di area WPM.</td>
+                        <td colspan="10" class="text-center py-4 text-muted">Tidak ada kendaraan aktif di area WPM.</td>
                     </tr>`;
                 } else {
                     filtered.forEach(function(tx, index) {

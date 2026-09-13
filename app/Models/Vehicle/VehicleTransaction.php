@@ -14,11 +14,13 @@ class VehicleTransaction extends Model
 
     protected $fillable = [
         'no_transaction',
+        'trnvisitorid',
         'vehicle_id',
         'jenis',
         'vendor',
         'nama_driver',
         'no_hp_driver',
+        'checkin_pos1',
         'item_id',
         'no_spb',
         'qty_spb',
@@ -27,19 +29,28 @@ class VehicleTransaction extends Model
         'status',
         'qc_status',
         'start_sampling_time',
+        'start_sampling_by',
         'finish_sampling_time',
+        'finish_sampling_by',
         'unloading_status',
         'no_antrian',
         'queue_taken_time',
+        'queue_taken_by',
         'start_loading_time',
+        'start_loading_by',
         'finish_loading_time',
+        'finish_loading_by',
+        'timbangan_out_time',
+        'timbangan_out_by',
         'check_in_time',
         'check_out_time',
+        'check_out_by',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
+        'checkin_pos1' => 'datetime',
         'check_in_time' => 'datetime',
         'check_out_time' => 'datetime',
         'queue_taken_time' => 'datetime',
@@ -47,6 +58,7 @@ class VehicleTransaction extends Model
         'finish_sampling_time' => 'datetime',
         'start_loading_time' => 'datetime',
         'finish_loading_time' => 'datetime',
+        'timbangan_out_time' => 'datetime',
         'qty_spb' => 'decimal:2',
     ];
 
@@ -85,8 +97,48 @@ class VehicleTransaction extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function checkInBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function updater()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function queueTakenBy()
+    {
+        return $this->belongsTo(User::class, 'queue_taken_by');
+    }
+
+    public function startSamplingBy()
+    {
+        return $this->belongsTo(User::class, 'start_sampling_by');
+    }
+
+    public function finishSamplingBy()
+    {
+        return $this->belongsTo(User::class, 'finish_sampling_by');
+    }
+
+    public function startLoadingBy()
+    {
+        return $this->belongsTo(User::class, 'start_loading_by');
+    }
+
+    public function finishLoadingBy()
+    {
+        return $this->belongsTo(User::class, 'finish_loading_by');
+    }
+
+    public function timbanganOutBy()
+    {
+        return $this->belongsTo(User::class, 'timbangan_out_by');
+    }
+
+    public function checkOutBy()
+    {
+        return $this->belongsTo(User::class, 'check_out_by');
     }
 }

@@ -27,7 +27,8 @@
                                     class="ri-database-2-line me-2 align-middle text-warning"></i>Antrian Data SMU Area</h4>
                             <div class="flex-shrink-0">
                                 <div style="width: 250px;">
-                                    <input type="text" class="form-control" id="search_table" placeholder="Cari No. Polisi / Vendor...">
+                                    <input type="text" class="form-control" id="search_table"
+                                        placeholder="Cari No. Polisi / Vendor...">
                                 </div>
                             </div>
                         </div>
@@ -126,7 +127,8 @@
 
                         let antrianBadge = '';
                         if (tx.no_antrian) {
-                            antrianBadge = `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">${tx.no_antrian}</span>`;
+                            antrianBadge =
+                                `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">${tx.no_antrian}</span>`;
                         } else {
                             antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
                                 Ambil Antrian
@@ -135,11 +137,14 @@
 
                         let statusBadge = '';
                         if (!tx.no_antrian) {
-                            statusBadge = `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
                         } else if (!isProcess) {
-                            statusBadge = `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian ${tx.no_antrian}</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian ${tx.no_antrian}</span>`;
                         } else {
-                            statusBadge = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel}</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel}</span>`;
                         }
 
                         let actionBtn = '';
@@ -161,13 +166,16 @@
                         }
 
                         // Timeline breakdown
-                        let timelineHtml = `<div class="d-flex flex-column gap-1">
+                        let timelineHtml =
+                            `<div class="d-flex flex-column gap-1">
                             <span class="fs-12 text-muted">Tiba: <strong class="text-dark">${tx.arrival_time}</strong></span>`;
                         if (tx.queue_taken_time) {
-                            timelineHtml += `<span class="fs-12 text-muted">Antri: <strong class="text-warning">${tx.queue_taken_time}</strong></span>`;
+                            timelineHtml +=
+                                `<span class="fs-12 text-muted">Antri: <strong class="text-warning">${tx.queue_taken_time}</strong></span>`;
                         }
                         if (tx.start_loading_time) {
-                            timelineHtml += `<span class="fs-12 text-muted">Mulai: <strong class="text-info">${tx.start_loading_time}</strong></span>`;
+                            timelineHtml +=
+                                `<span class="fs-12 text-muted">Mulai: <strong class="text-info">${tx.start_loading_time}</strong></span>`;
                         }
                         timelineHtml += `</div>`;
 
@@ -183,7 +191,8 @@
                                 </div>
                             `;
                         } else if (!isProcess) {
-                            const waitToQueueSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx.arrival_timestamp) : 0;
+                            const waitToQueueSec = tx.queue_taken_timestamp ? Math.max(0, tx
+                                .queue_taken_timestamp - tx.arrival_timestamp) : 0;
                             const startTimerFrom = tx.queue_taken_timestamp || tx.arrival_timestamp;
                             durasiHtml = `
                                 <div>
@@ -195,9 +204,11 @@
                                 </div>
                             `;
                         } else {
-                            const antriDurationSec = (tx.start_loading_timestamp && tx.queue_taken_timestamp)
-                                ? Math.max(0, tx.start_loading_timestamp - tx.queue_taken_timestamp)
-                                : (tx.start_loading_timestamp ? Math.max(0, tx.start_loading_timestamp - tx.arrival_timestamp) : 0);
+                            const antriDurationSec = (tx.start_loading_timestamp && tx
+                                    .queue_taken_timestamp) ?
+                                Math.max(0, tx.start_loading_timestamp - tx.queue_taken_timestamp) :
+                                (tx.start_loading_timestamp ? Math.max(0, tx.start_loading_timestamp - tx
+                                    .arrival_timestamp) : 0);
                             const startProcessFrom = tx.start_loading_timestamp || tx.arrival_timestamp;
                             durasiHtml = `
                                 <div>
@@ -211,7 +222,9 @@
                         }
 
                         html += `<tr id="row-${tx.id}">
-                            <td class="text-center">${antrianBadge}</td>
+                            @can('permission', 'vehicle-monitoring-smu-plus')
+                                <td class="text-center">${antrianBadge}</td>
+                            @endcan
                             <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
                             <td>
                                 <strong>${tx.vendor || '-'}</strong><br>
@@ -383,7 +396,8 @@
                                 loadSmuData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal mengambil nomor antrian.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal mengambil nomor antrian.', 'error');
                             }
                         });
                     }

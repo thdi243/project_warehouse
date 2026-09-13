@@ -581,6 +581,10 @@ class VehicleTrackingController extends Controller
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
                     'no_hp_driver' => $tx->no_hp_driver,
+                    'trnvisitorid' => $tx->trnvisitorid ?? '-',
+                    'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i') : '-',
+                    'checkin_pos1_date' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y') : '-',
+                    'checkin_pos1_clock' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('H:i') : '-',
                     'no_spb' => $tx->no_spb ?? '-',
                     'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 2) : '-',
                     'target_loc' => $tx->target_location_id,
@@ -600,6 +604,9 @@ class VehicleTrackingController extends Controller
                     'check_out_clock' => $tx->check_out_time ? $tx->check_out_time->format('H:i') : '-',
                     'start_loading_time' => $tx->start_loading_time ? $tx->start_loading_time->format('H:i') : null,
                     'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : null,
+                    'timbangan_out_time' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i') : '-',
+                    'timbangan_out_date' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y') : '-',
+                    'timbangan_out_clock' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('H:i') : '-',
                     'start_sampling_time' => $tx->start_sampling_time ? $tx->start_sampling_time->format('H:i') : null,
                     'finish_sampling_time' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('H:i') : null,
                 ];
@@ -626,6 +633,8 @@ class VehicleTrackingController extends Controller
                     'vendor' => $transaction->vendor,
                     'nama_driver' => $transaction->nama_driver,
                     'no_hp_driver' => $transaction->no_hp_driver,
+                    'trnvisitorid' => $transaction->trnvisitorid,
+                    'checkin_pos1' => $transaction->checkin_pos1 ? $transaction->checkin_pos1->format('Y-m-d H:i:s') : null,
                     'no_spb' => $transaction->no_spb,
                     'qty_spb' => $transaction->qty_spb,
                 ]
@@ -725,6 +734,8 @@ class VehicleTrackingController extends Controller
             'vendor' => 'nullable|string|max:100',
             'nama_driver' => 'nullable|string|max:255',
             'no_hp_driver' => 'nullable|string|max:50',
+            'checkin_pos1' => 'nullable|date',
+            'trnvisitorid' => 'nullable|string|max:100',
             'jenis' => 'required|string|in:bongkaran,slipsheet,curah',
             'item_id' => 'required|exists:vehicle_items,id',
             'no_spb' => 'nullable|string|max:50',
@@ -788,11 +799,13 @@ class VehicleTrackingController extends Controller
             // 1. Create Transaction at TIMBANGAN
             $transaction = VehicleTransaction::create([
                 'no_transaction' => $noTransaction,
+                'trnvisitorid' => $request->trnvisitorid,
                 'vehicle_id' => $vehicle->id,
                 'jenis' => $request->jenis,
                 'vendor' => $request->vendor ?? $vehicle->vendor,
                 'nama_driver' => $request->nama_driver,
                 'no_hp_driver' => $request->no_hp_driver,
+                'checkin_pos1' => $request->checkin_pos1,
                 'item_id' => $request->item_id,
                 'no_spb' => $request->no_spb,
                 'qty_spb' => $request->qty_spb,
@@ -958,6 +971,7 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'unloading_status' => 'process',
                 'start_loading_time' => $transaction->start_loading_time ?? Carbon::now(),
+                'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
                 'status' => 'wpm',
                 'updated_by' => Auth::id()
             ]);
@@ -1036,6 +1050,9 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'unloading_status' => 'completed',
                 'finish_loading_time' => $now,
+                'finish_loading_by' => Auth::id(),
+                'timbangan_out_time' => $now,
+                'timbangan_out_by' => Auth::id(),
                 'current_location_id' => $timbanganLoc->id,
                 'status' => 'timbangan_out',
                 'updated_by' => Auth::id()
@@ -1151,6 +1168,7 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'no_antrian' => $formattedAntrian,
                 'queue_taken_time' => $transaction->queue_taken_time ?? Carbon::now(),
+                'queue_taken_by' => $transaction->queue_taken_by ?? Auth::id(),
                 'qc_status' => 'waiting_sampling',
                 'updated_by' => Auth::id()
             ]);
@@ -1204,6 +1222,7 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'qc_status' => 'on_check',
                 'start_sampling_time' => $transaction->start_sampling_time ?? Carbon::now(),
+                'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
                 'status' => 'sampling',
                 'updated_by' => Auth::id()
             ]);
@@ -1307,6 +1326,7 @@ class VehicleTrackingController extends Controller
                 $transaction->update([
                     'qc_status' => 'released',
                     'finish_sampling_time' => $now,
+                    'finish_sampling_by' => Auth::id(),
                     'no_antrian' => null,
                     'status' => $destinationStatus,
                     'updated_by' => Auth::id()
@@ -1332,6 +1352,9 @@ class VehicleTrackingController extends Controller
                 $transaction->update([
                     'qc_status' => 'rejected',
                     'finish_sampling_time' => $now,
+                    'finish_sampling_by' => Auth::id(),
+                    'timbangan_out_time' => $now,
+                    'timbangan_out_by' => Auth::id(),
                     'status' => 'timbangan_out',
                     'current_location_id' => $timbanganLoc->id,
                     'no_antrian' => null, // Clear QC queue
@@ -1436,6 +1459,7 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'unloading_status' => 'process',
                 'start_loading_time' => $transaction->start_loading_time ?? Carbon::now(),
+                'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
                 'status' => 'wrm_bongkar',
                 'updated_by' => Auth::id()
             ]);
@@ -1514,6 +1538,9 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'unloading_status' => 'completed',
                 'finish_loading_time' => $now,
+                'finish_loading_by' => Auth::id(),
+                'timbangan_out_time' => $now,
+                'timbangan_out_by' => Auth::id(),
                 'current_location_id' => $timbanganLoc->id,
                 'status' => 'timbangan_out',
                 'updated_by' => Auth::id()
@@ -1607,6 +1634,7 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'unloading_status' => 'process',
                 'start_loading_time' => $transaction->start_loading_time ?? Carbon::now(),
+                'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
                 'updated_by' => Auth::id()
             ]);
 
@@ -1689,6 +1717,9 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'unloading_status' => 'completed',
                 'finish_loading_time' => $now,
+                'finish_loading_by' => Auth::id(),
+                'timbangan_out_time' => $now,
+                'timbangan_out_by' => Auth::id(),
                 'current_location_id' => $timbanganLoc->id,
                 'status' => 'timbangan_out',
                 'no_antrian' => null, // Clear its own queue
@@ -1796,6 +1827,7 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'unloading_status' => 'process',
                 'start_loading_time' => $transaction->start_loading_time ?? Carbon::now(),
+                'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
                 'updated_by' => Auth::id()
             ]);
 
@@ -1878,6 +1910,9 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'unloading_status' => 'completed',
                 'finish_loading_time' => $now,
+                'finish_loading_by' => Auth::id(),
+                'timbangan_out_time' => $now,
+                'timbangan_out_by' => Auth::id(),
                 'current_location_id' => $timbanganLoc->id,
                 'status' => 'timbangan_out',
                 'no_antrian' => null, // Clear its own queue
@@ -1956,6 +1991,7 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'status' => 'completed',
                 'check_out_time' => $now,
+                'check_out_by' => Auth::id(),
                 'updated_by' => Auth::id()
             ]);
 
@@ -2015,6 +2051,7 @@ class VehicleTrackingController extends Controller
             $transaction->update([
                 'no_antrian' => $formattedAntrian,
                 'queue_taken_time' => $transaction->queue_taken_time ?? Carbon::now(),
+                'queue_taken_by' => $transaction->queue_taken_by ?? Auth::id(),
                 'updated_by' => Auth::id()
             ]);
 
@@ -2057,6 +2094,8 @@ class VehicleTrackingController extends Controller
             'vendor' => 'nullable|string|max:100',
             'nama_driver' => 'nullable|string|max:255',
             'no_hp_driver' => 'nullable|string|max:50',
+            'checkin_pos1' => 'nullable|date',
+            'trnvisitorid' => 'nullable|string|max:100',
             'jenis' => 'required|string|in:bongkaran,slipsheet,curah',
             'item_id' => 'required|exists:vehicle_items,id',
             'no_spb' => 'nullable|string|max:50',
@@ -2097,7 +2136,7 @@ class VehicleTrackingController extends Controller
 
             $oldTargetId = $transaction->target_location_id;
 
-            $transaction->update([
+            $updateData = [
                 'vehicle_id' => $vehicle->id,
                 'jenis' => $request->jenis,
                 'vendor' => $request->vendor ?? $vehicle->vendor,
@@ -2108,7 +2147,16 @@ class VehicleTrackingController extends Controller
                 'qty_spb' => $request->qty_spb,
                 'target_location_id' => $request->target_location_id,
                 'updated_by' => Auth::id(),
-            ]);
+            ];
+
+            if ($request->filled('checkin_pos1')) {
+                $updateData['checkin_pos1'] = $request->checkin_pos1;
+            }
+            if ($request->filled('trnvisitorid')) {
+                $updateData['trnvisitorid'] = $request->trnvisitorid;
+            }
+
+            $transaction->update($updateData);
 
             // If target location changed, update the active tracking location to match the new destination
             if ($oldTargetId != $request->target_location_id && $transaction->status !== 'completed') {
@@ -2531,8 +2579,20 @@ class VehicleTrackingController extends Controller
      */
     public function historyData(Request $request)
     {
-        $query = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'tracking.location'])
-            ->where('status', 'completed');
+        $query = VehicleTransaction::with([
+            'vehicle',
+            'item',
+            'targetLocation',
+            'tracking.location',
+            'creator',
+            'queueTakenBy',
+            'startSamplingBy',
+            'finishSamplingBy',
+            'startLoadingBy',
+            'finishLoadingBy',
+            'timbanganOutBy',
+            'checkOutBy',
+        ])->where('status', 'completed');
 
         if ($request->filled('start_date')) {
             $query->whereDate('check_in_time', '>=', $request->start_date);
@@ -2700,10 +2760,12 @@ class VehicleTrackingController extends Controller
             return [
                 'id' => $tx->id,
                 'no_transaction' => $tx->no_transaction,
+                'trnvisitorid' => $tx->trnvisitorid ?? '-',
                 'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
                 'vendor' => $tx->vendor ?? '-',
                 'nama_driver' => $tx->nama_driver ?? '-',
                 'no_hp_driver' => $tx->no_hp_driver ?? '-',
+                'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i') : '-',
                 'jenis' => $tx->jenis,
                 'item_name' => $tx->item ? $tx->item->name : 'N/A',
                 'no_spb' => $tx->no_spb ?? '-',
@@ -2724,6 +2786,9 @@ class VehicleTrackingController extends Controller
                 'durasi_aksi_label' => $actionSeconds > 0 ? $formatDuration($actionSeconds) : '-',
                 'total_durasi_sec' => $totalDurationSeconds,
                 'total_durasi_label' => $totalDurationSeconds > 0 ? $formatDuration($totalDurationSeconds) : '-',
+                'timbangan_out_time' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i') : '-',
+                'durasi_timbangan_out_sec' => $tx->timbangan_out_time ? abs(($checkOut ?: Carbon::now())->diffInSeconds($tx->timbangan_out_time, false)) : 0,
+                'durasi_timbangan_out_label' => $tx->timbangan_out_time ? $formatDuration(abs(($checkOut ?: Carbon::now())->diffInSeconds($tx->timbangan_out_time, false))) : '-',
 
                 // Detail Aksi & Rute
                 'action_details' => $actionDetails,
@@ -2732,13 +2797,23 @@ class VehicleTrackingController extends Controller
 
                 // Timestamps lengkap
                 'timestamps' => [
+                    'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i:s') : '-',
                     'check_in' => $checkIn ? $checkIn->format('d-m-Y H:i:s') : '-',
+                    'check_in_by' => $tx->creator ? $tx->creator->name : '-',
                     'queue_taken' => $tx->queue_taken_time ? $tx->queue_taken_time->format('d-m-Y H:i:s') : '-',
+                    'queue_taken_by' => $tx->queueTakenBy ? $tx->queueTakenBy->name : '-',
                     'start_sampling' => $tx->start_sampling_time ? $tx->start_sampling_time->format('d-m-Y H:i:s') : '-',
+                    'start_sampling_by' => $tx->startSamplingBy ? $tx->startSamplingBy->name : '-',
                     'finish_sampling' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('d-m-Y H:i:s') : '-',
+                    'finish_sampling_by' => $tx->finishSamplingBy ? $tx->finishSamplingBy->name : '-',
                     'start_loading' => $tx->start_loading_time ? $tx->start_loading_time->format('d-m-Y H:i:s') : '-',
+                    'start_loading_by' => $tx->startLoadingBy ? $tx->startLoadingBy->name : '-',
                     'finish_loading' => $tx->finish_loading_time ? $tx->finish_loading_time->format('d-m-Y H:i:s') : '-',
+                    'finish_loading_by' => $tx->finishLoadingBy ? $tx->finishLoadingBy->name : '-',
+                    'timbangan_out' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i:s') : '-',
+                    'timbangan_out_by' => $tx->timbanganOutBy ? $tx->timbanganOutBy->name : '-',
                     'check_out' => $checkOut ? $checkOut->format('d-m-Y H:i:s') : '-',
+                    'check_out_by' => $tx->checkOutBy ? $tx->checkOutBy->name : '-',
                 ],
             ];
         });

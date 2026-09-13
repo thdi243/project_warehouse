@@ -22,8 +22,9 @@ use App\Http\Controllers\Wsp\stock\StockOnHandController;
 use App\Http\Controllers\Wsp\TkbmController;
 use App\Http\Controllers\Wsp\WspBarangController;
 use App\Http\Controllers\Wsp\WspRakController;
-use App\Http\Controllers\Api\Wpm\ApiWpmContoller;
-use App\Http\Controllers\Api\vehicle\ApiVehicleController;
+use App\Http\Controllers\Api\ApiWpmContoller;
+use App\Http\Controllers\Api\ApiVehicleController;
+use App\Http\Controllers\Api\ApiP2HController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -94,6 +95,11 @@ Route::prefix('tkbm')->group(function () {
 });
 
 Route::prefix('p2h')->group(function () {
+    // API Get P2H Data (Forklift & Pallet Mover)
+    Route::get('/all-data', [ApiP2HController::class, 'index']);
+    Route::get('/summary-stats', [ApiP2HController::class, 'summary']);
+    Route::get('/record/{type}/{id}', [ApiP2HController::class, 'show']);
+
     // Forklift
     Route::post('/store/forklift', [P2HController::class, 'store']);
     Route::get('/data/forklift-data', [P2HController::class, 'showForklift']);

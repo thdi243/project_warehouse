@@ -19,7 +19,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'access' => AccessByJabatan::class,
             'permission' => CheckPermission::class,
         ]);
-
         $middleware->trustProxies(at: '*');
     })
 
