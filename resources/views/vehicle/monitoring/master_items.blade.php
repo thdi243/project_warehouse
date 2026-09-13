@@ -5,6 +5,7 @@
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
+            <!-- Breadcrumb -->
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
@@ -19,6 +20,7 @@
                 </div>
             </div>
 
+            <!-- Session Alerts -->
             @if (session('success'))
                 <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-3" role="alert">
                     <i class="ri-check-line me-2 align-middle"></i> {{ session('success') }}
@@ -42,6 +44,7 @@
                 }
             @endphp
 
+            <!-- Tabs Navigation -->
             <div class="row mb-3">
                 <div class="col-12">
                     <ul class="nav nav-tabs nav-tabs-custom nav-success" id="masterTabs" role="tablist">
@@ -51,12 +54,14 @@
                                 <i class="ri-price-tag-3-line align-bottom me-1"></i> Master Items
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ $activeTab == 'sloc' ? 'active' : '' }}" data-bs-toggle="tab"
-                                href="#slocTab" role="tab">
-                                <i class="ri-map-pin-line align-bottom me-1"></i> Master Sloc
-                            </a>
-                        </li>
+                        @can('permission', 'super-admin')
+                            <li class="nav-item">
+                                <a class="nav-link {{ $activeTab == 'sloc' ? 'active' : '' }}" data-bs-toggle="tab"
+                                    href="#slocTab" role="tab">
+                                    <i class="ri-map-pin-line align-bottom me-1"></i> Master Sloc
+                                </a>
+                            </li>
+                        @endcan
                         <li class="nav-item">
                             <a class="nav-link {{ $activeTab == 'vendor' ? 'active' : '' }}" data-bs-toggle="tab"
                                 href="#vendorTab" role="tab">
@@ -67,14 +72,25 @@
                 </div>
             </div>
 
+            <!-- Tabs Content -->
             <div class="tab-content text-muted">
                 <!-- Items Tab Pane -->
                 <div class="tab-pane {{ $activeTab == 'items' ? 'active' : '' }}" id="itemsTab" role="tabpanel">
                     <div class="row">
-                        <div class="col-md-7">
+                        <div class="col-12">
                             <div class="card shadow-sm border-0">
-                                <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
+                                <div class="card-header align-items-center d-flex flex-wrap gap-2 border-0 bg-transparent py-3">
                                     <h4 class="card-title mb-0 flex-grow-1">Daftar Item</h4>
+                                    <div class="d-flex gap-2">
+                                        <div class="search-box">
+                                            <input type="text" class="form-control form-control-sm" id="searchItem"
+                                                placeholder="Cari item atau area...">
+                                            <i class="ri-search-line search-icon"></i>
+                                        </div>
+                                        <button type="button" class="btn btn-primary btn-sm" id="btnAddItem">
+                                            <i class="ri-add-line align-bottom me-1"></i> Tambah Item
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
@@ -84,17 +100,19 @@
                                                     <th class="text-center" width="70">No</th>
                                                     <th>Item Name</th>
                                                     <th>Area (Sloc)</th>
-                                                    <th class="text-center" width="120">Actions</th>
+                                                    <th class="text-center" width="160">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @forelse ($items as $index => $item)
                                                     <tr>
                                                         <td class="text-center">{{ $index + 1 }}</td>
-                                                        <td>{{ $item->name }}</td>
+                                                        <td class="fw-medium">{{ $item->name }}</td>
                                                         <td>
                                                             @if ($item->location)
-                                                                <span class="badge bg-soft-info text-info">{{ $item->location->s_loc }} - {{ $item->location->name }}</span>
+                                                                <span class="badge bg-soft-info text-info">
+                                                                    {{ $item->location->s_loc }} - {{ $item->location->name }}
+                                                                </span>
                                                             @else
                                                                 <span class="text-muted">-</span>
                                                             @endif
@@ -105,74 +123,26 @@
                                                                     class="btn btn-soft-primary btn-sm btn-edit"
                                                                     data-id="{{ $item->id }}"
                                                                     data-name="{{ $item->name }}"
-                                                                    data-location-id="{{ $item->location_id }}" title="Edit">
-                                                                    <i class="ri-edit-line"></i>
+                                                                    data-location-id="{{ $item->location_id }}"
+                                                                    title="Edit">
+                                                                    <i class="ri-edit-line me-1"></i> Edit
                                                                 </button>
-                                                                <form
-                                                                    action="{{ route('vehicle.monitoring.master.items.delete', $item->id) }}"
-                                                                    method="POST" class="d-inline form-delete">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit"
-                                                                        class="btn btn-soft-danger btn-sm" title="Delete">
-                                                                        <i class="ri-delete-bin-line"></i>
-                                                                    </button>
-                                                                </form>
+                                                                <button type="button"
+                                                                    class="btn btn-soft-danger btn-sm btn-delete-item"
+                                                                    data-id="{{ $item->id }}" title="Delete">
+                                                                    <i class="ri-delete-bin-line me-1"></i> Delete
+                                                                </button>
                                                             </div>
                                                         </td>
                                                     </tr>
                                                 @empty
                                                     <tr>
-                                                        <td colspan="4" class="text-center text-muted py-4">Belum ada
-                                                            item terdaftar.</td>
+                                                        <td colspan="4" class="text-center text-muted py-4">Belum ada item terdaftar.</td>
                                                     </tr>
                                                 @endforelse
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
- 
-                        <div class="col-md-5">
-                            <div class="card shadow-sm border-0" id="formCard">
-                                <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
-                                    <h4 class="card-title mb-0 flex-grow-1" id="formTitle">Tambah Item Baru</h4>
-                                </div>
-                                <div class="card-body">
-                                    <form action="{{ route('vehicle.monitoring.master.items.store') }}" method="POST"
-                                        id="itemForm">
-                                        @csrf
-                                        <input type="hidden" name="_method" id="formMethod" value="POST">
-                                        <div class="mb-3">
-                                            <label for="name" class="form-label">Item Name <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" id="name" name="name"
-                                                required placeholder="Contoh: Gula Pasir">
-                                            @error('name')
-                                                @if (!$errors->has('s_loc') && !$errors->has('vendor_name'))
-                                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                                @endif
-                                            @enderror
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="location_id" class="form-label">Area (Sloc)</label>
-                                            <select class="form-select" id="location_id" name="location_id">
-                                                <option value="" selected>Semua Area / General</option>
-                                                @foreach ($locations as $loc)
-                                                    <option value="{{ $loc->id }}">{{ $loc->s_loc }} - {{ $loc->name }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error('location_id')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="d-flex gap-2 justify-content-end mt-4">
-                                            <button type="button" class="btn btn-light" id="btnCancel"
-                                                style="display: none;">Batal</button>
-                                            <button type="submit" class="btn btn-primary" id="btnSubmit">Simpan
-                                                Item</button>
-                                        </div>
-                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -180,133 +150,96 @@
                 </div>
 
                 <!-- Sloc Tab Pane -->
-                <div class="tab-pane {{ $activeTab == 'sloc' ? 'active' : '' }}" id="slocTab" role="tabpanel">
-                    <div class="row">
-                        <div class="col-md-7">
-                            <div class="card shadow-sm border-0">
-                                <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
-                                    <h4 class="card-title mb-0 flex-grow-1">Daftar Sloc (Storage Locations)</h4>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover align-middle text-nowrap" id="slocsTable">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th class="text-center" width="70">No</th>
-                                                    <th width="120">Sloc Code</th>
-                                                    <th>Name</th>
-                                                    <th>Description</th>
-                                                    <th class="text-center" width="120">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse ($locations as $index => $loc)
+                @can('permission', 'super-admin')
+                    <div class="tab-pane {{ $activeTab == 'sloc' ? 'active' : '' }}" id="slocTab" role="tabpanel">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card shadow-sm border-0">
+                                    <div class="card-header align-items-center d-flex flex-wrap gap-2 border-0 bg-transparent py-3">
+                                        <h4 class="card-title mb-0 flex-grow-1">Daftar Sloc (Storage Locations)</h4>
+                                        <div class="d-flex gap-2">
+                                            <div class="search-box">
+                                                <input type="text" class="form-control form-control-sm" id="searchSloc"
+                                                    placeholder="Cari kode, nama, deskripsi...">
+                                                <i class="ri-search-line search-icon"></i>
+                                            </div>
+                                            <button type="button" class="btn btn-primary btn-sm" id="btnAddSloc">
+                                                <i class="ri-add-line align-bottom me-1"></i> Tambah Sloc
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover align-middle text-nowrap" id="slocsTable">
+                                                <thead class="table-light">
                                                     <tr>
-                                                        <td class="text-center">{{ $index + 1 }}</td>
-                                                        <td><span
-                                                                class="badge bg-soft-info text-info fs-12">{{ $loc->s_loc }}</span>
-                                                        </td>
-                                                        <td>{{ $loc->name }}</td>
-                                                        <td class="text-wrap">{{ $loc->description ?? '-' }}</td>
-                                                        <td class="text-center">
-                                                            <div class="d-flex gap-1 justify-content-center">
-                                                                <button type="button"
-                                                                    class="btn btn-soft-primary btn-sm btn-edit-sloc"
-                                                                    data-id="{{ $loc->id }}"
-                                                                    data-sloc="{{ $loc->s_loc }}"
-                                                                    data-name="{{ $loc->name }}"
-                                                                    data-description="{{ $loc->description }}"
-                                                                    title="Edit">
-                                                                    <i class="ri-edit-line"></i>
-                                                                </button>
-                                                                <form
-                                                                    action="{{ route('vehicle.monitoring.master.sloc.delete', $loc->id) }}"
-                                                                    method="POST" class="d-inline form-delete-sloc">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit"
-                                                                        class="btn btn-soft-danger btn-sm" title="Delete">
-                                                                        <i class="ri-delete-bin-line"></i>
+                                                        <th class="text-center" width="70">No</th>
+                                                        <th width="140">Sloc Code</th>
+                                                        <th>Name</th>
+                                                        <th>Description</th>
+                                                        <th class="text-center" width="160">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @forelse ($locations as $index => $loc)
+                                                        <tr>
+                                                            <td class="text-center">{{ $index + 1 }}</td>
+                                                            <td>
+                                                                <span class="badge bg-soft-info text-info fs-12">{{ $loc->s_loc }}</span>
+                                                            </td>
+                                                            <td class="fw-medium">{{ $loc->name }}</td>
+                                                            <td class="text-wrap text-muted small">{{ $loc->description ?? '-' }}</td>
+                                                            <td class="text-center">
+                                                                <div class="d-flex gap-1 justify-content-center">
+                                                                    <button type="button"
+                                                                        class="btn btn-soft-primary btn-sm btn-edit-sloc"
+                                                                        data-id="{{ $loc->id }}"
+                                                                        data-sloc="{{ $loc->s_loc }}"
+                                                                        data-name="{{ $loc->name }}"
+                                                                        data-description="{{ $loc->description }}"
+                                                                        title="Edit">
+                                                                        <i class="ri-edit-line me-1"></i> Edit
                                                                     </button>
-                                                                </form>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                @empty
-                                                    <tr>
-                                                        <td colspan="5" class="text-center text-muted py-4">Belum ada
-                                                            Sloc terdaftar.</td>
-                                                    </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
+                                                                    <button type="button"
+                                                                        class="btn btn-soft-danger btn-sm btn-delete-sloc"
+                                                                        data-id="{{ $loc->id }}" title="Delete">
+                                                                        <i class="ri-delete-bin-line me-1"></i> Delete
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="5" class="text-center text-muted py-4">Belum ada Sloc terdaftar.</td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="col-md-5">
-                            <div class="card shadow-sm border-0" id="slocFormCard">
-                                <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
-                                    <h4 class="card-title mb-0 flex-grow-1" id="slocFormTitle">Tambah Sloc Baru</h4>
-                                </div>
-                                <div class="card-body">
-                                    <form action="{{ route('vehicle.monitoring.master.sloc.store') }}" method="POST"
-                                        id="slocForm">
-                                        @csrf
-                                        <input type="hidden" name="_method" id="slocFormMethod" value="POST">
-
-                                        <div class="mb-3">
-                                            <label for="s_loc" class="form-label">Sloc Code <span
-                                                    class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" id="s_loc" name="s_loc"
-                                                required placeholder="Contoh: TMB" style="text-transform: uppercase;">
-                                            @error('s_loc')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="sloc_name" class="form-label">Name <span
-                                                    class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" id="sloc_name" name="name"
-                                                required placeholder="Contoh: Timbangan (Scales)">
-                                            @error('name')
-                                                @if ($errors->has('s_loc'))
-                                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                                @endif
-                                            @enderror
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="description" class="form-label">Description</label>
-                                            <textarea class="form-control" id="description" name="description" rows="3"
-                                                placeholder="Keterangan area (opsional)"></textarea>
-                                            @error('description')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="d-flex gap-2 justify-content-end mt-4">
-                                            <button type="button" class="btn btn-light" id="btnCancelSloc"
-                                                style="display: none;">Batal</button>
-                                            <button type="submit" class="btn btn-primary" id="btnSubmitSloc">Simpan
-                                                Sloc</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                     </div>
-                </div>
+                @endcan
 
                 <!-- Vendor Tab Pane -->
                 <div class="tab-pane {{ $activeTab == 'vendor' ? 'active' : '' }}" id="vendorTab" role="tabpanel">
                     <div class="row">
-                        <div class="col-md-7">
+                        <div class="col-12">
                             <div class="card shadow-sm border-0">
-                                <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
+                                <div class="card-header align-items-center d-flex flex-wrap gap-2 border-0 bg-transparent py-3">
                                     <h4 class="card-title mb-0 flex-grow-1">Daftar Vendor</h4>
+                                    <div class="d-flex gap-2">
+                                        <div class="search-box">
+                                            <input type="text" class="form-control form-control-sm" id="searchVendor"
+                                                placeholder="Cari vendor...">
+                                            <i class="ri-search-line search-icon"></i>
+                                        </div>
+                                        <button type="button" class="btn btn-primary btn-sm" id="btnAddVendor">
+                                            <i class="ri-add-line align-bottom me-1"></i> Tambah Vendor
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
@@ -316,7 +249,7 @@
                                                     <th class="text-center" width="70">No</th>
                                                     <th>Vendor Name</th>
                                                     <th>Description</th>
-                                                    <th class="text-center" width="120">Actions</th>
+                                                    <th class="text-center" width="160">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -324,7 +257,7 @@
                                                     <tr>
                                                         <td class="text-center">{{ $index + 1 }}</td>
                                                         <td><strong class="text-primary">{{ $v->name }}</strong></td>
-                                                        <td class="text-wrap">{{ $v->description ?? '-' }}</td>
+                                                        <td class="text-wrap text-muted small">{{ $v->description ?? '-' }}</td>
                                                         <td class="text-center">
                                                             <div class="d-flex gap-1 justify-content-center">
                                                                 <button type="button"
@@ -333,25 +266,19 @@
                                                                     data-name="{{ $v->name }}"
                                                                     data-description="{{ $v->description }}"
                                                                     title="Edit">
-                                                                    <i class="ri-edit-line"></i>
+                                                                    <i class="ri-edit-line me-1"></i> Edit
                                                                 </button>
-                                                                <form
-                                                                    action="{{ route('vehicle.monitoring.master.vendor.delete', $v->id) }}"
-                                                                    method="POST" class="d-inline form-delete-vendor">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit"
-                                                                        class="btn btn-soft-danger btn-sm" title="Delete">
-                                                                        <i class="ri-delete-bin-line"></i>
-                                                                    </button>
-                                                                </form>
+                                                                <button type="button"
+                                                                    class="btn btn-soft-danger btn-sm btn-delete-vendor"
+                                                                    data-id="{{ $v->id }}" title="Delete">
+                                                                    <i class="ri-delete-bin-line me-1"></i> Delete
+                                                                </button>
                                                             </div>
                                                         </td>
                                                     </tr>
                                                 @empty
                                                     <tr>
-                                                        <td colspan="4" class="text-center text-muted py-4">Belum ada
-                                                            vendor terdaftar.</td>
+                                                        <td colspan="4" class="text-center text-muted py-4">Belum ada vendor terdaftar.</td>
                                                     </tr>
                                                 @endforelse
                                             </tbody>
@@ -360,51 +287,115 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div class="col-md-5">
-                            <div class="card shadow-sm border-0" id="vendorFormCard">
-                                <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
-                                    <h4 class="card-title mb-0 flex-grow-1" id="vendorFormTitle">Tambah Vendor Baru</h4>
-                                </div>
-                                <div class="card-body">
-                                    <form action="{{ route('vehicle.monitoring.master.vendor.store') }}" method="POST"
-                                        id="vendorForm">
-                                        @csrf
-                                        <input type="hidden" name="_method" id="vendorFormMethod" value="POST">
-
-                                        <div class="mb-3">
-                                            <label for="vendor_name" class="form-label">Vendor Name <span
-                                                    class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" id="vendor_name" name="vendor_name"
-                                                required placeholder="Contoh: PT. Fast Transport">
-                                            @error('vendor_name')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="vendor_description" class="form-label">Description</label>
-                                            <textarea class="form-control" id="vendor_description" name="description" rows="3"
-                                                placeholder="Keterangan vendor (opsional)"></textarea>
-                                            @error('description')
-                                                @if($errors->has('vendor_name'))
-                                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                                @endif
-                                            @enderror
-                                        </div>
-
-                                        <div class="d-flex gap-2 justify-content-end mt-4">
-                                            <button type="button" class="btn btn-light" id="btnCancelVendor"
-                                                style="display: none;">Batal</button>
-                                            <button type="submit" class="btn btn-primary" id="btnSubmitVendor">Simpan
-                                                Vendor</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Master Item -->
+    <div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light p-3">
+                    <h5 class="modal-title" id="itemModalTitle">Tambah Item Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('vehicle.monitoring.master.items.store') }}" method="POST" id="itemForm">
+                    @csrf
+                    <input type="hidden" name="_method" id="formMethod" value="POST">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Item Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                placeholder="Contoh: Gula Pasir">
+                        </div>
+                        <div class="mb-3">
+                            <label for="location_id" class="form-label">Area (Sloc)</label>
+                            <select class="form-select" id="location_id" name="location_id">
+                                <option value="" selected>Semua Area / General</option>
+                                @foreach ($locations as $loc)
+                                    <option value="{{ $loc->id }}">{{ $loc->s_loc }} - {{ $loc->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 bg-light p-3">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmit">Simpan Item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Master Sloc -->
+    @can('permission', 'super-admin')
+        <div class="modal fade" id="slocModal" tabindex="-1" aria-labelledby="slocModalTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-light p-3">
+                        <h5 class="modal-title" id="slocModalTitle">Tambah Sloc Baru</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="{{ route('vehicle.monitoring.master.sloc.store') }}" method="POST" id="slocForm">
+                        @csrf
+                        <input type="hidden" name="_method" id="slocFormMethod" value="POST">
+                        <div class="modal-body p-4">
+                            <div class="mb-3">
+                                <label for="s_loc" class="form-label">Sloc Code <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="s_loc" name="s_loc" required
+                                    placeholder="Contoh: TMB" style="text-transform: uppercase;">
+                            </div>
+                            <div class="mb-3">
+                                <label for="sloc_name" class="form-label">Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="sloc_name" name="name" required
+                                    placeholder="Contoh: Timbangan (Scales)">
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description" rows="3"
+                                    placeholder="Keterangan area (opsional)"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 bg-light p-3">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary" id="btnSubmitSloc">Simpan Sloc</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endcan
+
+    <!-- Modal Master Vendor -->
+    <div class="modal fade" id="vendorModal" tabindex="-1" aria-labelledby="vendorModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light p-3">
+                    <h5 class="modal-title" id="vendorModalTitle">Tambah Vendor Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('vehicle.monitoring.master.vendor.store') }}" method="POST" id="vendorForm">
+                    @csrf
+                    <input type="hidden" name="_method" id="vendorFormMethod" value="POST">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label for="vendor_name" class="form-label">Vendor Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="vendor_name" name="vendor_name" required
+                                placeholder="Contoh: PT. Fast Transport">
+                        </div>
+                        <div class="mb-3">
+                            <label for="vendor_description" class="form-label">Description</label>
+                            <textarea class="form-control" id="vendor_description" name="description" rows="3"
+                                placeholder="Keterangan vendor (opsional)"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 bg-light p-3">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmitVendor">Simpan Vendor</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -413,6 +404,12 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            // Helper function to safely escape HTML
+            function escapeHtml(text) {
+                if (text === null || text === undefined) return '';
+                return $('<div>').text(text).html();
+            }
+
             // Remember active tab in localStorage
             $('#masterTabs a').on('shown.bs.tab', function(e) {
                 localStorage.setItem('activeMasterTab', $(e.target).attr('href'));
@@ -436,33 +433,46 @@
             let allVendors = [];
 
             // Helper to render Items Table
-            function renderItemsTable() {
+            function renderItemsTable(query = '') {
+                const q = query.trim().toLowerCase();
+                const filtered = allItems.filter(item => {
+                    if (!q) return true;
+                    const nameMatch = (item.name || '').toLowerCase().includes(q);
+                    const locMatch = item.location && (
+                        (item.location.s_loc || '').toLowerCase().includes(q) ||
+                        (item.location.name || '').toLowerCase().includes(q)
+                    );
+                    return nameMatch || locMatch;
+                });
+
                 let html = '';
-                if (allItems.length === 0) {
+                if (filtered.length === 0) {
                     html = `<tr>
-                        <td colspan="4" class="text-center text-muted py-4">Belum ada item terdaftar.</td>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            ${q ? 'Tidak ada data item yang sesuai dengan pencarian.' : 'Belum ada item terdaftar.'}
+                        </td>
                     </tr>`;
                 } else {
-                    allItems.forEach(function(item, index) {
-                        const areaText = item.location ? 
-                            `<span class="badge bg-soft-info text-info">${item.location.s_loc} - ${item.location.name}</span>` : 
+                    filtered.forEach(function(item, index) {
+                        const areaText = item.location ?
+                            `<span class="badge bg-soft-info text-info">${escapeHtml(item.location.s_loc)} - ${escapeHtml(item.location.name)}</span>` :
                             `<span class="text-muted">-</span>`;
 
                         html += `<tr>
                             <td class="text-center">${index + 1}</td>
-                            <td>${item.name}</td>
+                            <td class="fw-medium">${escapeHtml(item.name)}</td>
                             <td>${areaText}</td>
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-center">
                                     <button type="button" class="btn btn-soft-primary btn-sm btn-edit"
                                         data-id="${item.id}"
-                                        data-name="${item.name}"
+                                        data-name="${escapeHtml(item.name)}"
                                         data-location-id="${item.location_id || ''}" title="Edit">
-                                        <i class="ri-edit-line"></i>
+                                        <i class="ri-edit-line me-1"></i> Edit
                                     </button>
                                     <button type="button" class="btn btn-soft-danger btn-sm btn-delete-item"
                                         data-id="${item.id}" title="Delete">
-                                        <i class="ri-delete-bin-line"></i>
+                                        <i class="ri-delete-bin-line me-1"></i> Delete
                                     </button>
                                 </div>
                             </td>
@@ -473,32 +483,43 @@
             }
 
             // Helper to render Slocs Table
-            function renderSlocsTable() {
+            function renderSlocsTable(query = '') {
+                const q = query.trim().toLowerCase();
+                const filtered = allLocations.filter(loc => {
+                    if (!q) return true;
+                    const codeMatch = (loc.s_loc || '').toLowerCase().includes(q);
+                    const nameMatch = (loc.name || '').toLowerCase().includes(q);
+                    const descMatch = (loc.description || '').toLowerCase().includes(q);
+                    return codeMatch || nameMatch || descMatch;
+                });
+
                 let html = '';
-                if (allLocations.length === 0) {
+                if (filtered.length === 0) {
                     html = `<tr>
-                        <td colspan="5" class="text-center text-muted py-4">Belum ada Sloc terdaftar.</td>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            ${q ? 'Tidak ada data Sloc yang sesuai dengan pencarian.' : 'Belum ada Sloc terdaftar.'}
+                        </td>
                     </tr>`;
                 } else {
-                    allLocations.forEach(function(loc, index) {
+                    filtered.forEach(function(loc, index) {
                         html += `<tr>
                             <td class="text-center">${index + 1}</td>
-                            <td><span class="badge bg-soft-info text-info fs-12">${loc.s_loc}</span></td>
-                            <td>${loc.name}</td>
-                            <td class="text-wrap">${loc.description || '-'}</td>
+                            <td><span class="badge bg-soft-info text-info fs-12">${escapeHtml(loc.s_loc)}</span></td>
+                            <td class="fw-medium">${escapeHtml(loc.name)}</td>
+                            <td class="text-wrap text-muted small">${escapeHtml(loc.description || '-')}</td>
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-center">
                                     <button type="button" class="btn btn-soft-primary btn-sm btn-edit-sloc"
                                         data-id="${loc.id}"
-                                        data-sloc="${loc.s_loc}"
-                                        data-name="${loc.name}"
-                                        data-description="${loc.description || ''}"
+                                        data-sloc="${escapeHtml(loc.s_loc)}"
+                                        data-name="${escapeHtml(loc.name)}"
+                                        data-description="${escapeHtml(loc.description || '')}"
                                         title="Edit">
-                                        <i class="ri-edit-line"></i>
+                                        <i class="ri-edit-line me-1"></i> Edit
                                     </button>
                                     <button type="button" class="btn btn-soft-danger btn-sm btn-delete-sloc"
                                         data-id="${loc.id}" title="Delete">
-                                        <i class="ri-delete-bin-line"></i>
+                                        <i class="ri-delete-bin-line me-1"></i> Delete
                                     </button>
                                 </div>
                             </td>
@@ -509,30 +530,40 @@
             }
 
             // Helper to render Vendors Table
-            function renderVendorsTable() {
+            function renderVendorsTable(query = '') {
+                const q = query.trim().toLowerCase();
+                const filtered = allVendors.filter(v => {
+                    if (!q) return true;
+                    const nameMatch = (v.name || '').toLowerCase().includes(q);
+                    const descMatch = (v.description || '').toLowerCase().includes(q);
+                    return nameMatch || descMatch;
+                });
+
                 let html = '';
-                if (allVendors.length === 0) {
+                if (filtered.length === 0) {
                     html = `<tr>
-                        <td colspan="4" class="text-center text-muted py-4">Belum ada vendor terdaftar.</td>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            ${q ? 'Tidak ada data vendor yang sesuai dengan pencarian.' : 'Belum ada vendor terdaftar.'}
+                        </td>
                     </tr>`;
                 } else {
-                    allVendors.forEach(function(v, index) {
+                    filtered.forEach(function(v, index) {
                         html += `<tr>
                             <td class="text-center">${index + 1}</td>
-                            <td><strong class="text-primary">${v.name}</strong></td>
-                            <td class="text-wrap">${v.description || '-'}</td>
+                            <td><strong class="text-primary">${escapeHtml(v.name)}</strong></td>
+                            <td class="text-wrap text-muted small">${escapeHtml(v.description || '-')}</td>
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-center">
                                     <button type="button" class="btn btn-soft-primary btn-sm btn-edit-vendor"
                                         data-id="${v.id}"
-                                        data-name="${v.name}"
-                                        data-description="${v.description || ''}"
+                                        data-name="${escapeHtml(v.name)}"
+                                        data-description="${escapeHtml(v.description || '')}"
                                         title="Edit">
-                                        <i class="ri-edit-line"></i>
+                                        <i class="ri-edit-line me-1"></i> Edit
                                     </button>
                                     <button type="button" class="btn btn-soft-danger btn-sm btn-delete-vendor"
                                         data-id="${v.id}" title="Delete">
-                                        <i class="ri-delete-bin-line"></i>
+                                        <i class="ri-delete-bin-line me-1"></i> Delete
                                     </button>
                                 </div>
                             </td>
@@ -548,12 +579,20 @@
                     url: "{{ route('vehicle.monitoring.master.items.data') }}",
                     type: "GET",
                     success: function(response) {
-                        allItems = response.items;
-                        allLocations = response.locations;
-                        allVendors = response.vendors;
-                        renderItemsTable();
-                        renderSlocsTable();
-                        renderVendorsTable();
+                        allItems = response.items || [];
+                        allLocations = response.locations || [];
+                        allVendors = response.vendors || [];
+
+                        // Refresh item select options in modal
+                        let locationOptions = '<option value="" selected>Semua Area / General</option>';
+                        allLocations.forEach(function(loc) {
+                            locationOptions += `<option value="${loc.id}">${escapeHtml(loc.s_loc)} - ${escapeHtml(loc.name)}</option>`;
+                        });
+                        $('#location_id').html(locationOptions);
+
+                        renderItemsTable($('#searchItem').val() || '');
+                        renderSlocsTable($('#searchSloc').val() || '');
+                        renderVendorsTable($('#searchVendor').val() || '');
                     },
                     error: function(xhr) {
                         console.error("Gagal memuat data master:", xhr);
@@ -564,41 +603,51 @@
             // Load initial master data via AJAX
             loadMasterData();
 
+            // Realtime search inputs
+            $('#searchItem').on('input', function() {
+                renderItemsTable($(this).val());
+            });
+
+            $('#searchSloc').on('input', function() {
+                renderSlocsTable($(this).val());
+            });
+
+            $('#searchVendor').on('input', function() {
+                renderVendorsTable($(this).val());
+            });
+
+            /* ========================================================
+               ITEM MODAL & ACTIONS
+               ======================================================== */
+            // Add Item button handler
+            $('#btnAddItem').on('click', function() {
+                $('#itemModalTitle').text('Tambah Item Baru');
+                $('#itemForm')[0].reset();
+                $('#name').val('');
+                $('#location_id').val('');
+
+                $('#itemForm').attr('action', "{{ route('vehicle.monitoring.master.items.store') }}");
+                $('#formMethod').val('POST');
+                $('#btnSubmit').text('Simpan Item').removeClass('btn-success').addClass('btn-primary');
+
+                $('#itemModal').modal('show');
+            });
+
             // Edit Item button handler
             $(document).on('click', '.btn-edit', function() {
                 const id = $(this).data('id');
                 const name = $(this).data('name');
                 const locationId = $(this).data('location-id');
 
-                $('#formTitle').text('Edit Item');
+                $('#itemModalTitle').text('Edit Item');
                 $('#name').val(name);
                 $('#location_id').val(locationId || '');
 
-                // Change form action to update
                 $('#itemForm').attr('action', `{{ url('vehicle-monitoring/master/items/update') }}/${id}`);
                 $('#formMethod').val('PUT');
-
-                $('#btnCancel').show();
                 $('#btnSubmit').text('Perbarui Item').removeClass('btn-primary').addClass('btn-success');
 
-                // Scroll to form card on mobile
-                $('html, body').animate({
-                    scrollTop: $("#formCard").offset().top - 100
-                }, 500);
-            });
-
-            // Cancel Item button handler
-            $('#btnCancel').on('click', function() {
-                $('#formTitle').text('Tambah Item Baru');
-                $('#name').val('');
-                $('#location_id').val('');
-
-                // Restore form action to store
-                $('#itemForm').attr('action', `{{ route('vehicle.monitoring.master.items.store') }}`);
-                $('#formMethod').val('POST');
-
-                $(this).hide();
-                $('#btnSubmit').text('Simpan Item').removeClass('btn-success').addClass('btn-primary');
+                $('#itemModal').modal('show');
             });
 
             // Submit Item Form via AJAX
@@ -607,20 +656,24 @@
                 const form = $(this);
                 const url = form.attr('action');
                 const method = $('#formMethod').val();
-                
-                $('#btnSubmit').prop('disabled', true).text('Saving...');
+
+                $('#btnSubmit').prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...'
+                );
 
                 $.ajax({
                     url: url,
                     type: 'POST',
                     data: form.serialize(),
                     success: function(response) {
+                        $('#itemModal').modal('hide');
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
-                            text: response.message
+                            text: response.message,
+                            timer: 1500,
+                            showConfirmButton: false
                         });
-                        $('#btnCancel').click();
                         loadMasterData();
                     },
                     error: function(xhr) {
@@ -631,7 +684,8 @@
                         });
                     },
                     complete: function() {
-                        $('#btnSubmit').prop('disabled', false).text(method === 'PUT' ? 'Perbarui Item' : 'Simpan Item');
+                        $('#btnSubmit').prop('disabled', false).text(method === 'PUT' ?
+                            'Perbarui Item' : 'Simpan Item');
                     }
                 });
             });
@@ -663,7 +717,9 @@
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Berhasil',
-                                    text: response.message
+                                    text: response.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
                                 });
                                 loadMasterData();
                             },
@@ -679,6 +735,24 @@
                 });
             });
 
+            /* ========================================================
+               SLOC MODAL & ACTIONS
+               ======================================================== */
+            // Add Sloc button handler
+            $('#btnAddSloc').on('click', function() {
+                $('#slocModalTitle').text('Tambah Sloc Baru');
+                $('#slocForm')[0].reset();
+                $('#s_loc').val('');
+                $('#sloc_name').val('');
+                $('#description').val('');
+
+                $('#slocForm').attr('action', "{{ route('vehicle.monitoring.master.sloc.store') }}");
+                $('#slocFormMethod').val('POST');
+                $('#btnSubmitSloc').text('Simpan Sloc').removeClass('btn-success').addClass('btn-primary');
+
+                $('#slocModal').modal('show');
+            });
+
             // Edit Sloc button handler
             $(document).on('click', '.btn-edit-sloc', function() {
                 const id = $(this).data('id');
@@ -686,37 +760,16 @@
                 const name = $(this).data('name');
                 const description = $(this).data('description');
 
-                $('#slocFormTitle').text('Edit Sloc');
+                $('#slocModalTitle').text('Edit Sloc');
                 $('#s_loc').val(sloc);
                 $('#sloc_name').val(name);
                 $('#description').val(description);
 
-                // Change form action to update
                 $('#slocForm').attr('action', `{{ url('vehicle-monitoring/master/sloc/update') }}/${id}`);
                 $('#slocFormMethod').val('PUT');
-
-                $('#btnCancelSloc').show();
                 $('#btnSubmitSloc').text('Perbarui Sloc').removeClass('btn-primary').addClass('btn-success');
 
-                // Scroll to form card on mobile
-                $('html, body').animate({
-                    scrollTop: $("#slocFormCard").offset().top - 100
-                }, 500);
-            });
-
-            // Cancel Sloc button handler
-            $('#btnCancelSloc').on('click', function() {
-                $('#slocFormTitle').text('Tambah Sloc Baru');
-                $('#s_loc').val('');
-                $('#sloc_name').val('');
-                $('#description').val('');
-
-                // Restore form action to store
-                $('#slocForm').attr('action', `{{ route('vehicle.monitoring.master.sloc.store') }}`);
-                $('#slocFormMethod').val('POST');
-
-                $(this).hide();
-                $('#btnSubmitSloc').text('Simpan Sloc').removeClass('btn-success').addClass('btn-primary');
+                $('#slocModal').modal('show');
             });
 
             // Submit Sloc Form via AJAX
@@ -726,19 +779,23 @@
                 const url = form.attr('action');
                 const method = $('#slocFormMethod').val();
 
-                $('#btnSubmitSloc').prop('disabled', true).text('Saving...');
+                $('#btnSubmitSloc').prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...'
+                );
 
                 $.ajax({
                     url: url,
                     type: 'POST',
                     data: form.serialize(),
                     success: function(response) {
+                        $('#slocModal').modal('hide');
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
-                            text: response.message
+                            text: response.message,
+                            timer: 1500,
+                            showConfirmButton: false
                         });
-                        $('#btnCancelSloc').click();
                         loadMasterData();
                     },
                     error: function(xhr) {
@@ -749,7 +806,8 @@
                         });
                     },
                     complete: function() {
-                        $('#btnSubmitSloc').prop('disabled', false).text(method === 'PUT' ? 'Perbarui Sloc' : 'Simpan Sloc');
+                        $('#btnSubmitSloc').prop('disabled', false).text(method === 'PUT' ?
+                            'Perbarui Sloc' : 'Simpan Sloc');
                     }
                 });
             });
@@ -781,7 +839,9 @@
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Berhasil',
-                                    text: response.message
+                                    text: response.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
                                 });
                                 loadMasterData();
                             },
@@ -797,41 +857,38 @@
                 });
             });
 
+            /* ========================================================
+               VENDOR MODAL & ACTIONS
+               ======================================================== */
+            // Add Vendor button handler
+            $('#btnAddVendor').on('click', function() {
+                $('#vendorModalTitle').text('Tambah Vendor Baru');
+                $('#vendorForm')[0].reset();
+                $('#vendor_name').val('');
+                $('#vendor_description').val('');
+
+                $('#vendorForm').attr('action', "{{ route('vehicle.monitoring.master.vendor.store') }}");
+                $('#vendorFormMethod').val('POST');
+                $('#btnSubmitVendor').text('Simpan Vendor').removeClass('btn-success').addClass('btn-primary');
+
+                $('#vendorModal').modal('show');
+            });
+
             // Edit Vendor button handler
             $(document).on('click', '.btn-edit-vendor', function() {
                 const id = $(this).data('id');
                 const name = $(this).data('name');
                 const description = $(this).data('description');
 
-                $('#vendorFormTitle').text('Edit Vendor');
+                $('#vendorModalTitle').text('Edit Vendor');
                 $('#vendor_name').val(name);
                 $('#vendor_description').val(description);
 
-                // Change form action to update
                 $('#vendorForm').attr('action', `{{ url('vehicle-monitoring/master/vendor/update') }}/${id}`);
                 $('#vendorFormMethod').val('PUT');
-
-                $('#btnCancelVendor').show();
                 $('#btnSubmitVendor').text('Perbarui Vendor').removeClass('btn-primary').addClass('btn-success');
 
-                // Scroll to form card on mobile
-                $('html, body').animate({
-                    scrollTop: $("#vendorFormCard").offset().top - 100
-                }, 500);
-            });
-
-            // Cancel Vendor button handler
-            $('#btnCancelVendor').on('click', function() {
-                $('#vendorFormTitle').text('Tambah Vendor Baru');
-                $('#vendor_name').val('');
-                $('#vendor_description').val('');
-
-                // Restore form action to store
-                $('#vendorForm').attr('action', `{{ route('vehicle.monitoring.master.vendor.store') }}`);
-                $('#vendorFormMethod').val('POST');
-
-                $(this).hide();
-                $('#btnSubmitVendor').text('Simpan Vendor').removeClass('btn-success').addClass('btn-primary');
+                $('#vendorModal').modal('show');
             });
 
             // Submit Vendor Form via AJAX
@@ -841,19 +898,23 @@
                 const url = form.attr('action');
                 const method = $('#vendorFormMethod').val();
 
-                $('#btnSubmitVendor').prop('disabled', true).text('Saving...');
+                $('#btnSubmitVendor').prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...'
+                );
 
                 $.ajax({
                     url: url,
                     type: 'POST',
                     data: form.serialize(),
                     success: function(response) {
+                        $('#vendorModal').modal('hide');
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
-                            text: response.message
+                            text: response.message,
+                            timer: 1500,
+                            showConfirmButton: false
                         });
-                        $('#btnCancelVendor').click();
                         loadMasterData();
                     },
                     error: function(xhr) {
@@ -864,7 +925,8 @@
                         });
                     },
                     complete: function() {
-                        $('#btnSubmitVendor').prop('disabled', false).text(method === 'PUT' ? 'Perbarui Vendor' : 'Simpan Vendor');
+                        $('#btnSubmitVendor').prop('disabled', false).text(method === 'PUT' ?
+                            'Perbarui Vendor' : 'Simpan Vendor');
                     }
                 });
             });
@@ -896,7 +958,9 @@
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Berhasil',
-                                    text: response.message
+                                    text: response.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
                                 });
                                 loadMasterData();
                             },
@@ -911,5 +975,6 @@
                     }
                 });
             });
-        });</script>
+        });
+    </script>
 @endsection
