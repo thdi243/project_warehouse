@@ -47,7 +47,7 @@
                                             <th>Qty SPB</th>
                                             <th>Status</th>
                                             <th>Durasi Aktivitas</th>
-                                            <th class="text-center">Aksi</th>
+                                            <th class="text-center" style="width: 240px;">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -149,12 +149,21 @@
                         if (!tx.no_antrian) {
                             actionBtn = `<span class="text-muted small">-</span>`;
                         } else if (!isProcess) {
-                            actionBtn = `<button type="button" class="btn btn-sm btn-primary btn-start-loading" 
-                                data-id="${tx.id}" 
-                                data-nopol="${tx.no_pol}"
-                                data-action="Mulai ${actionLabel}">
-                                <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
-                            </button>`;
+                            actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                <button type="button" class="btn btn-sm btn-primary btn-start-loading" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-action="Mulai ${actionLabel}">
+                                    <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
+                                </button>
+                                <button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-antrian="${tx.no_antrian}"
+                                    title="Batalkan Antrian">
+                                    <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
+                                </button>
+                            </div>`;
                         } else {
                             actionBtn = `<button type="button" class="btn btn-sm btn-success btn-complete-loading" 
                                 data-id="${tx.id}" 
@@ -386,6 +395,41 @@
                             },
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal mengambil nomor antrian.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Batal Antrian Click Handler
+            $(document).on('click', '.btn-cancel-queue', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+                const antrian = $(this).data('antrian');
+
+                Swal.fire({
+                    title: 'Batalkan Antrian?',
+                    text: `Batalkan nomor antrian ${antrian} untuk truk ${nopol}? Truk akan kembali ke status Menunggu Antrian.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Batalkan!',
+                    cancelButtonText: 'Kembali'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/cancel-queue') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                Swal.fire('Berhasil!', response.message, 'success');
+                                loadWfgData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal membatalkan nomor antrian.', 'error');
                             }
                         });
                     }

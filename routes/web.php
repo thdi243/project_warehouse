@@ -852,6 +852,7 @@ Route::middleware('auth')->group(function () {
         });
 
         Route::post('/update-queue/{id}', [VehicleTrackingController::class, 'updateQueueNumber'])->name('update_queue');
+        Route::post('/cancel-queue/{id}', [VehicleTrackingController::class, 'cancelQueueNumber'])->name('cancel_queue');
 
         // QC Area
         Route::middleware(['permission:vehicle-monitoring-qc'])->group(function () {
@@ -860,6 +861,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/qc/start-sampling/{id}', [VehicleTrackingController::class, 'qcStartSampling'])->name('qc.start_sampling');
             Route::post('/qc/update-qc/{id}', [VehicleTrackingController::class, 'qcUpdateQC'])->name('qc.update_qc');
             Route::post('/qc/update-queue/{id}', [VehicleTrackingController::class, 'qcUpdateQueueNumber'])->name('qc.update_queue');
+            Route::post('/qc/cancel-queue/{id}', [VehicleTrackingController::class, 'qcCancelQueueNumber'])->name('qc.cancel_queue');
         });
 
         // WPM (Unloading Area)

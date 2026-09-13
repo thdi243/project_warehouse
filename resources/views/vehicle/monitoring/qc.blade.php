@@ -47,7 +47,7 @@
                                             <th>No. SPB / Qty</th>
                                             <th>Status</th>
                                             <th>Durasi Aktivitas</th>
-                                            <th class="text-center">Aksi</th>
+                                            <th class="text-center" style="width: 240px;">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -203,11 +203,20 @@
                         if (!hasQueue) {
                             actionBtn = `<span class="text-muted small">-</span>`;
                         } else if (!isSampling) {
-                            actionBtn = `<button type="button" class="btn btn-sm btn-primary btn-start-sampling" 
-                                data-id="${tx.id}" 
-                                data-nopol="${tx.no_pol}">
-                                <i class="ri-play-circle-line me-1 align-middle"></i> Mulai Sampling
-                            </button>`;
+                            actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                <button type="button" class="btn btn-sm btn-primary btn-start-sampling" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}">
+                                    <i class="ri-play-circle-line me-1 align-middle"></i> Mulai Sampling
+                                </button>
+                                <button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-antrian="${tx.no_antrian}"
+                                    title="Batalkan Antrian">
+                                    <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
+                                </button>
+                            </div>`;
                         } else {
                             actionBtn = `<button type="button" class="btn btn-sm btn-success btn-qc-update" 
                                 data-id="${tx.id}" 
@@ -357,6 +366,41 @@
                     if (result.isConfirmed) {
                         $.ajax({
                             url: `{{ url('vehicle-monitoring/qc/update-queue') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(response) {
+                                Swal.fire('Berhasil!', response.message, 'success');
+                                loadQcData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON.message : 'Terjadi kesalahan sistem.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // 1b. Batal Antrian Click Handler
+            $(document).on('click', '.btn-cancel-queue', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+                const antrian = $(this).data('antrian');
+
+                Swal.fire({
+                    title: 'Batalkan Antrian QC?',
+                    text: `Batalkan nomor antrian #${antrian} untuk truk ${nopol}? Truk akan kembali ke status Menunggu Antrian.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Batalkan!',
+                    cancelButtonText: 'Kembali'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/qc/cancel-queue') }}/${id}`,
                             type: 'POST',
                             data: {
                                 _token: "{{ csrf_token() }}"

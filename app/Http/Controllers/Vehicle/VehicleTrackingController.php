@@ -1209,6 +1209,76 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Cancel Queue Number for QC Area.
+     */
+    public function qcCancelQueueNumber(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction = VehicleTransaction::findOrFail($id);
+
+            // Validasi: jika proses sampling sudah dimulai, antrian tidak dapat dibatalkan
+            if ($transaction->qc_status === 'on_check' || !empty($transaction->start_sampling_time)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Antrian tidak dapat dibatalkan karena proses sampling QC sudah berjalan.'
+                ], 422);
+            }
+
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+            $oldAntrian = $transaction->no_antrian;
+
+            // Reset antrian dan kembalikan qc_status ke waiting_dokumen
+            $transaction->update([
+                'no_antrian' => null,
+                'queue_taken_time' => null,
+                'queue_taken_by' => null,
+                'qc_status' => 'waiting_dokumen',
+                'updated_by' => Auth::id()
+            ]);
+
+            // Update status log catatan
+            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                ->where('location_id', $transaction->current_location_id)
+                ->whereNull('departure_time')
+                ->latest()
+                ->first();
+
+            if ($activeTrack) {
+                $activeTrack->update([
+                    'status_notes' => 'Nomor antrian QC (#' . $oldAntrian . ') dibatalkan. Menunggu antrian.'
+                ]);
+            }
+
+            $targetLoc = $transaction->targetLocation;
+            $sLoc = $targetLoc ? $targetLoc->s_loc : 'QC';
+
+            event(new VehicleStatusUpdated([
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'current_location' => $sLoc,
+                'status' => $transaction->status,
+                'message' => "Nomor antrian QC untuk Truk {$noPol} telah dibatalkan.",
+                'time' => Carbon::now()->format('H:i:s')
+            ]));
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Nomor antrian QC untuk Truk {$noPol} berhasil dibatalkan."
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membatalkan nomor antrian QC: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Start QC Sampling (Mulai Sampling).
      */
     public function qcStartSampling(Request $request, $id)
@@ -2080,6 +2150,90 @@ class VehicleTrackingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memperbarui nomor antrian: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Cancel queue number for a transaction (generic: SMU, WFG, etc.).
+     */
+    public function cancelQueueNumber(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction = VehicleTransaction::findOrFail($id);
+
+            // Jika transaksi berada di area QC
+            if ($transaction->qc_status === 'waiting_sampling' || in_array($transaction->status, ['antri_sampling', 'sampling'])) {
+                if ($transaction->qc_status === 'on_check' || !empty($transaction->start_sampling_time)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Antrian tidak dapat dibatalkan karena proses sampling QC sudah berjalan.'
+                    ], 422);
+                }
+                $qcResetStatus = 'waiting_dokumen';
+            } else {
+                // Untuk SMU, WFG, dll.
+                if ($transaction->unloading_status === 'process' || !empty($transaction->start_loading_time)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Antrian tidak dapat dibatalkan karena proses bongkar/muat sudah berjalan.'
+                    ], 422);
+                }
+                $qcResetStatus = $transaction->qc_status;
+            }
+
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+            $oldAntrian = $transaction->no_antrian;
+
+            $updateData = [
+                'no_antrian' => null,
+                'queue_taken_time' => null,
+                'queue_taken_by' => null,
+                'updated_by' => Auth::id()
+            ];
+            if (isset($qcResetStatus)) {
+                $updateData['qc_status'] = $qcResetStatus;
+            }
+
+            $transaction->update($updateData);
+
+            $currentLoc = $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'N/A';
+
+            // Update status log catatan
+            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                ->where('location_id', $transaction->current_location_id)
+                ->whereNull('departure_time')
+                ->latest()
+                ->first();
+
+            if ($activeTrack) {
+                $activeTrack->update([
+                    'status_notes' => 'Nomor antrian (' . $oldAntrian . ') dibatalkan. Menunggu antrian.'
+                ]);
+            }
+
+            event(new VehicleStatusUpdated([
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'current_location' => $currentLoc,
+                'status' => $transaction->status,
+                'message' => "Nomor antrian Truk {$noPol} telah dibatalkan.",
+                'time' => Carbon::now()->format('H:i:s')
+            ]));
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Nomor antrian Truk {$noPol} berhasil dibatalkan."
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membatalkan nomor antrian: ' . $e->getMessage()
             ], 500);
         }
     }
