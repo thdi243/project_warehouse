@@ -42,6 +42,10 @@ class VehicleTransaction extends Model
         'finish_loading_by',
         'timbangan_out_time',
         'timbangan_out_by',
+        'follow_up_time',
+        'follow_up_target',
+        'follow_up_notes',
+        'follow_up_by',
         'check_in_time',
         'check_out_time',
         'check_out_by',
@@ -59,6 +63,7 @@ class VehicleTransaction extends Model
         'start_loading_time' => 'datetime',
         'finish_loading_time' => 'datetime',
         'timbangan_out_time' => 'datetime',
+        'follow_up_time' => 'datetime',
         'qty_spb' => 'decimal:2',
     ];
 

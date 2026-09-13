@@ -246,14 +246,83 @@
                 updateTimers();
             }
 
+            const handledFollowUps = new Set();
+
+            function playFollowUpNotificationSound() {
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.5);
+                } catch(e) {}
+            }
+
+            function triggerFollowUpAlert(data) {
+                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date.now());
+                if (handledFollowUps.has(alertKey)) return;
+                handledFollowUps.add(alertKey);
+
+                playFollowUpNotificationSound();
+
+                Swal.fire({
+                    title: '<span class="text-danger fw-bold"><i class="ri-alarm-warning-line me-1"></i> FOLLOW UP TIMBANGAN!</span>',
+                    html: `
+                        <div class="text-start">
+                            <div class="alert alert-danger border-0 mb-3 py-2 px-3">
+                                <strong>Peringatan dari Timbangan:</strong> Kendaraan berikut membutuhkan konfirmasi / tindak lanjut segera di area WFG!
+                            </div>
+                            <div class="card bg-light border-0 mb-2 p-3">
+                                <p class="mb-1"><strong>No. Polisi:</strong> <span class="badge bg-primary fs-13">${data.no_pol}</span></p>
+                                ${data.no_spb ? `<p class="mb-1"><strong>No. SPB:</strong> ${data.no_spb}</p>` : ''}
+                                ${data.notes ? `<p class="mb-1 text-danger"><strong>Pesan:</strong> "${data.notes}"</p>` : ''}
+                                <p class="mb-0 text-muted small"><i class="ri-time-line me-1"></i>Waktu: ${data.time || data.follow_up_time || '-'}</p>
+                            </div>
+                            <p class="text-muted small mb-0">Truk dilaporkan sudah berada di timbangan. Mohon segera selesaikan konfirmasi di area WFG.</p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    confirmButtonText: '<i class="ri-check-line me-1"></i> Saya Mengerti, Proses Sekarang',
+                    confirmButtonColor: '#3085d6',
+                    allowOutsideClick: false
+                });
+            }
+
             // AJAX Data Loader
             function loadWfgData() {
                 $.ajax({
                     url: "{{ route('vehicle.monitoring.wfg.data') }}",
                     type: 'GET',
                     success: function(response) {
-                        allWfgData = response.queue;
+                        allWfgData = response.queue || [];
                         renderWfgTable();
+
+                        // Check for recent follow up via polling
+                        if (allWfgData.length > 0) {
+                            const nowSec = Math.floor(Date.now() / 1000);
+                            allWfgData.forEach(tx => {
+                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp < 600)) {
+                                    if (tx.follow_up_target === 'WFG' || tx.follow_up_target === 'ALL') {
+                                        triggerFollowUpAlert({
+                                            id: tx.id,
+                                            transaction_id: tx.id,
+                                            no_pol: tx.no_pol,
+                                            no_spb: tx.no_spb,
+                                            notes: tx.follow_up_notes,
+                                            follow_up_time: tx.follow_up_time,
+                                            time: tx.follow_up_time
+                                        });
+                                    }
+                                }
+                            });
+                        }
                     },
                     error: function(xhr) {
                         console.error('Gagal mengambil data WFG:', xhr);
@@ -270,8 +339,9 @@
             // Initial load
             loadWfgData();
 
-            // Run timers every second
+            // Run timers every second & polling every 15s
             setInterval(updateTimers, 1000);
+            setInterval(loadWfgData, 15000);
 
             // Real-time Event Listener with Laravel Echo
             function setupRealtimeEcho() {
@@ -280,8 +350,12 @@
                     window.Echo.channel('vehicle-tracking')
                         .listen('.vehicle.updated', (payload) => {
                             console.log('Echo event received in WFG:', payload);
-                            if (window.toastr) {
-                                toastr.info(payload.message, 'Update Lokasi Truk');
+                            if (payload.type === 'follow_up' && (payload.target_area === 'WFG' || payload.target_area === 'ALL' || payload.target_sloc === 'WFG')) {
+                                triggerFollowUpAlert(payload);
+                            } else {
+                                if (window.toastr) {
+                                    toastr.info(payload.message, 'Update Lokasi Truk');
+                                }
                             }
                             loadWfgData();
                         });

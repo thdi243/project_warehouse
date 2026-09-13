@@ -743,6 +743,21 @@
                             <i class="ri-logout-box-r-line me-1 align-middle"></i>Check-Out
                         </button>` : '';
 
+                    const followUpButton = (tx.status.toLowerCase() !== 'completed' && tx.status.toLowerCase() !== 'timbangan_out') ?
+                        `<button type="button" class="btn btn-soft-info btn-sm btn-followup-ajax" 
+                            data-id="${tx.id}" 
+                            data-nopol="${tx.no_pol}" 
+                            data-target-sloc="${tx.target_sloc || ''}" 
+                            data-target-name="${tx.target_name || ''}"
+                            data-status="${tx.status}" 
+                            data-qc-status="${tx.qc_status || ''}" 
+                            title="Follow Up ke Area">
+                            <i class="ri-notification-3-line me-1 align-middle"></i>Follow Up
+                        </button>` : '';
+
+                    const followUpInfo = tx.follow_up_time ?
+                        `<div class="text-end mt-1"><span class="badge bg-soft-warning text-warning fs-11" title="Terakhir di-follow up ke ${tx.follow_up_target || 'Area'}"><i class="ri-time-line me-1"></i>Follow-up: ${tx.follow_up_time} (${tx.follow_up_target || 'Area'})</span></div>` : '';
+
                     const row = `
                         <tr>
                             <td class="text-center"><small class="fw-bold">${index + (currentPage - 1) * itemsPerPage + 1}</small></td>
@@ -774,8 +789,9 @@
                                 ${tx.check_out_date && tx.check_out_date !== '-' ? `<span class="fw-medium text-dark">${tx.check_out_date}</span><br><small class="text-muted"><i class="ri-time-line me-1"></i>${tx.check_out_clock}</small>` : (tx.status.toLowerCase() === 'timbangan_out' && tx.timbangan_out_clock && tx.timbangan_out_clock !== '-' ? `<span class="badge bg-soft-warning text-warning fs-11 px-2 py-1" title="Tiba di Timbangan Out (Antre)"><i class="ri-time-line me-1"></i>Antre: ${tx.timbangan_out_clock}</span>` : (tx.check_out_time || '-'))}
                             </td>
                             <td class="text-center">
-                                <div class="d-flex gap-1 justify-content-end">
+                                <div class="d-flex gap-1 justify-content-end align-items-center">
                                     ${checkOutButton}
+                                    ${followUpButton}
                                     <button type="button"
                                         class="btn btn-outline-warning btn-sm btn-edit-ajax"
                                         data-id="${tx.id}"
@@ -786,6 +802,7 @@
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
                                 </div>
+                                ${followUpInfo}
                             </td>
                         </tr>
                     `;
@@ -1119,6 +1136,96 @@
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message ||
                                     'Gagal melakukan check-out.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // AJAX Follow Up Confirmation
+            $(document).on('click', '.btn-followup-ajax', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+                const targetSloc = $(this).data('target-sloc') || '';
+                const qcStatus = $(this).data('qc-status') || '';
+                const status = $(this).data('status') || '';
+
+                // Auto determine default area
+                let defaultArea = 'QC';
+                if (qcStatus === 'waiting_dokumen' || qcStatus === 'waiting_sampling' || qcStatus === 'on_check') {
+                    defaultArea = 'QC';
+                } else if (targetSloc === 'A001' || status === 'wfg') {
+                    defaultArea = 'WFG';
+                } else if (targetSloc === 'C001' || status === 'wpm') {
+                    defaultArea = 'WPM';
+                } else if (targetSloc === 'B006' || status === 'wrm_bongkar' || status === 'wrm') {
+                    defaultArea = 'WRM';
+                } else if (targetSloc === 'SMU' || status === 'smu') {
+                    defaultArea = 'SMU';
+                } else {
+                    defaultArea = targetSloc || 'QC';
+                }
+
+                Swal.fire({
+                    title: 'Follow Up ke Area',
+                    html: `
+                        <div class="text-start">
+                            <p class="mb-2">Kirim notifikasi peringatan ke operator area untuk truk <strong class="text-primary">${nopol}</strong>:</p>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Pilih Area Tujuan <span class="text-danger">*</span></label>
+                                <select id="followup_target_area" class="form-select">
+                                    <option value="QC" ${defaultArea === 'QC' ? 'selected' : ''}>QC (Sampling / Hasil Keputusan QC)</option>
+                                    <option value="WFG" ${defaultArea === 'WFG' ? 'selected' : ''}>WFG (Bongkar / Muat Finished Goods)</option>
+                                    <option value="SMU" ${defaultArea === 'SMU' ? 'selected' : ''}>SMU (Gula Pasir / Curah / Slipsheet)</option>
+                                    <option value="WPM" ${defaultArea === 'WPM' ? 'selected' : ''}>WPM (Unloading Packaging Material)</option>
+                                    <option value="WRM" ${defaultArea === 'WRM' ? 'selected' : ''}>WRM (Unloading Raw Material)</option>
+                                    <option value="ALL">Semua Area Terkait</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small">Pesan / Catatan Tambahan (Opsional)</label>
+                                <textarea id="followup_notes" class="form-control" rows="2" placeholder="Contoh: Truk sudah di timbangan, mohon segera selesaikan konfirmasi di sistem."></textarea>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0ab39c',
+                    cancelButtonColor: '#f06548',
+                    confirmButtonText: '<i class="ri-send-plane-line me-1"></i> Kirim Notifikasi',
+                    cancelButtonText: 'Batal',
+                    preConfirm: () => {
+                        const targetArea = $('#followup_target_area').val();
+                        const notes = $('#followup_notes').val();
+                        if (!targetArea) {
+                            Swal.showValidationMessage('Silakan pilih area tujuan!');
+                            return false;
+                        }
+                        return { target_area: targetArea, notes: notes };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const postData = result.value;
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/timbangan/follow-up-area') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                target_area: postData.target_area,
+                                notes: postData.notes
+                            },
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Notifikasi Terkirim!',
+                                    text: response.message,
+                                    timer: 2500,
+                                    showConfirmButton: false
+                                });
+                                fetchTransactions();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal mengirim follow up.', 'error');
                             }
                         });
                     }

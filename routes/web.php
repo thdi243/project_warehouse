@@ -849,6 +849,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/timbangan/check-out/{id}', [VehicleTrackingController::class, 'timbanganCheckOut'])->name('timbangan.check_out');
             Route::get('/timbangan/autocomplete-vehicle', [VehicleTrackingController::class, 'autocompleteVehicle'])->name('timbangan.autocomplete_vehicle');
             Route::get('/timbangan/supplier-data', [VehicleTrackingController::class, 'getSupplierData'])->name('timbangan.supplier_data');
+            Route::post('/timbangan/follow-up-area/{id}', [VehicleTrackingController::class, 'timbanganFollowUpArea'])->name('timbangan.follow_up_area');
         });
 
         Route::post('/update-queue/{id}', [VehicleTrackingController::class, 'updateQueueNumber'])->name('update_queue');

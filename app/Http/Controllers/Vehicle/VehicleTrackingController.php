@@ -609,6 +609,9 @@ class VehicleTrackingController extends Controller
                     'timbangan_out_clock' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('H:i') : '-',
                     'start_sampling_time' => $tx->start_sampling_time ? $tx->start_sampling_time->format('H:i') : null,
                     'finish_sampling_time' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('H:i') : null,
+                    'follow_up_time' => $tx->follow_up_time ? $tx->follow_up_time->format('H:i') : null,
+                    'follow_up_target' => $tx->follow_up_target,
+                    'follow_up_notes' => $tx->follow_up_notes,
                 ];
             });
 
@@ -949,6 +952,10 @@ class VehicleTrackingController extends Controller
                     'start_loading_timestamp' => $tx->start_loading_time ? $tx->start_loading_time->timestamp : null,
                     'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : null,
                     'finish_loading_timestamp' => $tx->finish_loading_time ? $tx->finish_loading_time->timestamp : null,
+                    'follow_up_time' => $tx->follow_up_time ? $tx->follow_up_time->format('H:i') : null,
+                    'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
+                    'follow_up_target' => $tx->follow_up_target,
+                    'follow_up_notes' => $tx->follow_up_notes,
                 ];
             });
 
@@ -1132,6 +1139,10 @@ class VehicleTrackingController extends Controller
                     'start_sampling_timestamp' => $tx->start_sampling_time ? $tx->start_sampling_time->timestamp : null,
                     'finish_sampling_time' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('H:i') : null,
                     'finish_sampling_timestamp' => $tx->finish_sampling_time ? $tx->finish_sampling_time->timestamp : null,
+                    'follow_up_time' => $tx->follow_up_time ? $tx->follow_up_time->format('H:i') : null,
+                    'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
+                    'follow_up_target' => $tx->follow_up_target,
+                    'follow_up_notes' => $tx->follow_up_notes,
                 ];
             });
 
@@ -1506,6 +1517,10 @@ class VehicleTrackingController extends Controller
                     'start_loading_timestamp' => $tx->start_loading_time ? $tx->start_loading_time->timestamp : null,
                     'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : null,
                     'finish_loading_timestamp' => $tx->finish_loading_time ? $tx->finish_loading_time->timestamp : null,
+                    'follow_up_time' => $tx->follow_up_time ? $tx->follow_up_time->format('H:i') : null,
+                    'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
+                    'follow_up_target' => $tx->follow_up_target,
+                    'follow_up_notes' => $tx->follow_up_notes,
                 ];
             });
 
@@ -1683,6 +1698,10 @@ class VehicleTrackingController extends Controller
                     'start_loading_timestamp' => $tx->start_loading_time ? $tx->start_loading_time->timestamp : null,
                     'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : null,
                     'finish_loading_timestamp' => $tx->finish_loading_time ? $tx->finish_loading_time->timestamp : null,
+                    'follow_up_time' => $tx->follow_up_time ? $tx->follow_up_time->format('H:i') : null,
+                    'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
+                    'follow_up_target' => $tx->follow_up_target,
+                    'follow_up_notes' => $tx->follow_up_notes,
                 ];
             });
 
@@ -1876,6 +1895,10 @@ class VehicleTrackingController extends Controller
                     'start_loading_timestamp' => $tx->start_loading_time ? $tx->start_loading_time->timestamp : null,
                     'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : null,
                     'finish_loading_timestamp' => $tx->finish_loading_time ? $tx->finish_loading_time->timestamp : null,
+                    'follow_up_time' => $tx->follow_up_time ? $tx->follow_up_time->format('H:i') : null,
+                    'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
+                    'follow_up_target' => $tx->follow_up_target,
+                    'follow_up_notes' => $tx->follow_up_notes,
                 ];
             });
 
@@ -2091,6 +2114,77 @@ class VehicleTrackingController extends Controller
                 ], 500);
             }
             return redirect()->route('vehicle.monitoring.timbangan')->with('error', 'Gagal Check-Out: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Follow up transaction to area (QC, WFG, SMU, WRM, WPM, etc.).
+     */
+    public function timbanganFollowUpArea(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction = VehicleTransaction::with(['vehicle', 'currentLocation', 'targetLocation'])->findOrFail($id);
+
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+            $targetArea = strtoupper($request->target_area ?? 'ALL');
+            $notes = $request->notes ? trim($request->notes) : null;
+            $now = Carbon::now();
+
+            $transaction->update([
+                'follow_up_time' => $now,
+                'follow_up_target' => $targetArea,
+                'follow_up_notes' => $notes,
+                'follow_up_by' => Auth::id(),
+                'updated_by' => Auth::id()
+            ]);
+
+            // Update status log catatan in active tracking if exists
+            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                ->whereNull('departure_time')
+                ->latest()
+                ->first();
+
+            if ($activeTrack) {
+                $msgNote = "Follow up dari Timbangan ke Area {$targetArea}" . ($notes ? ": {$notes}" : ".");
+                $activeTrack->update([
+                    'status_notes' => $msgNote
+                ]);
+            }
+
+            $operatorName = Auth::user()->name ?? 'Operator Timbangan';
+            $targetSloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : '';
+
+            // Broadcast Event for Realtime Alert
+            event(new VehicleStatusUpdated([
+                'type' => 'follow_up',
+                'action' => 'follow_up',
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'no_spb' => $transaction->no_spb ?? '-',
+                'target_area' => $targetArea,
+                'target_sloc' => $targetSloc,
+                'notes' => $notes,
+                'sender' => $operatorName,
+                'status' => $transaction->status,
+                'qc_status' => $transaction->qc_status,
+                'message' => "Peringatan Follow Up dari Timbangan: Truk {$noPol} menunggu konfirmasi selesai / keputusan QC di area {$targetArea}.",
+                'time' => $now->format('H:i:s')
+            ]));
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Notifikasi follow up berhasil dikirim ke area {$targetArea} untuk Truk {$noPol}."
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim follow up: ' . $e->getMessage()
+            ], 500);
         }
     }
 
