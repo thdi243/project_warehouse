@@ -104,9 +104,7 @@ class InboundController extends Controller
 
     public function indexUpload()
     {
-        $hasTemp = TempUploadModel::when(strtolower(Auth::user()->jabatan ?? '') === 'operator', function ($q) {
-            return $q->where('created_by', Auth::id());
-        })->exists();
+        $hasTemp = TempUploadModel::where('created_by', Auth::id())->exists();
 
         if ($hasTemp) {
             return redirect()->route('wrm.inventory.select-location');
@@ -119,10 +117,8 @@ class InboundController extends Controller
 
     public function selectLocationView()
     {
-        // Get the first/oldest unique no_spb
-        $firstNoSpb = TempUploadModel::when(strtolower(Auth::user()->jabatan ?? '') === 'operator', function ($q) {
-            return $q->where('created_by', Auth::id());
-        })
+        // Get the first/oldest unique no_spb for current user
+        $firstNoSpb = TempUploadModel::where('created_by', Auth::id())
             ->orderBy('id')
             ->value('no_spb');
 
@@ -130,10 +126,8 @@ class InboundController extends Controller
             return redirect()->route('wrm.inventory.index-upload');
         }
 
-        // Get ONLY data with this no_spb
-        $data = TempUploadModel::when(strtolower(Auth::user()->jabatan ?? '') === 'operator', function ($q) {
-            return $q->where('created_by', Auth::id());
-        })
+        // Get ONLY data with this no_spb for current user
+        $data = TempUploadModel::where('created_by', Auth::id())
             ->where('no_spb', $firstNoSpb)
             ->get();
 
@@ -141,10 +135,8 @@ class InboundController extends Controller
             return redirect()->route('wrm.inventory.index-upload');
         }
 
-        // Count remaining no_spb (excluding current one)
-        $remainingCount = TempUploadModel::when(strtolower(Auth::user()->jabatan ?? '') === 'operator', function ($q) {
-            return $q->where('created_by', Auth::id());
-        })
+        // Count remaining no_spb (excluding current one) for current user
+        $remainingCount = TempUploadModel::where('created_by', Auth::id())
             ->where('no_spb', '!=', $firstNoSpb)
             ->distinct('no_spb')
             ->count('no_spb');
@@ -347,7 +339,9 @@ class InboundController extends Controller
                 throw new \Exception("Ada bin/lokasi yang dipilih lebih dari satu kali untuk pallet berbeda. Silahkan periksa kembali.");
             }
 
-            $temps = TempUploadModel::whereIn('id', array_keys($request->loc_id))->get();
+            $temps = TempUploadModel::where('created_by', Auth::id())
+                ->whereIn('id', array_keys($request->loc_id))
+                ->get();
 
             if ($temps->isEmpty()) {
                 throw new \Exception("Data tidak ditemukan");
@@ -471,13 +465,13 @@ class InboundController extends Controller
                 \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $date);
             }
 
-            // Delete ONLY temp data untuk no_spb ini
-            TempUploadModel::whereIn('id', array_keys($request->loc_id))->delete();
+            // Delete ONLY temp data untuk no_spb ini for this user
+            TempUploadModel::where('created_by', Auth::id())
+                ->whereIn('id', array_keys($request->loc_id))
+                ->delete();
 
-            // Check apakah ada no_spb lain yang belum diproses
-            $nextNoSpb = TempUploadModel::when(strtolower(Auth::user()->jabatan ?? '') === 'operator', function ($q) {
-                return $q->where('created_by', Auth::id());
-            })
+            // Check apakah ada no_spb lain yang belum diproses for this user
+            $nextNoSpb = TempUploadModel::where('created_by', Auth::id())
                 ->orderBy('id')
                 ->value('no_spb');
 
@@ -1394,9 +1388,7 @@ class InboundController extends Controller
     public function cancelUpload()
     {
         try {
-            TempUploadModel::when(strtolower(Auth::user()->jabatan ?? '') === 'operator', function ($q) {
-                return $q->where('created_by', Auth::id());
-            })->delete();
+            TempUploadModel::where('created_by', Auth::id())->delete();
 
             return response()->json([
                 'status'  => true,
@@ -1423,9 +1415,7 @@ class InboundController extends Controller
             ]);
         }
 
-        $data = TempUploadModel::when(strtolower(Auth::user()->jabatan ?? '') === 'operator', function ($q) {
-            return $q->where('created_by', Auth::id());
-        })
+        $data = TempUploadModel::where('created_by', Auth::id())
             ->when($noSpb, function ($q) use ($noSpb) {
                 $q->where('no_spb', $noSpb);
             })
