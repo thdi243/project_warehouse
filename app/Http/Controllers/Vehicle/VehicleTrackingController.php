@@ -610,6 +610,7 @@ class VehicleTrackingController extends Controller
                     'start_sampling_time' => $tx->start_sampling_time ? $tx->start_sampling_time->format('H:i') : null,
                     'finish_sampling_time' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('H:i') : null,
                     'follow_up_time' => $tx->follow_up_time ? $tx->follow_up_time->format('H:i') : null,
+                    'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
                     'follow_up_target' => $tx->follow_up_target,
                     'follow_up_notes' => $tx->follow_up_notes,
                 ];
@@ -955,6 +956,8 @@ class VehicleTrackingController extends Controller
                     'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
                     'follow_up_target' => $tx->follow_up_target,
                     'follow_up_notes' => $tx->follow_up_notes,
+                    'target_sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
+                    'sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
                 ];
             });
 
@@ -1142,6 +1145,8 @@ class VehicleTrackingController extends Controller
                     'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
                     'follow_up_target' => $tx->follow_up_target,
                     'follow_up_notes' => $tx->follow_up_notes,
+                    'target_sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
+                    'sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
                 ];
             });
 
@@ -1520,6 +1525,8 @@ class VehicleTrackingController extends Controller
                     'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
                     'follow_up_target' => $tx->follow_up_target,
                     'follow_up_notes' => $tx->follow_up_notes,
+                    'target_sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
+                    'sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
                 ];
             });
 
@@ -1701,6 +1708,8 @@ class VehicleTrackingController extends Controller
                     'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
                     'follow_up_target' => $tx->follow_up_target,
                     'follow_up_notes' => $tx->follow_up_notes,
+                    'target_sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
+                    'sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
                 ];
             });
 
@@ -1898,6 +1907,8 @@ class VehicleTrackingController extends Controller
                     'follow_up_timestamp' => $tx->follow_up_time ? $tx->follow_up_time->timestamp : null,
                     'follow_up_target' => $tx->follow_up_target,
                     'follow_up_notes' => $tx->follow_up_notes,
+                    'target_sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
+                    'sloc' => $tx->targetLocation ? $tx->targetLocation->s_loc : null,
                 ];
             });
 

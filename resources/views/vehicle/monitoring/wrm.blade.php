@@ -276,31 +276,43 @@
 
             function triggerFollowUpAlert(data) {
                 console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
-                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date
-                    .now());
-                if (handledFollowUps.has(alertKey)) {
-                    console.log('⚠️ Already handled:', alertKey);
+                const items = Array.isArray(data) ? data : [data];
+                const unhandled = items.filter(item => {
+                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item.follow_up_time || item.follow_up_timestamp || '');
+                    return !handledFollowUps.has(alertKey);
+                });
+
+                if (unhandled.length === 0) {
                     return;
                 }
-                handledFollowUps.add(alertKey);
+
+                unhandled.forEach(item => {
+                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item.follow_up_time || item.follow_up_timestamp || '');
+                    handledFollowUps.add(alertKey);
+                });
 
                 console.log('🔔 Playing notification sound...');
-
                 playFollowUpNotificationSound();
+
+                const cardsHtml = unhandled.map(item => `
+                    <div class="card bg-light border-0 mb-2 p-3">
+                        <p class="mb-1"><strong>No. Polisi:</strong> <span class="badge bg-primary fs-13">${item.no_pol}</span></p>
+                        ${item.no_spb ? `<p class="mb-1"><strong>No. SPB:</strong> ${item.no_spb}</p>` : ''}
+                        ${item.notes ? `<p class="mb-1 text-danger"><strong>Pesan:</strong> "${item.notes}"</p>` : ''}
+                        <p class="mb-0 text-muted small"><i class="ri-time-line me-1"></i>Waktu: ${item.time || item.follow_up_time || '-'}</p>
+                    </div>
+                `).join('');
+
+                const countText = unhandled.length > 1 ? `Ada ${unhandled.length} kendaraan membutuhkan` : 'Kendaraan berikut membutuhkan';
 
                 Swal.fire({
                     title: '<span class="text-danger fw-bold"><i class="ri-alarm-warning-line me-1"></i> FOLLOW UP TIMBANGAN!</span>',
                     html: `
                         <div class="text-start">
                             <div class="alert alert-danger border-0 mb-3 py-2 px-3">
-                                <strong>Peringatan dari Timbangan:</strong> Kendaraan berikut membutuhkan konfirmasi / tindak lanjut segera di area WRM!
+                                <strong>Peringatan dari Timbangan:</strong> ${countText} konfirmasi / tindak lanjut segera di area WRM!
                             </div>
-                            <div class="card bg-light border-0 mb-2 p-3">
-                                <p class="mb-1"><strong>No. Polisi:</strong> <span class="badge bg-primary fs-13">${data.no_pol}</span></p>
-                                ${data.no_spb ? `<p class="mb-1"><strong>No. SPB:</strong> ${data.no_spb}</p>` : ''}
-                                ${data.notes ? `<p class="mb-1 text-danger"><strong>Pesan:</strong> "${data.notes}"</p>` : ''}
-                                <p class="mb-0 text-muted small"><i class="ri-time-line me-1"></i>Waktu: ${data.time || data.follow_up_time || '-'}</p>
-                            </div>
+                            ${cardsHtml}
                             <p class="text-muted small mb-0">Truk dilaporkan sudah berada di timbangan. Mohon segera selesaikan konfirmasi di area WRM.</p>
                         </div>
                     `,
@@ -320,27 +332,25 @@
                         allWrmData = response.queue || [];
                         renderWrmTable();
 
-                        // Check for recent follow up via polling
+                        // Check for follow up alerts (always pops up on page load/reload, suppressed during active polling once acknowledged)
                         if (allWrmData.length > 0) {
-                            const nowSec = Math.floor(Date.now() / 1000);
-                            allWrmData.forEach(tx => {
-                                if (tx.follow_up_timestamp) {
-                                    const diffSec = Math.abs(nowSec - tx.follow_up_timestamp);
-                                    if (diffSec < 600) {
-                                        if (tx.follow_up_target === 'WRM' || tx.follow_up_target === 'ALL' || tx.sloc === 'B006') {
-                                            triggerFollowUpAlert({
-                                                id: tx.id,
-                                                transaction_id: tx.id,
-                                                no_pol: tx.no_pol,
-                                                no_spb: tx.no_spb,
-                                                notes: tx.follow_up_notes,
-                                                follow_up_time: tx.follow_up_time,
-                                                time: tx.follow_up_time
-                                            });
-                                        }
-                                    }
-                                }
-                            });
+                            const followUps = allWrmData.filter(tx => {
+                                return (tx.follow_up_timestamp || tx.follow_up_time) &&
+                                    (tx.follow_up_target === 'WRM' || tx.follow_up_target === 'ALL' || tx.sloc === 'B006' || tx.target_sloc === 'B006');
+                            }).map(tx => ({
+                                id: tx.id,
+                                transaction_id: tx.id,
+                                no_pol: tx.no_pol,
+                                no_spb: tx.no_spb,
+                                notes: tx.follow_up_notes,
+                                follow_up_time: tx.follow_up_time,
+                                time: tx.follow_up_time,
+                                follow_up_timestamp: tx.follow_up_timestamp
+                            }));
+
+                            if (followUps.length > 0) {
+                                triggerFollowUpAlert(followUps);
+                            }
                         }
                     },
                     error: function(xhr) {
