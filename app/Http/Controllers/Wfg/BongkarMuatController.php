@@ -1160,18 +1160,23 @@ class BongkarMuatController extends Controller
                 DB::beginTransaction();
 
                 $now = Carbon::now();
-                $targetSloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : ($transaction->status === 'smu' ? 'SMU' : 'A001');
-                $areaName = $targetSloc === 'SMU' ? 'SMU' : 'WFG';
-                $newStatus = $targetSloc === 'SMU' ? 'smu' : 'wfg';
+                $isSmu = ($transaction->status === 'smu') ||
+                         ($transaction->targetLocation && in_array($transaction->targetLocation->s_loc, ['SMU', 'A002']));
+                $areaName = $isSmu ? 'SMU' : 'WFG';
+                $newStatus = $isSmu ? 'smu' : 'wfg';
+                $targetSloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : ($isSmu ? 'A002' : 'A001');
 
                 // Isi nomor antrian urut otomatis jika belum ada nomor antrian
                 $assignedAntrian = $transaction->no_antrian;
                 if (empty($assignedAntrian)) {
-                    $maxAntrian = VehicleTransaction::where(function ($q) use ($newStatus) {
+                    $maxAntrian = VehicleTransaction::where(function ($q) use ($newStatus, $isSmu) {
                         $q->where('status', $newStatus)
-                            ->orWhereHas('targetLocation', function ($tl) use ($newStatus) {
-                                $sloc = $newStatus === 'smu' ? 'SMU' : 'A001';
-                                $tl->where('s_loc', $sloc);
+                            ->orWhereHas('targetLocation', function ($tl) use ($isSmu) {
+                                if ($isSmu) {
+                                    $tl->whereIn('s_loc', ['SMU', 'A002']);
+                                } else {
+                                    $tl->where('s_loc', 'A001');
+                                }
                             });
                     })
                         ->whereNotNull('no_antrian')
@@ -1185,14 +1190,20 @@ class BongkarMuatController extends Controller
                     $assignedAntrian = str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
                 }
 
-                $transaction->update([
+                $updateData = [
                     'status' => $newStatus,
                     'no_antrian' => $assignedAntrian,
                     'queue_taken_time' => $transaction->queue_taken_time ?? $now,
                     'unloading_status' => 'process',
                     'start_loading_time' => $transaction->start_loading_time ?? $now,
                     'updated_by' => Auth::id()
-                ]);
+                ];
+
+                if ($transaction->target_location_id && $transaction->current_location_id !== $transaction->target_location_id) {
+                    $updateData['current_location_id'] = $transaction->target_location_id;
+                }
+
+                $transaction->update($updateData);
 
                 $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
                     ->where('location_id', $transaction->current_location_id)
@@ -1265,9 +1276,11 @@ class BongkarMuatController extends Controller
                 DB::beginTransaction();
 
                 $now = Carbon::now();
-                $currentStatus = $transaction->status;
-                $targetSloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : ($currentStatus === 'smu' ? 'SMU' : 'A001');
-                $areaName = $targetSloc === 'SMU' ? 'SMU' : 'WFG';
+                $isSmu = ($transaction->status === 'smu') ||
+                         ($transaction->targetLocation && in_array($transaction->targetLocation->s_loc, ['SMU', 'A002']));
+                $currentStatus = $isSmu ? 'smu' : 'wfg';
+                $areaName = $isSmu ? 'SMU' : 'WFG';
+                $targetSloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : ($isSmu ? 'A002' : 'A001');
 
                 // Conclude active tracking di WFG / SMU
                 $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -1304,7 +1317,16 @@ class BongkarMuatController extends Controller
 
                     // Shift remaining active queues in area tersebut
                     if ($completedAntrian > 0) {
-                        $otherActive = VehicleTransaction::where('status', $currentStatus)
+                        $otherActive = VehicleTransaction::where(function ($q) use ($currentStatus, $isSmu) {
+                            $q->where('status', $currentStatus)
+                                ->orWhereHas('targetLocation', function ($tl) use ($isSmu) {
+                                    if ($isSmu) {
+                                        $tl->whereIn('s_loc', ['SMU', 'A002']);
+                                    } else {
+                                        $tl->where('s_loc', 'A001');
+                                    }
+                                });
+                        })
                             ->whereNotNull('no_antrian')
                             ->get();
                         foreach ($otherActive as $tx) {
