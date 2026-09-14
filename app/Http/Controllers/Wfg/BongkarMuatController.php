@@ -1136,7 +1136,7 @@ class BongkarMuatController extends Controller
 
             // Cari transaksi aktif kendaraan WFG atau SMU dengan jenis slipsheet / curah
             $transaction = VehicleTransaction::whereIn('status', ['wfg', 'smu'])
-                ->whereIn('jenis', ['slipsheet', 'curah'])
+                ->whereIn('jenis', ['bongkaran', 'slipsheet', 'curah'])
                 ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
                     $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
                 })
@@ -1145,7 +1145,7 @@ class BongkarMuatController extends Controller
 
             if (!$transaction) {
                 $transaction = VehicleTransaction::whereNotIn('status', ['completed', 'timbangan_out'])
-                    ->whereIn('jenis', ['slipsheet', 'curah'])
+                    ->whereIn('jenis', ['bongkaran', 'slipsheet', 'curah'])
                     ->whereHas('targetLocation', function ($tl) {
                         $tl->whereIn('s_loc', ['A001', 'SMU', 'A002']);
                     })
@@ -1169,10 +1169,10 @@ class BongkarMuatController extends Controller
                 if (empty($assignedAntrian)) {
                     $maxAntrian = VehicleTransaction::where(function ($q) use ($newStatus) {
                         $q->where('status', $newStatus)
-                          ->orWhereHas('targetLocation', function ($tl) use ($newStatus) {
-                              $sloc = $newStatus === 'smu' ? 'SMU' : 'A001';
-                              $tl->where('s_loc', $sloc);
-                          });
+                            ->orWhereHas('targetLocation', function ($tl) use ($newStatus) {
+                                $sloc = $newStatus === 'smu' ? 'SMU' : 'A001';
+                                $tl->where('s_loc', $sloc);
+                            });
                     })
                         ->whereNotNull('no_antrian')
                         ->get()
@@ -1242,7 +1242,7 @@ class BongkarMuatController extends Controller
 
             // Cari transaksi aktif kendaraan WFG atau SMU dengan jenis slipsheet / curah
             $transaction = VehicleTransaction::whereIn('status', ['wfg', 'smu'])
-                ->whereIn('jenis', ['slipsheet', 'curah'])
+                ->whereIn('jenis', ['bongkaran', 'slipsheet', 'curah'])
                 ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
                     $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
                 })
@@ -1251,7 +1251,7 @@ class BongkarMuatController extends Controller
 
             if (!$transaction) {
                 $transaction = VehicleTransaction::whereNotIn('status', ['completed', 'timbangan_out'])
-                    ->whereIn('jenis', ['slipsheet', 'curah'])
+                    ->whereIn('jenis', ['bongkaran', 'slipsheet', 'curah'])
                     ->whereHas('targetLocation', function ($tl) {
                         $tl->whereIn('s_loc', ['A001', 'SMU', 'A002']);
                     })
