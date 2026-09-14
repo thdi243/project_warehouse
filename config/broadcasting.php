@@ -36,13 +36,14 @@ return [
             'secret' => env('REVERB_APP_SECRET'),
             'app_id' => env('REVERB_APP_ID'),
             'options' => [
-                'host' => env('REVERB_HOST'),
-                'port' => env('REVERB_PORT', 8080),
+                'host' => env('REVERB_INTERNAL_HOST', env('REVERB_HOST', '127.0.0.1')),
+                'port' => env('REVERB_INTERNAL_PORT', env('REVERB_PORT', 8080)),
                 'scheme' => env('REVERB_SCHEME', 'http'),
-                'useTLS' => false,
+                'useTLS' => env('REVERB_SCHEME', 'http') === 'https',
             ],
             'client_options' => [
-                // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                // Bypass corporate proxy in Docker if HTTP_PROXY is defined
+                'proxy' => '',
             ],
         ],
 

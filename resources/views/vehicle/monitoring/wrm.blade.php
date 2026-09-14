@@ -324,19 +324,20 @@
                         if (allWrmData.length > 0) {
                             const nowSec = Math.floor(Date.now() / 1000);
                             allWrmData.forEach(tx => {
-                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp <
-                                        600)) {
-                                    if (tx.follow_up_target === 'WRM' || tx.follow_up_target ===
-                                        'ALL' || tx.sloc === 'B006') {
-                                        triggerFollowUpAlert({
-                                            id: tx.id,
-                                            transaction_id: tx.id,
-                                            no_pol: tx.no_pol,
-                                            no_spb: tx.no_spb,
-                                            notes: tx.follow_up_notes,
-                                            follow_up_time: tx.follow_up_time,
-                                            time: tx.follow_up_time
-                                        });
+                                if (tx.follow_up_timestamp) {
+                                    const diffSec = Math.abs(nowSec - tx.follow_up_timestamp);
+                                    if (diffSec < 600) {
+                                        if (tx.follow_up_target === 'WRM' || tx.follow_up_target === 'ALL' || tx.sloc === 'B006') {
+                                            triggerFollowUpAlert({
+                                                id: tx.id,
+                                                transaction_id: tx.id,
+                                                no_pol: tx.no_pol,
+                                                no_spb: tx.no_spb,
+                                                notes: tx.follow_up_notes,
+                                                follow_up_time: tx.follow_up_time,
+                                                time: tx.follow_up_time
+                                            });
+                                        }
                                     }
                                 }
                             });
@@ -364,6 +365,12 @@
                 if (window.Echo && typeof window.Echo.channel === 'function') {
                     console.log('Listening for vehicle updates in WRM Area...');
                     window.Echo.channel('vehicle-tracking')
+                        .subscribed(() => {
+                            console.log('✅ Subscribed successfully to vehicle-tracking channel in WRM');
+                        })
+                        .error((err) => {
+                            console.error('❌ Echo connection error on vehicle-tracking channel:', err);
+                        })
                         .listen('.vehicle.updated', (payload) => {
                             console.log('Echo event received in WRM:', payload);
                             if (payload.type === 'follow_up' && (payload.target_area === 'WRM' || payload

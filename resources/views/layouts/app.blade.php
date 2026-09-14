@@ -140,9 +140,9 @@
                 },
                 reverb: {
                     key: "{{ config('broadcasting.connections.reverb.key') }}",
-                    wsHost: "{{ config('broadcasting.connections.reverb.options.host') }}",
-                    wsPort: {{ config('broadcasting.connections.reverb.options.port', 8080) }},
-                    wssPort: {{ config('broadcasting.connections.reverb.options.port', 8080) }},
+                    wsHost: "{{ env('VITE_REVERB_HOST', env('REVERB_HOST')) }}" || window.location.hostname,
+                    wsPort: {{ env('VITE_REVERB_PORT', env('REVERB_PORT', 8080)) }},
+                    wssPort: {{ env('VITE_REVERB_PORT', env('REVERB_PORT', 8080)) }},
                     forceTLS: {{ config('broadcasting.connections.reverb.options.scheme', 'http') === 'https' ? 'true' : 'false' }}
                 },
                 csrfToken: "{{ csrf_token() }}",
