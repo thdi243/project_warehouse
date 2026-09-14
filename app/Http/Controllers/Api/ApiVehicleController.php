@@ -208,6 +208,7 @@ class ApiVehicleController extends Controller
         return [
             'id'                  => $transaction->id,
             'no_transaction'      => $transaction->no_transaction,
+            'tranvisitorid'       => $transaction->trnvisitorid,
             'no_pol'              => $vehicleNoPol,
             'vendor'              => $transaction->vendor,
             'nama_driver'         => $transaction->nama_driver,
