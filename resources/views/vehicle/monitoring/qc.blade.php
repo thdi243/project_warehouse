@@ -24,7 +24,8 @@
                     <div class="card shadow-sm border-0">
                         <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
                             <h4 class="card-title mb-0 flex-grow-1">
-                                <i class="ri-flask-line me-2 align-middle text-info"></i>Antrian Pemeriksaan QC (Quality Control)
+                                <i class="ri-flask-line me-2 align-middle text-info"></i>Antrian Pemeriksaan QC (Quality
+                                Control)
                             </h4>
                             <div class="flex-shrink-0">
                                 <div style="width: 280px;">
@@ -167,7 +168,7 @@
                         const noSpb = (tx.no_spb || '').toLowerCase();
                         const item = (tx.item_name || '').toLowerCase();
                         return noPol.includes(searchQuery) || vendor.includes(searchQuery) ||
-                               noSpb.includes(searchQuery) || item.includes(searchQuery);
+                            noSpb.includes(searchQuery) || item.includes(searchQuery);
                     });
                 }
 
@@ -183,7 +184,8 @@
 
                         let antrianBadge = '';
                         if (hasQueue) {
-                            antrianBadge = `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">#${tx.no_antrian}</span>`;
+                            antrianBadge =
+                                `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">#${tx.no_antrian}</span>`;
                         } else {
                             antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
                                 Ambil Antrian
@@ -192,11 +194,14 @@
 
                         let statusBadge = '';
                         if (!hasQueue) {
-                            statusBadge = `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
                         } else if (!isSampling) {
-                            statusBadge = `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian #${tx.no_antrian}</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian #${tx.no_antrian}</span>`;
                         } else {
-                            statusBadge = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses Sampling</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses Sampling</span>`;
                         }
 
                         let actionBtn = '';
@@ -227,13 +232,16 @@
                         }
 
                         // Timeline breakdown
-                        let timelineHtml = `<div class="d-flex flex-column gap-1">
+                        let timelineHtml =
+                            `<div class="d-flex flex-column gap-1">
                             <span class="fs-12 text-muted">Tiba: <strong class="text-dark">${tx.arrival_time}</strong></span>`;
                         if (tx.queue_taken_time) {
-                            timelineHtml += `<span class="fs-12 text-muted">Antri: <strong class="text-warning">${tx.queue_taken_time}</strong></span>`;
+                            timelineHtml +=
+                                `<span class="fs-12 text-muted">Antri: <strong class="text-warning">${tx.queue_taken_time}</strong></span>`;
                         }
                         if (tx.start_sampling_time) {
-                            timelineHtml += `<span class="fs-12 text-muted">Sampling: <strong class="text-info">${tx.start_sampling_time}</strong></span>`;
+                            timelineHtml +=
+                                `<span class="fs-12 text-muted">Sampling: <strong class="text-info">${tx.start_sampling_time}</strong></span>`;
                         }
                         timelineHtml += `</div>`;
 
@@ -249,7 +257,8 @@
                                 </div>
                             `;
                         } else if (!isSampling) {
-                            const waitToQueueSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx.arrival_timestamp) : 0;
+                            const waitToQueueSec = tx.queue_taken_timestamp ? Math.max(0, tx
+                                .queue_taken_timestamp - tx.arrival_timestamp) : 0;
                             const startTimerFrom = tx.queue_taken_timestamp || tx.arrival_timestamp;
                             durasiHtml = `
                                 <div>
@@ -261,9 +270,11 @@
                                 </div>
                             `;
                         } else {
-                            const antriDurationSec = (tx.start_sampling_timestamp && tx.queue_taken_timestamp)
-                                ? Math.max(0, tx.start_sampling_timestamp - tx.queue_taken_timestamp)
-                                : (tx.start_sampling_timestamp ? Math.max(0, tx.start_sampling_timestamp - tx.arrival_timestamp) : 0);
+                            const antriDurationSec = (tx.start_sampling_timestamp && tx
+                                    .queue_taken_timestamp) ?
+                                Math.max(0, tx.start_sampling_timestamp - tx.queue_taken_timestamp) :
+                                (tx.start_sampling_timestamp ? Math.max(0, tx.start_sampling_timestamp - tx
+                                    .arrival_timestamp) : 0);
                             const startSamplingFrom = tx.start_sampling_timestamp || tx.arrival_timestamp;
                             durasiHtml = `
                                 <div>
@@ -308,7 +319,7 @@
 
             function playFollowUpNotificationSound() {
                 try {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     osc.type = 'sine';
@@ -320,13 +331,20 @@
                     gain.connect(audioCtx.destination);
                     osc.start();
                     osc.stop(audioCtx.currentTime + 0.5);
-                } catch(e) {}
+                } catch (e) {}
             }
 
             function triggerFollowUpAlert(data) {
-                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date.now());
-                if (handledFollowUps.has(alertKey)) return;
+                console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
+                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date
+                    .now());
+                if (handledFollowUps.has(alertKey)) {
+                    console.log('⚠️ Already handled:', alertKey);
+                    return;
+                }
                 handledFollowUps.add(alertKey);
+
+                console.log('🔔 Playing notification sound...');
 
                 playFollowUpNotificationSound();
 
@@ -366,8 +384,10 @@
                         if (allQcData.length > 0) {
                             const nowSec = Math.floor(Date.now() / 1000);
                             allQcData.forEach(tx => {
-                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp < 600)) {
-                                    if (tx.follow_up_target === 'QC' || tx.follow_up_target === 'ALL') {
+                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp <
+                                        600)) {
+                                    if (tx.follow_up_target === 'QC' || tx.follow_up_target ===
+                                        'ALL') {
                                         triggerFollowUpAlert({
                                             id: tx.id,
                                             transaction_id: tx.id,
@@ -406,7 +426,8 @@
                     window.Echo.channel('vehicle-tracking')
                         .listen('.vehicle.updated', (payload) => {
                             console.log('Echo event received in QC:', payload);
-                            if (payload.type === 'follow_up' && (payload.target_area === 'QC' || payload.target_area === 'ALL')) {
+                            if (payload.type === 'follow_up' && (payload.target_area === 'QC' || payload
+                                    .target_area === 'ALL')) {
                                 triggerFollowUpAlert(payload);
                             } else {
                                 if (window.toastr) {
@@ -448,7 +469,8 @@
                                 loadQcData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON.message : 'Terjadi kesalahan sistem.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON
+                                    .message : 'Terjadi kesalahan sistem.', 'error');
                             }
                         });
                     }
@@ -483,7 +505,8 @@
                                 loadQcData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON.message : 'Terjadi kesalahan sistem.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON
+                                    .message : 'Terjadi kesalahan sistem.', 'error');
                             }
                         });
                     }
@@ -517,7 +540,8 @@
                                 loadQcData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON.message : 'Gagal memulai sampling.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON
+                                    .message : 'Gagal memulai sampling.', 'error');
                             }
                         });
                     }
@@ -553,7 +577,8 @@
                     return;
                 }
 
-                $('#btnQcSubmit').prop('disabled', true).html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
+                $('#btnQcSubmit').prop('disabled', true).html(
+                    '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
 
                 $.ajax({
                     url: `{{ url('vehicle-monitoring/qc/update-qc') }}/${id}`,
@@ -571,7 +596,8 @@
                     },
                     error: function(xhr) {
                         $('#btnQcSubmit').prop('disabled', false).text('Simpan Keputusan QC');
-                        Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON.message : 'Gagal mengupdate keputusan QC.', 'error');
+                        Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON.message :
+                            'Gagal mengupdate keputusan QC.', 'error');
                     }
                 });
             });

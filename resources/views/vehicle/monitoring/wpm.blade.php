@@ -258,9 +258,15 @@
             }
 
             function triggerFollowUpAlert(data) {
+                console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
                 const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date.now());
-                if (handledFollowUps.has(alertKey)) return;
+                if (handledFollowUps.has(alertKey)) {
+                    console.log('⚠️ Already handled:', alertKey);
+                    return;
+                }
                 handledFollowUps.add(alertKey);
+
+                console.log('🔔 Playing notification sound...');
 
                 playFollowUpNotificationSound();
 

@@ -129,7 +129,8 @@
 
                         let antrianBadge = '';
                         if (tx.no_antrian) {
-                            antrianBadge = `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">${tx.no_antrian}</span>`;
+                            antrianBadge =
+                                `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">${tx.no_antrian}</span>`;
                         } else {
                             antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
                                 Ambil Antrian
@@ -138,11 +139,14 @@
 
                         let statusBadge = '';
                         if (!tx.no_antrian) {
-                            statusBadge = `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
                         } else if (!isProcess) {
-                            statusBadge = `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian ${tx.no_antrian}</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian ${tx.no_antrian}</span>`;
                         } else {
-                            statusBadge = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel}</span>`;
+                            statusBadge =
+                                `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel}</span>`;
                         }
 
                         let actionBtn = '';
@@ -174,13 +178,16 @@
                         }
 
                         // Timeline breakdown
-                        let timelineHtml = `<div class="d-flex flex-column gap-1">
+                        let timelineHtml =
+                            `<div class="d-flex flex-column gap-1">
                             <span class="fs-12 text-muted">Tiba: <strong class="text-dark">${tx.arrival_time}</strong></span>`;
                         if (tx.queue_taken_time) {
-                            timelineHtml += `<span class="fs-12 text-muted">Antri: <strong class="text-warning">${tx.queue_taken_time}</strong></span>`;
+                            timelineHtml +=
+                                `<span class="fs-12 text-muted">Antri: <strong class="text-warning">${tx.queue_taken_time}</strong></span>`;
                         }
                         if (tx.start_loading_time) {
-                            timelineHtml += `<span class="fs-12 text-muted">Mulai: <strong class="text-info">${tx.start_loading_time}</strong></span>`;
+                            timelineHtml +=
+                                `<span class="fs-12 text-muted">Mulai: <strong class="text-info">${tx.start_loading_time}</strong></span>`;
                         }
                         timelineHtml += `</div>`;
 
@@ -196,7 +203,8 @@
                                 </div>
                             `;
                         } else if (!isProcess) {
-                            const waitToQueueSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx.arrival_timestamp) : 0;
+                            const waitToQueueSec = tx.queue_taken_timestamp ? Math.max(0, tx
+                                .queue_taken_timestamp - tx.arrival_timestamp) : 0;
                             const startTimerFrom = tx.queue_taken_timestamp || tx.arrival_timestamp;
                             durasiHtml = `
                                 <div>
@@ -208,9 +216,11 @@
                                 </div>
                             `;
                         } else {
-                            const antriDurationSec = (tx.start_loading_timestamp && tx.queue_taken_timestamp)
-                                ? Math.max(0, tx.start_loading_timestamp - tx.queue_taken_timestamp)
-                                : (tx.start_loading_timestamp ? Math.max(0, tx.start_loading_timestamp - tx.arrival_timestamp) : 0);
+                            const antriDurationSec = (tx.start_loading_timestamp && tx
+                                    .queue_taken_timestamp) ?
+                                Math.max(0, tx.start_loading_timestamp - tx.queue_taken_timestamp) :
+                                (tx.start_loading_timestamp ? Math.max(0, tx.start_loading_timestamp - tx
+                                    .arrival_timestamp) : 0);
                             const startProcessFrom = tx.start_loading_timestamp || tx.arrival_timestamp;
                             durasiHtml = `
                                 <div>
@@ -250,7 +260,7 @@
 
             function playFollowUpNotificationSound() {
                 try {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     osc.type = 'sine';
@@ -262,13 +272,21 @@
                     gain.connect(audioCtx.destination);
                     osc.start();
                     osc.stop(audioCtx.currentTime + 0.5);
-                } catch(e) {}
+                } catch (e) {}
             }
 
             function triggerFollowUpAlert(data) {
-                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date.now());
-                if (handledFollowUps.has(alertKey)) return;
+                console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
+                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date
+                    .now());
+                if (handledFollowUps.has(alertKey)) {
+                    console.log('⚠️ Already handled:', alertKey);
+                    return;
+                }
+
                 handledFollowUps.add(alertKey);
+
+                console.log('🔔 Playing notification sound...');
 
                 playFollowUpNotificationSound();
 
@@ -308,8 +326,10 @@
                         if (allWfgData.length > 0) {
                             const nowSec = Math.floor(Date.now() / 1000);
                             allWfgData.forEach(tx => {
-                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp < 600)) {
-                                    if (tx.follow_up_target === 'WFG' || tx.follow_up_target === 'ALL') {
+                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp <
+                                        600)) {
+                                    if (tx.follow_up_target === 'WFG' || tx.follow_up_target ===
+                                        'ALL') {
                                         triggerFollowUpAlert({
                                             id: tx.id,
                                             transaction_id: tx.id,
@@ -350,7 +370,8 @@
                     window.Echo.channel('vehicle-tracking')
                         .listen('.vehicle.updated', (payload) => {
                             console.log('Echo event received in WFG:', payload);
-                            if (payload.type === 'follow_up' && (payload.target_area === 'WFG' || payload.target_area === 'ALL' || payload.target_sloc === 'WFG')) {
+                            if (payload.type === 'follow_up' && (payload.target_area === 'WFG' || payload
+                                    .target_area === 'ALL' || payload.target_sloc === 'WFG')) {
                                 triggerFollowUpAlert(payload);
                             } else {
                                 if (window.toastr) {
@@ -468,7 +489,8 @@
                                 loadWfgData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal mengambil nomor antrian.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal mengambil nomor antrian.', 'error');
                             }
                         });
                     }
@@ -503,7 +525,8 @@
                                 loadWfgData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal membatalkan nomor antrian.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal membatalkan nomor antrian.', 'error');
                             }
                         });
                     }

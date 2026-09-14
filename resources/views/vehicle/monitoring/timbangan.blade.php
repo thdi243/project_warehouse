@@ -743,7 +743,8 @@
                             <i class="ri-logout-box-r-line me-1 align-middle"></i>Check-Out
                         </button>` : '';
 
-                    const followUpButton = (tx.status.toLowerCase() !== 'completed' && tx.status.toLowerCase() !== 'timbangan_out') ?
+                    const followUpButton = (tx.status.toLowerCase() !== 'completed' && tx.status
+                            .toLowerCase() !== 'timbangan_out') ?
                         `<button type="button" class="btn btn-soft-info btn-sm btn-followup-ajax" 
                             data-id="${tx.id}" 
                             data-nopol="${tx.no_pol}" 
@@ -756,7 +757,8 @@
                         </button>` : '';
 
                     const followUpInfo = tx.follow_up_time ?
-                        `<div class="text-end mt-1"><span class="badge bg-soft-warning text-warning fs-11" title="Terakhir di-follow up ke ${tx.follow_up_target || 'Area'}"><i class="ri-time-line me-1"></i>Follow-up: ${tx.follow_up_time} (${tx.follow_up_target || 'Area'})</span></div>` : '';
+                        `<div class="text-end mt-1"><span class="badge bg-soft-warning text-warning fs-11" title="Terakhir di-follow up ke ${tx.follow_up_target || 'Area'}"><i class="ri-time-line me-1"></i>Follow-up: ${tx.follow_up_time} (${tx.follow_up_target || 'Area'})</span></div>` :
+                        '';
 
                     const row = `
                         <tr>
@@ -1152,7 +1154,8 @@
 
                 // Auto determine default area
                 let defaultArea = 'QC';
-                if (qcStatus === 'waiting_dokumen' || qcStatus === 'waiting_sampling' || qcStatus === 'on_check') {
+                if (qcStatus === 'waiting_dokumen' || qcStatus === 'waiting_sampling' || qcStatus ===
+                    'on_check') {
                     defaultArea = 'QC';
                 } else if (targetSloc === 'A001' || status === 'wfg') {
                     defaultArea = 'WFG';
@@ -1176,7 +1179,7 @@
                                 <select id="followup_target_area" class="form-select">
                                     <option value="QC" ${defaultArea === 'QC' ? 'selected' : ''}>QC (Sampling / Hasil Keputusan QC)</option>
                                     <option value="WFG" ${defaultArea === 'WFG' ? 'selected' : ''}>WFG (Bongkar / Muat Finished Goods)</option>
-                                    <option value="SMU" ${defaultArea === 'SMU' ? 'selected' : ''}>SMU (Gula Pasir / Curah / Slipsheet)</option>
+                                    <option value="SMU" ${defaultArea === 'SMU' ? 'selected' : ''}>SMU (Bongkaran / Curah / Slipsheet)</option>
                                     <option value="WPM" ${defaultArea === 'WPM' ? 'selected' : ''}>WPM (Unloading Packaging Material)</option>
                                     <option value="WRM" ${defaultArea === 'WRM' ? 'selected' : ''}>WRM (Unloading Raw Material)</option>
                                     <option value="ALL">Semua Area Terkait</option>
@@ -1201,7 +1204,10 @@
                             Swal.showValidationMessage('Silakan pilih area tujuan!');
                             return false;
                         }
-                        return { target_area: targetArea, notes: notes };
+                        return {
+                            target_area: targetArea,
+                            notes: notes
+                        };
                     }
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -1225,7 +1231,8 @@
                                 fetchTransactions();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal mengirim follow up.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal mengirim follow up.', 'error');
                             }
                         });
                     }

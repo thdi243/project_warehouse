@@ -678,8 +678,7 @@ class VehicleTrackingController extends Controller
         try {
             $response = Http::connectTimeout(5)
                 ->timeout(10)
-                ->get('http://10.11.11.10:8093/api/supplier-data');
-            // ->get('http://localhost:8081/api/supplier-data');
+                ->get(env('MYBAS_API_URL') . '/api/supplier-data');
 
             if ($response->successful()) {
                 $payload = $response->json();

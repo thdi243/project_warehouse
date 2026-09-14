@@ -259,7 +259,7 @@
 
             function playFollowUpNotificationSound() {
                 try {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     osc.type = 'sine';
@@ -271,13 +271,20 @@
                     gain.connect(audioCtx.destination);
                     osc.start();
                     osc.stop(audioCtx.currentTime + 0.5);
-                } catch(e) {}
+                } catch (e) {}
             }
 
             function triggerFollowUpAlert(data) {
-                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date.now());
-                if (handledFollowUps.has(alertKey)) return;
+                console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
+                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date
+                    .now());
+                if (handledFollowUps.has(alertKey)) {
+                    console.log('⚠️ Already handled:', alertKey);
+                    return;
+                }
                 handledFollowUps.add(alertKey);
+
+                console.log('🔔 Playing notification sound...');
 
                 playFollowUpNotificationSound();
 
@@ -317,8 +324,10 @@
                         if (allWrmData.length > 0) {
                             const nowSec = Math.floor(Date.now() / 1000);
                             allWrmData.forEach(tx => {
-                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp < 600)) {
-                                    if (tx.follow_up_target === 'WRM' || tx.follow_up_target === 'ALL' || tx.sloc === 'B006') {
+                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp <
+                                        600)) {
+                                    if (tx.follow_up_target === 'WRM' || tx.follow_up_target ===
+                                        'ALL' || tx.sloc === 'B006') {
                                         triggerFollowUpAlert({
                                             id: tx.id,
                                             transaction_id: tx.id,
@@ -357,7 +366,9 @@
                     window.Echo.channel('vehicle-tracking')
                         .listen('.vehicle.updated', (payload) => {
                             console.log('Echo event received in WRM:', payload);
-                            if (payload.type === 'follow_up' && (payload.target_area === 'WRM' || payload.target_area === 'ALL' || payload.target_sloc === 'B006' || payload.target_sloc === 'WRM')) {
+                            if (payload.type === 'follow_up' && (payload.target_area === 'WRM' || payload
+                                    .target_area === 'ALL' || payload.target_sloc === 'B006' || payload
+                                    .target_sloc === 'WRM')) {
                                 triggerFollowUpAlert(payload);
                             } else {
                                 if (window.toastr) {

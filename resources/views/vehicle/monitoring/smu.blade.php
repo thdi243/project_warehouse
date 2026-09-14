@@ -261,7 +261,7 @@
 
             function playFollowUpNotificationSound() {
                 try {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     osc.type = 'sine';
@@ -273,13 +273,21 @@
                     gain.connect(audioCtx.destination);
                     osc.start();
                     osc.stop(audioCtx.currentTime + 0.5);
-                } catch(e) {}
+                } catch (e) {}
             }
 
             function triggerFollowUpAlert(data) {
-                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date.now());
-                if (handledFollowUps.has(alertKey)) return;
+                console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
+                const alertKey = (data.transaction_id || data.id) + '_' + (data.time || data.follow_up_time || Date
+                    .now());
+                if (handledFollowUps.has(alertKey)) {
+                    console.log('⚠️ Already handled:', alertKey);
+                    return;
+                }
+
                 handledFollowUps.add(alertKey);
+
+                console.log('🔔 Playing notification sound...');
 
                 playFollowUpNotificationSound();
 
@@ -319,8 +327,10 @@
                         if (allSmuData.length > 0) {
                             const nowSec = Math.floor(Date.now() / 1000);
                             allSmuData.forEach(tx => {
-                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp < 600)) {
-                                    if (tx.follow_up_target === 'SMU' || tx.follow_up_target === 'ALL') {
+                                if (tx.follow_up_timestamp && (nowSec - tx.follow_up_timestamp <
+                                        600)) {
+                                    if (tx.follow_up_target === 'SMU' || tx.follow_up_target ===
+                                        'ALL') {
                                         triggerFollowUpAlert({
                                             id: tx.id,
                                             transaction_id: tx.id,
@@ -361,7 +371,8 @@
                     window.Echo.channel('vehicle-tracking')
                         .listen('.vehicle.updated', (payload) => {
                             console.log('Echo event received in SMU:', payload);
-                            if (payload.type === 'follow_up' && (payload.target_area === 'SMU' || payload.target_area === 'ALL' || payload.target_sloc === 'SMU')) {
+                            if (payload.type === 'follow_up' && (payload.target_area === 'SMU' || payload
+                                    .target_area === 'ALL' || payload.target_sloc === 'SMU')) {
                                 triggerFollowUpAlert(payload);
                             } else {
                                 if (window.toastr) {
@@ -515,7 +526,8 @@
                                 loadSmuData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal membatalkan nomor antrian.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal membatalkan nomor antrian.', 'error');
                             }
                         });
                     }
