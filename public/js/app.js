@@ -479,8 +479,6 @@ $(document).ready(function () {
         if (typeof window.Echo === "function" && window.AppConfig) {
             window.Pusher = Pusher;
 
-            const isHttps = window.location.protocol === "https:" || Boolean(window.AppConfig.reverb && window.AppConfig.reverb.forceTLS);
-
             window.Echo = new window.Echo({
                 broadcaster: "reverb",
                 key: window.AppConfig.reverb.key,
@@ -488,9 +486,8 @@ $(document).ready(function () {
                     window.AppConfig.reverb.wsHost || window.location.hostname,
                 wsPort: window.AppConfig.reverb.wsPort,
                 wssPort: window.AppConfig.reverb.wssPort,
-                forceTLS: isHttps,
+                forceTLS: window.AppConfig.reverb.forceTLS,
                 enabledTransports: ["ws", "wss"],
-                disableStats: true,
             });
         }
 
