@@ -3,6 +3,37 @@
 @section('title', '| Master Item, Sloc & Vendor')
 
 @section('content')
+    <style>
+        .pagination .page-link {
+            color: #495057;
+            border-color: #e9ebec;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8125rem;
+            border-radius: 4px;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #3577f1;
+            border-color: #3577f1;
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(53, 119, 241, 0.3);
+        }
+        .pagination .page-item.disabled .page-link {
+            color: #878a99;
+            background-color: #f3f6f9;
+            border-color: #e9ebec;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .pagination .page-link:hover:not(.disabled) {
+            background-color: #eef0f2;
+            color: #3577f1;
+        }
+    </style>
+
     <div class="page-content">
         <div class="container-fluid">
             <!-- Breadcrumb -->
@@ -142,6 +173,25 @@
                                                 @endforelse
                                             </tbody>
                                         </table>
+                                    </div>
+
+                                    <!-- Pagination Footer Items -->
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 pt-3 border-top">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-muted small">Tampilkan:</span>
+                                            <select class="form-select form-select-sm" id="itemsPerPageSelect" style="width: 75px;">
+                                                <option value="10" selected>10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                                <option value="100">100</option>
+                                            </select>
+                                            <span class="text-muted small" id="itemsPaginationInfo">Menampilkan 0 dari 0 item</span>
+                                        </div>
+                                        <nav aria-label="Navigasi Halaman Item">
+                                            <ul class="pagination pagination-sm mb-0 justify-content-end" id="itemsPagination">
+                                                <!-- Dynamic Pagination Generated via JS -->
+                                            </ul>
+                                        </nav>
                                     </div>
                                 </div>
                             </div>
@@ -427,12 +477,74 @@
                 }
             @endif
 
-            // Local data cache
-            let allItems = [];
-            let allLocations = [];
-            let allVendors = [];
+            // Local data cache bootstrapped with server data
+            let allItems = @json($items);
+            let allLocations = @json($locations);
+            let allVendors = @json($vendors);
 
-            // Helper to render Items Table
+            let currentItemPage = 1;
+            let itemsPerPage = 10;
+            let totalItemPages = 1;
+
+            // Smart pagination generator: prev 1 ... 4 5 6 ... n next
+            function getPaginationPages(currentPage, totalPages) {
+                if (totalPages <= 7) {
+                    let pages = [];
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                    return pages;
+                }
+
+                if (currentPage <= 4) {
+                    return [1, 2, 3, 4, 5, '...', totalPages];
+                } else if (currentPage >= totalPages - 3) {
+                    return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                } else {
+                    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+                }
+            }
+
+            // Render Pagination Links for Items
+            function renderItemsPagination(totalItems, totalPages) {
+                if (totalItems === 0) {
+                    $('#itemsPagination').html('');
+                    return;
+                }
+
+                let paginationHtml = '';
+
+                // Prev button
+                const isPrevDisabled = currentItemPage === 1;
+                paginationHtml += `<li class="page-item ${isPrevDisabled ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0);" data-page="${currentItemPage - 1}" ${isPrevDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                        <i class="ri-arrow-left-s-line me-1 align-middle"></i>Prev
+                    </a>
+                </li>`;
+
+                // Page numbers
+                const pages = getPaginationPages(currentItemPage, totalPages);
+                pages.forEach(p => {
+                    if (p === '...') {
+                        paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    } else {
+                        const isActive = p === currentItemPage;
+                        paginationHtml += `<li class="page-item ${isActive ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0);" data-page="${p}">${p}</a>
+                        </li>`;
+                    }
+                });
+
+                // Next button
+                const isNextDisabled = currentItemPage === totalPages;
+                paginationHtml += `<li class="page-item ${isNextDisabled ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0);" data-page="${currentItemPage + 1}" ${isNextDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                        Next<i class="ri-arrow-right-s-line ms-1 align-middle"></i>
+                    </a>
+                </li>`;
+
+                $('#itemsPagination').html(paginationHtml);
+            }
+
+            // Helper to render Items Table with Pagination
             function renderItemsTable(query = '') {
                 const q = query.trim().toLowerCase();
                 const filtered = allItems.filter(item => {
@@ -445,21 +557,37 @@
                     return nameMatch || locMatch;
                 });
 
+                const totalItems = filtered.length;
+                totalItemPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+                if (currentItemPage > totalItemPages) {
+                    currentItemPage = totalItemPages;
+                }
+                if (currentItemPage < 1) {
+                    currentItemPage = 1;
+                }
+
+                const startIndex = (currentItemPage - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+                const paginatedItems = filtered.slice(startIndex, endIndex);
+
                 let html = '';
-                if (filtered.length === 0) {
+                if (totalItems === 0) {
                     html = `<tr>
                         <td colspan="4" class="text-center text-muted py-4">
                             ${q ? 'Tidak ada data item yang sesuai dengan pencarian.' : 'Belum ada item terdaftar.'}
                         </td>
                     </tr>`;
                 } else {
-                    filtered.forEach(function(item, index) {
+                    paginatedItems.forEach(function(item, index) {
                         const areaText = item.location ?
                             `<span class="badge bg-soft-info text-info">${escapeHtml(item.location.s_loc)} - ${escapeHtml(item.location.name)}</span>` :
                             `<span class="text-muted">-</span>`;
 
+                        const rowNumber = startIndex + index + 1;
+
                         html += `<tr>
-                            <td class="text-center">${index + 1}</td>
+                            <td class="text-center">${rowNumber}</td>
                             <td class="fw-medium">${escapeHtml(item.name)}</td>
                             <td>${areaText}</td>
                             <td class="text-center">
@@ -480,6 +608,15 @@
                     });
                 }
                 $('#itemsTable tbody').html(html);
+
+                // Update pagination info & links
+                if (totalItems === 0) {
+                    $('#itemsPaginationInfo').text('Menampilkan 0 dari 0 item');
+                } else {
+                    $('#itemsPaginationInfo').text(`Menampilkan ${startIndex + 1} - ${endIndex} dari ${totalItems} item`);
+                }
+
+                renderItemsPagination(totalItems, totalItemPages);
             }
 
             // Helper to render Slocs Table
@@ -605,8 +742,29 @@
 
             // Realtime search inputs
             $('#searchItem').on('input', function() {
+                currentItemPage = 1;
                 renderItemsTable($(this).val());
             });
+
+            // Pagination page-link click handler
+            $(document).on('click', '#itemsPagination .page-link', function(e) {
+                e.preventDefault();
+                const targetPage = parseInt($(this).data('page'));
+                if (targetPage && targetPage >= 1 && targetPage <= totalItemPages && targetPage !== currentItemPage) {
+                    currentItemPage = targetPage;
+                    renderItemsTable($('#searchItem').val() || '');
+                }
+            });
+
+            // Page size change handler
+            $('#itemsPerPageSelect').on('change', function() {
+                itemsPerPage = parseInt($(this).val()) || 10;
+                currentItemPage = 1;
+                renderItemsTable($('#searchItem').val() || '');
+            });
+
+            // Initial render
+            renderItemsTable();
 
             $('#searchSloc').on('input', function() {
                 renderSlocsTable($(this).val());
