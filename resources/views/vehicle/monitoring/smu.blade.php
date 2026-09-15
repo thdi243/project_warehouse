@@ -132,9 +132,11 @@
                             antrianBadge =
                                 `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">${tx.no_antrian}</span>`;
                         } else {
-                            antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
-                                Ambil Antrian
-                            </button>`;
+                            @can('permission', 'vms-admin-smu')
+                                antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
+                                    Ambil Antrian
+                                </button>`;
+                            @endcan
                         }
 
                         let statusBadge = '';
@@ -160,13 +162,15 @@
                                     data-action="Mulai ${actionLabel}">
                                     <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
                                 </button>
-                                <button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
-                                    data-id="${tx.id}" 
-                                    data-nopol="${tx.no_pol}"
-                                    data-antrian="${tx.no_antrian}"
-                                    title="Batalkan Antrian">
-                                    <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
-                                </button>
+                                @can('permission', 'vms-admin-smu')
+                                    <button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
+                                        data-id="${tx.id}" 
+                                        data-nopol="${tx.no_pol}"
+                                        data-antrian="${tx.no_antrian}"
+                                        title="Batalkan Antrian">
+                                        <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
+                                    </button>
+                                @endcan
                             </div>`;
                         } else {
                             actionBtn = `<button type="button" class="btn btn-sm btn-warning btn-complete-smu" 
@@ -233,9 +237,7 @@
                         }
 
                         html += `<tr id="row-${tx.id}">
-                            @can('permission', 'vehicle-monitoring-smu-plus')
-                                <td class="text-center">${antrianBadge}</td>
-                            @endcan
+                            <td class="text-center">${antrianBadge}</td>
                             <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
                             <td>
                                 <strong>${tx.vendor || '-'}</strong><br>
