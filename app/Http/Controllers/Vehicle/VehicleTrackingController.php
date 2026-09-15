@@ -1677,7 +1677,7 @@ class VehicleTrackingController extends Controller
     {
         $queue = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
             ->where('status', 'wfg')
-            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, no_antrian ASC, check_in_time ASC')
+            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
@@ -1809,6 +1809,7 @@ class VehicleTrackingController extends Controller
             }
 
             $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
+            $transactionJenis = strtolower(trim($transaction->jenis ?? ''));
 
             // Update transaction to timbangan_out
             $transaction->update([
@@ -1823,11 +1824,16 @@ class VehicleTrackingController extends Controller
                 'updated_by' => Auth::id()
             ]);
 
-            // Shift remaining active queues in WFG
+            // Shift remaining active queues in WFG for the SAME jenis
             if ($completedAntrian > 0) {
-                $otherActive = VehicleTransaction::where('status', 'wfg')
-                    ->whereNotNull('no_antrian')
-                    ->get();
+                $otherActiveQuery = VehicleTransaction::where('status', 'wfg')
+                    ->whereNotNull('no_antrian');
+
+                if (!empty($transactionJenis)) {
+                    $otherActiveQuery->where('jenis', $transactionJenis);
+                }
+
+                $otherActive = $otherActiveQuery->get();
                 foreach ($otherActive as $tx) {
                     $currAntrian = (int)$tx->no_antrian;
                     if ($currAntrian > $completedAntrian) {
@@ -2208,11 +2214,19 @@ class VehicleTrackingController extends Controller
 
             $transaction = VehicleTransaction::findOrFail($id);
 
-            // Auto-assign queue number: find max in current status
+            // Auto-assign queue number: find max in current status (dan per jenis jika di WFG)
             $status = $transaction->status;
-            $maxAntrian = VehicleTransaction::where('status', $status)
-                ->whereNotNull('no_antrian')
-                ->get()
+            $jenis = strtolower(trim($transaction->jenis ?? ''));
+
+            $query = VehicleTransaction::where('status', $status)
+                ->whereNotNull('no_antrian');
+
+            // Pisahkan antrian berdasarkan jenis jika di WFG (slipsheet vs curah)
+            if ($status === 'wfg' && !empty($jenis)) {
+                $query->where('jenis', $jenis);
+            }
+
+            $maxAntrian = $query->get()
                 ->map(function ($tx) {
                     return (int)$tx->no_antrian;
                 })
@@ -2231,8 +2245,9 @@ class VehicleTrackingController extends Controller
 
             // Kendaraan TETAP berada di slot kantong parkir saat mengambil antrian.
             // Release dari parkir HANYA dilakukan saat action Mulai Bongkar/Muat (start_loading_time).
-            $noPol = $transaction->vehicle->no_pol;
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
             $currentLoc = $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'N/A';
+            $jenisLabel = ($status === 'wfg' && !empty($transaction->jenis)) ? ' (' . ucfirst($transaction->jenis) . ')' : '';
 
             // Broadcast change
             event(new VehicleStatusUpdated([
@@ -2240,14 +2255,14 @@ class VehicleTrackingController extends Controller
                 'no_pol' => $noPol,
                 'current_location' => $currentLoc,
                 'status' => $transaction->status,
-                'message' => "Nomor antrian Truk {$noPol} diset otomatis menjadi {$formattedAntrian}.",
+                'message' => "Nomor antrian Truk {$noPol}{$jenisLabel} diset otomatis menjadi {$formattedAntrian}.",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
             DB::commit();
             return response()->json([
                 'success' => true,
-                'message' => "Nomor antrian Truk {$noPol} berhasil diset ke {$formattedAntrian}."
+                'message' => "Nomor antrian Truk {$noPol}{$jenisLabel} berhasil diset ke {$formattedAntrian}."
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2290,6 +2305,8 @@ class VehicleTrackingController extends Controller
 
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
             $oldAntrian = $transaction->no_antrian;
+            $status = $transaction->status;
+            $jenis = strtolower(trim($transaction->jenis ?? ''));
 
             $updateData = [
                 'no_antrian' => null,
@@ -2302,6 +2319,25 @@ class VehicleTrackingController extends Controller
             }
 
             $transaction->update($updateData);
+
+            // Jika di WFG, shift antrian yang tersisa agar tetap urut berdasarkan jenisnya
+            if ($status === 'wfg' && $oldAntrian) {
+                $oldAntrianInt = (int)$oldAntrian;
+                $shiftQuery = VehicleTransaction::where('status', 'wfg')
+                    ->whereNotNull('no_antrian');
+
+                if (!empty($jenis)) {
+                    $shiftQuery->where('jenis', $jenis);
+                }
+
+                $remaining = $shiftQuery->get();
+                foreach ($remaining as $tx) {
+                    $curr = (int)$tx->no_antrian;
+                    if ($curr > $oldAntrianInt) {
+                        $tx->update(['no_antrian' => str_pad($curr - 1, 2, '0', STR_PAD_LEFT)]);
+                    }
+                }
+            }
 
             $currentLoc = $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'N/A';
 

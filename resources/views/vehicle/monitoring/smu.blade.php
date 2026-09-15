@@ -40,11 +40,13 @@
                                             <th class="text-center" style="width: 120px;">No. Antrian</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            <th>Item</th>
-                                            <th>No. SPB / Qty</th>
-                                            <th>Waktu</th>
-                                            <th>Status</th>
-                                            <th>Durasi Aktivitas</th>
+                                            @can('permission', 'vms-admin-smu')
+                                                <th>Item</th>
+                                                <th>No. SPB / Qty</th>
+                                                <th>Waktu</th>
+                                                <th>Status</th>
+                                                <th>Durasi Aktivitas</th>
+                                            @endcan
                                             <th class="text-center" style="width: 240px;">Aksi</th>
                                         </tr>
                                     </thead>
@@ -239,14 +241,16 @@
                                 <strong>${tx.vendor || '-'}</strong><br>
                                 <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
                             </td>
-                            <td>${tx.item_name}</td>
-                            <td>
-                                <strong>${tx.no_spb}</strong><br>
-                                <small class="text-muted">${tx.qty_spb}</small>
-                            </td>
-                            <td>${timelineHtml}</td>
-                            <td>${statusBadge}</td>
-                            <td>${durasiHtml}</td>
+                            @can('permission', 'vms-admin-smu')
+                                <td>${tx.item_name}</td>
+                                <td>
+                                    <strong>${tx.no_spb}</strong><br>
+                                    <small class="text-muted">${tx.qty_spb}</small>
+                                </td>
+                                <td>${timelineHtml}</td>
+                                <td>${statusBadge}</td>
+                                <td>${durasiHtml}</td>
+                            @endcan
                             <td class="text-center">
                                 ${actionBtn}
                             </td>
@@ -280,7 +284,8 @@
                 console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
                 const items = Array.isArray(data) ? data : [data];
                 const unhandled = items.filter(item => {
-                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item.follow_up_time || item.follow_up_timestamp || '');
+                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item
+                        .follow_up_time || item.follow_up_timestamp || '');
                     return !handledFollowUps.has(alertKey);
                 });
 
@@ -289,7 +294,8 @@
                 }
 
                 unhandled.forEach(item => {
-                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item.follow_up_time || item.follow_up_timestamp || '');
+                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item
+                        .follow_up_time || item.follow_up_timestamp || '');
                     handledFollowUps.add(alertKey);
                 });
 
@@ -305,7 +311,8 @@
                     </div>
                 `).join('');
 
-                const countText = unhandled.length > 1 ? `Ada ${unhandled.length} kendaraan membutuhkan` : 'Kendaraan berikut membutuhkan';
+                const countText = unhandled.length > 1 ? `Ada ${unhandled.length} kendaraan membutuhkan` :
+                    'Kendaraan berikut membutuhkan';
 
                 Swal.fire({
                     title: '<span class="text-danger fw-bold"><i class="ri-alarm-warning-line me-1"></i> FOLLOW UP TIMBANGAN!</span>',
@@ -338,7 +345,8 @@
                         if (allSmuData.length > 0) {
                             const followUps = allSmuData.filter(tx => {
                                 return (tx.follow_up_timestamp || tx.follow_up_time) &&
-                                    (tx.follow_up_target === 'SMU' || tx.follow_up_target === 'ALL');
+                                    (tx.follow_up_target === 'SMU' || tx.follow_up_target ===
+                                        'ALL');
                             }).map(tx => ({
                                 id: tx.id,
                                 transaction_id: tx.id,

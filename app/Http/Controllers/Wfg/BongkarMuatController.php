@@ -1169,7 +1169,8 @@ class BongkarMuatController extends Controller
                 // Isi nomor antrian urut otomatis jika belum ada nomor antrian
                 $assignedAntrian = $transaction->no_antrian;
                 if (empty($assignedAntrian)) {
-                    $maxAntrian = VehicleTransaction::where(function ($q) use ($newStatus, $isSmu) {
+                    $txJenis = strtolower(trim($transaction->jenis ?? ''));
+                    $maxAntrianQuery = VehicleTransaction::where(function ($q) use ($newStatus, $isSmu) {
                         $q->where('status', $newStatus)
                             ->orWhereHas('targetLocation', function ($tl) use ($isSmu) {
                                 if ($isSmu) {
@@ -1179,8 +1180,13 @@ class BongkarMuatController extends Controller
                                 }
                             });
                     })
-                        ->whereNotNull('no_antrian')
-                        ->get()
+                        ->whereNotNull('no_antrian');
+
+                    if ($newStatus === 'wfg' && !empty($txJenis)) {
+                        $maxAntrianQuery->where('jenis', $txJenis);
+                    }
+
+                    $maxAntrian = $maxAntrianQuery->get()
                         ->map(function ($tx) {
                             return (int)$tx->no_antrian;
                         })
@@ -1315,9 +1321,10 @@ class BongkarMuatController extends Controller
                         'updated_by' => Auth::id()
                     ]);
 
-                    // Shift remaining active queues in area tersebut
+                    // Shift remaining active queues in area tersebut (jika WFG, shift per jenis)
                     if ($completedAntrian > 0) {
-                        $otherActive = VehicleTransaction::where(function ($q) use ($currentStatus, $isSmu) {
+                        $txJenis = strtolower(trim($transaction->jenis ?? ''));
+                        $otherActiveQuery = VehicleTransaction::where(function ($q) use ($currentStatus, $isSmu) {
                             $q->where('status', $currentStatus)
                                 ->orWhereHas('targetLocation', function ($tl) use ($isSmu) {
                                     if ($isSmu) {
@@ -1327,8 +1334,13 @@ class BongkarMuatController extends Controller
                                     }
                                 });
                         })
-                            ->whereNotNull('no_antrian')
-                            ->get();
+                            ->whereNotNull('no_antrian');
+
+                        if ($currentStatus === 'wfg' && !empty($txJenis)) {
+                            $otherActiveQuery->where('jenis', $txJenis);
+                        }
+
+                        $otherActive = $otherActiveQuery->get();
                         foreach ($otherActive as $tx) {
                             $currAntrian = (int)$tx->no_antrian;
                             if ($currAntrian > $completedAntrian) {

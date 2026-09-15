@@ -3,6 +3,42 @@
 @section('title', '| WFG (Muat)')
 
 @section('content')
+    <style>
+        .nav-custom-pill .nav-link {
+            color: #495057;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ebec !important;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .nav-custom-pill .nav-link:hover {
+            background-color: #eef0f2;
+        }
+
+        .nav-custom-pill .nav-link.active#tab-slipsheet {
+            color: #fff !important;
+            background: linear-gradient(135deg, #3577f1 0%, #2059c2 100%) !important;
+            border-color: #2059c2 !important;
+            box-shadow: 0 4px 10px rgba(53, 119, 241, 0.25);
+        }
+
+        .nav-custom-pill .nav-link.active#tab-curah {
+            color: #fff !important;
+            background: linear-gradient(135deg, #0ab39c 0%, #088c7a 100%) !important;
+            border-color: #088c7a !important;
+            box-shadow: 0 4px 10px rgba(10, 179, 156, 0.25);
+        }
+
+        .nav-custom-pill .nav-link.active i {
+            color: #fff !important;
+        }
+
+        .nav-custom-pill .nav-link.active .badge {
+            background-color: rgba(255, 255, 255, 0.28) !important;
+            color: #fff !important;
+        }
+    </style>
+
     <div class="page-content">
         <div class="container-fluid">
             <div class="row">
@@ -22,18 +58,51 @@
             <div class="row">
                 <div class="col-12">
                     <div class="card shadow-sm border-0">
-                        <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
-                            <h4 class="card-title mb-0 flex-grow-1"><i
-                                    class="ri-upload-2-line me-2 align-middle text-info"></i>Antrian Muat Finished Goods
-                            </h4>
+                        <div
+                            class="card-header align-items-center d-flex flex-wrap gap-2 border-bottom bg-transparent py-3">
+                            <div class="flex-grow-1">
+                                <h4 class="card-title mb-1"><i
+                                        class="ri-upload-2-line me-2 align-middle text-info"></i>Antrian Muat Finished Goods
+                                    (WFG)
+                                </h4>
+                                <p class="text-muted mb-0 small">Sistem antrian dan pemantauan aktivitas muat barang jadi
+                                    dipisah berdasarkan kategori muatan</p>
+                            </div>
                             <div class="flex-shrink-0">
-                                <div style="width: 250px;">
-                                    <input type="text" class="form-control" id="search_table"
-                                        placeholder="Cari No. Polisi / Vendor...">
+                                <div style="width: 270px;">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light border-end-0"><i
+                                                class="ri-search-line"></i></span>
+                                        <input type="text" class="form-control border-start-0" id="search_table"
+                                            placeholder="Cari No. Polisi / Vendor / SPB...">
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body pt-3">
+                            <!-- Nav Tabs Jenis Muatan (Slipsheet & Curah) -->
+                            <ul class="nav nav-pills nav-custom-pill gap-2 mb-3" id="wfgTypeTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button
+                                        class="nav-link active fw-semibold d-flex align-items-center px-3 py-2 rounded-3"
+                                        id="tab-slipsheet" data-jenis="slipsheet" type="button" role="tab">
+                                        <i class="ri-pages-line fs-16 me-2 text-primary"></i>
+                                        <span>Muat Slipsheet</span>
+                                        <span class="badge bg-primary text-white rounded-pill ms-2"
+                                            id="badge-count-slipsheet">0</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link fw-semibold d-flex align-items-center px-3 py-2 rounded-3"
+                                        id="tab-curah" data-jenis="curah" type="button" role="tab">
+                                        <i class="ri-truck-line fs-16 me-2 text-info"></i>
+                                        <span>Muat Curah</span>
+                                        <span class="badge bg-info text-white rounded-pill ms-2"
+                                            id="badge-count-curah">0</span>
+                                    </button>
+                                </li>
+                            </ul>
+
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle text-nowrap" id="wfgTable">
                                     <thead class="table-light">
@@ -42,11 +111,13 @@
                                             <th>Waktu</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            <th>Item</th>
-                                            <th>No. SPB</th>
-                                            <th>Qty SPB</th>
-                                            <th>Status</th>
-                                            <th>Durasi Aktivitas</th>
+                                            @can('permission', 'vms-admin-wfg')
+                                                <th>Item</th>
+                                                <th>No. SPB</th>
+                                                <th>Qty SPB</th>
+                                                <th>Status</th>
+                                                <th>Durasi Aktivitas</th>
+                                            @endcan
                                             <th class="text-center" style="width: 240px;">Aksi</th>
                                         </tr>
                                     </thead>
@@ -105,21 +176,69 @@
 
             let allWfgData = [];
             let searchQuery = '';
+            let currentJenisTab = 'slipsheet'; // Default tab: slipsheet
+
+            $('#wfgTypeTabs button[data-jenis]').on('click', function() {
+                $('#wfgTypeTabs button').removeClass('active');
+                $(this).addClass('active');
+                currentJenisTab = $(this).data('jenis');
+                renderWfgTable();
+            });
 
             function renderWfgTable() {
-                let filtered = allWfgData;
+                // 1. Update count badges
+                let countSlipsheet = 0;
+                let countCurah = 0;
+                allWfgData.forEach(function(tx) {
+                    const j = (tx.jenis || '').toLowerCase().trim();
+                    if (j === 'curah') {
+                        countCurah++;
+                    } else {
+                        // slipsheet atau default
+                        countSlipsheet++;
+                    }
+                });
+                $('#badge-count-slipsheet').text(countSlipsheet);
+                $('#badge-count-curah').text(countCurah);
+
+                // 2. Filter data by active tab
+                let tabFiltered = allWfgData.filter(function(tx) {
+                    const j = (tx.jenis || '').toLowerCase().trim();
+                    if (currentJenisTab === 'curah') {
+                        return j === 'curah';
+                    } else {
+                        return j === 'slipsheet' || (j !== 'curah');
+                    }
+                });
+
+                // 3. Filter data by search query
+                let filtered = tabFiltered;
                 if (searchQuery) {
-                    filtered = allWfgData.filter(function(tx) {
+                    filtered = tabFiltered.filter(function(tx) {
                         const noPol = (tx.no_pol || '').toLowerCase();
                         const vendor = (tx.vendor || '').toLowerCase();
-                        return noPol.includes(searchQuery) || vendor.includes(searchQuery);
+                        const noSpb = (tx.no_spb || '').toLowerCase();
+                        const driver = (tx.nama_driver || '').toLowerCase();
+                        const item = (tx.item_name || '').toLowerCase();
+                        return noPol.includes(searchQuery) ||
+                            vendor.includes(searchQuery) ||
+                            noSpb.includes(searchQuery) ||
+                            driver.includes(searchQuery) ||
+                            item.includes(searchQuery);
                     });
                 }
+
+                const currentTabLabel = currentJenisTab === 'curah' ? 'Curah' : 'Slipsheet';
 
                 let html = '';
                 if (filtered.length === 0) {
                     html = `<tr>
-                        <td colspan="10" class="text-center py-4 text-muted">Tidak ada kendaraan yang sesuai pencarian.</td>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            <div class="py-2">
+                                <i class="ri-inbox-line display-5 text-muted mb-2"></i>
+                                <p class="mb-0 fs-14">Tidak ada antrian muat <strong>${currentTabLabel}</strong> ${searchQuery ? 'yang cocok dengan pencarian' : 'saat ini'}.</p>
+                            </div>
+                        </td>
                     </tr>`;
                 } else {
                     filtered.forEach(function(tx) {
@@ -130,10 +249,12 @@
                         let antrianBadge = '';
                         if (tx.no_antrian) {
                             antrianBadge =
-                                `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">${tx.no_antrian}</span>`;
+                                `<span class="badge bg-soft-success text-success fs-13 px-3 py-2 fw-semibold">
+                                    <i class="ri-hashtag me-1"></i>${tx.no_antrian}
+                                </span>`;
                         } else {
-                            antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
-                                Ambil Antrian
+                            antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}" data-jenis="${tx.jenis || currentJenisTab}">
+                                <i class="ri-ticket-line me-1"></i>Ambil Antrian
                             </button>`;
                         }
 
@@ -143,7 +264,7 @@
                                 `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
                         } else if (!isProcess) {
                             statusBadge =
-                                `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian ${tx.no_antrian}</span>`;
+                                `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian #${tx.no_antrian} (${currentTabLabel})</span>`;
                         } else {
                             statusBadge =
                                 `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel}</span>`;
@@ -241,11 +362,13 @@
                                 <strong>${tx.vendor || '-'}</strong><br>
                                 <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
                             </td>
-                            <td>${tx.item_name}</td>
-                            <td>${tx.no_spb}</td>
-                            <td>${tx.qty_spb}</td>
-                            <td>${statusBadge}</td>
-                            <td>${durasiHtml}</td>
+                            @can('permission', 'vms-admin-wfg')
+                                <td>${tx.item_name}</td>
+                                <td>${tx.no_spb}</td>
+                                <td>${tx.qty_spb}</td>
+                                <td>${statusBadge}</td>
+                                <td>${durasiHtml}</td>
+                            @endcan
                             <td class="text-center">
                                 ${actionBtn}
                             </td>
@@ -279,7 +402,8 @@
                 console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
                 const items = Array.isArray(data) ? data : [data];
                 const unhandled = items.filter(item => {
-                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item.follow_up_time || item.follow_up_timestamp || '');
+                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item
+                        .follow_up_time || item.follow_up_timestamp || '');
                     return !handledFollowUps.has(alertKey);
                 });
 
@@ -288,7 +412,8 @@
                 }
 
                 unhandled.forEach(item => {
-                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item.follow_up_time || item.follow_up_timestamp || '');
+                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item
+                        .follow_up_time || item.follow_up_timestamp || '');
                     handledFollowUps.add(alertKey);
                 });
 
@@ -304,7 +429,8 @@
                     </div>
                 `).join('');
 
-                const countText = unhandled.length > 1 ? `Ada ${unhandled.length} kendaraan membutuhkan` : 'Kendaraan berikut membutuhkan';
+                const countText = unhandled.length > 1 ? `Ada ${unhandled.length} kendaraan membutuhkan` :
+                    'Kendaraan berikut membutuhkan';
 
                 Swal.fire({
                     title: '<span class="text-danger fw-bold"><i class="ri-alarm-warning-line me-1"></i> FOLLOW UP TIMBANGAN!</span>',
@@ -337,7 +463,9 @@
                         if (allWfgData.length > 0) {
                             const followUps = allWfgData.filter(tx => {
                                 return (tx.follow_up_timestamp || tx.follow_up_time) &&
-                                    (tx.follow_up_target === 'WFG' || tx.follow_up_target === 'ALL' || tx.sloc === 'A001' || tx.target_sloc === 'A001');
+                                    (tx.follow_up_target === 'WFG' || tx.follow_up_target ===
+                                        'ALL' || tx.sloc === 'A001' || tx.target_sloc === 'A001'
+                                    );
                             }).map(tx => ({
                                 id: tx.id,
                                 transaction_id: tx.id,
@@ -482,10 +610,12 @@
             $(document).on('click', '.btn-get-queue', function() {
                 const id = $(this).data('id');
                 const nopol = $(this).data('nopol');
+                const txJenis = $(this).data('jenis') || currentJenisTab || 'slipsheet';
+                const jenisLabel = txJenis.toUpperCase();
 
                 Swal.fire({
-                    title: 'Ambil Nomor Antrian?',
-                    text: `Ambil nomor antrian otomatis untuk truk ${nopol}?`,
+                    title: `Ambil Nomor Antrian (${jenisLabel})?`,
+                    text: `Ambil nomor antrian muat ${jenisLabel} otomatis untuk truk ${nopol}?`,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#3577f1',
@@ -518,10 +648,11 @@
                 const id = $(this).data('id');
                 const nopol = $(this).data('nopol');
                 const antrian = $(this).data('antrian');
+                const tabLabel = currentJenisTab === 'curah' ? 'Curah' : 'Slipsheet';
 
                 Swal.fire({
-                    title: 'Batalkan Antrian?',
-                    text: `Batalkan nomor antrian ${antrian} untuk truk ${nopol}? Truk akan kembali ke status Menunggu Antrian.`,
+                    title: `Batalkan Antrian ${tabLabel}?`,
+                    text: `Batalkan nomor antrian #${antrian} untuk truk ${nopol}? Truk akan kembali ke status Menunggu Antrian dan antrian ${tabLabel} lainnya akan bergeser maju.`,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#d33',
