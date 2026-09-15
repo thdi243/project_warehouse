@@ -266,6 +266,25 @@
                                                 </tbody>
                                             </table>
                                         </div>
+
+                                        <!-- Pagination Footer Sloc -->
+                                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 pt-3 border-top">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="text-muted small">Tampilkan:</span>
+                                                <select class="form-select form-select-sm" id="slocsPerPageSelect" style="width: 75px;">
+                                                    <option value="10" selected>10</option>
+                                                    <option value="25">25</option>
+                                                    <option value="50">50</option>
+                                                    <option value="100">100</option>
+                                                </select>
+                                                <span class="text-muted small" id="slocsPaginationInfo">Menampilkan 0 dari 0 sloc</span>
+                                            </div>
+                                            <nav aria-label="Navigasi Halaman Sloc">
+                                                <ul class="pagination pagination-sm mb-0 justify-content-end" id="slocsPagination">
+                                                    <!-- Dynamic Pagination Generated via JS -->
+                                                </ul>
+                                            </nav>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -333,6 +352,25 @@
                                                 @endforelse
                                             </tbody>
                                         </table>
+                                    </div>
+
+                                    <!-- Pagination Footer Vendor -->
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 pt-3 border-top">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-muted small">Tampilkan:</span>
+                                            <select class="form-select form-select-sm" id="vendorsPerPageSelect" style="width: 75px;">
+                                                <option value="10" selected>10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                                <option value="100">100</option>
+                                            </select>
+                                            <span class="text-muted small" id="vendorsPaginationInfo">Menampilkan 0 dari 0 vendor</span>
+                                        </div>
+                                        <nav aria-label="Navigasi Halaman Vendor">
+                                            <ul class="pagination pagination-sm mb-0 justify-content-end" id="vendorsPagination">
+                                                <!-- Dynamic Pagination Generated via JS -->
+                                            </ul>
+                                        </nav>
                                     </div>
                                 </div>
                             </div>
@@ -486,6 +524,14 @@
             let itemsPerPage = 10;
             let totalItemPages = 1;
 
+            let currentSlocPage = 1;
+            let slocsPerPage = 10;
+            let totalSlocPages = 1;
+
+            let currentVendorPage = 1;
+            let vendorsPerPage = 10;
+            let totalVendorPages = 1;
+
             // Smart pagination generator: prev 1 ... 4 5 6 ... n next
             function getPaginationPages(currentPage, totalPages) {
                 if (totalPages <= 7) {
@@ -503,30 +549,30 @@
                 }
             }
 
-            // Render Pagination Links for Items
-            function renderItemsPagination(totalItems, totalPages) {
-                if (totalItems === 0) {
-                    $('#itemsPagination').html('');
+            // Render Pagination Links Generic
+            function renderPagination(containerId, currentPage, totalPages) {
+                if (totalPages <= 0) {
+                    $(containerId).html('');
                     return;
                 }
 
                 let paginationHtml = '';
 
                 // Prev button
-                const isPrevDisabled = currentItemPage === 1;
+                const isPrevDisabled = currentPage <= 1;
                 paginationHtml += `<li class="page-item ${isPrevDisabled ? 'disabled' : ''}">
-                    <a class="page-link" href="javascript:void(0);" data-page="${currentItemPage - 1}" ${isPrevDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                    <a class="page-link" href="javascript:void(0);" data-page="${currentPage - 1}" ${isPrevDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
                         <i class="ri-arrow-left-s-line me-1 align-middle"></i>Prev
                     </a>
                 </li>`;
 
                 // Page numbers
-                const pages = getPaginationPages(currentItemPage, totalPages);
+                const pages = getPaginationPages(currentPage, totalPages);
                 pages.forEach(p => {
                     if (p === '...') {
                         paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
                     } else {
-                        const isActive = p === currentItemPage;
+                        const isActive = p === currentPage;
                         paginationHtml += `<li class="page-item ${isActive ? 'active' : ''}">
                             <a class="page-link" href="javascript:void(0);" data-page="${p}">${p}</a>
                         </li>`;
@@ -534,14 +580,14 @@
                 });
 
                 // Next button
-                const isNextDisabled = currentItemPage === totalPages;
+                const isNextDisabled = currentPage >= totalPages;
                 paginationHtml += `<li class="page-item ${isNextDisabled ? 'disabled' : ''}">
-                    <a class="page-link" href="javascript:void(0);" data-page="${currentItemPage + 1}" ${isNextDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                    <a class="page-link" href="javascript:void(0);" data-page="${currentPage + 1}" ${isNextDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
                         Next<i class="ri-arrow-right-s-line ms-1 align-middle"></i>
                     </a>
                 </li>`;
 
-                $('#itemsPagination').html(paginationHtml);
+                $(containerId).html(paginationHtml);
             }
 
             // Helper to render Items Table with Pagination
@@ -616,10 +662,10 @@
                     $('#itemsPaginationInfo').text(`Menampilkan ${startIndex + 1} - ${endIndex} dari ${totalItems} item`);
                 }
 
-                renderItemsPagination(totalItems, totalItemPages);
+                renderPagination('#itemsPagination', currentItemPage, totalItemPages);
             }
 
-            // Helper to render Slocs Table
+            // Helper to render Slocs Table with Pagination
             function renderSlocsTable(query = '') {
                 const q = query.trim().toLowerCase();
                 const filtered = allLocations.filter(loc => {
@@ -630,17 +676,32 @@
                     return codeMatch || nameMatch || descMatch;
                 });
 
+                const totalSlocs = filtered.length;
+                totalSlocPages = Math.ceil(totalSlocs / slocsPerPage) || 1;
+
+                if (currentSlocPage > totalSlocPages) {
+                    currentSlocPage = totalSlocPages;
+                }
+                if (currentSlocPage < 1) {
+                    currentSlocPage = 1;
+                }
+
+                const startIndex = (currentSlocPage - 1) * slocsPerPage;
+                const endIndex = Math.min(startIndex + slocsPerPage, totalSlocs);
+                const paginatedSlocs = filtered.slice(startIndex, endIndex);
+
                 let html = '';
-                if (filtered.length === 0) {
+                if (totalSlocs === 0) {
                     html = `<tr>
                         <td colspan="5" class="text-center text-muted py-4">
                             ${q ? 'Tidak ada data Sloc yang sesuai dengan pencarian.' : 'Belum ada Sloc terdaftar.'}
                         </td>
                     </tr>`;
                 } else {
-                    filtered.forEach(function(loc, index) {
+                    paginatedSlocs.forEach(function(loc, index) {
+                        const rowNumber = startIndex + index + 1;
                         html += `<tr>
-                            <td class="text-center">${index + 1}</td>
+                            <td class="text-center">${rowNumber}</td>
                             <td><span class="badge bg-soft-info text-info fs-12">${escapeHtml(loc.s_loc)}</span></td>
                             <td class="fw-medium">${escapeHtml(loc.name)}</td>
                             <td class="text-wrap text-muted small">${escapeHtml(loc.description || '-')}</td>
@@ -664,9 +725,18 @@
                     });
                 }
                 $('#slocsTable tbody').html(html);
+
+                // Update pagination info & links
+                if (totalSlocs === 0) {
+                    $('#slocsPaginationInfo').text('Menampilkan 0 dari 0 sloc');
+                } else {
+                    $('#slocsPaginationInfo').text(`Menampilkan ${startIndex + 1} - ${endIndex} dari ${totalSlocs} sloc`);
+                }
+
+                renderPagination('#slocsPagination', currentSlocPage, totalSlocPages);
             }
 
-            // Helper to render Vendors Table
+            // Helper to render Vendors Table with Pagination
             function renderVendorsTable(query = '') {
                 const q = query.trim().toLowerCase();
                 const filtered = allVendors.filter(v => {
@@ -676,17 +746,32 @@
                     return nameMatch || descMatch;
                 });
 
+                const totalVendors = filtered.length;
+                totalVendorPages = Math.ceil(totalVendors / vendorsPerPage) || 1;
+
+                if (currentVendorPage > totalVendorPages) {
+                    currentVendorPage = totalVendorPages;
+                }
+                if (currentVendorPage < 1) {
+                    currentVendorPage = 1;
+                }
+
+                const startIndex = (currentVendorPage - 1) * vendorsPerPage;
+                const endIndex = Math.min(startIndex + vendorsPerPage, totalVendors);
+                const paginatedVendors = filtered.slice(startIndex, endIndex);
+
                 let html = '';
-                if (filtered.length === 0) {
+                if (totalVendors === 0) {
                     html = `<tr>
                         <td colspan="4" class="text-center text-muted py-4">
                             ${q ? 'Tidak ada data vendor yang sesuai dengan pencarian.' : 'Belum ada vendor terdaftar.'}
                         </td>
                     </tr>`;
                 } else {
-                    filtered.forEach(function(v, index) {
+                    paginatedVendors.forEach(function(v, index) {
+                        const rowNumber = startIndex + index + 1;
                         html += `<tr>
-                            <td class="text-center">${index + 1}</td>
+                            <td class="text-center">${rowNumber}</td>
                             <td><strong class="text-primary">${escapeHtml(v.name)}</strong></td>
                             <td class="text-wrap text-muted small">${escapeHtml(v.description || '-')}</td>
                             <td class="text-center">
@@ -708,6 +793,15 @@
                     });
                 }
                 $('#vendorsTable tbody').html(html);
+
+                // Update pagination info & links
+                if (totalVendors === 0) {
+                    $('#vendorsPaginationInfo').text('Menampilkan 0 dari 0 vendor');
+                } else {
+                    $('#vendorsPaginationInfo').text(`Menampilkan ${startIndex + 1} - ${endIndex} dari ${totalVendors} vendor`);
+                }
+
+                renderPagination('#vendorsPagination', currentVendorPage, totalVendorPages);
             }
 
             // AJAX Data Loader
@@ -746,7 +840,17 @@
                 renderItemsTable($(this).val());
             });
 
-            // Pagination page-link click handler
+            $('#searchSloc').on('input', function() {
+                currentSlocPage = 1;
+                renderSlocsTable($(this).val());
+            });
+
+            $('#searchVendor').on('input', function() {
+                currentVendorPage = 1;
+                renderVendorsTable($(this).val());
+            });
+
+            // Pagination page-link click handlers
             $(document).on('click', '#itemsPagination .page-link', function(e) {
                 e.preventDefault();
                 const targetPage = parseInt($(this).data('page'));
@@ -756,23 +860,47 @@
                 }
             });
 
-            // Page size change handler
+            $(document).on('click', '#slocsPagination .page-link', function(e) {
+                e.preventDefault();
+                const targetPage = parseInt($(this).data('page'));
+                if (targetPage && targetPage >= 1 && targetPage <= totalSlocPages && targetPage !== currentSlocPage) {
+                    currentSlocPage = targetPage;
+                    renderSlocsTable($('#searchSloc').val() || '');
+                }
+            });
+
+            $(document).on('click', '#vendorsPagination .page-link', function(e) {
+                e.preventDefault();
+                const targetPage = parseInt($(this).data('page'));
+                if (targetPage && targetPage >= 1 && targetPage <= totalVendorPages && targetPage !== currentVendorPage) {
+                    currentVendorPage = targetPage;
+                    renderVendorsTable($('#searchVendor').val() || '');
+                }
+            });
+
+            // Page size change handlers
             $('#itemsPerPageSelect').on('change', function() {
                 itemsPerPage = parseInt($(this).val()) || 10;
                 currentItemPage = 1;
                 renderItemsTable($('#searchItem').val() || '');
             });
 
+            $('#slocsPerPageSelect').on('change', function() {
+                slocsPerPage = parseInt($(this).val()) || 10;
+                currentSlocPage = 1;
+                renderSlocsTable($('#searchSloc').val() || '');
+            });
+
+            $('#vendorsPerPageSelect').on('change', function() {
+                vendorsPerPage = parseInt($(this).val()) || 10;
+                currentVendorPage = 1;
+                renderVendorsTable($('#searchVendor').val() || '');
+            });
+
             // Initial render
             renderItemsTable();
-
-            $('#searchSloc').on('input', function() {
-                renderSlocsTable($(this).val());
-            });
-
-            $('#searchVendor').on('input', function() {
-                renderVendorsTable($(this).val());
-            });
+            renderSlocsTable();
+            renderVendorsTable();
 
             /* ========================================================
                ITEM MODAL & ACTIONS
