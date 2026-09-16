@@ -920,7 +920,8 @@
                             </div>` :
                             '-';
 
-                        const desc = prJenis === 'Jasa' ? (item.desc || '-') : (item.barang?.nama_barang || item.desc || '-');
+                        const desc = prJenis === 'Jasa' ? (item.desc || '-') : (item.barang?.nama_barang ||
+                            item.desc || '-');
 
                         tbody.append(`
                             <tr>
@@ -1099,7 +1100,7 @@
                     const plant = item.barang?.rak?.plant ?? '1006';
                     const noIo = pr.no_io ?? '';
 
-                    let colA = pr.jenis == 'Jasa' ? 'K' : '';
+                    let colA = noIo ? 'F' : (pr.jenis == 'Jasa' ? 'K' : '');
                     let colB = pr.jenis == 'Jasa' ? 'D' : '';
                     let colD = pr.jenis == 'Jasa' ? item.desc : '';
 
