@@ -739,7 +739,7 @@ class VehicleTrackingController extends Controller
             'no_hp_driver' => 'nullable|string|max:50',
             'checkin_pos1' => 'nullable|date',
             'trnvisitorid' => 'nullable|string|max:100',
-            'jenis' => 'required|string|in:bongkaran,slipsheet,curah',
+            'jenis' => 'required|string|in:bongkaran,slipsheet,curah,retur',
             'item_id' => 'required|exists:vehicle_items,id',
             'no_spb' => 'nullable|string|max:50',
             'qty_spb' => 'nullable|numeric|min:0',
@@ -761,6 +761,10 @@ class VehicleTrackingController extends Controller
             } elseif (in_array($jenis, ['slipsheet', 'curah'])) {
                 if (!in_array($targetLoc->s_loc, ['A001', 'SMU', 'A002', 'B006'])) {
                     throw new \Exception('Untuk jenis slipsheet atau curah, hanya boleh memilih tujuan area WFG (A001), SMU, atau WRM (B006).');
+                }
+            } elseif ($jenis === 'retur') {
+                if (!in_array($targetLoc->s_loc, ['B006', 'C001'])) {
+                    throw new \Exception('Untuk jenis retur, hanya boleh memilih tujuan area WRM (B006) atau WPM (C001).');
                 }
             }
 
@@ -853,10 +857,10 @@ class VehicleTrackingController extends Controller
 
             if ($targetLoc->s_loc === 'C001') {
                 $newStatus = 'wpm';
-                $initialQcStatus = 'waiting_dokumen';
+                $initialQcStatus = ($jenis === 'retur') ? 'not_required' : 'waiting_dokumen';
             } elseif ($targetLoc->s_loc === 'B006') {
                 $newStatus = 'wrm_bongkar';
-                $initialQcStatus = 'waiting_dokumen';
+                $initialQcStatus = ($jenis === 'retur') ? 'not_required' : 'waiting_dokumen';
             } elseif ($targetLoc->s_loc === 'A001') {
                 $newStatus = 'wfg';
                 $initialQcStatus = 'not_required';
@@ -878,13 +882,17 @@ class VehicleTrackingController extends Controller
                 'created_by' => Auth::id(),
             ]);
 
+            $targetMsg = ($jenis !== 'retur' && in_array($targetLoc->s_loc, ['B006', 'C001']))
+                ? "QC (" . $targetLoc->name . ")"
+                : $targetLoc->name;
+
             // Broadcast movement
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
                 'current_location' => $targetLoc->s_loc,
                 'status' => $newStatus,
-                'message' => "Truk {$noPol} diarahkan dari Timbangan menuju " . (in_array($targetLoc->s_loc, ['B006', 'C001']) ? "QC (" . $targetLoc->name . ")" : $targetLoc->name) . ".",
+                'message' => "Truk {$noPol} diarahkan dari Timbangan menuju {$targetMsg}.",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
@@ -932,6 +940,7 @@ class VehicleTrackingController extends Controller
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
                 $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
+                $actionName = $tx->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
 
                 return [
                     'id' => $tx->id,
@@ -940,7 +949,7 @@ class VehicleTrackingController extends Controller
                     'nama_driver' => $tx->nama_driver,
                     'no_hp_driver' => $tx->no_hp_driver,
                     'jenis' => $tx->jenis,
-                    'action_label' => 'Bongkar',
+                    'action_label' => $actionName,
                     'item_name' => $tx->item ? $tx->item->name : 'N/A',
                     'no_spb' => $tx->no_spb ?? '-',
                     'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 2) : '-',
@@ -967,7 +976,7 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Start WPM unloading process.
+     * Start WPM unloading/loading process.
      */
     public function wpmStartLoading(Request $request, $id)
     {
@@ -975,6 +984,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $actionName = $transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
             $transaction->update([
@@ -993,26 +1003,26 @@ class VehicleTrackingController extends Controller
 
             if ($activeTrack) {
                 $activeTrack->update([
-                    'status_notes' => "Mulai Proses Bongkar di WPM."
+                    'status_notes' => "Mulai Proses {$actionName} di WPM."
                 ]);
             }
 
             // Pastikan ter-release dari slot parkir
-            $this->releaseKantongParkirSlot($noPol, "Mulai proses bongkar di WPM");
+            $this->releaseKantongParkirSlot($noPol, "Mulai proses {$actionName} di WPM");
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
                 'current_location' => 'C001',
                 'status' => 'wpm',
-                'message' => "Truk {$noPol} mulai proses bongkar di WPM.",
+                'message' => "Truk {$noPol} mulai proses {$actionName} di WPM.",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
             DB::commit();
             return response()->json([
                 'success' => true,
-                'message' => "Proses bongkar untuk truk {$noPol} berhasil dimulai."
+                'message' => "Proses {$actionName} untuk truk {$noPol} berhasil dimulai."
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1021,7 +1031,7 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Complete WPM unloading activity.
+     * Complete WPM unloading/loading activity.
      */
     public function wpmComplete(Request $request, $id)
     {
@@ -1029,6 +1039,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $actionName = $transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
 
             // Conclude WPM tracking
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -1044,7 +1055,7 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => 'Aktivitas Bongkar WPM Selesai. Truk kembali ke Timbangan.'
+                    'status_notes' => "Aktivitas {$actionName} WPM Selesai. Truk kembali ke Timbangan."
                 ]);
             }
 
@@ -1080,7 +1091,7 @@ class VehicleTrackingController extends Controller
                 'no_pol' => $noPol,
                 'current_location' => 'TIMBANGAN',
                 'status' => 'timbangan_out',
-                'message' => "Proses Bongkar Truk {$noPol} di WPM telah selesai. Truk kembali ke Timbangan untuk Check-Out.",
+                'message' => "Proses {$actionName} Truk {$noPol} di WPM telah selesai. Truk kembali ke Timbangan untuk Check-Out.",
                 'time' => $now->format('H:i:s')
             ]));
 
@@ -1088,7 +1099,7 @@ class VehicleTrackingController extends Controller
             return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di WPM. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Gagal menyelesaikan bongkaran di WPM: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Gagal menyelesaikan proses di WPM: ' . $e->getMessage()], 500);
         }
     }
 
@@ -2390,7 +2401,7 @@ class VehicleTrackingController extends Controller
             'no_hp_driver' => 'nullable|string|max:50',
             'checkin_pos1' => 'nullable|date',
             'trnvisitorid' => 'nullable|string|max:100',
-            'jenis' => 'required|string|in:bongkaran,slipsheet,curah',
+            'jenis' => 'required|string|in:bongkaran,slipsheet,curah,retur',
             'item_id' => 'required|exists:vehicle_items,id',
             'no_spb' => 'nullable|string|max:50',
             'qty_spb' => 'nullable|numeric|min:0',
@@ -2412,8 +2423,12 @@ class VehicleTrackingController extends Controller
                     throw new \Exception('Untuk jenis bongkaran, tidak boleh memilih tujuan area WFG (A001).');
                 }
             } elseif (in_array($jenis, ['slipsheet', 'curah'])) {
-                if (!in_array($targetLoc->s_loc, ['A001', 'SMU', 'A002'])) {
-                    throw new \Exception('Untuk jenis slipsheet atau curah, hanya boleh memilih tujuan area WFG (A001) atau SMU.');
+                if (!in_array($targetLoc->s_loc, ['A001', 'SMU', 'A002', 'B006'])) {
+                    throw new \Exception('Untuk jenis slipsheet atau curah, hanya boleh memilih tujuan area WFG (A001), SMU, atau WRM (B006).');
+                }
+            } elseif ($jenis === 'retur') {
+                if (!in_array($targetLoc->s_loc, ['B006', 'C001'])) {
+                    throw new \Exception('Untuk jenis retur, hanya boleh memilih tujuan area WRM (B006) atau WPM (C001).');
                 }
             }
 
@@ -2443,6 +2458,10 @@ class VehicleTrackingController extends Controller
                 'updated_by' => Auth::id(),
             ];
 
+            if ($request->jenis === 'retur') {
+                $updateData['qc_status'] = 'not_required';
+            }
+
             if ($request->filled('checkin_pos1')) {
                 $updateData['checkin_pos1'] = $request->checkin_pos1;
             }
@@ -2457,16 +2476,20 @@ class VehicleTrackingController extends Controller
 
                 // Map target location to transaction status
                 $newStatus = 'smu';
-                $initialQcStatus = $transaction->qc_status;
+                $initialQcStatus = ($jenis === 'retur') ? 'not_required' : $transaction->qc_status;
                 $currentLocId = $targetLoc->id;
 
-                if ($targetLoc->s_loc === 'C001' || $targetLoc->s_loc === 'B006') {
-                    // WRM and WPM go to QC first
-                    $newStatus = 'antri_sampling';
-                    $initialQcStatus = 'waiting_dokumen';
+                if ($targetLoc->s_loc === 'C001') {
+                    $newStatus = ($jenis === 'retur') ? 'wpm' : 'antri_sampling';
+                    $initialQcStatus = ($jenis === 'retur') ? 'not_required' : 'waiting_dokumen';
+                    $currentLocId = $targetLoc->id;
+                } elseif ($targetLoc->s_loc === 'B006') {
+                    $newStatus = ($jenis === 'retur') ? 'wrm_bongkar' : 'antri_sampling';
+                    $initialQcStatus = ($jenis === 'retur') ? 'not_required' : 'waiting_dokumen';
                     $currentLocId = $targetLoc->id;
                 } elseif ($targetLoc->s_loc === 'A001') {
                     $newStatus = 'wfg';
+                    $initialQcStatus = 'not_required';
                 }
 
                 // Conclude current target tracking log (if active is at target, or update the active tracking)
@@ -2928,7 +2951,17 @@ class VehicleTrackingController extends Controller
             return trim($res);
         };
 
-        $transactions = $query->orderBy('check_in_time', 'desc')->get()->map(function ($tx) use ($formatDuration) {
+        $perPage = $request->input('per_page', 10);
+        if ($perPage === 'all') {
+            $totalCount = (clone $query)->count();
+            $perPage = $totalCount > 0 ? $totalCount : 10;
+        } else {
+            $perPage = max(1, (int) $perPage);
+        }
+
+        $paginated = $query->orderBy('check_in_time', 'desc')->paginate($perPage);
+
+        $paginated->getCollection()->transform(function ($tx) use ($formatDuration) {
             $checkIn = $tx->check_in_time;
             $checkOut = $tx->check_out_time;
 
@@ -3112,6 +3145,6 @@ class VehicleTrackingController extends Controller
             ];
         });
 
-        return response()->json($transactions);
+        return response()->json($paginated);
     }
 }

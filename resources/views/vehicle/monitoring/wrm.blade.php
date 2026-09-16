@@ -158,6 +158,9 @@
                         } else if (tx.qc_status === 'waiting_dokumen') {
                             qcBadge =
                                 `<span class="badge bg-soft-secondary text-secondary"><i class="ri-file-list-line me-1 align-middle"></i>Waiting Dokumen</span>`;
+                        } else if (tx.qc_status === 'not_required') {
+                            qcBadge =
+                                `<span class="badge bg-soft-light text-muted"><i class="ri-subtract-line me-1 align-middle"></i>Tanpa QC</span>`;
                         } else {
                             qcBadge = `<span class="badge bg-soft-light text-muted">-</span>`;
                         }
@@ -408,7 +411,7 @@
                 const qcStatus = $(this).data('qc');
 
                 let warningNote = '';
-                if (qcStatus && qcStatus !== 'released') {
+                if (qcStatus && qcStatus !== 'released' && qcStatus !== 'not_required') {
                     warningNote =
                         `<br><span class="text-warning small"><i class="ri-alert-line me-1"></i>Catatan: Status QC saat ini adalah <strong>${qcStatus.toUpperCase()}</strong>.</span>`;
                 }

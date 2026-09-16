@@ -126,6 +126,7 @@
                     </tr>`;
                 } else {
                     filtered.forEach(function(tx, index) {
+                        const actionLabel = tx.action_label || (tx.jenis === 'bongkaran' ? 'Bongkar' : 'Muat');
                         const isProcess = tx.unloading_status === 'process';
 
                         // Badge Status QC
@@ -145,6 +146,9 @@
                         } else if (tx.qc_status === 'waiting_dokumen') {
                             qcBadge =
                                 `<span class="badge bg-soft-secondary text-secondary"><i class="ri-file-list-line me-1 align-middle"></i>Waiting Dokumen</span>`;
+                        } else if (tx.qc_status === 'not_required') {
+                            qcBadge =
+                                `<span class="badge bg-soft-light text-muted"><i class="ri-subtract-line me-1 align-middle"></i>Tanpa QC</span>`;
                         } else {
                             qcBadge = `<span class="badge bg-soft-light text-muted">-</span>`;
                         }
@@ -153,10 +157,10 @@
                         let statusBadge = '';
                         if (!isProcess) {
                             statusBadge =
-                                `<span class="badge bg-soft-secondary text-secondary"><i class="ri-hourglass-line me-1 align-middle"></i>Menunggu Bongkar</span>`;
+                                `<span class="badge bg-soft-secondary text-secondary"><i class="ri-hourglass-line me-1 align-middle"></i>Menunggu ${actionLabel}</span>`;
                         } else {
                             statusBadge =
-                                `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses Bongkar</span>`;
+                                `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel}</span>`;
                         }
 
                         // Tombol Aksi
@@ -165,14 +169,16 @@
                             actionBtn = `<button type="button" class="btn btn-sm btn-primary btn-start-loading" 
                                 data-id="${tx.id}" 
                                 data-nopol="${tx.no_pol}"
-                                data-qc="${tx.qc_status || ''}">
-                                <i class="ri-play-circle-line me-1 align-middle"></i> Mulai Bongkar
+                                data-qc="${tx.qc_status || ''}"
+                                data-action="${actionLabel}">
+                                <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
                             </button>`;
                         } else {
                             actionBtn = `<button type="button" class="btn btn-sm btn-success btn-complete-loading" 
                                 data-id="${tx.id}" 
-                                data-nopol="${tx.no_pol}">
-                                <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai Bongkar
+                                data-nopol="${tx.no_pol}"
+                                data-action="${actionLabel}">
+                                <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai ${actionLabel}
                             </button>`;
                         }
 
@@ -194,7 +200,7 @@
                                     <span class="timer badge bg-soft-secondary text-secondary fs-12 px-2 py-1" data-start="${tx.arrival_timestamp}">
                                         0m 0d
                                     </span>
-                                    <div style="font-size: 10.5px;" class="text-muted mt-1"><i class="ri-hourglass-line me-1"></i>Tunggu Bongkar</div>
+                                    <div style="font-size: 10.5px;" class="text-muted mt-1"><i class="ri-hourglass-line me-1"></i>Tunggu ${actionLabel}</div>
                                 </div>
                             `;
                         } else {
@@ -206,7 +212,7 @@
                                     <span class="timer badge bg-soft-info text-info fs-12 px-2 py-1" data-start="${startProcessFrom}">
                                         0m 0d
                                     </span>
-                                    <div style="font-size: 10.5px;" class="text-info fw-medium mt-1"><i class="ri-loader-4-line ri-spin me-1"></i>Durasi Bongkar</div>
+                                    <div style="font-size: 10.5px;" class="text-info fw-medium mt-1"><i class="ri-loader-4-line ri-spin me-1"></i>Durasi ${actionLabel}</div>
                                     ${waitToStartSec > 0 ? `<div style="font-size: 10px;" class="text-muted">Tunggu: ${formatDuration(waitToStartSec)}</div>` : ''}
                                 </div>
                             `;
@@ -381,26 +387,27 @@
             }
             setupRealtimeEcho();
 
-            // Mulai Bongkar Click Handler
+            // Mulai Loading/Unloading Click Handler
             $(document).on('click', '.btn-start-loading', function() {
                 const id = $(this).data('id');
                 const nopol = $(this).data('nopol');
                 const qcStatus = $(this).data('qc');
+                const actionLabel = $(this).data('action') || 'Bongkar';
 
                 let warningNote = '';
-                if (qcStatus && qcStatus !== 'released') {
+                if (qcStatus && qcStatus !== 'released' && qcStatus !== 'not_required') {
                     warningNote =
                         `<br><span class="text-warning small"><i class="ri-alert-line me-1"></i>Catatan: Status QC saat ini adalah <strong>${qcStatus.toUpperCase()}</strong>.</span>`;
                 }
 
                 Swal.fire({
-                    title: 'Mulai Bongkar?',
-                    html: `Mulai proses bongkar untuk truk <strong>${nopol}</strong> di area WPM? Durasi aktivitas akan mulai dihitung.${warningNote}`,
+                    title: `Mulai ${actionLabel}?`,
+                    html: `Mulai proses ${actionLabel.toLowerCase()} untuk truk <strong>${nopol}</strong> di area WPM? Durasi aktivitas akan mulai dihitung.${warningNote}`,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#0ab39c',
                     cancelButtonColor: '#d33',
-                    confirmButtonText: 'Ya, Mulai Bongkar!',
+                    confirmButtonText: `Ya, Mulai ${actionLabel}!`,
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -416,26 +423,27 @@
                             },
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON
-                                    .message : 'Gagal memulai bongkar.', 'error');
+                                    .message : `Gagal memulai ${actionLabel.toLowerCase()}.`, 'error');
                             }
                         });
                     }
                 });
             });
 
-            // Selesai Bongkar Click Handler
+            // Selesai Loading/Unloading Click Handler
             $(document).on('click', '.btn-complete-loading', function() {
                 const id = $(this).data('id');
                 const nopol = $(this).data('nopol');
+                const actionLabel = $(this).data('action') || 'Bongkar';
 
                 Swal.fire({
-                    title: 'Selesaikan Bongkar?',
-                    text: `Konfirmasi bahwa proses bongkar truk ${nopol} di area WPM telah selesai? Truk akan diarahkan kembali ke Timbangan untuk Check-Out.`,
+                    title: `Selesaikan ${actionLabel}?`,
+                    text: `Konfirmasi bahwa proses ${actionLabel.toLowerCase()} truk ${nopol} di area WPM telah selesai? Truk akan diarahkan kembali ke Timbangan untuk Check-Out.`,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#3577f1',
                     cancelButtonColor: '#d33',
-                    confirmButtonText: 'Ya, Selesai Bongkar!',
+                    confirmButtonText: `Ya, Selesai ${actionLabel}!`,
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -451,7 +459,7 @@
                             },
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON
-                                    .message : 'Gagal menyelesaikan bongkar.',
+                                    .message : `Gagal menyelesaikan ${actionLabel.toLowerCase()}.`,
                                     'error');
                             }
                         });

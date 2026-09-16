@@ -57,6 +57,7 @@
                                         <option value="bongkaran">Bongkaran</option>
                                         <option value="slipsheet">Slipsheet</option>
                                         <option value="curah">Curah</option>
+                                        <option value="retur">Retur</option>
                                     </select>
                                 </div>
                                 <div class="col-lg-2 col-md-4">
@@ -79,9 +80,29 @@
 
                     <!-- Table Card -->
                     <div class="card shadow-sm border-0">
+                        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-muted small fw-bold text-uppercase">Tampilkan:</span>
+                                    <select id="reportPerPage" class="form-select form-select-sm" style="width: 85px;">
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                        <option value="all">Semua</option>
+                                    </select>
+                                    <span class="text-muted small">data per halaman</span>
+                                </div>
+                                <div id="reportTotalBadge">
+                                    <span class="badge bg-soft-primary text-primary px-3 py-2 rounded-pill fs-12 fw-medium">
+                                        Total: <span id="reportTotalCount" class="fw-bold">0</span> Riwayat
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-hover align-middle text-nowrap" id="reportTable">
+                                <table class="table table-hover align-middle text-nowrap mb-0" id="reportTable">
                                     <thead class="table-light">
                                         <tr>
                                             <th>No</th>
@@ -102,6 +123,18 @@
                                         <!-- Data populated via AJAX -->
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- Pagination Footer -->
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-2" id="reportPaginationWrapper">
+                                <div class="text-muted small" id="reportPaginationInfo">
+                                    Menampilkan 0 - 0 dari 0 riwayat kendaraan
+                                </div>
+                                <nav aria-label="Navigasi Halaman Riwayat">
+                                    <ul class="pagination pagination-sm mb-0 justify-content-center justify-content-md-end" id="reportPagination">
+                                        <!-- Pagination links -->
+                                    </ul>
+                                </nav>
                             </div>
                         </div>
                     </div>
@@ -282,6 +315,10 @@
     <script>
         $(document).ready(function() {
             let transactionsData = [];
+            let currentPage = 1;
+            let currentPerPage = 10;
+            let totalRecords = 0;
+            let totalPages = 1;
 
             function jenisBadge(jenis) {
                 switch (jenis) {
@@ -291,12 +328,84 @@
                         return 'soft-success text-success';
                     case 'curah':
                         return 'soft-primary text-primary';
+                    case 'retur':
+                        return 'soft-danger text-danger';
                     default:
                         return 'soft-secondary text-secondary';
                 }
             }
 
-            function loadReports() {
+            // Smart pagination generator
+            function getPaginationPages(curPage, maxPage) {
+                if (maxPage <= 7) {
+                    let pages = [];
+                    for (let i = 1; i <= maxPage; i++) pages.push(i);
+                    return pages;
+                }
+
+                if (curPage <= 4) {
+                    return [1, 2, 3, 4, 5, '...', maxPage];
+                } else if (curPage >= maxPage - 3) {
+                    return [1, '...', maxPage - 4, maxPage - 3, maxPage - 2, maxPage - 1, maxPage];
+                } else {
+                    return [1, '...', curPage - 1, curPage, curPage + 1, '...', maxPage];
+                }
+            }
+
+            // Render Pagination Buttons
+            function renderPagination(containerId, curPage, maxPage) {
+                if (maxPage <= 1) {
+                    $(containerId).html('');
+                    return;
+                }
+
+                let paginationHtml = '';
+
+                // First & Prev buttons
+                const isPrevDisabled = curPage <= 1;
+                paginationHtml += `<li class="page-item ${isPrevDisabled ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0);" data-page="1" title="Halaman Pertama" ${isPrevDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                        <i class="ri-arrow-left-double-line"></i>
+                    </a>
+                </li>`;
+                paginationHtml += `<li class="page-item ${isPrevDisabled ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0);" data-page="${curPage - 1}" title="Sebelumnya" ${isPrevDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                        <i class="ri-arrow-left-s-line me-1 align-middle"></i>Prev
+                    </a>
+                </li>`;
+
+                // Page numbers
+                const pages = getPaginationPages(curPage, maxPage);
+                pages.forEach(p => {
+                    if (p === '...') {
+                        paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    } else {
+                        const isActive = p === curPage;
+                        paginationHtml += `<li class="page-item ${isActive ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0);" data-page="${p}">${p}</a>
+                        </li>`;
+                    }
+                });
+
+                // Next & Last buttons
+                const isNextDisabled = curPage >= maxPage;
+                paginationHtml += `<li class="page-item ${isNextDisabled ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0);" data-page="${curPage + 1}" title="Berikutnya" ${isNextDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                        Next<i class="ri-arrow-right-s-line ms-1 align-middle"></i>
+                    </a>
+                </li>`;
+                paginationHtml += `<li class="page-item ${isNextDisabled ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0);" data-page="${maxPage}" title="Halaman Terakhir" ${isNextDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                        <i class="ri-arrow-right-double-line"></i>
+                    </a>
+                </li>`;
+
+                $(containerId).html(paginationHtml);
+            }
+
+            function loadReports(page = 1) {
+                currentPage = page;
+                currentPerPage = $('#reportPerPage').val() || 10;
                 const search = $('#reportSearch').val();
                 const targetLocationId = $('#reportLocation').val();
                 const jenis = $('#reportJenis').val();
@@ -312,6 +421,8 @@
                     url: "{{ route('vehicle.monitoring.history.data') }}",
                     type: "GET",
                     data: {
+                        page: currentPage,
+                        per_page: currentPerPage,
                         search: search,
                         target_location_id: targetLocationId,
                         jenis: jenis,
@@ -319,17 +430,52 @@
                         end_date: endDate
                     },
                     success: function(response) {
-                        transactionsData = response || [];
+                        let fromRecord = 0;
+                        let toRecord = 0;
+
+                        if (response && response.data !== undefined) {
+                            transactionsData = response.data || [];
+                            totalRecords = response.total !== undefined ? response.total : transactionsData.length;
+                            totalPages = response.last_page !== undefined ? response.last_page : 1;
+                            currentPage = response.current_page !== undefined ? response.current_page : 1;
+                            fromRecord = response.from !== undefined ? response.from : (totalRecords > 0 ? 1 : 0);
+                            toRecord = response.to !== undefined ? response.to : transactionsData.length;
+                        } else if (Array.isArray(response)) {
+                            transactionsData = response || [];
+                            totalRecords = transactionsData.length;
+                            totalPages = 1;
+                            currentPage = 1;
+                            fromRecord = totalRecords > 0 ? 1 : 0;
+                            toRecord = totalRecords;
+                        } else {
+                            transactionsData = [];
+                            totalRecords = 0;
+                            totalPages = 1;
+                            currentPage = 1;
+                            fromRecord = 0;
+                            toRecord = 0;
+                        }
+
                         tbody.empty();
+                        $('#reportTotalCount').text(totalRecords);
 
                         if (transactionsData.length === 0) {
                             tbody.html(
                                 '<tr><td colspan="12" class="text-center py-5 text-muted"><i class="ri-inbox-line fs-24 d-block mb-2 text-secondary"></i>Tidak ada riwayat kendaraan yang sesuai dengan filter.</td></tr>'
                             );
+                            $('#reportPaginationInfo').text('Menampilkan 0 dari 0 riwayat kendaraan');
+                            $('#reportPagination').empty();
                             return;
                         }
 
+                        // Update pagination info
+                        const fromDisp = fromRecord || 1;
+                        const toDisp = toRecord || transactionsData.length;
+                        $('#reportPaginationInfo').html(`Menampilkan <span class="fw-bold text-dark">${fromDisp}</span> s/d <span class="fw-bold text-dark">${toDisp}</span> dari <span class="fw-bold text-dark">${totalRecords}</span> riwayat kendaraan`);
+                        renderPagination('#reportPagination', currentPage, totalPages);
+
                         transactionsData.forEach((tx, idx) => {
+                            const rowNumber = (fromRecord ? fromRecord : 1) + idx;
                             // Format route chips
                             let routeChips = '-';
                             if (tx.tracking_steps && tx.tracking_steps.length > 0) {
@@ -341,7 +487,7 @@
 
                             const row = `
                                 <tr>
-                                    <td><span class="fw-bold text-dark font-monospace">${idx + 1}</span></td>
+                                    <td><span class="fw-bold text-dark font-monospace">${rowNumber}</span></td>
                                     <td>
                                         <span class="badge bg-soft-primary text-primary fs-12 fw-bold">${tx.no_pol}</span><br>
                                         <span class="fw-semibold text-dark">${tx.vendor}</span><br>
@@ -404,9 +550,24 @@
                         tbody.html(
                             '<tr><td colspan="12" class="text-center py-4 text-danger"><i class="ri-error-warning-line me-1"></i>Gagal memuat histori data. Silakan refresh halaman.</td></tr>'
                         );
+                        $('#reportPagination').empty();
                     }
                 });
             }
+
+            // Pagination Click Handler
+            $(document).on('click', '#reportPagination .page-link', function(e) {
+                e.preventDefault();
+                const targetPage = parseInt($(this).data('page'));
+                if (targetPage && targetPage >= 1 && targetPage <= totalPages && targetPage !== currentPage) {
+                    loadReports(targetPage);
+                }
+            });
+
+            // Per page dropdown change handler
+            $('#reportPerPage').on('change', function() {
+                loadReports(1);
+            });
 
             // Click Handler for Detail Modal
             $(document).on('click', '.btn-detail-history', function() {
@@ -646,11 +807,13 @@
             let reportSearchTimer;
             $('#reportSearch').on('keyup', function() {
                 clearTimeout(reportSearchTimer);
-                reportSearchTimer = setTimeout(loadReports, 400);
+                reportSearchTimer = setTimeout(function() {
+                    loadReports(1);
+                }, 400);
             });
 
             $('#reportLocation, #reportJenis, #reportStartDate, #reportEndDate').on('change', function() {
-                loadReports();
+                loadReports(1);
             });
 
             $('#btnReportReset').on('click', function() {
@@ -659,11 +822,12 @@
                 $('#reportJenis').val('');
                 $('#reportStartDate').val('');
                 $('#reportEndDate').val('');
-                loadReports();
+                $('#reportPerPage').val('10');
+                loadReports(1);
             });
 
             // Initial load
-            loadReports();
+            loadReports(1);
         });
     </script>
 @endsection

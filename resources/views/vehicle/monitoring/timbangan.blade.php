@@ -112,6 +112,7 @@
                                             <option value="bongkaran">Bongkaran</option>
                                             <option value="slipsheet">Slipsheet</option>
                                             <option value="curah">Curah</option>
+                                            <option value="retur">Retur</option>
                                         </select>
                                     </div>
                                     <div class="col-md-4 mb-3">
@@ -184,13 +185,31 @@
                 <!-- Daily Check-In Data -->
                 <div class="col-md-12">
                     <div class="card shadow-sm border-0">
-                        <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
-                            <h4 class="card-title mb-0 flex-grow-1"><i
-                                    class="ri-table-line me-2 align-middle text-success"></i>Data Kendaraan Aktif
-                            </h4>
-                            <div class="flex-shrink-0">
-                                <div style="width: 250px;">
-                                    <input type="text" class="form-control" id="search_table"
+                        <div class="card-header align-items-center d-flex flex-wrap gap-2 border-0 bg-transparent py-3">
+                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                <h4 class="card-title mb-0"><i
+                                        class="ri-table-line me-2 align-middle text-success"></i>Data Kendaraan Aktif
+                                </h4>
+                                <span class="badge bg-soft-success text-success border border-success-subtle px-2 py-1 fs-12 fw-semibold" id="badgeReadyCheckout" style="cursor: pointer;" title="Klik untuk filter Siap Check-Out">
+                                    <i class="ri-scales-3-line me-1 align-middle"></i>Siap Check-Out: <strong id="countReadyCheckout">0</strong>
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0">
+                                <div style="min-width: 175px;">
+                                    <select class="form-select form-select-sm" id="filter_status">
+                                        <option value="">Semua Status</option>
+                                        <option value="siap_checkout">⚡ Siap Check-Out</option>
+                                        <option value="timbangan_in">Baru Check-In</option>
+                                        <option value="antri_sampling">Antri QC</option>
+                                        <option value="sampling">Sampling QC</option>
+                                        <option value="wrm_bongkar">WRM Area</option>
+                                        <option value="wpm">WPM Area</option>
+                                        <option value="wfg">WFG Area</option>
+                                        <option value="smu">SMU Area</option>
+                                    </select>
+                                </div>
+                                <div style="width: 240px;">
+                                    <input type="text" class="form-control form-control-sm" id="search_table"
                                         placeholder="Cari No. Polisi / Vendor...">
                                 </div>
                             </div>
@@ -283,6 +302,7 @@
                                     <option value="bongkaran">Bongkaran</option>
                                     <option value="slipsheet">Slipsheet</option>
                                     <option value="curah">Curah</option>
+                                    <option value="retur">Retur</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -517,10 +537,28 @@
                 renderTransactions();
             });
 
+            // Handle status filter
+            $('#filter_status').on('change', function() {
+                statusFilter = $(this).val();
+                currentPage = 1; // Reset to page 1 on filter
+                renderTransactions();
+            });
+
+            // Quick toggle for Ready Check-Out badge
+            $('#badgeReadyCheckout').on('click', function() {
+                if ($('#filter_status').val() === 'siap_checkout') {
+                    $('#filter_status').val('');
+                } else {
+                    $('#filter_status').val('siap_checkout');
+                }
+                $('#filter_status').trigger('change');
+            });
+
             let allTransactions = [];
             let currentPage = 1;
             const itemsPerPage = 10;
             let searchQuery = '';
+            let statusFilter = '';
 
             // Fetch transaction data via AJAX
             function fetchTransactions() {
@@ -687,10 +725,62 @@
                     return;
                 }
 
-                // Filter transactions based on search query
+                // Update ready check-out count and badge state
+                const readyCount = allTransactions.filter(tx => (tx.status || '').toLowerCase() === 'timbangan_out').length;
+                $('#countReadyCheckout').text(readyCount);
+
+                if (statusFilter === 'siap_checkout') {
+                    $('#badgeReadyCheckout').removeClass('bg-soft-success text-success').addClass('bg-success text-white shadow-sm');
+                } else {
+                    $('#badgeReadyCheckout').removeClass('bg-success text-white shadow-sm').addClass('bg-soft-success text-success');
+                }
+
+                // Filter transactions based on status filter and search query
                 let filteredTransactions = allTransactions;
+
+                if (statusFilter) {
+                    if (statusFilter === 'siap_checkout' || statusFilter === 'timbangan_out') {
+                        filteredTransactions = filteredTransactions.filter(function(tx) {
+                            return (tx.status || '').toLowerCase() === 'timbangan_out';
+                        });
+                    } else if (statusFilter === 'timbangan_in') {
+                        filteredTransactions = filteredTransactions.filter(function(tx) {
+                            return (tx.status || '').toLowerCase() === 'timbangan_in';
+                        });
+                    } else if (statusFilter === 'antri_sampling') {
+                        filteredTransactions = filteredTransactions.filter(function(tx) {
+                            return (tx.status || '').toLowerCase() === 'antri_sampling';
+                        });
+                    } else if (statusFilter === 'sampling') {
+                        filteredTransactions = filteredTransactions.filter(function(tx) {
+                            const status = (tx.status || '').toLowerCase();
+                            return status === 'sampling' || tx.qc_status === 'on_check';
+                        });
+                    } else if (statusFilter === 'wrm_bongkar') {
+                        filteredTransactions = filteredTransactions.filter(function(tx) {
+                            const status = (tx.status || '').toLowerCase();
+                            return status === 'wrm_bongkar' || tx.target_sloc === 'B006';
+                        });
+                    } else if (statusFilter === 'wpm') {
+                        filteredTransactions = filteredTransactions.filter(function(tx) {
+                            const status = (tx.status || '').toLowerCase();
+                            return status === 'wpm' || tx.target_sloc === 'C001';
+                        });
+                    } else if (statusFilter === 'wfg') {
+                        filteredTransactions = filteredTransactions.filter(function(tx) {
+                            const status = (tx.status || '').toLowerCase();
+                            return status === 'wfg' || tx.target_sloc === 'A001';
+                        });
+                    } else if (statusFilter === 'smu') {
+                        filteredTransactions = filteredTransactions.filter(function(tx) {
+                            const status = (tx.status || '').toLowerCase();
+                            return status === 'smu' || tx.target_sloc === 'SMU';
+                        });
+                    }
+                }
+
                 if (searchQuery) {
-                    filteredTransactions = allTransactions.filter(function(tx) {
+                    filteredTransactions = filteredTransactions.filter(function(tx) {
                         const nopol = (tx.no_pol || '').toLowerCase();
                         const vendor = (tx.vendor || '').toLowerCase();
                         const driver = (tx.nama_driver || '').toLowerCase();
@@ -737,6 +827,7 @@
                     if (tx.jenis_raw === 'bongkaran') jenisBadge = 'bg-soft-warning text-warning';
                     else if (tx.jenis_raw === 'slipsheet') jenisBadge = 'bg-soft-success text-success';
                     else if (tx.jenis_raw === 'curah') jenisBadge = 'bg-soft-primary text-primary';
+                    else if (tx.jenis_raw === 'retur') jenisBadge = 'bg-soft-danger text-danger';
 
                     const checkOutButton = tx.status.toLowerCase() === 'timbangan_out' ?
                         `<button type="button" class="btn btn-success btn-sm btn-checkout-ajax shadow-sm fw-medium" data-id="${tx.id}" data-nopol="${tx.no_pol}" title="Check-Out Kendaraan">
@@ -1039,7 +1130,11 @@
                             isAllowed = false;
                         }
                     } else if (jenis === 'slipsheet' || jenis === 'curah') {
-                        if (sloc !== 'A001' && sloc !== 'SMU' && sloc !== 'A002') {
+                        if (sloc !== 'A001' && sloc !== 'SMU' && sloc !== 'A002' && sloc !== 'B006') {
+                            isAllowed = false;
+                        }
+                    } else if (jenis === 'retur') {
+                        if (sloc !== 'B006' && sloc !== 'C001') {
                             isAllowed = false;
                         }
                     }
