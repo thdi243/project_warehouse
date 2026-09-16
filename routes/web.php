@@ -854,6 +854,7 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/update-queue/{id}', [VehicleTrackingController::class, 'updateQueueNumber'])->name('update_queue');
         Route::post('/cancel-queue/{id}', [VehicleTrackingController::class, 'cancelQueueNumber'])->name('cancel_queue');
+        Route::post('/follow-up-timbangan', [VehicleTrackingController::class, 'followUpTimbangan'])->name('follow_up_timbangan');
 
         // QC Area
         Route::middleware(['permission:vehicle-monitoring-qc'])->group(function () {

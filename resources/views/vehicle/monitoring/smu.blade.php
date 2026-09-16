@@ -25,9 +25,15 @@
                         <div class="card-header align-items-center d-flex border-0 bg-transparent py-3">
                             <h4 class="card-title mb-0 flex-grow-1"><i
                                     class="ri-database-2-line me-2 align-middle text-warning"></i>Antrian Data SMU Area</h4>
-                            <div class="flex-shrink-0">
+                            <div class="flex-shrink-0 d-flex align-items-center gap-2">
+                                @can('permission', 'vms-admin-wfg')
+                                    <button type="button" class="btn btn-warning btn-sm fw-semibold shadow-sm"
+                                        id="btnFollowUpTimbangan">
+                                        <i class="ri-alarm-warning-line me-1 align-middle"></i> Follow Up Timbangan
+                                    </button>
+                                @endcan
                                 <div style="width: 250px;">
-                                    <input type="text" class="form-control" id="search_table"
+                                    <input type="text" class="form-control form-control-sm" id="search_table"
                                         placeholder="Cari No. Polisi / Vendor...">
                                 </div>
                             </div>
@@ -554,6 +560,119 @@
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message ||
                                     'Gagal membatalkan nomor antrian.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Follow Up Timbangan Click Handler (Untuk Truk Belum Terdaftar)
+            $('#btnFollowUpTimbangan').on('click', function() {
+                const vendorOptions = (@json($vendors ?? [])).map(v =>
+                    `<option value="${v.name}">${v.name}</option>`).join('');
+                const itemOptions = (@json($items ?? [])).map(i =>
+                    `<option value="${i.id}">${i.name}</option>`).join('');
+
+                Swal.fire({
+                    title: '<span class="text-warning fw-bold"><i class="ri-alarm-warning-line me-1"></i> Follow Up ke Timbangan</span>',
+                    html: `
+                        <div class="text-start">
+                            <p class="text-muted small mb-3">Lapor ke Timbangan jika ada truk yang <strong>sudah tiba di SMU</strong> namun belum terdaftar di sistem.</p>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">No. Polisi <span class="text-danger">*</span></label>
+                                <input type="text" id="fu_nopol" class="form-control text-uppercase" placeholder="Contoh: B1234XYZ" required autocomplete="off">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Item / Barang <span class="text-danger">*</span></label>
+                                <select id="fu_item_id" class="form-select" required>
+                                    <option value="" selected disabled>Pilih Item</option>
+                                    ${itemOptions}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Jenis Aktivitas <span class="text-danger">*</span></label>
+                                <select id="fu_jenis" class="form-select">
+                                    <option value="bongkaran">Bongkaran</option>
+                                    <option value="slipsheet">Slipsheet</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Nama Vendor</label>
+                                <input type="text" id="fu_vendor" class="form-control" list="fu_vendor_list" placeholder="Pilih atau ketik vendor..." autocomplete="off">
+                                <datalist id="fu_vendor_list">
+                                    ${vendorOptions}
+                                </datalist>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small">Catatan / Keterangan (Opsional)</label>
+                                <textarea id="fu_notes" class="form-control" rows="2" placeholder="Contoh: Truk sudah standby di area SMU, mohon segera input timbangan."></textarea>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ffbb44',
+                    confirmButtonText: '<i class="ri-send-plane-fill me-1"></i> Kirim Follow Up',
+                    cancelButtonColor: '#d33',
+                    cancelButtonText: 'Batal',
+                    preConfirm: () => {
+                        const nopol = $('#fu_nopol').val().trim().toUpperCase().replace(/\s+/g,
+                            '');
+                        const itemId = $('#fu_item_id').val();
+                        const jenis = $('#fu_jenis').val();
+                        const vendor = $('#fu_vendor').val().trim();
+                        const notes = $('#fu_notes').val().trim();
+
+                        if (!nopol) {
+                            Swal.showValidationMessage('No. Polisi wajib diisi!');
+                            return false;
+                        }
+                        if (!itemId) {
+                            Swal.showValidationMessage('Pilih item / barang!');
+                            return false;
+                        }
+                        if (!jenis) {
+                            Swal.showValidationMessage('Pilih jenis aktivitas!');
+                            return false;
+                        }
+
+                        return {
+                            no_pol: nopol,
+                            item_id: itemId,
+                            jenis: jenis,
+                            vendor: vendor,
+                            area: 'SMU',
+                            notes: notes
+                        };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const postData = result.value;
+                        $.ajax({
+                            url: "{{ route('vehicle.monitoring.follow_up_timbangan') }}",
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                no_pol: postData.no_pol,
+                                item_id: postData.item_id,
+                                jenis: postData.jenis,
+                                vendor: postData.vendor,
+                                area: postData.area,
+                                notes: postData.notes
+                            },
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil Terkirim!',
+                                    text: response.message,
+                                    timer: 3000,
+                                    showConfirmButton: false
+                                });
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal!', xhr.responseJSON?.message ||
+                                    'Terjadi kesalahan saat mengirim follow up.',
+                                    'error');
                             }
                         });
                     }

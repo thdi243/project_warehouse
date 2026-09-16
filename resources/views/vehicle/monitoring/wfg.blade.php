@@ -65,11 +65,15 @@
                                         class="ri-upload-2-line me-2 align-middle text-info"></i>Antrian Muat Finished Goods
                                     (WFG)
                                 </h4>
-                                <p class="text-muted mb-0 small">Sistem antrian dan pemantauan aktivitas muat barang jadi
-                                    dipisah berdasarkan kategori muatan</p>
                             </div>
-                            <div class="flex-shrink-0">
-                                <div style="width: 270px;">
+                            <div class="flex-shrink-0 d-flex align-items-center gap-2">
+                                @can('permission', 'vms-admin-wfg')
+                                    <button type="button" class="btn btn-warning btn-sm fw-semibold shadow-sm"
+                                        id="btnFollowUpTimbangan">
+                                        <i class="ri-alarm-warning-line me-1 align-middle"></i> Follow Up Timbangan
+                                    </button>
+                                @endcan
+                                <div style="width: 200px;">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-light border-end-0"><i
                                                 class="ri-search-line"></i></span>
@@ -678,6 +682,119 @@
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message ||
                                     'Gagal membatalkan nomor antrian.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Follow Up Timbangan Click Handler (Untuk Truk Belum Terdaftar)
+            $('#btnFollowUpTimbangan').on('click', function() {
+                const vendorOptions = (@json($vendors ?? [])).map(v =>
+                    `<option value="${v.name}">${v.name}</option>`).join('');
+                const itemOptions = (@json($items ?? [])).map(i =>
+                    `<option value="${i.id}">${i.name}</option>`).join('');
+
+                Swal.fire({
+                    title: '<span class="text-warning fw-bold"><i class="ri-alarm-warning-line me-1"></i> Follow Up ke Timbangan</span>',
+                    html: `
+                        <div class="text-start">
+                            <p class="text-muted small mb-3">Lapor ke Timbangan jika ada truk yang <strong>sudah tiba di WFG</strong> namun belum terdaftar di sistem.</p>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">No. Polisi <span class="text-danger">*</span></label>
+                                <input type="text" id="fu_nopol" class="form-control text-uppercase" placeholder="Contoh: B1234XYZ" required autocomplete="off">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Item / Barang <span class="text-danger">*</span></label>
+                                <select id="fu_item_id" class="form-select" required>
+                                    <option value="" selected disabled>Pilih Item</option>
+                                    ${itemOptions}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Jenis Muatan <span class="text-danger">*</span></label>
+                                <select id="fu_jenis" class="form-select">
+                                    <option value="slipsheet" ${currentJenisTab === 'slipsheet' ? 'selected' : ''}>Slipsheet</option>
+                                    <option value="curah" ${currentJenisTab === 'curah' ? 'selected' : ''}>Curah</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Nama Vendor</label>
+                                <input type="text" id="fu_vendor" class="form-control" list="fu_vendor_list" placeholder="Pilih atau ketik vendor..." autocomplete="off">
+                                <datalist id="fu_vendor_list">
+                                    ${vendorOptions}
+                                </datalist>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small">Catatan / Keterangan (Opsional)</label>
+                                <textarea id="fu_notes" class="form-control" rows="2" placeholder="Contoh: Truk sudah standby di loading dock WFG, mohon segera input timbangan."></textarea>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ffbb44',
+                    confirmButtonText: '<i class="ri-send-plane-fill me-1"></i> Kirim Follow Up',
+                    cancelButtonColor: '#d33',
+                    cancelButtonText: 'Batal',
+                    preConfirm: () => {
+                        const nopol = $('#fu_nopol').val().trim().toUpperCase().replace(/\s+/g,
+                            '');
+                        const itemId = $('#fu_item_id').val();
+                        const jenis = $('#fu_jenis').val();
+                        const vendor = $('#fu_vendor').val().trim();
+                        const notes = $('#fu_notes').val().trim();
+
+                        if (!nopol) {
+                            Swal.showValidationMessage('No. Polisi wajib diisi!');
+                            return false;
+                        }
+                        if (!itemId) {
+                            Swal.showValidationMessage('Pilih item / barang!');
+                            return false;
+                        }
+                        if (!jenis) {
+                            Swal.showValidationMessage('Pilih jenis muatan!');
+                            return false;
+                        }
+
+                        return {
+                            no_pol: nopol,
+                            item_id: itemId,
+                            jenis: jenis,
+                            vendor: vendor,
+                            area: 'WFG',
+                            notes: notes
+                        };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const postData = result.value;
+                        $.ajax({
+                            url: "{{ route('vehicle.monitoring.follow_up_timbangan') }}",
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                no_pol: postData.no_pol,
+                                item_id: postData.item_id,
+                                jenis: postData.jenis,
+                                vendor: postData.vendor,
+                                area: postData.area,
+                                notes: postData.notes
+                            },
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil Terkirim!',
+                                    text: response.message,
+                                    timer: 3000,
+                                    showConfirmButton: false
+                                });
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal!', xhr.responseJSON?.message ||
+                                    'Terjadi kesalahan saat mengirim follow up.',
+                                    'error');
                             }
                         });
                     }

@@ -14,6 +14,7 @@ use App\Models\Wrm\MasterSupplierModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -616,7 +617,12 @@ class VehicleTrackingController extends Controller
                 ];
             });
 
-        return response()->json($transactions);
+        $pendingFollowups = Cache::get('unregistered_vehicle_followups', []);
+
+        return response()->json([
+            'transactions' => $transactions,
+            'pending_followups' => array_values($pendingFollowups)
+        ]);
     }
 
     /**
@@ -896,6 +902,15 @@ class VehicleTrackingController extends Controller
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
+            // Clear from pending follow up cache if exists
+            $followUpList = Cache::get('unregistered_vehicle_followups', []);
+            if (!empty($followUpList)) {
+                $filteredFollowUps = array_values(array_filter($followUpList, function ($item) use ($noPol) {
+                    return strtoupper(str_replace(' ', '', $item['no_pol'] ?? '')) !== $noPol;
+                }));
+                Cache::put('unregistered_vehicle_followups', $filteredFollowUps, 86400);
+            }
+
             DB::commit();
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -919,7 +934,15 @@ class VehicleTrackingController extends Controller
 
     public function wpmIndex()
     {
-        return view('vehicle.monitoring.wpm');
+        $wpmLoc = Location::where('s_loc', 'C001')->first();
+        $items = VehicleItem::where(function ($q) use ($wpmLoc) {
+            if ($wpmLoc) {
+                $q->where('location_id', $wpmLoc->id);
+            }
+        })->orWhereNull('location_id')->orderBy('name')->get();
+
+        $vendors = VehicleVendor::orderBy('name')->get();
+        return view('vehicle.monitoring.wpm', compact('vendors', 'items'));
     }
 
     /**
@@ -1490,7 +1513,15 @@ class VehicleTrackingController extends Controller
      */
     public function wrmIndex()
     {
-        return view('vehicle.monitoring.wrm');
+        $wrmLoc = Location::where('s_loc', 'B006')->first();
+        $items = VehicleItem::where(function ($q) use ($wrmLoc) {
+            if ($wrmLoc) {
+                $q->where('location_id', $wrmLoc->id);
+            }
+        })->orWhereNull('location_id')->orderBy('name')->get();
+
+        $vendors = VehicleVendor::orderBy('name')->get();
+        return view('vehicle.monitoring.wrm', compact('vendors', 'items'));
     }
 
     /**
@@ -1678,7 +1709,15 @@ class VehicleTrackingController extends Controller
      */
     public function wfgIndex()
     {
-        return view('vehicle.monitoring.wfg');
+        $wfgLoc = Location::where('s_loc', 'A001')->first();
+        $items = VehicleItem::where(function ($q) use ($wfgLoc) {
+            if ($wfgLoc) {
+                $q->where('location_id', $wfgLoc->id);
+            }
+        })->orWhereNull('location_id')->orderBy('name')->get();
+
+        $vendors = VehicleVendor::orderBy('name')->get();
+        return view('vehicle.monitoring.wfg', compact('vendors', 'items'));
     }
 
     /**
@@ -1746,9 +1785,6 @@ class VehicleTrackingController extends Controller
                 'updated_by' => Auth::id()
             ]);
 
-            $actionName = $transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
-            $noPol = $transaction->vehicle->no_pol;
-
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
                 ->where('location_id', $transaction->current_location_id)
                 ->whereNull('departure_time')
@@ -1757,35 +1793,34 @@ class VehicleTrackingController extends Controller
 
             if ($activeTrack) {
                 $activeTrack->update([
-                    'status_notes' => "Mulai Proses {$actionName} di WFG."
+                    'status_notes' => 'Mulai Proses Bongkar/Muat di WFG.'
                 ]);
             }
 
+            $noPol = $transaction->vehicle->no_pol;
+
             // Pastikan ter-release dari slot parkir
-            $this->releaseKantongParkirSlot($noPol, "Mulai proses {$actionName} di WFG");
+            $this->releaseKantongParkirSlot($noPol, 'Mulai proses bongkar/muat di WFG');
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
                 'current_location' => 'A001',
                 'status' => 'wfg',
-                'message' => "Truk {$noPol} mulai proses {$actionName} di WFG.",
+                'message' => "Truk {$noPol} mulai proses bongkar/muat di WFG.",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
             DB::commit();
-            return response()->json([
-                'success' => true,
-                'message' => "Proses {$actionName} untuk truk {$noPol} berhasil dimulai."
-            ]);
+            return response()->json(['success' => true, 'message' => 'Proses bongkar/muat berhasil dimulai.']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Gagal memulai proses: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Gagal memulai bongkar/muat: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Update WFG loading/unloading progress.
+     * Finish WFG Unloading/Loading.
      */
     public function wfgUpdateLoading(Request $request, $id)
     {
@@ -1828,36 +1863,38 @@ class VehicleTrackingController extends Controller
                 'finish_loading_time' => $now,
                 'finish_loading_by' => Auth::id(),
                 'timbangan_out_time' => $now,
-                'timbangan_out_by' => Auth::id(),
                 'current_location_id' => $timbanganLoc->id,
                 'status' => 'timbangan_out',
-                'no_antrian' => null, // Clear its own queue
+                'no_antrian' => null, // Reset no antrian agar slot nomor antrian kembali bersih
                 'updated_by' => Auth::id()
             ]);
 
-            // Shift remaining active queues in WFG for the SAME jenis
+            // Shift nomor antrian yang tersisa agar tetap urut (hanya pada jenis muatan yang sama di WFG)
             if ($completedAntrian > 0) {
-                $otherActiveQuery = VehicleTransaction::where('status', 'wfg')
+                $shiftQuery = VehicleTransaction::where('status', 'wfg')
                     ->whereNotNull('no_antrian');
 
                 if (!empty($transactionJenis)) {
-                    $otherActiveQuery->where('jenis', $transactionJenis);
+                    $shiftQuery->where('jenis', $transactionJenis);
                 }
 
-                $otherActive = $otherActiveQuery->get();
-                foreach ($otherActive as $tx) {
-                    $currAntrian = (int)$tx->no_antrian;
-                    if ($currAntrian > $completedAntrian) {
-                        $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
+                $remainingQueue = $shiftQuery->get();
+
+                foreach ($remainingQueue as $remainingTx) {
+                    $currentNum = (int)$remainingTx->no_antrian;
+                    if ($currentNum > $completedAntrian) {
+                        $newNum = str_pad($currentNum - 1, 2, '0', STR_PAD_LEFT);
+                        $remainingTx->update(['no_antrian' => $newNum]);
                     }
                 }
             }
 
-            // Create new tracking log for Timbangan
+            // Create new tracking log for Timbangan (Menunggu Timbang Keluar)
             VehicleTracking::create([
                 'vehicle_transaction_id' => $transaction->id,
                 'location_id' => $timbanganLoc->id,
                 'arrival_time' => $now,
+                'status_notes' => 'Selesai dari WFG. Menunggu Timbang Keluar di Timbangan.',
                 'created_by' => Auth::id(),
             ]);
 
@@ -1866,12 +1903,12 @@ class VehicleTrackingController extends Controller
                 'no_pol' => $noPol,
                 'current_location' => 'TIMBANGAN',
                 'status' => 'timbangan_out',
-                'message' => "Proses Bongkar/Muat Truk {$noPol} di WFG telah selesai. Truk kembali ke Timbangan untuk Check-Out.",
-                'time' => $now->format('H:i:s')
+                'message' => "Truk {$noPol} selesai di WFG dan diarahkan kembali ke Timbangan untuk Timbang Keluar.",
+                'time' => Carbon::now()->format('H:i:s')
             ]));
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Status bongkar/muat truk ' . $noPol . ' diperbarui ke Selesai. Diarahkan kembali ke Timbangan untuk Check-Out.']);
+            return response()->json(['success' => true, 'message' => 'Proses Bongkar/Muat di WFG selesai. Truk diarahkan ke Timbangan.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal menyelesaikan bongkar/muat: ' . $e->getMessage()], 500);
@@ -1883,7 +1920,15 @@ class VehicleTrackingController extends Controller
      */
     public function smuIndex()
     {
-        return view('vehicle.monitoring.smu');
+        $smuLoc = Location::whereIn('s_loc', ['A002', 'SMU'])->first();
+        $items = VehicleItem::where(function ($q) use ($smuLoc) {
+            if ($smuLoc) {
+                $q->where('location_id', $smuLoc->id);
+            }
+        })->orWhereNull('location_id')->orderBy('name')->get();
+
+        $vendors = VehicleVendor::orderBy('name')->get();
+        return view('vehicle.monitoring.smu', compact('vendors', 'items'));
     }
 
     /**
@@ -2211,6 +2256,77 @@ class VehicleTrackingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengirim follow up: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Follow up from Area (WFG / SMU / etc.) to Timbangan for unregistered vehicles.
+     */
+    public function followUpTimbangan(Request $request)
+    {
+        $request->validate([
+            'no_pol' => 'required|string|max:20',
+            'vendor' => 'nullable|string|max:100',
+            'jenis' => 'required|string|in:bongkaran,slipsheet,curah,retur',
+            'item_id' => 'nullable|exists:vehicle_items,id',
+            'area' => 'required|string|max:50',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
+            $vendor = trim($request->vendor ?? '');
+            $jenis = strtolower(trim($request->jenis));
+            $area = strtoupper(trim($request->area));
+            $notes = trim($request->notes ?? '');
+            $itemId = $request->item_id;
+            $item = $itemId ? VehicleItem::find($itemId) : null;
+            $itemName = $item ? $item->name : null;
+            $now = Carbon::now();
+
+            if ($vendor) {
+                VehicleVendor::firstOrCreate(['name' => $vendor]);
+            }
+
+            $senderName = Auth::user()->name ?? 'Operator ' . $area;
+
+            $followUpPayload = [
+                'type' => 'follow_up_timbangan',
+                'action' => 'unregistered_vehicle',
+                'no_pol' => $noPol,
+                'vendor' => $vendor ?: '-',
+                'jenis' => $jenis,
+                'item_id' => $itemId,
+                'item_name' => $itemName ?: '-',
+                'source_area' => $area,
+                'target_area' => 'TIMBANGAN',
+                'notes' => $notes ?: null,
+                'sender' => $senderName,
+                'message' => "Peringatan Follow Up dari {$area}: Truk {$noPol} ({$vendor}" . ($itemName ? " - {$itemName}" : "") . " - " . ucfirst($jenis) . ") sudah berada di lokasi {$area} namun belum terdaftar di Timbangan.",
+                'time' => $now->format('H:i:s'),
+                'timestamp' => $now->timestamp
+            ];
+
+            // Simpan data follow up ke Cache agar tidak hilang jika operator merefresh atau sebelum event ditangkap
+            $followUpList = Cache::get('unregistered_vehicle_followups', []);
+            $followUpList = array_values(array_filter($followUpList, function ($item) use ($noPol) {
+                return strtoupper(str_replace(' ', '', $item['no_pol'] ?? '')) !== $noPol;
+            }));
+            $followUpList[] = $followUpPayload;
+            Cache::put('unregistered_vehicle_followups', $followUpList, 86400);
+
+            // Broadcast Realtime Event
+            event(new VehicleStatusUpdated($followUpPayload));
+
+            return response()->json([
+                'success' => true,
+                'message' => "Pemberitahuan follow up untuk truk {$noPol} berhasil dikirim ke Timbangan."
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim follow up ke Timbangan: ' . $e->getMessage()
             ], 500);
         }
     }

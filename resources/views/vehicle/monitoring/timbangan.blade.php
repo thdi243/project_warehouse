@@ -565,8 +565,17 @@
                 $.ajax({
                     url: "{{ route('vehicle.monitoring.timbangan.data') }}",
                     type: 'GET',
-                    success: function(data) {
-                        allTransactions = data;
+                    success: function(response) {
+                        if (Array.isArray(response)) {
+                            allTransactions = response;
+                        } else {
+                            allTransactions = response.transactions || response.data || [];
+                            if (response.pending_followups && response.pending_followups.length > 0) {
+                                response.pending_followups.forEach(function(fu) {
+                                    triggerTimbanganFollowUpAlert(fu);
+                                });
+                            }
+                        }
                         renderTransactions();
                     },
                     error: function(xhr) {
@@ -1350,14 +1359,147 @@
                 }
             });
 
-            // Listen to real-time events via Reverb / Laravel Echo
-            if (typeof window.Echo !== 'undefined') {
-                window.Echo.channel('vehicle-tracking')
-                    .listen('.vehicle.updated', function(data) {
-                        fetchTransactions();
-                        loadSupplierData();
-                    });
+            // Audio Notification for incoming follow up from area
+            function playTimbanganFollowUpSound() {
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.6);
+                } catch (e) {}
             }
+
+            const handledTimbanganFollowUps = new Set();
+
+            function triggerTimbanganFollowUpAlert(payload) {
+                const alertKey = (payload.no_pol || '') + '_' + (payload.timestamp || payload.time || '');
+                if (handledTimbanganFollowUps.has(alertKey)) return;
+                handledTimbanganFollowUps.add(alertKey);
+
+                playTimbanganFollowUpSound();
+
+                const sourceArea = payload.source_area || 'AREA';
+                const noPol = payload.no_pol || 'N/A';
+                const vendor = payload.vendor && payload.vendor !== '-' ? payload.vendor : '';
+                const jenis = payload.jenis || 'bongkaran';
+                const itemName = payload.item_name && payload.item_name !== '-' ? payload.item_name : '';
+                const itemId = payload.item_id || '';
+                const notes = payload.notes || '';
+                const time = payload.time || '';
+
+                Swal.fire({
+                    title: `<span class="text-danger fw-bold"><i class="ri-alarm-warning-line me-1"></i> FOLLOW UP DARI ${sourceArea}!</span>`,
+                    html: `
+                        <div class="text-start">
+                            <div class="alert alert-danger border-0 mb-3 py-2 px-3">
+                                <strong>Peringatan dari ${sourceArea}:</strong> Kendaraan sudah berada di area <strong>${sourceArea}</strong> namun <u>belum terdaftar di Timbangan</u>!
+                            </div>
+                            <div class="card bg-light border-0 mb-3 p-3">
+                                <p class="mb-1"><strong>No. Polisi:</strong> <span class="badge bg-primary fs-13">${noPol}</span></p>
+                                <p class="mb-1"><strong>Jenis:</strong> <span class="badge bg-soft-info text-info text-capitalize">${jenis}</span></p>
+                                ${itemName ? `<p class="mb-1"><strong>Item:</strong> <span class="fw-semibold text-dark">${itemName}</span></p>` : ''}
+                                ${vendor ? `<p class="mb-1"><strong>Vendor:</strong> ${vendor}</p>` : ''}
+                                ${notes ? `<p class="mb-1 text-danger"><strong>Catatan:</strong> "${notes}"</p>` : ''}
+                                <p class="mb-0 text-muted small"><i class="ri-time-line me-1"></i>Waktu Lapor: ${time}</p>
+                            </div>
+                            <p class="text-muted small mb-0">Klik tombol di bawah untuk langsung mengisi data form Check-In Timbangan secara otomatis.</p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0ab39c',
+                    confirmButtonText: '<i class="ri-login-box-line me-1"></i> Proses Check-In Sekarang',
+                    cancelButtonColor: '#6c757d',
+                    cancelButtonText: 'Tutup',
+                    allowOutsideClick: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // 1. Set No Polisi
+                        if ($('#no_pol').find("option[value='" + noPol + "']").length === 0) {
+                            var newOption = new Option(noPol, noPol, true, true);
+                            $('#no_pol').append(newOption).trigger('change');
+                        } else {
+                            $('#no_pol').val(noPol).trigger('change');
+                        }
+
+                        // 2. Set Jenis
+                        $('#jenis').val(jenis).trigger('change');
+
+                        // 3. Set Target Location based on source area
+                        let targetSlocCode = '';
+                        if (sourceArea === 'WFG') targetSlocCode = 'A001';
+                        else if (sourceArea === 'SMU') targetSlocCode = 'SMU';
+                        else if (sourceArea === 'WPM') targetSlocCode = 'C001';
+                        else if (sourceArea === 'WRM') targetSlocCode = 'B006';
+
+                        if (targetSlocCode) {
+                            $('#target_location_id option').each(function() {
+                                if ($(this).data('sloc') === targetSlocCode) {
+                                    $('#target_location_id').val($(this).val()).trigger('change');
+                                }
+                            });
+                        }
+
+                        // 4. Set Item if available
+                        if (itemId) {
+                            $('#item_id').val(itemId).trigger('change');
+                        }
+
+                        // 5. Set Vendor
+                        if (vendor) {
+                            if ($('#vendor').find("option[value='" + vendor + "']").length === 0) {
+                                var newVendorOpt = new Option(vendor, vendor, true, true);
+                                $('#vendor').append(newVendorOpt).trigger('change');
+                            } else {
+                                $('#vendor').val(vendor).trigger('change');
+                            }
+                        }
+
+                        // Scroll smoothly to check-in form
+                        $('html, body').animate({
+                            scrollTop: $('#checkInForm').offset().top - 70
+                        }, 500);
+
+                        if (window.toastr) {
+                            toastr.success(`Form Check-In berhasil diisi untuk Truk ${noPol}. Silakan lengkapi SPB lalu Simpan.`, 'Follow Up Diproses');
+                        }
+                    }
+                });
+            }
+
+            // Real-time Event Listener with Laravel Echo / Reverb
+            function setupRealtimeEcho() {
+                if (window.Echo && typeof window.Echo.channel === 'function') {
+                    console.log('Listening for vehicle updates on Echo channel in Timbangan...');
+                    window.Echo.channel('vehicle-tracking')
+                        .subscribed(() => {
+                            console.log('✅ Subscribed successfully to vehicle-tracking channel in Timbangan');
+                        })
+                        .error((err) => {
+                            console.error('❌ Echo connection error on vehicle-tracking channel in Timbangan:', err);
+                        })
+                        .listen('.vehicle.updated', function(data) {
+                            console.log('Echo event received in Timbangan:', data);
+                            if (data.type === 'follow_up_timbangan' || (data.target_area === 'TIMBANGAN' && data.type === 'follow_up_timbangan') || data.action === 'unregistered_vehicle') {
+                                triggerTimbanganFollowUpAlert(data);
+                            }
+                            fetchTransactions();
+                            loadSupplierData();
+                        });
+                } else {
+                    setTimeout(setupRealtimeEcho, 100);
+                }
+            }
+            setupRealtimeEcho();
         });
     </script>
 @endsection
