@@ -596,6 +596,16 @@
                                     <option value="slipsheet">Slipsheet</option>
                                 </select>
                             </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">No. SPB (Opsional)</label>
+                                    <input type="text" id="fu_no_spb" class="form-control text-uppercase" placeholder="Contoh: SPB-001" autocomplete="off">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">Qty SPB (Opsional)</label>
+                                    <input type="number" id="fu_qty_spb" step="any" min="0" class="form-control" placeholder="Contoh: 1000">
+                                </div>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold small">Nama Vendor</label>
                                 <input type="text" id="fu_vendor" class="form-control" list="fu_vendor_list" placeholder="Pilih atau ketik vendor..." autocomplete="off">
@@ -620,6 +630,8 @@
                             '');
                         const itemId = $('#fu_item_id').val();
                         const jenis = $('#fu_jenis').val();
+                        const noSpb = $('#fu_no_spb').val().trim().toUpperCase();
+                        const qtySpb = $('#fu_qty_spb').val();
                         const vendor = $('#fu_vendor').val().trim();
                         const notes = $('#fu_notes').val().trim();
 
@@ -640,6 +652,8 @@
                             no_pol: nopol,
                             item_id: itemId,
                             jenis: jenis,
+                            no_spb: noSpb,
+                            qty_spb: qtySpb,
                             vendor: vendor,
                             area: 'SMU',
                             notes: notes
@@ -656,6 +670,8 @@
                                 no_pol: postData.no_pol,
                                 item_id: postData.item_id,
                                 jenis: postData.jenis,
+                                no_spb: postData.no_spb,
+                                qty_spb: postData.qty_spb,
                                 vendor: postData.vendor,
                                 area: postData.area,
                                 notes: postData.notes

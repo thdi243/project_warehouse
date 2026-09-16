@@ -2270,6 +2270,8 @@ class VehicleTrackingController extends Controller
             'vendor' => 'nullable|string|max:100',
             'jenis' => 'required|string|in:bongkaran,slipsheet,curah,retur',
             'item_id' => 'nullable|exists:vehicle_items,id',
+            'no_spb' => 'nullable|string|max:100',
+            'qty_spb' => 'nullable|numeric|min:0',
             'area' => 'required|string|max:50',
             'notes' => 'nullable|string|max:500',
         ]);
@@ -2280,6 +2282,8 @@ class VehicleTrackingController extends Controller
             $jenis = strtolower(trim($request->jenis));
             $area = strtoupper(trim($request->area));
             $notes = trim($request->notes ?? '');
+            $noSpb = trim($request->no_spb ?? '');
+            $qtySpb = $request->filled('qty_spb') ? (float)$request->qty_spb : null;
             $itemId = $request->item_id;
             $item = $itemId ? VehicleItem::find($itemId) : null;
             $itemName = $item ? $item->name : null;
@@ -2299,6 +2303,8 @@ class VehicleTrackingController extends Controller
                 'jenis' => $jenis,
                 'item_id' => $itemId,
                 'item_name' => $itemName ?: '-',
+                'no_spb' => $noSpb ?: null,
+                'qty_spb' => $qtySpb,
                 'source_area' => $area,
                 'target_area' => 'TIMBANGAN',
                 'notes' => $notes ?: null,

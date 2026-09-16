@@ -1393,6 +1393,8 @@
                 const jenis = payload.jenis || 'bongkaran';
                 const itemName = payload.item_name && payload.item_name !== '-' ? payload.item_name : '';
                 const itemId = payload.item_id || '';
+                const noSpb = payload.no_spb || '';
+                const qtySpb = payload.qty_spb != null ? payload.qty_spb : '';
                 const notes = payload.notes || '';
                 const time = payload.time || '';
 
@@ -1407,6 +1409,8 @@
                                 <p class="mb-1"><strong>No. Polisi:</strong> <span class="badge bg-primary fs-13">${noPol}</span></p>
                                 <p class="mb-1"><strong>Jenis:</strong> <span class="badge bg-soft-info text-info text-capitalize">${jenis}</span></p>
                                 ${itemName ? `<p class="mb-1"><strong>Item:</strong> <span class="fw-semibold text-dark">${itemName}</span></p>` : ''}
+                                ${noSpb ? `<p class="mb-1"><strong>No. SPB:</strong> <span class="fw-semibold text-dark">${noSpb}</span></p>` : ''}
+                                ${qtySpb ? `<p class="mb-1"><strong>Qty SPB:</strong> <span class="fw-semibold text-dark">${parseFloat(qtySpb).toLocaleString('id-ID')} Kg</span></p>` : ''}
                                 ${vendor ? `<p class="mb-1"><strong>Vendor:</strong> ${vendor}</p>` : ''}
                                 ${notes ? `<p class="mb-1 text-danger"><strong>Catatan:</strong> "${notes}"</p>` : ''}
                                 <p class="mb-0 text-muted small"><i class="ri-time-line me-1"></i>Waktu Lapor: ${time}</p>
@@ -1454,7 +1458,15 @@
                             $('#item_id').val(itemId).trigger('change');
                         }
 
-                        // 5. Set Vendor
+                        // 5. Set No. SPB & Qty SPB if available
+                        if (noSpb) {
+                            $('#no_spb').val(noSpb);
+                        }
+                        if (qtySpb) {
+                            $('#qty_spb').val(qtySpb);
+                        }
+
+                        // 6. Set Vendor
                         if (vendor) {
                             if ($('#vendor').find("option[value='" + vendor + "']").length === 0) {
                                 var newVendorOpt = new Option(vendor, vendor, true, true);
@@ -1470,7 +1482,7 @@
                         }, 500);
 
                         if (window.toastr) {
-                            toastr.success(`Form Check-In berhasil diisi untuk Truk ${noPol}. Silakan lengkapi SPB lalu Simpan.`, 'Follow Up Diproses');
+                            toastr.success(`Form Check-In berhasil diisi untuk Truk ${noPol}. Silakan lengkapi lalu Simpan.`, 'Follow Up Diproses');
                         }
                     }
                 });
