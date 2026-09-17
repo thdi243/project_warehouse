@@ -757,6 +757,23 @@ class VehicleTrackingController extends Controller
 
             $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
 
+            // Validasi truk tidak boleh duplikasi jika masih ada transaksi aktif
+            $activeTransaction = VehicleTransaction::whereHas('vehicle', function ($q) use ($noPol) {
+                $q->where(DB::raw("REPLACE(UPPER(no_pol), ' ', '')"), $noPol);
+            })
+            ->where(function ($q) {
+                $q->whereNull('check_out_time')
+                  ->orWhere('status', '!=', 'completed');
+            })
+            ->with(['currentLocation', 'targetLocation'])
+            ->latest()
+            ->first();
+
+            if ($activeTransaction) {
+                $currentLocName = $activeTransaction->currentLocation ? $activeTransaction->currentLocation->name : ($activeTransaction->targetLocation ? $activeTransaction->targetLocation->name : 'Warehouse');
+                throw new \Exception("Kendaraan dengan No. Polisi {$request->no_pol} masih aktif dalam sistem (No. Transaksi: {$activeTransaction->no_transaction}, Posisi: {$currentLocName}, Status: {$activeTransaction->status}). Harap selesaikan transaksi sebelumnya terlebih dahulu.");
+            }
+
             // Validate target area based on jenis
             $targetLoc = Location::findOrFail($request->target_location_id);
             $jenis = $request->jenis;
