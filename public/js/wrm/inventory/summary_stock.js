@@ -115,7 +115,7 @@ $(document).ready(function () {
             <td class="text-center fw-bold">Total (This Page)</td>`;
 
         activeItems.forEach(function (item) {
-            const alias = 'mid_' + item.mid.replace(/[^a-zA-Z0-9_]/g, '_');
+            const alias = 'mid_' + String(item.mid).replace(/[^a-zA-Z0-9_]/g, '_');
             const val = pageTotals[alias] || 0;
             footerHtml += `<td class="text-end fw-bold">${formatNumber.display(val)}</td>`;
         });
@@ -1123,7 +1123,7 @@ $(document).ready(function () {
                         html += `<td class="text-center fw-medium">${row.formatted_tanggal || row.tanggal}</td>`;
 
                         activeStockByDateItemsGlobal.forEach(function (item) {
-                            const alias = 'mid_' + item.mid.replace(/[^a-zA-Z0-9_]/g, '_');
+                            const alias = 'mid_' + String(item.mid).replace(/[^a-zA-Z0-9_]/g, '_');
                             const val = parseFloat(row[alias] || 0);
                             html += `<td class="text-end">${formatNumber.display(val)}</td>`;
                         });
