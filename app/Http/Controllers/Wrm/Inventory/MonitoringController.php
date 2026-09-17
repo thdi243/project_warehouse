@@ -1561,7 +1561,7 @@ class MonitoringController extends Controller
             $datesQuery->whereIn('barang_id', $barangIds);
         }
 
-        $recordsTotal = (clone $datesQuery)->count();
+        $recordsTotal = (clone $datesQuery)->count('tanggal');
 
         $start = $request->start ?? 0;
         $length = $request->length ?? 15;

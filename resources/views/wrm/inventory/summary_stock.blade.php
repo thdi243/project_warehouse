@@ -2,6 +2,27 @@
 
 @section('title', '- Summary Stock Inventory')
 
+@section('styles')
+    <style>
+        #table-summary-stock-by-date th:first-child,
+        #table-summary-stock-by-date td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background-color: #ffffff;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.08);
+        }
+        #table-summary-stock-by-date thead th:first-child,
+        #table-summary-stock-by-date tfoot td:first-child {
+            z-index: 3;
+            background-color: #f3f6f9;
+        }
+        #table-summary-stock-by-date tbody tr:nth-of-type(odd) td:first-child {
+            background-color: #fcfdfe;
+        }
+    </style>
+@endsection
+
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
