@@ -28,3 +28,7 @@ Schedule::call(function () {
 
 // Update stock status dari QI ke UNREST setelah 14 hari incoming date
 // Schedule::command('stock:update-status-qi-to-unrest')->dailyAt('00:00');
+
+// Snapshot stock per tanggal untuk semua barang WRM setiap hari pukul 23:59:59
+Schedule::command('wrm:sync-stock-by-date')->dailyAt('23:59');
+

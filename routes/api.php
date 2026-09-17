@@ -193,6 +193,8 @@ Route::get('/data/summary-stock/spb', [MonitoringController::class, 'getSummaryS
 Route::get('/data/summary-stock/group', [MonitoringController::class, 'getSummaryStockGroupData'])->name('wrm.inventory.monitoring.summary-stock.group-data');
 Route::get('/data/summary-stock/group-meta', [MonitoringController::class, 'getSummaryStockGroupMeta'])->name('wrm.inventory.monitoring.summary-stock.group-meta');
 Route::get('/data/summary-stock/supplier', [MonitoringController::class, 'getSummaryStockSupplierData'])->name('wrm.inventory.monitoring.summary-stock.supplier-data');
+Route::get('/data/summary-stock/by-date', [MonitoringController::class, 'getSummaryStockByDateData'])->name('wrm.inventory.monitoring.summary-stock.by-date-data');
+Route::get('/data/summary-stock/by-date-meta', [MonitoringController::class, 'getSummaryStockByDateMeta'])->name('wrm.inventory.monitoring.summary-stock.by-date-meta');
 // SSO callback is now in web.php as a GET request
 // Route::post('/auth/validate-token', [TokenAuthController::class, 'receiveToken']);
 

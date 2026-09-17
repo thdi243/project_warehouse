@@ -825,9 +825,8 @@ class OutboundController extends Controller
                     if ($bin) {
                         $locId = $bin->loc_id;
 
-                        // Recalculate Stock Balance and update StockByDate
+                        // Recalculate Stock Balance
                         StockBalance::recalculate($detail->barang_id);
-                        StockByDate::updateStockByDate($detail->barang_id, now());
 
                         // Record Stock Movement (out)
                         StockMovement::create([
@@ -843,7 +842,6 @@ class OutboundController extends Controller
                     }
                 } else if ($status === 'BA WAITING') {
                     StockBalance::recalculate($detail->barang_id);
-                    StockByDate::updateStockByDate($detail->barang_id, now());
                 }
             }
 
@@ -1012,9 +1010,8 @@ class OutboundController extends Controller
                         if ($bin) {
                             $locId = $bin->loc_id;
 
-                            // Recalculate Stock Balance and update StockByDate
+                            // Recalculate Stock Balance
                             StockBalance::recalculate($detail->barang_id);
-                            StockByDate::updateStockByDate($detail->barang_id, now());
 
                             // Record Stock Movement (out)
                             StockMovement::create([

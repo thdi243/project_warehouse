@@ -69,6 +69,12 @@
                                         </a>
                                     </li>
                                 @endcan
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#summary-stock-by-date-tab"
+                                        role="tab" aria-selected="false">
+                                        Stock By Date
+                                    </a>
+                                </li>
                             </ul>
 
                             <div class="tab-content text-muted">
@@ -704,6 +710,86 @@
                                         </div>
                                     </form>
                                 </div>
+
+                                <div class="tab-pane" id="summary-stock-by-date-tab" role="tabpanel">
+                                    <form id="filter-stock-by-date-form">
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-xxl-3 col-sm-6">
+                                                <label class="form-label fw-semibold">Filter MID</label>
+                                                <div class="dropdown custom-filter-dropdown" id="dropdown-mid-by-date">
+                                                    <button
+                                                        class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                                        type="button" data-bs-toggle="dropdown"
+                                                        data-bs-auto-close="outside" aria-expanded="false">
+                                                        <span class="dropdown-placeholder text-muted">Pilih MID...</span>
+                                                        <span
+                                                            class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                                    </button>
+                                                    <div class="dropdown-menu p-3 shadow-lg border-0"
+                                                        style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                                        <div class="mb-2">
+                                                            <input type="text"
+                                                                class="form-control form-control-sm search-options"
+                                                                placeholder="Cari MID...">
+                                                        </div>
+                                                        <div class="d-flex justify-content-between mb-2">
+                                                            <button type="button"
+                                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                                All</button>
+                                                            <button type="button"
+                                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                                All</button>
+                                                        </div>
+                                                        <hr class="dropdown-divider my-2">
+                                                        <div class="options-list"
+                                                            style="max-height: 250px; overflow-y: auto;">
+                                                            @foreach ($mids as $m)
+                                                                <div class="form-check mb-2 option-item"
+                                                                    data-value="{{ $m->mid }}"
+                                                                    data-text="{{ $m->mid }} - {{ $m->nama_barang }}">
+                                                                    <input class="form-check-input option-checkbox"
+                                                                        type="checkbox" value="{{ $m->mid }}"
+                                                                        id="chk-mid-by-date-{{ $m->mid }}">
+                                                                    <label class="form-check-label text-truncate w-100"
+                                                                        for="chk-mid-by-date-{{ $m->mid }}">
+                                                                        <strong>{{ $m->mid }}</strong> -
+                                                                        {{ $m->nama_barang }}
+                                                                    </label>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-xxl-3 col-sm-6">
+                                                <label class="form-label fw-semibold">Start Date</label>
+                                                <input type="date" class="form-control" id="filter-start-date-by-date"
+                                                    value="{{ date('Y-m-d', strtotime('-30 days')) }}"
+                                                    data-default="{{ date('Y-m-d', strtotime('-30 days')) }}">
+                                            </div>
+                                            <div class="col-xxl-3 col-sm-6">
+                                                <label class="form-label fw-semibold">End Date</label>
+                                                <input type="date" class="form-control" id="filter-end-date-by-date"
+                                                    value="{{ date('Y-m-d') }}"
+                                                    data-default="{{ date('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-xxl-3 col-sm-6">
+                                                <div class="d-flex gap-2">
+                                                    <button type="button" class="btn btn-primary flex-fill"
+                                                        id="btn-filter-stock-by-date">
+                                                        <i class="ri-equalizer-fill me-1 align-bottom"></i>
+                                                        Filter
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger flex-fill"
+                                                        id="btnResetStockByDate">
+                                                        <i class="ri-refresh me-1 align-bottom"></i>
+                                                        Reset
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                         <div class="card-body">
@@ -827,6 +913,16 @@
                                         </table>
                                     </div>
                                     <div id="table-inbound-monthly-pagination" class="px-3 pb-3"></div>
+                                </div>
+
+                                <div class="tab-pane" id="summary-stock-by-date-table-tab" role="tabpanel">
+                                    <div class="table-responsive table-card mb-4">
+                                        <table class="table table-striped align-middle table-nowrap mb-0"
+                                            id="table-summary-stock-by-date" style="width:100%;">
+                                            {{-- Will be dynamically generated --}}
+                                        </table>
+                                    </div>
+                                    <div id="table-stock-by-date-pagination" class="px-3 pb-3"></div>
                                 </div>
                             </div>
                         </div>

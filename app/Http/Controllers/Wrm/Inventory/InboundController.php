@@ -459,10 +459,9 @@ class InboundController extends Controller
                 $processedBarangs[$barang->id] = $incomingDateWithTime;
             }
 
-            // Recalculate StockBalance and update StockByDate for all processed items
+            // Recalculate StockBalance for all processed items
             foreach ($processedBarangs as $barangId => $date) {
                 \App\Models\Wrm\Inventory\StockBalance::recalculate($barangId);
-                \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $date);
             }
 
             // Delete ONLY temp data untuk no_spb ini for this user
@@ -833,12 +832,6 @@ class InboundController extends Controller
 
             // Sync Balances
             \App\Models\Wrm\Inventory\StockBalance::recalculate($barangId);
-            \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $incomingDateWithTime);
-
-            $oldDate = $detail->getOriginal('incoming_date') ?? $incomingDateWithTime;
-            if ($oldDate !== $incomingDateWithTime) {
-                \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $oldDate);
-            }
 
             DB::commit();
 
@@ -886,9 +879,6 @@ class InboundController extends Controller
             // Sync balances
             foreach ($affectedData as $item) {
                 \App\Models\Wrm\Inventory\StockBalance::recalculate($item->barang_id);
-                if ($item->incoming_date) {
-                    \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($item->barang_id, $item->incoming_date);
-                }
             }
 
             DB::commit();
@@ -982,9 +972,6 @@ class InboundController extends Controller
             // Sync balances
             foreach ($affectedData as $item) {
                 \App\Models\Wrm\Inventory\StockBalance::recalculate($item->barang_id);
-                if ($item->incoming_date) {
-                    \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($item->barang_id, $item->incoming_date);
-                }
             }
 
             DB::commit();
@@ -1022,7 +1009,6 @@ class InboundController extends Controller
 
             // Sync balances
             \App\Models\Wrm\Inventory\StockBalance::recalculate($barangId);
-            \App\Models\Wrm\Inventory\StockByDate::updateStockByDate($barangId, $incomingDate);
 
             DB::commit();
 

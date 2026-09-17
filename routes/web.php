@@ -355,6 +355,8 @@ Route::middleware('auth')->group(function () {
                     Route::get('/data/moving-average', [MonitoringController::class, 'getMovingAverageData'])->name('wrm.inventory.monitoring.moving-average.data');
                     Route::get('/data/summary-stock/inbound-monthly', [MonitoringController::class, 'getSummaryStockInboundMonthlyData'])->name('wrm.inventory.monitoring.summary-stock.inbound-monthly-data');
                     Route::get('/data/summary-stock/inbound-monthly-meta', [MonitoringController::class, 'getSummaryStockInboundMonthlyMeta'])->name('wrm.inventory.monitoring.summary-stock.inbound-monthly-meta');
+                    Route::get('/data/summary-stock/by-date', [MonitoringController::class, 'getSummaryStockByDateData'])->name('wrm.inventory.monitoring.summary-stock.by-date-data');
+                    Route::get('/data/summary-stock/by-date-meta', [MonitoringController::class, 'getSummaryStockByDateMeta'])->name('wrm.inventory.monitoring.summary-stock.by-date-meta');
 
                     // Summary Stock Transfer
                     Route::get('/summary-transfer', [MonitoringController::class, 'indexSummaryTransfer'])->name('wrm.inventory.summary.transfer');

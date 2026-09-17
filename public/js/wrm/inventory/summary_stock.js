@@ -105,6 +105,27 @@ $(document).ready(function () {
         $(selector).html(footerHtml);
     }
 
+    function renderStockByDatePageFooter(selector, pageTotals, activeItems) {
+        if (!pageTotals || Object.keys(pageTotals).length === 0) {
+            $(selector).empty();
+            return;
+        }
+
+        let footerHtml = `<tr>
+            <td class="text-center fw-bold">Total (This Page)</td>`;
+
+        activeItems.forEach(function (item) {
+            const alias = 'mid_' + item.mid.replace(/[^a-zA-Z0-9_]/g, '_');
+            const val = pageTotals[alias] || 0;
+            footerHtml += `<td class="text-end fw-bold">${formatNumber.display(val)}</td>`;
+        });
+
+        footerHtml += `<td class="text-end fw-bold text-success">${formatNumber.display(pageTotals.total_qty || 0)}</td>
+        </tr>`;
+
+        $(selector).html(footerHtml);
+    }
+
     function renderGroupPageFooter(selector, pageTotals, activeGroups, hasNoGroup) {
         let footerHtml = '';
         const totalRows = pageTotals.length;
@@ -414,6 +435,10 @@ $(document).ready(function () {
     let supplierStart = 0;
     const supplierLength = 15;
 
+    let stockByDateStart = 0;
+    const stockByDateLength = 15;
+    let activeStockByDateItemsGlobal = [];
+
     let isResetting = false;
 
     // Initialize all custom dropdown filters
@@ -459,6 +484,10 @@ $(document).ready(function () {
 
     initCustomDropdown('dropdown-supplier-supplier', 'Pilih Supplier...', function () {
         loadSupplierTable(0);
+    });
+
+    initCustomDropdown('dropdown-mid-by-date', 'Pilih MID...', function () {
+        loadStockByDateTable(0, true);
     });
 
     // Table loaders
@@ -1004,6 +1033,125 @@ $(document).ready(function () {
         }
     }
 
+    function loadStockByDateTable(start = 0, forceRebuildHeader = false) {
+        stockByDateStart = start;
+        const mids = $('#dropdown-mid-by-date').data('getValues')();
+        const startDate = $('#filter-start-date-by-date').val();
+        const endDate = $('#filter-end-date-by-date').val();
+
+        const $table = $('#table-summary-stock-by-date');
+
+        if (forceRebuildHeader || activeStockByDateItemsGlobal.length === 0) {
+            $table.html(
+                '<thead><tr><th colspan="4" class="text-center py-4 text-muted"><i class="ri-loader-4-line ri-spin me-2 fs-5"></i>Loading meta...</th></tr></thead>'
+            );
+
+            $.ajax({
+                url: "/wrm/inventory/monitoring/data/summary-stock/by-date-meta",
+                type: 'GET',
+                data: {
+                    mids: mids
+                },
+                success: function (response) {
+                    activeStockByDateItemsGlobal = response.items || [];
+
+                    let theadHtml = '<tr>';
+                    theadHtml += '<th class="text-center" style="min-width: 130px;">Tanggal</th>';
+
+                    activeStockByDateItemsGlobal.forEach(function (item) {
+                        theadHtml += `<th class="text-end" style="min-width: 140px;" title="${item.nama_barang}">
+                            <div>${item.mid}</div>
+                            <small class="text-muted fw-normal text-truncate d-inline-block" style="max-width: 130px;">${item.nama_barang}</small>
+                        </th>`;
+                    });
+
+                    theadHtml += '<th class="text-end" style="min-width: 130px;">Total Qty</th>';
+                    theadHtml += '</tr>';
+
+                    $table.empty().append(
+                        `<thead class="table-light">${theadHtml}</thead>` +
+                        `<tbody></tbody>` +
+                        `<tfoot class="table-light fw-semibold" id="table-stock-by-date-footer"></tfoot>`
+                    );
+
+                    fetchStockByDateData();
+                },
+                error: function (xhr, status, error) {
+                    $table.html(
+                        `<thead><tr><th class="text-danger py-4 text-center">Gagal memuat meta data: ${error}</th></tr></thead>`
+                    );
+                }
+            });
+        } else {
+            fetchStockByDateData();
+        }
+
+        function fetchStockByDateData() {
+            const $tbody = $table.find('tbody');
+            $tbody.html(
+                `<tr><td colspan="${2 + activeStockByDateItemsGlobal.length}" class="text-center py-4 text-muted"><i class="ri-loader-4-line ri-spin me-2 fs-5"></i>Loading data...</td></tr>`
+            );
+
+            $.ajax({
+                url: "/wrm/inventory/monitoring/data/summary-stock/by-date",
+                type: 'GET',
+                data: {
+                    draw: 1,
+                    start: stockByDateStart,
+                    length: stockByDateLength,
+                    mids: mids,
+                    start_date: startDate,
+                    end_date: endDate
+                },
+                dataType: 'json',
+                success: function (response) {
+                    $tbody.empty();
+                    const data = response.data || [];
+
+                    if (data.length === 0) {
+                        $tbody.html(
+                            `<tr><td colspan="${2 + activeStockByDateItemsGlobal.length}" class="text-center py-4 text-muted">Tidak ada data stock pada rentang tanggal ini.</td></tr>`
+                        );
+                        $('#table-stock-by-date-footer').empty();
+                        $('#table-stock-by-date-pagination').empty();
+                        return;
+                    }
+
+                    let html = '';
+                    data.forEach(function (row) {
+                        html += '<tr>';
+                        html += `<td class="text-center fw-medium">${row.formatted_tanggal || row.tanggal}</td>`;
+
+                        activeStockByDateItemsGlobal.forEach(function (item) {
+                            const alias = 'mid_' + item.mid.replace(/[^a-zA-Z0-9_]/g, '_');
+                            const val = parseFloat(row[alias] || 0);
+                            html += `<td class="text-end">${formatNumber.display(val)}</td>`;
+                        });
+
+                        html += `<td class="text-end fw-bold text-primary">${formatNumber.display(row.total_qty || 0)}</td>`;
+                        html += '</tr>';
+                    });
+                    $tbody.html(html);
+
+                    // Render Footer
+                    renderStockByDatePageFooter('#table-stock-by-date-footer', response.page_totals, activeStockByDateItemsGlobal);
+
+                    // Render Pagination
+                    renderPagination('#table-stock-by-date-pagination', response.recordsTotal,
+                        stockByDateStart, stockByDateLength,
+                        function (newStart) {
+                            loadStockByDateTable(newStart, false);
+                        });
+                },
+                error: function (xhr, status, error) {
+                    $tbody.html(
+                        `<tr><td colspan="${2 + activeStockByDateItemsGlobal.length}" class="text-center text-danger py-4">Gagal memuat data: ${error}</td></tr>`
+                    );
+                }
+            });
+        }
+    }
+
     // Load initial tab data
     loadItemTable(0);
 
@@ -1017,6 +1165,7 @@ $(document).ready(function () {
             $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
+            $('#summary-stock-by-date-table-tab').removeClass('active show');
             loadItemTable(0);
         }
 
@@ -1027,6 +1176,7 @@ $(document).ready(function () {
             $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
+            $('#summary-stock-by-date-table-tab').removeClass('active show');
             loadSpbTable(0);
         }
 
@@ -1037,6 +1187,7 @@ $(document).ready(function () {
             $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
+            $('#summary-stock-by-date-table-tab').removeClass('active show');
             loadGroupTable(0, true);
         }
 
@@ -1047,6 +1198,7 @@ $(document).ready(function () {
             $('#summary-group-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
+            $('#summary-stock-by-date-table-tab').removeClass('active show');
             loadSupplierTable(0);
         }
 
@@ -1057,6 +1209,7 @@ $(document).ready(function () {
             $('#summary-group-table-tab').removeClass('active show');
             $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-inbound-monthly-table-tab').removeClass('active show');
+            $('#summary-stock-by-date-table-tab').removeClass('active show');
             loadMaTable(0);
         }
 
@@ -1067,7 +1220,19 @@ $(document).ready(function () {
             $('#summary-group-table-tab').removeClass('active show');
             $('#summary-supplier-table-tab').removeClass('active show');
             $('#summary-moving-average-table-tab').removeClass('active show');
+            $('#summary-stock-by-date-table-tab').removeClass('active show');
             loadInboundMonthlyTable(0, true);
+        }
+
+        if (target === '#summary-stock-by-date-tab') {
+            $('#summary-stock-by-date-table-tab').addClass('active show');
+            $('#summary-item-table-tab').removeClass('active show');
+            $('#summary-spb-table-tab').removeClass('active show');
+            $('#summary-group-table-tab').removeClass('active show');
+            $('#summary-supplier-table-tab').removeClass('active show');
+            $('#summary-moving-average-table-tab').removeClass('active show');
+            $('#summary-inbound-monthly-table-tab').removeClass('active show');
+            loadStockByDateTable(0, true);
         }
     });
 
@@ -1153,6 +1318,21 @@ $(document).ready(function () {
         $('#dropdown-year-inbound').data('reset')();
         isResetting = false;
         loadInboundMonthlyTable(0, true);
+    });
+
+    // Filter button handlers for Stock By Date
+    $('#btn-filter-stock-by-date').on('click', function () {
+        loadStockByDateTable(0, true);
+    });
+
+    // Reset button handlers for Stock By Date
+    $('#btnResetStockByDate').on('click', function () {
+        isResetting = true;
+        $('#filter-start-date-by-date').val($('#filter-start-date-by-date').data('default') || '');
+        $('#filter-end-date-by-date').val($('#filter-end-date-by-date').data('default') || '');
+        $('#dropdown-mid-by-date').data('reset')();
+        isResetting = false;
+        loadStockByDateTable(0, true);
     });
 
     // Handle clicking SPB detail link

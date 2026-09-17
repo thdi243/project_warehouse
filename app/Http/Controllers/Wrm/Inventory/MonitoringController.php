@@ -1515,4 +1515,129 @@ class MonitoringController extends Controller
             'grand_total_per_uom' => $totalsPerUom
         ]);
     }
+
+    public function getSummaryStockByDateMeta(Request $request)
+    {
+        $mids = $request->filled('mids') ? (array)$request->mids : [];
+
+        $query = MasterBarangModel::query()
+            ->select('id', 'mid', 'nama_barang', 'uom');
+
+        if (!empty($mids)) {
+            $query->whereIn('mid', $mids);
+        }
+
+        $items = $query->orderBy('mid', 'asc')->get();
+
+        return response()->json([
+            'items' => $items
+        ]);
+    }
+
+    public function getSummaryStockByDateData(Request $request)
+    {
+        $startDate = $request->filled('start_date') ? $request->start_date : Carbon::today()->subDays(30)->toDateString();
+        $endDate = $request->filled('end_date') ? $request->end_date : Carbon::today()->toDateString();
+        $mids = $request->filled('mids') ? (array)$request->mids : [];
+
+        // 1. Get active master items
+        $itemsQuery = MasterBarangModel::query()
+            ->select('id', 'mid', 'nama_barang', 'uom');
+
+        if (!empty($mids)) {
+            $itemsQuery->whereIn('mid', $mids);
+        }
+
+        $items = $itemsQuery->orderBy('mid', 'asc')->get();
+        $barangIds = $items->pluck('id')->toArray();
+
+        // 2. Query distinct dates in the date range from wrm_stock_by_date
+        $datesQuery = DB::table('wrm_stock_by_date')
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->select('tanggal')
+            ->distinct();
+
+        if (!empty($barangIds)) {
+            $datesQuery->whereIn('barang_id', $barangIds);
+        }
+
+        $recordsTotal = (clone $datesQuery)->count();
+
+        $start = $request->start ?? 0;
+        $length = $request->length ?? 15;
+
+        $pagedDates = $datesQuery->orderBy('tanggal', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->pluck('tanggal');
+
+        if ($pagedDates->isEmpty()) {
+            return response()->json([
+                'draw' => intval($request->draw),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'items' => $items,
+                'page_totals' => []
+            ]);
+        }
+
+        // 3. Fetch stock records for these paged dates and selected items
+        $stockRecords = DB::table('wrm_stock_by_date')
+            ->join('wrm_master_barang', 'wrm_stock_by_date.barang_id', '=', 'wrm_master_barang.id')
+            ->whereIn('wrm_stock_by_date.tanggal', $pagedDates)
+            ->whereIn('wrm_stock_by_date.barang_id', $barangIds)
+            ->select(
+                'wrm_stock_by_date.tanggal',
+                'wrm_master_barang.mid',
+                'wrm_master_barang.id as barang_id',
+                'wrm_stock_by_date.qty'
+            )
+            ->get();
+
+        // Group by tanggal and mid
+        $stockMap = [];
+        foreach ($stockRecords as $rec) {
+            $stockMap[$rec->tanggal][$rec->mid] = (float) $rec->qty;
+        }
+
+        // Build row data
+        $data = [];
+        $pageTotals = [];
+        foreach ($items as $item) {
+            $alias = 'mid_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $item->mid);
+            $pageTotals[$alias] = 0;
+        }
+        $pageTotalQty = 0;
+
+        foreach ($pagedDates as $date) {
+            $row = [
+                'tanggal' => $date,
+                'formatted_tanggal' => Carbon::parse($date)->translatedFormat('d M Y'),
+                'total_qty' => 0
+            ];
+
+            foreach ($items as $item) {
+                $alias = 'mid_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $item->mid);
+                $qty = (float) ($stockMap[$date][$item->mid] ?? 0);
+                $row[$alias] = $qty;
+                $row['total_qty'] += $qty;
+
+                $pageTotals[$alias] += $qty;
+            }
+
+            $pageTotalQty += $row['total_qty'];
+            $data[] = $row;
+        }
+        $pageTotals['total_qty'] = $pageTotalQty;
+
+        return response()->json([
+            'draw' => intval($request->draw),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsTotal,
+            'data' => $data,
+            'items' => $items,
+            'page_totals' => $pageTotals
+        ]);
+    }
 }

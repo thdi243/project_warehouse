@@ -86,6 +86,69 @@ class StockByDate extends Model
     }
 
     /**
+     * Snapshots and records daily stock balance for all master items for a given date.
+     * Default date is today.
+     *
+     * @param string|\Carbon\Carbon|null $date
+     * @return int Count of records processed
+     */
+    public static function syncDailyStock($date = null)
+    {
+        $dateStr = $date ? Carbon::parse($date)->toDateString() : Carbon::today()->toDateString();
+        $endOfDay = $dateStr . ' 23:59:59';
+
+        // 1. Current active stock on hand (UNREST, QI, BLOCKED only) grouped by barang_id
+        $activeSoh = DB::table('wrm_stock_on_hand')
+            ->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+            ->select('barang_id', DB::raw('SUM(qty) as total_qty'))
+            ->groupBy('barang_id')
+            ->pluck('total_qty', 'barang_id');
+
+        // 2. Out movements after the specified date
+        $outMovements = StockMovement::where('jenis', 'out')
+            ->where('tanggal', '>', $endOfDay)
+            ->select('barang_id', DB::raw('SUM(qty) as total_qty'))
+            ->groupBy('barang_id')
+            ->pluck('total_qty', 'barang_id');
+
+        // 3. In movements after the specified date
+        $inMovements = StockMovement::where('jenis', 'in')
+            ->where('tanggal', '>', $endOfDay)
+            ->select('barang_id', DB::raw('SUM(qty) as total_qty'))
+            ->groupBy('barang_id')
+            ->pluck('total_qty', 'barang_id');
+
+        // 4. Get all master barang IDs
+        $barangIds = MasterBarangModel::pluck('id');
+
+        $now = now();
+        $records = [];
+
+        foreach ($barangIds as $barangId) {
+            $soh = (float) ($activeSoh[$barangId] ?? 0);
+            $outAfter = (float) ($outMovements[$barangId] ?? 0);
+            $inAfter = (float) ($inMovements[$barangId] ?? 0);
+
+            $qty = $soh + $outAfter - $inAfter;
+
+            $records[] = [
+                'barang_id'  => $barangId,
+                'tanggal'    => $dateStr,
+                'qty'        => $qty,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        // Batch upsert into wrm_stock_by_date
+        foreach (array_chunk($records, 500) as $chunk) {
+            self::upsert($chunk, ['barang_id', 'tanggal'], ['qty', 'updated_at']);
+        }
+
+        return count($records);
+    }
+
+    /**
      * Reconstructs all daily history records for all items from the movements table
      * using the active StockOnHand (UNREST, QI, BLOCKED) as the anchor point.
      */
