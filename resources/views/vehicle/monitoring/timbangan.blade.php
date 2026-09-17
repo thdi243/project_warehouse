@@ -190,8 +190,12 @@
                                 <h4 class="card-title mb-0"><i
                                         class="ri-table-line me-2 align-middle text-success"></i>Data Kendaraan Aktif
                                 </h4>
-                                <span class="badge bg-soft-success text-success border border-success-subtle px-2 py-1 fs-12 fw-semibold" id="badgeReadyCheckout" style="cursor: pointer;" title="Klik untuk filter Siap Check-Out">
-                                    <i class="ri-scales-3-line me-1 align-middle"></i>Siap Check-Out: <strong id="countReadyCheckout">0</strong>
+                                <span
+                                    class="badge bg-soft-success text-success border border-success-subtle px-2 py-1 fs-12 fw-semibold"
+                                    id="badgeReadyCheckout" style="cursor: pointer;"
+                                    title="Klik untuk filter Siap Check-Out">
+                                    <i class="ri-scales-3-line me-1 align-middle"></i>Siap Check-Out: <strong
+                                        id="countReadyCheckout">0</strong>
                                 </span>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0">
@@ -735,13 +739,16 @@
                 }
 
                 // Update ready check-out count and badge state
-                const readyCount = allTransactions.filter(tx => (tx.status || '').toLowerCase() === 'timbangan_out').length;
+                const readyCount = allTransactions.filter(tx => (tx.status || '').toLowerCase() === 'timbangan_out')
+                    .length;
                 $('#countReadyCheckout').text(readyCount);
 
                 if (statusFilter === 'siap_checkout') {
-                    $('#badgeReadyCheckout').removeClass('bg-soft-success text-success').addClass('bg-success text-white shadow-sm');
+                    $('#badgeReadyCheckout').removeClass('bg-soft-success text-success').addClass(
+                        'bg-success text-white shadow-sm');
                 } else {
-                    $('#badgeReadyCheckout').removeClass('bg-success text-white shadow-sm').addClass('bg-soft-success text-success');
+                    $('#badgeReadyCheckout').removeClass('bg-success text-white shadow-sm').addClass(
+                        'bg-soft-success text-success');
                 }
 
                 // Filter transactions based on status filter and search query
@@ -1139,7 +1146,7 @@
                             isAllowed = false;
                         }
                     } else if (jenis === 'slipsheet' || jenis === 'curah') {
-                        if (sloc !== 'A001' && sloc !== 'SMU' && sloc !== 'A002' && sloc !== 'B006') {
+                        if (sloc !== 'A001' && sloc !== 'SMU' && sloc !== 'A002') {
                             isAllowed = false;
                         }
                     } else if (jenis === 'retur') {
@@ -1362,7 +1369,7 @@
             // Audio Notification for incoming follow up from area
             function playTimbanganFollowUpSound() {
                 try {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     osc.type = 'sawtooth';
@@ -1482,7 +1489,9 @@
                         }, 500);
 
                         if (window.toastr) {
-                            toastr.success(`Form Check-In berhasil diisi untuk Truk ${noPol}. Silakan lengkapi lalu Simpan.`, 'Follow Up Diproses');
+                            toastr.success(
+                                `Form Check-In berhasil diisi untuk Truk ${noPol}. Silakan lengkapi lalu Simpan.`,
+                                'Follow Up Diproses');
                         }
                     }
                 });
@@ -1497,12 +1506,19 @@
                             console.log('✅ Subscribed successfully to vehicle-tracking channel in Timbangan');
                         })
                         .error((err) => {
-                            console.error('❌ Echo connection error on vehicle-tracking channel in Timbangan:', err);
+                            console.error('❌ Echo connection error on vehicle-tracking channel in Timbangan:',
+                                err);
                         })
                         .listen('.vehicle.updated', function(data) {
                             console.log('Echo event received in Timbangan:', data);
-                            if (data.type === 'follow_up_timbangan' || (data.target_area === 'TIMBANGAN' && data.type === 'follow_up_timbangan') || data.action === 'unregistered_vehicle') {
+                            if (data.type === 'follow_up_timbangan' || (data.target_area === 'TIMBANGAN' && data
+                                    .type === 'follow_up_timbangan') || data.action ===
+                                'unregistered_vehicle') {
                                 triggerTimbanganFollowUpAlert(data);
+                            } else {
+                                if (window.toastr && data.message) {
+                                    toastr.info(data.message, 'Update Status Kendaraan');
+                                }
                             }
                             fetchTransactions();
                             loadSupplierData();
