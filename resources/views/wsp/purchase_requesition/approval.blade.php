@@ -519,12 +519,15 @@
                             <td><span class="badge badge-soft-warning">${roleName}</span></td>
                             <td class="text-center">
                             <div class="d-flex gap-1 justify-content-center">
+                                <button class="btn btn-sm btn-outline-primary btn-detail-row" data-id="${pr.id}">
+                                    <i class="mdi mdi-eye me-1"></i> Detail
+                                </button>
                                 <button class="btn btn-sm btn-success btn-action-row" data-id="${pr.id}" data-action="approved">
-                                    <i class="mdi mdi-check"></i> ${approveText}
+                                    <i class="mdi mdi-check me-1"></i> ${approveText}
                                 </button>
                                 ${!isLevel5 ? `
                                                     <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
-                                                        <i class="mdi mdi-close"></i> Reject
+                                                        <i class="mdi mdi-close me-1"></i> Reject
                                                     </button>
                                                     ` : ''}
                             </div>
@@ -588,14 +591,25 @@
                 filterAndRender(val);
             });
 
-            // Action per row
+            // Handle Detail Button Click
+            $(document).on('click', '.btn-detail-row', function() {
+                const id = $(this).data('id');
+                const pr = allPending.find(p => p.id == id);
+                if (!pr) return;
+                openDetailModal(pr, null);
+            });
+
+            // Handle Action (Approve / Reject) Button Click
             $(document).on('click', '.btn-action-row', function() {
                 const id = $(this).data('id');
                 const action = $(this).data('action');
                 const pr = allPending.find(p => p.id == id);
                 if (!pr) return;
+                openDetailModal(pr, action);
+            });
 
-                currentAction = action;
+            function openDetailModal(pr, action) {
+                currentAction = action || 'approved';
 
                 const jenisBadge = pr.jenis === 'Jasa'
                     ? '<span class="badge badge-soft-warning">Jasa</span>'
@@ -779,14 +793,23 @@
                     $('#checkAllItems').prop('checked', total > 0 && total === checked);
                 });
 
-                const actionLabel = isLevel4 ? (action === 'approved' ? 'Confirm' : 'Reject') : (action ===
-                    'approved' ? 'Approve' : 'Reject');
+                const approveText = isLevel4 ? 'Confirm' : (isLevel5 ? 'Confirm' : 'Approve');
 
-                $('#detailActionButtons').html(`
-                    <button type="button" class="btn btn-${action === 'approved' ? 'success' : 'danger'} btn-lanjut-action">Lanjut ${actionLabel}</button>
-                `);
+                if (action) {
+                    const actionLabel = action === 'approved' ? approveText : 'Reject';
+                    $('#detailActionButtons').html(`
+                        <button type="button" class="btn btn-${action === 'approved' ? 'success' : 'danger'} btn-lanjut-action" data-action="${action}">Lanjut ${actionLabel}</button>
+                    `);
+                } else {
+                    $('#detailActionButtons').html(`
+                        ${!isLevel5 ? `<button type="button" class="btn btn-danger btn-lanjut-action" data-action="rejected"><i class="mdi mdi-close me-1"></i> Reject</button>` : ''}
+                        <button type="button" class="btn btn-success btn-lanjut-action" data-action="approved"><i class="mdi mdi-check me-1"></i> ${approveText}</button>
+                    `);
+                }
 
                 $('.btn-lanjut-action').off('click').on('click', function() {
+                    const chosenAction = $(this).data('action');
+                    currentAction = chosenAction;
                     selectedIds = [pr.id];
 
                     if (isLevel3Or5) {
@@ -795,7 +818,7 @@
                             selectedItems.push($(this).val());
                         });
 
-                        if (!isLevel5 && action === 'approved' && selectedItems.length === 0) {
+                        if (!isLevel5 && chosenAction === 'approved' && selectedItems.length === 0) {
                             Swal.fire('Peringatan', 'Harap pilih minimal satu item untuk diproses.',
                                 'warning');
                             return;
@@ -810,7 +833,7 @@
                 });
 
                 $('#modalDetail').modal('show');
-            });
+            }
 
             // Bulk Action Logic
             $('#btnBulkApprove').on('click', function() {
