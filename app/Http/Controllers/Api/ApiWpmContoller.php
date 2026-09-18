@@ -19,26 +19,25 @@ class ApiWpmContoller extends Controller
             $wpm = WpmMasterBarangModel::select('mid', 'nama_barang', 'uom');
             $wsp = BarangModel::select('mid_barang as mid', 'nama_barang', 'uom');
 
-            $union = $wpm->union($wsp);
-            $query = DB::query()->fromSub($union, 'combined_master_barang');
-
             // Search by mid or nama_barang if filled
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
+            $search = trim($request->input('search') ?? $request->input('q') ?? '');
+            if ($search !== '') {
+                $wpm->where(function ($q) use ($search) {
                     $q->where('mid', 'like', "%{$search}%")
+                        ->orWhere('nama_barang', 'like', "%{$search}%");
+                });
+                $wsp->where(function ($q) use ($search) {
+                    $q->where('mid_barang', 'like', "%{$search}%")
                         ->orWhere('nama_barang', 'like', "%{$search}%");
                 });
             }
 
-            // Optional pagination, default is to return all or 100 items if not specified
-            if ($request->has('paginate') && $request->boolean('paginate')) {
-                $perPage = $request->input('per_page', 25);
-                $data = $query->paginate($perPage);
-            } else {
-                $limit = $request->input('limit', 100);
-                $data = $query->limit($limit)->get();
-            }
+            $union = $wpm->union($wsp);
+            $query = DB::query()->fromSub($union, 'combined_master_barang');
+
+            // Pagination (default 25 per page or from per_page / limit parameter)
+            $perPage = (int) $request->input('per_page', $request->input('limit', 25));
+            $data = $query->paginate($perPage);
 
             return response()->json([
                 'success' => true,
