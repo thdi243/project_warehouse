@@ -2,6 +2,11 @@
 
 @section('title', '| WFG (Muat)')
 
+@php
+    $canPengawasWfg = auth()->user()->can('permission', 'vms-pengawas-wfg') || auth()->user()->hasRole('super-admin');
+    $canAdminWfg = auth()->user()->can('permission', 'vms-admin-wfg') || auth()->user()->hasRole('super-admin');
+@endphp
+
 @section('content')
     <style>
         .nav-custom-pill .nav-link {
@@ -67,18 +72,18 @@
                                 </h4>
                             </div>
                             <div class="flex-shrink-0 d-flex align-items-center gap-2">
-                                @can('permission', 'vms-admin-wfg')
+                                @if ($canAdminWfg)
                                     <button type="button" class="btn btn-warning btn-sm fw-semibold shadow-sm"
                                         id="btnFollowUpTimbangan">
                                         <i class="ri-alarm-warning-line me-1 align-middle"></i> Follow Up Timbangan
                                     </button>
-                                @endcan
+                                @endif
                                 <div style="width: 200px;">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-light border-end-0"><i
                                                 class="ri-search-line"></i></span>
                                         <input type="text" class="form-control border-start-0" id="search_table"
-                                            placeholder="Cari No. Polisi / Vendor / SPB...">
+                                             placeholder="Cari No. Polisi / Vendor / SPB...">
                                     </div>
                                 </div>
                             </div>
@@ -115,19 +120,19 @@
                                             <th>Waktu</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            @can('permission', 'vms-admin-wfg')
+                                            @if ($canAdminWfg || $canPengawasWfg)
                                                 <th>Item</th>
                                                 <th>No. SPB</th>
                                                 <th>Qty SPB</th>
                                                 <th>Status</th>
                                                 <th>Durasi Aktivitas</th>
-                                            @endcan
+                                            @endif
                                             <th class="text-center" style="width: 240px;">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="10" class="text-center py-4 text-muted">Loading data...</td>
+                                            <td colspan="{{ ($canAdminWfg || $canPengawasWfg) ? 10 : 5 }}" class="text-center py-4 text-muted">Loading data...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -144,6 +149,10 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            const canPengawasWfg = {{ $canPengawasWfg ? 'true' : 'false' }};
+            const canAdminWfg = {{ $canAdminWfg ? 'true' : 'false' }};
+            const totalCols = (canAdminWfg || canPengawasWfg) ? 10 : 5;
+
             function formatDuration(diffSeconds) {
                 if (isNaN(diffSeconds) || diffSeconds < 0) return '0d';
                 const hours = Math.floor(diffSeconds / 3600);
@@ -237,7 +246,7 @@
                 let html = '';
                 if (filtered.length === 0) {
                     html = `<tr>
-                        <td colspan="10" class="text-center py-5 text-muted">
+                        <td colspan="${totalCols}" class="text-center py-5 text-muted">
                             <div class="py-2">
                                 <i class="ri-inbox-line display-5 text-muted mb-2"></i>
                                 <p class="mb-0 fs-14">Tidak ada antrian muat <strong>${currentTabLabel}</strong> ${searchQuery ? 'yang cocok dengan pencarian' : 'saat ini'}.</p>
@@ -257,11 +266,13 @@
                                     <i class="ri-hashtag me-1"></i>${tx.no_antrian}
                                 </span>`;
                         } else {
-                            @can('permission', 'vms-admin-wfg')
+                            if (canAdminWfg) {
                                 antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}" data-jenis="${tx.jenis || currentJenisTab}">
                                     <i class="ri-ticket-line me-1"></i>Ambil Antrian
                                 </button>`;
-                            @endcan
+                            } else {
+                                antrianBadge = `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1"></i>Belum Antri</span>`;
+                            }
                         }
 
                         let statusBadge = '';
@@ -278,8 +289,29 @@
 
                         let actionBtn = '';
                         if (!tx.no_antrian) {
-                            actionBtn = `<span class="text-muted small">-</span>`;
+                            // Belum ambil antrian: Pengawas WFG dapat langsung Mulai tanpa harus ambil antrian manual
+                            if (canPengawasWfg) {
+                                actionBtn = `<button type="button" class="btn btn-sm btn-primary btn-start-loading" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-action="Mulai ${actionLabel}">
+                                    <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
+                                </button>`;
+                            } else {
+                                actionBtn = `<span class="text-muted small">-</span>`;
+                            }
                         } else if (!isProcess) {
+                            let cancelBtn = '';
+                            if (canAdminWfg) {
+                                cancelBtn = `<button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-antrian="${tx.no_antrian}"
+                                    title="Batalkan Antrian">
+                                    <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
+                                </button>`;
+                            }
+
                             actionBtn = `<div class="d-flex gap-1 justify-content-center">
                                 <button type="button" class="btn btn-sm btn-primary btn-start-loading" 
                                     data-id="${tx.id}" 
@@ -287,15 +319,7 @@
                                     data-action="Mulai ${actionLabel}">
                                     <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
                                 </button>
-                                @can('permission', 'vms-admin-wfg')
-                                    <button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
-                                        data-id="${tx.id}" 
-                                        data-nopol="${tx.no_pol}"
-                                        data-antrian="${tx.no_antrian}"
-                                        title="Batalkan Antrian">
-                                        <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
-                                    </button>
-                                @endcan
+                                ${cancelBtn}
                             </div>`;
                         } else {
                             actionBtn = `<button type="button" class="btn btn-sm btn-success btn-complete-loading" 
@@ -362,6 +386,17 @@
                             `;
                         }
 
+                        let detailsHtml = '';
+                        if (canAdminWfg || canPengawasWfg) {
+                            detailsHtml = `
+                                <td>${tx.item_name || '-'}</td>
+                                <td>${tx.no_spb || '-'}</td>
+                                <td>${tx.qty_spb || '-'}</td>
+                                <td>${statusBadge}</td>
+                                <td>${durasiHtml}</td>
+                            `;
+                        }
+
                         html += `<tr id="row-${tx.id}">
                             <td class="text-center">${antrianBadge}</td>
                             <td>${timelineHtml}</td>
@@ -370,13 +405,7 @@
                                 <strong>${tx.vendor || '-'}</strong><br>
                                 <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
                             </td>
-                            @can('permission', 'vms-admin-wfg')
-                                <td>${tx.item_name}</td>
-                                <td>${tx.no_spb}</td>
-                                <td>${tx.qty_spb}</td>
-                                <td>${statusBadge}</td>
-                                <td>${durasiHtml}</td>
-                            @endcan
+                            ${detailsHtml}
                             <td class="text-center">
                                 ${actionBtn}
                             </td>

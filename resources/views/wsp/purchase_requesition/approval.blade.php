@@ -62,7 +62,7 @@
                                     <i class="mdi mdi-magnify"></i>
                                 </span>
                                 <input type="text" class="form-control border-start-0" id="searchInput"
-                                    placeholder="Cari User Peminta / No Doc...">
+                                    placeholder="Cari User / No Doc / Jenis / No IO...">
                             </div>
                         </div>
                         <div class="bulk-actions-wrapper d-flex align-items-center gap-2">
@@ -164,13 +164,14 @@
                                     <th>No Doc</th>
                                     <th>Requested By</th>
                                     <th>Department</th>
+                                    <th>Jenis PR</th>
                                     <th>Role Approval</th>
                                     <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
                                 <tr>
-                                    <td colspan="7" class="text-center py-5">
+                                    <td colspan="8" class="text-center py-5">
                                         <div class="spinner-border text-primary" role="status">
                                             <span class="visually-hidden">Loading...</span>
                                         </div>
@@ -216,7 +217,7 @@
                                             </div>
                                         </th>
                                         <th>MID</th>
-                                        <th>Nama Barang</th>
+                                        <th>Nama Barang / Deskripsi</th>
                                         <th>Qty</th>
                                         <th>UoM</th>
                                         <th>Keterangan</th>
@@ -422,7 +423,7 @@
                     },
                     error: function() {
                         $('#tableBody').html(
-                            '<tr><td colspan="7" class="text-center text-danger">Gagal memuat data.</td></tr>'
+                            '<tr><td colspan="8" class="text-center text-danger">Gagal memuat data.</td></tr>'
                         );
                     }
                 });
@@ -459,8 +460,13 @@
 
             function filterAndRender(searchTerm) {
                 const filtered = allPending.filter(pr =>
-                    (pr.no_doc.toLowerCase().includes(searchTerm) ||
-                        pr.requested_by.toLowerCase().includes(searchTerm))
+                    ((pr.no_doc && pr.no_doc.toLowerCase().includes(searchTerm)) ||
+                        (pr.requested_by && pr.requested_by.toLowerCase().includes(searchTerm)) ||
+                        (pr.department && pr.department.toLowerCase().includes(searchTerm)) ||
+                        (pr.jenis && pr.jenis.toLowerCase().includes(searchTerm)) ||
+                        (pr.detail_jenis && pr.detail_jenis.toLowerCase().includes(searchTerm)) ||
+                        (pr.no_io && pr.no_io.toLowerCase().includes(searchTerm)) ||
+                        (pr.hal && pr.hal.toLowerCase().includes(searchTerm)))
                 );
                 renderTable(filtered);
             }
@@ -479,7 +485,7 @@
 
                 if (filteredByLevel.length === 0) {
                     tbody.html(
-                        `<tr><td colspan="7" class="text-center py-5 text-muted">Tidak ada PR yang menunggu persetujuan Anda di Level ${currentFilterLevel}.</td></tr>`
+                        `<tr><td colspan="8" class="text-center py-5 text-muted">Tidak ada PR yang menunggu persetujuan Anda di Level ${currentFilterLevel}.</td></tr>`
                     );
                     return;
                 }
@@ -489,6 +495,9 @@
                     const roleName = myApproval ? myApproval.role : '-';
                     const isLevel5 = currentFilterLevel == 5;
                     const approveText = isLevel5 ? 'Confirm' : 'Approve';
+                    const jenisBadge = pr.jenis === 'Jasa'
+                        ? '<span class="badge badge-soft-warning">Jasa</span>'
+                        : '<span class="badge badge-soft-primary">Barang</span>';
 
                     let checkboxOrIndex = `
                         <div class="form-check">
@@ -506,6 +515,7 @@
                             <td><span class="fw-bold text-primary">${pr.no_doc}</span></td>
                             <td>${pr.requested_by}</td>
                             <td><span class="badge badge-soft-info">${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</span></td>
+                            <td>${jenisBadge}</td>
                             <td><span class="badge badge-soft-warning">${roleName}</span></td>
                             <td class="text-center">
                             <div class="d-flex gap-1 justify-content-center">
@@ -587,23 +597,55 @@
 
                 currentAction = action;
 
+                const jenisBadge = pr.jenis === 'Jasa'
+                    ? '<span class="badge badge-soft-warning">Jasa</span>'
+                    : '<span class="badge badge-soft-primary">Barang</span>';
+
                 $('#detailContent').html(`
-                    <div class="row">
-                        <div class="col-6">
-                            <p class="mb-1 text-muted small">NO DOC</p>
-                            <h6 class="fw-bold">${pr.no_doc}</h6>
-                            <p class="mb-1 text-muted small mt-3">REQUESTED BY</p>
-                            <h6 class="fw-bold">${pr.requested_by}</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted small ps-0 py-1" style="width: 140px;">NO DOC</th>
+                                        <td class="py-1"><span class="fw-bold text-primary">${pr.no_doc || '-'}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small ps-0 py-1">REQUESTED BY</th>
+                                        <td class="py-1"><span class="fw-semibold text-dark">${pr.requested_by || '-'}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small ps-0 py-1">DEPARTMENT</th>
+                                        <td class="py-1"><span class="badge badge-soft-info">${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small ps-0 py-1">HAL</th>
+                                        <td class="py-1 text-dark">${pr.hal || '-'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="col-6">
-                            <p class="mb-1 text-muted small">DATE</p>
-                            <h6 class="fw-bold">${pr.pr_date}</h6>
-                            <p class="mb-1 text-muted small mt-3">DEPARTMENT</p>
-                            <h6 class="fw-bold">${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</h6>
-                        </div>
-                        <div class="col-12 mt-3">
-                            <p class="mb-1 text-muted small">HAL</p>
-                            <h6 class="fw-bold">${pr.hal || '-'}</h6>
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted small ps-0 py-1" style="width: 140px;">PR DATE</th>
+                                        <td class="py-1"><span class="fw-semibold text-dark">${pr.pr_date || '-'}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small ps-0 py-1">JENIS PR</th>
+                                        <td class="py-1">${jenisBadge}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small ps-0 py-1">DETAIL JENIS</th>
+                                        <td class="py-1"><span class="fw-semibold text-dark">${pr.detail_jenis || '-'}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small ps-0 py-1">NO IO</th>
+                                        <td class="py-1"><span class="fw-semibold text-dark">${pr.no_io || '-'}</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 `);
@@ -682,13 +724,18 @@
                         editBtnHtml = `<td class="edit-item-col d-none"></td>`;
                     }
 
+                    const isJasa = pr.jenis === 'Jasa';
+                    const itemDesc = isJasa ? (item.desc || '-') : (item.barang?.nama_barang || item.desc || '-');
+                    const midBarang = item.barang?.mid_barang || '-';
+                    const uom = item.barang?.uom || '-';
+
                     itemsBody.append(`
                     <tr data-item-id="${item.id}">
                         ${checkHtml}
-                        <td>${item.barang?.mid_barang || '-'}</td>
-                        <td>${item.barang?.nama_barang || '-'}</td>
+                        <td>${midBarang}</td>
+                        <td>${itemDesc}</td>
                         <td class="col-qty" data-val="${item.qty}">${item.qty}</td>
-                        <td>${item.barang?.uom || '-'}</td>
+                        <td>${uom}</td>
                         <td class="col-keterangan" data-val="${escapeHtmlAttribute(item.keterangan || '')}">
                             ${item.keterangan ? `
                                                 <div class="d-flex align-items-center justify-content-between gap-2">
