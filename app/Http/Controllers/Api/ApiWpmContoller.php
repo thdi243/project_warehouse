@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Wpm\WpmMasterBarangModel;
+use App\Models\Wsp\BarangModel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ApiWpmContoller extends Controller
 {
@@ -14,7 +16,11 @@ class ApiWpmContoller extends Controller
     public function getMasterBarang(Request $request)
     {
         try {
-            $query = WpmMasterBarangModel::select('mid', 'nama_barang', 'uom');
+            $wpm = WpmMasterBarangModel::select('mid', 'nama_barang', 'uom');
+            $wsp = BarangModel::select('mid_barang as mid', 'nama_barang', 'uom');
+
+            $union = $wpm->union($wsp);
+            $query = DB::query()->fromSub($union, 'combined_master_barang');
 
             // Search by mid or nama_barang if filled
             if ($request->filled('search')) {
@@ -36,7 +42,7 @@ class ApiWpmContoller extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data master barang WPM berhasil diambil.',
+                'message' => 'Data master barang berhasil diambil.',
                 'data'    => $data
             ], 200);
         } catch (\Exception $e) {
