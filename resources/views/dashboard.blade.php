@@ -1,5 +1,26 @@
 @extends('layouts.app')
 
+@php
+    $userDept = strtolower(trim(auth()->user()->departemen ?? ''));
+    $deptImages = [
+        'quality_control' => 'qc_home',
+        'engineering'     => 'eng_home',
+        'produksi'        => 'prd_home',
+    ];
+
+    $bgImage = 'assets/images/gudang_home.png';
+
+    if (isset($deptImages[$userDept])) {
+        $imgName = $deptImages[$userDept];
+        foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
+            if (file_exists(public_path("assets/images/{$imgName}.{$ext}"))) {
+                $bgImage = "assets/images/{$imgName}.{$ext}";
+                break;
+            }
+        }
+    }
+@endphp
+
 @section('styles')
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=Inter:wght@300;400;500;600&display=swap');
@@ -23,7 +44,7 @@
         .hero-bg {
             position: absolute;
             inset: 0;
-            background-image: url('{{ asset('assets/images/gudang_home.png') }}');
+            background-image: url('{{ asset($bgImage) }}');
             background-size: cover;
             background-position: center 60%;
             background-repeat: no-repeat;
