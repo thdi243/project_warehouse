@@ -12,8 +12,11 @@
                     </span>
                 </button>
                 <div class="title flex-grow-1">
-                    <h5 class="mb-0 fw-bold d-none d-md-block">Digitalization Warehouse Management</h5>
-                    <h5 class="mb-0 fw-bold d-block d-md-none fst-italic">DWM</h5>
+                    @php
+                        $isWarehouse = Auth::check() && strtolower(trim(Auth::user()->departemen ?? '')) === 'warehouse';
+                    @endphp
+                    <h5 class="mb-0 fw-bold d-none d-md-block">{{ $isWarehouse ? 'Digitalization Warehouse Management' : 'Bumi Alam Segar' }}</h5>
+                    <h5 class="mb-0 fw-bold d-block d-md-none fst-italic">{{ $isWarehouse ? 'DWM' : 'BAS' }}</h5>
                 </div>
 
                 <!-- Spacer biar kanan & kiri balance -->

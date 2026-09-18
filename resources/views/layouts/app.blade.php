@@ -7,7 +7,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <title>Warehouse @yield('title')</title>
+        <title>{{ (Auth::check() && strtolower(trim(Auth::user()->departemen ?? '')) === 'warehouse') ? 'Warehouse' : 'BAS' }} @yield('title')</title>
         <meta content="Themesbrand" name="author" />
         <meta name="current-user-id" content="{{ Auth::id() }}">
 
