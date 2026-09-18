@@ -15,13 +15,14 @@
     <li class="nav-item">
         <a href="{{ route('stock.pr.history') }}"
             class="nav-link menu-link {{ request()->routeIs('stock.pr.history') ? 'active' : '' }}">
-            <i class="bx bx-git-commit fs-12"></i>Data Riwayat PR</a>
+            <i class="bx bx-git-commit fs-12"></i><span> Data Riwayat PR</span>
+        </a>
     </li>
     @if ($jabatan == 'dept_head' || $jabatan == 'supervisor' || Auth::user()->hasRole('level_5_pr'))
         <li class="nav-item">
             <a href="{{ route('stock.pr.approval') }}"
                 class="nav-link menu-link {{ request()->routeIs('stock.pr.approval') ? 'active' : '' }}">
-                <i class="bx bx-git-commit fs-12"></i>Approval PR
+                <i class="bx bx-git-commit fs-12"></i><span> Approval PR</span>
             </a>
         </li>
     @endif
