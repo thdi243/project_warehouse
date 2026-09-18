@@ -2,6 +2,11 @@
 
 @section('title', '| SMU Area')
 
+@php
+    $canPengawasSmu = auth()->user()->can('permission', 'vms-pengawas-smu') || auth()->user()->can('permission', 'vms-admin-smu') || auth()->user()->hasRole('super-admin');
+    $canAdminSmu = auth()->user()->can('permission', 'vms-admin-smu') || auth()->user()->hasRole('super-admin');
+@endphp
+
 @section('content')
     <div class="page-content">
         <div class="container-fluid">
@@ -46,19 +51,19 @@
                                             <th class="text-center" style="width: 120px;">No. Antrian</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            @can('permission', 'vms-admin-smu')
+                                            @if($canAdminSmu || $canPengawasSmu)
                                                 <th>Item</th>
                                                 <th>No. SPB / Qty</th>
                                                 <th>Waktu</th>
                                                 <th>Status</th>
                                                 <th>Durasi Aktivitas</th>
-                                            @endcan
+                                            @endif
                                             <th class="text-center" style="width: 240px;">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="9" class="text-center py-4 text-muted">Loading data...</td>
+                                            <td colspan="{{ ($canAdminSmu || $canPengawasSmu) ? 9 : 4 }}" class="text-center py-4 text-muted">Loading data...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -75,6 +80,10 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
+            const canPengawasSmu = {{ $canPengawasSmu ? 'true' : 'false' }};
+            const canAdminSmu = {{ $canAdminSmu ? 'true' : 'false' }};
+            const totalCols = (canAdminSmu || canPengawasSmu) ? 9 : 4;
+
             function formatDuration(diffSeconds) {
                 if (isNaN(diffSeconds) || diffSeconds < 0) return '0d';
                 const hours = Math.floor(diffSeconds / 3600);
@@ -125,7 +134,7 @@
                 let html = '';
                 if (filtered.length === 0) {
                     html = `<tr>
-                        <td colspan="9" class="text-center py-4 text-muted">Tidak ada kendaraan yang sesuai pencarian.</td>
+                        <td colspan="${totalCols}" class="text-center py-4 text-muted">Tidak ada kendaraan yang sesuai pencarian.</td>
                     </tr>`;
                 } else {
                     filtered.forEach(function(tx) {
@@ -136,13 +145,15 @@
                         let antrianBadge = '';
                         if (tx.no_antrian) {
                             antrianBadge =
-                                `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">${tx.no_antrian}</span>`;
+                                `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">#${tx.no_antrian}</span>`;
                         } else {
-                            @can('permission', 'vms-admin-smu')
+                            if (canAdminSmu) {
                                 antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
-                                    Ambil Antrian
+                                    <i class="ri-ticket-2-line me-1 align-middle"></i>Ambil Antrian
                                 </button>`;
-                            @endcan
+                            } else {
+                                antrianBadge = `<span class="badge bg-soft-secondary text-secondary">Belum Antri</span>`;
+                            }
                         }
 
                         let statusBadge = '';
@@ -151,7 +162,7 @@
                                 `<span class="badge bg-soft-secondary text-secondary"><i class="ri-pause-circle-line me-1 align-middle"></i>Menunggu Antrian</span>`;
                         } else if (!isProcess) {
                             statusBadge =
-                                `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian ${tx.no_antrian}</span>`;
+                                `<span class="badge bg-soft-warning text-warning"><i class="ri-time-line me-1 align-middle"></i>Antrian #${tx.no_antrian}</span>`;
                         } else {
                             statusBadge =
                                 `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1 align-middle"></i>Proses ${actionLabel}</span>`;
@@ -159,31 +170,54 @@
 
                         let actionBtn = '';
                         if (!tx.no_antrian) {
-                            actionBtn = `<span class="text-muted small">-</span>`;
-                        } else if (!isProcess) {
-                            actionBtn = `<div class="d-flex gap-1 justify-content-center">
-                                <button type="button" class="btn btn-sm btn-primary btn-start-smu" 
+                            // Belum ambil antrian: Pengawas SMU dapat langsung Mulai tanpa harus ambil antrian manual
+                            if (canPengawasSmu) {
+                                actionBtn = `<button type="button" class="btn btn-sm btn-primary btn-start-smu" 
                                     data-id="${tx.id}" 
                                     data-nopol="${tx.no_pol}"
                                     data-action="Mulai ${actionLabel}">
                                     <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
-                                </button>
-                                @can('permission', 'vms-admin-smu')
-                                    <button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
+                                </button>`;
+                            } else {
+                                actionBtn = `<span class="text-muted small">-</span>`;
+                            }
+                        } else if (!isProcess) {
+                            let cancelBtn = '';
+                            if (canAdminSmu) {
+                                cancelBtn = `<button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-antrian="${tx.no_antrian}"
+                                    title="Batalkan Antrian">
+                                    <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
+                                </button>`;
+                            }
+
+                            if (canPengawasSmu) {
+                                actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                    <button type="button" class="btn btn-sm btn-primary btn-start-smu" 
                                         data-id="${tx.id}" 
                                         data-nopol="${tx.no_pol}"
-                                        data-antrian="${tx.no_antrian}"
-                                        title="Batalkan Antrian">
-                                        <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
+                                        data-action="Mulai ${actionLabel}">
+                                        <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
                                     </button>
-                                @endcan
-                            </div>`;
+                                    ${cancelBtn}
+                                </div>`;
+                            } else {
+                                actionBtn = cancelBtn || `<span class="text-muted small">Menunggu Mulai</span>`;
+                            }
                         } else {
-                            actionBtn = `<button type="button" class="btn btn-sm btn-warning btn-complete-smu" 
-                                data-id="${tx.id}" 
-                                data-nopol="${tx.no_pol}">
-                                <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai
-                            </button>`;
+                            // Sedang proses: pengawas / admin dapat menyelesaikan proses
+                            if (canPengawasSmu) {
+                                actionBtn = `<button type="button" class="btn btn-sm btn-warning btn-complete-smu" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-action="Selesai ${actionLabel}">
+                                    <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai
+                                </button>`;
+                            } else {
+                                actionBtn = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang ${actionLabel}</span>`;
+                            }
                         }
 
                         // Timeline breakdown
@@ -249,7 +283,7 @@
                                 <strong>${tx.vendor || '-'}</strong><br>
                                 <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
                             </td>
-                            @can('permission', 'vms-admin-smu')
+                            @if($canAdminSmu || $canPengawasSmu)
                                 <td>${tx.item_name}</td>
                                 <td>
                                     <strong>${tx.no_spb}</strong><br>
@@ -258,7 +292,7 @@
                                 <td>${timelineHtml}</td>
                                 <td>${statusBadge}</td>
                                 <td>${durasiHtml}</td>
-                            @endcan
+                            @endif
                             <td class="text-center">
                                 ${actionBtn}
                             </td>

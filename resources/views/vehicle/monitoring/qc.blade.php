@@ -188,7 +188,7 @@
                                 `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">#${tx.no_antrian}</span>`;
                         } else {
                             antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}">
-                                Ambil Antrian
+                                <i class="ri-ticket-2-line me-1 align-middle"></i>Ambil Antrian
                             </button>`;
                         }
 
@@ -206,8 +206,16 @@
 
                         let actionBtn = '';
                         if (!hasQueue) {
-                            actionBtn = `<span class="text-muted small">-</span>`;
+                            // Belum ambil antrian: Berikan opsi Langsung Release / Reject (Skip Antrian)
+                            actionBtn = `<button type="button" class="btn btn-sm btn-soft-success btn-qc-update" 
+                                data-id="${tx.id}" 
+                                data-nopol="${tx.no_pol}"
+                                data-vendor="${tx.vendor || '-'}"
+                                title="Keputusan Langsung (Skip Antrian)">
+                                <i class="ri-scales-3-line me-1 align-middle"></i> Release / Reject
+                            </button>`;
                         } else if (!isSampling) {
+                            // Sudah ambil antrian, belum mulai sampling: Keputusan langsung hide, tampilkan Mulai Sampling & Batal
                             actionBtn = `<div class="d-flex gap-1 justify-content-center">
                                 <button type="button" class="btn btn-sm btn-primary btn-start-sampling" 
                                     data-id="${tx.id}" 
@@ -223,12 +231,49 @@
                                 </button>
                             </div>`;
                         } else {
+                            // Sedang proses sampling: Tampilkan Update QC
                             actionBtn = `<button type="button" class="btn btn-sm btn-success btn-qc-update" 
                                 data-id="${tx.id}" 
                                 data-nopol="${tx.no_pol}"
                                 data-vendor="${tx.vendor || '-'}">
                                 <i class="ri-edit-box-line me-1 align-middle"></i> Update QC
                             </button>`;
+                        }
+
+                        // Vehicle physical location / status indicator (Antri, Mulai / Proses, Selesai, Checkout di WRM/WPM)
+                        let vehicleStatusBadge = '';
+                        const actionName = tx.jenis === 'bongkaran' ? 'Bongkar' : (tx.jenis === 'muatan' ?
+                            'Muat' : 'Bongkar');
+
+                        if (tx.status === 'completed' || tx.status === 'timbangan_out') {
+                            vehicleStatusBadge =
+                                `<div class="mt-1"><span class="badge bg-soft-secondary text-secondary" style="font-size: 10px;"><i class="ri-checkbox-circle-line me-1"></i>Truk Checkout</span></div>`;
+                        } else if (tx.status === 'wrm_bongkar' || tx.target_sloc === 'B006' || tx
+                            .lokasi_tujuan === 'B006') {
+                            if (tx.unloading_status === 'process' || (tx.start_loading_time && !tx
+                                    .finish_loading_time)) {
+                                vehicleStatusBadge =
+                                    `<div class="mt-1"><span class="badge bg-soft-info text-info" style="font-size: 10px;"><i class="ri-loader-4-line ri-spin me-1"></i>Truk: Mulai ${actionName}</span></div>`;
+                            } else if (tx.unloading_status === 'completed' || tx.finish_loading_time) {
+                                vehicleStatusBadge =
+                                    `<div class="mt-1"><span class="badge bg-soft-success text-success" style="font-size: 10px;"><i class="ri-check-double-line me-1"></i>Truk: Selesai ${actionName}</span></div>`;
+                            } else {
+                                vehicleStatusBadge =
+                                    `<div class="mt-1"><span class="badge bg-soft-warning text-warning" style="font-size: 10px;"><i class="ri-time-line me-1"></i>Truk: Antri ${actionName}</span></div>`;
+                            }
+                        } else if (tx.status === 'wpm' || tx.target_sloc === 'C001' || tx.lokasi_tujuan ===
+                            'C001') {
+                            if (tx.unloading_status === 'process' || (tx.start_loading_time && !tx
+                                    .finish_loading_time)) {
+                                vehicleStatusBadge =
+                                    `<div class="mt-1"><span class="badge bg-soft-primary text-primary" style="font-size: 10px;"><i class="ri-loader-4-line ri-spin me-1"></i>Truk: Mulai ${actionName}</span></div>`;
+                            } else if (tx.unloading_status === 'completed' || tx.finish_loading_time) {
+                                vehicleStatusBadge =
+                                    `<div class="mt-1"><span class="badge bg-soft-success text-success" style="font-size: 10px;"><i class="ri-check-double-line me-1"></i>Truk: Selesai ${actionName}</span></div>`;
+                            } else {
+                                vehicleStatusBadge =
+                                    `<div class="mt-1"><span class="badge bg-soft-warning text-warning" style="font-size: 10px;"><i class="ri-time-line me-1"></i>Truk: Antri ${actionName}</span></div>`;
+                            }
                         }
 
                         // Timeline breakdown
@@ -290,7 +335,10 @@
                         html += `<tr id="row-${tx.id}">
                             <td class="text-center">${antrianBadge}</td>
                             <td>${timelineHtml}</td>
-                            <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
+                            <td>
+                                <span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span>
+                                ${vehicleStatusBadge}
+                            </td>
                             <td>
                                 <strong>${tx.vendor || '-'}</strong><br>
                                 <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
@@ -338,7 +386,8 @@
                 console.log('🔥 FOLLOW UP ALERT TRIGGERED:', data);
                 const items = Array.isArray(data) ? data : [data];
                 const unhandled = items.filter(item => {
-                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item.follow_up_time || item.follow_up_timestamp || '');
+                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item
+                        .follow_up_time || item.follow_up_timestamp || '');
                     return !handledFollowUps.has(alertKey);
                 });
 
@@ -347,7 +396,8 @@
                 }
 
                 unhandled.forEach(item => {
-                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item.follow_up_time || item.follow_up_timestamp || '');
+                    const alertKey = (item.transaction_id || item.id) + '_' + (item.time || item
+                        .follow_up_time || item.follow_up_timestamp || '');
                     handledFollowUps.add(alertKey);
                 });
 
@@ -363,7 +413,8 @@
                     </div>
                 `).join('');
 
-                const countText = unhandled.length > 1 ? `Ada ${unhandled.length} kendaraan membutuhkan` : 'Kendaraan berikut membutuhkan';
+                const countText = unhandled.length > 1 ? `Ada ${unhandled.length} kendaraan membutuhkan` :
+                    'Kendaraan berikut membutuhkan';
 
                 Swal.fire({
                     title: '<span class="text-danger fw-bold"><i class="ri-alarm-warning-line me-1"></i> FOLLOW UP TIMBANGAN!</span>',
@@ -396,7 +447,8 @@
                         if (allQcData.length > 0) {
                             const followUps = allQcData.filter(tx => {
                                 return (tx.follow_up_timestamp || tx.follow_up_time) &&
-                                    (tx.follow_up_target === 'QC' || tx.follow_up_target === 'ALL');
+                                    (tx.follow_up_target === 'QC' || tx.follow_up_target ===
+                                        'ALL');
                             }).map(tx => ({
                                 id: tx.id,
                                 transaction_id: tx.id,

@@ -1144,6 +1144,26 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Helper to reorder and compact QC queue numbers sequentially (#01, #02, ...).
+     */
+    private function reorderQcQueue()
+    {
+        $activeQc = VehicleTransaction::whereIn('qc_status', ['waiting_sampling', 'on_check'])
+            ->whereNotNull('no_antrian')
+            ->orderByRaw('CASE WHEN queue_taken_time IS NULL THEN 1 ELSE 0 END, queue_taken_time ASC, CAST(no_antrian AS UNSIGNED) ASC, id ASC')
+            ->get();
+
+        $i = 1;
+        foreach ($activeQc as $tx) {
+            $expected = str_pad($i, 2, '0', STR_PAD_LEFT);
+            if ($tx->no_antrian !== $expected) {
+                $tx->update(['no_antrian' => $expected]);
+            }
+            $i++;
+        }
+    }
+
+    /**
      * QC Area View.
      */
     public function qcIndex()
@@ -1156,19 +1176,28 @@ class VehicleTrackingController extends Controller
      */
     public function qcData()
     {
+        // Reorder & compact active QC queues to ensure sequential ordering
+        $this->reorderQcQueue();
+
         $queue = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
-            ->where(function ($q) {
-                $q->whereIn('status', ['antri_sampling', 'sampling'])
-                    ->orWhere(function ($sub) {
-                        $sub->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
-                            ->whereNotIn('status', ['completed', 'timbangan_out']);
-                    });
-            })
-            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, no_antrian ASC, check_in_time ASC')
+            ->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
+            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
                 $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
+
+                $statusLabel = match ($tx->status) {
+                    'completed' => 'Selesai / Check-Out',
+                    'timbangan_out' => 'Timbangan Out',
+                    'wrm_bongkar' => 'WRM (Bongkar)',
+                    'wpm' => 'WPM',
+                    'wfg' => 'WFG',
+                    'smu' => 'SMU',
+                    'sampling' => 'Proses Sampling',
+                    'antri_sampling' => 'Antri Sampling',
+                    default => ucfirst(str_replace('_', ' ', $tx->status ?? '-'))
+                };
 
                 return [
                     'id' => $tx->id,
@@ -1184,6 +1213,11 @@ class VehicleTrackingController extends Controller
                     'item_name' => $tx->item ? $tx->item->name : 'N/A',
                     'jenis' => $tx->jenis,
                     'qc_status' => $tx->qc_status,
+                    'status' => $tx->status,
+                    'status_label' => $statusLabel,
+                    'unloading_status' => $tx->unloading_status ?? 'pending',
+                    'start_loading_time' => $tx->start_loading_time ? $tx->start_loading_time->format('H:i') : null,
+                    'finish_loading_time' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : null,
                     'arrival_time' => $arrivalTime ? $arrivalTime->format('d-m-Y H:i') : '-',
                     'arrival_timestamp' => $arrivalTime ? $arrivalTime->timestamp : null,
                     'queue_taken_time' => $tx->queue_taken_time ? $tx->queue_taken_time->format('H:i') : null,
@@ -1218,9 +1252,12 @@ class VehicleTrackingController extends Controller
 
             $transaction = VehicleTransaction::findOrFail($id);
 
-            // Auto-assign queue number: find max in QC Active Sampling / Waiting
+            // Reorder existing first to maintain clean sequences
+            $this->reorderQcQueue();
+
             $maxAntrian = VehicleTransaction::whereIn('qc_status', ['waiting_sampling', 'on_check'])
                 ->whereNotNull('no_antrian')
+                ->where('id', '!=', $transaction->id)
                 ->get()
                 ->map(function ($tx) {
                     return (int)$tx->no_antrian;
@@ -1238,6 +1275,12 @@ class VehicleTrackingController extends Controller
                 'qc_status' => 'waiting_sampling',
                 'updated_by' => Auth::id()
             ]);
+
+            // Ensure tight continuous ordering
+            $this->reorderQcQueue();
+
+            $transaction->refresh();
+            $formattedAntrian = $transaction->no_antrian ?? $formattedAntrian;
 
             // Update tracking log status note
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -1303,6 +1346,9 @@ class VehicleTrackingController extends Controller
                 'qc_status' => 'waiting_dokumen',
                 'updated_by' => Auth::id()
             ]);
+
+            // Reorder remaining active queues to maintain continuous sequence
+            $this->reorderQcQueue();
 
             // Update status log catatan
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -1417,40 +1463,14 @@ class VehicleTrackingController extends Controller
             $transaction = VehicleTransaction::findOrFail($id);
             $now = Carbon::now();
 
-            $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
-
-            // Shift remaining active QC sampling queues
-            if ($completedAntrian > 0) {
-                $otherActive = VehicleTransaction::whereIn('qc_status', ['waiting_sampling', 'on_check'])
-                    ->whereNotNull('no_antrian')
-                    ->get();
-                foreach ($otherActive as $tx) {
-                    $currAntrian = (int)$tx->no_antrian;
-                    if ($currAntrian > $completedAntrian) {
-                        $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
-                    }
-                }
-            }
-
-            // Find active QC tracking log
-            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
-                ->where('location_id', $transaction->current_location_id)
-                ->whereNull('departure_time')
-                ->latest()
-                ->first();
-
-            $duration = $activeTrack ? abs($now->diffInSeconds($activeTrack->arrival_time, false)) : 0;
-
-            // Conclude QC tracking
-            if ($activeTrack) {
-                $activeTrack->update([
-                    'departure_time' => $now,
-                    'duration_seconds' => $duration,
-                    'status_notes' => "QC Hasil: " . strtoupper($request->qc_status) . ". Catatan: " . ($request->notes ?? '-')
-                ]);
-            }
+            // Clear antrian from transaction and reorder remaining active QC queues
+            $transaction->update(['no_antrian' => null]);
+            $this->reorderQcQueue();
 
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+
+            // Check if vehicle is currently still in sampling / antri_sampling
+            $isStillInQC = in_array($transaction->status, ['antri_sampling', 'sampling']);
 
             if ($request->qc_status === 'released') {
                 $this->releaseKantongParkirSlot($noPol, 'QC Lolos (Released)');
@@ -1459,62 +1479,120 @@ class VehicleTrackingController extends Controller
                 $targetCode = $targetLoc ? $targetLoc->s_loc : 'B006';
                 $destinationStatus = ($targetCode === 'C001') ? 'wpm' : 'wrm_bongkar';
 
-                $transaction->update([
+                $updateData = [
                     'qc_status' => 'released',
-                    'finish_sampling_time' => $now,
+                    'start_sampling_time' => $transaction->start_sampling_time ?? $now,
+                    'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
+                    'finish_sampling_time' => $transaction->finish_sampling_time ?? $now,
                     'finish_sampling_by' => Auth::id(),
                     'no_antrian' => null,
-                    'status' => $destinationStatus,
                     'updated_by' => Auth::id()
-                ]);
+                ];
+
+                // Only change vehicle location/status if it was still in QC stages
+                if ($isStillInQC) {
+                    $updateData['status'] = $destinationStatus;
+                }
+
+                $transaction->update($updateData);
+
+                // Conclude QC tracking if vehicle was in QC
+                $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                    ->where('location_id', $transaction->current_location_id)
+                    ->whereNull('departure_time')
+                    ->latest()
+                    ->first();
+
+                if ($activeTrack && $isStillInQC) {
+                    $duration = abs($now->diffInSeconds($activeTrack->arrival_time, false));
+                    $activeTrack->update([
+                        'departure_time' => $now,
+                        'duration_seconds' => $duration,
+                        'status_notes' => "QC Hasil: RELEASED. Catatan: " . ($request->notes ?? '-')
+                    ]);
+                }
 
                 event(new VehicleStatusUpdated([
                     'transaction_id' => $transaction->id,
                     'no_pol' => $noPol,
-                    'current_location' => $targetCode,
-                    'status' => $destinationStatus,
+                    'current_location' => $isStillInQC ? $targetCode : ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'QC'),
+                    'status' => $transaction->status,
                     'message' => "Truk {$noPol} lolos QC (Released).",
                     'time' => $now->format('H:i:s')
                 ]));
 
                 $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke RELEASED.';
             } else {
-                $timbanganLoc = Location::where('s_loc', 'TMB')->first();
-                if (!$timbanganLoc) {
-                    throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
-                }
-
-                // Rejected, goes back to timbangan for check-out
-                $transaction->update([
+                $updateData = [
                     'qc_status' => 'rejected',
-                    'finish_sampling_time' => $now,
+                    'start_sampling_time' => $transaction->start_sampling_time ?? $now,
+                    'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
+                    'finish_sampling_time' => $transaction->finish_sampling_time ?? $now,
                     'finish_sampling_by' => Auth::id(),
-                    'timbangan_out_time' => $now,
-                    'timbangan_out_by' => Auth::id(),
-                    'status' => 'timbangan_out',
-                    'current_location_id' => $timbanganLoc->id,
-                    'no_antrian' => null, // Clear QC queue
+                    'no_antrian' => null,
                     'updated_by' => Auth::id()
-                ]);
+                ];
 
-                // Create tracking log for Timbangan
-                VehicleTracking::create([
-                    'vehicle_transaction_id' => $transaction->id,
-                    'location_id' => $timbanganLoc->id,
-                    'arrival_time' => $now,
-                    'created_by' => Auth::id(),
-                ]);
+                if ($isStillInQC) {
+                    $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+                    if (!$timbanganLoc) {
+                        throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
+                    }
 
-                event(new VehicleStatusUpdated([
-                    'transaction_id' => $transaction->id,
-                    'no_pol' => $noPol,
-                    'current_location' => 'TIMBANGAN',
-                    'status' => 'timbangan_out',
-                    'message' => "Truk {$noPol} ditolak QC (Rejected) -> Diarahkan kembali ke Timbangan untuk Check-Out.",
-                    'time' => $now->format('H:i:s')
-                ]));
+                    $updateData['status'] = 'timbangan_out';
+                    $updateData['timbangan_out_time'] = $now;
+                    $updateData['timbangan_out_by'] = Auth::id();
+                    $updateData['current_location_id'] = $timbanganLoc->id;
 
-                $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED. Truk diarahkan kembali ke Timbangan untuk Check-Out.';
+                    $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                        ->where('location_id', $transaction->current_location_id)
+                        ->whereNull('departure_time')
+                        ->latest()
+                        ->first();
+
+                    if ($activeTrack) {
+                        $duration = abs($now->diffInSeconds($activeTrack->arrival_time, false));
+                        $activeTrack->update([
+                            'departure_time' => $now,
+                            'duration_seconds' => $duration,
+                            'status_notes' => "QC Hasil: REJECTED. Catatan: " . ($request->notes ?? '-')
+                        ]);
+                    }
+
+                    // Create tracking log for Timbangan
+                    VehicleTracking::create([
+                        'vehicle_transaction_id' => $transaction->id,
+                        'location_id' => $timbanganLoc->id,
+                        'arrival_time' => $now,
+                        'created_by' => Auth::id(),
+                    ]);
+
+                    $transaction->update($updateData);
+
+                    event(new VehicleStatusUpdated([
+                        'transaction_id' => $transaction->id,
+                        'no_pol' => $noPol,
+                        'current_location' => 'TIMBANGAN',
+                        'status' => 'timbangan_out',
+                        'message' => "Truk {$noPol} ditolak QC (Rejected) -> Diarahkan kembali ke Timbangan untuk Check-Out.",
+                        'time' => $now->format('H:i:s')
+                    ]));
+
+                    $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED. Truk diarahkan kembali ke Timbangan untuk Check-Out.';
+                } else {
+                    $transaction->update($updateData);
+
+                    event(new VehicleStatusUpdated([
+                        'transaction_id' => $transaction->id,
+                        'no_pol' => $noPol,
+                        'current_location' => $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'QC',
+                        'status' => $transaction->status,
+                        'message' => "Hasil QC Truk {$noPol} dinyatakan REJECTED.",
+                        'time' => $now->format('H:i:s')
+                    ]));
+
+                    $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED.';
+                }
             }
 
             DB::commit();
@@ -1933,6 +2011,26 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Helper to reorder and compact SMU queue numbers sequentially (#01, #02, ...).
+     */
+    private function reorderSmuQueue()
+    {
+        $activeSmu = VehicleTransaction::where('status', 'smu')
+            ->whereNotNull('no_antrian')
+            ->orderByRaw('CASE WHEN queue_taken_time IS NULL THEN 1 ELSE 0 END, queue_taken_time ASC, CAST(no_antrian AS UNSIGNED) ASC, id ASC')
+            ->get();
+
+        $i = 1;
+        foreach ($activeSmu as $tx) {
+            $expected = str_pad($i, 2, '0', STR_PAD_LEFT);
+            if ($tx->no_antrian !== $expected) {
+                $tx->update(['no_antrian' => $expected]);
+            }
+            $i++;
+        }
+    }
+
+    /**
      * SMU Area View.
      */
     public function smuIndex()
@@ -1953,9 +2051,12 @@ class VehicleTrackingController extends Controller
      */
     public function smuData()
     {
+        // Reorder & compact active SMU queues to ensure sequential ordering
+        $this->reorderSmuQueue();
+
         $queue = VehicleTransaction::with(['vehicle', 'item', 'activeTracking'])
             ->where('status', 'smu')
-            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, no_antrian ASC, check_in_time ASC')
+            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
@@ -1965,7 +2066,7 @@ class VehicleTrackingController extends Controller
                 return [
                     'id' => $tx->id,
                     'no_antrian' => $tx->no_antrian,
-                    'no_pol' => $tx->vehicle->no_pol,
+                    'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
                     'no_hp_driver' => $tx->no_hp_driver,
@@ -1974,8 +2075,8 @@ class VehicleTrackingController extends Controller
                     'no_spb' => $tx->no_spb ?? '-',
                     'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 2) : '-',
                     'unloading_status' => $tx->unloading_status,
-                    'arrival_time' => $arrivalTime->format('H:i'),
-                    'arrival_timestamp' => $arrivalTime->timestamp,
+                    'arrival_time' => $arrivalTime ? $arrivalTime->format('H:i') : '-',
+                    'arrival_timestamp' => $arrivalTime ? $arrivalTime->timestamp : null,
                     'queue_taken_time' => $tx->queue_taken_time ? $tx->queue_taken_time->format('H:i') : null,
                     'queue_taken_timestamp' => $tx->queue_taken_time ? $tx->queue_taken_time->timestamp : null,
                     'start_loading_time' => $tx->start_loading_time ? $tx->start_loading_time->format('H:i') : null,
@@ -2006,15 +2107,40 @@ class VehicleTrackingController extends Controller
 
             $transaction = VehicleTransaction::findOrFail($id);
 
+            // Auto-assign queue number if not yet set
+            if (empty($transaction->no_antrian)) {
+                $this->reorderSmuQueue();
+                $maxAntrian = VehicleTransaction::where('status', 'smu')
+                    ->whereNotNull('no_antrian')
+                    ->where('id', '!=', $transaction->id)
+                    ->get()
+                    ->map(function ($tx) {
+                        return (int)$tx->no_antrian;
+                    })
+                    ->max();
+
+                $nextAntrian = $maxAntrian ? $maxAntrian + 1 : 1;
+                $formattedAntrian = str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
+            } else {
+                $formattedAntrian = $transaction->no_antrian;
+            }
+
             $transaction->update([
+                'no_antrian' => $formattedAntrian,
+                'queue_taken_time' => $transaction->queue_taken_time ?? Carbon::now(),
+                'queue_taken_by' => $transaction->queue_taken_by ?? Auth::id(),
                 'unloading_status' => 'process',
                 'start_loading_time' => $transaction->start_loading_time ?? Carbon::now(),
                 'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
                 'updated_by' => Auth::id()
             ]);
 
+            $this->reorderSmuQueue();
+            $transaction->refresh();
+            $formattedAntrian = $transaction->no_antrian ?? $formattedAntrian;
+
             $actionName = $transaction->jenis === 'slipsheet' ? 'Muat' : 'Bongkar';
-            $noPol = $transaction->vehicle->no_pol;
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
                 ->where('location_id', $transaction->current_location_id)
@@ -2024,7 +2150,7 @@ class VehicleTrackingController extends Controller
 
             if ($activeTrack) {
                 $activeTrack->update([
-                    'status_notes' => "Mulai Proses {$actionName} di SMU."
+                    'status_notes' => "Mulai Proses {$actionName} di SMU. (Antrian #{$formattedAntrian})"
                 ]);
             }
 
@@ -2036,14 +2162,14 @@ class VehicleTrackingController extends Controller
                 'no_pol' => $noPol,
                 'current_location' => 'SMU',
                 'status' => 'smu',
-                'message' => "Truk {$noPol} mulai proses {$actionName} di SMU.",
+                'message' => "Truk {$noPol} mulai proses {$actionName} di SMU (Antrian #{$formattedAntrian}).",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
             DB::commit();
             return response()->json([
                 'success' => true,
-                'message' => "Proses {$actionName} untuk truk {$noPol} berhasil dimulai."
+                'message' => "Proses {$actionName} untuk truk {$noPol} (Antrian #{$formattedAntrian}) berhasil dimulai."
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2079,14 +2205,12 @@ class VehicleTrackingController extends Controller
                 ]);
             }
 
-            $noPol = $transaction->vehicle->no_pol;
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
             $timbanganLoc = Location::where('s_loc', 'TMB')->first();
             if (!$timbanganLoc) {
                 throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
             }
-
-            $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
 
             // Update transaction to timbangan_out
             $transaction->update([
@@ -2101,18 +2225,8 @@ class VehicleTrackingController extends Controller
                 'updated_by' => Auth::id()
             ]);
 
-            // Shift remaining active queues in SMU
-            if ($completedAntrian > 0) {
-                $otherActive = VehicleTransaction::where('status', 'smu')
-                    ->whereNotNull('no_antrian')
-                    ->get();
-                foreach ($otherActive as $tx) {
-                    $currAntrian = (int)$tx->no_antrian;
-                    if ($currAntrian > $completedAntrian) {
-                        $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
-                    }
-                }
-            }
+            // Reorder remaining active queues in SMU
+            $this->reorderSmuQueue();
 
             // Create new tracking log for Timbangan
             VehicleTracking::create([
