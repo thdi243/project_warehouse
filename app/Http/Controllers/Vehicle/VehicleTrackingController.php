@@ -3164,6 +3164,7 @@ class VehicleTrackingController extends Controller
             'item',
             'targetLocation',
             'tracking.location',
+            'tracking.creator',
             'creator',
             'queueTakenBy',
             'startSamplingBy',
@@ -3214,6 +3215,11 @@ class VehicleTrackingController extends Controller
             return trim($res);
         };
 
+        $getUserName = function ($user) {
+            if (!$user) return '-';
+            return $user->nama_lengkap ?: ($user->username ?: '-');
+        };
+
         $perPage = $request->input('per_page', 10);
         if ($perPage === 'all') {
             $totalCount = (clone $query)->count();
@@ -3224,7 +3230,7 @@ class VehicleTrackingController extends Controller
 
         $paginated = $query->orderBy('check_in_time', 'desc')->paginate($perPage);
 
-        $paginated->getCollection()->transform(function ($tx) use ($formatDuration) {
+        $paginated->getCollection()->transform(function ($tx) use ($formatDuration, $getUserName) {
             $checkIn = $tx->check_in_time;
             $checkOut = $tx->check_out_time;
 
@@ -3272,6 +3278,7 @@ class VehicleTrackingController extends Controller
                     'duration_label' => $formatDuration($qcSec),
                     'start' => $tx->start_sampling_time->format('H:i'),
                     'finish' => $tx->finish_sampling_time->format('H:i'),
+                    'action_by' => $getUserName($tx->finishSamplingBy ?: $tx->startSamplingBy),
                 ];
             }
 
@@ -3286,6 +3293,7 @@ class VehicleTrackingController extends Controller
                     'duration_label' => $formatDuration($loadingSec),
                     'start' => $tx->start_loading_time->format('H:i'),
                     'finish' => $tx->finish_loading_time->format('H:i'),
+                    'action_by' => $getUserName($tx->finishLoadingBy ?: $tx->startLoadingBy),
                 ];
             } elseif ($actionSeconds === 0) {
                 // Fallback dari tracking logs jika timestamps belum tercatat
@@ -3301,6 +3309,7 @@ class VehicleTrackingController extends Controller
                                 'duration_label' => $formatDuration($trackSec),
                                 'start' => $track->arrival_time ? $track->arrival_time->format('H:i') : '-',
                                 'finish' => $track->departure_time ? $track->departure_time->format('H:i') : '-',
+                                'action_by' => $getUserName($track->creator),
                             ];
                         }
                     }
@@ -3308,7 +3317,7 @@ class VehicleTrackingController extends Controller
             }
 
             // 5. Tracking Steps (Perpindahan Lokasi & Catatan)
-            $trackingSteps = $tx->tracking->map(function ($track) use ($formatDuration) {
+            $trackingSteps = $tx->tracking->map(function ($track) use ($formatDuration, $getUserName) {
                 $locName = $track->location ? $track->location->name : 'N/A';
                 $locCode = $track->location ? $track->location->s_loc : '-';
 
@@ -3339,6 +3348,7 @@ class VehicleTrackingController extends Controller
                     'duration_sec' => $durSec,
                     'duration_label' => $formatDuration($durSec),
                     'status_notes' => $track->status_notes ?? '-',
+                    'action_by' => $getUserName($track->creator),
                 ];
             });
 
@@ -3389,21 +3399,21 @@ class VehicleTrackingController extends Controller
                 'timestamps' => [
                     'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i:s') : '-',
                     'check_in' => $checkIn ? $checkIn->format('d-m-Y H:i:s') : '-',
-                    'check_in_by' => $tx->creator ? $tx->creator->name : '-',
+                    'check_in_by' => $getUserName($tx->creator),
                     'queue_taken' => $tx->queue_taken_time ? $tx->queue_taken_time->format('d-m-Y H:i:s') : '-',
-                    'queue_taken_by' => $tx->queueTakenBy ? $tx->queueTakenBy->name : '-',
+                    'queue_taken_by' => $getUserName($tx->queueTakenBy),
                     'start_sampling' => $tx->start_sampling_time ? $tx->start_sampling_time->format('d-m-Y H:i:s') : '-',
-                    'start_sampling_by' => $tx->startSamplingBy ? $tx->startSamplingBy->name : '-',
+                    'start_sampling_by' => $getUserName($tx->startSamplingBy),
                     'finish_sampling' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('d-m-Y H:i:s') : '-',
-                    'finish_sampling_by' => $tx->finishSamplingBy ? $tx->finishSamplingBy->name : '-',
+                    'finish_sampling_by' => $getUserName($tx->finishSamplingBy),
                     'start_loading' => $tx->start_loading_time ? $tx->start_loading_time->format('d-m-Y H:i:s') : '-',
-                    'start_loading_by' => $tx->startLoadingBy ? $tx->startLoadingBy->name : '-',
+                    'start_loading_by' => $getUserName($tx->startLoadingBy),
                     'finish_loading' => $tx->finish_loading_time ? $tx->finish_loading_time->format('d-m-Y H:i:s') : '-',
-                    'finish_loading_by' => $tx->finishLoadingBy ? $tx->finishLoadingBy->name : '-',
+                    'finish_loading_by' => $getUserName($tx->finishLoadingBy),
                     'timbangan_out' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i:s') : '-',
-                    'timbangan_out_by' => $tx->timbanganOutBy ? $tx->timbanganOutBy->name : '-',
+                    'timbangan_out_by' => $getUserName($tx->timbanganOutBy),
                     'check_out' => $checkOut ? $checkOut->format('d-m-Y H:i:s') : '-',
-                    'check_out_by' => $tx->checkOutBy ? $tx->checkOutBy->name : '-',
+                    'check_out_by' => $getUserName($tx->checkOutBy),
                 ],
             ];
         });

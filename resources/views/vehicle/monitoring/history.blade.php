@@ -603,54 +603,54 @@
                 let tsHtml = '';
                 if (ts.checkin_pos1 && ts.checkin_pos1 !== '-') {
                     tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <span class="text-muted"><i class="ri-shield-check-line text-primary me-1"></i> Check-In Pos 1</span>
-                            <span class="fw-bold text-dark">${ts.checkin_pos1}</span>
+                            <span class="fw-bold text-dark font-monospace">${ts.checkin_pos1}</span>
                         </div>
                     `;
                 }
                 tsHtml += `
-                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                         <div>
                             <span class="text-muted"><i class="ri-login-box-line text-success me-1"></i> Check-In (Timbangan)</span>
-                            ${ts.check_in_by && ts.check_in_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>${ts.check_in_by}</small>` : ''}
+                            ${ts.check_in_by && ts.check_in_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.check_in_by}</span></small>` : ''}
                         </div>
-                        <span class="fw-bold text-dark">${ts.check_in || '-'}</span>
+                        <span class="fw-bold text-dark font-monospace">${ts.check_in || '-'}</span>
                     </div>
                 `;
 
                 if (ts.queue_taken && ts.queue_taken !== '-') {
                     tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <div>
                                 <span class="text-muted"><i class="ri-coupon-3-line text-warning me-1"></i> Ambil Nomor Antrian ${tx.no_antrian ? `(#${tx.no_antrian})` : ''}</span>
-                                ${ts.queue_taken_by && ts.queue_taken_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>${ts.queue_taken_by}</small>` : ''}
+                                ${ts.queue_taken_by && ts.queue_taken_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.queue_taken_by}</span></small>` : ''}
                             </div>
-                            <span class="fw-bold text-dark">${ts.queue_taken}</span>
+                            <span class="fw-bold text-dark font-monospace">${ts.queue_taken}</span>
                         </div>
                     `;
                 }
 
                 if (ts.start_sampling && ts.start_sampling !== '-') {
                     tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <div>
                                 <span class="text-muted"><i class="ri-flask-line text-primary me-1"></i> Mulai Sampling QC</span>
-                                ${ts.start_sampling_by && ts.start_sampling_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>${ts.start_sampling_by}</small>` : ''}
+                                ${ts.start_sampling_by && ts.start_sampling_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.start_sampling_by}</span></small>` : ''}
                             </div>
-                            <span class="fw-bold text-dark">${ts.start_sampling}</span>
+                            <span class="fw-bold text-dark font-monospace">${ts.start_sampling}</span>
                         </div>
                     `;
                 }
 
                 if (ts.finish_sampling && ts.finish_sampling !== '-') {
                     tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <div>
                                 <span class="text-muted"><i class="ri-checkbox-circle-line text-info me-1"></i> Selesai Sampling QC</span>
-                                ${ts.finish_sampling_by && ts.finish_sampling_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>${ts.finish_sampling_by}</small>` : ''}
+                                ${ts.finish_sampling_by && ts.finish_sampling_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.finish_sampling_by}</span></small>` : ''}
                             </div>
-                            <span class="fw-bold text-dark">${ts.finish_sampling}</span>
+                            <span class="fw-bold text-dark font-monospace">${ts.finish_sampling}</span>
                         </div>
                     `;
                 }
@@ -658,12 +658,12 @@
                 if (ts.start_loading && ts.start_loading !== '-') {
                     const actionLabel = tx.jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
                     tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <div>
                                 <span class="text-muted"><i class="ri-play-circle-line text-info me-1"></i> Mulai ${actionLabel}</span>
-                                ${ts.start_loading_by && ts.start_loading_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>${ts.start_loading_by}</small>` : ''}
+                                ${ts.start_loading_by && ts.start_loading_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.start_loading_by}</span></small>` : ''}
                             </div>
-                            <span class="fw-bold text-dark">${ts.start_loading}</span>
+                            <span class="fw-bold text-dark font-monospace">${ts.start_loading}</span>
                         </div>
                     `;
                 }
@@ -671,35 +671,35 @@
                 if (ts.finish_loading && ts.finish_loading !== '-') {
                     const actionLabel = tx.jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
                     tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <div>
                                 <span class="text-muted"><i class="ri-stop-circle-line text-success me-1"></i> Selesai ${actionLabel}</span>
-                                ${ts.finish_loading_by && ts.finish_loading_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>${ts.finish_loading_by}</small>` : ''}
+                                ${ts.finish_loading_by && ts.finish_loading_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.finish_loading_by}</span></small>` : ''}
                             </div>
-                            <span class="fw-bold text-dark">${ts.finish_loading}</span>
+                            <span class="fw-bold text-dark font-monospace">${ts.finish_loading}</span>
                         </div>
                     `;
                 }
 
                 if (ts.timbangan_out && ts.timbangan_out !== '-') {
                     tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <div>
                                 <span class="text-muted"><i class="ri-scales-3-line text-warning me-1"></i> Tiba di Timbangan Out (Antre)</span>
-                                ${ts.timbangan_out_by && ts.timbangan_out_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>${ts.timbangan_out_by}</small>` : ''}
+                                ${ts.timbangan_out_by && ts.timbangan_out_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.timbangan_out_by}</span></small>` : ''}
                             </div>
-                            <span class="fw-bold text-dark">${ts.timbangan_out}</span>
+                            <span class="fw-bold text-dark font-monospace">${ts.timbangan_out}</span>
                         </div>
                     `;
                 }
 
                 tsHtml += `
-                    <div class="d-flex justify-content-between align-items-center py-1">
+                    <div class="d-flex justify-content-between align-items-center py-2">
                         <div>
                             <span class="text-muted"><i class="ri-logout-box-line text-danger me-1"></i> Check-Out (Selesai Timbang Keluar)</span>
-                            ${ts.check_out_by && ts.check_out_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>${ts.check_out_by}</small>` : ''}
+                            ${ts.check_out_by && ts.check_out_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.check_out_by}</span></small>` : ''}
                         </div>
-                        <span class="fw-bold text-dark">${ts.check_out || '-'}</span>
+                        <span class="fw-bold text-dark font-monospace">${ts.check_out || '-'}</span>
                     </div>
                 `;
                 $('#modalTimestampsContainer').html(tsHtml);
@@ -707,10 +707,11 @@
                 // Action Breakdown
                 if (tx.action_details && tx.action_details.length > 0) {
                     let actHtml = tx.action_details.map(act => `
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <div>
                                 <strong class="text-dark">${act.label}</strong>
                                 <small class="text-muted d-block">${act.start} s/d ${act.finish}</small>
+                                ${act.action_by && act.action_by !== '-' ? `<small class="text-muted d-block"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${act.action_by}</span></small>` : ''}
                             </div>
                             <span class="badge bg-soft-primary text-primary fs-12">${act.duration_label}</span>
                         </div>
@@ -718,7 +719,7 @@
 
                     if (tx.durasi_timbangan_out_label && tx.durasi_timbangan_out_label !== '-') {
                         actHtml += `
-                            <div class="d-flex justify-content-between align-items-center py-1">
+                            <div class="d-flex justify-content-between align-items-center py-2">
                                 <div>
                                     <strong class="text-dark">Tunggu Timbangan Out</strong>
                                     <small class="text-muted d-block">Antre s/d Check-Out</small>
@@ -750,12 +751,13 @@
                             <table class="table table-sm table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr class="fs-12 text-muted">
-                                        <th style="width: 50px;">#</th>
+                                        <th style="width: 40px;">#</th>
                                         <th>Lokasi Checkpoint</th>
                                         <th>Waktu Masuk</th>
                                         <th>Waktu Keluar</th>
                                         <th class="text-center">Durasi</th>
                                         <th>Catatan Status / Aktivitas</th>
+                                        <th>Action By</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -785,6 +787,9 @@
                                 </td>
                                 <td>
                                     <small class="text-muted" style="white-space: normal;">${st.status_notes || '-'}</small>
+                                </td>
+                                <td>
+                                    ${st.action_by && st.action_by !== '-' ? `<span class="badge bg-soft-secondary text-secondary fs-11"><i class="ri-user-line me-1"></i>${st.action_by}</span>` : '<span class="text-muted">-</span>'}
                                 </td>
                             </tr>
                         `;
