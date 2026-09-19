@@ -619,6 +619,12 @@ class BongkarMuatController extends Controller
             }
 
             DB::commit();
+
+            // Sinkronisasi status selesai muat ke Vehicle Monitoring (WFG & SMU - slipsheet & curah)
+            if (!empty($order->no_mobil)) {
+                $this->syncVehicleFinishLoading($order->no_mobil);
+            }
+
             return response()->json(['status' => true, 'message' => 'Bongkar Muat submitted successfully.', 'redirect' => route('wfg.bongkar_muat.show', $order->id)]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1200,8 +1206,10 @@ class BongkarMuatController extends Controller
                     'status' => $newStatus,
                     'no_antrian' => $assignedAntrian,
                     'queue_taken_time' => $transaction->queue_taken_time ?? $now,
+                    'queue_taken_by' => $transaction->queue_taken_by ?? Auth::id(),
                     'unloading_status' => 'process',
                     'start_loading_time' => $transaction->start_loading_time ?? $now,
+                    'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
                     'updated_by' => Auth::id()
                 ];
 
@@ -1247,7 +1255,7 @@ class BongkarMuatController extends Controller
     }
 
     /**
-     * Sinkronisasi selesai muat ke Vehicle Monitoring saat driver approve (status finished).
+     * Sinkronisasi selesai muat ke Vehicle Monitoring saat form Bongkar Muat submitted atau driver approve.
      * Truk diarahkan kembali ke Timbangan Out.
      */
     private function syncVehicleFinishLoading($noMobil)
@@ -1264,6 +1272,7 @@ class BongkarMuatController extends Controller
                     $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
                 })
                 ->where('status', '!=', 'completed')
+                ->where('status', '!=', 'timbangan_out')
                 ->first();
 
             if (!$transaction) {
@@ -1311,10 +1320,17 @@ class BongkarMuatController extends Controller
                 if ($timbanganLoc) {
                     $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
 
-                    // Update transaction to timbangan_out
+                    // Update transaction to timbangan_out beserta timestamps lifecycle
                     $transaction->update([
                         'unloading_status' => 'completed',
-                        'finish_loading_time' => $now,
+                        'queue_taken_time' => $transaction->queue_taken_time ?? $now,
+                        'queue_taken_by' => $transaction->queue_taken_by ?? Auth::id(),
+                        'start_loading_time' => $transaction->start_loading_time ?? $now,
+                        'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
+                        'finish_loading_time' => $transaction->finish_loading_time ?? $now,
+                        'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
+                        'timbangan_out_time' => $transaction->timbangan_out_time ?? $now,
+                        'timbangan_out_by' => $transaction->timbangan_out_by ?? Auth::id(),
                         'current_location_id' => $timbanganLoc->id,
                         'status' => 'timbangan_out',
                         'no_antrian' => null, // Clear queue
@@ -1354,6 +1370,7 @@ class BongkarMuatController extends Controller
                         'vehicle_transaction_id' => $transaction->id,
                         'location_id' => $timbanganLoc->id,
                         'arrival_time' => $now,
+                        'status_notes' => "Selesai dari {$areaName}. Menunggu Timbang Keluar di Timbangan.",
                         'created_by' => Auth::id(),
                     ]);
 
