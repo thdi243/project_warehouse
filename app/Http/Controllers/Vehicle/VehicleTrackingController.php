@@ -761,13 +761,13 @@ class VehicleTrackingController extends Controller
             $activeTransaction = VehicleTransaction::whereHas('vehicle', function ($q) use ($noPol) {
                 $q->where(DB::raw("REPLACE(UPPER(no_pol), ' ', '')"), $noPol);
             })
-            ->where(function ($q) {
-                $q->whereNull('check_out_time')
-                  ->orWhere('status', '!=', 'completed');
-            })
-            ->with(['currentLocation', 'targetLocation'])
-            ->latest()
-            ->first();
+                ->where(function ($q) {
+                    $q->whereNull('check_out_time')
+                        ->orWhere('status', '!=', 'completed');
+                })
+                ->with(['currentLocation', 'targetLocation'])
+                ->latest()
+                ->first();
 
             if ($activeTransaction) {
                 $currentLocName = $activeTransaction->currentLocation ? $activeTransaction->currentLocation->name : ($activeTransaction->targetLocation ? $activeTransaction->targetLocation->name : 'Warehouse');
@@ -1604,14 +1604,6 @@ class VehicleTrackingController extends Controller
 
                 $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED. Truk diarahkan kembali ke Timbangan untuk Check-Out.';
             }
-
-            DB::commit();
-            return response()->json(['success' => true, 'message' => $msg]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Gagal memperbarui QC: ' . $e->getMessage()], 500);
-        }
-    }
 
             DB::commit();
             return response()->json(['success' => true, 'message' => $msg]);
