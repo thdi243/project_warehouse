@@ -104,39 +104,65 @@ class InboundController extends Controller
 
     public function indexUpload()
     {
-        $hasTemp = TempUploadModel::where('created_by', Auth::id())->exists();
+        // 1. Check if current user has active temp upload
+        $hasUserTemp = TempUploadModel::where('created_by', Auth::id())
+            ->whereNotNull('no_spb')
+            ->where('no_spb', '!=', '')
+            ->exists();
 
-        if ($hasTemp) {
+        if ($hasUserTemp) {
             return redirect()->route('wrm.inventory.select-location');
         }
 
+        // 2. Check if another user has pending temp upload
+        $otherTemp = TempUploadModel::with('createdBy')
+            ->whereNotNull('no_spb')
+            ->where('no_spb', '!=', '')
+            ->orderBy('id')
+            ->first();
+
         $barang = MasterBarangModel::select('id', 'mid', 'nama_barang')->get();
 
-        return view('wrm.inventory.upload', compact('barang'));
+        return view('wrm.inventory.upload', compact('barang', 'otherTemp'));
     }
 
     public function selectLocationView()
     {
-        // Get the first/oldest unique no_spb for current user
-        $firstNoSpb = TempUploadModel::where('created_by', Auth::id())
+        // 1. Prioritize current user's temp upload
+        $firstTemp = TempUploadModel::where('created_by', Auth::id())
+            ->whereNotNull('no_spb')
+            ->where('no_spb', '!=', '')
             ->orderBy('id')
-            ->value('no_spb');
+            ->first();
 
-        if (!$firstNoSpb) {
+        // 2. If current user has none, fallback to any active temp upload in the warehouse
+        if (!$firstTemp) {
+            $firstTemp = TempUploadModel::whereNotNull('no_spb')
+                ->where('no_spb', '!=', '')
+                ->orderBy('id')
+                ->first();
+        }
+
+        if (!$firstTemp) {
+            // Clean up any empty/corrupted rows if exist
+            TempUploadModel::whereNull('no_spb')->orWhere('no_spb', '')->delete();
             return redirect()->route('wrm.inventory.index-upload');
         }
 
-        // Get ONLY data with this no_spb for current user
-        $data = TempUploadModel::where('created_by', Auth::id())
-            ->where('no_spb', $firstNoSpb)
+        $firstNoSpb = $firstTemp->no_spb;
+        $targetUser = $firstTemp->created_by;
+
+        // Get data for this SPB and user
+        $data = TempUploadModel::where('no_spb', $firstNoSpb)
+            ->where('created_by', $targetUser)
             ->get();
 
         if ($data->isEmpty()) {
             return redirect()->route('wrm.inventory.index-upload');
         }
 
-        // Count remaining no_spb (excluding current one) for current user
-        $remainingCount = TempUploadModel::where('created_by', Auth::id())
+        // Count remaining no_spb for this batch
+        $remainingCount = TempUploadModel::where('created_by', $targetUser)
             ->where('no_spb', '!=', $firstNoSpb)
             ->distinct('no_spb')
             ->count('no_spb');
@@ -339,13 +365,14 @@ class InboundController extends Controller
                 throw new \Exception("Ada bin/lokasi yang dipilih lebih dari satu kali untuk pallet berbeda. Silahkan periksa kembali.");
             }
 
-            $temps = TempUploadModel::where('created_by', Auth::id())
-                ->whereIn('id', array_keys($request->loc_id))
+            $temps = TempUploadModel::whereIn('id', array_keys($request->loc_id))
                 ->get();
 
             if ($temps->isEmpty()) {
                 throw new \Exception("Data tidak ditemukan");
             }
+
+            $targetUserId = $temps->first()->created_by ?? Auth::id();
 
             // Get the no_spb dari data yang akan disimpan
             $currentNoSpb = $temps->first()->no_spb;
@@ -464,13 +491,12 @@ class InboundController extends Controller
                 \App\Models\Wrm\Inventory\StockBalance::recalculate($barangId);
             }
 
-            // Delete ONLY temp data untuk no_spb ini for this user
-            TempUploadModel::where('created_by', Auth::id())
-                ->whereIn('id', array_keys($request->loc_id))
+            // Delete ONLY temp data untuk no_spb ini
+            TempUploadModel::whereIn('id', array_keys($request->loc_id))
                 ->delete();
 
-            // Check apakah ada no_spb lain yang belum diproses for this user
-            $nextNoSpb = TempUploadModel::where('created_by', Auth::id())
+            // Check apakah ada no_spb lain yang belum diproses
+            $nextNoSpb = TempUploadModel::where('created_by', $targetUserId)
                 ->orderBy('id')
                 ->value('no_spb');
 
@@ -1371,14 +1397,22 @@ class InboundController extends Controller
         }
     }
 
-    public function cancelUpload()
+    public function cancelUpload(Request $request)
     {
         try {
-            TempUploadModel::where('created_by', Auth::id())->delete();
+            if ($request->filled('no_spb')) {
+                TempUploadModel::where('no_spb', $request->no_spb)->delete();
+            } else {
+                TempUploadModel::where('created_by', Auth::id())->delete();
+                // Jika masih ada sisa temp upload lain dan pengguna ingin membatalkan, bersihkan semuanya
+                if (TempUploadModel::exists()) {
+                    TempUploadModel::truncate();
+                }
+            }
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Upload berhasil dibatalkan, data dihapus'
+                'message' => 'Upload berhasil dibatalkan, data antrian telah dibersihkan'
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -1401,8 +1435,7 @@ class InboundController extends Controller
             ]);
         }
 
-        $data = TempUploadModel::where('created_by', Auth::id())
-            ->when($noSpb, function ($q) use ($noSpb) {
+        $data = TempUploadModel::when($noSpb, function ($q) use ($noSpb) {
                 $q->where('no_spb', $noSpb);
             })
             ->whereIn('id', $tempIds)
