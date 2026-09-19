@@ -1401,13 +1401,21 @@ class VehicleTrackingController extends Controller
             $transaction = VehicleTransaction::findOrFail($id);
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
-            $transaction->update([
+            $isAlreadyFinished = in_array($transaction->status, ['timbangan_out', 'completed']) || ($transaction->unloading_status === 'completed');
+
+            $updateData = [
                 'qc_status' => 'on_check',
                 'start_sampling_time' => $transaction->start_sampling_time ?? Carbon::now(),
                 'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
-                'status' => 'sampling',
                 'updated_by' => Auth::id()
-            ]);
+            ];
+
+            // Only change vehicle status to 'sampling' if not already completed or in active unloading
+            if (!$isAlreadyFinished && $transaction->unloading_status !== 'process') {
+                $updateData['status'] = 'sampling';
+            }
+
+            $transaction->update($updateData);
 
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
                 ->where('location_id', $transaction->current_location_id)
@@ -1431,7 +1439,7 @@ class VehicleTrackingController extends Controller
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
                 'current_location' => $sLoc,
-                'status' => 'sampling',
+                'status' => $transaction->status,
                 'message' => "Truk {$noPol} mulai proses sampling QC.",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
@@ -1469,7 +1477,12 @@ class VehicleTrackingController extends Controller
 
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
-            // Check if vehicle is currently still in sampling / antri_sampling
+            $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+            if (!$timbanganLoc) {
+                throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
+            }
+
+            $isUnloadingCompleted = ($transaction->unloading_status === 'completed') || ($transaction->status === 'timbangan_out');
             $isStillInQC = in_array($transaction->status, ['antri_sampling', 'sampling']);
 
             if ($request->qc_status === 'released') {
@@ -1489,9 +1502,18 @@ class VehicleTrackingController extends Controller
                     'updated_by' => Auth::id()
                 ];
 
-                // Only change vehicle location/status if it was still in QC stages
-                if ($isStillInQC) {
+                if ($isUnloadingCompleted) {
+                    // Truk sudah selesai bongkar! Pertahankan atau arahkan ke timbangan_out
+                    $updateData['status'] = 'timbangan_out';
+                    $updateData['current_location_id'] = $timbanganLoc->id;
+                    if (!$transaction->timbangan_out_time) {
+                        $updateData['timbangan_out_time'] = $now;
+                        $updateData['timbangan_out_by'] = Auth::id();
+                    }
+                } else if ($isStillInQC) {
+                    // Truk belum selesai bongkar dan sebelumnya di status sampling/antri QC, arahkan ke area tujuan
                     $updateData['status'] = $destinationStatus;
+                    $updateData['current_location_id'] = $transaction->target_location_id;
                 }
 
                 $transaction->update($updateData);
@@ -1512,17 +1534,23 @@ class VehicleTrackingController extends Controller
                     ]);
                 }
 
+                $finalCurrentLoc = $isUnloadingCompleted ? 'TIMBANGAN' : ($isStillInQC ? $targetCode : ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'QC'));
+                $finalMessage = $isUnloadingCompleted
+                    ? "Truk {$noPol} lolos QC (Released) dan proses bongkar sudah selesai. Truk siap Check-Out di Timbangan."
+                    : "Truk {$noPol} lolos QC (Released).";
+
                 event(new VehicleStatusUpdated([
                     'transaction_id' => $transaction->id,
                     'no_pol' => $noPol,
-                    'current_location' => $isStillInQC ? $targetCode : ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'QC'),
+                    'current_location' => $finalCurrentLoc,
                     'status' => $transaction->status,
-                    'message' => "Truk {$noPol} lolos QC (Released).",
+                    'message' => $finalMessage,
                     'time' => $now->format('H:i:s')
                 ]));
 
                 $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke RELEASED.';
             } else {
+                // REJECTED -> Semua penolakan QC langsung arahkan truk ke Timbangan Out untuk checkout
                 $updateData = [
                     'qc_status' => 'rejected',
                     'start_sampling_time' => $transaction->start_sampling_time ?? $now,
@@ -1530,70 +1558,60 @@ class VehicleTrackingController extends Controller
                     'finish_sampling_time' => $transaction->finish_sampling_time ?? $now,
                     'finish_sampling_by' => Auth::id(),
                     'no_antrian' => null,
+                    'status' => 'timbangan_out',
+                    'current_location_id' => $timbanganLoc->id,
                     'updated_by' => Auth::id()
                 ];
 
-                if ($isStillInQC) {
-                    $timbanganLoc = Location::where('s_loc', 'TMB')->first();
-                    if (!$timbanganLoc) {
-                        throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
-                    }
-
-                    $updateData['status'] = 'timbangan_out';
+                if (!$transaction->timbangan_out_time) {
                     $updateData['timbangan_out_time'] = $now;
                     $updateData['timbangan_out_by'] = Auth::id();
-                    $updateData['current_location_id'] = $timbanganLoc->id;
-
-                    $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
-                        ->where('location_id', $transaction->current_location_id)
-                        ->whereNull('departure_time')
-                        ->latest()
-                        ->first();
-
-                    if ($activeTrack) {
-                        $duration = abs($now->diffInSeconds($activeTrack->arrival_time, false));
-                        $activeTrack->update([
-                            'departure_time' => $now,
-                            'duration_seconds' => $duration,
-                            'status_notes' => "QC Hasil: REJECTED. Catatan: " . ($request->notes ?? '-')
-                        ]);
-                    }
-
-                    // Create tracking log for Timbangan
-                    VehicleTracking::create([
-                        'vehicle_transaction_id' => $transaction->id,
-                        'location_id' => $timbanganLoc->id,
-                        'arrival_time' => $now,
-                        'created_by' => Auth::id(),
-                    ]);
-
-                    $transaction->update($updateData);
-
-                    event(new VehicleStatusUpdated([
-                        'transaction_id' => $transaction->id,
-                        'no_pol' => $noPol,
-                        'current_location' => 'TIMBANGAN',
-                        'status' => 'timbangan_out',
-                        'message' => "Truk {$noPol} ditolak QC (Rejected) -> Diarahkan kembali ke Timbangan untuk Check-Out.",
-                        'time' => $now->format('H:i:s')
-                    ]));
-
-                    $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED. Truk diarahkan kembali ke Timbangan untuk Check-Out.';
-                } else {
-                    $transaction->update($updateData);
-
-                    event(new VehicleStatusUpdated([
-                        'transaction_id' => $transaction->id,
-                        'no_pol' => $noPol,
-                        'current_location' => $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'QC',
-                        'status' => $transaction->status,
-                        'message' => "Hasil QC Truk {$noPol} dinyatakan REJECTED.",
-                        'time' => $now->format('H:i:s')
-                    ]));
-
-                    $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED.';
                 }
+
+                $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                    ->where('location_id', $transaction->current_location_id)
+                    ->whereNull('departure_time')
+                    ->latest()
+                    ->first();
+
+                if ($activeTrack) {
+                    $duration = abs($now->diffInSeconds($activeTrack->arrival_time, false));
+                    $activeTrack->update([
+                        'departure_time' => $now,
+                        'duration_seconds' => $duration,
+                        'status_notes' => "QC Hasil: REJECTED. Catatan: " . ($request->notes ?? '-')
+                    ]);
+                }
+
+                // Create tracking log for Timbangan
+                VehicleTracking::create([
+                    'vehicle_transaction_id' => $transaction->id,
+                    'location_id' => $timbanganLoc->id,
+                    'arrival_time' => $now,
+                    'created_by' => Auth::id(),
+                ]);
+
+                $transaction->update($updateData);
+
+                event(new VehicleStatusUpdated([
+                    'transaction_id' => $transaction->id,
+                    'no_pol' => $noPol,
+                    'current_location' => 'TIMBANGAN',
+                    'status' => 'timbangan_out',
+                    'message' => "Truk {$noPol} ditolak QC (Rejected) -> Diarahkan kembali ke Timbangan untuk Check-Out.",
+                    'time' => $now->format('H:i:s')
+                ]));
+
+                $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED. Truk diarahkan kembali ke Timbangan untuk Check-Out.';
             }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => $msg]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal memperbarui QC: ' . $e->getMessage()], 500);
+        }
+    }
 
             DB::commit();
             return response()->json(['success' => true, 'message' => $msg]);
