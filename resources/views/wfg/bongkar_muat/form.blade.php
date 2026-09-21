@@ -96,16 +96,19 @@
                     <ul class="nav nav-tabs nav-tabs-custom nav-success" role="tablist">
                         @foreach ($allDrafts as $d)
                             @php
-                                $isCurrent = ($draft && $draft->id == $d->id);
-                                $tabUrl = $d->status === 'draft'
-                                    ? route('wfg.bongkar_muat.form', ['draft_id' => $d->id])
-                                    : route('wfg.bongkar_muat.show', $d->id);
-                                
+                                $isCurrent = $draft && $draft->id == $d->id;
+                                $tabUrl =
+                                    $d->status === 'draft'
+                                        ? route('wfg.bongkar_muat.form', ['draft_id' => $d->id])
+                                        : route('wfg.bongkar_muat.show', $d->id);
+
                                 $statusBadge = '';
                                 if ($d->status === 'submitted') {
-                                    $statusBadge = '<span class="badge bg-warning-subtle text-warning rounded-pill">Submitted</span>';
+                                    $statusBadge =
+                                        '<span class="badge bg-warning-subtle text-warning rounded-pill">Submitted</span>';
                                 } elseif ($d->status === 'approved') {
-                                    $statusBadge = '<span class="badge bg-primary-subtle text-primary rounded-pill">Approved</span>';
+                                    $statusBadge =
+                                        '<span class="badge bg-primary-subtle text-primary rounded-pill">Approved</span>';
                                 }
                             @endphp
                             <li class="nav-item">
@@ -205,9 +208,43 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">No. Mobil</label>
-                                        <input type="text" name="no_mobil" class="form-control"
-                                            value="{{ $draft->no_mobil ?? '' }}">
+                                        <label class="form-label">No. Mobil <small class="text-muted">(Pilih WFG / Ketik
+                                                Manual)</small></label>
+                                        <select name="no_mobil" id="no_mobil" class="form-select select2-tags">
+                                            <option value="" @selected(empty($draft->no_mobil))></option>
+                                            @foreach ($wfgVehicles as $vTx)
+                                                @php
+                                                    $vNoPol = $vTx->vehicle->no_pol;
+                                                    $vDriver = $vTx->nama_driver ?? '';
+                                                    $isSelected =
+                                                        !empty($draft->no_mobil) &&
+                                                        strtoupper(
+                                                            str_replace([' ', '-', '.', '_'], '', $draft->no_mobil),
+                                                        ) ===
+                                                            strtoupper(str_replace([' ', '-', '.', '_'], '', $vNoPol));
+                                                @endphp
+                                                <option value="{{ $vNoPol }}" data-driver="{{ $vDriver }}"
+                                                    @selected($isSelected)>
+                                                    {{ $vNoPol }}{{ !empty($vDriver) ? ' - ' . $vDriver : '' }}
+                                                </option>
+                                            @endforeach
+                                            @if (
+                                                !empty($draft->no_mobil) &&
+                                                    !$wfgVehicles->contains(fn($v) => strtoupper(str_replace([' ', '-', '.', '_'], '', $v->vehicle->no_pol ?? '')) ===
+                                                            strtoupper(str_replace([' ', '-', '.', '_'], '', $draft->no_mobil))))
+                                                <option value="{{ $draft->no_mobil }}"
+                                                    data-driver="{{ $draft->driver_name ?? '' }}" selected>
+                                                    {{ $draft->no_mobil }}
+                                                </option>
+                                            @endif
+                                        </select>
+                                        <input type="hidden" name="driver_name" id="driver_name"
+                                            value="{{ $draft->driver_name ?? '' }}">
+                                        <div id="driver-indicator"
+                                            class="mt-1 small text-success {{ !empty($draft->driver_name) ? '' : 'd-none' }}">
+                                            <i class="ri-user-line me-1"></i> Driver: <strong
+                                                id="driver-indicator-name">{{ $draft->driver_name ?? '' }}</strong>
+                                        </div>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Gate</label>
@@ -557,6 +594,11 @@
                     if (res.tanggal) {
                         $('input[name="tanggal"]').val(res.tanggal);
                     }
+                    if (res.driver_name) {
+                        $('#driver_name').val(res.driver_name);
+                        $('#driver-indicator-name').text(res.driver_name);
+                        $('#driver-indicator').removeClass('d-none');
+                    }
                     previousGate = $('#gate').val();
                     console.log('Progress saved automatically');
                 }
@@ -566,7 +608,8 @@
                 let msg = xhr.responseJSON ? xhr.responseJSON.message : 'Gagal menyimpan draft.';
                 Swal.fire('Bongkar Muat', msg, 'error');
 
-                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.message && xhr.responseJSON.message.includes('Gate')) {
+                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.message && xhr.responseJSON.message
+                    .includes('Gate')) {
                     isReverting = true;
                     $('#gate').val(previousGate).trigger('change');
                     isReverting = false;
@@ -893,6 +936,41 @@
 
             $('.select2').select2({
                 width: '100%'
+            });
+
+            $('#no_mobil').select2({
+                width: '100%',
+                tags: true,
+                placeholder: '-- Pilih Kendaraan WFG / Ketik Manual --',
+                allowClear: true,
+                createTag: function(params) {
+                    var term = $.trim(params.term);
+                    if (term === '') return null;
+                    return {
+                        id: term.toUpperCase(),
+                        text: term.toUpperCase(),
+                        newTag: true
+                    };
+                }
+            }).on('select2:select select2:unselect change', function(e) {
+                const val = $(this).val();
+                if (!val) {
+                    $('#driver_name').val('');
+                    $('#driver-indicator-name').text('');
+                    $('#driver-indicator').addClass('d-none');
+                    return;
+                }
+                const selected = $(this).find(':selected');
+                const driver = selected.data('driver');
+                if (driver) {
+                    $('#driver_name').val(driver);
+                    $('#driver-indicator-name').text(driver);
+                    $('#driver-indicator').removeClass('d-none');
+                } else {
+                    $('#driver_name').val('');
+                    $('#driver-indicator-name').text('');
+                    $('#driver-indicator').addClass('d-none');
+                }
             });
 
             previousGate = $('#gate').val();

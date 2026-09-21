@@ -221,7 +221,27 @@ class BongkarMuatController extends Controller
             ->pluck('gate')
             ->toArray();
 
-        return view('wfg.bongkar_muat.form', compact('forkliftDrivers', 'checkers', 'destinations', 'draft', 'bookedGates', 'allDrafts'));
+        // Kendaraan aktif di area WFG (termasuk slipsheet & curah)
+        $wfgVehicles = VehicleTransaction::with('vehicle')
+            ->where(function ($q) {
+                $q->where('status', 'wfg')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNotIn('status', ['completed', 'timbangan_out'])
+                          ->whereHas('targetLocation', function ($tl) {
+                              $tl->whereIn('s_loc', ['A001', 'SMU', 'A002']);
+                          });
+                  });
+            })
+            ->get()
+            ->filter(function ($tx) {
+                return $tx->vehicle && !empty($tx->vehicle->no_pol);
+            })
+            ->unique(function ($tx) {
+                return strtoupper(str_replace([' ', '-', '.', '_'], '', $tx->vehicle->no_pol));
+            })
+            ->values();
+
+        return view('wfg.bongkar_muat.form', compact('forkliftDrivers', 'checkers', 'destinations', 'draft', 'bookedGates', 'allDrafts', 'wfgVehicles'));
     }
 
     private function generateNoDokumen()
@@ -294,6 +314,20 @@ class BongkarMuatController extends Controller
             //     }
             // }
 
+            $driverName = $request->driver_name;
+            if (empty($request->no_mobil)) {
+                $driverName = null;
+            } elseif (empty($driverName)) {
+                $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $request->no_mobil));
+                $matchedTx = VehicleTransaction::whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+                    $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
+                })->whereNotIn('status', ['completed', 'timbangan_out'])->latest()->first();
+
+                if ($matchedTx && !empty($matchedTx->nama_driver)) {
+                    $driverName = $matchedTx->nama_driver;
+                }
+            }
+
             $order->update([
                 'tanggal' => $request->tanggal,
                 'no_dokumen' => null,
@@ -304,6 +338,7 @@ class BongkarMuatController extends Controller
                 'forklift_driver_id' => $request->forklift_driver_id,
                 'destinasi_id' => $request->destinasi_id,
                 'no_mobil' => $request->no_mobil,
+                'driver_name' => $driverName,
                 'gate' => $request->gate,
                 'no_kontainer' => $request->no_kontainer,
                 'no_segel_bas' => $request->no_segel_bas,
@@ -405,7 +440,8 @@ class BongkarMuatController extends Controller
                 'status' => true,
                 'message' => 'Progress saved.',
                 'jam_muat' => $order->jam_muat,
-                'tanggal' => $formattedTanggal
+                'tanggal' => $formattedTanggal,
+                'driver_name' => $order->driver_name
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -545,6 +581,20 @@ class BongkarMuatController extends Controller
                 $noDok = $order->no_dokumen;
             }
 
+            $driverName = $request->driver_name;
+            if (empty($request->no_mobil)) {
+                $driverName = null;
+            } elseif (empty($driverName)) {
+                $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $request->no_mobil));
+                $matchedTx = VehicleTransaction::whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+                    $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
+                })->whereNotIn('status', ['completed', 'timbangan_out'])->latest()->first();
+
+                if ($matchedTx && !empty($matchedTx->nama_driver)) {
+                    $driverName = $matchedTx->nama_driver;
+                }
+            }
+
             $orderData = [
                 'tanggal' => $request->tanggal,
                 'no_dokumen' => $noDok,
@@ -556,6 +606,7 @@ class BongkarMuatController extends Controller
                 'checker_id' => $order->checker_id ?? Auth::id(),
                 'destinasi_id' => $request->destinasi_id,
                 'no_mobil' => $request->no_mobil,
+                'driver_name' => $driverName,
                 'gate' => $request->gate,
                 'no_kontainer' => $request->no_kontainer,
                 'no_segel_bas' => $request->no_segel_bas,
@@ -635,6 +686,19 @@ class BongkarMuatController extends Controller
     public function show(Request $request, $id)
     {
         $order = BongkarMuat::with(['details.material', 'forkliftDriver', 'checker', 'verificator', 'destinasi'])->findOrFail($id);
+
+        if (empty($order->driver_name) && !empty($order->no_mobil)) {
+            $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $order->no_mobil));
+            $matchedTx = VehicleTransaction::whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+                $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
+            })->whereNotIn('status', ['completed', 'timbangan_out'])->latest()->first();
+
+            if ($matchedTx && !empty($matchedTx->nama_driver)) {
+                $order->driver_name = $matchedTx->nama_driver;
+                $order->saveQuietly();
+            }
+        }
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['status' => true, 'order' => $order]);
         }

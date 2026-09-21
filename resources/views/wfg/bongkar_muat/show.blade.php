@@ -329,7 +329,8 @@
                                             <label class="form-label">Nama Driver <span
                                                     class="text-danger">*</span></label>
                                             <input type="text" name="driver_name" class="form-control" required
-                                                placeholder="Contoh: Budi Susanto">
+                                                placeholder="Contoh: Budi Susanto"
+                                                value="{{ old('driver_name', $order->driver_name ?? '') }}">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Signature Driver <span
