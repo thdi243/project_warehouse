@@ -106,6 +106,82 @@
         </div>
     </div>
 
+    {{-- Add Item Modal --}}
+    <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-add-circle-line me-1 text-primary"></i> Tambah Item Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-add-item">
+                    @csrf
+                    <input type="hidden" id="add-item-order-id" name="order_id">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Material <span class="text-danger">*</span></label>
+                            <select name="material_id" id="add-item-material" class="form-select" required></select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Batch Number</label>
+                                <input type="text" name="batch_number" id="add-item-batch" class="form-control" placeholder="Batch...">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Jenis <span class="text-danger">*</span></label>
+                                <select name="jenis" id="add-item-jenis" class="form-select">
+                                    <option value="P">Full Pallet (P)</option>
+                                    <option value="R">Receh (R)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                                <input type="number" name="qty" id="add-item-qty" class="form-control" step="any" min="0.01" required>
+                                <small class="text-muted" id="add-item-qty-hint">Pilih material terlebih dahulu</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">TO Dummy</label>
+                                <input type="text" name="to_dummy" id="add-item-to-dummy" class="form-control" placeholder="...">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">TO SAP</label>
+                                <input type="text" name="to_sap" id="add-item-to-sap" class="form-control" placeholder="...">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-4">
+                                <div class="form-check form-switch form-switch-warning">
+                                    <input class="form-check-input" type="checkbox" name="double_po" id="add-item-double-po" value="1">
+                                    <label class="form-check-label" for="add-item-double-po">Double PO</label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-check form-switch form-switch-danger">
+                                    <input class="form-check-input" type="checkbox" name="cancel_to" id="add-item-cancel-to" value="1">
+                                    <label class="form-check-label" for="add-item-cancel-to">Cancel TO</label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-check form-switch form-switch-success">
+                                    <input class="form-check-input" type="checkbox" name="manual_picking" id="add-item-manual-picking" value="1">
+                                    <label class="form-check-label" for="add-item-manual-picking">Manual</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary" id="btn-save-add-item">Save Item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- Edit Item Modal --}}
     <div class="modal fade" id="editItemModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
@@ -357,7 +433,14 @@
                         </div>
                     </div>
 
-                    <h6>Item Details</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2 mt-4">
+                        <h6 class="mb-0 fw-bold">Item Details</h6>
+                        @if(auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) || auth()->user()->hasRole('super-admin') || auth()->user()->hasPermission('super-admin'))
+                            <button type="button" class="btn btn-sm btn-primary" id="btn-add-item">
+                                <i class="ri-add-line me-1"></i> Tambah Item
+                            </button>
+                        @endif
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm" id="detail-items">
                             <thead class="table-light">
@@ -371,9 +454,9 @@
                                     <th>Flags</th>
                                     <th>No TO</th>
                                     <th>Qty TO</th>
-                                    @can('permission', 'bongkar-muat-plus')
+                                    @if(auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) || auth()->user()->hasRole('super-admin') || auth()->user()->hasPermission('super-admin'))
                                         <th class="text-center">Actions</th>
-                                    @endcan
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -650,6 +733,76 @@
                 loadData(1);
             });
 
+            const canManageItems = {{ (auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) || auth()->user()->hasRole('super-admin') || auth()->user()->hasPermission('super-admin')) ? 'true' : 'false' }};
+
+            function renderDetailItems(details) {
+                let detailsHtml = '';
+                if (details && details.length > 0) {
+                    details.forEach(detail => {
+                        const materialName = detail.material ? detail.material.nama_barang : '-';
+                        const materialCode = detail.material ? detail.material.mid_barang : '-';
+                        const actionButtons = canManageItems ? `
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-soft-info btn-edit-item" 
+                                    data-item='${encodeURIComponent(JSON.stringify(detail))}'>
+                                    <i class="ri-edit-2-line"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-soft-danger btn-delete-item" 
+                                    data-id="${detail.id}">
+                                    <i class="ri-delete-bin-line"></i>
+                                </button>
+                            </td>
+                        ` : '';
+
+                        detailsHtml += `
+                            <tr>
+                                <td>${materialCode}<br><small class="text-muted">${materialName}</small></td>
+                                <td>${detail.batch_number || '-'}</td>
+                                <td class="text-center">${detail.jenis === 'P' ? '<span class="badge badge-soft-success">P</span>' : (detail.jenis === 'R' ? '<span class="badge badge-soft-danger">R</span>' : (detail.jenis || '-'))}</td>
+                                <td class="text-center">${detail.qty || 0}</td>
+                                <td class="text-center small">${detail.to_dummy || '-'}</td>
+                                <td class="text-center small">${detail.to_sap || '-'}</td>
+                                <td class="text-center">
+                                    ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
+                                    ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel TO</span>' : ''}
+                                    ${detail.manual_picking ? '<span class="badge bg-soft-success text-success">Manual Picking</span>' : ''}
+                                </td>
+                                <td class="text-center">${detail.no_to || '-'}</td>
+                                <td class="text-center">${detail.qty_to || '-'}</td>
+                                ${actionButtons}
+                            </tr>
+                        `;
+                    });
+                } else {
+                    const colspan = canManageItems ? 10 : 9;
+                    detailsHtml = `<tr><td colspan="${colspan}" class="text-center py-3 text-muted">No items found</td></tr>`;
+                }
+                $('#detail-items tbody').html(detailsHtml);
+            }
+
+            function reloadOrderDetail(orderId, showDetailModal = true) {
+                $.ajax({
+                    url: "{{ url('wfg/bongkar-muat/show') }}/" + orderId,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status && res.order) {
+                            window.currentOrder = res.order;
+                            renderDetailItems(res.order.details);
+                            if (showDetailModal) {
+                                $('#detailModal').modal('show');
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error("Gagal memuat detail data terbaru", xhr);
+                        if (showDetailModal) {
+                            $('#detailModal').modal('show');
+                        }
+                    }
+                });
+            }
+
             $(document).on('click', '.btn-detail', function() {
                 const order = JSON.parse(decodeURIComponent($(this).data('order')));
 
@@ -675,45 +828,7 @@
                 $('#detail-no_segel_vendor').text(order.no_segel_vendor || '-');
                 $('#detail-jumlah_slipsheet').text(order.jumlah_slipsheet || '0');
 
-                let detailsHtml = '';
-                if (order.details && order.details.length > 0) {
-                    order.details.forEach(detail => {
-                        const materialName = detail.material ? detail.material.nama_barang : '-';
-                        const materialCode = detail.material ? detail.material.mid_barang : '-';
-                        detailsHtml += `
-                            <tr>
-                                <td>${materialCode}<br><small class="text-muted">${materialName}</small></td>
-                                <td>${detail.batch_number || '-'}</td>
-                                <td class="text-center">${detail.jenis === 'P' ? '<span class="badge badge-soft-success">P</span>' : (detail.jenis === 'R' ? '<span class="badge badge-soft-danger">R</span>' : (detail.jenis || '-'))}</td>
-                                <td class="text-center">${detail.qty || 0}</td>
-                                <td class="text-center small">${detail.to_dummy || '-'}</td>
-                                <td class="text-center small">${detail.to_sap || '-'}</td>
-                                <td class="text-center">
-                                    ${detail.double_po ? '<span class="badge bg-soft-warning text-warning">2 PO</span>' : ''}
-                                    ${detail.cancel_to ? '<span class="badge bg-soft-danger text-danger">Cancel TO</span>' : ''}
-                                    ${detail.manual_picking ? '<span class="badge bg-soft-success text-success">Manual Picking</span>' : ''}
-                                </td>
-                                <td class="text-center">${detail.no_to || '-'}</td>
-                                <td class="text-center">${detail.qty_to || '-'}</td>
-                                @can('permission', 'approval-bongkar-muat')
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-soft-info btn-edit-item" 
-                                            data-item='${encodeURIComponent(JSON.stringify(detail))}'>
-                                            <i class="ri-edit-2-line"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-soft-danger btn-delete-item" 
-                                            data-id="${detail.id}">
-                                            <i class="ri-delete-bin-line"></i>
-                                        </button>
-                                    </td>
-                                @endcan
-                            </tr>
-                        `;
-                    });
-                } else {
-                    detailsHtml = '<tr><td colspan="10" class="text-center">No items found</td></tr>';
-                }
-                $('#detail-items tbody').html(detailsHtml);
+                renderDetailItems(order.details);
 
                 $('#detailModal').modal('show');
             });
@@ -791,13 +906,166 @@
                 });
             });
 
+            // Add Item Logic
+            let isModalTransitioning = false;
+
+            $('#add-item-material').select2({
+                dropdownParent: $('#addItemModal'),
+                placeholder: 'Cari Material (MID / Nama)...',
+                width: '100%',
+                minimumInputLength: 2,
+                ajax: {
+                    url: "{{ route('wfg.bongkar_muat.search_materials') }}",
+                    dataType: 'json',
+                    data: params => ({
+                        q: params.term
+                    }),
+                    processResults: data => ({
+                        results: data
+                    })
+                }
+            }).on('select2:select', function(e) {
+                const data = e.params.data;
+                const jenis = $('#add-item-jenis').val();
+                if (jenis === 'P' && data.qty_box) {
+                    $('#add-item-qty').val(data.qty_box).prop('readonly', true);
+                    $('#add-item-qty-hint').text('Ambil dari Qty Box Master (' + data.qty_box + ')');
+                } else if (jenis === 'R') {
+                    $('#add-item-qty').prop('readonly', false);
+                    $('#add-item-qty-hint').text(data.qty_box ? 'Maksimal ' + data.qty_box : 'Kuantitas receh');
+                }
+            });
+
+            $('#add-item-jenis').on('change', function() {
+                const jenis = $(this).val();
+                const selectData = $('#add-item-material').select2('data');
+                const materialData = selectData && selectData.length > 0 ? selectData[0] : null;
+
+                if (jenis === 'P') {
+                    if (materialData && materialData.qty_box) {
+                        $('#add-item-qty').val(materialData.qty_box);
+                        $('#add-item-qty-hint').text('Ambil dari Qty Box Master (' + materialData.qty_box + ')');
+                    } else {
+                        $('#add-item-qty-hint').text('Ambil dari Qty Box Master');
+                    }
+                    $('#add-item-qty').prop('readonly', true);
+                } else {
+                    $('#add-item-qty').prop('readonly', false);
+                    $('#add-item-qty-hint').text(materialData && materialData.qty_box ? 'Maksimal ' + materialData.qty_box : 'Kuantitas receh');
+                }
+            });
+
+            // Mutual exclusivity for Add Item Modal
+            $('#add-item-cancel-to').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#add-item-double-po').prop('checked', false);
+                    $('#add-item-manual-picking').prop('checked', false);
+                }
+            });
+
+            $('#add-item-double-po').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#add-item-cancel-to').prop('checked', false);
+                }
+            });
+
+            $('#add-item-manual-picking').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#add-item-cancel-to').prop('checked', false);
+                }
+            });
+
+            // Open Add Item Modal
+            $(document).on('click', '#btn-add-item', function() {
+                if (!window.currentOrder) return;
+
+                $('#form-add-item')[0].reset();
+                $('#add-item-order-id').val(window.currentOrder.id);
+                $('#add-item-material').val(null).trigger('change');
+                $('#add-item-jenis').val('P');
+                $('#add-item-qty').val('').prop('readonly', false);
+                $('#add-item-qty-hint').text('Pilih material terlebih dahulu');
+                $('#add-item-double-po').prop('checked', false);
+                $('#add-item-cancel-to').prop('checked', false);
+                $('#add-item-manual-picking').prop('checked', false);
+
+                isModalTransitioning = true;
+                $('#detailModal').modal('hide');
+                $('#addItemModal').modal('show');
+            });
+
+            $('#addItemModal').on('hidden.bs.modal', function() {
+                if (isModalTransitioning && window.currentOrder) {
+                    isModalTransitioning = false;
+                    $('#detailModal').modal('show');
+                }
+            });
+
+            // Submit Add Item
+            $('#form-add-item').on('submit', function(e) {
+                e.preventDefault();
+                const orderId = $('#add-item-order-id').val();
+                if (!orderId) return;
+
+                const materialId = $('#add-item-material').val();
+                if (!materialId) {
+                    Swal.fire('Perhatian', 'Pilih material terlebih dahulu.', 'warning');
+                    return;
+                }
+
+                const qty = parseFloat($('#add-item-qty').val());
+                if (!qty || qty <= 0) {
+                    Swal.fire('Perhatian', 'Kuantitas harus lebih dari 0.', 'warning');
+                    return;
+                }
+
+                const selectData = $('#add-item-material').select2('data');
+                const materialData = selectData && selectData.length > 0 ? selectData[0] : null;
+                const jenis = $('#add-item-jenis').val();
+
+                if (jenis === 'R' && materialData && materialData.qty_box && qty > materialData.qty_box) {
+                    Swal.fire('Perhatian', `Kuantitas untuk Receh (R) tidak boleh melebihi Qty Box Master (${materialData.qty_box}).`, 'warning');
+                    return;
+                }
+
+                const formData = $(this).serialize();
+                const btn = $('#btn-save-add-item');
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status"></span> Menyimpan...');
+
+                $.ajax({
+                    url: "{{ url('wfg/bongkar-muat/store-item') }}/" + orderId,
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        btn.prop('disabled', false).text('Save Item');
+                        if (response.status) {
+                            isModalTransitioning = false;
+                            $('#addItemModal').modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: response.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            reloadOrderDetail(orderId, true);
+                            loadData();
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false).text('Save Item');
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Gagal menambahkan item', 'error');
+                    }
+                });
+            });
+
             // Edit Item Logic
             $(document).on('click', '.btn-edit-item', function() {
                 const detail = JSON.parse(decodeURIComponent($(this).data('item')));
 
                 $('#edit-item-id').val(detail.id);
                 $('#edit-item-material').val(
-                    `[${detail.material.mid_barang}] ${detail.material.nama_barang}`);
+                    detail.material ? `[${detail.material.mid_barang}] ${detail.material.nama_barang}` : '-');
                 $('#edit-item-batch').val(detail.batch_number);
                 $('#edit-item-jenis').val(detail.jenis);
                 $('#edit-item-qty').val(detail.qty);
@@ -807,15 +1075,15 @@
                 $('#edit-item-cancel-to').prop('checked', detail.cancel_to == 1);
                 $('#edit-item-manual-picking').prop('checked', detail.manual_picking == 1);
 
+                isModalTransitioning = true;
                 $('#detailModal').modal('hide');
                 $('#editItemModal').modal('show');
             });
 
             // Optional: Restore detail modal when edit modal is closed
             $('#editItemModal').on('hidden.bs.modal', function() {
-                // If the detail modal was hidden to show this one, we might want to bring it back
-                // We check if we are not currently showing a success message or similar
-                if (!$('.swal2-container').is(':visible')) {
+                if (isModalTransitioning && window.currentOrder) {
+                    isModalTransitioning = false;
                     $('#detailModal').modal('show');
                 }
             });
@@ -851,8 +1119,18 @@
                     data: formData,
                     success: function(response) {
                         if (response.status) {
+                            isModalTransitioning = false;
                             $('#editItemModal').modal('hide');
-                            Swal.fire('Success', response.message, 'success');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: response.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            if (window.currentOrder) {
+                                reloadOrderDetail(window.currentOrder.id, true);
+                            }
                             loadData(); // Refresh main list
                         }
                     },
@@ -884,8 +1162,16 @@
                             },
                             success: function(response) {
                                 if (response.status) {
-                                    $('#detailModal').modal('hide');
-                                    Swal.fire('Deleted!', response.message, 'success');
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Deleted!',
+                                        text: response.message,
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                    if (window.currentOrder) {
+                                        reloadOrderDetail(window.currentOrder.id, true);
+                                    }
                                     loadData();
                                 }
                             },

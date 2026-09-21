@@ -632,9 +632,12 @@ class BongkarMuatController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $order = BongkarMuat::with(['details.material', 'forkliftDriver', 'checker', 'verificator', 'destinasi'])->findOrFail($id);
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['status' => true, 'order' => $order]);
+        }
         $checkers = User::role('checker')->get();
         return view('wfg.bongkar_muat.show', compact('order', 'checkers'));
     }
@@ -1009,6 +1012,74 @@ class BongkarMuatController extends Controller
         $filename = preg_replace('/[\/\\\\]/', '-', $order->no_dokumen) . '.pdf';
 
         return $pdf->stream($filename);
+    }
+
+    public function storeItem(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'material_id' => 'required|exists:wfg_barang,id',
+            'batch_number' => 'nullable|string',
+            'jenis' => 'required|in:P,R',
+            'qty' => 'required|numeric|min:0.01',
+            'to_dummy' => 'nullable|string',
+            'to_sap' => 'nullable|string',
+            'double_po' => 'nullable|boolean',
+            'cancel_to' => 'nullable|boolean',
+            'manual_picking' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        try {
+            $order = BongkarMuat::findOrFail($id);
+
+            // Validasi qty box untuk detail dengan jenis R
+            $material = BarangWfgModel::findOrFail($request->material_id);
+            if ($request->jenis === 'R') {
+                $qtyBox = (int) $material->qty_box;
+                if ($qtyBox > 0 && $request->qty > $qtyBox) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => "Kuantitas untuk Receh (R) pada material {$material->nama_barang} tidak boleh melebihi Qty Box Master ({$qtyBox})."
+                    ], 422);
+                }
+            }
+
+            // Validasi: cancel_to tidak boleh dipilih bersamaan dengan double_po atau manual_picking
+            $cancelTo = filter_var($request->cancel_to, FILTER_VALIDATE_BOOLEAN);
+            $doublePo = filter_var($request->double_po, FILTER_VALIDATE_BOOLEAN);
+            $manualPicking = filter_var($request->manual_picking, FILTER_VALIDATE_BOOLEAN);
+
+            if ($cancelTo && ($doublePo || $manualPicking)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Cancel TO tidak boleh dipilih bersamaan dengan Double PO atau Manual Picking."
+                ], 422);
+            }
+
+            $detail = BongkarMuatDetail::create([
+                'bongkar_muat_id' => $order->id,
+                'material_id' => $request->material_id,
+                'batch_number' => $this->cleanNull($request->batch_number),
+                'jenis' => $request->jenis,
+                'qty' => $request->qty,
+                'to_dummy' => $this->cleanNull($request->to_dummy),
+                'to_sap' => $this->cleanNull($request->to_sap),
+                'double_po' => $doublePo,
+                'cancel_to' => $cancelTo,
+                'manual_picking' => $manualPicking,
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Item berhasil ditambahkan.',
+                'data' => $detail->load('material')
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
     }
 
     public function updateItem(Request $request, $id)

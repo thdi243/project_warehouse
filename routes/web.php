@@ -10,6 +10,8 @@ use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
 use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
 use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\Dashboard\StockOpnameDashboardController;
+use App\Http\Controllers\Kempu\MasterKempuController;
+use App\Http\Controllers\Kempu\KempuTraceabilityController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
@@ -438,6 +440,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/scan', [BongkarMuatController::class, 'scanBarcode'])->name('wfg.bongkar_muat.scan');
                 Route::get('/search-materials', [BongkarMuatController::class, 'searchMaterials'])->name('wfg.bongkar_muat.search_materials');
                 Route::get('/download/{id}', [BongkarMuatController::class, 'download'])->name('wfg.bongkar_muat.download');
+                Route::post('/store-item/{id}', [BongkarMuatController::class, 'storeItem'])->name('wfg.bongkar_muat.store_item');
                 Route::put('/update-item/{id}', [BongkarMuatController::class, 'updateItem'])->name('wfg.bongkar_muat.update_item');
                 Route::delete('/delete-item/{id}', [BongkarMuatController::class, 'deleteItem'])->name('wfg.bongkar_muat.delete_item');
                 Route::put('/update/{id}', [BongkarMuatController::class, 'update'])->name('wfg.bongkar_muat.update');
@@ -922,4 +925,34 @@ Route::middleware('auth')->group(function () {
         // General Report/History Data
         Route::get('/history/data', [VehicleTrackingController::class, 'historyData'])->name('history.data');
     });
+
+    // Manajemen Kempu
+    Route::prefix('kempu')->name('kempu.')->group(function () {
+        Route::prefix('master')->name('master.')->group(function () {
+            Route::get('/', [MasterKempuController::class, 'index'])->name('index');
+            Route::get('/data', [MasterKempuController::class, 'getData'])->name('data');
+            Route::post('/store', [MasterKempuController::class, 'store'])->name('store');
+            Route::put('/update/{id}', [MasterKempuController::class, 'update'])->name('update');
+            Route::delete('/delete/{id}', [MasterKempuController::class, 'destroy'])->name('delete');
+            Route::post('/restore/{id}', [MasterKempuController::class, 'restore'])->name('restore');
+            Route::delete('/force-delete/{id}', [MasterKempuController::class, 'forceDelete'])->name('force-delete');
+            Route::get('/generate-id', [MasterKempuController::class, 'generateId'])->name('generate-id');
+            Route::get('/template', [MasterKempuController::class, 'downloadTemplate'])->name('template');
+            Route::post('/upload', [MasterKempuController::class, 'upload'])->name('upload');
+            Route::get('/print-qr', [MasterKempuController::class, 'printQr'])->name('print-qr');
+        });
+
+        // Traceability & Reused 21x
+        Route::prefix('traceability')->name('traceability.')->group(function () {
+            Route::get('/', [KempuTraceabilityController::class, 'index'])->name('index');
+            Route::get('/hub', [KempuTraceabilityController::class, 'operasionalHub'])->name('hub');
+            Route::get('/station/{station}', [KempuTraceabilityController::class, 'operasionalStation'])->name('station');
+            Route::get('/data', [KempuTraceabilityController::class, 'getData'])->name('data');
+            Route::get('/history/{id}', [KempuTraceabilityController::class, 'history'])->name('history');
+            Route::get('/scan', [KempuTraceabilityController::class, 'scanner'])->name('scan');
+            Route::post('/lookup', [KempuTraceabilityController::class, 'lookup'])->name('lookup');
+            Route::post('/action', [KempuTraceabilityController::class, 'processAction'])->name('action');
+        });
+    });
 });
+
