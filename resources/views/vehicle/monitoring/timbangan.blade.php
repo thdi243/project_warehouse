@@ -1288,9 +1288,8 @@
                             <div class="mb-3">
                                 <label class="form-label fw-bold small">Pilih Area Tujuan <span class="text-danger">*</span></label>
                                 <select id="followup_target_area" class="form-select">
-                                    <option value="QC" ${defaultArea === 'QC' ? 'selected' : ''}>QC (Sampling / Hasil Keputusan QC)</option>
-                                    <option value="WFG" ${defaultArea === 'WFG' ? 'selected' : ''}>WFG (Bongkar / Muat Finished Goods)</option>
-                                    <option value="SMU" ${defaultArea === 'SMU' ? 'selected' : ''}>SMU (Bongkaran / Curah / Slipsheet)</option>
+                                    <option value="WFG" ${defaultArea === 'WFG' ? 'selected' : ''}>WFG (Muat Finished Goods)</option>
+                                    <option value="SMU" ${defaultArea === 'SMU' ? 'selected' : ''}>SMU (Bongkaran)</option>
                                     <option value="WPM" ${defaultArea === 'WPM' ? 'selected' : ''}>WPM (Unloading Packaging Material)</option>
                                     <option value="WRM" ${defaultArea === 'WRM' ? 'selected' : ''}>WRM (Unloading Raw Material)</option>
                                     <option value="ALL">Semua Area Terkait</option>
