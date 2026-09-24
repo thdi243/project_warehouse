@@ -566,6 +566,11 @@ class VehicleTrackingController extends Controller
      */
     public function timbanganData(Request $request)
     {
+        // Self-heal: pastikan transaksi yang sudah memiliki check_out_time berstatus completed
+        VehicleTransaction::whereNotNull('check_out_time')
+            ->where('status', 'timbangan_out')
+            ->update(['status' => 'completed']);
+
         $transactions = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'currentLocation'])
             ->whereNull('check_out_time')
             ->latest()
@@ -1106,32 +1111,47 @@ class VehicleTrackingController extends Controller
                 throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
             }
 
-            // Update transaction to timbangan_out
-            $transaction->update([
-                'unloading_status' => 'completed',
-                'finish_loading_time' => $now,
-                'finish_loading_by' => Auth::id(),
-                'timbangan_out_time' => $now,
-                'timbangan_out_by' => Auth::id(),
-                'current_location_id' => $timbanganLoc->id,
-                'status' => 'timbangan_out',
-                'updated_by' => Auth::id()
-            ]);
+            // Update transaction to timbangan_out (hanya jika belum checkout/completed)
+            $isAlreadyCompleted = ($transaction->status === 'completed' || !empty($transaction->check_out_time));
 
-            // Create new tracking log for Timbangan
-            VehicleTracking::create([
-                'vehicle_transaction_id' => $transaction->id,
-                'location_id' => $timbanganLoc->id,
-                'arrival_time' => $now,
-                'created_by' => Auth::id(),
-            ]);
+            $updateData = [
+                'unloading_status' => 'completed',
+                'finish_loading_time' => $transaction->finish_loading_time ?? $now,
+                'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
+                'updated_by' => Auth::id()
+            ];
+
+            if (!$isAlreadyCompleted) {
+                $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
+                $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
+                $updateData['current_location_id'] = $timbanganLoc->id;
+                $updateData['status'] = 'timbangan_out';
+            }
+
+            $transaction->update($updateData);
+
+            if (!$isAlreadyCompleted) {
+                // Create new tracking log for Timbangan
+                VehicleTracking::create([
+                    'vehicle_transaction_id' => $transaction->id,
+                    'location_id' => $timbanganLoc->id,
+                    'arrival_time' => $now,
+                    'created_by' => Auth::id(),
+                ]);
+            }
+
+            $broadcastStatus = $isAlreadyCompleted ? 'completed' : 'timbangan_out';
+            $broadcastLoc = $isAlreadyCompleted ? ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'TIMBANGAN') : 'TIMBANGAN';
+            $broadcastMsg = $isAlreadyCompleted
+                ? "Proses {$actionName} Truk {$noPol} di WPM telah selesai."
+                : "Proses {$actionName} Truk {$noPol} di WPM telah selesai. Truk kembali ke Timbangan untuk Check-Out.";
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'TIMBANGAN',
-                'status' => 'timbangan_out',
-                'message' => "Proses {$actionName} Truk {$noPol} di WPM telah selesai. Truk kembali ke Timbangan untuk Check-Out.",
+                'current_location' => $broadcastLoc,
+                'status' => $broadcastStatus,
+                'message' => $broadcastMsg,
                 'time' => $now->format('H:i:s')
             ]));
 
@@ -1401,19 +1421,13 @@ class VehicleTrackingController extends Controller
             $transaction = VehicleTransaction::findOrFail($id);
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
-            $isAlreadyFinished = in_array($transaction->status, ['timbangan_out', 'completed']) || ($transaction->unloading_status === 'completed');
-
+            // QC hanya mengubah qc_status, tidak merubah status kendaraan
             $updateData = [
                 'qc_status' => 'on_check',
                 'start_sampling_time' => $transaction->start_sampling_time ?? Carbon::now(),
                 'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
                 'updated_by' => Auth::id()
             ];
-
-            // Only change vehicle status to 'sampling' if not already completed or in active unloading
-            if (!$isAlreadyFinished && $transaction->unloading_status !== 'process') {
-                $updateData['status'] = 'sampling';
-            }
 
             $transaction->update($updateData);
 
@@ -1440,6 +1454,7 @@ class VehicleTrackingController extends Controller
                 'no_pol' => $noPol,
                 'current_location' => $sLoc,
                 'status' => $transaction->status,
+                'qc_status' => 'on_check',
                 'message' => "Truk {$noPol} mulai proses sampling QC.",
                 'time' => Carbon::now()->format('H:i:s')
             ]));
@@ -1477,133 +1492,52 @@ class VehicleTrackingController extends Controller
 
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
-            $timbanganLoc = Location::where('s_loc', 'TMB')->first();
-            if (!$timbanganLoc) {
-                throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
-            }
+            // Release kantong parkir slot if any
+            $actionLabel = $request->qc_status === 'released' ? 'QC Lolos (Released)' : 'QC Ditolak (Rejected)';
+            $this->releaseKantongParkirSlot($noPol, $actionLabel);
 
-            $isUnloadingCompleted = ($transaction->unloading_status === 'completed') || ($transaction->status === 'timbangan_out');
-            $isStillInQC = in_array($transaction->status, ['antri_sampling', 'sampling']);
+            // Update QC lifecycle data only (tidak merubah status pergerakan fisik kendaraan)
+            $updateData = [
+                'qc_status' => $request->qc_status,
+                'start_sampling_time' => $transaction->start_sampling_time ?? $now,
+                'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
+                'finish_sampling_time' => $transaction->finish_sampling_time ?? $now,
+                'finish_sampling_by' => Auth::id(),
+                'no_antrian' => null,
+                'updated_by' => Auth::id()
+            ];
 
-            if ($request->qc_status === 'released') {
-                $this->releaseKantongParkirSlot($noPol, 'QC Lolos (Released)');
+            $transaction->update($updateData);
 
-                $targetLoc = Location::find($transaction->target_location_id);
-                $targetCode = $targetLoc ? $targetLoc->s_loc : 'B006';
-                $destinationStatus = ($targetCode === 'C001') ? 'wpm' : 'wrm_bongkar';
+            // Update status note in active tracking log if exists
+            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                ->where('location_id', $transaction->current_location_id)
+                ->whereNull('departure_time')
+                ->latest()
+                ->first();
 
-                $updateData = [
-                    'qc_status' => 'released',
-                    'start_sampling_time' => $transaction->start_sampling_time ?? $now,
-                    'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
-                    'finish_sampling_time' => $transaction->finish_sampling_time ?? $now,
-                    'finish_sampling_by' => Auth::id(),
-                    'no_antrian' => null,
-                    'updated_by' => Auth::id()
-                ];
-
-                if ($isUnloadingCompleted) {
-                    // Truk sudah selesai bongkar! Pertahankan atau arahkan ke timbangan_out
-                    $updateData['status'] = 'timbangan_out';
-                    $updateData['current_location_id'] = $timbanganLoc->id;
-                    if (!$transaction->timbangan_out_time) {
-                        $updateData['timbangan_out_time'] = $now;
-                        $updateData['timbangan_out_by'] = Auth::id();
-                    }
-                } else if ($isStillInQC) {
-                    // Truk belum selesai bongkar dan sebelumnya di status sampling/antri QC, arahkan ke area tujuan
-                    $updateData['status'] = $destinationStatus;
-                    $updateData['current_location_id'] = $transaction->target_location_id;
-                }
-
-                $transaction->update($updateData);
-
-                // Conclude QC tracking if vehicle was in QC
-                $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
-                    ->where('location_id', $transaction->current_location_id)
-                    ->whereNull('departure_time')
-                    ->latest()
-                    ->first();
-
-                if ($activeTrack && $isStillInQC) {
-                    $duration = abs($now->diffInSeconds($activeTrack->arrival_time, false));
-                    $activeTrack->update([
-                        'departure_time' => $now,
-                        'duration_seconds' => $duration,
-                        'status_notes' => "QC Hasil: RELEASED. Catatan: " . ($request->notes ?? '-')
-                    ]);
-                }
-
-                $finalCurrentLoc = $isUnloadingCompleted ? 'TIMBANGAN' : ($isStillInQC ? $targetCode : ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'QC'));
-                $finalMessage = $isUnloadingCompleted
-                    ? "Truk {$noPol} lolos QC (Released) dan proses bongkar sudah selesai. Truk siap Check-Out di Timbangan."
-                    : "Truk {$noPol} lolos QC (Released).";
-
-                event(new VehicleStatusUpdated([
-                    'transaction_id' => $transaction->id,
-                    'no_pol' => $noPol,
-                    'current_location' => $finalCurrentLoc,
-                    'status' => $transaction->status,
-                    'message' => $finalMessage,
-                    'time' => $now->format('H:i:s')
-                ]));
-
-                $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke RELEASED.';
-            } else {
-                // REJECTED -> Semua penolakan QC langsung arahkan truk ke Timbangan Out untuk checkout
-                $updateData = [
-                    'qc_status' => 'rejected',
-                    'start_sampling_time' => $transaction->start_sampling_time ?? $now,
-                    'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
-                    'finish_sampling_time' => $transaction->finish_sampling_time ?? $now,
-                    'finish_sampling_by' => Auth::id(),
-                    'no_antrian' => null,
-                    'status' => 'timbangan_out',
-                    'current_location_id' => $timbanganLoc->id,
-                    'updated_by' => Auth::id()
-                ];
-
-                if (!$transaction->timbangan_out_time) {
-                    $updateData['timbangan_out_time'] = $now;
-                    $updateData['timbangan_out_by'] = Auth::id();
-                }
-
-                $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
-                    ->where('location_id', $transaction->current_location_id)
-                    ->whereNull('departure_time')
-                    ->latest()
-                    ->first();
-
-                if ($activeTrack) {
-                    $duration = abs($now->diffInSeconds($activeTrack->arrival_time, false));
-                    $activeTrack->update([
-                        'departure_time' => $now,
-                        'duration_seconds' => $duration,
-                        'status_notes' => "QC Hasil: REJECTED. Catatan: " . ($request->notes ?? '-')
-                    ]);
-                }
-
-                // Create tracking log for Timbangan
-                VehicleTracking::create([
-                    'vehicle_transaction_id' => $transaction->id,
-                    'location_id' => $timbanganLoc->id,
-                    'arrival_time' => $now,
-                    'created_by' => Auth::id(),
+            if ($activeTrack) {
+                $qcResultLabel = strtoupper($request->qc_status);
+                $noteText = "QC Hasil: {$qcResultLabel}." . ($request->notes ? " Catatan: {$request->notes}" : '');
+                $activeTrack->update([
+                    'status_notes' => $noteText
                 ]);
-
-                $transaction->update($updateData);
-
-                event(new VehicleStatusUpdated([
-                    'transaction_id' => $transaction->id,
-                    'no_pol' => $noPol,
-                    'current_location' => 'TIMBANGAN',
-                    'status' => 'timbangan_out',
-                    'message' => "Truk {$noPol} ditolak QC (Rejected) -> Diarahkan kembali ke Timbangan untuk Check-Out.",
-                    'time' => $now->format('H:i:s')
-                ]));
-
-                $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke REJECTED. Truk diarahkan kembali ke Timbangan untuk Check-Out.';
             }
+
+            $currentLocCode = $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'QC';
+            $msgLabel = ($request->qc_status === 'released') ? 'RELEASED' : 'REJECTED';
+
+            event(new VehicleStatusUpdated([
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'current_location' => $currentLocCode,
+                'status' => $transaction->status,
+                'qc_status' => $request->qc_status,
+                'message' => "Hasil QC Truk {$noPol}: {$msgLabel}." . ($request->notes ? " Catatan: {$request->notes}" : ''),
+                'time' => $now->format('H:i:s')
+            ]));
+
+            $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke ' . $msgLabel . '.';
 
             DB::commit();
             return response()->json(['success' => true, 'message' => $msg]);
@@ -1772,32 +1706,47 @@ class VehicleTrackingController extends Controller
                 throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
             }
 
-            // Update transaction to timbangan_out
-            $transaction->update([
-                'unloading_status' => 'completed',
-                'finish_loading_time' => $now,
-                'finish_loading_by' => Auth::id(),
-                'timbangan_out_time' => $now,
-                'timbangan_out_by' => Auth::id(),
-                'current_location_id' => $timbanganLoc->id,
-                'status' => 'timbangan_out',
-                'updated_by' => Auth::id()
-            ]);
+            // Update transaction to timbangan_out (hanya jika belum checkout/completed)
+            $isAlreadyCompleted = ($transaction->status === 'completed' || !empty($transaction->check_out_time));
 
-            // Create new tracking log for Timbangan
-            VehicleTracking::create([
-                'vehicle_transaction_id' => $transaction->id,
-                'location_id' => $timbanganLoc->id,
-                'arrival_time' => $now,
-                'created_by' => Auth::id(),
-            ]);
+            $updateData = [
+                'unloading_status' => 'completed',
+                'finish_loading_time' => $transaction->finish_loading_time ?? $now,
+                'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
+                'updated_by' => Auth::id()
+            ];
+
+            if (!$isAlreadyCompleted) {
+                $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
+                $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
+                $updateData['current_location_id'] = $timbanganLoc->id;
+                $updateData['status'] = 'timbangan_out';
+            }
+
+            $transaction->update($updateData);
+
+            if (!$isAlreadyCompleted) {
+                // Create new tracking log for Timbangan
+                VehicleTracking::create([
+                    'vehicle_transaction_id' => $transaction->id,
+                    'location_id' => $timbanganLoc->id,
+                    'arrival_time' => $now,
+                    'created_by' => Auth::id(),
+                ]);
+            }
+
+            $broadcastStatus = $isAlreadyCompleted ? 'completed' : 'timbangan_out';
+            $broadcastLoc = $isAlreadyCompleted ? ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'TIMBANGAN') : 'TIMBANGAN';
+            $broadcastMsg = $isAlreadyCompleted
+                ? "Proses {$actionName} Truk {$noPol} di WRM telah selesai."
+                : "Proses {$actionName} Truk {$noPol} di WRM telah selesai. Truk kembali ke Timbangan untuk Check-Out.";
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'TIMBANGAN',
-                'status' => 'timbangan_out',
-                'message' => "Proses {$actionName} Truk {$noPol} di WRM telah selesai. Truk kembali ke Timbangan untuk Check-Out.",
+                'current_location' => $broadcastLoc,
+                'status' => $broadcastStatus,
+                'message' => $broadcastMsg,
                 'time' => $now->format('H:i:s')
             ]));
 
@@ -1962,17 +1911,24 @@ class VehicleTrackingController extends Controller
             $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
             $transactionJenis = strtolower(trim($transaction->jenis ?? ''));
 
-            // Update transaction to timbangan_out
-            $transaction->update([
+            // Update transaction to timbangan_out (hanya jika belum checkout/completed)
+            $isAlreadyCompleted = ($transaction->status === 'completed' || !empty($transaction->check_out_time));
+
+            $updateData = [
                 'unloading_status' => 'completed',
-                'finish_loading_time' => $now,
-                'finish_loading_by' => Auth::id(),
-                'timbangan_out_time' => $now,
-                'current_location_id' => $timbanganLoc->id,
-                'status' => 'timbangan_out',
+                'finish_loading_time' => $transaction->finish_loading_time ?? $now,
+                'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
                 'no_antrian' => null, // Reset no antrian agar slot nomor antrian kembali bersih
                 'updated_by' => Auth::id()
-            ]);
+            ];
+
+            if (!$isAlreadyCompleted) {
+                $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
+                $updateData['current_location_id'] = $timbanganLoc->id;
+                $updateData['status'] = 'timbangan_out';
+            }
+
+            $transaction->update($updateData);
 
             // Shift nomor antrian yang tersisa agar tetap urut (hanya pada jenis muatan yang sama di WFG)
             if ($completedAntrian > 0) {
@@ -1994,21 +1950,29 @@ class VehicleTrackingController extends Controller
                 }
             }
 
-            // Create new tracking log for Timbangan (Menunggu Timbang Keluar)
-            VehicleTracking::create([
-                'vehicle_transaction_id' => $transaction->id,
-                'location_id' => $timbanganLoc->id,
-                'arrival_time' => $now,
-                'status_notes' => 'Selesai dari WFG. Menunggu Timbang Keluar di Timbangan.',
-                'created_by' => Auth::id(),
-            ]);
+            if (!$isAlreadyCompleted) {
+                // Create new tracking log for Timbangan (Menunggu Timbang Keluar)
+                VehicleTracking::create([
+                    'vehicle_transaction_id' => $transaction->id,
+                    'location_id' => $timbanganLoc->id,
+                    'arrival_time' => $now,
+                    'status_notes' => 'Selesai dari WFG. Menunggu Timbang Keluar di Timbangan.',
+                    'created_by' => Auth::id(),
+                ]);
+            }
+
+            $broadcastStatus = $isAlreadyCompleted ? 'completed' : 'timbangan_out';
+            $broadcastLoc = $isAlreadyCompleted ? ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'TIMBANGAN') : 'TIMBANGAN';
+            $broadcastMsg = $isAlreadyCompleted
+                ? "Truk {$noPol} selesai di WFG."
+                : "Truk {$noPol} selesai di WFG dan diarahkan kembali ke Timbangan untuk Timbang Keluar.";
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'TIMBANGAN',
-                'status' => 'timbangan_out',
-                'message' => "Truk {$noPol} selesai di WFG dan diarahkan kembali ke Timbangan untuk Timbang Keluar.",
+                'current_location' => $broadcastLoc,
+                'status' => $broadcastStatus,
+                'message' => $broadcastMsg,
                 'time' => Carbon::now()->format('H:i:s')
             ]));
 
@@ -2222,36 +2186,51 @@ class VehicleTrackingController extends Controller
                 throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
             }
 
-            // Update transaction to timbangan_out
-            $transaction->update([
+            // Update transaction to timbangan_out (hanya jika belum checkout/completed)
+            $isAlreadyCompleted = ($transaction->status === 'completed' || !empty($transaction->check_out_time));
+
+            $updateData = [
                 'unloading_status' => 'completed',
-                'finish_loading_time' => $now,
-                'finish_loading_by' => Auth::id(),
-                'timbangan_out_time' => $now,
-                'timbangan_out_by' => Auth::id(),
-                'current_location_id' => $timbanganLoc->id,
-                'status' => 'timbangan_out',
+                'finish_loading_time' => $transaction->finish_loading_time ?? $now,
+                'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
                 'no_antrian' => null, // Clear its own queue
                 'updated_by' => Auth::id()
-            ]);
+            ];
+
+            if (!$isAlreadyCompleted) {
+                $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
+                $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
+                $updateData['current_location_id'] = $timbanganLoc->id;
+                $updateData['status'] = 'timbangan_out';
+            }
+
+            $transaction->update($updateData);
 
             // Reorder remaining active queues in SMU
             $this->reorderSmuQueue();
 
-            // Create new tracking log for Timbangan
-            VehicleTracking::create([
-                'vehicle_transaction_id' => $transaction->id,
-                'location_id' => $timbanganLoc->id,
-                'arrival_time' => $now,
-                'created_by' => Auth::id(),
-            ]);
+            if (!$isAlreadyCompleted) {
+                // Create new tracking log for Timbangan
+                VehicleTracking::create([
+                    'vehicle_transaction_id' => $transaction->id,
+                    'location_id' => $timbanganLoc->id,
+                    'arrival_time' => $now,
+                    'created_by' => Auth::id(),
+                ]);
+            }
+
+            $broadcastStatus = $isAlreadyCompleted ? 'completed' : 'timbangan_out';
+            $broadcastLoc = $isAlreadyCompleted ? ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'TIMBANGAN') : 'TIMBANGAN';
+            $broadcastMsg = $isAlreadyCompleted
+                ? "Proses Truk {$noPol} di SMU selesai."
+                : "Proses Truk {$noPol} di SMU selesai. Truk kembali ke Timbangan untuk Check-Out.";
 
             event(new VehicleStatusUpdated([
                 'transaction_id' => $transaction->id,
                 'no_pol' => $noPol,
-                'current_location' => 'TIMBANGAN',
-                'status' => 'timbangan_out',
-                'message' => "Proses Truk {$noPol} di SMU selesai. Truk kembali ke Timbangan untuk Check-Out.",
+                'current_location' => $broadcastLoc,
+                'status' => $broadcastStatus,
+                'message' => $broadcastMsg,
                 'time' => $now->format('H:i:s')
             ]));
 
@@ -3159,6 +3138,11 @@ class VehicleTrackingController extends Controller
      */
     public function historyData(Request $request)
     {
+        // Self-heal: pastikan transaksi yang sudah memiliki check_out_time berstatus completed
+        VehicleTransaction::whereNotNull('check_out_time')
+            ->where('status', 'timbangan_out')
+            ->update(['status' => 'completed']);
+
         $query = VehicleTransaction::with([
             'vehicle',
             'item',
@@ -3173,7 +3157,10 @@ class VehicleTrackingController extends Controller
             'finishLoadingBy',
             'timbanganOutBy',
             'checkOutBy',
-        ])->where('status', 'completed');
+        ])->where(function ($q) {
+            $q->where('status', 'completed')
+              ->orWhereNotNull('check_out_time');
+        });
 
         if ($request->filled('start_date')) {
             $query->whereDate('check_in_time', '>=', $request->start_date);

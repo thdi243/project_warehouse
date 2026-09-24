@@ -1455,8 +1455,10 @@ class BongkarMuatController extends Controller
                 if ($timbanganLoc) {
                     $completedAntrian = $transaction->no_antrian ? (int)$transaction->no_antrian : 0;
 
-                    // Update transaction to timbangan_out beserta timestamps lifecycle
-                    $transaction->update([
+                    // Update transaction to timbangan_out (hanya jika belum checkout/completed)
+                    $isAlreadyCompleted = ($transaction->status === 'completed' || !empty($transaction->check_out_time));
+
+                    $updateData = [
                         'unloading_status' => 'completed',
                         'queue_taken_time' => $transaction->queue_taken_time ?? $now,
                         'queue_taken_by' => $transaction->queue_taken_by ?? Auth::id(),
@@ -1464,13 +1466,18 @@ class BongkarMuatController extends Controller
                         'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
                         'finish_loading_time' => $transaction->finish_loading_time ?? $now,
                         'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
-                        'timbangan_out_time' => $transaction->timbangan_out_time ?? $now,
-                        'timbangan_out_by' => $transaction->timbangan_out_by ?? Auth::id(),
-                        'current_location_id' => $timbanganLoc->id,
-                        'status' => 'timbangan_out',
                         'no_antrian' => null, // Clear queue
                         'updated_by' => Auth::id()
-                    ]);
+                    ];
+
+                    if (!$isAlreadyCompleted) {
+                        $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
+                        $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
+                        $updateData['current_location_id'] = $timbanganLoc->id;
+                        $updateData['status'] = 'timbangan_out';
+                    }
+
+                    $transaction->update($updateData);
 
                     // Shift remaining active queues in area tersebut (jika WFG, shift per jenis)
                     if ($completedAntrian > 0) {
@@ -1500,21 +1507,29 @@ class BongkarMuatController extends Controller
                         }
                     }
 
-                    // Create new tracking log for Timbangan Out
-                    VehicleTracking::create([
-                        'vehicle_transaction_id' => $transaction->id,
-                        'location_id' => $timbanganLoc->id,
-                        'arrival_time' => $now,
-                        'status_notes' => "Selesai dari {$areaName}. Menunggu Timbang Keluar di Timbangan.",
-                        'created_by' => Auth::id(),
-                    ]);
+                    if (!$isAlreadyCompleted) {
+                        // Create new tracking log for Timbangan Out
+                        VehicleTracking::create([
+                            'vehicle_transaction_id' => $transaction->id,
+                            'location_id' => $timbanganLoc->id,
+                            'arrival_time' => $now,
+                            'status_notes' => "Selesai dari {$areaName}. Menunggu Timbang Keluar di Timbangan.",
+                            'created_by' => Auth::id(),
+                        ]);
+                    }
+
+                    $broadcastStatus = $isAlreadyCompleted ? 'completed' : 'timbangan_out';
+                    $broadcastLoc = $isAlreadyCompleted ? ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'TIMBANGAN') : 'TIMBANGAN';
+                    $broadcastMsg = $isAlreadyCompleted
+                        ? "Proses Muat Truk {$noPol} di {$areaName} telah selesai (Otomatis dari Form Bongkar Muat Selesai)."
+                        : "Proses Muat Truk {$noPol} di {$areaName} telah selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan untuk Check-Out.";
 
                     event(new VehicleStatusUpdated([
                         'transaction_id' => $transaction->id,
                         'no_pol' => $noPol,
-                        'current_location' => 'TIMBANGAN',
-                        'status' => 'timbangan_out',
-                        'message' => "Proses Muat Truk {$noPol} di {$areaName} telah selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan untuk Check-Out.",
+                        'current_location' => $broadcastLoc,
+                        'status' => $broadcastStatus,
+                        'message' => $broadcastMsg,
                         'time' => $now->format('H:i:s')
                     ]));
                 }
