@@ -83,7 +83,7 @@
                             @include('layouts.partials.sidebar.wpm')
                             @include('layouts.partials.sidebar.wcp')
                             {{-- @include('layouts.partials.sidebar.qc') --}}
-                            @include('layouts.partials.sidebar.eng')
+                            {{-- @include('layouts.partials.sidebar.eng') --}}
                             {{-- @include('layouts.partials.sidebar.produksi') --}}
                         @endif
 
@@ -117,7 +117,7 @@
                         @include('layouts.partials.sidebar.wpm')
                         @include('layouts.partials.sidebar.wcp')
                         {{-- @include('layouts.partials.sidebar.qc') --}}
-                        @include('layouts.partials.sidebar.eng')
+                        {{-- @include('layouts.partials.sidebar.eng') --}}
                         {{-- @include('layouts.partials.sidebar.produksi') --}}
 
 
