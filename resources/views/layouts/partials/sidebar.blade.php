@@ -82,6 +82,9 @@
                             @include('layouts.partials.sidebar.wrm')
                             @include('layouts.partials.sidebar.wpm')
                             @include('layouts.partials.sidebar.wcp')
+                            {{-- @include('layouts.partials.sidebar.qc') --}}
+                            @include('layouts.partials.sidebar.eng')
+                            {{-- @include('layouts.partials.sidebar.produksi') --}}
                         @endif
 
                         @if (auth()->user()->hasAnyPermission(['master-wfg', 'master-wsp', 'master-wrm', 'master-wpm', 'master-wcp']))
@@ -91,6 +94,7 @@
                             @include('layouts.partials.sidebar.master_wrm')
                             @include('layouts.partials.sidebar.master_wpm')
                             @include('layouts.partials.sidebar.master_wcp')
+                            @include('layouts.partials.sidebar.master_kempu')
                         @endif
 
                         @include('layouts.partials.sidebar.user')
@@ -112,6 +116,10 @@
                         @include('layouts.partials.sidebar.wrm')
                         @include('layouts.partials.sidebar.wpm')
                         @include('layouts.partials.sidebar.wcp')
+                        {{-- @include('layouts.partials.sidebar.qc') --}}
+                        @include('layouts.partials.sidebar.eng')
+                        {{-- @include('layouts.partials.sidebar.produksi') --}}
+
 
                         <li class="menu-title"><span data-key="t-menu">Data Master</span></li>
 
@@ -120,6 +128,7 @@
                         @include('layouts.partials.sidebar.master_wrm')
                         @include('layouts.partials.sidebar.master_wpm')
                         @include('layouts.partials.sidebar.master_wcp')
+                        @include('layouts.partials.sidebar.master_kempu')
 
                         @include('layouts.partials.sidebar.user')
                         @include('layouts.partials.sidebar.permissions')

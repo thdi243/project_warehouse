@@ -12,6 +12,9 @@ use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\Dashboard\StockOpnameDashboardController;
 use App\Http\Controllers\Kempu\MasterKempuController;
 use App\Http\Controllers\Kempu\KempuTraceabilityController;
+use App\Http\Controllers\Kempu\KempuQcController;
+use App\Http\Controllers\Kempu\KempuEngController;
+use App\Http\Controllers\Kempu\KempuProduksiController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tkbm\ikat_terpal\IkatTerpalController;
 use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
@@ -24,6 +27,8 @@ use App\Http\Controllers\Wfg\MasterDestinasiController;
 use App\Http\Controllers\Wfg\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
+use App\Http\Controllers\Wfg\WfgKempuController;
+use App\Http\Controllers\Wpm\WpmKempuController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
 use App\Http\Controllers\Wrm\Inventory\MonitoringController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
@@ -499,6 +504,16 @@ Route::middleware('auth')->group(function () {
                 Route::get('/soh/getBarang', [StockOnHandWfgController::class, 'getBarang'])->name('wfg.stock_opname.soh.getBarang');
                 Route::delete('/soh/reset-all', [StockOnHandWfgController::class, 'resetAll'])->name('wfg.stock_opname.soh.reset_all');
             });
+
+            // Kempu WFG
+            Route::prefix('kempu')->name('wfg.kempu.')->group(function () {
+                Route::get('/', [WfgKempuController::class, 'index'])->name('index');
+                Route::get('/scan/{card}', [WfgKempuController::class, 'scan'])->name('scan');
+                Route::post('/lookup', [WfgKempuController::class, 'lookup'])->name('lookup');
+                Route::post('/confirm', [WfgKempuController::class, 'confirm'])->name('confirm');
+                Route::post('/update-reused', [WfgKempuController::class, 'updateReused'])->name('update_reused');
+                Route::get('/recent-scans', [WfgKempuController::class, 'recentScans'])->name('recent_scans');
+            });
         });
     });
 
@@ -542,6 +557,16 @@ Route::middleware('auth')->group(function () {
             Route::get('/soh/getBarang', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'getBarang'])->name('soh.getBarang');
             Route::get('/soh/show/{id}', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'show'])->name('soh.show');
             Route::delete('/soh/reset-all', [App\Http\Controllers\Wpm\StockOpname\WpmStockOnHandController::class, 'resetAll'])->name('soh.reset_all');
+        });
+
+        // Kempu WPM
+        Route::prefix('kempu')->name('kempu.')->group(function () {
+            Route::get('/', [WpmKempuController::class, 'index'])->name('index');
+            Route::get('/scan/{card}', [WpmKempuController::class, 'scan'])->name('scan');
+            Route::post('/lookup', [WpmKempuController::class, 'lookup'])->name('lookup');
+            Route::post('/confirm', [WpmKempuController::class, 'confirm'])->name('confirm');
+            Route::post('/update-reused', [WpmKempuController::class, 'updateReused'])->name('update_reused');
+            Route::get('/recent-scans', [WpmKempuController::class, 'recentScans'])->name('recent_scans');
         });
     });
 
@@ -940,6 +965,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/template', [MasterKempuController::class, 'downloadTemplate'])->name('template');
             Route::post('/upload', [MasterKempuController::class, 'upload'])->name('upload');
             Route::get('/print-qr', [MasterKempuController::class, 'printQr'])->name('print-qr');
+            Route::post('/record-print', [MasterKempuController::class, 'recordPrint'])->name('record-print');
         });
 
         // Traceability & Reused 21x
@@ -952,6 +978,29 @@ Route::middleware('auth')->group(function () {
             Route::get('/scan', [KempuTraceabilityController::class, 'scanner'])->name('scan');
             Route::post('/lookup', [KempuTraceabilityController::class, 'lookup'])->name('lookup');
             Route::post('/action', [KempuTraceabilityController::class, 'processAction'])->name('action');
+        });
+
+        // QC Kempu (QC PM & QC Proses)
+        Route::prefix('qc')->name('qc.')->group(function () {
+            Route::get('/', [KempuQcController::class, 'index'])->name('index');
+            Route::get('/scan/{type}', [KempuQcController::class, 'scan'])->name('scan');
+            Route::post('/lookup', [KempuQcController::class, 'lookup'])->name('lookup');
+            Route::post('/decision', [KempuQcController::class, 'decision'])->name('decision');
+        });
+
+        // Engineering Kempu (Repair)
+        Route::prefix('eng')->name('eng.')->group(function () {
+            Route::get('/scan', [KempuEngController::class, 'scan'])->name('scan');
+            Route::post('/lookup', [KempuEngController::class, 'lookup'])->name('lookup');
+            Route::post('/decision', [KempuEngController::class, 'decision'])->name('decision');
+        });
+
+        // Produksi Kempu
+        Route::prefix('produksi')->name('produksi.')->group(function () {
+            Route::get('/', [KempuProduksiController::class, 'index'])->name('index');
+            Route::get('/scan/{cardKey}', [KempuProduksiController::class, 'scan'])->name('scan');
+            Route::post('/lookup', [KempuProduksiController::class, 'lookup'])->name('lookup');
+            Route::post('/confirm', [KempuProduksiController::class, 'confirm'])->name('confirm');
         });
     });
 });
