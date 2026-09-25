@@ -62,31 +62,37 @@
                 <p class="text-muted">Pilih jenis data yang akan diunggah ke sistem</p>
             </div>
 
-            @if (isset($otherTemp) && $otherTemp)
-                <div class="row justify-content-center mb-4">
-                    <div class="col-12 col-md-10 col-lg-8">
-                        <div class="alert alert-warning border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between p-3" role="alert">
-                            <div class="d-flex align-items-center">
-                                <i class="mdi mdi-alert-circle-outline fs-24 me-3 text-warning"></i>
-                                <div>
-                                    <h6 class="alert-heading mb-1 fw-bold">Ada Antrian Upload Sedang Berjalan</h6>
-                                    <p class="mb-0 text-muted small">
-                                        Data upload No. SPB <strong>{{ $otherTemp->no_spb }}</strong> oleh <strong>{{ $otherTemp->createdBy->nama_lengkap ?? $otherTemp->createdBy->username ?? 'User Lain' }}</strong> belum selesai ditentukan lokasinya.
-                                    </p>
+            @can('permission', 'wrm-inventory-force-upload')
+                @if (isset($otherTemp) && $otherTemp)
+                    <div class="row justify-content-center mb-4">
+                        <div class="col-12 col-md-10 col-lg-8">
+                            <div class="alert alert-warning border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between p-3"
+                                role="alert">
+                                <div class="d-flex align-items-center">
+                                    <i class="mdi mdi-alert-circle-outline fs-24 me-3 text-warning"></i>
+                                    <div>
+                                        <h6 class="alert-heading mb-1 fw-bold">Ada Antrian Upload Sedang Berjalan</h6>
+                                        <p class="mb-0 text-muted small">
+                                            Data upload No. SPB <strong>{{ $otherTemp->no_spb }}</strong> oleh
+                                            <strong>{{ $otherTemp->createdBy->nama_lengkap ?? ($otherTemp->createdBy->username ?? 'User Lain') }}</strong>
+                                            belum selesai ditentukan lokasinya.
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="d-flex gap-2 ms-auto mt-2 mt-sm-0 flex-shrink-0">
-                                <a href="{{ route('wrm.inventory.select-location') }}" class="btn btn-warning btn-sm fw-medium shadow-sm">
-                                    <i class="mdi mdi-map-marker-path me-1"></i>Lanjutkan Lokasi
-                                </a>
-                                <button type="button" class="btn btn-outline-danger btn-sm" id="btnCancelOtherQueue">
-                                    <i class="mdi mdi-close-circle-outline me-1"></i>Batalkan Antrian
-                                </button>
+                                <div class="d-flex gap-2 ms-auto mt-2 mt-sm-0 flex-shrink-0">
+                                    <a href="{{ route('wrm.inventory.select-location') }}"
+                                        class="btn btn-warning btn-sm fw-medium shadow-sm">
+                                        <i class="mdi mdi-map-marker-path me-1"></i>Lanjutkan Lokasi
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" id="btnCancelOtherQueue">
+                                        <i class="mdi mdi-close-circle-outline me-1"></i>Batalkan Antrian
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            @endif
+                @endif
+            @endcan
 
             <div class="row justify-content-center g-4">
                 <!-- Inbound Gula Card -->
@@ -485,7 +491,8 @@
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Berhasil',
-                                    text: res.message ?? 'Antrian upload berhasil dibatalkan',
+                                    text: res.message ??
+                                        'Antrian upload berhasil dibatalkan',
                                     timer: 1500,
                                     showConfirmButton: false
                                 }).then(() => {
@@ -496,7 +503,8 @@
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Gagal',
-                                    text: xhr.responseJSON?.message ?? 'Terjadi kesalahan saat membatalkan'
+                                    text: xhr.responseJSON?.message ??
+                                        'Terjadi kesalahan saat membatalkan'
                                 });
                             }
                         });
