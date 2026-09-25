@@ -153,8 +153,8 @@
             /* --- A5 SLOT (HALF OF A4) --- */
             .a5-slot {
                 width: 100%;
-                height: 140mm;
-                max-height: 140mm;
+                height: 138mm;
+                max-height: 138mm;
                 box-sizing: border-box;
                 display: flex;
                 align-items: center;
@@ -245,7 +245,7 @@
             /* --- DASHED CUT LINE (GARIS POTONG) --- */
             .cut-line {
                 width: 100%;
-                height: 14px;
+                height: 11mm;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -277,15 +277,20 @@
                MODE KERTAS A5 (JIKA USER INGIN CETAK NATIVE PADA KERTAS A5)
                ======================================================== */
             body.paper-mode-a5 .sheet-a4 {
-                width: 210mm;
-                height: 148.5mm;
-                max-height: 148.5mm;
-                padding: 5mm;
+                display: contents !important;
             }
 
             body.paper-mode-a5 .a5-slot {
-                height: 100%;
-                max-height: 100%;
+                background: #ffffff;
+                width: 210mm;
+                height: 148.5mm;
+                max-height: 148.5mm;
+                box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 5mm;
+                box-sizing: border-box;
             }
 
             body.paper-mode-a5 .cut-line {
@@ -322,17 +327,21 @@
                     max-height: 288mm !important;
                     padding: 3mm 0 !important;
                     page-break-after: always !important;
+                    break-after: page !important;
                     page-break-inside: avoid !important;
+                    break-inside: avoid !important;
                     overflow: hidden !important;
                 }
 
-                body.paper-mode-a4 .sheet-a4:last-of-type {
+                body.paper-mode-a4 .sheet-a4:last-of-type,
+                body.paper-mode-a4 .sheets-container>.sheet-a4:last-child {
                     page-break-after: auto !important;
+                    break-after: auto !important;
                 }
 
                 body.paper-mode-a4 .a5-slot {
-                    height: 139mm !important;
-                    max-height: 139mm !important;
+                    height: 138mm !important;
+                    max-height: 138mm !important;
                     padding: 1mm 0 !important;
                 }
 
@@ -352,22 +361,41 @@
 
                 /* Print: Kertas Native A5 (1 Label per Lembar) */
                 body.paper-mode-a5 .sheet-a4 {
+                    display: contents !important;
+                }
+
+                body.paper-mode-a5 .cut-line {
+                    display: none !important;
+                }
+
+                body.paper-mode-a5 .a5-slot {
+                    background: #ffffff !important;
                     box-shadow: none !important;
                     width: 100% !important;
                     height: 139mm !important;
                     max-height: 139mm !important;
                     padding: 2mm 0 !important;
                     page-break-after: always !important;
+                    break-after: page !important;
                     page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    box-sizing: border-box !important;
+                    margin: 0 !important;
                 }
 
-                body.paper-mode-a5 .sheet-a4:last-of-type {
+                body.paper-mode-a5 .sheets-container>.sheet-a4:last-child>.a5-slot:last-child,
+                body.paper-mode-a5 .sheet-a4:last-of-type .a5-slot:last-of-type {
                     page-break-after: auto !important;
+                    break-after: auto !important;
                 }
 
-                body.paper-mode-a5 .a5-slot {
+                body.paper-mode-a5 .label-card {
+                    border: 3.5px solid #000000 !important;
                     height: 100% !important;
-                    max-height: 100% !important;
+                    box-shadow: none !important;
                 }
 
                 .label-watermark-meta {
@@ -505,8 +533,11 @@
                     });
                 @endforeach
 
-                // Auto trigger print jika dibuka dengan parameter auto=1
+                // Auto trigger print / preset paper jika dibuka dengan parameter url
                 const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('paper') === 'A5') {
+                    setPaperSize('A5');
+                }
                 if (urlParams.get('auto') === '1') {
                     setTimeout(() => {
                         doPrint();
