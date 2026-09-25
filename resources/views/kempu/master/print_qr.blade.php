@@ -7,6 +7,9 @@
         <title>Cetak Label QR Code Kempu</title>
         <!-- QRCode.js Library -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+        <!-- html2canvas & jsPDF for Direct PDF Export -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
         <style id="page-style">
             @page {
@@ -117,6 +120,15 @@
                 background: #059669;
             }
 
+            .btn-pdf {
+                background: #0284c7;
+                color: white;
+            }
+
+            .btn-pdf:hover {
+                background: #0369a1;
+            }
+
             .btn-close-view {
                 background: #475569;
                 color: white;
@@ -184,24 +196,36 @@
             .label-watermark-meta {
                 font-size: 12px;
                 font-style: italic;
-                font-weight: 600;
-                color: #334155;
-                letter-spacing: 0.5px;
+                font-weight: 500;
+                color: #475569;
+                letter-spacing: 0.3px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 6px;
+                gap: 10px;
                 z-index: 2;
                 position: relative;
-                margin-top: 2px;
-                background: rgba(255, 255, 255, 0.9);
-                padding: 2px 10px;
-                border-radius: 4px;
+                margin-top: 6px;
+                padding: 0;
+                line-height: 1;
+                white-space: nowrap;
+            }
+
+            .label-watermark-meta .meta-item {
+                display: inline-flex;
+                align-items: baseline;
+                gap: 4px;
+            }
+
+            .label-watermark-meta .meta-val {
+                font-weight: 700;
+                color: #0f172a;
             }
 
             .label-watermark-meta .meta-sep {
                 color: #94a3b8;
-                font-weight: 900;
+                font-weight: 700;
+                font-size: 11px;
             }
 
             .id-kempu-val {
@@ -399,12 +423,17 @@
                 }
 
                 .label-watermark-meta {
-                    color: #000000 !important;
+                    color: #333333 !important;
                     background: transparent !important;
                 }
 
-                .label-watermark-meta .meta-sep {
+                .label-watermark-meta .meta-val {
                     color: #000000 !important;
+                    font-weight: 700 !important;
+                }
+
+                .label-watermark-meta .meta-sep {
+                    color: #666666 !important;
                 }
             }
         </style>
@@ -438,6 +467,11 @@
                     &#128438; Cetak Sekarang
                 </button>
 
+                <!-- Tombol Download PDF -->
+                <button class="btn-action btn-pdf" id="btnDownloadPdf" onclick="downloadPdf()">
+                    &#128190; Download PDF
+                </button>
+
                 <!-- Tombol Kembali / Tutup -->
                 <button class="btn-action btn-close-view" onclick="window.close(); if(!window.closed) history.back();">
                     &times; Tutup
@@ -467,13 +501,13 @@
 
                             <!-- WATERMARK FOOTER METADATA -->
                             <div class="label-watermark-meta">
-                                <span><strong>Printed by:</strong> <span
+                                <span class="meta-item">Printed by: <span class="meta-val"
                                         id="print-user-{{ $kempu1->id }}">{{ $uName1 }}</span></span>
                                 <span class="meta-sep">&bull;</span>
-                                <span><strong>Date:</strong> <span
+                                <span class="meta-item">Date: <span class="meta-val"
                                         id="print-date-{{ $kempu1->id }}">{{ $tglPrint1 }}</span></span>
                                 <span class="meta-sep">&bull;</span>
-                                <span><strong>Reprint:</strong> <span
+                                <span class="meta-item">Reprint: <span class="meta-val"
                                         id="print-count-{{ $kempu1->id }}">{{ $count1 }}</span></span>
                             </div>
                         </div>
@@ -503,13 +537,13 @@
 
                                 <!-- WATERMARK FOOTER METADATA -->
                                 <div class="label-watermark-meta">
-                                    <span><strong>Printed by:</strong> <span
+                                    <span class="meta-item">Printed by: <span class="meta-val"
                                             id="print-user-{{ $kempu2->id }}">{{ $uName2 }}</span></span>
                                     <span class="meta-sep">&bull;</span>
-                                    <span><strong>Date:</strong> <span
+                                    <span class="meta-item">Date: <span class="meta-val"
                                             id="print-date-{{ $kempu2->id }}">{{ $tglPrint2 }}</span></span>
                                     <span class="meta-sep">&bull;</span>
-                                    <span><strong>Reprint:</strong> <span
+                                    <span class="meta-item">Reprint: <span class="meta-val"
                                             id="print-count-{{ $kempu2->id }}">{{ $count2 }}</span></span>
                                 </div>
                             </div>
@@ -603,7 +637,124 @@
                 }
             });
 
-            // 3. Fungsi Toggle Ukuran Kertas (A4 / A5)
+            // 3. Fungsi Download PDF Langsung (A4 / A5)
+            let isDownloadingPdf = false;
+
+            async function downloadPdf() {
+                if (isDownloadingPdf) return;
+                isDownloadingPdf = true;
+
+                const btnPdf = document.getElementById('btnDownloadPdf');
+                const originalText = btnPdf ? btnPdf.innerHTML : '';
+                if (btnPdf) {
+                    btnPdf.disabled = true;
+                    btnPdf.innerHTML = '&#9203; Menyiapkan PDF...';
+                }
+
+                try {
+                    // Catat log cetak ke database
+                    fetch("{{ route('kempu.master.record-print') }}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                        },
+                        body: JSON.stringify({
+                            ids: @json($kempuList->pluck('id'))
+                        })
+                    }).then(res => res.json()).then(data => {
+                        if (data.status && data.items) {
+                            data.items.forEach(item => {
+                                const elUser = document.getElementById(`print-user-${item.id}`);
+                                if (elUser) elUser.innerText = item.printed_by;
+                                const elDate = document.getElementById(`print-date-${item.id}`);
+                                if (elDate) elDate.innerText = item.printed_at;
+                                const elCount = document.getElementById(`print-count-${item.id}`);
+                                if (elCount) elCount.innerText = item.print_count;
+                            });
+                        }
+                    }).catch(e => console.error("Gagal catat log cetak:", e));
+
+                    if (!window.jspdf || !window.html2canvas) {
+                        throw new Error("Library PDF belum siap dimuat.");
+                    }
+
+                    const {
+                        jsPDF
+                    } = window.jspdf;
+                    const isA5 = document.body.classList.contains('paper-mode-a5');
+                    const nowStr = new Date().toISOString().slice(0, 10);
+
+                    if (isA5) {
+                        const pdf = new jsPDF({
+                            orientation: 'landscape',
+                            unit: 'mm',
+                            format: 'a5'
+                        });
+                        const slots = document.querySelectorAll('.a5-slot');
+                        for (let i = 0; i < slots.length; i++) {
+                            if (btnPdf) btnPdf.innerHTML = `&#9203; Memproses PDF (${i + 1}/${slots.length})...`;
+                            const slot = slots[i];
+                            const canvas = await html2canvas(slot, {
+                                scale: 2,
+                                useCORS: true,
+                                backgroundColor: '#ffffff',
+                                logging: false,
+                                onclone: (clonedDoc) => {
+                                    clonedDoc.querySelectorAll('.a5-slot').forEach(el => {
+                                        el.style.boxShadow = 'none';
+                                        el.style.margin = '0';
+                                    });
+                                }
+                            });
+                            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                            if (i > 0) pdf.addPage('a5', 'landscape');
+                            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 148.5);
+                        }
+                        pdf.save(`QR_Kempu_A5_${nowStr}.pdf`);
+                    } else {
+                        const pdf = new jsPDF({
+                            orientation: 'portrait',
+                            unit: 'mm',
+                            format: 'a4'
+                        });
+                        const sheets = document.querySelectorAll('.sheet-a4');
+                        for (let i = 0; i < sheets.length; i++) {
+                            if (btnPdf) btnPdf.innerHTML = `&#9203; Memproses PDF (${i + 1}/${sheets.length})...`;
+                            const sheet = sheets[i];
+                            const canvas = await html2canvas(sheet, {
+                                scale: 2,
+                                useCORS: true,
+                                backgroundColor: '#ffffff',
+                                logging: false,
+                                onclone: (clonedDoc) => {
+                                    clonedDoc.querySelectorAll('.sheet-a4').forEach(el => {
+                                        el.style.boxShadow = 'none';
+                                        el.style.margin = '0';
+                                    });
+                                }
+                            });
+                            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                            if (i > 0) pdf.addPage('a4', 'portrait');
+                            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        }
+                        pdf.save(`QR_Kempu_A4_${nowStr}.pdf`);
+                    }
+                } catch (err) {
+                    console.error("Gagal mendownload PDF:", err);
+                    alert("Gagal mengekspor PDF langsung: " + (err.message || err) +
+                        "\n\nTips: Anda juga bisa menggunakan tombol 'Cetak Sekarang' dan pilih 'Save as PDF'.");
+                } finally {
+                    if (btnPdf) {
+                        btnPdf.disabled = false;
+                        btnPdf.innerHTML = originalText;
+                    }
+                    isDownloadingPdf = false;
+                }
+            }
+
+            // 4. Fungsi Toggle Ukuran Kertas (A4 / A5)
             function setPaperSize(size) {
                 const pageStyle = document.getElementById('page-style');
                 const btnA4 = document.getElementById('btnModeA4');
