@@ -568,14 +568,14 @@
                                 <td>${d.barcode ?? '-'}</td>
                                 <td>${d.no_spb ?? '-'}</td>
                                 <td style="font-size: 11px;">${d.supplier ?? '-'}</td>
-                                <td>${d.pallet_id}</td>
-                                <td>${d.barang.mid}</td>
-                                <td style="font-size: 11px;">${d.barang.nama_barang}</td>
+                                <td>${d.pallet_id ?? '-'}</td>
+                                <td>${d.barang?.mid ?? '-'}</td>
+                                <td style="font-size: 11px;">${d.barang?.nama_barang ?? '-'}</td>
                                 <td>${d.group ?? '-'}</td>
                                 <td>${numberFormat(d.qty)}</td>
                                 <td>${statusBadge}</td>
                                 <td>${driverName}</td>
-                                <td style="font-size: 11px;">${d.bin.location.plant} - ${d.bin.location.gudang} - ${d.bin.location.bin} - (${d.bin.kolom}.${d.bin.level})</td>
+                                <td style="font-size: 11px;">${d.bin?.location ? `${d.bin.location.plant} - ${d.bin.location.gudang} - ${d.bin.location.bin} - (${d.bin.kolom}.${d.bin.level})` : (d.bin ? `(${d.bin.kolom}.${d.bin.level})` : '-')}</td>
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-danger btnCancelItem"
                                         data-id="${d.id}"

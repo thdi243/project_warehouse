@@ -1019,8 +1019,8 @@
                                     <td class="text-end">${numberFormat(d.qty)}</td>
                                     <td class="text-end">${numberFormat(d.qty_zak)} ${d.uom_zak ?? ''}</td>
                                     <td class='text-center'>${badgeStatus}</td>
-                                    <td>${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}</td>
-                                    <td>${d.supplier}</td>
+                                    <td>${d.bin?.location ? `${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}` : (d.bin ? `${d.bin.kolom}.${d.bin.level}` : '-')}</td>
+                                    <td>${d.supplier ?? '-'}</td>
                                     <td>${d.incoming_date}</td>
                                     <td>${d.catatan ?? ''}</td>
                                     <td>${d.expired_date ?? ''}</td>
