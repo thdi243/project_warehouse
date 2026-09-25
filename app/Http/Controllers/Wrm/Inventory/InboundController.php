@@ -187,9 +187,14 @@ class InboundController extends Controller
 
         // Get all available bins grouped by zona
         $availableBins = MasterBinModel::with('location')
+            ->whereHas('location')
+            ->whereNotNull('loc_id')
             ->whereNotIn('id', $usedBinIds)
             ->get()
             ->filter(function ($bin) use ($occupiedColumnKeys) {
+                if (!$bin->location || !$bin->loc_id) {
+                    return false;
+                }
                 $key = $bin->loc_id . '-' . $bin->kolom;
                 return !in_array($key, $occupiedColumnKeys);
             });
@@ -203,6 +208,9 @@ class InboundController extends Controller
         // Check each location (physical rack) whether it can accommodate the SPB pallet
         foreach ($locationsGrouped as $locId => $bins) {
             $first = $bins->first();
+            if (!$first || !$first->location) {
+                continue;
+            }
             $location = $first->location;
 
             // ATURAN BARU (Rule 3): Hanya tampilkan jika kapasitas mencukupi untuk SEMUA barang dalam SPB
@@ -330,6 +338,9 @@ class InboundController extends Controller
 
         $locations = $query->limit(200)->get()->map(function ($bin) {
             $loc = $bin->location;
+            if (!$loc) {
+                return null;
+            }
             $text = "{$loc->plant} - {$loc->s_loc} - {$loc->gudang} - {$loc->zona} - {$loc->bin} - ({$bin->kolom}.{$bin->level})";
 
             return [
@@ -345,7 +356,7 @@ class InboundController extends Controller
                     'level' => $bin->level,
                 ]
             ];
-        });
+        })->filter()->values();
 
         return response()->json([
             'status' => true,
@@ -1473,6 +1484,7 @@ class InboundController extends Controller
 
         // ATURAN BARU (Rule 1 & Rule 3): Cari hanya di zona yang dipilih DAN kolom harus murni kosong
         $bins = MasterBinModel::with('location')
+            ->whereHas('location')
             ->whereNotIn('id', $usedBinIds)
             ->where('loc_id', $locIdInput)
             ->whereNotExists(function ($q) {
@@ -1503,18 +1515,18 @@ class InboundController extends Controller
         foreach ($allocated as $alloc) {
             $item = $alloc['item'];
             $bin = $alloc['bin'];
-            $location = $bin->location;
+            $location = $bin ? $bin->location : null;
 
             $result[] = [
                 'temp_id' => $item->id,
                 'no_spb' => $item->no_spb,
                 'pallet_id' => $item->pallet_id,
                 'loc_id' => $bin->id,
-                'plant' => $location->plant,
-                's_loc' => $location->s_loc,
-                'gudang' => $location->gudang,
-                'zona' => $location->zona,
-                'bin_id' => $location->bin,
+                'plant' => $location ? $location->plant : '-',
+                's_loc' => $location ? $location->s_loc : '-',
+                'gudang' => $location ? $location->gudang : '-',
+                'zona' => $location ? $location->zona : '-',
+                'bin_id' => $location ? $location->bin : '-',
                 'bin_coordinate' => "$bin->kolom.$bin->level",
             ];
         }
