@@ -182,7 +182,7 @@
 
             /* --- WATERMARK FOOTER DETAILS --- */
             .label-watermark-meta {
-                font-size: 10px;
+                font-size: 12px;
                 font-style: italic;
                 font-weight: 600;
                 color: #334155;
@@ -205,7 +205,7 @@
             }
 
             .id-kempu-val {
-                font-size: 64px;
+                font-size: 84px;
                 font-weight: 1000;
                 color: #000000;
                 letter-spacing: 4px;
@@ -453,7 +453,7 @@
 
                     <!-- GARIS POTONG A5 (DI TENGAH LEMBAR A4) -->
                     <div class="cut-line">
-                        <span>&#9986; Garis Potong (Ukuran A5: 210 &times; 148.5 mm)</span>
+                        <span></span>
                     </div>
 
                     <!-- LABEL 2 (BAGIAN BAWAH - UKURAN A5) -->
