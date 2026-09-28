@@ -263,6 +263,33 @@
                                 Tentukan keputusan: <strong>OK (Lolos)</strong>, <strong>Hold (Tahan)</strong>, atau
                                 <strong>Tidak OK (Reject)</strong>.</div>
                         </div>
+                    @elseif ($card['key'] === 'qc-force')
+                        <div class="alert alert-danger py-2 px-3 mb-3 fs-12 d-flex align-items-start gap-2 border-danger-subtle bg-danger-subtle text-danger">
+                            <i class="ri-alert-line fs-18 flex-shrink-0 mt-1"></i>
+                            <div>
+                                <strong>Mode Force Scan (Otoritas Khusus):</strong><br>
+                                Fitur ini mengizinkan Anda menentukan status keputusan QC kempu kapanpun &amp; dimanapun secara manual tanpa terhalang urutan alur normal.
+                            </div>
+                        </div>
+
+                        <!-- Dropdown Pilihan Keputusan Force Scan -->
+                        <div class="mb-3">
+                            <label for="modalForceTarget" class="form-label fs-12 fw-bold text-danger mb-1">
+                                <i class="ri-git-branch-line me-1"></i> Pilih Keputusan / Status Target:
+                            </label>
+                            <select class="form-select form-select-lg border-danger fw-semibold fs-14" id="modalForceTarget">
+                                <optgroup label="── Keputusan Release (Lolos) ──">
+                                    <option value="RELEASE_PM">&#x1F7E2; Lolos QC PM (Release ke WPM)</option>
+                                    <option value="RELEASE_PRE_CUCI">&#x1F7E2; Lolos Pre-Cuci (+1 Reused, Siap Cuci)</option>
+                                    <option value="RELEASE_AFTER_FILLING">&#x1F7E2; Lolos After Filling (Siap Kirim WFG)</option>
+                                </optgroup>
+                                <optgroup label="── Keputusan Khusus / Masalah ──">
+                                    <option value="HOLD">&#x1F7E1; Tahan / Hold (Evaluasi)</option>
+                                    <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
+                                    <option value="SCRAP">&#x26AB; Afkir / Rusak Berat (Scrap)</option>
+                                </optgroup>
+                            </select>
+                        </div>
                     @endif
 
                     <!-- Notes Input (Opsional) -->
@@ -276,7 +303,14 @@
                     </div>
 
                     <!-- Action Decision Buttons -->
-                    @if ($card['key'] === 'qc-after-filling')
+                    @if ($card['key'] === 'qc-force')
+                        <div class="pt-2 border-top">
+                            <button type="button" class="btn btn-danger btn-lg w-100 py-3 fw-bold fs-15 shadow-sm"
+                                id="btnDecisionForce">
+                                <i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision
+                            </button>
+                        </div>
+                    @elseif ($card['key'] === 'qc-after-filling')
                         <div class="row g-2 pt-2 border-top">
                             <div class="col-4">
                                 <button type="button" class="btn btn-success btn-lg w-100 py-3 fw-bold fs-14 shadow-sm"
@@ -643,6 +677,10 @@
                 }
                 $('#btnDecisionNotOk').prop('disabled', false).html(
                     '<i class="ri-close-circle-line me-1"></i> Tidak OK');
+                if ($('#btnDecisionForce').length) {
+                    $('#btnDecisionForce').prop('disabled', false).html(
+                        '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
+                }
 
                 decisionModal.show();
             }
@@ -654,17 +692,22 @@
             });
 
             // Eksekusi Keputusan QC
-            function submitDecision(decision) {
+            function submitDecision(decision, forceTarget = null) {
                 if (!currentKempu) return;
 
                 const btnOk = $('#btnDecisionOk');
                 const btnHold = $('#btnDecisionHold');
                 const btnNotOk = $('#btnDecisionNotOk');
+                const btnForce = $('#btnDecisionForce');
+
                 btnOk.prop('disabled', true);
                 if (btnHold.length) btnHold.prop('disabled', true);
                 btnNotOk.prop('disabled', true);
+                if (btnForce.length) btnForce.prop('disabled', true);
 
-                if (decision === 'OK') {
+                if (decision === 'FORCE') {
+                    if (btnForce.length) btnForce.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
+                } else if (decision === 'OK') {
                     btnOk.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
                 } else if (decision === 'HOLD') {
                     btnHold.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
@@ -672,16 +715,22 @@
                     btnNotOk.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
                 }
 
+                const postData = {
+                    _token: "{{ csrf_token() }}",
+                    id_kempu: currentKempu.id_kempu,
+                    qc_type: QC_TYPE,
+                    decision: (QC_TYPE === 'qc-force' ? (forceTarget || 'OK') : decision),
+                    notes: $('#modalInputNotes').val().trim()
+                };
+
+                if (QC_TYPE === 'qc-force' && forceTarget) {
+                    postData.force_target = forceTarget;
+                }
+
                 $.ajax({
                     url: "{{ route('kempu.qc.decision') }}",
                     method: "POST",
-                    data: {
-                        _token: "{{ csrf_token() }}",
-                        id_kempu: currentKempu.id_kempu,
-                        qc_type: QC_TYPE,
-                        decision: decision,
-                        notes: $('#modalInputNotes').val().trim()
-                    },
+                    data: postData,
                     success: function(res) {
                         btnOk.prop('disabled', false).html(
                             '<i class="ri-checkbox-circle-line me-1"></i> Release (OK)');
@@ -689,6 +738,8 @@
                             '<i class="ri-pause-circle-line me-1"></i> Hold');
                         btnNotOk.prop('disabled', false).html(
                             '<i class="ri-close-circle-line me-1"></i> Tidak OK');
+                        if (btnForce.length) btnForce.prop('disabled', false).html(
+                            '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
 
                         if (res.status) {
                             decisionModal.hide();
@@ -698,7 +749,11 @@
                             let label = 'Release (OK)';
                             let iconType = 'success';
 
-                            if (decision === 'HOLD') {
+                            if (QC_TYPE === 'qc-force') {
+                                badgeColor = 'primary';
+                                label = 'FORCE SCAN: ' + (res.data.new_status || 'Berhasil');
+                                iconType = 'success';
+                            } else if (decision === 'HOLD') {
                                 badgeColor = 'warning text-dark';
                                 label = 'HOLD (Tahan)';
                                 iconType = 'warning';
@@ -710,7 +765,7 @@
 
                             let infoReused = '';
                             if (res.data && res.data.reused_count !== undefined && (QC_TYPE ===
-                                    'qc-pre-cuci' || QC_TYPE === 'qc-proses')) {
+                                    'qc-pre-cuci' || QC_TYPE === 'qc-proses' || QC_TYPE === 'qc-force')) {
                                 infoReused =
                                     `<br><span class="badge bg-primary fs-12 mt-2 px-3 py-1">Siklus Reused: ${res.data.reused_count}/21x</span>`;
                             }
@@ -719,7 +774,7 @@
                                 icon: iconType,
                                 title: `Hasil QC: ${label}`,
                                 html: `Kempu <b>${currentKempu.id_kempu}</b> berhasil diperbarui ke status:<br><span class="badge bg-${badgeColor} fs-13 mt-2 px-3 py-2">${res.data.new_status}</span>${infoReused}`,
-                                timer: 2200,
+                                timer: 2500,
                                 timerProgressBar: true,
                                 showConfirmButton: false
                             });
@@ -735,6 +790,8 @@
                             '<i class="ri-pause-circle-line me-1"></i> Hold');
                         btnNotOk.prop('disabled', false).html(
                             '<i class="ri-close-circle-line me-1"></i> Tidak OK');
+                        if (btnForce.length) btnForce.prop('disabled', false).html(
+                            '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
                         playBeep('error');
 
                         let msg = 'Terjadi kesalahan server saat menyimpan hasil QC.';
@@ -759,6 +816,12 @@
             // Tombol Decision Tidak OK
             $('#btnDecisionNotOk').on('click', function() {
                 submitDecision('NOT_OK');
+            });
+
+            // Tombol Decision Force
+            $('#btnDecisionForce').on('click', function() {
+                const target = $('#modalForceTarget').val();
+                submitDecision('FORCE', target);
             });
 
             // Inisialisasi awal
