@@ -202,6 +202,39 @@
                 </div>
             </div>
 
+            <!-- Charts Row -->
+            <div class="row g-3 mb-4">
+                <!-- Chart 1: Distribusi Lokasi Kempu -->
+                <div class="col-xl-6 col-lg-6">
+                    <div class="card shadow-sm border-0 h-100 mb-0">
+                        <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between py-3">
+                            <h5 class="card-title mb-0 fs-14 fw-bold">
+                                <i class="ri-pie-chart-2-line text-primary me-1"></i> Distribusi Kempu per Lokasi
+                            </h5>
+                            <span class="badge bg-light text-muted border fs-11">Semua Kempu</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="chartLocationDistribution" style="min-height: 290px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Siklus Reused Breakdown -->
+                <div class="col-xl-6 col-lg-6">
+                    <div class="card shadow-sm border-0 h-100 mb-0">
+                        <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between py-3">
+                            <h5 class="card-title mb-0 fs-14 fw-bold">
+                                <i class="ri-bar-chart-grouped-line text-success me-1"></i> Distribusi Siklus Reused (Maks. 21x)
+                            </h5>
+                            <span class="badge bg-light text-muted border fs-11">Kempu Aktif</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="chartReusedDistribution" style="min-height: 290px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Filter & Action Bar -->
             <div class="card shadow-sm border-0 mb-3">
                 <div class="card-body">
@@ -356,6 +389,145 @@
         $(document).ready(function() {
             let allData = [];
             let filteredData = [];
+            let chartLocation = null;
+            let chartReused = null;
+
+            // Inisialisasi Charts
+            function initCharts(stats) {
+                if (!stats || !stats.charts) return;
+
+                // 1. Chart Lokasi (Donut)
+                const locData = stats.charts.locations || { labels: [], series: [] };
+                const locOptions = {
+                    series: locData.series || [],
+                    labels: locData.labels || [],
+                    chart: {
+                        type: 'donut',
+                        height: 290,
+                        toolbar: { show: false }
+                    },
+                    colors: ['#4f46e5', '#f59e0b', '#2563eb', '#84cc16', '#0d9488', '#9333ea', '#ea580c', '#dc2626'],
+                    legend: {
+                        position: 'bottom',
+                        horizontalAlign: 'center',
+                        fontSize: '12px',
+                        markers: { radius: 12 }
+                    },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '65%',
+                                labels: {
+                                    show: true,
+                                    total: {
+                                        show: true,
+                                        label: 'Total Kempu',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        color: '#64748b',
+                                        formatter: function(w) {
+                                            return w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    dataLabels: { enabled: false },
+                    stroke: { width: 2, colors: ['#ffffff'] },
+                    tooltip: {
+                        y: {
+                            formatter: function(val) {
+                                return val + ' kempu';
+                            }
+                        }
+                    }
+                };
+
+                if (chartLocation) {
+                    chartLocation.destroy();
+                }
+                const locEl = document.querySelector("#chartLocationDistribution");
+                if (locEl) {
+                    chartLocation = new ApexCharts(locEl, locOptions);
+                    chartLocation.render();
+                }
+
+                // 2. Chart Siklus Reused (Bar)
+                const reusedData = stats.charts.reused || { labels: [], series: [] };
+                const reusedOptions = {
+                    series: [{
+                        name: 'Jumlah Kempu',
+                        data: reusedData.series || []
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 290,
+                        toolbar: { show: false }
+                    },
+                    plotOptions: {
+                        bar: {
+                            distributed: true,
+                            borderRadius: 6,
+                            columnWidth: '50%',
+                            dataLabels: { position: 'top' }
+                        }
+                    },
+                    colors: ['#10b981', '#06b6d4', '#3b82f6', '#f59e0b', '#ef4444'],
+                    dataLabels: {
+                        enabled: true,
+                        offsetY: -20,
+                        style: {
+                            fontSize: '12px',
+                            colors: ["#304758"]
+                        }
+                    },
+                    legend: { show: false },
+                    xaxis: {
+                        categories: reusedData.labels || [],
+                        labels: {
+                            style: { fontSize: '11px' }
+                        }
+                    },
+                    yaxis: {
+                        title: { text: 'Jumlah Kempu' },
+                        labels: {
+                            formatter: function(val) {
+                                return Math.round(val);
+                            }
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: function(val) {
+                                return val + ' kempu';
+                            }
+                        }
+                    }
+                };
+
+                if (chartReused) {
+                    chartReused.destroy();
+                }
+                const reusedEl = document.querySelector("#chartReusedDistribution");
+                if (reusedEl) {
+                    chartReused = new ApexCharts(reusedEl, reusedOptions);
+                    chartReused.render();
+                }
+            }
+
+            function fetchStats() {
+                $.ajax({
+                    url: "{{ route('kempu.traceability.stats') }}",
+                    type: "GET",
+                    dataType: "json",
+                    success: function(res) {
+                        if (res.status && res.data) {
+                            initCharts(res.data);
+                        }
+                    }
+                });
+            }
 
             // Load Data
             function loadData() {
@@ -382,6 +554,7 @@
                             allData = res.data;
                             applyClientFilter();
                             updateStatistics(allData);
+                            fetchStats();
                         } else {
                             renderEmpty('Gagal memuat data kempu.');
                         }

@@ -252,5 +252,12 @@ Route::prefix('kempu')->name('api.kempu.')->group(function () {
         Route::post('/lookup', [KempuEngController::class, 'lookup'])->name('lookup');
         Route::post('/decision', [KempuEngController::class, 'decision'])->name('decision');
     });
+
+    // 4. API Traceability & Dashboard Kempu
+    Route::prefix('traceability')->name('traceability.')->group(function () {
+        Route::get('/stats', [\App\Http\Controllers\Kempu\KempuTraceabilityController::class, 'getDashboardStats'])->name('stats');
+        Route::get('/data', [\App\Http\Controllers\Kempu\KempuTraceabilityController::class, 'getData'])->name('data');
+        Route::get('/history/{id}', [\App\Http\Controllers\Kempu\KempuTraceabilityController::class, 'history'])->name('history');
+    });
 });
 

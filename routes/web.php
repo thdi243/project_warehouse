@@ -972,6 +972,7 @@ Route::middleware('auth')->group(function () {
         // Traceability & Reused 21x
         Route::prefix('traceability')->name('traceability.')->group(function () {
             Route::get('/', [KempuTraceabilityController::class, 'index'])->name('index');
+            Route::get('/stats', [KempuTraceabilityController::class, 'getDashboardStats'])->name('stats');
             Route::get('/data', [KempuTraceabilityController::class, 'getData'])->name('data');
             Route::get('/history/{id}', [KempuTraceabilityController::class, 'history'])->name('history');
         });

@@ -128,7 +128,7 @@ class KempuQcController extends Controller
             ],
             'qc-after-filling' => [
                 'key'         => 'qc-after-filling',
-                'title'       => 'After Filling',
+                'title'       => 'Cek After Filling',
                 'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Reject)',
                 'description' => 'Pemeriksaan kempu setelah proses Scan 1 Filling. Tentukan status Lolos (OK), Tahan (Hold), atau Tidak OK (Reject).',
                 'icon'        => 'ri-flask-line',
@@ -222,7 +222,7 @@ class KempuQcController extends Controller
                 'cards'               => [
                     'biasa' => [
                         'key'         => 'biasa',
-                        'title'       => 'Pengecekan Biasa',
+                        'title'       => 'Cek Incoming',
                         'subtitle'    => 'Scan Satu per Satu',
                         'description' => 'Pemeriksaan kempu secara individual menggunakan camera scanner atau barcode scanner (Keputusan OK / Reject per kempu).',
                         'count'       => $totalQcPmPending,
@@ -230,7 +230,7 @@ class KempuQcController extends Controller
                     ],
                     'bulk' => [
                         'key'         => 'bulk',
-                        'title'       => 'Pengecekan Massal Incoming',
+                        'title'       => 'Cek Massal Incoming',
                         'subtitle'    => 'Pemeriksaan Masal Berdasarkan No SPB',
                         'description' => 'Scan salah satu barcode kempu untuk menarik seluruh kempu dalam SPB incoming terkait, lalu tentukan keputusan secara serentak.',
                         'count'       => $totalSpbPending,
@@ -286,7 +286,7 @@ class KempuQcController extends Controller
                     ],
                     'qc-after-filling' => [
                         'key'         => 'qc-after-filling',
-                        'title'       => 'After Filling',
+                        'title'       => 'Cek After Filling',
                         'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Reject)',
                         'description' => 'Pemeriksaan kempu setelah pengisian muatan (Scan 1 Filling).',
                         'count'       => $totalAfterFillingPending,
@@ -316,7 +316,7 @@ class KempuQcController extends Controller
     }
 
     /**
-     * Halaman Menu Utama QC PM (Pengecekan Biasa, Cek Incoming Bulk, & Force Scan)
+     * Halaman Menu Utama QC PM (Cek Incoming, Cek Incoming Bulk, & Force Scan)
      */
     public function pmIndex()
     {
@@ -344,7 +344,7 @@ class KempuQcController extends Controller
         $cards = [
             'biasa' => [
                 'key'         => 'biasa',
-                'title'       => 'Pengecekan Biasa',
+                'title'       => 'Cek Incoming',
                 'subtitle'    => 'Scan Satu per Satu',
                 'description' => 'Pemeriksaan kempu secara individual menggunakan camera scanner atau barcode scanner (Keputusan OK / Reject per kempu).',
                 'icon'        => 'ri-qr-scan-2-line',
@@ -355,7 +355,7 @@ class KempuQcController extends Controller
             ],
             'bulk' => [
                 'key'         => 'bulk',
-                'title'       => 'Pengecekan Massal Incoming',
+                'title'       => 'Cek Massal Incoming',
                 'subtitle'    => 'Pemeriksaan Masal Berdasarkan No SPB',
                 'description' => 'Scan salah satu barcode kempu untuk menarik seluruh kempu dalam SPB incoming terkait, lalu tentukan keputusan secara serentak.',
                 'icon'        => 'ri-stack-line',
@@ -419,7 +419,7 @@ class KempuQcController extends Controller
             ],
             'qc-after-filling' => [
                 'key'         => 'qc-after-filling',
-                'title'       => 'After Filling',
+                'title'       => 'Cek After Filling',
                 'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Reject)',
                 'description' => 'Pemeriksaan kempu setelah pengisian muatan (Scan 1 Filling). Tentukan status Lolos (OK), Tahan (Hold), atau Tidak OK (Reject).',
                 'icon'        => 'ri-flask-line',
@@ -491,7 +491,7 @@ class KempuQcController extends Controller
         if (!$noSpb) {
             return response()->json([
                 'status'  => false,
-                'message' => "Kempu {$barcode} tidak memiliki No SPB terkait (bukan dari pendaftaran incoming SPB). Silakan gunakan menu 'Pengecekan Biasa'.",
+                'message' => "Kempu {$barcode} tidak memiliki No SPB terkait (bukan dari pendaftaran incoming SPB). Silakan gunakan menu 'Cek Incoming'.",
             ], 422);
         }
 
@@ -908,8 +908,14 @@ class KempuQcController extends Controller
         // Validasi keputusan per tipe QC
         if ($qcType === 'qc-force') {
             $validDecisions = [
-                'OK', 'HOLD', 'NOT_OK',
-                'RELEASE_PM', 'RELEASE_PRE_CUCI', 'RELEASE_AFTER_FILLING', 'REJECT_WORKSHOP', 'SCRAP'
+                'OK',
+                'HOLD',
+                'NOT_OK',
+                'RELEASE_PM',
+                'RELEASE_PRE_CUCI',
+                'RELEASE_AFTER_FILLING',
+                'REJECT_WORKSHOP',
+                'SCRAP'
             ];
         } elseif ($qcType === 'qc-after-filling') {
             $validDecisions = ['OK', 'HOLD', 'NOT_OK'];
