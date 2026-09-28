@@ -147,7 +147,7 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 3. Cek jika status masih awal (REGISTERED, QC_PM_PENDING, QC_PM_RELEASE, GR_COMPLETED) dan belum pernah melewati siklus WFG/PAS
+                // 3. Khusus kempu baru: Cek jika status masih awal (REGISTERED, QC_PM_PENDING, QC_PM_RELEASE, GR_COMPLETED) dan belum pernah melewati siklus WFG/PAS
                 $initialStatuses = [
                     'registered',
                     strtolower(MasterKempuModel::STATUS_REGISTERED),
@@ -156,7 +156,7 @@ class WpmKempuController extends Controller
                     strtolower(MasterKempuModel::STATUS_QC_PM_PASSED),
                     strtolower(MasterKempuModel::STATUS_GR_COMPLETED),
                 ];
-                if (in_array(strtolower($currentStatus), $initialStatuses) && !$kempu->hasPassedWfg()) {
+                if (!$isOldKempu && in_array(strtolower($currentStatus), $initialStatuses) && !$kempu->hasPassedWfg()) {
                     return [
                         'valid'   => false,
                         'message' => "Urutan salah: Kempu {$idKempu} masih berada pada tahap awal (status: '{$currentStatus}') dan belum pernah dikirim ke Produksi/PAS. Kempu harus melalui 'Transfer Out To Produksi' terlebih dahulu.",
