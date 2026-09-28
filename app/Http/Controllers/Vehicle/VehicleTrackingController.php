@@ -101,16 +101,24 @@ class VehicleTrackingController extends Controller
             ];
         });
 
-        // Split into queues for the dashboard tables
+        // Split into queues for the dashboard tables (exclude already completed & timbangan_out)
         $queues = [
             'WPM' => $activeTransactions->filter(function ($tx) {
-                return $tx['status'] === 'wpm' || $tx['target_location_code'] === 'C001';
+                return ($tx['status'] === 'wpm' || $tx['target_location_code'] === 'C001')
+                    && !in_array($tx['status'], ['timbangan_out', 'completed']);
             })->values(),
             'WRM' => $activeTransactions->filter(function ($tx) {
-                return $tx['status'] === 'wrm_bongkar' || $tx['target_location_code'] === 'B006';
+                return ($tx['status'] === 'wrm_bongkar' || $tx['target_location_code'] === 'B006')
+                    && !in_array($tx['status'], ['timbangan_out', 'completed']);
             })->values(),
-            'WFG' => $activeTransactions->where('status', 'wfg')->values(),
-            'SMU' => $activeTransactions->where('status', 'smu')->values(),
+            'WFG' => $activeTransactions->filter(function ($tx) {
+                return ($tx['status'] === 'wfg' || $tx['target_location_code'] === 'A001')
+                    && !in_array($tx['status'], ['timbangan_out', 'completed']);
+            })->values(),
+            'SMU' => $activeTransactions->filter(function ($tx) {
+                return ($tx['status'] === 'smu' || in_array($tx['target_location_code'], ['A002', 'SMU']))
+                    && !in_array($tx['status'], ['timbangan_out', 'completed']);
+            })->values(),
         ];
 
         // New KPIs Calculations for Gula & Import (Active transactions only)
@@ -123,22 +131,30 @@ class VehicleTrackingController extends Controller
         ];
 
         foreach ($txCollection as $tx) {
+            if ($tx->status === 'completed' || $tx->check_out_time) {
+                continue;
+            }
+
             if ($tx->item) {
                 $itemName = strtoupper(trim($tx->item->name));
-                if ($itemName === 'GULA TEBU') {
-                    $itemKPIs['gula_tebu']['ton'] += floatval($tx->qty_spb);
-                    $itemKPIs['gula_tebu']['truck']++;
-                } elseif ($itemName === 'GULA KELAPA') {
-                    $itemKPIs['gula_kelapa']['ton'] += floatval($tx->qty_spb);
-                    $itemKPIs['gula_kelapa']['truck']++;
-                } elseif ($itemName === 'GULA KELAPA GRADE B') {
-                    $itemKPIs['gula_kelapa_grade_b']['ton'] += floatval($tx->qty_spb);
+                $rawQty = floatval($tx->qty_spb);
+                // Konversi KG ke TON jika nilai >= 100 (misal 10000 kg -> 10 ton)
+                $tonValue = $rawQty >= 100 ? ($rawQty / 1000) : $rawQty;
+
+                if (str_contains($itemName, 'GULA KELAPA') && (str_contains($itemName, 'GRADE B') || str_ends_with($itemName, ' B'))) {
+                    $itemKPIs['gula_kelapa_grade_b']['ton'] += $tonValue;
                     $itemKPIs['gula_kelapa_grade_b']['truck']++;
-                } elseif ($itemName === 'GULA PASIR') {
-                    $itemKPIs['gula_pasir']['ton'] += floatval($tx->qty_spb);
+                } elseif (str_contains($itemName, 'GULA KELAPA')) {
+                    $itemKPIs['gula_kelapa']['ton'] += $tonValue;
+                    $itemKPIs['gula_kelapa']['truck']++;
+                } elseif (str_contains($itemName, 'GULA TEBU')) {
+                    $itemKPIs['gula_tebu']['ton'] += $tonValue;
+                    $itemKPIs['gula_tebu']['truck']++;
+                } elseif (str_contains($itemName, 'GULA PASIR')) {
+                    $itemKPIs['gula_pasir']['ton'] += $tonValue;
                     $itemKPIs['gula_pasir']['truck']++;
-                } elseif ($itemName === 'IMPORT') {
-                    $itemKPIs['import']['ton'] += floatval($tx->qty_spb);
+                } elseif (str_contains($itemName, 'IMPORT')) {
+                    $itemKPIs['import']['ton'] += $tonValue;
                     $itemKPIs['import']['truck']++;
                 }
             }
@@ -146,35 +162,54 @@ class VehicleTrackingController extends Controller
 
         // Completed transactions today (for "Out" counters)
         $todayCompletedTransactions = VehicleTransaction::with(['targetLocation', 'vehicle', 'item'])
-            ->where('status', 'completed')
-            ->whereDate('check_out_time', Carbon::today())
+            ->where(function ($q) {
+                $q->where('status', 'completed')
+                  ->orWhereNotNull('check_out_time');
+            })
+            ->where(function ($q) {
+                $q->whereDate('check_out_time', Carbon::today())
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('check_out_time')
+                          ->whereDate('updated_at', Carbon::today());
+                  });
+            })
             ->get();
 
-        $slipsheetIn = $txCollection->where('jenis', 'slipsheet')->count();
-        $slipsheetOut = $todayCompletedTransactions->where('jenis', 'slipsheet')->count();
-
-        $curahIn = $txCollection->where('jenis', 'curah')->count();
-        $curahOut = $todayCompletedTransactions->where('jenis', 'curah')->count();
-
-        $smuIn = $txCollection->filter(function ($tx) {
-            return $tx->targetLocation && $tx->targetLocation->s_loc === 'SMU';
+        $slipsheetIn = $activeTransactions->filter(function ($tx) {
+            return strtolower(trim($tx['jenis'] ?? '')) === 'slipsheet'
+                && !in_array($tx['status'], ['completed', 'timbangan_out']);
         })->count();
+        $slipsheetOut = $todayCompletedTransactions->filter(function ($tx) {
+            return strtolower(trim($tx->jenis ?? '')) === 'slipsheet';
+        })->count();
+
+        $curahIn = $activeTransactions->filter(function ($tx) {
+            return strtolower(trim($tx['jenis'] ?? '')) === 'curah'
+                && !in_array($tx['status'], ['completed', 'timbangan_out']);
+        })->count();
+        $curahOut = $todayCompletedTransactions->filter(function ($tx) {
+            return strtolower(trim($tx->jenis ?? '')) === 'curah';
+        })->count();
+
+        $smuIn = $queues['SMU']->count();
         $smuOut = $todayCompletedTransactions->filter(function ($tx) {
-            return $tx->targetLocation && $tx->targetLocation->s_loc === 'SMU';
+            $sLoc = $tx->targetLocation->s_loc ?? '';
+            $name = strtoupper($tx->targetLocation->name ?? '');
+            return in_array($sLoc, ['A002', 'SMU']) || str_contains($name, 'SMU');
         })->count();
 
-        $wpmIn = $txCollection->filter(function ($tx) {
-            return $tx->targetLocation && $tx->targetLocation->s_loc === 'C001';
-        })->count();
+        $wpmIn = $queues['WPM']->count();
         $wpmOut = $todayCompletedTransactions->filter(function ($tx) {
-            return $tx->targetLocation && $tx->targetLocation->s_loc === 'C001';
+            $sLoc = $tx->targetLocation->s_loc ?? '';
+            $name = strtoupper($tx->targetLocation->name ?? '');
+            return $sLoc === 'C001' || str_contains($name, 'WPM');
         })->count();
 
-        $wrmIn = $txCollection->filter(function ($tx) {
-            return $tx->targetLocation && $tx->targetLocation->s_loc === 'B006';
-        })->count();
+        $wrmIn = $queues['WRM']->count();
         $wrmOut = $todayCompletedTransactions->filter(function ($tx) {
-            return $tx->targetLocation && $tx->targetLocation->s_loc === 'B006';
+            $sLoc = $tx->targetLocation->s_loc ?? '';
+            $name = strtoupper($tx->targetLocation->name ?? '');
+            return $sLoc === 'B006' || str_contains($name, 'WRM');
         })->count();
 
         // Area counts

@@ -1408,6 +1408,9 @@
                                 }
                                 // triggerRocketLaunch();
                                 loadDashboardData();
+                            })
+                            .listen('.vehicle.status.updated', (payload) => {
+                                loadDashboardData();
                             });
                     } else {
                         setTimeout(setupRealtimeEcho, 100);
@@ -1456,6 +1459,9 @@
                 // Initial calls
                 loadDashboardData();
                 setupRealtimeEcho();
+
+                // Auto-refresh data every 5 seconds to ensure synchronization
+                setInterval(loadDashboardData, 5000);
 
                 // Launch rocket on load with a small delay
                 // setTimeout(triggerRocketLaunch, 1500);
