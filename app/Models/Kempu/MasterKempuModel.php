@@ -23,29 +23,72 @@ class MasterKempuModel extends Model
     const LOC_PAS          = 'WAREHOUSE_PAS';
     const LOC_SCRAP        = 'SCRAP';
 
-    // Konstanta Status
-    const STATUS_GR_COMPLETED       = 'GR_COMPLETED';
-    const STATUS_QC_PM_PENDING      = 'QC_PM_PENDING';
-    const STATUS_QC_PM_PASSED       = 'QC_PM_PASSED';
-    const STATUS_ENG_REPAIR         = 'ENG_REPAIR';
-    const STATUS_ENG_SCRAP_PROD     = 'ENG_SCRAP_PRODUKSI';
-    const STATUS_IN_TRANSIT_PROD    = 'IN_TRANSIT_PRODUKSI';
-    const STATUS_PROD_RECEIVED      = 'PROD_RECEIVED';
-    const STATUS_QC_PROD_PENDING    = 'QC_PROD_PENDING';
-    const STATUS_QC_PROD_PASSED     = 'QC_PROD_PASSED';
-    const STATUS_SCAN1_FILLED       = 'SCAN1_FILLED';
-    const STATUS_IN_TRANSIT_WFG     = 'IN_TRANSIT_WFG';
-    const STATUS_WFG_RECEIVED       = 'WFG_RECEIVED';
-    const STATUS_WFG_REJECT_PROD    = 'WFG_REJECT_PRODUKSI';
-    const STATUS_SCAN2_PENDING      = 'SCAN2_PENDING';
-    const STATUS_SCAN2_PASSED       = 'SCAN2_PASSED';
-    const STATUS_QC_SCAN2_PENDING   = 'QC_SCAN2_PENDING';
-    const STATUS_NTI_PRODUKSI       = 'NTI_PRODUKSI';
-    const STATUS_FG_PICKED          = 'FG_PICKED';
-    const STATUS_IN_TRANSIT_PAS     = 'IN_TRANSIT_PAS';
-    const STATUS_PAS_RECEIVED       = 'PAS_RECEIVED';
-    const STATUS_IN_TRANSIT_WPM     = 'IN_TRANSIT_WPM';
-    const STATUS_SCRAPPED           = 'SCRAPPED';
+    // =========================================================================
+    // KONSTANTA STATUS TERSTANDARISASI SESUAI FLOW & CARD SETIAP AREA
+    // =========================================================================
+
+    // 1. Master Data & Good Receipt (WPM)
+    const STATUS_REGISTERED               = 'REGISTERED';
+    const STATUS_GR_COMPLETED             = 'GR_COMPLETED';
+
+    // 2. QC Packaging Material (QC PM)
+    const STATUS_QC_PM_PENDING            = 'QC_PM_PENDING';
+    const STATUS_QC_PM_RELEASE            = 'QC_PM_RELEASE';
+
+    // 3. Engineering Workshop (Repair)
+    const STATUS_ENG_REPAIR               = 'ENG_REPAIR';
+    const STATUS_ENG_SCRAP_PROD           = 'ENG_SCRAP_PRODUKSI';
+
+    // 4. Warehouse Packaging Material (WPM) Cards
+    const STATUS_WPM_TRANSFER_OUT_PROD    = 'WPM_TRANSFER_OUT_PROD';
+    const STATUS_WPM_TRANSFER_IN_PAS      = 'WPM_TRANSFER_IN_PAS';
+
+    // 5. Produksi Cards
+    const STATUS_PROD_TRANSFER_IN_WPM     = 'PROD_TRANSFER_IN_WPM';
+    const STATUS_PROD_CUCI_KEMPU          = 'PROD_CUCI_KEMPU';
+    const STATUS_PROD_FILLING_KEMPU       = 'PROD_FILLING_KEMPU';
+    const STATUS_PROD_TRANSFER_OUT_WFG    = 'PROD_TRANSFER_OUT_WFG';
+    const STATUS_PROD_TRANSFER_IN_WFG     = 'PROD_TRANSFER_IN_WFG';
+    const STATUS_SCRAPPED                 = 'SCRAPPED';
+
+    // 6. QC Proses (Pre Cuci & After Filling)
+    const STATUS_QC_PRE_CUCI_PENDING      = 'QC_PRE_CUCI_PENDING';
+    const STATUS_QC_PRE_CUCI_RELEASE      = 'QC_PRE_CUCI_RELEASE';
+    const STATUS_QC_AFTER_FILLING_PENDING = 'QC_AFTER_FILLING_PENDING';
+    const STATUS_QC_AFTER_FILLING_RELEASE = 'QC_AFTER_FILLING_RELEASE';
+    const STATUS_QC_AFTER_FILLING_HOLD    = 'QC_AFTER_FILLING_HOLD';
+    const STATUS_QC_AFTER_FILLING_REJECT  = 'QC_AFTER_FILLING_REJECT';
+
+    // 7. Warehouse Finished Goods (WFG) Cards
+    const STATUS_WFG_TRANSFER_IN_PROD     = 'WFG_TRANSFER_IN_PROD';
+    const STATUS_WFG_PICKING_FG           = 'WFG_PICKING_FG';
+    const STATUS_WFG_TRANSFER_OUT_PAS     = 'WFG_TRANSFER_OUT_PAS';
+    const STATUS_WFG_REJECT_PROD          = 'WFG_REJECT_PRODUKSI';
+
+    // 8. Warehouse PT PAS Cards
+    const STATUS_PAS_TRANSFER_IN_BAS      = 'PAS_TRANSFER_IN_BAS';
+    const STATUS_PAS_TRANSFER_OUT_BAS     = 'PAS_TRANSFER_OUT_BAS';
+
+    // Alias Backward Compatibility
+    const STATUS_QC_PM_PASSED             = 'QC_PM_RELEASE';
+    const STATUS_QC_PRE_CUCI_PASSED       = 'QC_PRE_CUCI_RELEASE';
+    const STATUS_QC_AFTER_FILLING_PASSED  = 'QC_AFTER_FILLING_RELEASE';
+    const STATUS_IN_TRANSIT_PROD          = 'WPM_TRANSFER_OUT_PROD';
+    const STATUS_PROD_RECEIVED            = 'PROD_TRANSFER_IN_WPM';
+    const STATUS_CUCI_KEMPU_COMPLETED     = 'PROD_CUCI_KEMPU';
+    const STATUS_SCAN1_FILLED             = 'PROD_FILLING_KEMPU';
+    const STATUS_IN_TRANSIT_WFG           = 'PROD_TRANSFER_OUT_WFG';
+    const STATUS_WFG_RECEIVED             = 'WFG_TRANSFER_IN_PROD';
+    const STATUS_FG_PICKED                = 'WFG_PICKING_FG';
+    const STATUS_SCAN2_PENDING            = 'WFG_PICKING_FG';
+    const STATUS_SCAN2_PASSED             = 'WFG_PICKING_FG';
+    const STATUS_QC_SCAN2_PENDING         = 'WFG_PICKING_FG';
+    const STATUS_IN_TRANSIT_PAS           = 'WFG_TRANSFER_OUT_PAS';
+    const STATUS_PAS_RECEIVED             = 'PAS_TRANSFER_IN_BAS';
+    const STATUS_IN_TRANSIT_WPM           = 'PAS_TRANSFER_OUT_BAS';
+    const STATUS_NTI_PRODUKSI             = 'ENG_SCRAP_PRODUKSI';
+    const STATUS_QC_PROD_PENDING          = 'QC_PRE_CUCI_PENDING';
+    const STATUS_QC_PROD_PASSED           = 'QC_PRE_CUCI_RELEASE';
 
     protected $fillable = [
         'id_kempu',
@@ -224,6 +267,21 @@ class MasterKempuModel extends Model
         }
     }
 
+    public function getHasBarcodeAttribute()
+    {
+        return (bool)($this->main?->has_barcode ?? true);
+    }
+
+    public function getHasRfidAttribute()
+    {
+        return (bool)($this->main?->has_rfid ?? true);
+    }
+
+    public function getHasKitirAttribute()
+    {
+        return (bool)($this->main?->has_kitir ?? true);
+    }
+
     /**
      * Mengenali apakah ID Kempu bertipe format lama (bukan format standar 10 digit angka sistem)
      */
@@ -237,8 +295,24 @@ class MasterKempuModel extends Model
         if (empty($idKempu)) {
             return false;
         }
-        // Format baru standar sistem adalah 10 digit angka (cth: DDMMYY#### atau YYMMDD####)
-        return !preg_match('/^\d{10}$/', trim($idKempu));
+
+        $clean = trim($idKempu);
+
+        // Format baru standar sistem adalah 10 digit angka dengan awalan tanggal YYMMDD (YYMMDD####)
+        if (!preg_match('/^\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{4}$/', $clean)) {
+            return true;
+        }
+
+        $yy = (int) substr($clean, 0, 2);
+        $mm = (int) substr($clean, 2, 2);
+        $dd = (int) substr($clean, 4, 2);
+
+        // Validasi kebenaran kalender tanggal (misal menghindari tanggal tidak valid)
+        if (!checkdate($mm, $dd, 2000 + $yy)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

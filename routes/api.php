@@ -25,6 +25,9 @@ use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\Api\ApiWpmContoller;
 use App\Http\Controllers\Api\ApiVehicleController;
 use App\Http\Controllers\Api\ApiP2HController;
+use App\Http\Controllers\Kempu\KempuQcController;
+use App\Http\Controllers\Kempu\KempuProduksiController;
+use App\Http\Controllers\Kempu\KempuEngController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -206,3 +209,48 @@ Route::prefix('vehicle')->group(function () {
     Route::post('/transactions/batch', [ApiVehicleController::class, 'batch']);
     Route::get('/transaction/{nopol}', [ApiVehicleController::class, 'showByNopol']);
 });
+
+/*
+|--------------------------------------------------------------------------
+| API Kempu: QC, Produksi, dan Engineering
+| Digunakan untuk integrasi portal masing-masing divisi
+|--------------------------------------------------------------------------
+*/
+Route::prefix('kempu')->name('api.kempu.')->group(function () {
+
+    // 1. API QC Kempu (QC PM & QC Proses)
+    Route::prefix('qc')->name('qc.')->group(function () {
+        Route::get('/configs', [KempuQcController::class, 'getConfigsApi'])->name('configs');
+
+        // Sub-fitur QC PM
+        Route::prefix('pm')->name('pm.')->group(function () {
+            Route::get('/cards', [KempuQcController::class, 'pmCardsApi'])->name('cards');
+            Route::post('/bulk-lookup', [KempuQcController::class, 'bulkLookup'])->name('bulk.lookup');
+            Route::post('/bulk-decision', [KempuQcController::class, 'bulkDecision'])->name('bulk.decision');
+        });
+
+        // Sub-fitur QC Proses
+        Route::prefix('proses')->name('proses.')->group(function () {
+            Route::get('/cards', [KempuQcController::class, 'prosesCardsApi'])->name('cards');
+        });
+
+        // Pengecekan Biasa / Individual (QC PM, QC Pre Cuci, QC After Filling)
+        Route::post('/lookup', [KempuQcController::class, 'lookup'])->name('lookup');
+        Route::post('/decision', [KempuQcController::class, 'decision'])->name('decision');
+    });
+
+    // 2. API Produksi Kempu
+    Route::prefix('produksi')->name('produksi.')->group(function () {
+        Route::get('/cards', [KempuProduksiController::class, 'cardsApi'])->name('cards');
+        Route::post('/lookup', [KempuProduksiController::class, 'lookup'])->name('lookup');
+        Route::post('/confirm', [KempuProduksiController::class, 'confirm'])->name('confirm');
+    });
+
+    // 3. API Engineering Kempu (Repair)
+    Route::prefix('eng')->name('eng.')->group(function () {
+        Route::get('/summary', [KempuEngController::class, 'summaryApi'])->name('summary');
+        Route::post('/lookup', [KempuEngController::class, 'lookup'])->name('lookup');
+        Route::post('/decision', [KempuEngController::class, 'decision'])->name('decision');
+    });
+});
+

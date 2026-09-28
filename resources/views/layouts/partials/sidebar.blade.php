@@ -52,6 +52,8 @@
                                 'wrm-menu',
                                 'wpm-menu',
                                 'wcp-menu',
+                                'pas-menu',
+                                'pas-kempu',
                                 'vehicle-monitoring-menu',
                                 'master-wfg',
                                 'master-wsp',
@@ -71,6 +73,8 @@
                                     'wrm-menu',
                                     'wpm-menu',
                                     'wcp-menu',
+                                    'pas-menu',
+                                    'pas-kempu',
                                     'vehicle-monitoring-menu',
                                 ]))
                             <li class="menu-title"><span data-key="t-menu">Warehouse Menu</span></li>
@@ -82,6 +86,7 @@
                             @include('layouts.partials.sidebar.wrm')
                             @include('layouts.partials.sidebar.wpm')
                             @include('layouts.partials.sidebar.wcp')
+                            @include('layouts.partials.sidebar.pas')
                             {{-- @include('layouts.partials.sidebar.qc') --}}
                             {{-- @include('layouts.partials.sidebar.eng') --}}
                             {{-- @include('layouts.partials.sidebar.produksi') --}}
@@ -116,8 +121,9 @@
                         @include('layouts.partials.sidebar.wrm')
                         @include('layouts.partials.sidebar.wpm')
                         @include('layouts.partials.sidebar.wcp')
+                        @include('layouts.partials.sidebar.pas')
                         {{-- @include('layouts.partials.sidebar.qc') --}}
-                        {{-- @include('layouts.partials.sidebar.eng') --}}
+                        @include('layouts.partials.sidebar.eng')
                         {{-- @include('layouts.partials.sidebar.produksi') --}}
 
 

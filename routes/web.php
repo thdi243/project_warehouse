@@ -29,6 +29,7 @@ use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOpnameWfgController;
 use App\Http\Controllers\Wfg\WfgKempuController;
 use App\Http\Controllers\Wpm\WpmKempuController;
+use App\Http\Controllers\Kempu\KempuPasController;
 use App\Http\Controllers\Wrm\Inventory\InboundController;
 use App\Http\Controllers\Wrm\Inventory\MonitoringController;
 use App\Http\Controllers\Wrm\Inventory\OutboundController;
@@ -951,7 +952,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/history/data', [VehicleTrackingController::class, 'historyData'])->name('history.data');
     });
 
-    // Manajemen Kempu
+    // Traceability Scan Kempu
     Route::prefix('kempu')->name('kempu.')->group(function () {
         Route::prefix('master')->name('master.')->group(function () {
             Route::get('/', [MasterKempuController::class, 'index'])->name('index');
@@ -971,18 +972,27 @@ Route::middleware('auth')->group(function () {
         // Traceability & Reused 21x
         Route::prefix('traceability')->name('traceability.')->group(function () {
             Route::get('/', [KempuTraceabilityController::class, 'index'])->name('index');
-            Route::get('/hub', [KempuTraceabilityController::class, 'operasionalHub'])->name('hub');
-            Route::get('/station/{station}', [KempuTraceabilityController::class, 'operasionalStation'])->name('station');
             Route::get('/data', [KempuTraceabilityController::class, 'getData'])->name('data');
             Route::get('/history/{id}', [KempuTraceabilityController::class, 'history'])->name('history');
-            Route::get('/scan', [KempuTraceabilityController::class, 'scanner'])->name('scan');
-            Route::post('/lookup', [KempuTraceabilityController::class, 'lookup'])->name('lookup');
-            Route::post('/action', [KempuTraceabilityController::class, 'processAction'])->name('action');
         });
 
         // QC Kempu (QC PM & QC Proses)
         Route::prefix('qc')->name('qc.')->group(function () {
             Route::get('/', [KempuQcController::class, 'index'])->name('index');
+
+            // Sub-fitur QC PM
+            Route::prefix('pm')->name('pm.')->group(function () {
+                Route::get('/', [KempuQcController::class, 'pmIndex'])->name('index');
+                Route::get('/bulk', [KempuQcController::class, 'bulkView'])->name('bulk');
+                Route::post('/bulk-lookup', [KempuQcController::class, 'bulkLookup'])->name('bulk.lookup');
+                Route::post('/bulk-decision', [KempuQcController::class, 'bulkDecision'])->name('bulk.decision');
+            });
+
+            // Sub-fitur QC Proses
+            Route::prefix('proses')->name('proses.')->group(function () {
+                Route::get('/', [KempuQcController::class, 'prosesIndex'])->name('index');
+            });
+
             Route::get('/scan/{type}', [KempuQcController::class, 'scan'])->name('scan');
             Route::post('/lookup', [KempuQcController::class, 'lookup'])->name('lookup');
             Route::post('/decision', [KempuQcController::class, 'decision'])->name('decision');
@@ -1002,6 +1012,15 @@ Route::middleware('auth')->group(function () {
             Route::post('/lookup', [KempuProduksiController::class, 'lookup'])->name('lookup');
             Route::post('/confirm', [KempuProduksiController::class, 'confirm'])->name('confirm');
         });
+
+        // Warehouse PAS
+        Route::prefix('pas')->name('pas.')->group(function () {
+            Route::get('/', [KempuPasController::class, 'index'])->name('index');
+            Route::get('/scan/{card}', [KempuPasController::class, 'scan'])->name('scan');
+            Route::post('/lookup', [KempuPasController::class, 'lookup'])->name('lookup');
+            Route::post('/confirm', [KempuPasController::class, 'confirm'])->name('confirm');
+            Route::post('/update-reused', [KempuPasController::class, 'updateReused'])->name('update_reused');
+            Route::get('/recent-scans', [KempuPasController::class, 'recentScans'])->name('recent_scans');
+        });
     });
 });
-

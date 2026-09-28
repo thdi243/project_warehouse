@@ -23,7 +23,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('kempu.traceability.hub') }}"
+                    <a href="{{ route('kempu.traceability.index') }}"
                         class="nav-link {{ request()->routeIs('kempu.traceability.*') ? 'active' : '' }}"
                         data-key="t-trace-kempu">
                         <i class="bx bx-git-commit fs-12"></i><span>Tracebility</span>

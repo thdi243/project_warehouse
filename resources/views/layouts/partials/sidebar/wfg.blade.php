@@ -86,6 +86,15 @@
                         </div>
                     </li>
                 @endcan
+
+                @can('permission', 'wfg-kempu')
+                    <li class="nav-item">
+                        <a href="{{ route('wfg.kempu.index') }}"
+                            class="nav-link menu-link {{ request()->routeIs('wfg.kempu.*') ? 'active' : '' }}">
+                            <i class="bx bx-git-commit fs-12"></i>Scan Kempu
+                        </a>
+                    </li>
+                @endcan
             </ul>
         </div>
     </li>
