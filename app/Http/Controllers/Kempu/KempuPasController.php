@@ -163,9 +163,7 @@ class KempuPasController extends Controller
                     'transfer in from produksi',
                     'picking fg',
                     strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
-                    strtolower(MasterKempuModel::STATUS_WFG_PICKING_FG),
                     strtolower(MasterKempuModel::STATUS_WFG_RECEIVED),
-                    strtolower(MasterKempuModel::STATUS_FG_PICKED),
                 ])) {
                     return [
                         'valid'   => false,
@@ -178,8 +176,6 @@ class KempuPasController extends Controller
                     'transfer out to pas',
                     strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS),
                     strtolower(MasterKempuModel::STATUS_IN_TRANSIT_PAS),
-                    strtolower(MasterKempuModel::STATUS_FG_PICKED),
-                    strtolower(MasterKempuModel::STATUS_WFG_PICKING_FG),
                 ];
 
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {

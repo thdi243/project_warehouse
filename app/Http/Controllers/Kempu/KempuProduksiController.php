@@ -33,13 +33,10 @@ class KempuProduksiController extends Controller
                 'btn_text'        => 'Buka Scanner Transfer In WPM',
                 'target_statuses' => [
                     MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD,
+                    'WPM_TRANSFER_OUT_PROD',
                     'IN_TRANSIT_PRODUKSI',
                     'Transfer Out To Produksi',
-                    MasterKempuModel::STATUS_QC_PM_RELEASE,
-                    MasterKempuModel::STATUS_QC_PM_PASSED,
-                    'QC PM Release',
-                    'QC PM Passed',
-                    'QC PM Lolos (OK)',
+                    'Transfer Out to Produksi',
                 ],
                 'description'     => 'Penerimaan kempu dari WPM menuju Produksi. Status selanjutnya diteruskan ke pengecekan QC Pre Cuci.',
             ],
@@ -367,7 +364,78 @@ class KempuProduksiController extends Controller
         }
 
         if (!$isMatch) {
-            if ($cardKey === 'transfer-out-to-wfg') {
+            if ($cardKey === 'transfer-in-from-wpm') {
+                $qcPmPassedStatuses = [
+                    MasterKempuModel::STATUS_QC_PM_RELEASE,
+                    MasterKempuModel::STATUS_QC_PM_PASSED,
+                    'QC_PM_RELEASE',
+                    'QC_PM_PASSED',
+                    'QC PM Release',
+                    'QC PM Passed',
+                    'QC PM Lolos (OK)',
+                ];
+                foreach ($qcPmPassedStatuses as $st) {
+                    if (strcasecmp($currentStatus, $st) === 0) {
+                        return [
+                            'valid'   => false,
+                            'message' => "Alur Tidak Sesuai: Kempu {$idKempu} baru selesai QC PM (Release) dan belum dikirim oleh WPM. Kempu wajib melalui proses 'Transfer Out to Produksi' di Warehouse WPM terlebih dahulu sebelum dapat di-Transfer In di Produksi.",
+                        ];
+                    }
+                }
+
+                $qcPendingStatuses = [
+                    MasterKempuModel::STATUS_QC_PM_PENDING,
+                    'QC_PM_PENDING',
+                    'QC PM Pending',
+                    MasterKempuModel::STATUS_GR_COMPLETED,
+                    'GR_COMPLETED',
+                    MasterKempuModel::STATUS_REGISTERED,
+                    'REGISTERED',
+                    MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
+                    'WPM_TRANSFER_IN_PAS',
+                    'Transfer In From PAS',
+                ];
+                foreach ($qcPendingStatuses as $st) {
+                    if (strcasecmp($currentStatus, $st) === 0) {
+                        return [
+                            'valid'   => false,
+                            'message' => "Alur Tidak Sesuai: Kempu {$idKempu} masih berada pada tahap awal WPM/QC PM (status: '{$currentStatus}'). Kempu harus dinyatakan Lolos oleh QC PM dan melalui proses 'Transfer Out to Produksi' dari WPM terlebih dahulu.",
+                        ];
+                    }
+                }
+
+                $alreadyInProdStatuses = [
+                    MasterKempuModel::STATUS_PROD_TRANSFER_IN_WPM,
+                    'PROD_TRANSFER_IN_WPM',
+                    'PROD_RECEIVED',
+                    'Transfer in from WPM',
+                    'Transfer In from WPM',
+                    MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
+                    MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE,
+                    'QC_PRE_CUCI_REJECT',
+                    MasterKempuModel::STATUS_PROD_CUCI_KEMPU,
+                    MasterKempuModel::STATUS_PROD_FILLING_KEMPU,
+                    MasterKempuModel::STATUS_SCAN1_FILLED,
+                    MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
+                    MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE,
+                    MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
+                    MasterKempuModel::STATUS_QC_AFTER_FILLING_REJECT,
+                    MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
+                ];
+                foreach ($alreadyInProdStatuses as $st) {
+                    if (strcasecmp($currentStatus, $st) === 0) {
+                        return [
+                            'valid'   => false,
+                            'message' => "Alur Tidak Sesuai: Kempu {$idKempu} sudah berada di area Produksi (status saat ini: '{$currentStatus}'). Kempu tidak perlu di-Transfer In ulang dari WPM.",
+                        ];
+                    }
+                }
+
+                return [
+                    'valid'   => false,
+                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Untuk menjalankan 'Transfer in from WPM', kempu harus berstatus 'WPM_TRANSFER_OUT_PROD' (sudah melalui Transfer Out to Produksi dari WPM).",
+                ];
+            } elseif ($cardKey === 'transfer-out-to-wfg') {
                 $fillingStatuses = [
                     MasterKempuModel::STATUS_SCAN1_FILLED,
                     'SCAN1_FILLED',
@@ -498,38 +566,17 @@ class KempuProduksiController extends Controller
             ->first();
 
         if (!$kempu) {
-            // Auto registrasi jika format YYMMDD baru
-            if (preg_match('/^\d{6}/', $idKempu)) {
-                $kempu = MasterKempuModel::create([
-                    'id_kempu'   => $idKempu,
-                    'status'     => MasterKempuModel::STATUS_QC_PM_RELEASE,
-                    'gr_date'    => now()->toDateString(),
-                    'created_by' => auth()->id() ?? 1,
-                ]);
-                $kempu->main()->create([
-                    'id_kempu'         => $idKempu,
-                    'current_location' => MasterKempuModel::LOC_PRODUKSI,
-                    'current_status'   => 'Transfer Out To Produksi',
-                    'reused_count'     => 0,
-                    'max_reused'       => 21,
-                    'condition'        => 'OK',
-                    'last_scanned_at'  => now(),
-                    'last_action'      => 'Registrasi Otomatis Produksi',
-                ]);
-                $kempu->load('main');
-            } else {
-                return response()->json([
-                    'status'  => false,
-                    'message' => "Kempu '{$idKempu}' tidak ditemukan dalam database Master Kempu.",
-                ], 404);
-            }
+            return response()->json([
+                'status'  => false,
+                'message' => "Kempu '{$idKempu}' tidak ditemukan dalam database Master Kempu. Harap daftarkan kempu terlebih dahulu di WPM.",
+            ], 404);
         }
 
         if (!$kempu->main) {
             $kempu->main()->create([
                 'id_kempu'         => $kempu->id_kempu,
-                'current_location' => MasterKempuModel::LOC_PRODUKSI,
-                'current_status'   => $kempu->status ?? 'Transfer Out To Produksi',
+                'current_location' => MasterKempuModel::LOC_WPM,
+                'current_status'   => $kempu->status ?? MasterKempuModel::STATUS_REGISTERED,
                 'reused_count'     => 0,
                 'max_reused'       => 21,
                 'condition'        => 'OK',

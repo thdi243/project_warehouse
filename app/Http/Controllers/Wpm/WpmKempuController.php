@@ -166,9 +166,7 @@ class WpmKempuController extends Controller
                 // 4. Cek jika masih di area WFG / PAS
                 if (in_array(strtolower($currentStatus), [
                     'transfer in from produksi',
-                    'picking fg',
                     strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
-                    strtolower(MasterKempuModel::STATUS_WFG_PICKING_FG),
                 ])) {
                     return [
                         'valid'   => false,
@@ -227,9 +225,7 @@ class WpmKempuController extends Controller
                 // 3. Cek jika masih di area WFG
                 if (in_array(strtolower($currentStatus), [
                     'transfer in from produksi',
-                    'picking fg',
                     strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
-                    strtolower(MasterKempuModel::STATUS_WFG_PICKING_FG),
                 ])) {
                     return [
                         'valid'   => false,
@@ -252,8 +248,8 @@ class WpmKempuController extends Controller
                     ) || $kempu->trackingHistories()
                         ->where(function ($q) {
                             $q->where('stage', MasterKempuModel::LOC_QC_PM)
-                              ->orWhere('action', 'LIKE', '%QC PM%')
-                              ->orWhere('action', 'LIKE', '%QC_PM%');
+                                ->orWhere('action', 'LIKE', '%QC PM%')
+                                ->orWhere('action', 'LIKE', '%QC_PM%');
                         })
                         ->whereIn('action_result', ['OK', 'SUCCESS'])
                         ->exists();
@@ -350,7 +346,7 @@ class WpmKempuController extends Controller
                 'condition'        => $kempu->condition ?? 'OK',
                 'has_barcode'      => (bool)($kempu->main?->has_barcode ?? true),
                 'has_rfid'         => (bool)($kempu->main?->has_rfid ?? true),
-                'has_kitir'        => (bool)($kempu->main?->has_kitir ?? true),
+                'has_nti'        => (bool)($kempu->main?->has_nti ?? true),
                 'last_scanned_at'  => $kempu->last_scanned_at ? $kempu->last_scanned_at->format('d/m/Y H:i') : '-',
                 'last_action'      => $kempu->last_action ?? '-',
                 'target_status'    => $card['status_name'],
@@ -441,13 +437,13 @@ class WpmKempuController extends Controller
 
         $hasBarcode     = filter_var($request->input('has_barcode', true), FILTER_VALIDATE_BOOLEAN);
         $hasRfid        = filter_var($request->input('has_rfid', true), FILTER_VALIDATE_BOOLEAN);
-        $hasKitir       = filter_var($request->input('has_kitir', true), FILTER_VALIDATE_BOOLEAN);
+        $hasNti       = filter_var($request->input('has_nti', true), FILTER_VALIDATE_BOOLEAN);
 
         // Ringkasan Checklist Fisik
         $physicalCheck = [];
         $physicalCheck[] = 'Barcode: ' . ($hasBarcode ? 'Ada' : 'Tidak Ada');
         $physicalCheck[] = 'RFID: ' . ($hasRfid ? 'Ada' : 'Tidak Ada');
-        $physicalCheck[] = 'Kitir: ' . ($hasKitir ? 'Ada' : 'Tidak Ada');
+        $physicalCheck[] = 'Kitir: ' . ($hasNti ? 'Ada' : 'Tidak Ada');
         $checklistStr = '[Fisik: ' . implode(', ', $physicalCheck) . ']';
         $finalNotes = $notes ? $checklistStr . ' - ' . $notes : $checklistStr;
 
@@ -463,7 +459,7 @@ class WpmKempuController extends Controller
                     'condition'        => 'OK',
                     'has_barcode'      => $hasBarcode,
                     'has_rfid'         => $hasRfid,
-                    'has_kitir'        => $hasKitir,
+                    'has_nti'        => $hasNti,
                     'last_scanned_at'  => now(),
                     'last_action'      => $card['title'],
                 ]);
@@ -474,7 +470,7 @@ class WpmKempuController extends Controller
                     'reused_count'     => $currentReused,
                     'has_barcode'      => $hasBarcode,
                     'has_rfid'         => $hasRfid,
-                    'has_kitir'        => $hasKitir,
+                    'has_nti'        => $hasNti,
                     'last_scanned_at'  => now(),
                     'last_action'      => $card['title'],
                 ]);
@@ -494,7 +490,7 @@ class WpmKempuController extends Controller
                 'metadata'        => [
                     'has_barcode' => $hasBarcode,
                     'has_rfid'    => $hasRfid,
-                    'has_kitir'   => $hasKitir,
+                    'has_nti'     => $hasNti,
                 ],
                 'created_by'      => Auth::id(),
             ]);

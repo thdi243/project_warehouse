@@ -225,26 +225,20 @@
                     <!-- Detail Grid -->
                     <div class="bg-light p-3 rounded-3 mb-3 border">
                         <div class="row g-2 fs-13">
-                            <div class="col-4">
+                            <div class="col-4 text-center">
                                 <span class="text-muted d-block fs-11">RFID:</span>
                                 <span class="fw-semibold font-monospace text-body" id="modalKempuRfid">-</span>
                             </div>
-                            <div class="col-4">
+                            <div class="col-4 text-center">
                                 <span class="text-muted d-block fs-11">Status Saat Ini:</span>
                                 <span class="badge bg-light text-body border" id="modalKempuStatus">-</span>
                             </div>
-                            <div class="col-4">
+                            <div class="col-4 text-center">
                                 <span class="text-muted d-block fs-11">Siklus Reused:</span>
-                                <div id="reusedDisplayMode" class="d-flex align-items-center gap-1 flex-wrap">
+                                <div id="reusedDisplayMode">
                                     <span class="fw-bold text-body" id="modalKempuReused">-</span>
-                                    {{-- <button type="button"
-                                        class="btn btn-link btn-sm p-0 text-primary text-decoration-none"
-                                        id="btnEditReusedQuick" style="display: none; font-size: 11px;"
-                                        title="Koreksi Nilai Reused">
-                                        <i class="ri-edit-line"></i> Koreksi
-                                    </button> --}}
                                 </div>
-                                <div id="reusedEditMode" class="d-none mt-1">
+                                {{-- <div id="reusedEditMode" class="d-none mt-1">
                                     <div class="input-group input-group-sm" style="max-width: 170px;">
                                         <input type="number" id="inputReusedInline"
                                             class="form-control form-control-sm font-monospace fw-bold text-center"
@@ -261,7 +255,7 @@
                                     </div>
                                     <small class="text-muted d-block" style="font-size: 10px;">Tekan <i
                                             class="ri-check-line text-success"></i> untuk simpan</small>
-                                </div>
+                                </div> --}}
                             </div>
                         </div>
                     </div>
@@ -299,7 +293,7 @@
                         </div>
                     </div>
 
-                    <!-- Checklist Kelengkapan Fisik (Barcode, RFID, Kitir) -->
+                    <!-- Checklist Kelengkapan Fisik (Barcode, RFID, NTI) -->
                     <div id="physicalChecklistCard" class="p-3 rounded-3 mb-3 border bg-light">
                         <div class="d-flex align-items-center justify-content-between mb-2">
                             <label class="form-label fs-12 fw-bold text-body mb-0">
@@ -337,19 +331,19 @@
                                         id="badgeCheckRfid">Ada</span>
                                 </div>
                             </div>
-                            <!-- Check Kitir -->
+                            <!-- Check NTI -->
                             <div class="col-4">
                                 <div class="card h-100 mb-0 border shadow-none p-2 text-center physical-card bg-white"
                                     style="cursor: pointer;"
-                                    onclick="$('#checkKitir').prop('checked', !$('#checkKitir').prop('checked')).trigger('change')">
+                                    onclick="$('#checkNti').prop('checked', !$('#checkNti').prop('checked')).trigger('change')">
                                     <div class="form-check form-switch d-flex justify-content-center mb-1">
-                                        <input class="form-check-input physical-check" type="checkbox" id="checkKitir"
+                                        <input class="form-check-input physical-check" type="checkbox" id="checkNti"
                                             checked onclick="event.stopPropagation()">
                                     </div>
-                                    <div class="fw-bold fs-12 text-body"><i class="ri-price-tag-3-line me-1"></i>Kitir
+                                    <div class="fw-bold fs-12 text-body"><i class="ri-price-tag-3-line me-1"></i>NTI
                                     </div>
                                     <span class="badge bg-success-subtle text-success fs-10 mt-1 physical-badge"
-                                        id="badgeCheckKitir">Ada</span>
+                                        id="badgeCheckNti">Ada</span>
                                 </div>
                             </div>
                         </div>
@@ -446,11 +440,11 @@
                         'bg-danger-subtle text-danger').text('Tidak Ada');
                 }
 
-                if ($('#checkKitir').is(':checked')) {
-                    $('#badgeCheckKitir').removeClass('bg-danger-subtle text-danger').addClass(
+                if ($('#checkNti').is(':checked')) {
+                    $('#badgeCheckNti').removeClass('bg-danger-subtle text-danger').addClass(
                         'bg-success-subtle text-success').text('Ada');
                 } else {
-                    $('#badgeCheckKitir').removeClass('bg-success-subtle text-success').addClass(
+                    $('#badgeCheckNti').removeClass('bg-success-subtle text-success').addClass(
                         'bg-danger-subtle text-danger').text('Tidak Ada');
                 }
             }
@@ -699,7 +693,7 @@
                     // Set status checklist kelengkapan fisik
                     $('#checkBarcode').prop('checked', k.has_barcode !== false);
                     $('#checkRfid').prop('checked', k.has_rfid !== false);
-                    $('#checkKitir').prop('checked', k.has_kitir !== false);
+                    $('#checkNti').prop('checked', k.has_nti !== false);
                     updatePhysicalBadges();
 
                     // Cek Validasi Alur Status (Urutan & Duplikat Scan)
@@ -885,7 +879,7 @@
                     notes: $('#modalInputNotes').val(),
                     has_barcode: $('#checkBarcode').is(':checked') ? 1 : 0,
                     has_rfid: $('#checkRfid').is(':checked') ? 1 : 0,
-                    has_kitir: $('#checkKitir').is(':checked') ? 1 : 0,
+                    has_nti: $('#checkNti').is(':checked') ? 1 : 0,
                 };
 
                 $.ajax({

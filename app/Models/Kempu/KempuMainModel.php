@@ -21,7 +21,7 @@ class KempuMainModel extends Model
         'condition',
         'has_barcode',
         'has_rfid',
-        'has_kitir',
+        'has_nti',
         'last_scanned_at',
         'last_action',
     ];
@@ -32,7 +32,7 @@ class KempuMainModel extends Model
         'max_reused'      => 'integer',
         'has_barcode'     => 'boolean',
         'has_rfid'        => 'boolean',
-        'has_kitir'       => 'boolean',
+        'has_nti'       => 'boolean',
     ];
 
     /**

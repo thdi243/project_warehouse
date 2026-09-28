@@ -40,15 +40,15 @@ class MasterKempuModel extends Model
     const STATUS_ENG_SCRAP_PROD           = 'ENG_SCRAP_PRODUKSI';
 
     // 4. Warehouse Packaging Material (WPM) Cards
-    const STATUS_WPM_TRANSFER_OUT_PROD    = 'WPM_TRANSFER_OUT_PROD';
-    const STATUS_WPM_TRANSFER_IN_PAS      = 'WPM_TRANSFER_IN_PAS';
+    const STATUS_WPM_TRANSFER_OUT_PROD    = 'WPM_TRANSFER_OUT_TO_PROD';
+    const STATUS_WPM_TRANSFER_IN_PAS      = 'WPM_TRANSFER_IN_FROM_PAS';
 
     // 5. Produksi Cards
-    const STATUS_PROD_TRANSFER_IN_WPM     = 'PROD_TRANSFER_IN_WPM';
+    const STATUS_PROD_TRANSFER_IN_WPM     = 'PROD_TRANSFER_IN_FROM_WPM';
     const STATUS_PROD_CUCI_KEMPU          = 'PROD_CUCI_KEMPU';
     const STATUS_PROD_FILLING_KEMPU       = 'PROD_FILLING_KEMPU';
-    const STATUS_PROD_TRANSFER_OUT_WFG    = 'PROD_TRANSFER_OUT_WFG';
-    const STATUS_PROD_TRANSFER_IN_WFG     = 'PROD_TRANSFER_IN_WFG';
+    const STATUS_PROD_TRANSFER_OUT_WFG    = 'PROD_TRANSFER_OUT_TO_WFG';
+    const STATUS_PROD_TRANSFER_IN_WFG     = 'PROD_TRANSFER_IN_FROM_WFG';
     const STATUS_SCRAPPED                 = 'SCRAPPED';
 
     // 6. QC Proses (Pre Cuci & After Filling)
@@ -60,32 +60,27 @@ class MasterKempuModel extends Model
     const STATUS_QC_AFTER_FILLING_REJECT  = 'QC_AFTER_FILLING_REJECT';
 
     // 7. Warehouse Finished Goods (WFG) Cards
-    const STATUS_WFG_TRANSFER_IN_PROD     = 'WFG_TRANSFER_IN_PROD';
-    const STATUS_WFG_PICKING_FG           = 'WFG_PICKING_FG';
-    const STATUS_WFG_TRANSFER_OUT_PAS     = 'WFG_TRANSFER_OUT_PAS';
-    const STATUS_WFG_REJECT_PROD          = 'WFG_REJECT_PRODUKSI';
+    const STATUS_WFG_TRANSFER_IN_PROD     = 'WFG_TRANSFER_IN_FROM_PROD';
+    const STATUS_WFG_TRANSFER_OUT_PAS     = 'WFG_TRANSFER_OUT_TO_PAS';
+    const STATUS_WFG_REJECT_PROD          = 'WFG_REJECT_FROM_PROD';
 
     // 8. Warehouse PT PAS Cards
-    const STATUS_PAS_TRANSFER_IN_BAS      = 'PAS_TRANSFER_IN_BAS';
-    const STATUS_PAS_TRANSFER_OUT_BAS     = 'PAS_TRANSFER_OUT_BAS';
+    const STATUS_PAS_TRANSFER_IN_BAS      = 'PAS_TRANSFER_IN_FROM_BAS';
+    const STATUS_PAS_TRANSFER_OUT_BAS     = 'PAS_TRANSFER_OUT_TO_BAS';
 
     // Alias Backward Compatibility
     const STATUS_QC_PM_PASSED             = 'QC_PM_RELEASE';
     const STATUS_QC_PRE_CUCI_PASSED       = 'QC_PRE_CUCI_RELEASE';
     const STATUS_QC_AFTER_FILLING_PASSED  = 'QC_AFTER_FILLING_RELEASE';
-    const STATUS_IN_TRANSIT_PROD          = 'WPM_TRANSFER_OUT_PROD';
-    const STATUS_PROD_RECEIVED            = 'PROD_TRANSFER_IN_WPM';
+    const STATUS_IN_TRANSIT_PROD          = 'WPM_TRANSFER_OUT_FROM_PROD';
+    const STATUS_PROD_RECEIVED            = 'PROD_TRANSFER_IN_FROM_WPM';
     const STATUS_CUCI_KEMPU_COMPLETED     = 'PROD_CUCI_KEMPU';
     const STATUS_SCAN1_FILLED             = 'PROD_FILLING_KEMPU';
-    const STATUS_IN_TRANSIT_WFG           = 'PROD_TRANSFER_OUT_WFG';
-    const STATUS_WFG_RECEIVED             = 'WFG_TRANSFER_IN_PROD';
-    const STATUS_FG_PICKED                = 'WFG_PICKING_FG';
-    const STATUS_SCAN2_PENDING            = 'WFG_PICKING_FG';
-    const STATUS_SCAN2_PASSED             = 'WFG_PICKING_FG';
-    const STATUS_QC_SCAN2_PENDING         = 'WFG_PICKING_FG';
-    const STATUS_IN_TRANSIT_PAS           = 'WFG_TRANSFER_OUT_PAS';
-    const STATUS_PAS_RECEIVED             = 'PAS_TRANSFER_IN_BAS';
-    const STATUS_IN_TRANSIT_WPM           = 'PAS_TRANSFER_OUT_BAS';
+    const STATUS_IN_TRANSIT_WFG           = 'PROD_TRANSFER_OUT_FROM_WFG';
+    const STATUS_WFG_RECEIVED             = 'WFG_TRANSFER_IN_FROM_PROD';
+    const STATUS_IN_TRANSIT_PAS           = 'WFG_TRANSFER_OUT_TO_PAS';
+    const STATUS_PAS_RECEIVED             = 'PAS_TRANSFER_IN_FROM_BAS';
+    const STATUS_IN_TRANSIT_WPM           = 'PAS_TRANSFER_OUT_TO_BAS';
     const STATUS_NTI_PRODUKSI             = 'ENG_SCRAP_PRODUKSI';
     const STATUS_QC_PROD_PENDING          = 'QC_PRE_CUCI_PENDING';
     const STATUS_QC_PROD_PASSED           = 'QC_PRE_CUCI_RELEASE';
@@ -346,9 +341,6 @@ class MasterKempuModel extends Model
         // 3. Cek dari status operasional
         $wfgPassedStatuses = [
             self::STATUS_WFG_RECEIVED,
-            self::STATUS_SCAN2_PENDING,
-            self::STATUS_SCAN2_PASSED,
-            self::STATUS_FG_PICKED,
             self::STATUS_IN_TRANSIT_PAS,
             self::STATUS_PAS_RECEIVED,
             self::STATUS_IN_TRANSIT_WPM,

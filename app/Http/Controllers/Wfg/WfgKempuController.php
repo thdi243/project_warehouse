@@ -33,22 +33,6 @@ class WfgKempuController extends Controller
                 'btn_color'   => '#0f766e',
                 'btn_text'    => 'Buka Scanner Transfer In',
             ],
-            'picking-fg' => [
-                'key'         => 'picking-fg',
-                'title'       => 'Picking FG',
-                'status_name' => MasterKempuModel::STATUS_WFG_PICKING_FG,
-                'location'    => MasterKempuModel::LOC_WFG,
-                'from_loc'    => MasterKempuModel::LOC_WFG,
-                'to_loc'      => MasterKempuModel::LOC_WFG,
-                'stage'       => 'WFG',
-                'description' => 'Proses picking dan penyiapan muatan kempu Finished Goods di area WFG sebelum proses pengiriman.',
-                'icon'        => 'mdi mdi-marker-check',
-                'badge_color' => 'warning',
-                'bg_tint'     => '#fff7ed',
-                'icon_color'  => '#ea580c',
-                'btn_color'   => '#c2410c',
-                'btn_text'    => 'Buka Scanner Picking FG',
-            ],
             'transfer-out-to-pas' => [
                 'key'         => 'transfer-out-to-pas',
                 'title'       => 'Transfer Out to PAS',
@@ -184,22 +168,11 @@ class WfgKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah berstatus 'Transfer in From Produksi' (duplikat scan). Silakan lanjutkan ke tahap 'Picking FG'.",
+                        'message' => "Kempu {$idKempu} sudah berstatus 'Transfer in From Produksi' (duplikat scan). Silakan lanjutkan ke tahap 'Transfer Out to PAS'.",
                     ];
                 }
 
-                // 2. Cek jika sudah melangkah lebih jauh (Picking FG / Transfer Out to PAS)
-                if (
-                    strcasecmp($currentStatus, 'Picking FG') === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_PICKING_FG) === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_FG_PICKED) === 0
-                ) {
-                    return [
-                        'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah melewati tahap ini (status saat ini: 'Picking FG'). Silakan lanjutkan ke tahap 'Transfer Out to PAS'.",
-                    ];
-                }
-
+                // 2. Cek jika sudah melangkah lebih jauh (Transfer Out to PAS)
                 if (
                     strcasecmp($currentStatus, 'Transfer Out to PAS') === 0 ||
                     strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS) === 0 ||
@@ -239,8 +212,8 @@ class WfgKempuController extends Controller
                     $hasTransferOutHistory = $kempu->trackingHistories()
                         ->where(function ($q) {
                             $q->where('action', 'Transfer Out To Produksi')
-                              ->orWhere('action', 'LIKE', '%Transfer Out To Produksi%')
-                              ->orWhere('action', 'LIKE', '%WPM_TRANSFER_OUT%');
+                                ->orWhere('action', 'LIKE', '%Transfer Out To Produksi%')
+                                ->orWhere('action', 'LIKE', '%WPM_TRANSFER_OUT%');
                         })
                         ->exists();
 
@@ -250,47 +223,6 @@ class WfgKempuController extends Controller
                             'message' => "Urutan salah: Kempu baru {$idKempu} (siklus Reused masih 0x) belum melalui proses 'Transfer Out To Produksi' dari WPM (status saat ini: '{$currentStatus}'). Harap lakukan proses 'Transfer Out To Produksi' di WPM terlebih dahulu sebelum tiba di WFG.",
                         ];
                     }
-                }
-                break;
-
-            case 'picking-fg':
-                // 1. Cek duplikat scan
-                if (
-                    strcasecmp($currentStatus, 'Picking FG') === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_PICKING_FG) === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_FG_PICKED) === 0
-                ) {
-                    return [
-                        'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah berstatus 'Picking FG' (duplikat scan). Silakan lanjutkan ke tahap 'Transfer Out to PAS'.",
-                    ];
-                }
-
-                // 2. Cek jika sudah melangkah ke Transfer Out to PAS
-                if (
-                    strcasecmp($currentStatus, 'Transfer Out to PAS') === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS) === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_IN_TRANSIT_PAS) === 0
-                ) {
-                    return [
-                        'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah melewati tahap ini (status saat ini: 'Transfer Out to PAS').",
-                    ];
-                }
-
-                // 3. Wajib dari Transfer in From Produksi (tidak boleh loncat step)
-                $allowedPrev = [
-                    'transfer in from produksi',
-                    strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
-                    strtolower(MasterKempuModel::STATUS_WFG_RECEIVED),
-                    strtolower(MasterKempuModel::STATUS_SCAN2_PENDING),
-                    strtolower(MasterKempuModel::STATUS_SCAN2_PASSED),
-                ];
-                if (!in_array(strtolower($currentStatus), $allowedPrev)) {
-                    return [
-                        'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} belum melalui tahap 'Transfer in From Produksi' (status saat ini: '{$currentStatus}'). Harap lakukan 'Transfer in From Produksi' terlebih dahulu.",
-                    ];
                 }
                 break;
 
@@ -307,26 +239,18 @@ class WfgKempuController extends Controller
                     ];
                 }
 
-                // 2. Wajib dari Picking FG (tidak boleh loncat step)
+                // 2. Wajib dari Transfer in From Produksi
                 $allowedPrev = [
-                    'picking fg',
-                    strtolower(MasterKempuModel::STATUS_WFG_PICKING_FG),
-                    strtolower(MasterKempuModel::STATUS_FG_PICKED),
+                    'transfer in from produksi',
+                    strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
+                    strtolower(MasterKempuModel::STATUS_WFG_RECEIVED),
+                    strtolower(MasterKempuModel::STATUS_SCAN2_PENDING),
+                    strtolower(MasterKempuModel::STATUS_SCAN2_PASSED),
                 ];
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
-                    if (
-                        strcasecmp($currentStatus, 'Transfer in From Produksi') === 0 ||
-                        strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD) === 0 ||
-                        strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_RECEIVED) === 0
-                    ) {
-                        return [
-                            'valid'   => false,
-                            'message' => "Urutan salah: Kempu {$idKempu} belum melalui tahap 'Picking FG' (status saat ini: 'Transfer in From Produksi'). Harap lakukan 'Picking FG' terlebih dahulu sebelum Transfer Out to PAS.",
-                        ];
-                    }
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} belum siap dikirim ke PAS (status saat ini: '{$currentStatus}'). Kempu harus melalui 'Transfer in From Produksi' dan 'Picking FG' terlebih dahulu.",
+                        'message' => "Urutan salah: Kempu {$idKempu} belum melalui tahap 'Transfer in From Produksi' (status saat ini: '{$currentStatus}'). Harap lakukan 'Transfer in From Produksi' terlebih dahulu sebelum Transfer Out to PAS.",
                     ];
                 }
                 break;
@@ -393,32 +317,37 @@ class WfgKempuController extends Controller
         $willIncrementReused = false;
         $targetReused = $reusedCount;
 
-        if ($cardKey === 'transfer-in-from-produksi') {
-            if ($reusedCount > 0) {
-                // Kempu sudah punya siklus pemakaian (> 0x)
-                $hasReused = true;
-                if ($isPreScan1) {
-                    $willIncrementReused = true;
-                    $targetReused = min(21, $reusedCount + 1);
-                }
-            } else {
-                // reusedCount == 0
-                if (!$isOldKempu) {
-                    // Kempu Baru (YYMMDD) -> Siklus baru, tidak perlu registrasi reused
+        // Hanya hitung rencana penambahan reused jika validasi alur status berhasil (valid)
+        if ($flowValidation['valid']) {
+            if ($cardKey === 'transfer-in-from-produksi') {
+                if ($reusedCount > 0) {
+                    // Kempu sudah punya siklus pemakaian (> 0x)
                     $hasReused = true;
                     if ($isPreScan1) {
                         $willIncrementReused = true;
-                        $targetReused = 1;
-                    } else {
-                        $targetReused = 0;
+                        $targetReused = min(21, $reusedCount + 1);
                     }
                 } else {
-                    // Kempu Lama -> jika masih 0, wajib registrasi reused oleh otoritator
-                    $hasReused = false;
+                    // reusedCount == 0
+                    if (!$isOldKempu) {
+                        // Kempu Baru (YYMMDD) -> Siklus baru, tidak perlu registrasi reused
+                        $hasReused = true;
+                        if ($isPreScan1) {
+                            $willIncrementReused = true;
+                            $targetReused = 1;
+                        } else {
+                            $targetReused = 0;
+                        }
+                    } else {
+                        // Kempu Lama -> jika masih 0, wajib registrasi reused oleh otoritator
+                        $hasReused = false;
+                    }
                 }
+            } else {
+                // Transfer Out to PAS
+                $hasReused = (!$isOldKempu || $reusedCount > 0);
             }
         } else {
-            // Picking FG atau Transfer Out to PAS
             $hasReused = (!$isOldKempu || $reusedCount > 0);
         }
 
@@ -441,7 +370,7 @@ class WfgKempuController extends Controller
                 'condition'              => $kempu->condition ?? 'OK',
                 'has_barcode'            => (bool)($kempu->main?->has_barcode ?? true),
                 'has_rfid'               => (bool)($kempu->main?->has_rfid ?? true),
-                'has_kitir'              => (bool)($kempu->main?->has_kitir ?? true),
+                'has_nti'                => (bool)($kempu->main?->has_nti ?? true),
                 'last_scanned_at'        => $kempu->last_scanned_at ? $kempu->last_scanned_at->format('d/m/Y H:i') : '-',
                 'last_action'            => $kempu->last_action ?? '-',
                 'target_status'          => $card['status_name'],
@@ -542,7 +471,7 @@ class WfgKempuController extends Controller
                 }
             }
         } else {
-            // Picking FG atau Transfer Out to PAS
+            // Transfer Out to PAS
             if ($currentReused <= 0 && $isOldKempu) {
                 if ($newReusedCount !== null && $newReusedCount !== '') {
                     if (!self::canEditReused()) {
@@ -563,13 +492,13 @@ class WfgKempuController extends Controller
 
         $hasBarcode     = filter_var($request->input('has_barcode', true), FILTER_VALIDATE_BOOLEAN);
         $hasRfid        = filter_var($request->input('has_rfid', true), FILTER_VALIDATE_BOOLEAN);
-        $hasKitir       = filter_var($request->input('has_kitir', true), FILTER_VALIDATE_BOOLEAN);
+        $hasNti         = filter_var($request->input('has_nti', true), FILTER_VALIDATE_BOOLEAN);
 
         // Ringkasan Checklist Fisik
         $physicalCheck = [];
         $physicalCheck[] = 'Barcode: ' . ($hasBarcode ? 'Ada' : 'Tidak Ada');
         $physicalCheck[] = 'RFID: ' . ($hasRfid ? 'Ada' : 'Tidak Ada');
-        $physicalCheck[] = 'Kitir: ' . ($hasKitir ? 'Ada' : 'Tidak Ada');
+        $physicalCheck[] = 'NTI: ' . ($hasNti ? 'Ada' : 'Tidak Ada');
         $checklistStr = '[Fisik: ' . implode(', ', $physicalCheck) . ']';
         $finalNotes = $notes ? $checklistStr . ' - ' . $notes : $checklistStr;
 
@@ -585,7 +514,7 @@ class WfgKempuController extends Controller
                     'condition'        => 'OK',
                     'has_barcode'      => $hasBarcode,
                     'has_rfid'         => $hasRfid,
-                    'has_kitir'        => $hasKitir,
+                    'has_nti'        => $hasNti,
                     'last_scanned_at'  => now(),
                     'last_action'      => $card['title'],
                 ]);
@@ -596,7 +525,7 @@ class WfgKempuController extends Controller
                     'reused_count'     => $targetReused,
                     'has_barcode'      => $hasBarcode,
                     'has_rfid'         => $hasRfid,
-                    'has_kitir'        => $hasKitir,
+                    'has_nti'        => $hasNti,
                     'last_scanned_at'  => now(),
                     'last_action'      => $card['title'],
                 ]);
@@ -616,7 +545,7 @@ class WfgKempuController extends Controller
                 'metadata'        => [
                     'has_barcode' => $hasBarcode,
                     'has_rfid'    => $hasRfid,
-                    'has_kitir'   => $hasKitir,
+                    'has_nti'   => $hasNti,
                 ],
                 'created_by'      => Auth::id(),
             ]);

@@ -225,42 +225,18 @@
                     <!-- Detail Grid -->
                     <div class="bg-light p-3 rounded-3 mb-3 border">
                         <div class="row g-2 fs-13">
-                            <div class="col-4">
+                            <div class="col-4 text-center">
                                 <span class="text-muted d-block fs-11">RFID:</span>
                                 <span class="fw-semibold font-monospace text-body" id="modalKempuRfid">-</span>
                             </div>
-                            <div class="col-4">
+                            <div class="col-4 text-center">
                                 <span class="text-muted d-block fs-11">Status Saat Ini:</span>
                                 <span class="badge bg-light text-body border" id="modalKempuStatus">-</span>
                             </div>
-                            <div class="col-4">
+                            <div class="col-4 text-center">
                                 <span class="text-muted d-block fs-11">Siklus Reused:</span>
-                                <div id="reusedDisplayMode" class="d-flex align-items-center gap-1 flex-wrap">
+                                <div id="reusedDisplayMode">
                                     <span class="fw-bold text-body" id="modalKempuReused">-</span>
-                                    <button type="button"
-                                        class="btn btn-link btn-sm p-0 text-primary text-decoration-none"
-                                        id="btnEditReusedQuick" style="display: none; font-size: 11px;"
-                                        title="Koreksi Nilai Reused">
-                                        <i class="ri-edit-line"></i> Koreksi
-                                    </button>
-                                </div>
-                                <div id="reusedEditMode" class="d-none mt-1">
-                                    <div class="input-group input-group-sm" style="max-width: 170px;">
-                                        <input type="number" id="inputReusedInline"
-                                            class="form-control form-control-sm font-monospace fw-bold text-center"
-                                            min="0" max="21">
-                                        <span class="input-group-text bg-white px-1 fs-11">/21x</span>
-                                        <button class="btn btn-sm btn-success px-2" type="button"
-                                            id="btnSaveReusedInline" title="Simpan">
-                                            <i class="ri-check-line"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary px-2" type="button"
-                                            id="btnCancelReusedInline" title="Batal">
-                                            <i class="ri-close-line"></i>
-                                        </button>
-                                    </div>
-                                    <small class="text-muted d-block" style="font-size: 10px;">Tekan <i
-                                            class="ri-check-line text-success"></i> untuk simpan</small>
                                 </div>
                             </div>
                         </div>

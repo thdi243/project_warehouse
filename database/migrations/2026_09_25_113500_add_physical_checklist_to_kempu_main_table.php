@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('kempu_main', function (Blueprint $table) {
             $table->boolean('has_barcode')->default(true)->after('condition');
             $table->boolean('has_rfid')->default(true)->after('has_barcode');
-            $table->boolean('has_kitir')->default(true)->after('has_rfid');
+            $table->boolean('has_nti')->default(true)->after('has_rfid');
         });
     }
 
