@@ -292,7 +292,10 @@
                                 <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
                             </td>
                             @if ($canAdminSmu || $canPengawasSmu)
-                                <td>${tx.item_name}</td>
+                                <td>
+                                    <strong>${tx.item_name}</strong><br>
+                                    <small class="text-muted">${tx.jenis}</small>
+                                </td>
                                 <td>
                                     <strong>${tx.no_spb}</strong><br>
                                     <small class="text-muted">${tx.qty_spb}</small>
