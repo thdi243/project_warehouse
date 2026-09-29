@@ -1143,7 +1143,7 @@
                     let isAllowed = true;
                     if (jenis === 'bongkaran') {
                         if (sloc === 'A001') {
-                            isAllowed = false;
+                            isAllowed = true;
                         }
                     } else if (jenis === 'slipsheet' || jenis === 'curah') {
                         if (sloc !== 'A001' && sloc !== 'SMU' && sloc !== 'A002') {

@@ -34,6 +34,13 @@
             box-shadow: 0 4px 10px rgba(10, 179, 156, 0.25);
         }
 
+        .nav-custom-pill .nav-link.active#tab-bongkaran {
+            color: #fff !important;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            border-color: #d97706 !important;
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.25);
+        }
+
         .nav-custom-pill .nav-link.active i {
             color: #fff !important;
         }
@@ -89,7 +96,7 @@
                             </div>
                         </div>
                         <div class="card-body pt-3">
-                            <!-- Nav Tabs Jenis Muatan (Slipsheet & Curah) -->
+                            <!-- Nav Tabs Jenis Aktivitas (Slipsheet, Curah, Bongkaran) -->
                             <ul class="nav nav-pills nav-custom-pill gap-2 mb-3" id="wfgTypeTabs" role="tablist">
                                 <li class="nav-item" role="presentation">
                                     <button
@@ -108,6 +115,15 @@
                                         <span>Muat Curah</span>
                                         <span class="badge bg-info text-white rounded-pill ms-2"
                                             id="badge-count-curah">0</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link fw-semibold d-flex align-items-center px-3 py-2 rounded-3"
+                                        id="tab-bongkaran" data-jenis="bongkaran" type="button" role="tab">
+                                        <i class="ri-download-2-line fs-16 me-2 text-warning"></i>
+                                        <span>Bongkaran</span>
+                                        <span class="badge bg-warning text-white rounded-pill ms-2"
+                                            id="badge-count-bongkaran">0</span>
                                     </button>
                                 </li>
                             </ul>
@@ -202,10 +218,13 @@
                 // 1. Update count badges
                 let countSlipsheet = 0;
                 let countCurah = 0;
+                let countBongkaran = 0;
                 allWfgData.forEach(function(tx) {
                     const j = (tx.jenis || '').toLowerCase().trim();
                     if (j === 'curah') {
                         countCurah++;
+                    } else if (j === 'bongkaran') {
+                        countBongkaran++;
                     } else {
                         // slipsheet atau default
                         countSlipsheet++;
@@ -213,14 +232,17 @@
                 });
                 $('#badge-count-slipsheet').text(countSlipsheet);
                 $('#badge-count-curah').text(countCurah);
+                $('#badge-count-bongkaran').text(countBongkaran);
 
                 // 2. Filter data by active tab
                 let tabFiltered = allWfgData.filter(function(tx) {
                     const j = (tx.jenis || '').toLowerCase().trim();
                     if (currentJenisTab === 'curah') {
                         return j === 'curah';
+                    } else if (currentJenisTab === 'bongkaran') {
+                        return j === 'bongkaran';
                     } else {
-                        return j === 'slipsheet' || (j !== 'curah');
+                        return j === 'slipsheet' || (j !== 'curah' && j !== 'bongkaran');
                     }
                 });
 
@@ -241,7 +263,9 @@
                     });
                 }
 
-                const currentTabLabel = currentJenisTab === 'curah' ? 'Curah' : 'Slipsheet';
+                const isBongkarTab = currentJenisTab === 'bongkaran';
+                const currentTabLabel = currentJenisTab === 'curah' ? 'Curah' : (isBongkarTab ? 'Bongkaran' : 'Slipsheet');
+                const activityTypeLabel = isBongkarTab ? 'bongkar' : 'muat';
 
                 let html = '';
                 if (filtered.length === 0) {
@@ -249,7 +273,7 @@
                         <td colspan="${totalCols}" class="text-center py-5 text-muted">
                             <div class="py-2">
                                 <i class="ri-inbox-line display-5 text-muted mb-2"></i>
-                                <p class="mb-0 fs-14">Tidak ada antrian muat <strong>${currentTabLabel}</strong> ${searchQuery ? 'yang cocok dengan pencarian' : 'saat ini'}.</p>
+                                <p class="mb-0 fs-14">Tidak ada antrian ${activityTypeLabel} <strong>${currentTabLabel}</strong> ${searchQuery ? 'yang cocok dengan pencarian' : 'saat ini'}.</p>
                             </div>
                         </td>
                     </tr>`;
@@ -649,10 +673,12 @@
                 const nopol = $(this).data('nopol');
                 const txJenis = $(this).data('jenis') || currentJenisTab || 'slipsheet';
                 const jenisLabel = txJenis.toUpperCase();
+                const isBongkar = txJenis.toLowerCase() === 'bongkaran';
+                const actionWord = isBongkar ? 'bongkar' : 'muat';
 
                 Swal.fire({
                     title: `Ambil Nomor Antrian (${jenisLabel})?`,
-                    text: `Ambil nomor antrian muat ${jenisLabel} otomatis untuk truk ${nopol}?`,
+                    text: `Ambil nomor antrian ${actionWord} ${jenisLabel} otomatis untuk truk ${nopol}?`,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#3577f1',
@@ -685,7 +711,7 @@
                 const id = $(this).data('id');
                 const nopol = $(this).data('nopol');
                 const antrian = $(this).data('antrian');
-                const tabLabel = currentJenisTab === 'curah' ? 'Curah' : 'Slipsheet';
+                const tabLabel = currentJenisTab === 'curah' ? 'Curah' : (currentJenisTab === 'bongkaran' ? 'Bongkaran' : 'Slipsheet');
 
                 Swal.fire({
                     title: `Batalkan Antrian ${tabLabel}?`,
@@ -741,10 +767,11 @@
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-bold small">Jenis Muatan <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small">Jenis Aktivitas / Muatan <span class="text-danger">*</span></label>
                                 <select id="fu_jenis" class="form-select">
                                     <option value="slipsheet" ${currentJenisTab === 'slipsheet' ? 'selected' : ''}>Slipsheet</option>
                                     <option value="curah" ${currentJenisTab === 'curah' ? 'selected' : ''}>Curah</option>
+                                    <option value="bongkaran" ${currentJenisTab === 'bongkaran' ? 'selected' : ''}>Bongkaran</option>
                                 </select>
                             </div>
                             <div class="mb-3">

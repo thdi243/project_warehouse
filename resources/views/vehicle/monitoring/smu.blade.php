@@ -3,7 +3,10 @@
 @section('title', '| SMU Area')
 
 @php
-    $canPengawasSmu = auth()->user()->can('permission', 'vms-pengawas-smu') || auth()->user()->can('permission', 'vms-admin-smu') || auth()->user()->hasRole('super-admin');
+    $canPengawasSmu =
+        auth()->user()->can('permission', 'vms-pengawas-smu') ||
+        auth()->user()->can('permission', 'vms-admin-smu') ||
+        auth()->user()->hasRole('super-admin');
     $canAdminSmu = auth()->user()->can('permission', 'vms-admin-smu') || auth()->user()->hasRole('super-admin');
 @endphp
 
@@ -51,7 +54,7 @@
                                             <th class="text-center" style="width: 120px;">No. Antrian</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            @if($canAdminSmu || $canPengawasSmu)
+                                            @if ($canAdminSmu || $canPengawasSmu)
                                                 <th>Item</th>
                                                 <th>No. SPB / Qty</th>
                                                 <th>Waktu</th>
@@ -63,7 +66,8 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="{{ ($canAdminSmu || $canPengawasSmu) ? 9 : 4 }}" class="text-center py-4 text-muted">Loading data...</td>
+                                            <td colspan="{{ $canAdminSmu || $canPengawasSmu ? 9 : 4 }}"
+                                                class="text-center py-4 text-muted">Loading data...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -138,8 +142,9 @@
                     </tr>`;
                 } else {
                     filtered.forEach(function(tx) {
-                        const isSlipsheet = (tx.jenis || '').toLowerCase() === 'slipsheet';
-                        const actionLabel = isSlipsheet ? 'Muat' : 'Bongkar';
+                        const jenis = (tx.jenis || '').toLowerCase().trim();
+                        const isMuat = jenis === 'slipsheet' || jenis === 'curah';
+                        const actionLabel = isMuat ? 'Muat' : 'Bongkar';
                         const isProcess = tx.unloading_status === 'process';
 
                         let antrianBadge = '';
@@ -152,7 +157,8 @@
                                     <i class="ri-ticket-2-line me-1 align-middle"></i>Ambil Antrian
                                 </button>`;
                             } else {
-                                antrianBadge = `<span class="badge bg-soft-secondary text-secondary">Belum Antri</span>`;
+                                antrianBadge =
+                                    `<span class="badge bg-soft-secondary text-secondary">Belum Antri</span>`;
                             }
                         }
 
@@ -204,7 +210,8 @@
                                     ${cancelBtn}
                                 </div>`;
                             } else {
-                                actionBtn = cancelBtn || `<span class="text-muted small">Menunggu Mulai</span>`;
+                                actionBtn = cancelBtn ||
+                                    `<span class="text-muted small">Menunggu Mulai</span>`;
                             }
                         } else {
                             // Sedang proses: pengawas / admin dapat menyelesaikan proses
@@ -216,7 +223,8 @@
                                     <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai
                                 </button>`;
                             } else {
-                                actionBtn = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang ${actionLabel}</span>`;
+                                actionBtn =
+                                    `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang ${actionLabel}</span>`;
                             }
                         }
 
@@ -283,7 +291,7 @@
                                 <strong>${tx.vendor || '-'}</strong><br>
                                 <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
                             </td>
-                            @if($canAdminSmu || $canPengawasSmu)
+                            @if ($canAdminSmu || $canPengawasSmu)
                                 <td>${tx.item_name}</td>
                                 <td>
                                     <strong>${tx.no_spb}</strong><br>

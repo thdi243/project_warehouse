@@ -168,14 +168,14 @@ class VehicleTrackingController extends Controller
         $todayCompletedTransactions = VehicleTransaction::with(['targetLocation', 'vehicle', 'item'])
             ->where(function ($q) {
                 $q->where('status', 'completed')
-                  ->orWhereNotNull('check_out_time');
+                    ->orWhereNotNull('check_out_time');
             })
             ->where(function ($q) {
                 $q->whereDate('check_out_time', Carbon::today())
-                  ->orWhere(function ($sub) {
-                      $sub->whereNull('check_out_time')
-                          ->whereDate('updated_at', Carbon::today());
-                  });
+                    ->orWhere(function ($sub) {
+                        $sub->whereNull('check_out_time')
+                            ->whereDate('updated_at', Carbon::today());
+                    });
             })
             ->get();
 
@@ -821,12 +821,8 @@ class VehicleTrackingController extends Controller
             // Validate target area based on jenis
             $targetLoc = Location::findOrFail($request->target_location_id);
             $jenis = $request->jenis;
-            if ($jenis === 'bongkaran') {
-                if ($targetLoc->s_loc === 'A001') {
-                    throw new \Exception('Untuk jenis bongkaran, tidak boleh memilih tujuan area WFG (A001).');
-                }
-            } elseif (in_array($jenis, ['slipsheet', 'curah'])) {
-                if (!in_array($targetLoc->s_loc, ['A001', 'SMU', 'A002', 'B006'])) {
+            if (in_array($jenis, ['slipsheet', 'curah'])) {
+                if (!in_array($targetLoc->s_loc, ['A001', 'A002', 'B006'])) {
                     throw new \Exception('Untuk jenis slipsheet atau curah, hanya boleh memilih tujuan area WFG (A001), SMU, atau WRM (B006).');
                 }
             } elseif ($jenis === 'retur') {
@@ -3198,7 +3194,7 @@ class VehicleTrackingController extends Controller
             'checkOutBy',
         ])->where(function ($q) {
             $q->where('status', 'completed')
-              ->orWhereNotNull('check_out_time');
+                ->orWhereNotNull('check_out_time');
         });
 
         if ($request->filled('start_date')) {
