@@ -213,7 +213,7 @@ class WfgKempuController extends Controller
         ];
 
         return in_array($statusUpper, $allowedStatuses, true) ||
-               in_array($statusNormalized, $allowedStatuses, true);
+            in_array($statusNormalized, $allowedStatuses, true);
     }
 
     /**
@@ -318,8 +318,6 @@ class WfgKempuController extends Controller
                     'transfer in from produksi',
                     strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
                     strtolower(MasterKempuModel::STATUS_WFG_RECEIVED),
-                    strtolower(MasterKempuModel::STATUS_SCAN2_PENDING),
-                    strtolower(MasterKempuModel::STATUS_SCAN2_PASSED),
                 ];
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
                     return [
