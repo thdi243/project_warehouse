@@ -89,10 +89,29 @@
 
                 @can('permission', 'wfg-kempu')
                     <li class="nav-item">
-                        <a href="{{ route('wfg.kempu.index') }}"
-                            class="nav-link menu-link {{ request()->routeIs('wfg.kempu.*') ? 'active' : '' }}">
-                            <i class="bx bx-git-commit fs-12"></i>Scan Kempu
+                        <a href="#sidebarScanKempuWFG" data-bs-toggle="collapse" role="button"
+                            class="nav-link {{ request()->routeIs('wfg.kempu.*') ? '' : 'collapsed' }}"
+                            aria-expanded="{{ request()->routeIs('wfg.kempu.*') ? 'true' : 'false' }}"
+                            aria-controls="sidebarScanKempuWFG">
+                            <i class="bx bx-git-commit fs-12"></i> Scan Kempu
                         </a>
+                        <div class="collapse menu-dropdown {{ request()->routeIs('wfg.kempu.*') ? 'show' : '' }}"
+                            id="sidebarScanKempuWFG">
+                            <ul class="nav nav-sm flex-column">
+                                <li class="nav-item">
+                                    <a href="{{ route('wfg.kempu.index') }}"
+                                        class="nav-link {{ request()->routeIs('wfg.kempu.index') ? 'active' : '' }}">
+                                        <i class="bx bx-git-commit fs-12"></i>Scan
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('wfg.kempu.report') }}"
+                                        class="nav-link {{ request()->routeIs('wfg.kempu.report') ? 'active' : '' }}">
+                                        <i class="bx bx-git-commit fs-12"></i>Report
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                     </li>
                 @endcan
             </ul>

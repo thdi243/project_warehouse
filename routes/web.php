@@ -514,6 +514,9 @@ Route::middleware('auth')->group(function () {
                 Route::post('/confirm', [WfgKempuController::class, 'confirm'])->name('confirm');
                 Route::post('/update-reused', [WfgKempuController::class, 'updateReused'])->name('update_reused');
                 Route::get('/recent-scans', [WfgKempuController::class, 'recentScans'])->name('recent_scans');
+                Route::get('/report', [WfgKempuController::class, 'report'])->name('report');
+                Route::get('/report/data', [WfgKempuController::class, 'reportData'])->name('report_data');
+                Route::get('/report/export', [WfgKempuController::class, 'exportReport'])->name('report_export');
             });
         });
     });
@@ -568,6 +571,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/confirm', [WpmKempuController::class, 'confirm'])->name('confirm');
             Route::post('/update-reused', [WpmKempuController::class, 'updateReused'])->name('update_reused');
             Route::get('/recent-scans', [WpmKempuController::class, 'recentScans'])->name('recent_scans');
+            Route::get('/report', [WpmKempuController::class, 'report'])->name('report');
+            Route::get('/report/data', [WpmKempuController::class, 'reportData'])->name('report_data');
+            Route::get('/report/export', [WpmKempuController::class, 'exportReport'])->name('report_export');
         });
     });
 

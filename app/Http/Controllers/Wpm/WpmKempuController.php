@@ -602,4 +602,243 @@ class WpmKempuController extends Controller
             'data'   => $list,
         ]);
     }
+
+    /**
+     * Halaman Report Scan Kempu WPM
+     */
+    public function report(Request $request)
+    {
+        $cards = self::getCards();
+
+        $totalCurrentWpm = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_location', MasterKempuModel::LOC_WPM);
+        })->count();
+
+        $totalTransferInToday = KempuTrackingHistoryModel::where('stage', 'WPM')
+            ->where('action', 'like', '%Transfer in%')
+            ->whereDate('created_at', today())
+            ->count();
+
+        $totalTransferInAll = KempuTrackingHistoryModel::where('stage', 'WPM')
+            ->where('action', 'like', '%Transfer in%')
+            ->count();
+
+        $totalTransferOutToday = KempuTrackingHistoryModel::where('stage', 'WPM')
+            ->where('action', 'like', '%Transfer Out%')
+            ->whereDate('created_at', today())
+            ->count();
+
+        $totalTransferOutAll = KempuTrackingHistoryModel::where('stage', 'WPM')
+            ->where('action', 'like', '%Transfer Out%')
+            ->count();
+
+        $totalWarning = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_location', MasterKempuModel::LOC_WPM)
+                ->where('reused_count', '>=', 18);
+        })->count();
+
+        return view('wpm.kempu.report', compact(
+            'cards',
+            'totalCurrentWpm',
+            'totalTransferInToday',
+            'totalTransferInAll',
+            'totalTransferOutToday',
+            'totalTransferOutAll',
+            'totalWarning'
+        ));
+    }
+
+    /**
+     * AJAX Endpoint untuk Data Report Kempu WPM (Server-side Pagination & Filtering)
+     */
+    public function reportData(Request $request)
+    {
+        $viewMode = $request->input('view_mode', 'history'); // 'history' | 'current'
+        $perPage  = min(100, max(5, (int) $request->input('per_page', 20)));
+
+        if ($viewMode === 'current') {
+            // Data kempu yang saat ini berada di lokasi WPM
+            $query = MasterKempuModel::whereHas('main', function ($q) {
+                $q->where('current_location', MasterKempuModel::LOC_WPM);
+            })->with(['main', 'createdBy:id,username,nama_lengkap']);
+
+            if ($request->filled('search')) {
+                $s = trim($request->search);
+                $query->where(function ($q) use ($s) {
+                    $q->where('id_kempu', 'like', "%{$s}%")
+                        ->orWhere('rfid', 'like', "%{$s}%")
+                        ->orWhere('merk_kempu', 'like', "%{$s}%")
+                        ->orWhere('tipe_kempu', 'like', "%{$s}%");
+                });
+            }
+
+            if ($request->filled('reused_status')) {
+                $query->whereHas('main', function ($q) use ($request) {
+                    if ($request->reused_status === 'warning') {
+                        $q->whereBetween('reused_count', [18, 20]);
+                    } elseif ($request->reused_status === 'max') {
+                        $q->where('reused_count', '>=', 21);
+                    } elseif ($request->reused_status === 'normal') {
+                        $q->where('reused_count', '<', 18);
+                    }
+                });
+            }
+
+            $paginated = $query->latest('updated_at')->paginate($perPage);
+
+            return response()->json([
+                'status'     => true,
+                'view_mode'  => 'current',
+                'data'       => $paginated->items(),
+                'pagination' => [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page'    => $paginated->lastPage(),
+                    'total'        => $paginated->total(),
+                    'per_page'     => $paginated->perPage(),
+                ],
+            ]);
+        }
+
+        // Default: Log Riwayat Scan WPM
+        $query = KempuTrackingHistoryModel::where(function ($q) {
+            $q->where('stage', 'WPM')
+              ->orWhere('from_location', MasterKempuModel::LOC_WPM)
+              ->orWhere('to_location', MasterKempuModel::LOC_WPM);
+        })->with([
+            'createdBy:id,username,nama_lengkap',
+            'masterKempu:id,id_kempu,rfid,merk_kempu,tipe_kempu',
+        ]);
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        if ($request->filled('action') && $request->action !== 'all') {
+            $query->where('action', $request->action);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('id_kempu', 'like', "%{$s}%")
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                        $mq->where('rfid', 'like', "%{$s}%")
+                           ->orWhere('merk_kempu', 'like', "%{$s}%");
+                    })
+                    ->orWhereHas('createdBy', function ($uq) use ($s) {
+                        $uq->where('username', 'like', "%{$s}%")
+                           ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                    });
+            });
+        }
+
+        $paginated = $query->latest('id')->paginate($perPage);
+
+        return response()->json([
+            'status'     => true,
+            'view_mode'  => 'history',
+            'data'       => $paginated->items(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'total'        => $paginated->total(),
+                'per_page'     => $paginated->perPage(),
+            ],
+        ]);
+    }
+
+    /**
+     * Export Report CSV untuk Scan Kempu WPM
+     */
+    public function exportReport(Request $request)
+    {
+        $query = KempuTrackingHistoryModel::where(function ($q) {
+            $q->where('stage', 'WPM')
+              ->orWhere('from_location', MasterKempuModel::LOC_WPM)
+              ->orWhere('to_location', MasterKempuModel::LOC_WPM);
+        })->with([
+            'createdBy:id,username,nama_lengkap',
+            'masterKempu:id,id_kempu,rfid,merk_kempu,tipe_kempu',
+        ]);
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        if ($request->filled('action') && $request->action !== 'all') {
+            $query->where('action', $request->action);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('id_kempu', 'like', "%{$s}%")
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                        $mq->where('rfid', 'like', "%{$s}%");
+                    })
+                    ->orWhereHas('createdBy', function ($uq) use ($s) {
+                        $uq->where('username', 'like', "%{$s}%")
+                           ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                    });
+            });
+        }
+
+        $records = $query->latest('id')->get();
+        $filename = 'Report_Scan_Kempu_WPM_' . now()->format('Ymd_His') . '.csv';
+
+        $callback = function () use ($records) {
+            $file = fopen('php://output', 'w');
+            // Write UTF-8 BOM
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            // CSV Header
+            fputcsv($file, [
+                'No',
+                'Tanggal & Waktu',
+                'ID Kempu',
+                'RFID',
+                'Aksi / Status Flow',
+                'Dari Lokasi',
+                'Menuju Lokasi',
+                'Siklus Reused',
+                'Kondisi',
+                'Catatan / Surat Jalan',
+                'Petugas Scan',
+            ]);
+
+            $no = 1;
+            foreach ($records as $row) {
+                fputcsv($file, [
+                    $no++,
+                    $row->created_at ? $row->created_at->format('d/m/Y H:i:s') : '-',
+                    $row->id_kempu,
+                    $row->masterKempu->rfid ?? '-',
+                    $row->action,
+                    $row->from_location ?? '-',
+                    $row->to_location ?? '-',
+                    ($row->reused_count ?? 0) . ' / 21x',
+                    $row->condition ?? 'OK',
+                    $row->notes ?? '-',
+                    $row->createdBy->nama_lengkap ?? $row->createdBy->username ?? '-',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
 }
