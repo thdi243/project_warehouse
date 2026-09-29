@@ -25,6 +25,18 @@
             color: #991b1b;
         }
 
+        @keyframes rfidPulseSuccess {
+            0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.6); border-color: #198754; }
+            70% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); border-color: #198754; }
+            100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+        }
+        .rfid-scanned-flash {
+            animation: rfidPulseSuccess 0.8s ease-out;
+            border-color: #198754 !important;
+            background-color: #f0fdf4 !important;
+            transition: background-color 1s ease;
+        }
+
         .qr-label-card {
             border: 2px solid #334155;
             border-radius: 8px;
@@ -343,11 +355,28 @@
                             </div>
 
                             <div class="col-md-6" id="colRfidField">
-                                <label for="rfid" class="form-label fw-semibold">
-                                    RFID <span class="text-muted fw-normal">(Opsional)</span>
-                                </label>
-                                <input type="text" class="form-control" id="rfid" name="rfid"
-                                    placeholder="Masukkan Kode RFID kempu">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label for="rfid" class="form-label fw-semibold mb-0">
+                                        RFID <span class="text-muted fw-normal">(Opsional)</span>
+                                    </label>
+                                    <span class="badge bg-soft-info text-info border border-info-subtle fs-11" id="rfidStatusBadge" style="cursor: pointer;" title="Klik untuk siap scan RFID">
+                                        <i class="ri-rfid-line me-1"></i>Siap Scan RFID Reader
+                                    </span>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted"><i class="ri-rfid-line"></i></span>
+                                    <input type="text" class="form-control font-monospace" id="rfid" name="rfid"
+                                        placeholder="Dekatkan tag ke RFID reader..." autocomplete="off">
+                                    <button type="button" class="btn btn-outline-primary" id="btnFocusRfid" title="Klik untuk siap scan RFID">
+                                        <i class="ri-sensor-line me-1"></i>Scan
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="btnClearRfid" title="Hapus RFID" style="display: none;">
+                                        <i class="ri-close-line"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1" id="rfidHelp" style="font-size: 11px;">
+                                    <i class="ri-information-line me-1"></i>Tempelkan tag ke RFID Reader USB. Tag RFID akan otomatis terisi.
+                                </small>
                             </div>
 
                             <!-- Status Operasional (hidden default active) -->
@@ -1038,6 +1067,7 @@
             });
 
             // Tombol Tambah
+            // Tombol Tambah
             $('#btnTambah').on('click', function() {
                 $('#formKempu')[0].reset();
                 $('#formKempu').removeClass('was-validated');
@@ -1046,6 +1076,11 @@
                 $('#gr_date').val('{{ date('Y-m-d') }}');
                 $('#status').val('active');
                 $('#modalKempuLabel').text('Tambah Master Kempu');
+
+                // Reset RFID Field
+                $('#rfid').val('').removeClass('rfid-scanned-flash is-valid');
+                $('#btnClearRfid').hide();
+                resetRfidBadge();
 
                 // Tampilkan mode switcher dan reset ke mode single
                 $('#boxInputMode').show();
@@ -1088,13 +1123,185 @@
                     $('#gr_date').val('{{ date('Y-m-d') }}');
                 }
 
-                $('#rfid').val(rowData.rfid || '');
-                $('#status').val(rowData.status || 'active');
+                const rfidVal = rowData.rfid || '';
+                $('#rfid').val(rfidVal).removeClass('rfid-scanned-flash is-valid');
+                if (rfidVal) {
+                    $('#btnClearRfid').show();
+                } else {
+                    $('#btnClearRfid').hide();
+                }
+                resetRfidBadge();
 
+                $('#status').val(rowData.status || 'active');
                 $('#keterangan').val(rowData.keterangan);
 
                 $('#modalKempuLabel').text('Edit Master Kempu: ' + rowData.id_kempu);
                 $('#modalKempu').modal('show');
+            });
+
+            // =========================================================================
+            // FITUR PEMINDAIAN RFID READER (USB WEDGE & MANUAL SCAN) UNTUK CREATE & EDIT
+            // =========================================================================
+            function playRfidBeep(type = 'success') {
+                try {
+                    const ctx = new(window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    if (type === 'success') {
+                        osc.frequency.setValueAtTime(950, ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.12);
+                        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.15);
+                    } else {
+                        osc.frequency.setValueAtTime(320, ctx.currentTime);
+                        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.2);
+                    }
+                    if (navigator.vibrate) navigator.vibrate(60);
+                } catch (e) {
+                    // Audio fallback
+                }
+            }
+
+            function resetRfidBadge() {
+                $('#rfidStatusBadge')
+                    .removeClass('bg-success bg-primary bg-danger text-white')
+                    .addClass('bg-soft-info text-info border-info-subtle')
+                    .html('<i class="ri-rfid-line me-1"></i>Siap Scan RFID Reader');
+                $('#rfidHelp').html(
+                    '<i class="ri-information-line me-1"></i>Tempelkan tag ke RFID Reader USB. Tag RFID akan otomatis terisi.'
+                );
+            }
+
+            let rfidBadgeTimer = null;
+            function onRfidScanned(scannedCode) {
+                scannedCode = (scannedCode || '').trim().toUpperCase();
+                if (!scannedCode) return;
+
+                $('#rfid').val(scannedCode);
+                $('#btnClearRfid').show();
+
+                playRfidBeep('success');
+
+                // Visual flash animation pada input RFID
+                $('#rfid').addClass('rfid-scanned-flash is-valid');
+                setTimeout(() => {
+                    $('#rfid').removeClass('rfid-scanned-flash');
+                }, 1200);
+
+                // Update badge status dan teks bantuan
+                if (rfidBadgeTimer) clearTimeout(rfidBadgeTimer);
+                $('#rfidStatusBadge')
+                    .removeClass('bg-soft-info text-info border-info-subtle bg-primary')
+                    .addClass('bg-success text-white')
+                    .html('<i class="ri-checkbox-circle-line me-1"></i>RFID Terbaca!');
+
+                $('#rfidHelp').html(
+                    `<span class="text-success fw-bold"><i class="ri-check-double-line me-1"></i>Berhasil dibaca: ${scannedCode}</span>`
+                );
+
+                rfidBadgeTimer = setTimeout(() => {
+                    resetRfidBadge();
+                }, 3500);
+            }
+
+            // Tombol Siap Scan / Klik Badge untuk Fokus Reader
+            $('#btnFocusRfid, #rfidStatusBadge').on('click', function(e) {
+                e.preventDefault();
+                $('#rfid').focus().select();
+                $('#rfidStatusBadge')
+                    .removeClass('bg-soft-info text-info border-info-subtle bg-success')
+                    .addClass('bg-primary text-white')
+                    .html('<i class="ri-loader-4-line ri-spin me-1"></i>Menunggu Tag RFID...');
+                $('#rfidHelp').html(
+                    '<span class="text-primary fw-semibold"><i class="ri-sensor-line me-1"></i>Reader aktif! Tempelkan tag/kartu RFID ke reader sekarang.</span>'
+                );
+            });
+
+            // Tombol Hapus Nilai RFID
+            $('#btnClearRfid').on('click', function(e) {
+                e.preventDefault();
+                $('#rfid').val('').removeClass('is-valid').focus();
+                $('#btnClearRfid').hide();
+                resetRfidBadge();
+            });
+
+            // Input listener pada input RFID
+            $('#rfid').on('input', function() {
+                const val = $(this).val().trim();
+                if (val) {
+                    $('#btnClearRfid').show();
+                } else {
+                    $('#btnClearRfid').hide();
+                    resetRfidBadge();
+                }
+            });
+
+            // Tangani tombol Enter saat fokus di #rfid (mencegah form submit saat reader mengirim Enter)
+            $('#rfid').on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = $(this).val().trim().toUpperCase();
+                    if (val) {
+                        onRfidScanned(val);
+                    }
+                }
+            });
+
+            // Listener Global Keyboard Wedge untuk USB RFID Reader saat modal terbuka
+            let rfidWedgeBuffer = '';
+            let rfidWedgeLastTime = 0;
+
+            $(document).on('keydown', function(e) {
+                if (!$('#modalKempu').is(':visible')) return;
+                // Mode bulk create tidak membutuhkan RFID
+                if ($('#modeBulk').is(':checked') && !$('#kempu_id').val()) return;
+
+                const now = Date.now();
+                const timeDiff = now - rfidWedgeLastTime;
+                rfidWedgeLastTime = now;
+
+                const activeEl = document.activeElement;
+                const isFocusedOnRfid = activeEl && activeEl.id === 'rfid';
+                const isTypingInOtherInput = activeEl && activeEl.id !== 'rfid' && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+
+                if (e.key === 'Enter') {
+                    // Jika fokus di RFID
+                    if (isFocusedOnRfid) {
+                        e.preventDefault();
+                        const val = $('#rfid').val().trim().toUpperCase();
+                        if (val) onRfidScanned(val);
+                        rfidWedgeBuffer = '';
+                        return false;
+                    }
+
+                    // Jika tidak fokus di RFID, tapi buffer terisi cepat (< 65ms per char, pola khas scanner hardware)
+                    if (rfidWedgeBuffer.length >= 4 && timeDiff < 65) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const scannedVal = rfidWedgeBuffer.trim().toUpperCase();
+                        onRfidScanned(scannedVal);
+                        rfidWedgeBuffer = '';
+                        return false;
+                    }
+                    rfidWedgeBuffer = '';
+                } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    if (timeDiff > 80 && isTypingInOtherInput) {
+                        // User mengetik normal secara lambat di field lain (cth: no SPB / catatan)
+                        rfidWedgeBuffer = '';
+                    } else {
+                        rfidWedgeBuffer += e.key;
+                    }
+                }
+            });
+
+            $('#modalKempu').on('shown.bs.modal', function() {
+                rfidWedgeBuffer = '';
             });
 
             // Simpan Data

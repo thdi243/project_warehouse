@@ -106,10 +106,10 @@
             /* Tables */
             .table-responsive {
                 border-radius: 12px;
-                overflow: hidden;
+                overflow-x: auto;
+                overflow-y: hidden;
                 border: 1px solid var(--border-color);
-                min-height: 280px;
-                max-height: 280px !important;
+                min-height: 330px;
             }
 
             .premium-table {
@@ -126,13 +126,14 @@
                 text-transform: uppercase;
                 font-size: 11px;
                 letter-spacing: 0.05em;
-                padding: 10px 12px;
+                padding: 8px 10px;
                 border-bottom: 2px solid var(--border-color);
+                white-space: nowrap;
             }
 
             .premium-table td {
                 background-color: transparent !important;
-                padding: 8px 12px;
+                padding: 6px 10px;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.03);
                 vertical-align: middle;
             }
@@ -147,13 +148,14 @@
 
             /* Timer badge */
             .timer-badge {
-                font-size: 12px;
+                font-size: 11px;
                 font-weight: 600;
-                padding: 6px 12px;
+                padding: 4px 10px;
                 border-radius: 30px;
                 background: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 color: #94a3b8;
+                display: inline-block;
             }
 
             .timer-badge.warning-limit {
@@ -298,6 +300,24 @@
                 background-color: rgba(16, 185, 129, 0.15);
                 color: #34d399;
                 border: 1px solid rgba(16, 185, 129, 0.25);
+            }
+
+            .badge-status.danger {
+                background-color: rgba(239, 68, 68, 0.15);
+                color: #f87171;
+                border: 1px solid rgba(239, 68, 68, 0.25);
+            }
+
+            .badge-status.secondary {
+                background-color: rgba(148, 163, 184, 0.15);
+                color: #94a3b8;
+                border: 1px solid rgba(148, 163, 184, 0.25);
+            }
+
+            .badge-status.info {
+                background-color: rgba(59, 130, 246, 0.15);
+                color: #60a5fa;
+                border: 1px solid rgba(59, 130, 246, 0.25);
             }
 
             /* Rocket Container */
@@ -1024,6 +1044,171 @@
                     $('#kpi-wrm-out').text(counts.wrm_details?.out || 0);
                 }
 
+                // Helper untuk menghasilkan badge QC Status
+                function getQcStatusBadge(tx) {
+                    const qc = (tx.qc_status || '').toLowerCase();
+                    if (qc === 'waiting_dokumen') {
+                        return `<span class="badge-status waiting"><i class="ri-file-list-line me-1"></i>Waiting Dokumen</span>`;
+                    } else if (qc === 'waiting_sampling' || tx.status === 'antri_sampling') {
+                        return `<span class="badge-status waiting"><i class="ri-time-line me-1"></i>Antri QC</span>`;
+                    } else if (qc === 'on_check' || tx.status === 'sampling') {
+                        return `<span class="badge-status process"><i class="ri-loader-4-line ri-spin me-1"></i>Sampling QC</span>`;
+                    } else if (qc === 'released') {
+                        return `<span class="badge-status success"><i class="ri-checkbox-circle-line me-1"></i>Released</span>`;
+                    } else if (qc === 'rejected') {
+                        return `<span class="badge-status danger"><i class="ri-close-circle-line me-1"></i>Rejected</span>`;
+                    } else if (qc === 'not_required') {
+                        return `<span class="badge-status secondary"><i class="ri-subtract-line me-1"></i>Tanpa QC</span>`;
+                    } else if (qc) {
+                        return `<span class="badge-status secondary">${tx.qc_status}</span>`;
+                    }
+                    return `<span class="badge-status secondary">-</span>`;
+                }
+
+                // Helper untuk menghasilkan badge Aktivitas / Unloading
+                function getVehicleActivityBadge(tx, areaKey) {
+                    const status = (tx.status || '').toLowerCase();
+                    const unloadingStatus = (tx.unloading_status || '').toLowerCase();
+                    const jenis = (tx.jenis || '').toLowerCase();
+
+                    let actionName = 'Bongkar';
+                    if (areaKey === 'WFG') {
+                        actionName = jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
+                    } else if (areaKey === 'SMU') {
+                        actionName = jenis === 'slipsheet' ? 'Muat' : 'Bongkar';
+                    }
+
+                    if (status === 'completed') {
+                        return `<span class="badge-status success"><i class="ri-checkbox-circle-line me-1"></i>Completed</span>`;
+                    }
+                    if (status === 'timbangan_out') {
+                        return `<span class="badge-status info"><i class="ri-scales-line me-1"></i>Timbangan Out</span>`;
+                    }
+                    if (unloadingStatus === 'completed' || tx.finish_loading_time) {
+                        return `<span class="badge-status success"><i class="ri-check-double-line me-1"></i>Selesai ${actionName}</span>`;
+                    }
+                    if (unloadingStatus === 'process' || (tx.start_loading_time && !tx.finish_loading_time)) {
+                        return `<span class="badge-status process"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionName}</span>`;
+                    }
+                    if (status === 'sampling' || tx.qc_status === 'on_check') {
+                        return `<span class="badge-status process"><i class="ri-test-tube-line me-1"></i>Proses Sampling</span>`;
+                    }
+                    if (status === 'antri_sampling' || tx.qc_status === 'waiting_sampling' || tx.qc_status === 'waiting_dokumen') {
+                        return `<span class="badge-status waiting"><i class="ri-time-line me-1"></i>Menunggu QC</span>`;
+                    }
+                    if (status === 'timbangan_in') {
+                        return `<span class="badge-status secondary"><i class="ri-scales-line me-1"></i>Timbangan In</span>`;
+                    }
+                    if (tx.no_antrian) {
+                        return `<span class="badge-status waiting"><i class="ri-ticket-2-line me-1"></i>Antri ${actionName} (${tx.no_antrian})</span>`;
+                    }
+                    return `<span class="badge-status waiting"><i class="ri-hourglass-line me-1"></i>Menunggu ${actionName}</span>`;
+                }
+
+                // Helper untuk menghitung durasi sesuai status dan timestamps masing-masing
+                function getVehicleDurationInfo(tx, areaKey) {
+                    const status = (tx.status || '').toLowerCase();
+                    const unloadingStatus = (tx.unloading_status || '').toLowerCase();
+                    const qcStatus = (tx.qc_status || '').toLowerCase();
+                    const jenis = (tx.jenis || '').toLowerCase();
+
+                    let actionName = 'Bongkar';
+                    if (areaKey === 'WFG') {
+                        actionName = jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
+                    } else if (areaKey === 'SMU') {
+                        actionName = jenis === 'slipsheet' ? 'Muat' : 'Bongkar';
+                    }
+
+                    // 1. Selesai Bongkar / Muat (hitung durasi pengerjaan fixed)
+                    if (unloadingStatus === 'completed' || tx.finish_loading_time) {
+                        if (tx.start_loading_time && tx.finish_loading_time) {
+                            const startM = moment(tx.start_loading_time, "YYYY-MM-DD HH:mm:ss");
+                            const finishM = moment(tx.finish_loading_time, "YYYY-MM-DD HH:mm:ss");
+                            const fixedSec = Math.max(0, finishM.diff(startM, 'seconds'));
+                            return {
+                                start: null,
+                                fixed: fixedSec,
+                                label: `Selesai ${actionName}`
+                            };
+                        }
+                        return {
+                            start: tx.finish_loading_time || tx.arrival_time,
+                            fixed: null,
+                            label: `Selesai ${actionName}`
+                        };
+                    }
+
+                    // 2. Sedang Proses Bongkar / Muat (hitung sejak start_loading_time)
+                    if (unloadingStatus === 'process' || (tx.start_loading_time && !tx.finish_loading_time)) {
+                        return {
+                            start: tx.start_loading_time || tx.arrival_time || tx.check_in_time,
+                            fixed: null,
+                            label: `Durasi ${actionName}`
+                        };
+                    }
+
+                    // 3. Sedang Proses Sampling QC (hitung sejak start_sampling_time)
+                    if (status === 'sampling' || qcStatus === 'on_check' || tx.start_sampling_time) {
+                        return {
+                            start: tx.start_sampling_time || tx.queue_taken_time || tx.arrival_time || tx.check_in_time,
+                            fixed: null,
+                            label: 'Durasi Sampling QC'
+                        };
+                    }
+
+                    // 4. Antri QC / Waiting Dokumen (hitung sejak queue_taken_time atau check_in_time)
+                    if (status === 'antri_sampling' || qcStatus === 'waiting_dokumen' || qcStatus === 'waiting_sampling') {
+                        return {
+                            start: tx.queue_taken_time || tx.check_in_time || tx.arrival_time,
+                            fixed: null,
+                            label: tx.no_antrian ? `Antri QC (#${tx.no_antrian})` : (qcStatus === 'waiting_dokumen' ? 'Waiting Dokumen' : 'Tunggu QC')
+                        };
+                    }
+
+                    // 5. Antri Bongkar / Muat (sudah ambil nomor antrian)
+                    if (tx.no_antrian || tx.queue_taken_time) {
+                        return {
+                            start: tx.queue_taken_time || tx.finish_sampling_time || tx.arrival_time || tx.check_in_time,
+                            fixed: null,
+                            label: tx.no_antrian ? `Antri ${actionName} (#${tx.no_antrian})` : `Antri ${actionName}`
+                        };
+                    }
+
+                    // 6. Menunggu Bongkar / Muat setelah QC Released
+                    if (tx.finish_sampling_time) {
+                        return {
+                            start: tx.finish_sampling_time,
+                            fixed: null,
+                            label: `Tunggu ${actionName}`
+                        };
+                    }
+
+                    // 7. Timbangan Out
+                    if (status === 'timbangan_out') {
+                        return {
+                            start: tx.timbangan_out_time || tx.finish_loading_time || tx.arrival_time,
+                            fixed: null,
+                            label: 'Timbang Out'
+                        };
+                    }
+
+                    // 8. Timbangan In
+                    if (status === 'timbangan_in') {
+                        return {
+                            start: tx.check_in_time || tx.arrival_time,
+                            fixed: null,
+                            label: 'Timbang In'
+                        };
+                    }
+
+                    // Default fallback
+                    return {
+                        start: tx.arrival_time || tx.check_in_time,
+                        fixed: null,
+                        label: `Tunggu ${actionName}`
+                    };
+                }
+
                 // Render active vehicles slice into respective tables based on current page
                 function renderDashboardPages() {
                     const tables = {
@@ -1051,7 +1236,7 @@
                             if (key === 'WFG') colsCount = 6;
                             if (key === 'SMU') colsCount = 6;
                             tbody.html(
-                                `<tr><td colspan="${colsCount}" class="text-center text-muted py-4 small text-uppercase" style="height: 225px; vertical-align: middle;">Kosong</td></tr>`
+                                `<tr><td colspan="${colsCount}" class="text-center text-muted py-4 small text-uppercase" style="height: 280px; vertical-align: middle;">Kosong</td></tr>`
                             );
 
                             // Clear pagination indicator
@@ -1078,39 +1263,22 @@
                             let tglMasuk = moment(tx.check_in_time).format('DD-MM-YYYY');
                             let jamMasuk = moment(tx.check_in_time).format('HH:mm');
 
+                            const durationInfo = getVehicleDurationInfo(tx, key);
+                            const durationCell = `
+                                <td>
+                                    <div class="d-flex flex-column align-items-center">
+                                        <span class="dashboard-timer ${durationClass}" data-start="${durationInfo.start || ''}" data-fixed="${durationInfo.fixed !== null ? durationInfo.fixed : ''}" data-limit="${tx.limit_minutes}">
+                                            Calculated...
+                                        </span>
+                                        <span class="text-muted fs-10 mt-1">${durationInfo.label}</span>
+                                    </div>
+                                </td>
+                            `;
+
                             let rowHtml = '';
-                            if (key === 'WPM') {
-                                let qcStatusBadge = '';
-                                if (tx.qc_status === 'waiting_dokumen') {
-                                    qcStatusBadge =
-                                        `<span class="badge-status waiting">Waiting Dokumen</span>`;
-                                } else if (tx.qc_status === 'on_check') {
-                                    qcStatusBadge =
-                                        `<span class="badge-status process">On Check</span>`;
-                                } else if (tx.qc_status === 'released') {
-                                    qcStatusBadge =
-                                        `<span class="badge-status success">Released</span>`;
-                                } else if (tx.qc_status === 'rejected') {
-                                    qcStatusBadge = `<span class="badge-status danger">Rejected</span>`;
-                                } else {
-                                    qcStatusBadge =
-                                        `<span class="badge bg-soft-secondary text-secondary">${tx.qc_status}</span>`;
-                                }
-
-                                let unloadingStatusBadge = '';
-                                if (tx.status === 'antri_sampling') {
-                                    unloadingStatusBadge =
-                                        `<span class="badge-status waiting">Menunggu QC</span>`;
-                                } else if (tx.status === 'sampling') {
-                                    unloadingStatusBadge =
-                                        `<span class="badge-status process">Proses Sampling</span>`;
-                                } else if (tx.status === 'wpm') {
-                                    unloadingStatusBadge =
-                                        `<span class="badge-status process">Proses Bongkar</span>`;
-                                } else {
-                                    unloadingStatusBadge =
-                                        `<span class="badge bg-soft-secondary text-secondary">${tx.unloading_status}</span>`;
-                                }
+                            if (key === 'WPM' || key === 'WRM') {
+                                const qcStatusBadge = getQcStatusBadge(tx);
+                                const unloadingStatusBadge = getVehicleActivityBadge(tx, key);
 
                                 rowHtml = `
                                     <tr class="${warningRow}" id="row-tx-${tx.id}">
@@ -1120,132 +1288,16 @@
                                                 <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
                                             </div>
                                         </td>
-                                        <td><span class="fw-semibold">${tx.no_spb}</span></td>
-                                        <td><span class="fw-semibold">${tx.no_pol}</span></td>
-                                        <td>${tx.vendor}</td>
+                                        <td><span class="fw-semibold">${tx.no_spb || '-'}</span></td>
+                                        <td><span class="fw-semibold">${tx.no_pol || '-'}</span></td>
+                                        <td>${tx.vendor || '-'}</td>
                                         <td>${qcStatusBadge}</td>
                                         <td>${unloadingStatusBadge}</td>
-                                        <td>
-                                            <span class="dashboard-timer ${durationClass}" data-start="${tx.arrival_time}" data-limit="${tx.limit_minutes}">
-                                                Calculated...
-                                            </span>
-                                        </td>
-                                    </tr>
-                                `;
-                            } else if (key === 'WRM') {
-                                let qcStatusBadge = '';
-                                if (tx.qc_status === 'waiting_dokumen') {
-                                    qcStatusBadge =
-                                        `<span class="badge-status waiting">Waiting Dokumen</span>`;
-                                } else if (tx.qc_status === 'on_check') {
-                                    qcStatusBadge =
-                                        `<span class="badge-status process">On Check</span>`;
-                                } else if (tx.qc_status === 'released') {
-                                    qcStatusBadge =
-                                        `<span class="badge-status success">Released</span>`;
-                                } else if (tx.qc_status === 'rejected') {
-                                    qcStatusBadge = `<span class="badge-status danger">Rejected</span>`;
-                                } else {
-                                    qcStatusBadge =
-                                        `<span class="badge bg-soft-secondary text-secondary">${tx.qc_status}</span>`;
-                                }
-
-                                let unloadingStatusBadge = '';
-                                if (tx.status === 'antri_sampling') {
-                                    unloadingStatusBadge =
-                                        `<span class="badge-status waiting">Menunggu QC</span>`;
-                                } else if (tx.status === 'sampling') {
-                                    unloadingStatusBadge =
-                                        `<span class="badge-status process">Proses Sampling</span>`;
-                                } else if (tx.status === 'wrm_bongkar') {
-                                    unloadingStatusBadge =
-                                        `<span class="badge-status process">Proses Bongkar</span>`;
-                                } else {
-                                    unloadingStatusBadge =
-                                        `<span class="badge bg-soft-secondary text-secondary">${tx.unloading_status}</span>`;
-                                }
-
-                                rowHtml = `
-                                    <tr class="${warningRow}" id="row-tx-${tx.id}">
-                                        <td>
-                                            <div class="d-flex flex-column">
-                                                <span class="fs-12 text-muted">${tglMasuk}</span>
-                                                <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
-                                            </div>
-                                        </td>
-                                        <td><span class="fw-semibold">${tx.no_spb}</span></td>
-                                        <td><span class="fw-semibold">${tx.no_pol}</span></td>
-                                        <td>${tx.vendor}</td>
-                                        <td>${qcStatusBadge}</td>
-                                        <td>${unloadingStatusBadge}</td>
-                                        <td>
-                                            <span class="dashboard-timer ${durationClass}" data-start="${tx.arrival_time}" data-limit="${tx.limit_minutes}">
-                                                Calculated...
-                                            </span>
-                                        </td>
+                                        ${durationCell}
                                     </tr>
                                 `;
                             } else if (key === 'WFG') {
-                                let statusWfgBadge;
-                                const jenis = (tx.jenis || '').toLowerCase();
-                                const isProcess = tx.unloading_status === 'process';
-                                if (jenis === 'bongkaran') {
-                                    if (isProcess) {
-                                        statusWfgBadge =
-                                            `<span class="badge-status process">Proses Bongkar</span>`;
-                                    } else if (tx.no_antrian) {
-                                        statusWfgBadge =
-                                            `<span class="badge-status waiting">Antri Bongkar (${tx.no_antrian})</span>`;
-                                    } else {
-                                        statusWfgBadge =
-                                            `<span class="badge-status waiting">Menunggu Antrian</span>`;
-                                    }
-                                } else {
-                                    if (isProcess) {
-                                        statusWfgBadge =
-                                            `<span class="badge-status process">Proses Muat</span>`;
-                                    } else if (tx.no_antrian) {
-                                        statusWfgBadge =
-                                            `<span class="badge-status waiting">Antri Muat (${tx.no_antrian})</span>`;
-                                    } else {
-                                        statusWfgBadge =
-                                            `<span class="badge-status waiting">Menunggu Antrian</span>`;
-                                    }
-                                }
-                                rowHtml = `
-                                    <tr class="${warningRow}" id="row-tx-${tx.id}">
-                                        <td>
-                                            <div class="d-flex flex-column">
-                                                <span class="fs-12 text-muted">${tglMasuk}</span>
-                                                <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
-                                            </div>
-                                        </td>
-                                        <td><span class="fw-semibold">${tx.no_pol}</span></td>
-                                        <td>${tx.vendor}</td>
-                                        <td><strong>${tx.item}</strong></td>
-                                        <td>${statusWfgBadge}</td>
-                                        <td>
-                                            <span class="dashboard-timer ${durationClass}" data-start="${tx.arrival_time}" data-limit="${tx.limit_minutes}">
-                                                Calculated...
-                                            </span>
-                                        </td>
-                                    </tr>
-                                `;
-                            } else if (key === 'SMU') {
-                                let statusSmuBadge;
-                                const jenis = (tx.jenis || '').toLowerCase();
-                                const isProcess = tx.unloading_status === 'process';
-                                const processName = jenis === 'slipsheet' ? 'Muat' : 'Bongkar';
-                                if (isProcess) {
-                                    statusSmuBadge =
-                                        `<span class="badge-status process">Proses ${processName}</span>`;
-                                } else if (tx.no_antrian) {
-                                    statusSmuBadge =
-                                        `<span class="badge-status waiting">Antri (${tx.no_antrian})</span>`;
-                                } else {
-                                    statusSmuBadge =
-                                        `<span class="badge-status waiting">Menunggu Antrian</span>`;
-                                }
+                                const statusWfgBadge = getVehicleActivityBadge(tx, 'WFG');
 
                                 rowHtml = `
                                     <tr class="${warningRow}" id="row-tx-${tx.id}">
@@ -1255,15 +1307,29 @@
                                                 <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
                                             </div>
                                         </td>
-                                        <td><span class="fw-semibold">${tx.no_pol}</span></td>
-                                        <td>${tx.vendor}</td>
-                                        <td><strong>${tx.item}</strong></td>
-                                        <td>${statusSmuBadge}</td>
+                                        <td><span class="fw-semibold">${tx.no_pol || '-'}</span></td>
+                                        <td>${tx.vendor || '-'}</td>
+                                        <td><strong>${tx.item || '-'}</strong></td>
+                                        <td>${statusWfgBadge}</td>
+                                        ${durationCell}
+                                    </tr>
+                                `;
+                            } else if (key === 'SMU') {
+                                const statusSmuBadge = getVehicleActivityBadge(tx, 'SMU');
+
+                                rowHtml = `
+                                    <tr class="${warningRow}" id="row-tx-${tx.id}">
                                         <td>
-                                            <span class="dashboard-timer ${durationClass}" data-start="${tx.arrival_time}" data-limit="${tx.limit_minutes}">
-                                                Calculated...
-                                            </span>
+                                            <div class="d-flex flex-column">
+                                                <span class="fs-12 text-muted">${tglMasuk}</span>
+                                                <span class="fs-12 fw-bold text-light">${jamMasuk}</span>
+                                            </div>
                                         </td>
+                                        <td><span class="fw-semibold">${tx.no_pol || '-'}</span></td>
+                                        <td>${tx.vendor || '-'}</td>
+                                        <td><strong>${tx.item || '-'}</strong></td>
+                                        <td>${statusSmuBadge}</td>
+                                        ${durationCell}
                                     </tr>
                                 `;
                             }
@@ -1282,7 +1348,7 @@
                             if (key === 'SMU') colsCount = 6;
                             for (let i = 0; i < paddingRowsNeeded; i++) {
                                 tbody.append(`
-                                    <tr style="height: 38px; border-bottom: 1px solid rgba(255, 255, 255, 0.015);">
+                                    <tr style="height: 52px; border-bottom: 1px solid rgba(255, 255, 255, 0.015);">
                                         <td colspan="${colsCount}" class="py-2">&nbsp;</td>
                                     </tr>
                                 `);
@@ -1356,10 +1422,16 @@
                 function updateDashboardTimers() {
                     $('.dashboard-timer').each(function() {
                         const startString = $(this).data('start'); // Format: Y-m-d H:i:s
+                        const fixedSec = $(this).data('fixed');
                         const limitMinutes = parseInt($(this).data('limit')) || 0;
 
-                        const arrivalTime = moment(startString, "YYYY-MM-DD HH:mm:ss");
-                        const diffSeconds = moment().diff(arrivalTime, 'seconds');
+                        let diffSeconds = 0;
+                        if (fixedSec !== undefined && fixedSec !== null && fixedSec !== '') {
+                            diffSeconds = parseInt(fixedSec) || 0;
+                        } else if (startString) {
+                            const startTime = moment(startString, "YYYY-MM-DD HH:mm:ss");
+                            diffSeconds = Math.max(0, moment().diff(startTime, 'seconds'));
+                        }
 
                         const hours = Math.floor(diffSeconds / 3600);
                         const minutes = Math.floor((diffSeconds % 3600) / 60);
@@ -1374,7 +1446,7 @@
                         $(this).text(timeStr);
 
                         // Check if it's exceeded limits
-                        if (limitMinutes > 0 && minutes >= limitMinutes) {
+                        if (limitMinutes > 0 && Math.floor(diffSeconds / 60) >= limitMinutes) {
                             $(this).removeClass('timer-badge').addClass('timer-badge danger-limit');
                             $(this).closest('tr').css('background-color', 'rgba(239, 68, 68, 0.08)');
                         }
