@@ -114,32 +114,106 @@ class WfgKempuController extends Controller
     public static function isPreScan1Status(string $status): bool
     {
         $statusUpper = strtoupper(trim($status));
-        return in_array($statusUpper, [
+        $statusNormalized = str_replace([' ', '-'], '_', $statusUpper);
+
+        $allowedStatuses = [
+            // 1. WPM Transfer Out to Produksi
+            MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD, // 'WPM_TRANSFER_OUT_TO_PROD'
+            'WPM_TRANSFER_OUT_TO_PROD',
+            'WPM_TRANSFER_OUT_PROD',
             'TRANSFER OUT TO PRODUKSI',
+            'TRANSFER_OUT_TO_PRODUKSI',
+            'TRANSFER OUT TO PROD',
+            'TRANSFER_OUT_TO_PROD',
+            'WPM TRANSFER OUT TO PRODUKSI',
+            'WPM_TRANSFER_OUT_TO_PRODUKSI',
             'IN_TRANSIT_PRODUKSI',
+            'IN TRANSIT PRODUKSI',
+            'IN_TRANSIT_PROD',
             MasterKempuModel::STATUS_IN_TRANSIT_PROD,
+
+            // 2. Produksi Penerimaan (Transfer In)
+            MasterKempuModel::STATUS_PROD_TRANSFER_IN_WPM, // 'PROD_TRANSFER_IN_FROM_WPM'
+            'PROD_TRANSFER_IN_FROM_WPM',
+            'PROD_TRANSFER_IN_WPM',
+            'TRANSFER IN FROM WPM',
+            'TRANSFER_IN_FROM_WPM',
             'PROD_RECEIVED',
             MasterKempuModel::STATUS_PROD_RECEIVED,
+
+            // 3. QC Pre Cuci & Produksi Cuci
+            MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
+            MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE,
+            MasterKempuModel::STATUS_QC_PRE_CUCI_PASSED,
+            'QC_PRE_CUCI_PENDING',
+            'QC_PRE_CUCI_RELEASE',
+            'QC_PRE_CUCI_PASSED',
+            'QC PRE CUCI RELEASE',
+            'QC PRE CUCI PASSED',
+            'QC PRE CUCI LOLOS (OK)',
+            'QC_PRE_CUCI_LOLOS_(OK)',
             'QC_PROD_PENDING',
             MasterKempuModel::STATUS_QC_PROD_PENDING,
             'QC_PROD_PASSED',
             MasterKempuModel::STATUS_QC_PROD_PASSED,
             'QC PROSES PASSED',
             'QC PROSES LOLOS (OK)',
-            MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
-            MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE,
-            MasterKempuModel::STATUS_QC_PRE_CUCI_PASSED,
-            MasterKempuModel::STATUS_CUCI_KEMPU_COMPLETED,
+            'QC_PROSES_PASSED',
+            'QC_PROSES_LOLOS_(OK)',
+            MasterKempuModel::STATUS_PROD_CUCI_KEMPU,
+            'PROD_CUCI_KEMPU',
+            'CUCI KEMPU',
+            'CUCI_KEMPU',
+            'CUCI_KEMPU_COMPLETED',
+            'CUCI KEMPU COMPLETED',
+            'CUCI KEMPU SELESAI',
+
+            // 4. Produksi Filling & QC After Filling
+            MasterKempuModel::STATUS_PROD_FILLING_KEMPU,
+            'PROD_FILLING_KEMPU',
+            'FILLING KEMPU',
+            'FILLING_KEMPU',
             MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_PASSED,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
-            'QC_PM_RELEASE',
-            'QC PM PASSED',
+            'QC_AFTER_FILLING_PENDING',
+            'QC_AFTER_FILLING_RELEASE',
+            'QC_AFTER_FILLING_PASSED',
+            'QC_AFTER_FILLING_HOLD',
+            'QC AFTER FILLING RELEASE',
+            'QC AFTER FILLING PASSED',
+            'QC AFTER FILLING LOLOS (OK)',
+            'QC_AFTER_FILLING_LOLOS_(OK)',
+
+            // 5. Produksi Transfer Out to WFG
+            MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
+            'PROD_TRANSFER_OUT_TO_WFG',
+            'PROD_TRANSFER_OUT_WFG',
+            'TRANSFER OUT TO WFG',
+            'TRANSFER_OUT_TO_WFG',
+            'PRODUKSI TRANSFER OUT TO WFG',
+            'PRODUKSI_TRANSFER_OUT_TO_WFG',
+
+            // 6. QC PM & Registrasi Awal / Repair
+            MasterKempuModel::STATUS_QC_PM_PENDING,
             MasterKempuModel::STATUS_QC_PM_RELEASE,
             MasterKempuModel::STATUS_QC_PM_PASSED,
-            'TRANSFER IN FROM WPM',
-        ]);
+            'QC_PM_PENDING',
+            'QC_PM_RELEASE',
+            'QC PM RELEASE',
+            'QC PM PASSED',
+            'QC_PM_PASSED',
+            MasterKempuModel::STATUS_REGISTERED,
+            'REGISTERED',
+            MasterKempuModel::STATUS_GR_COMPLETED,
+            'GR_COMPLETED',
+            MasterKempuModel::STATUS_ENG_REPAIR,
+            'ENG_REPAIR',
+        ];
+
+        return in_array($statusUpper, $allowedStatuses, true) ||
+               in_array($statusNormalized, $allowedStatuses, true);
     }
 
     /**
