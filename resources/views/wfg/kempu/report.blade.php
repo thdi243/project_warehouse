@@ -11,6 +11,92 @@
             overflow: hidden;
         }
 
+        .nav-custom-pills .nav-link {
+            color: #475569;
+            background-color: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-custom-pills .nav-link:hover {
+            background-color: #e2e8f0;
+            color: #0f172a;
+            border-color: #cbd5e1;
+        }
+
+        .nav-custom-pills .nav-link.active {
+            background-color: #0d9488 !important;
+            color: #ffffff !important;
+            border-color: #0d9488 !important;
+            box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.25);
+        }
+
+        .nav-custom-pills .nav-link .badge-counter {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background-color: #ccfbf1;
+            color: #0f766e;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .nav-custom-pills .nav-link.active .badge-counter {
+            background-color: rgba(255, 255, 255, 0.25) !important;
+            color: #ffffff !important;
+        }
+
+        .filter-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 18px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+
+        .filter-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .date-chip {
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 6px;
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            transition: all 0.15s ease-in-out;
+            user-select: none;
+        }
+
+        .date-chip:hover {
+            background-color: #f1f5f9;
+            color: #0f172a;
+            border-color: #cbd5e1;
+        }
+
+        .date-chip.active {
+            background-color: #0d9488 !important;
+            color: #ffffff !important;
+            border-color: #0d9488 !important;
+            font-weight: 600;
+        }
+
         .timeline-container {
             position: relative;
             padding-left: 28px;
@@ -60,17 +146,6 @@
         .timeline-dot.danger {
             background: #ef4444;
             box-shadow: 0 0 0 2px #fca5a5;
-        }
-
-        .date-chip {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .date-chip:hover,
-        .date-chip.active {
-            background-color: #0f766e !important;
-            color: #ffffff !important;
         }
     </style>
 @endsection
@@ -187,41 +262,50 @@
 
             <!-- Tab Navigation & Main Content Card -->
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-white border-bottom p-0">
-                    <ul class="nav nav-tabs nav-tabs-custom card-header-tabs border-bottom-0 mx-3" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link active fw-semibold py-3 px-4 d-flex align-items-center gap-2" id="tabHistoryLink" data-bs-toggle="tab" href="#tabHistory" role="tab">
-                                <i class="ri-history-line fs-16"></i>
-                                <span>Log Riwayat Scan WFG</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link fw-semibold py-3 px-4 d-flex align-items-center gap-2" id="tabCurrentLink" data-bs-toggle="tab" href="#tabCurrent" role="tab">
-                                <i class="mdi mdi-cube-scan fs-16"></i>
-                                <span>Stok Kempu di WFG Saat Ini</span>
-                                <span class="badge bg-teal-subtle text-teal rounded-pill fs-11" style="background: #ccfbf1; color: #0f766e;">{{ $totalCurrentWfg }}</span>
-                            </a>
-                        </li>
-                    </ul>
+                <div class="card-header bg-white border-bottom py-3 px-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <!-- Navigation Custom Pills -->
+                        <ul class="nav nav-pills nav-custom-pills" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="tabHistoryLink" data-bs-toggle="pill" href="#tabHistory" role="tab">
+                                    <i class="ri-history-line fs-15"></i>
+                                    <span>Log Riwayat Scan WFG</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="tabCurrentLink" data-bs-toggle="pill" href="#tabCurrent" role="tab">
+                                    <i class="mdi mdi-warehouse fs-15"></i>
+                                    <span>Stok Kempu di WFG Saat Ini</span>
+                                    <span class="badge-counter">{{ $totalCurrentWfg }}</span>
+                                </a>
+                            </li>
+                        </ul>
+
+                        <!-- Right Header Info -->
+                        <div class="d-none d-md-flex align-items-center gap-2 text-muted fs-12">
+                            <i class="ri-information-line text-teal" style="color: #0d9488;"></i>
+                            <span>Klik ID Kempu untuk melihat riwayat perjalanan alur</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card-body p-4">
-                    <!-- FILTER BAR -->
-                    <div class="bg-light p-3 rounded mb-4">
-                        <div class="row g-2 align-items-center">
+                    <!-- FILTER BAR CONTAINER -->
+                    <div class="filter-container mb-4">
+                        <div class="row g-3 align-items-end">
                             <!-- Search -->
                             <div class="col-xl-3 col-lg-4 col-md-6">
-                                <label class="form-label fs-11 text-uppercase fw-semibold text-muted mb-1">Pencarian</label>
+                                <label class="filter-label">Pencarian</label>
                                 <div class="position-relative">
                                     <input type="text" id="filterSearch" class="form-control form-control-sm ps-4"
-                                        placeholder="Cari ID Kempu, RFID, Catatan...">
+                                        placeholder="Cari ID, RFID, Catatan...">
                                     <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y ms-2 text-muted fs-14"></i>
                                 </div>
                             </div>
 
                             <!-- Filter Aksi (khusus Log History) -->
-                            <div class="col-xl-3 col-lg-3 col-md-6" id="wrapperFilterAction">
-                                <label class="form-label fs-11 text-uppercase fw-semibold text-muted mb-1">Tipe Aksi / Flow</label>
+                            <div class="col-xl-3 col-lg-4 col-md-6" id="wrapperFilterAction">
+                                <label class="filter-label">Tipe Aksi / Flow</label>
                                 <select id="filterAction" class="form-select form-select-sm">
                                     <option value="all">Semua Aksi (Transfer In & Out)</option>
                                     @foreach ($cards as $c)
@@ -231,8 +315,8 @@
                             </div>
 
                             <!-- Filter Reused (khusus Stok Terkini) -->
-                            <div class="col-xl-3 col-lg-3 col-md-6 d-none" id="wrapperFilterReused">
-                                <label class="form-label fs-11 text-uppercase fw-semibold text-muted mb-1">Status Siklus Reused</label>
+                            <div class="col-xl-3 col-lg-4 col-md-6 d-none" id="wrapperFilterReused">
+                                <label class="filter-label">Status Siklus Reused</label>
                                 <select id="filterReusedStatus" class="form-select form-select-sm">
                                     <option value="">Semua Siklus</option>
                                     <option value="normal">Normal (&lt; 18x)</option>
@@ -242,31 +326,31 @@
                             </div>
 
                             <!-- Date Range (khusus Log History) -->
-                            <div class="col-xl-4 col-lg-5 col-md-12" id="wrapperFilterDate">
-                                <label class="form-label fs-11 text-uppercase fw-semibold text-muted mb-1">Rentang Tanggal Scan</label>
-                                <div class="d-flex align-items-center gap-1">
-                                    <input type="date" id="filterStartDate" class="form-control form-control-sm">
-                                    <span class="text-muted fs-12">s/d</span>
-                                    <input type="date" id="filterEndDate" class="form-control form-control-sm">
+                            <div class="col-xl-4 col-lg-5 col-md-8" id="wrapperFilterDate">
+                                <label class="filter-label">Rentang Tanggal Scan</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="date" id="filterStartDate" class="form-control">
+                                    <span class="input-group-text bg-light border-start-0 border-end-0 text-muted px-2">s/d</span>
+                                    <input type="date" id="filterEndDate" class="form-control">
                                 </div>
                             </div>
 
                             <!-- Reset Button -->
-                            <div class="col-xl-2 col-lg-12 col-md-12 d-flex align-items-end justify-content-end gap-1 mt-2 mt-xl-0">
-                                <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnResetFilter">
+                            <div class="col-xl-2 col-lg-3 col-md-4 d-flex">
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnResetFilter" title="Reset Semua Filter">
                                     <i class="ri-refresh-line me-1"></i> Reset
                                 </button>
                             </div>
                         </div>
 
                         <!-- Quick Date Presets (khusus Log History) -->
-                        <div class="d-flex align-items-center gap-2 mt-2 pt-2 border-top border-light-subtle" id="wrapperQuickDate">
-                            <span class="fs-11 text-muted fw-semibold me-1">Preset:</span>
-                            <span class="badge bg-white text-dark border date-chip" data-preset="today">Hari Ini</span>
-                            <span class="badge bg-white text-dark border date-chip" data-preset="yesterday">Kemarin</span>
-                            <span class="badge bg-white text-dark border date-chip" data-preset="last7">7 Hari Terakhir</span>
-                            <span class="badge bg-white text-dark border date-chip" data-preset="month">Bulan Ini</span>
-                            <span class="badge bg-white text-dark border date-chip" data-preset="all">Semua Riwayat</span>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top" id="wrapperQuickDate">
+                            <span class="fs-11 text-muted fw-semibold me-1"><i class="ri-calendar-event-line me-1"></i>Preset:</span>
+                            <span class="date-chip" data-preset="today">Hari Ini</span>
+                            <span class="date-chip" data-preset="yesterday">Kemarin</span>
+                            <span class="date-chip" data-preset="last7">7 Hari Terakhir</span>
+                            <span class="date-chip" data-preset="month">Bulan Ini</span>
+                            <span class="date-chip active" data-preset="all">Semua Riwayat</span>
                         </div>
                     </div>
 
@@ -318,7 +402,7 @@
                                             <th style="width: 50px;">No</th>
                                             <th>ID Kempu</th>
                                             <th>RFID</th>
-                                            <th>Merk / Tipe</th>
+                                            <th>No SPB</th>
                                             <th>Status Siklus Saat Ini</th>
                                             <th>Terakhir Di-Scan</th>
                                             <th>Siklus Reused</th>
@@ -431,7 +515,7 @@
             }
 
             // Tab Switching Handler
-            $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+            $('a[data-bs-toggle="pill"], a[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
                 const target = $(e.target).attr('href');
                 if (target === '#tabHistory') {
                     activeTab = 'history';
@@ -695,8 +779,7 @@
                                         <span class="font-monospace fs-12 text-muted">${row.rfid || '-'}</span>
                                     </td>
                                     <td>
-                                        <div class="fs-12 fw-medium text-dark">${row.merk_kempu || '-'}</div>
-                                        <span class="text-muted fs-11">${row.tipe_kempu || '-'}</span>
+                                        <span class="fs-12 fw-semibold text-dark">${row.no_spb || '-'}</span>
                                     </td>
                                     <td>
                                         <span class="badge bg-soft-teal text-teal border border-teal-subtle px-2 py-1 fs-11" style="background:#ccfbf1; color:#0f766e;">

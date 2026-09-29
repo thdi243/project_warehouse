@@ -801,8 +801,8 @@ class WfgKempuController extends Controller
                 $query->where(function ($q) use ($s) {
                     $q->where('id_kempu', 'like', "%{$s}%")
                         ->orWhere('rfid', 'like', "%{$s}%")
-                        ->orWhere('merk_kempu', 'like', "%{$s}%")
-                        ->orWhere('tipe_kempu', 'like', "%{$s}%");
+                        ->orWhere('no_spb', 'like', "%{$s}%")
+                        ->orWhere('keterangan', 'like', "%{$s}%");
                 });
             }
 
@@ -840,7 +840,7 @@ class WfgKempuController extends Controller
               ->orWhere('to_location', MasterKempuModel::LOC_WFG);
         })->with([
             'createdBy:id,username,nama_lengkap',
-            'masterKempu:id,id_kempu,rfid,merk_kempu,tipe_kempu',
+            'masterKempu:id,id_kempu,rfid,no_spb,status',
         ]);
 
         if ($request->filled('start_date')) {
@@ -862,7 +862,7 @@ class WfgKempuController extends Controller
                     ->orWhere('notes', 'like', "%{$s}%")
                     ->orWhereHas('masterKempu', function ($mq) use ($s) {
                         $mq->where('rfid', 'like', "%{$s}%")
-                           ->orWhere('merk_kempu', 'like', "%{$s}%");
+                           ->orWhere('no_spb', 'like', "%{$s}%");
                     })
                     ->orWhereHas('createdBy', function ($uq) use ($s) {
                         $uq->where('username', 'like', "%{$s}%")
@@ -897,7 +897,7 @@ class WfgKempuController extends Controller
               ->orWhere('to_location', MasterKempuModel::LOC_WFG);
         })->with([
             'createdBy:id,username,nama_lengkap',
-            'masterKempu:id,id_kempu,rfid,merk_kempu,tipe_kempu',
+            'masterKempu:id,id_kempu,rfid,no_spb,status',
         ]);
 
         if ($request->filled('start_date')) {
@@ -918,7 +918,8 @@ class WfgKempuController extends Controller
                 $q->where('id_kempu', 'like', "%{$s}%")
                     ->orWhere('notes', 'like', "%{$s}%")
                     ->orWhereHas('masterKempu', function ($mq) use ($s) {
-                        $mq->where('rfid', 'like', "%{$s}%");
+                        $mq->where('rfid', 'like', "%{$s}%")
+                           ->orWhere('no_spb', 'like', "%{$s}%");
                     })
                     ->orWhereHas('createdBy', function ($uq) use ($s) {
                         $uq->where('username', 'like', "%{$s}%")

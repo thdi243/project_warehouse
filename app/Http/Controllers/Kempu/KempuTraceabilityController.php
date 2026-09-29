@@ -155,8 +155,8 @@ class KempuTraceabilityController extends Controller
             $query->where(function ($q) use ($s) {
                 $q->where('id_kempu', 'like', "%{$s}%")
                     ->orWhere('rfid', 'like', "%{$s}%")
-                    ->orWhere('tipe_kempu', 'like', "%{$s}%")
-                    ->orWhere('merk_kempu', 'like', "%{$s}%");
+                    ->orWhere('no_spb', 'like', "%{$s}%")
+                    ->orWhere('keterangan', 'like', "%{$s}%");
             });
         }
 
