@@ -32,3 +32,6 @@ Schedule::call(function () {
 // Snapshot stock per tanggal untuk semua barang WRM setiap hari pukul 23:59:59
 Schedule::command('wrm:sync-stock-by-date')->dailyAt('23:59');
 
+// Auto update status kempu dari WFG_TRANSFER_OUT_TO_PAS ke PAS_TRANSFER_IN_FROM_BAS setelah H+1 (24 jam)
+Schedule::command('kempu:auto-transfer-in-pas')->hourly();
+
