@@ -54,7 +54,6 @@
         }
 
         .filter-container {
-            background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 10px;
             padding: 18px;
@@ -77,16 +76,12 @@
             font-weight: 500;
             padding: 4px 12px;
             border-radius: 6px;
-            background: #f8fafc;
-            color: #475569;
             border: 1px solid #e2e8f0;
             transition: all 0.15s ease-in-out;
             user-select: none;
         }
 
         .date-chip:hover {
-            background-color: #f1f5f9;
-            color: #0f172a;
             border-color: #cbd5e1;
         }
 
@@ -160,7 +155,8 @@
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                         <div>
                             <h4 class="mb-sm-0 fw-bold">Laporan Scan Kempu WFG</h4>
-                            <span class="text-muted fs-12">Monitoring alur Transfer In & Out kempu pada area Warehouse Finished Goods</span>
+                            <span class="text-muted fs-12">Monitoring alur Transfer In & Out kempu pada area Warehouse
+                                Finished Goods</span>
                         </div>
                         <div class="page-title-right d-flex align-items-center gap-2 mt-2 mt-sm-0">
                             <a href="{{ route('wfg.kempu.index') }}" class="btn btn-outline-teal btn-sm">
@@ -181,16 +177,19 @@
             <div class="row g-3 mb-4">
                 <!-- Card 1: Stok Kempu Terkini di WFG -->
                 <div class="col-xl-3 col-md-6">
-                    <div class="card card-animate border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%); border-left: 4px solid #0d9488 !important;">
+                    <div class="card card-animate border-0 shadow-sm h-100"
+                        style="border-left: 4px solid #0d9488 !important;">
                         <div class="card-body p-3">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
                                     <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Kempu di WFG Saat Ini</p>
-                                    <h3 class="fw-bold mb-0 text-dark">{{ $totalCurrentWfg }} <span class="fs-13 fw-normal text-muted">Unit</span></h3>
+                                    <h3 class="fw-bold mb-0 text-dark">{{ $totalCurrentWfg }} <span
+                                            class="fs-13 fw-normal text-muted">Unit</span></h3>
                                     <span class="text-muted fs-11 mt-1 d-block">Stok fisik aktif di Finished Goods</span>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
-                                    <span class="avatar-title bg-soft-teal text-teal rounded-circle fs-20" style="background: #ccfbf1; color: #0f766e;">
+                                    <span class="avatar-title bg-soft-teal text-teal rounded-circle fs-20"
+                                        style="background: #ccfbf1; color: #0f766e;">
                                         <i class="mdi mdi-warehouse"></i>
                                     </span>
                                 </div>
@@ -201,16 +200,20 @@
 
                 <!-- Card 2: Transfer In Dari Produksi -->
                 <div class="col-xl-3 col-md-6">
-                    <div class="card card-animate border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-left: 4px solid #16a34a !important;">
+                    <div class="card card-animate border-0 shadow-sm h-100"
+                        style="border-left: 4px solid #16a34a !important;">
                         <div class="card-body p-3">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
                                     <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Transfer In (Produksi)</p>
-                                    <h3 class="fw-bold mb-0 text-success">{{ $totalTransferInToday }} <span class="fs-13 fw-normal text-muted">Hari Ini</span></h3>
-                                    <span class="badge bg-soft-success text-success fs-11 mt-1">Total: {{ $totalTransferInAll }} Scan</span>
+                                    <h3 class="fw-bold mb-0 text-success">{{ $totalTransferInToday }} <span
+                                            class="fs-13 fw-normal text-muted">Hari Ini</span></h3>
+                                    <span class="badge bg-soft-success text-success fs-11 mt-1">Total:
+                                        {{ $totalTransferInAll }} Scan</span>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
-                                    <span class="avatar-title rounded-circle fs-20" style="background: #dcfce7; color: #16a34a;">
+                                    <span class="avatar-title rounded-circle fs-20"
+                                        style="background: #dcfce7; color: #16a34a;">
                                         <i class="ri-inbox-archive-line"></i>
                                     </span>
                                 </div>
@@ -221,16 +224,22 @@
 
                 <!-- Card 3: Transfer Out Ke PAS -->
                 <div class="col-xl-3 col-md-6">
-                    <div class="card card-animate border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%); border-left: 4px solid #7c3aed !important;">
+                    <div class="card card-animate border-0 shadow-sm h-100"
+                        style="border-left: 4px solid #7c3aed !important;">
                         <div class="card-body p-3">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
                                     <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Transfer Out (Ke PAS)</p>
-                                    <h3 class="fw-bold mb-0 text-purple" style="color: #6d28d9;">{{ $totalTransferOutToday }} <span class="fs-13 fw-normal text-muted">Hari Ini</span></h3>
-                                    <span class="badge bg-soft-purple text-purple fs-11 mt-1" style="background: #ede9fe; color: #6d28d9;">Total: {{ $totalTransferOutAll }} Scan</span>
+                                    <h3 class="fw-bold mb-0 text-purple" style="color: #6d28d9;">
+                                        {{ $totalTransferOutToday }} <span class="fs-13 fw-normal text-muted">Hari
+                                            Ini</span></h3>
+                                    <span class="badge bg-soft-purple text-purple fs-11 mt-1"
+                                        style="background: #ede9fe; color: #6d28d9;">Total: {{ $totalTransferOutAll }}
+                                        Scan</span>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
-                                    <span class="avatar-title rounded-circle fs-20" style="background: #ede9fe; color: #6d28d9;">
+                                    <span class="avatar-title rounded-circle fs-20"
+                                        style="background: #ede9fe; color: #6d28d9;">
                                         <i class="ri-truck-line"></i>
                                     </span>
                                 </div>
@@ -241,16 +250,20 @@
 
                 <!-- Card 4: Reused Alert -->
                 <div class="col-xl-3 col-md-6">
-                    <div class="card card-animate border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%); border-left: 4px solid #f59e0b !important;">
+                    <div class="card card-animate border-0 shadow-sm h-100"
+                        style="border-left: 4px solid #f59e0b !important;">
                         <div class="card-body p-3">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
-                                    <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Peringatan Reused (&gt;=18x)</p>
-                                    <h3 class="fw-bold mb-0 text-warning">{{ $totalWarning }} <span class="fs-13 fw-normal text-muted">Unit</span></h3>
+                                    <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Peringatan Reused (&gt;=18x)
+                                    </p>
+                                    <h3 class="fw-bold mb-0 text-warning">{{ $totalWarning }} <span
+                                            class="fs-13 fw-normal text-muted">Unit</span></h3>
                                     <span class="text-muted fs-11 mt-1 d-block">Mendekati limit siklus 21x di WFG</span>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
-                                    <span class="avatar-title rounded-circle fs-20" style="background: #fef3c7; color: #b45309;">
+                                    <span class="avatar-title rounded-circle fs-20"
+                                        style="background: #fef3c7; color: #b45309;">
                                         <i class="ri-alarm-warning-line"></i>
                                     </span>
                                 </div>
@@ -262,18 +275,20 @@
 
             <!-- Tab Navigation & Main Content Card -->
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-white border-bottom py-3 px-4">
+                <div class="card-header border-bottom py-3 px-4">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <!-- Navigation Custom Pills -->
                         <ul class="nav nav-pills nav-custom-pills" role="tablist">
                             <li class="nav-item">
-                                <a class="nav-link active" id="tabHistoryLink" data-bs-toggle="pill" href="#tabHistory" role="tab">
+                                <a class="nav-link active" id="tabHistoryLink" data-bs-toggle="pill" href="#tabHistory"
+                                    role="tab">
                                     <i class="ri-history-line fs-15"></i>
                                     <span>Log Riwayat Scan WFG</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" id="tabCurrentLink" data-bs-toggle="pill" href="#tabCurrent" role="tab">
+                                <a class="nav-link" id="tabCurrentLink" data-bs-toggle="pill" href="#tabCurrent"
+                                    role="tab">
                                     <i class="mdi mdi-warehouse fs-15"></i>
                                     <span>Stok Kempu di WFG Saat Ini</span>
                                     <span class="badge-counter">{{ $totalCurrentWfg }}</span>
@@ -299,7 +314,8 @@
                                 <div class="position-relative">
                                     <input type="text" id="filterSearch" class="form-control form-control-sm ps-4"
                                         placeholder="Cari ID, RFID, Catatan...">
-                                    <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y ms-2 text-muted fs-14"></i>
+                                    <i
+                                        class="ri-search-line position-absolute top-50 start-0 translate-middle-y ms-2 text-muted fs-14"></i>
                                 </div>
                             </div>
 
@@ -330,14 +346,16 @@
                                 <label class="filter-label">Rentang Tanggal Scan</label>
                                 <div class="input-group input-group-sm">
                                     <input type="date" id="filterStartDate" class="form-control">
-                                    <span class="input-group-text bg-light border-start-0 border-end-0 text-muted px-2">s/d</span>
+                                    <span
+                                        class="input-group-text bg-light border-start-0 border-end-0 text-muted px-2">s/d</span>
                                     <input type="date" id="filterEndDate" class="form-control">
                                 </div>
                             </div>
 
                             <!-- Reset Button -->
                             <div class="col-xl-2 col-lg-3 col-md-4 d-flex">
-                                <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnResetFilter" title="Reset Semua Filter">
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnResetFilter"
+                                    title="Reset Semua Filter">
                                     <i class="ri-refresh-line me-1"></i> Reset
                                 </button>
                             </div>
@@ -345,7 +363,8 @@
 
                         <!-- Quick Date Presets (khusus Log History) -->
                         <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top" id="wrapperQuickDate">
-                            <span class="fs-11 text-muted fw-semibold me-1"><i class="ri-calendar-event-line me-1"></i>Preset:</span>
+                            <span class="fs-11 text-muted fw-semibold me-1"><i
+                                    class="ri-calendar-event-line me-1"></i>Preset:</span>
                             <span class="date-chip" data-preset="today">Hari Ini</span>
                             <span class="date-chip" data-preset="yesterday">Kemarin</span>
                             <span class="date-chip" data-preset="last7">7 Hari Terakhir</span>
@@ -378,7 +397,8 @@
                                     <tbody id="tbodyHistory">
                                         <tr>
                                             <td colspan="11" class="text-center py-4">
-                                                <div class="spinner-border spinner-border-sm text-teal" role="status"></div>
+                                                <div class="spinner-border spinner-border-sm text-teal" role="status">
+                                                </div>
                                                 <span class="ms-2 text-muted">Memuat data scan WFG...</span>
                                             </td>
                                         </tr>
@@ -387,7 +407,8 @@
                             </div>
 
                             <!-- Pagination History -->
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top" id="paginationHistory">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top"
+                                id="paginationHistory">
                                 <div class="text-muted fs-12" id="infoPaginationHistory">-</div>
                                 <ul class="pagination pagination-sm mb-0" id="pagesHistory"></ul>
                             </div>
@@ -413,7 +434,8 @@
                                     <tbody id="tbodyCurrent">
                                         <tr>
                                             <td colspan="9" class="text-center py-4">
-                                                <div class="spinner-border spinner-border-sm text-teal" role="status"></div>
+                                                <div class="spinner-border spinner-border-sm text-teal" role="status">
+                                                </div>
                                                 <span class="ms-2 text-muted">Memuat stok kempu WFG...</span>
                                             </td>
                                         </tr>
@@ -422,7 +444,8 @@
                             </div>
 
                             <!-- Pagination Current -->
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top" id="paginationCurrent">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top"
+                                id="paginationCurrent">
                                 <div class="text-muted fs-12" id="infoPaginationCurrent">-</div>
                                 <ul class="pagination pagination-sm mb-0" id="pagesCurrent"></ul>
                             </div>
@@ -441,7 +464,8 @@
                 <div class="modal-header bg-dark text-white py-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="avatar-xs">
-                            <span class="avatar-title bg-teal text-white rounded-circle fs-14" style="background-color: #0f766e;">
+                            <span class="avatar-title bg-teal text-white rounded-circle fs-14"
+                                style="background-color: #0f766e;">
                                 <i class="ri-route-line"></i>
                             </span>
                         </div>
@@ -450,7 +474,8 @@
                             <span class="fs-12 text-white-50" id="modalSubtitle">ID Kempu: -</span>
                         </div>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
                     <!-- Info Summary Box -->
@@ -478,7 +503,8 @@
                     </div>
 
                     <h6 class="fw-bold mb-3 text-dark d-flex align-items-center">
-                        <i class="ri-history-line text-teal me-2" style="color: #0f766e;"></i> Alur Audit Trail & Riwayat Scan
+                        <i class="ri-history-line text-teal me-2" style="color: #0f766e;"></i> Alur Audit Trail & Riwayat
+                        Scan
                     </h6>
 
                     <div class="timeline-container" id="timelineList">
@@ -558,7 +584,8 @@
                     $('#filterStartDate').val(past7.toISOString().split('T')[0]);
                     $('#filterEndDate').val(todayStr);
                 } else if (preset === 'month') {
-                    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split(
+                        'T')[0];
                     $('#filterStartDate').val(firstDay);
                     $('#filterEndDate').val(todayStr);
                 } else if (preset === 'all') {
@@ -625,7 +652,9 @@
             function loadHistory(page = 1) {
                 historyPage = page;
                 const tbody = $('#tbodyHistory');
-                tbody.html('<tr><td colspan="11" class="text-center py-4"><div class="spinner-border spinner-border-sm text-teal" role="status"></div> <span class="ms-2 text-muted">Memuat data...</span></td></tr>');
+                tbody.html(
+                    '<tr><td colspan="11" class="text-center py-4"><div class="spinner-border spinner-border-sm text-teal" role="status"></div> <span class="ms-2 text-muted">Memuat data...</span></td></tr>'
+                );
 
                 $.ajax({
                     url: "{{ route('wfg.kempu.report_data') }}",
@@ -641,33 +670,45 @@
                     },
                     success: function(res) {
                         if (!res.status || !res.data || res.data.length === 0) {
-                            tbody.html('<tr><td colspan="11" class="text-center py-4 text-muted"><i class="ri-inbox-line fs-24 d-block mb-1"></i>Belum ada data scan sesuai filter.</td></tr>');
+                            tbody.html(
+                                '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="ri-inbox-line fs-24 d-block mb-1"></i>Belum ada data scan sesuai filter.</td></tr>'
+                            );
                             $('#infoPaginationHistory').text('Menampilkan 0 data');
                             $('#pagesHistory').empty();
                             return;
                         }
 
                         let html = '';
-                        const startIdx = ((res.pagination.current_page - 1) * res.pagination.per_page) + 1;
+                        const startIdx = ((res.pagination.current_page - 1) * res.pagination.per_page) +
+                            1;
 
                         res.data.forEach((row, index) => {
-                            const isTransferIn = (row.action || '').toLowerCase().includes('in');
-                            const badgeStyle = isTransferIn ? 'background:#dcfce7; color:#15803d;' : 'background:#ede9fe; color:#6d28d9;';
+                            const isTransferIn = (row.action || '').toLowerCase().includes(
+                                'in');
+                            const badgeStyle = isTransferIn ?
+                                'background:#dcfce7; color:#15803d;' :
+                                'background:#ede9fe; color:#6d28d9;';
 
                             const reusedVal = row.reused_count ?? 0;
-                            let reusedBadge = `<span class="badge bg-light text-dark border">${reusedVal}/21x</span>`;
+                            let reusedBadge =
+                                `<span class="badge bg-light text-dark border">${reusedVal}/21x</span>`;
                             if (reusedVal >= 21) {
-                                reusedBadge = `<span class="badge bg-danger text-white">${reusedVal}/21x (Max)</span>`;
+                                reusedBadge =
+                                    `<span class="badge bg-danger text-white">${reusedVal}/21x (Max)</span>`;
                             } else if (reusedVal >= 18) {
-                                reusedBadge = `<span class="badge bg-warning text-dark">${reusedVal}/21x (Warning)</span>`;
+                                reusedBadge =
+                                    `<span class="badge bg-warning text-dark">${reusedVal}/21x (Warning)</span>`;
                             }
 
                             // Meta items (barcode, rfid, nti)
                             const meta = row.metadata || {};
                             let metaBadges = '';
-                            if (meta.has_barcode) metaBadges += '<span class="badge bg-light text-muted border me-1" title="Barcode OK"><i class="ri-barcode-line text-success"></i> Barcode</span>';
-                            if (meta.has_rfid) metaBadges += '<span class="badge bg-light text-muted border me-1" title="RFID OK"><i class="ri-rfid-line text-primary"></i> RFID</span>';
-                            if (meta.has_nti) metaBadges += '<span class="badge bg-light text-muted border" title="NTI Segel"><i class="ri-shield-check-line text-info"></i> NTI</span>';
+                            if (meta.has_barcode) metaBadges +=
+                                '<span class="badge bg-light text-muted border me-1" title="Barcode OK"><i class="ri-barcode-line text-success"></i> Barcode</span>';
+                            if (meta.has_rfid) metaBadges +=
+                                '<span class="badge bg-light text-muted border me-1" title="RFID OK"><i class="ri-rfid-line text-primary"></i> RFID</span>';
+                            if (meta.has_nti) metaBadges +=
+                                '<span class="badge bg-light text-muted border" title="NTI Segel"><i class="ri-shield-check-line text-info"></i> NTI</span>';
 
                             html += `
                                 <tr>
@@ -723,7 +764,9 @@
                         renderPagination(res.pagination, 'History');
                     },
                     error: function() {
-                        tbody.html('<tr><td colspan="11" class="text-center py-4 text-danger">Gagal memuat data log history.</td></tr>');
+                        tbody.html(
+                            '<tr><td colspan="11" class="text-center py-4 text-danger">Gagal memuat data log history.</td></tr>'
+                        );
                     }
                 });
             }
@@ -732,7 +775,9 @@
             function loadCurrent(page = 1) {
                 currentPage = page;
                 const tbody = $('#tbodyCurrent');
-                tbody.html('<tr><td colspan="9" class="text-center py-4"><div class="spinner-border spinner-border-sm text-teal" role="status"></div> <span class="ms-2 text-muted">Memuat stok...</span></td></tr>');
+                tbody.html(
+                    '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border spinner-border-sm text-teal" role="status"></div> <span class="ms-2 text-muted">Memuat stok...</span></td></tr>'
+                );
 
                 $.ajax({
                     url: "{{ route('wfg.kempu.report_data') }}",
@@ -746,19 +791,23 @@
                     },
                     success: function(res) {
                         if (!res.status || !res.data || res.data.length === 0) {
-                            tbody.html('<tr><td colspan="9" class="text-center py-4 text-muted"><i class="ri-inbox-line fs-24 d-block mb-1"></i>Tidak ada kempu di lokasi WFG sesuai filter.</td></tr>');
+                            tbody.html(
+                                '<tr><td colspan="9" class="text-center py-4 text-muted"><i class="ri-inbox-line fs-24 d-block mb-1"></i>Tidak ada kempu di lokasi WFG sesuai filter.</td></tr>'
+                            );
                             $('#infoPaginationCurrent').text('Menampilkan 0 data');
                             $('#pagesCurrent').empty();
                             return;
                         }
 
                         let html = '';
-                        const startIdx = ((res.pagination.current_page - 1) * res.pagination.per_page) + 1;
+                        const startIdx = ((res.pagination.current_page - 1) * res.pagination.per_page) +
+                            1;
 
                         res.data.forEach((row, index) => {
                             const main = row.main || {};
                             const reusedVal = main.reused_count ?? 0;
-                            const reusedPercent = Math.min(100, Math.round((reusedVal / 21) * 100));
+                            const reusedPercent = Math.min(100, Math.round((reusedVal / 21) *
+                                100));
 
                             let progressBarColor = 'bg-success';
                             if (reusedVal >= 21) {
@@ -816,7 +865,9 @@
                         renderPagination(res.pagination, 'Current');
                     },
                     error: function() {
-                        tbody.html('<tr><td colspan="9" class="text-center py-4 text-danger">Gagal memuat data stok kempu.</td></tr>');
+                        tbody.html(
+                            '<tr><td colspan="9" class="text-center py-4 text-danger">Gagal memuat data stok kempu.</td></tr>'
+                        );
                     }
                 });
             }
@@ -886,7 +937,9 @@
                 $('#modalInfoRfid').text('-');
                 $('#modalInfoLocation').text('-');
                 $('#modalInfoReused').text('-');
-                $('#timelineList').html('<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-teal" role="status"></div> Memuat riwayat alur...</div>');
+                $('#timelineList').html(
+                    '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-teal" role="status"></div> Memuat riwayat alur...</div>'
+                );
 
                 $('#modalKempuHistory').modal('show');
 
@@ -895,27 +948,36 @@
                     type: "GET",
                     success: function(res) {
                         if (!res.status || !res.kempu) {
-                            $('#timelineList').html('<div class="text-center py-4 text-danger">Data riwayat kempu tidak ditemukan.</div>');
+                            $('#timelineList').html(
+                                '<div class="text-center py-4 text-danger">Data riwayat kempu tidak ditemukan.</div>'
+                            );
                             return;
                         }
 
                         const k = res.kempu;
                         const main = k.main || {};
                         $('#modalInfoRfid').text(k.rfid || '-');
-                        $('#modalInfoLocation').html(`<span class="badge bg-teal-subtle text-teal border px-2 py-1">${main.current_location || '-'}</span>`);
+                        $('#modalInfoLocation').html(
+                            `<span class="badge bg-teal-subtle text-teal border px-2 py-1">${main.current_location || '-'}</span>`
+                        );
 
                         const reusedVal = main.reused_count ?? 0;
-                        let reusedHtml = `<span class="badge bg-light text-dark border">${reusedVal} / 21x</span>`;
+                        let reusedHtml =
+                            `<span class="badge bg-light text-dark border">${reusedVal} / 21x</span>`;
                         if (reusedVal >= 21) {
-                            reusedHtml = `<span class="badge bg-danger text-white">${reusedVal} / 21x (Limit Tercapai)</span>`;
+                            reusedHtml =
+                                `<span class="badge bg-danger text-white">${reusedVal} / 21x (Limit Tercapai)</span>`;
                         } else if (reusedVal >= 18) {
-                            reusedHtml = `<span class="badge bg-warning text-dark">${reusedVal} / 21x (Peringatan)</span>`;
+                            reusedHtml =
+                                `<span class="badge bg-warning text-dark">${reusedVal} / 21x (Peringatan)</span>`;
                         }
                         $('#modalInfoReused').html(reusedHtml);
 
                         const histories = res.histories || [];
                         if (histories.length === 0) {
-                            $('#timelineList').html('<div class="text-center py-4 text-muted">Belum ada riwayat pergerakan yang tercatat.</div>');
+                            $('#timelineList').html(
+                                '<div class="text-center py-4 text-muted">Belum ada riwayat pergerakan yang tercatat.</div>'
+                            );
                             return;
                         }
 
@@ -929,7 +991,7 @@
                             tHtml += `
                                 <div class="timeline-item">
                                     <div class="timeline-dot ${dotClass}"></div>
-                                    <div class="bg-white p-3 rounded border shadow-none">
+                                    <div class= p-3 rounded border shadow-none">
                                         <div class="d-flex flex-wrap align-items-center justify-content-between mb-1">
                                             <span class="fw-bold text-dark fs-13">${h.action || 'Pergerakan Kempu'}</span>
                                             <span class="text-muted fs-11">${formatDateTime(h.created_at)}</span>
@@ -952,7 +1014,9 @@
                         $('#timelineList').html(tHtml);
                     },
                     error: function() {
-                        $('#timelineList').html('<div class="text-center py-4 text-danger">Gagal mengambil data dari server.</div>');
+                        $('#timelineList').html(
+                            '<div class="text-center py-4 text-danger">Gagal mengambil data dari server.</div>'
+                        );
                     }
                 });
             });
