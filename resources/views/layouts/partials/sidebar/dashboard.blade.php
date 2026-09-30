@@ -57,6 +57,8 @@
                             class="nav-link {{ request()->routeIs('dashboard.vehicle') ? 'active' : '' }}">
                             <i class="mdi mdi-truck-delivery"></i> Vehicle Monitoring </a>
                     </li>
+                @endcan
+                @can('permission', 'dashboard-vehicle-analytics')
                     <li class="nav-item">
                         <a href="{{ route('dashboard.vehicle.analytics') }}" target="_blank"
                             class="nav-link {{ request()->routeIs('dashboard.vehicle.analytics') ? 'active' : '' }}">
