@@ -1,9 +1,8 @@
-@if (auth()->user()->hasRole('super-admin') ||
-        auth()->user()->hasAnyPermission(['pas-menu', 'pas-kempu']))
+@can('permission', 'pas-kempu')
     <li class="nav-item">
         <a class="nav-link menu-link {{ request()->routeIs('kempu.pas.*') ? '' : 'collapsed' }}" href="#sideBarPas"
-            data-bs-toggle="collapse" role="button"
-            aria-expanded="{{ request()->routeIs('kempu.pas.*') ? 'true' : 'false' }}" aria-controls="sideBarPas">
+            data-bs-toggle="collapse" role="button" aria-expanded="{{ request()->routeIs('kempu.pas.*') ? 'true' : 'false' }}"
+            aria-controls="sideBarPas">
             <i class="ri-store-2-line"></i><span data-key="t-pas">PAS</span>
         </a>
         <div class="collapse menu-dropdown {{ request()->routeIs('kempu.pas.*') ? 'show' : '' }}" id="sideBarPas">
@@ -17,4 +16,4 @@
             </ul>
         </div>
     </li>
-@endif
+@endcan

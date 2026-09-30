@@ -30,13 +30,13 @@
                             <i class="mdi mdi-chart-box"></i> TKBM Ikat Terpal</a>
                     </li>
                 @endcan
-                @can('permission', 'dashboard-rak')
+                {{-- @can('permission', 'dashboard-rak')
                     <li class="nav-item">
                         <a href="{{ route('dashboard.rak') }}"
                             class="nav-link {{ request()->routeIs('dashboard.rak') ? 'active' : '' }}">
                             <i class="mdi mdi-view-grid-plus"></i>Rak Dashboard </a>
                     </li>
-                @endcan
+                @endcan --}}
                 @can('permission', 'dashboard-wrm')
                     <li class="nav-item">
                         <a href="{{ route('dashboard.wrm.index') }}"
