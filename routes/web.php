@@ -21,6 +21,7 @@ use App\Http\Controllers\Tkbm\ikat_terpal\MasterIkatTerpalController;
 use App\Http\Controllers\TokenAuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Vehicle\VehicleTrackingController;
+use App\Http\Controllers\Vehicle\VehicleAnalyticsController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wfg\BongkarMuatController;
 use App\Http\Controllers\Wfg\MasterDestinasiController;
@@ -148,6 +149,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/vehicle/kantong-parkir-data', [VehicleTrackingController::class, 'kantongParkirData'])->name('dashboard.vehicle.kantong_parkir')
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
             Route::post('/vehicle/kantong-parkir-release', [VehicleTrackingController::class, 'kantongParkirRelease'])->name('dashboard.vehicle.kantong_parkir_release')
+                ->middleware(['permission:dashboard-vehicle-monitoring']);
+            Route::get('/vehicle/analytics', [VehicleAnalyticsController::class, 'index'])->name('dashboard.vehicle.analytics')
+                ->middleware(['permission:dashboard-vehicle-monitoring']);
+            Route::get('/vehicle/analytics-data', [VehicleAnalyticsController::class, 'data'])->name('dashboard.vehicle.analytics_data')
                 ->middleware(['permission:dashboard-vehicle-monitoring']);
 
             // Stock Opname Dashboard

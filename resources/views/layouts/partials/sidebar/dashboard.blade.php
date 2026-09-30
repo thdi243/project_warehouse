@@ -57,6 +57,11 @@
                             class="nav-link {{ request()->routeIs('dashboard.vehicle') ? 'active' : '' }}">
                             <i class="mdi mdi-truck-delivery"></i> Vehicle Monitoring </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('dashboard.vehicle.analytics') }}" target="_blank"
+                            class="nav-link {{ request()->routeIs('dashboard.vehicle.analytics') ? 'active' : '' }}">
+                            <i class="mdi mdi-chart-timeline-variant"></i> Analisa & Bottleneck </a>
+                    </li>
                 @endcan
                 @can('permission', 'dashboard-stock-opname')
                     <li class="nav-item">
