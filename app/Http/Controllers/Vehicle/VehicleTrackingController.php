@@ -2493,6 +2493,45 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Dismiss / hapus data follow up kendaraan yang belum terdaftar dari Cache Timbangan.
+     */
+    public function dismissFollowUpTimbangan(Request $request)
+    {
+        $request->validate([
+            'no_pol' => 'required|string|max:20',
+        ]);
+
+        try {
+            $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
+
+            $followUpList = Cache::get('unregistered_vehicle_followups', []);
+            $filteredFollowUps = array_values(array_filter($followUpList, function ($item) use ($noPol) {
+                return strtoupper(str_replace(' ', '', $item['no_pol'] ?? '')) !== $noPol;
+            }));
+
+            Cache::put('unregistered_vehicle_followups', $filteredFollowUps, 86400);
+
+            // Broadcast status update event
+            event(new VehicleStatusUpdated([
+                'type' => 'dismiss_follow_up_timbangan',
+                'no_pol' => $noPol,
+                'message' => "Follow up untuk truk {$noPol} telah dihapus/dibatalkan dari Timbangan.",
+                'time' => Carbon::now()->format('H:i:s')
+            ]));
+
+            return response()->json([
+                'success' => true,
+                'message' => "Peringatan follow up untuk truk {$noPol} berhasil dihapus."
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus follow up: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Update queue number for a transaction (generic).
      */
     public function updateQueueNumber(Request $request, $id)

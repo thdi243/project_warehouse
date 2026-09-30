@@ -1421,15 +1421,19 @@
                                 ${notes ? `<p class="mb-1 text-danger"><strong>Catatan:</strong> "${notes}"</p>` : ''}
                                 <p class="mb-0 text-muted small"><i class="ri-time-line me-1"></i>Waktu Lapor: ${time}</p>
                             </div>
-                            <p class="text-muted small mb-0">Klik tombol di bawah untuk langsung mengisi data form Check-In Timbangan secara otomatis.</p>
+                            <p class="text-muted small mb-0">Pilih tindakan di bawah: proses form Check-In, hapus/batalkan follow up jika salah lapor, atau tutup sementara.</p>
                         </div>
                     `,
                     icon: 'warning',
+                    showConfirmButton: true,
+                    showDenyButton: true,
                     showCancelButton: true,
                     confirmButtonColor: '#0ab39c',
-                    confirmButtonText: '<i class="ri-login-box-line me-1"></i> Proses Check-In Sekarang',
+                    denyButtonColor: '#f06548',
                     cancelButtonColor: '#6c757d',
-                    cancelButtonText: 'Tutup',
+                    confirmButtonText: '<i class="ri-login-box-line me-1"></i> Proses Check-In',
+                    denyButtonText: '<i class="ri-delete-bin-line me-1"></i> Hapus Follow Up',
+                    cancelButtonText: '<i class="ri-close-line me-1"></i> Tutup',
                     allowOutsideClick: false
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -1492,6 +1496,45 @@
                                 `Form Check-In berhasil diisi untuk Truk ${noPol}. Silakan lengkapi lalu Simpan.`,
                                 'Follow Up Diproses');
                         }
+                    } else if (result.isDenied) {
+                        // User klik Hapus Follow Up
+                        Swal.fire({
+                            title: 'Hapus Follow Up?',
+                            text: `Apakah Anda yakin ingin membatalkan/menghapus peringatan follow up untuk truk ${noPol}? Data ini akan dihapus dari antrean peringatan Timbangan.`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#f06548',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: '<i class="ri-delete-bin-line me-1"></i> Ya, Hapus',
+                            cancelButtonText: 'Batal'
+                        }).then((confirmDel) => {
+                            if (confirmDel.isConfirmed) {
+                                $.ajax({
+                                    url: "{{ route('vehicle.monitoring.dismiss_follow_up_timbangan') }}",
+                                    type: 'POST',
+                                    data: {
+                                        _token: "{{ csrf_token() }}",
+                                        no_pol: noPol
+                                    },
+                                    success: function(res) {
+                                        if (res.success) {
+                                            if (window.toastr) {
+                                                toastr.success(res.message, 'Berhasil Dihapus');
+                                            } else {
+                                                Swal.fire('Berhasil!', res.message, 'success');
+                                            }
+                                            fetchTransactions();
+                                        } else {
+                                            Swal.fire('Gagal!', res.message || 'Gagal menghapus follow up.', 'error');
+                                        }
+                                    },
+                                    error: function(xhr) {
+                                        const errMsg = xhr.responseJSON ? xhr.responseJSON.message : 'Terjadi kesalahan sistem.';
+                                        Swal.fire('Error!', errMsg, 'error');
+                                    }
+                                });
+                            }
+                        });
                     }
                 });
             }
@@ -1514,6 +1557,10 @@
                                     .type === 'follow_up_timbangan') || data.action ===
                                 'unregistered_vehicle') {
                                 triggerTimbanganFollowUpAlert(data);
+                            } else if (data.type === 'dismiss_follow_up_timbangan') {
+                                if (window.toastr && data.message) {
+                                    toastr.info(data.message, 'Pembaruan Follow Up');
+                                }
                             } else {
                                 if (window.toastr && data.message) {
                                     toastr.info(data.message, 'Update Status Kendaraan');
