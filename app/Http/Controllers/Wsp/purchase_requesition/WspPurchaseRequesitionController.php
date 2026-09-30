@@ -231,8 +231,8 @@ class WspPurchaseRequesitionController extends Controller
                     'barang_id'    => $barang ? $barang->id : null,
                     'jenis'        => $item['jenis'] ?? 'pr',
                     'qty'          => $item['qty'],
-                    'alasan'       => $item['alasan'] ?? null,
-                    'keterangan'   => $item['keterangan'] ?? null,
+                    'alasan'       => isset($item['alasan']) && !empty($item['alasan']) ? strtoupper(trim($item['alasan'])) : null,
+                    'keterangan'   => isset($item['keterangan']) && !empty($item['keterangan']) ? strtoupper(trim($item['keterangan'])) : null,
                     'desc'         => $item['desc'] ?? null,
                 ]);
 

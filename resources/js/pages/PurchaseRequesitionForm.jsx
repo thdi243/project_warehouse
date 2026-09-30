@@ -214,7 +214,7 @@ export default function PurchaseRequisitionForm() {
                     uom: item.uom,
                     desc: item.desc || "",
                     jenis: "pr",
-                    alasan: item.alasan || "Dibutuhkan operasional (Excel)",
+                    alasan: item.alasan ? item.alasan.toUpperCase() : "DIBUTUHKAN OPERASIONAL (EXCEL)",
                 });
             } else if (item.action === 'both') {
                 if (item.qty > item.available_qty) {
@@ -226,7 +226,7 @@ export default function PurchaseRequisitionForm() {
                         uom: item.uom,
                         desc: item.desc || "",
                         jenis: "pr",
-                        alasan: item.alasan || "Dibutuhkan operasional (Excel)",
+                        alasan: item.alasan ? item.alasan.toUpperCase() : "DIBUTUHKAN OPERASIONAL (EXCEL)",
                     });
                 }
                 itemsToAdd.push({
@@ -515,6 +515,18 @@ export default function PurchaseRequisitionForm() {
                         title: "Alasan Naik PR",
                         input: "text",
                         inputPlaceholder: "Wajib mengisi alasan...",
+                        customClass: {
+                            input: 'uppercase'
+                        },
+                        didOpen: () => {
+                            const input = Swal.getInput();
+                            if (input) {
+                                input.style.textTransform = 'uppercase';
+                                input.addEventListener('input', (e) => {
+                                    e.target.value = e.target.value.toUpperCase();
+                                });
+                            }
+                        },
                         inputValidator: (value) => {
                             if (!value) {
                                 return "Alasan wajib diisi!";
@@ -529,7 +541,7 @@ export default function PurchaseRequisitionForm() {
                             ...currentItem,
                             qty: requestedQty,
                             jenis: "pr",
-                            alasan: reasonResult.value,
+                            alasan: reasonResult.value.toUpperCase(),
                         });
                     } else {
                         return;
@@ -669,7 +681,7 @@ export default function PurchaseRequisitionForm() {
                         desc: item.desc || null,
                         reservation_id: item.reservation_id,
                         jenis: item.jenis,
-                        alasan: item.alasan,
+                        alasan: item.alasan ? item.alasan.toUpperCase() : null,
                     })),
                     session_id: getSessionId(),
                 }),
@@ -1102,9 +1114,9 @@ export default function PurchaseRequisitionForm() {
                                                             type="text"
                                                             value={item.alasan || ""}
                                                             placeholder="Wajib mengisi alasan..."
-                                                            className={`text-xs h-9 ${isReasonInvalid ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                                                            className={`text-xs h-9 uppercase ${isReasonInvalid ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                                                             onChange={(e) => {
-                                                                const val = e.target.value;
+                                                                const val = e.target.value.toUpperCase();
                                                                 setStockReviewItems(prev =>
                                                                     prev.map((x, idx) => idx === index ? { ...x, alasan: val } : x)
                                                                 );
