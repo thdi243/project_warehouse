@@ -60,7 +60,7 @@
                     <li class="nav-item">
                         <a href="{{ route('dashboard.vehicle.analytics') }}" target="_blank"
                             class="nav-link {{ request()->routeIs('dashboard.vehicle.analytics') ? 'active' : '' }}">
-                            <i class="mdi mdi-chart-timeline-variant"></i> Analisa & Bottleneck </a>
+                            <i class="mdi mdi-chart-timeline-variant"></i> Vehicle Analytics </a>
                     </li>
                 @endcan
                 @can('permission', 'dashboard-stock-opname')

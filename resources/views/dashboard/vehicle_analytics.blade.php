@@ -381,15 +381,14 @@
                     </div>
                     <div>
                         <div class="header-title-main">VEHICLE MONITORING</div>
-                        <div class="header-subtitle-cyan">LOGISTICS & SUPPLY CHAIN INTELLIGENCE</div>
+                        <div class="header-subtitle-cyan">VEHICLE ANALYTICS</div>
                     </div>
                 </div>
 
-                <!-- Center Title Banner -->
                 <div class="text-center d-none d-lg-block">
-                    <div class="header-title-main" style="letter-spacing: 1px;">WCO &ndash; VEHICLE FLOW DASHBOARD</div>
-                    <div class="header-subtitle-cyan">WORLD CLASS OPERATIONAL &ndash; PILLAR LOGISTICS</div>
-                    <div class="header-tagline">&ldquo;Safe Traffic, Compliant Process, Zero Bottleneck&rdquo;</div>
+                    <div class="header-title-main" style="letter-spacing: 1px;">VEHICLE ANALYTICS DASHBOARD</div>
+                    <div class="header-subtitle-cyan">VEHICLE MONITORING & TRAFFIC ANALYTICS</div>
+                    <div class="header-tagline">&ldquo;Visibility, Control, and Operational Efficiency&rdquo;</div>
                 </div>
 
                 <!-- Right Controls: Period Selector & Clock Pill -->
@@ -669,8 +668,10 @@
                         </div>
                         <div class="wwtp-card-body">
                             <div id="chartDailyCheckin" style="min-height: 250px;"></div>
-                            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
-                                <span>Total Masuk: <strong class="text-white mono" id="totalCheckinsBadge">0</strong> Truk</span>
+                            <div
+                                class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
+                                <span>Total Masuk: <strong class="text-white mono" id="totalCheckinsBadge">0</strong>
+                                    Truk</span>
                                 <span class="mono text-muted fs-10" id="periodDaysLabel"></span>
                             </div>
                         </div>
@@ -694,8 +695,10 @@
                         </div>
                         <div class="wwtp-card-body">
                             <div id="chartLoadingBayTime" style="min-height: 250px;"></div>
-                            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
-                                <span>Sampel Riil: <strong class="text-white mono" id="totalLoadingSamplesBadge">0</strong> Truk</span>
+                            <div
+                                class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
+                                <span>Sampel Riil: <strong class="text-white mono"
+                                        id="totalLoadingSamplesBadge">0</strong> Truk</span>
                                 <span class="fs-10 text-muted">Filter start &amp; finish loading</span>
                             </div>
                         </div>
@@ -719,7 +722,8 @@
                         </div>
                         <div class="wwtp-card-body">
                             <div id="chartQcDonut" style="min-height: 180px;"></div>
-                            <div class="d-flex justify-content-between text-center pt-2 border-top border-secondary-subtle fs-10">
+                            <div
+                                class="d-flex justify-content-between text-center pt-2 border-top border-secondary-subtle fs-10">
                                 <div>
                                     <span class="text-muted d-block fw-bold">PASS</span>
                                     <strong class="text-success mono fs-12" id="qcPassCount">0</strong>
@@ -766,7 +770,8 @@
                                 </thead>
                                 <tbody id="topRejectVendorsTable">
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">MEMUAT DATA VENDOR...</td>
+                                        <td colspan="5" class="text-center text-muted py-4">MEMUAT DATA VENDOR...
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -798,7 +803,8 @@
                                 </thead>
                                 <tbody id="frequentTrucksTableBody">
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DATA ARMADA...</td>
+                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DATA ARMADA...
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -895,7 +901,8 @@
                                 </thead>
                                 <tbody id="vendorTatTableBody">
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DATA VENDOR...</td>
+                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DATA VENDOR...
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -931,7 +938,8 @@
                                 </thead>
                                 <tbody id="incidentsTableBody">
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DAFTAR INSIDEN...</td>
+                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DAFTAR
+                                            INSIDEN...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -963,7 +971,8 @@
                                 </thead>
                                 <tbody id="operatorTableBody">
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DATA PETUGAS...</td>
+                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DATA PETUGAS...
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1091,10 +1100,13 @@
                             if (res.success) {
                                 renderTopKpis(res.kpi);
                                 renderStageBreakdown(res.cluster_1 || res);
-                                renderDailyCheckinChart(res.daily_checkin || (res.cluster_1 ? res.cluster_1.daily_checkin : null));
-                                renderLoadingBayChart(res.loading_time || (res.cluster_3 ? res.cluster_3.loading_time : null));
+                                renderDailyCheckinChart(res.daily_checkin || (res.cluster_1 ? res.cluster_1
+                                    .daily_checkin : null));
+                                renderLoadingBayChart(res.loading_time || (res.cluster_3 ? res.cluster_3
+                                    .loading_time : null));
                                 renderQcSection(res.cluster_2 || res.qc_compliance);
-                                renderFrequentTrucks(res.frequent_trucks || (res.cluster_4 ? res.cluster_4.frequent_trucks : []));
+                                renderFrequentTrucks(res.frequent_trucks || (res.cluster_4 ? res.cluster_4
+                                    .frequent_trucks : []));
                                 renderCapacitySection(res.cluster_3 || res.capacity_throughput);
                                 renderFleetSection(res.cluster_4 || res.vendor_fleet);
                                 renderIncidentsSection(res.cluster_5 || res.incidents);
@@ -1230,7 +1242,8 @@
                 // 1.2 Daily Check-In & Average Chart
                 function renderDailyCheckinChart(dailyData) {
                     if (!dailyData || !dailyData.series || dailyData.series.length === 0) {
-                        $('#chartDailyCheckin').html('<div class="text-center text-muted py-5 fs-11">TIDAK ADA DATA KEDATANGAN</div>');
+                        $('#chartDailyCheckin').html(
+                            '<div class="text-center text-muted py-5 fs-11">TIDAK ADA DATA KEDATANGAN</div>');
                         return;
                     }
 
@@ -1244,8 +1257,7 @@
                     $('#periodDaysLabel').text(`${dailyData.total_days || 0} Hari Terakhir`);
 
                     const optionsDaily = {
-                        series: [
-                            {
+                        series: [{
                                 name: 'CHECK-IN HARIAN',
                                 type: 'column',
                                 data: counts
@@ -1259,7 +1271,9 @@
                         chart: {
                             height: 250,
                             type: 'line',
-                            toolbar: { show: false },
+                            toolbar: {
+                                show: false
+                            },
                             background: 'transparent'
                         },
                         colors: ['#0284c7', '#f59e0b'],
@@ -1302,7 +1316,9 @@
                         legend: {
                             position: 'top',
                             horizontalAlign: 'right',
-                            labels: { colors: '#94a3b8' },
+                            labels: {
+                                colors: '#94a3b8'
+                            },
                             fontSize: '9.5px',
                             fontFamily: 'JetBrains Mono'
                         },
@@ -1352,7 +1368,9 @@
                         chart: {
                             type: 'bar',
                             height: 250,
-                            toolbar: { show: false },
+                            toolbar: {
+                                show: false
+                            },
                             background: 'transparent'
                         },
                         plotOptions: {
@@ -1361,7 +1379,9 @@
                                 borderRadius: 4,
                                 barHeight: '48%',
                                 distributed: true,
-                                dataLabels: { position: 'bottom' }
+                                dataLabels: {
+                                    position: 'bottom'
+                                }
                             }
                         },
                         colors: ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#f59e0b'],
@@ -1387,7 +1407,9 @@
                                 },
                                 formatter: val => Math.round(val) + ' m'
                             },
-                            axisBorder: { color: 'rgba(255,255,255,0.06)' }
+                            axisBorder: {
+                                color: 'rgba(255,255,255,0.06)'
+                            }
                         },
                         yaxis: {
                             labels: {
@@ -1399,7 +1421,9 @@
                                 maxWidth: 140
                             }
                         },
-                        legend: { show: false },
+                        legend: {
+                            show: false
+                        },
                         tooltip: {
                             theme: 'dark',
                             y: {
@@ -1505,7 +1529,7 @@
                             .reject_count === 0)) {
                         tbodyReject.append(
                             '<tr><td colspan="5" class="text-center text-muted py-4 fs-11">TIDAK ADA CATATAN REJECT VENDOR</td></tr>'
-                            );
+                        );
                     } else {
                         c2.top_rejections.forEach(v => {
                             const row = `
@@ -1619,7 +1643,9 @@
                     tbody.empty();
 
                     if (!trucks || trucks.length === 0) {
-                        tbody.append('<tr><td colspan="4" class="text-center text-muted py-4 fs-11">TIDAK ADA DATA KUNJUNGAN ARMADA</td></tr>');
+                        tbody.append(
+                            '<tr><td colspan="4" class="text-center text-muted py-4 fs-11">TIDAK ADA DATA KUNJUNGAN ARMADA</td></tr>'
+                        );
                         return;
                     }
 
@@ -1768,7 +1794,7 @@
                     if (!c4.vendor_tat || c4.vendor_tat.length === 0) {
                         tbodyTat.append(
                             '<tr><td colspan="4" class="text-center text-muted py-4 fs-11">TIDAK ADA DATA VENDOR</td></tr>'
-                            );
+                        );
                     } else {
                         c4.vendor_tat.forEach(v => {
                             let statusClass = 'green';
@@ -1853,7 +1879,7 @@
                     if (!c5.incident_list || c5.incident_list.length === 0) {
                         tbodyInc.append(
                             '<tr><td colspan="4" class="text-center text-muted py-4 fs-11">TIDAK ADA CATATAN ANOMALI / KENDALA</td></tr>'
-                            );
+                        );
                         return;
                     }
 
@@ -1883,7 +1909,7 @@
                     if (!c6.operators || c6.operators.length === 0) {
                         tbodyOp.append(
                             '<tr><td colspan="4" class="text-center text-muted py-4 fs-11">BELUM ADA RIWAYAT AKTIVITAS PETUGAS</td></tr>'
-                            );
+                        );
                         return;
                     }
 
