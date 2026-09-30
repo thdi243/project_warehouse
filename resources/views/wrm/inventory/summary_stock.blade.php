@@ -12,11 +12,13 @@
             background-color: #ffffff;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.08);
         }
+
         #table-summary-stock-by-date thead th:first-child,
         #table-summary-stock-by-date tfoot td:first-child {
             z-index: 3;
             background-color: #f3f6f9;
         }
+
         #table-summary-stock-by-date tbody tr:nth-of-type(odd) td:first-child {
             background-color: #fcfdfe;
         }
@@ -385,7 +387,8 @@
                                                         class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
                                                         type="button" data-bs-toggle="dropdown"
                                                         data-bs-auto-close="outside" aria-expanded="false">
-                                                        <span class="dropdown-placeholder text-muted">Pilih Status...</span>
+                                                        <span class="dropdown-placeholder text-muted">Pilih
+                                                            Status...</span>
                                                         <span
                                                             class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                                     </button>
@@ -493,12 +496,14 @@
                                             </div>
                                             <div class="col-xxl-4 col-sm-4">
                                                 <label class="form-label fw-semibold">Filter Supplier</label>
-                                                <div class="dropdown custom-filter-dropdown" id="dropdown-supplier-supplier">
+                                                <div class="dropdown custom-filter-dropdown"
+                                                    id="dropdown-supplier-supplier">
                                                     <button
                                                         class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
                                                         type="button" data-bs-toggle="dropdown"
                                                         data-bs-auto-close="outside" aria-expanded="false">
-                                                        <span class="dropdown-placeholder text-muted">Pilih Supplier...</span>
+                                                        <span class="dropdown-placeholder text-muted">Pilih
+                                                            Supplier...</span>
                                                         <span
                                                             class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
                                                     </button>
@@ -837,8 +842,7 @@
                                             <div class="col-xxl-3 col-sm-6">
                                                 <label class="form-label fw-semibold">End Date</label>
                                                 <input type="date" class="form-control" id="filter-end-date-by-date"
-                                                    value="{{ date('Y-m-d') }}"
-                                                    data-default="{{ date('Y-m-d') }}">
+                                                    value="{{ date('Y-m-d') }}" data-default="{{ date('Y-m-d') }}">
                                             </div>
                                             <div class="col-xxl-3 col-sm-6">
                                                 <div class="d-flex gap-2">
@@ -986,6 +990,8 @@
                                     <div class="table-responsive table-card mb-4">
                                         <table class="table table-striped align-middle table-nowrap mb-0"
                                             id="table-summary-stock-by-date" style="width:100%;">
+                                            <div class="alert alert-info">Data ter-cut off setiap di jam 00:00 WIB
+                                            </div>
                                             {{-- Will be dynamically generated --}}
                                         </table>
                                     </div>
