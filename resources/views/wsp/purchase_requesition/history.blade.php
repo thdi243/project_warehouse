@@ -42,7 +42,7 @@
                                     <i class="mdi mdi-magnify"></i>
                                 </span>
                                 <input type="text" class="form-control" id="searchInput"
-                                    placeholder="Cari No Doc / Nama Peminta...">
+                                    placeholder="Cari No Doc / Peminta / MID / Nama Barang">
                             </div>
                         </div>
                     </div>
@@ -407,16 +407,16 @@
                                 <td>${item.alasan ?? '-'}</td>
                                 <td>
                                     ${item.keterangan ? `
-                                                                    <div class="d-flex align-items-center justify-content-between gap-2">
-                                                                        <span>${item.keterangan}</span>
-                                                                        <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                                                style="flex-shrink: 0;"
-                                                                                data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                                                title="Copy Keterangan">
-                                                                            <i class="mdi mdi-content-copy"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                ` : '-'}
+                                                                        <div class="d-flex align-items-center justify-content-between gap-2">
+                                                                            <span>${item.keterangan}</span>
+                                                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                                                    style="flex-shrink: 0;"
+                                                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                                                    title="Copy Keterangan">
+                                                                                <i class="mdi mdi-content-copy"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    ` : '-'}
                                 </td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
                                 <td class="text-center">${formatBadge(statusWrh)}</td>
@@ -560,10 +560,21 @@
                     filteredPR = allPR;
                 } else {
                     filteredPR = allPR.filter(item => {
-                        const requestedBy = item.requested_by ? item.requested_by.toLowerCase() :
-                            '';
+                        const requestedBy = item.requested_by ? item.requested_by.toLowerCase() : '';
                         const noDoc = item.no_doc ? item.no_doc.toLowerCase() : '';
-                        return requestedBy.includes(keyword) || noDoc.includes(keyword);
+                        const prNumber = item.pr_number ? item.pr_number.toLowerCase() : '';
+                        const department = item.department ? item.department.toLowerCase() : '';
+
+                        const hasMatchingItem = item.items && item.items.some(prItem => {
+                            const mid = prItem.barang?.mid_barang ? String(prItem.barang.mid_barang).toLowerCase() : '';
+                            const namaBarang = prItem.barang?.nama_barang ? String(prItem.barang.nama_barang).toLowerCase() : '';
+                            const desc = prItem.desc ? String(prItem.desc).toLowerCase() : '';
+                            const keterangan = prItem.keterangan ? String(prItem.keterangan).toLowerCase() : '';
+
+                            return mid.includes(keyword) || namaBarang.includes(keyword) || desc.includes(keyword) || keterangan.includes(keyword);
+                        });
+
+                        return requestedBy.includes(keyword) || noDoc.includes(keyword) || prNumber.includes(keyword) || department.includes(keyword) || hasMatchingItem;
                     });
                 }
                 currentPage = 1;

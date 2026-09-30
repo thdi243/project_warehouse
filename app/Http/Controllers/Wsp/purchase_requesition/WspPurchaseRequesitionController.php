@@ -757,13 +757,51 @@ class WspPurchaseRequesitionController extends Controller
         $user = Auth::user();
         $dept = strtolower(trim($user->departemen));
 
-        $pr = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval.approver')
+        $query = WspPurchaseRequesitionModel::with('user', 'items.barang', 'items.approval.approval', 'approval.approver')
             ->where(function ($q) use ($user, $dept) {
                 $q->where('user_id', $user->id)
                     ->orWhere('department', $dept);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
+            });
+
+        // Search spesifik berdasarkan MID
+        if ($request->filled('mid')) {
+            $mid = trim($request->input('mid'));
+            $query->whereHas('items.barang', function ($q) use ($mid) {
+                $q->where('mid_barang', 'like', "%{$mid}%");
+            });
+        }
+
+        // Search spesifik berdasarkan nama barang / deskripsi
+        if ($request->filled('nama_barang')) {
+            $namaBarang = trim($request->input('nama_barang'));
+            $query->where(function ($q) use ($namaBarang) {
+                $q->whereHas('items.barang', function ($b) use ($namaBarang) {
+                    $b->where('nama_barang', 'like', "%{$namaBarang}%");
+                })->orWhereHas('items', function ($i) use ($namaBarang) {
+                    $i->where('desc', 'like', "%{$namaBarang}%");
+                });
+            });
+        }
+
+        // Search umum (search / keyword / q)
+        $search = trim($request->input('search') ?? $request->input('keyword') ?? $request->input('q') ?? '');
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('no_doc', 'like', "%{$search}%")
+                    ->orWhere('pr_number', 'like', "%{$search}%")
+                    ->orWhere('requested_by', 'like', "%{$search}%")
+                    ->orWhereHas('items', function ($itemQuery) use ($search) {
+                        $itemQuery->where('desc', 'like', "%{$search}%")
+                            ->orWhere('keterangan', 'like', "%{$search}%")
+                            ->orWhereHas('barang', function ($barangQuery) use ($search) {
+                                $barangQuery->where('mid_barang', 'like', "%{$search}%")
+                                    ->orWhere('nama_barang', 'like', "%{$search}%");
+                            });
+                    });
+            });
+        }
+
+        $pr = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json([
             'success' => true,

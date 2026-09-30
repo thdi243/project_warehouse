@@ -378,7 +378,53 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="col-xxl-2 col-sm-4">
+                                            <div class="col-xxl-3 col-sm-6 col-md-3">
+                                                <label class="form-label fw-semibold">Filter Status</label>
+                                                <div class="dropdown custom-filter-dropdown" id="dropdown-status-group">
+                                                    <button
+                                                        class="btn btn-outline-secondary dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center bg-white border-light-subtle"
+                                                        type="button" data-bs-toggle="dropdown"
+                                                        data-bs-auto-close="outside" aria-expanded="false">
+                                                        <span class="dropdown-placeholder text-muted">Pilih Status...</span>
+                                                        <span
+                                                            class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                                    </button>
+                                                    <div class="dropdown-menu p-3 shadow-lg border-0"
+                                                        style="min-width: 250px; max-width: 320px; max-height: 400px; overflow: hidden;">
+                                                        <div class="mb-2">
+                                                            <input type="text"
+                                                                class="form-control form-control-sm search-options"
+                                                                placeholder="Cari Status...">
+                                                        </div>
+                                                        <div class="d-flex justify-content-between mb-2">
+                                                            <button type="button"
+                                                                class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                                All</button>
+                                                            <button type="button"
+                                                                class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                                All</button>
+                                                        </div>
+                                                        <hr class="dropdown-divider my-2">
+                                                        <div class="options-list"
+                                                            style="max-height: 250px; overflow-y: auto;">
+                                                            @foreach (['UNREST' => 'UNREST (Unrestricted)', 'QI' => 'QI (Quality Inspection)', 'BLOCKED' => 'BLOCKED (Blocked)'] as $stCode => $stLabel)
+                                                                <div class="form-check mb-2 option-item"
+                                                                    data-value="{{ $stCode }}"
+                                                                    data-text="{{ $stLabel }}">
+                                                                    <input class="form-check-input option-checkbox"
+                                                                        type="checkbox" value="{{ $stCode }}"
+                                                                        id="chk-status-group-{{ $stCode }}">
+                                                                    <label class="form-check-label text-truncate w-100"
+                                                                        for="chk-status-group-{{ $stCode }}">
+                                                                        {{ $stLabel }}
+                                                                    </label>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-xxl-2 col-sm-6 col-md-3">
                                                 <div class="d-flex gap-2">
                                                     <button type="button" class="btn btn-primary flex-fill"
                                                         id="btn-filter-group">

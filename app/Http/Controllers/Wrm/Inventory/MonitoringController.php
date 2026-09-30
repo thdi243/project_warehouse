@@ -289,6 +289,7 @@ class MonitoringController extends Controller
     public function getSummaryStockGroupMeta(Request $request)
     {
         $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+        $statuses = $request->filled('statuses') ? (array)$request->statuses : ($request->filled('status') ? (array)$request->status : []);
 
         $groupsQuery = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->whereNotNull('wrm_stock_on_hand.group')
@@ -300,19 +301,28 @@ class MonitoringController extends Controller
             $groupsQuery->whereIn('wrm_stock_on_hand.group', (array)$request->groups);
         }
 
+        if (!empty($statuses)) {
+            $groupsQuery->whereIn('wrm_stock_on_hand.status', $statuses);
+        }
+
         $activeGroups = $groupsQuery->select('wrm_stock_on_hand.group')
             ->distinct()
             ->orderBy('wrm_stock_on_hand.group', 'asc')
             ->pluck('wrm_stock_on_hand.group')
             ->toArray();
 
-        $hasNoGroup = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+        $hasNoGroupQuery = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
             ->whereIn('wrm_master_barang.mid', $mids)
             ->where(function ($q) {
                 $q->whereNull('wrm_stock_on_hand.group')->orWhere('wrm_stock_on_hand.group', '');
-            })
-            ->exists();
+            });
+
+        if (!empty($statuses)) {
+            $hasNoGroupQuery->whereIn('wrm_stock_on_hand.status', $statuses);
+        }
+
+        $hasNoGroup = $hasNoGroupQuery->exists();
 
         return response()->json([
             'active_groups' => $activeGroups,
@@ -323,6 +333,7 @@ class MonitoringController extends Controller
     public function getSummaryStockGroupData(Request $request)
     {
         $mids = $request->filled('mids') ? (array)$request->mids : ['20000812', '20000860', '20001270'];
+        $statuses = $request->filled('statuses') ? (array)$request->statuses : ($request->filled('status') ? (array)$request->status : []);
 
         // First fetch the active groups to build dynamic selects
         $groupsQuery = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
@@ -335,19 +346,28 @@ class MonitoringController extends Controller
             $groupsQuery->whereIn('wrm_stock_on_hand.group', (array)$request->groups);
         }
 
+        if (!empty($statuses)) {
+            $groupsQuery->whereIn('wrm_stock_on_hand.status', $statuses);
+        }
+
         $activeGroups = $groupsQuery->select('wrm_stock_on_hand.group')
             ->distinct()
             ->orderBy('wrm_stock_on_hand.group', 'asc')
             ->pluck('wrm_stock_on_hand.group')
             ->toArray();
 
-        $hasNoGroup = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+        $hasNoGroupQuery = StockOnHand::whereNotIn('wrm_stock_on_hand.status', ['ISSUED', 'RESERVED', 'BA WAITING'])
             ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
             ->whereIn('wrm_master_barang.mid', $mids)
             ->where(function ($q) {
                 $q->whereNull('wrm_stock_on_hand.group')->orWhere('wrm_stock_on_hand.group', '');
-            })
-            ->exists();
+            });
+
+        if (!empty($statuses)) {
+            $hasNoGroupQuery->whereIn('wrm_stock_on_hand.status', $statuses);
+        }
+
+        $hasNoGroup = $hasNoGroupQuery->exists();
 
         $selects = [
             'wrm_master_barang.mid',
@@ -373,6 +393,10 @@ class MonitoringController extends Controller
             ->groupBy('wrm_master_barang.mid', 'wrm_master_barang.nama_barang', 'wrm_master_barang.uom');
 
         $query->whereIn('wrm_master_barang.mid', $mids);
+
+        if (!empty($statuses)) {
+            $query->whereIn('wrm_stock_on_hand.status', $statuses);
+        }
 
         // Count for pagination
         $recordsTotal = DB::query()

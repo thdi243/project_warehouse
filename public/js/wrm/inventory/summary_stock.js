@@ -462,6 +462,10 @@ $(document).ready(function () {
         loadGroupTable(0, true);
     });
 
+    initCustomDropdown('dropdown-status-group', 'Pilih Status...', function () {
+        loadGroupTable(0, true);
+    });
+
     initCustomDropdown('dropdown-mid-ma', 'Pilih MID...', function () {
         loadMaTable(0);
     });
@@ -637,6 +641,9 @@ $(document).ready(function () {
         groupStart = start;
         const mids = $('#dropdown-mid-group').data('getValues')();
         const groups = $('#dropdown-group-group').data('getValues')();
+        const statuses = $('#dropdown-status-group').length && $('#dropdown-status-group').data('getValues')
+            ? $('#dropdown-status-group').data('getValues')()
+            : [];
 
         const $table = $('#table-summary-group');
 
@@ -650,7 +657,8 @@ $(document).ready(function () {
                 type: 'GET',
                 data: {
                     mids: mids,
-                    groups: groups
+                    groups: groups,
+                    statuses: statuses
                 },
                 success: function (response) {
                     activeGroupsGlobal = response.active_groups || [];
@@ -704,7 +712,8 @@ $(document).ready(function () {
                     start: groupStart,
                     length: groupLength,
                     mids: mids,
-                    groups: groups
+                    groups: groups,
+                    statuses: statuses
                 },
                 dataType: 'json',
                 success: function (response) {
@@ -1288,6 +1297,9 @@ $(document).ready(function () {
         isResetting = true;
         $('#dropdown-group-group').data('reset')();
         $('#dropdown-mid-group').data('reset')();
+        if ($('#dropdown-status-group').length && $('#dropdown-status-group').data('reset')) {
+            $('#dropdown-status-group').data('reset')();
+        }
         isResetting = false;
         loadGroupTable(0, true);
     });
