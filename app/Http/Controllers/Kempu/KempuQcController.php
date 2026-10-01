@@ -18,11 +18,28 @@ class KempuQcController extends Controller
      */
     public static function canForceScan($user = null): bool
     {
+        // 1. Cek jika request datang dari API eksternal terpercaya (Digimon / QC App)
+        $appSource = request()->input('app_source') ?? request()->header('X-App-Source');
+        $qcRole    = strtolower(trim(request()->input('operator_role', request()->input('role', ''))));
+        $secret    = request()->header('X-QC-App-Secret') ?? request()->input('app_secret');
+        $expectedSecret = env('QC_API_SECRET', 'BAS_QC_SECRET_2026');
+
+        if (($appSource === 'digimon_v2' || request()->hasHeader('X-QC-App-Secret')) && $secret === $expectedSecret) {
+            // Otoritas valid jika role di Digimon BUKAN operator
+            return ($qcRole !== '' && $qcRole !== 'operator');
+        }
+
         $user = $user ?? Auth::user();
         if (!$user) {
-            $userId = request()->input('user_id');
-            if ($userId) {
-                $user = User::find($userId);
+            $userEmail = request()->input('operator_email', request()->input('email'));
+            if ($userEmail) {
+                $user = User::where('email', $userEmail)->first();
+            }
+            if (!$user) {
+                $userId = request()->input('user_id', request()->input('operator_id'));
+                if ($userId) {
+                    $user = User::find($userId);
+                }
             }
         }
 
@@ -591,7 +608,19 @@ class KempuQcController extends Controller
         $okCount = 0;
         $rejectCount = 0;
         $now = now();
-        $userId = Auth::id() ?? $request->input('user_id') ?? 1;
+        $operatorEmail = $request->input('operator_email');
+        $warehouseUser = $operatorEmail ? User::where('email', $operatorEmail)->first() : null;
+        if (!$warehouseUser && $request->filled('user_id')) {
+            $warehouseUser = User::find($request->input('user_id'));
+        }
+        $creatorId = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
+
+        $trackingMetadata = [
+            'app_source'     => $request->input('app_source', 'warehouse'),
+            'operator_name'  => $request->input('operator_name', $warehouseUser?->nama_lengkap ?? ($warehouseUser?->username ?? 'System QC')),
+            'operator_role'  => $request->input('operator_role', 'QC'),
+            'operator_email' => $operatorEmail,
+        ];
 
         DB::beginTransaction();
         try {
@@ -650,7 +679,8 @@ class KempuQcController extends Controller
                     'reused_count'    => $currentReused,
                     'condition'       => $condition,
                     'notes'           => $actionNote,
-                    'created_by'      => $userId,
+                    'metadata'        => $trackingMetadata,
+                    'created_by'      => $creatorId,
                 ]);
             }
 
@@ -1151,6 +1181,20 @@ class KempuQcController extends Controller
                 ]);
             }
 
+            $operatorEmail = $request->input('operator_email');
+            $warehouseUser = $operatorEmail ? User::where('email', $operatorEmail)->first() : null;
+            if (!$warehouseUser && $request->filled('user_id')) {
+                $warehouseUser = User::find($request->input('user_id'));
+            }
+            $creatorId = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
+
+            $trackingMetadata = [
+                'app_source'     => $request->input('app_source', 'warehouse'),
+                'operator_name'  => $request->input('operator_name', $warehouseUser?->nama_lengkap ?? ($warehouseUser?->username ?? 'System QC')),
+                'operator_role'  => $request->input('operator_role', 'QC'),
+                'operator_email' => $operatorEmail,
+            ];
+
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
                 'id_kempu'        => $kempu->id_kempu,
@@ -1162,7 +1206,8 @@ class KempuQcController extends Controller
                 'reused_count'    => $currentReused,
                 'condition'       => $condition,
                 'notes'           => $notes,
-                'created_by'      => Auth::id() ?? $request->input('user_id') ?? 1,
+                'metadata'        => $trackingMetadata,
+                'created_by'      => $creatorId,
             ]);
 
             DB::commit();

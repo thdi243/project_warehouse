@@ -32,6 +32,19 @@ class KempuTrackingHistoryModel extends Model
         'metadata'     => 'array',
     ];
 
+    protected $appends = [
+        'operator_display_name',
+    ];
+
+    public function getOperatorDisplayNameAttribute(): string
+    {
+        return $this->createdBy?->nama_lengkap
+            ?? $this->createdBy?->username
+            ?? $this->metadata['operator_name']
+            ?? $this->metadata['operator_email']
+            ?? 'System';
+    }
+
     public function masterKempu()
     {
         return $this->belongsTo(MasterKempuModel::class, 'kempu_master_id');
