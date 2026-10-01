@@ -503,8 +503,8 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon"><i class="ri-truck-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">TOTAL ARMADA</div>
-                                    <div class="card-subtitle-text">VOLUME KEDATANGAN</div>
+                                    <div class="card-title-text">TOTAL TRUK</div>
+                                    <div class="card-subtitle-text">JUMLAH KENDARAAN</div>
                                 </div>
                             </div>
                         </div>
@@ -524,15 +524,15 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon green"><i class="ri-time-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">RERATA TAT</div>
-                                    <div class="card-subtitle-text">CYCLE TIME TOTAL</div>
+                                    <div class="card-title-text">AVG. WAKTU PROSES</div>
+                                    <div class="card-subtitle-text">TOTAL WAKTU PROSES</div>
                                 </div>
                             </div>
                         </div>
                         <div class="wwtp-card-body py-2">
                             <div class="kpi-main-number text-white" id="kpiAvgTAT">--</div>
                             <div class="kpi-target-tag green">
-                                <i class="ri-arrow-down-line"></i> TARGET &le; <span class="sla-num">120</span> MNT
+                                <i class="ri-arrow-down-line"></i> TARGET &le; <span class="sla-num">120</span> MENIT
                             </div>
                         </div>
                     </div>
@@ -545,15 +545,15 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon"><i class="ri-calendar-check-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">RERATA CHECK-IN</div>
-                                    <div class="card-subtitle-text">KEDATANGAN / HARI</div>
+                                    <div class="card-title-text">AVG. CHECK-IN</div>
+                                    <div class="card-subtitle-text">KENDARAAN / HARI</div>
                                 </div>
                             </div>
                         </div>
                         <div class="wwtp-card-body py-2">
                             <div class="kpi-main-number text-white" id="kpiAvgDailyCheckin">0</div>
                             <div class="kpi-target-tag cyan">
-                                <i class="ri-pulse-line"></i> ARMADA / HARI
+                                <i class="ri-pulse-line"></i> KENDARAAN / HARI
                             </div>
                         </div>
                     </div>
@@ -567,7 +567,7 @@
                                 <div class="card-header-icon red"><i class="ri-alarm-warning-line"></i></div>
                                 <div>
                                     <div class="card-title-text">MELEBIHI SLA</div>
-                                    <div class="card-subtitle-text">BOTTLENECK ARMADA</div>
+                                    <div class="card-subtitle-text">TOTAL KENDARAAN</div>
                                 </div>
                             </div>
                         </div>
@@ -685,8 +685,8 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon green"><i class="ri-truck-fill"></i></div>
                                 <div>
-                                    <div class="card-title-text">DURASI BONGKAR / MUAT RIIL</div>
-                                    <div class="card-subtitle-text">RERATA WAKTU DENGAN TIMESTAMP AKTIF</div>
+                                    <div class="card-title-text">DURASI BONGKAR / MUAT</div>
+                                    <div class="card-subtitle-text">RATA-RATA WAKTU BONGKAR / MUAT</div>
                                 </div>
                             </div>
                             <div>
@@ -762,7 +762,7 @@
                                 <thead>
                                     <tr>
                                         <th>NAMA VENDOR</th>
-                                        <th class="text-center">TRIP</th>
+                                        <th class="text-center">TRUK</th>
                                         <th class="text-center">VOL. TOLAK</th>
                                         <th class="text-center">% REJECT</th>
                                         <th>ALASAN UMUM</th>
@@ -779,14 +779,14 @@
                     </div>
                 </div>
 
-                <!-- 2.3 Frequent Trucks (Armada Paling Sering Berkunjung) -->
+                <!-- 2.3 Frequent Trucks (Truk Paling Sering Berkunjung) -->
                 <div class="col-12 col-xl-4">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon purple"><i class="ri-roadster-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">ARMADA PALING SERING BERKUNJUNG</div>
+                                    <div class="card-title-text">TRUK PALING SERING BERKUNJUNG</div>
                                     <div class="card-subtitle-text">TOP FREQUENT TRUCKS & DWELL TIME</div>
                                 </div>
                             </div>
@@ -803,7 +803,7 @@
                                 </thead>
                                 <tbody id="frequentTrucksTableBody">
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DATA ARMADA...
+                                        <td colspan="4" class="text-center text-muted py-4">MEMUAT DATA TRUK...
                                         </td>
                                     </tr>
                                 </tbody>
@@ -813,7 +813,7 @@
                 </div>
             </div>
 
-            <!-- Row 3: Throughput Dock, Jenis Armada, Durasi Lab Material (col-xl-4 each) -->
+            <!-- Row 3: Throughput Dock, Jenis Truk, Durasi Lab Material (col-xl-4 each) -->
             <div class="row g-2 mb-3">
                 <!-- 3.1 Throughput Tonase per Loading Bay -->
                 <div class="col-12 col-md-6 col-xl-4">
@@ -822,8 +822,8 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon"><i class="ri-building-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">THROUGHPUT TONASE & ARMADA PER DOCK</div>
-                                    <div class="card-subtitle-text">DISTRIBUSI BEBAN KERJA GUDANG</div>
+                                    <div class="card-title-text">TONASE & TRUK PER AREA</div>
+                                    <div class="card-subtitle-text">DISTRIBUSI BEBAN KERJA AREA</div>
                                 </div>
                             </div>
                         </div>
@@ -833,14 +833,14 @@
                     </div>
                 </div>
 
-                <!-- 3.2 Armada Types Composition -->
+                <!-- 3.2 Kendaraan Types Composition -->
                 <div class="col-12 col-md-6 col-xl-4">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon purple"><i class="ri-pie-chart-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">DISTRIBUSI JENIS ARMADA</div>
+                                    <div class="card-title-text">DISTRIBUSI JENIS TRUK</div>
                                     <div class="card-subtitle-text">BONGKARAN, CURAH, SLIPSHEET, RETUR</div>
                                 </div>
                             </div>
@@ -894,8 +894,8 @@
                                 <thead>
                                     <tr>
                                         <th>VENDOR</th>
-                                        <th class="text-center">TRIP</th>
-                                        <th>RERATA</th>
+                                        <th class="text-center">TRUK</th>
+                                        <th>AVG.</th>
                                         <th class="text-center">STATUS</th>
                                     </tr>
                                 </thead>
@@ -1327,8 +1327,8 @@
                             shared: true,
                             y: {
                                 formatter: (val, opt) => {
-                                    if (opt.seriesIndex === 0) return `${val} Armada`;
-                                    return `${val} Armada / Hari`;
+                                    if (opt.seriesIndex === 0) return `${val} Kendaraan`;
+                                    return `${val} Kendaraan / Hari`;
                                 }
                             }
                         },
@@ -1637,14 +1637,14 @@
                     }
                 }
 
-                // 2.3 Frequent Trucks (Armada Paling Sering Berkunjung)
+                // 2.3 Frequent Trucks (Kendaraan Paling Sering Berkunjung)
                 function renderFrequentTrucks(trucks) {
                     const tbody = $('#frequentTrucksTableBody');
                     tbody.empty();
 
                     if (!trucks || trucks.length === 0) {
                         tbody.append(
-                            '<tr><td colspan="4" class="text-center text-muted py-4 fs-11">TIDAK ADA DATA KUNJUNGAN ARMADA</td></tr>'
+                            '<tr><td colspan="4" class="text-center text-muted py-4 fs-11">TIDAK ADA DATA KUNJUNGAN KENDARAAN</td></tr>'
                         );
                         return;
                     }
@@ -1690,7 +1690,7 @@
                                 data: tonnages
                             },
                             {
-                                name: 'ARMADA SELESAI',
+                                name: 'KENDARAAN SELESAI',
                                 type: 'line',
                                 data: truckCounts
                             }
@@ -1819,7 +1819,7 @@
                     const fleets = c4.fleet_distribution;
                     if (!fleets || fleets.length === 0) {
                         $('#chartFleetTypes').html(
-                            '<div class="text-center text-muted py-5 fs-11">TIDAK ADA DATA ARMADA</div>');
+                            '<div class="text-center text-muted py-5 fs-11">TIDAK ADA DATA KENDARAAN</div>');
                     } else {
                         const fNames = fleets.map(f => f.jenis.toUpperCase());
                         const fCounts = fleets.map(f => f.count);

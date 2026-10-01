@@ -122,32 +122,27 @@ class VehicleAnalyticsController extends Controller
         // =========================================================================
         $stageDefs = [
             'pos1_ke_timbangan' => [
-                'name' => '1. POS 1 KE TIMBANGAN MASUK',
+                'name' => 'POS 1 KE TIMBANGAN',
                 'desc' => 'Pos 1 Security ke Check-in Timbangan Masuk',
                 'durations' => []
             ],
             'antrian_dock' => [
-                'name' => '2. ANTRIAN MENUJU DOCK',
+                'name' => 'ANTRIAN MENUJU DOCK',
                 'desc' => 'Check-in Timbangan ke Ambil Antrian / Menuju Dock',
                 'durations' => []
             ],
             'sampling_lab' => [
-                'name' => '3. SAMPLING & UJI LAB QC',
+                'name' => 'SAMPLING QC',
                 'desc' => 'Mulai Sampling hingga Selesai Pengujian Lab',
                 'durations' => []
             ],
             'bongkar_muat' => [
-                'name' => '4. BONGKAR / MUAT DOCK',
+                'name' => 'BONGKAR / MUAT',
                 'desc' => 'Mulai Bongkar/Muat hingga Selesai di Dock',
                 'durations' => []
             ],
-            'menuju_timbangan_out' => [
-                'name' => '5. MENUJU TIMBANGAN KELUAR',
-                'desc' => 'Selesai Bongkar/Muat ke Timbangan Keluar',
-                'durations' => []
-            ],
             'checkout_timbangan' => [
-                'name' => '6. CHECK-OUT TIMBANGAN',
+                'name' => 'CHECK-OUT TIMBANGAN',
                 'desc' => 'Timbangan Keluar ke Check-Out Timbangan',
                 'durations' => []
             ],
@@ -212,13 +207,7 @@ class VehicleAnalyticsController extends Controller
                 $stageDefs['bongkar_muat']['durations'][] = $startLoad->diffInMinutes($finishLoad);
             }
 
-            // 5. Menuju Timbangan Keluar: finish_loading_time (or finish_sampling) -> timbangan_out_time
-            $prevToOut = $finishLoad ?: $finishSamp;
-            if ($prevToOut && $tmbOut && $tmbOut->gte($prevToOut)) {
-                $stageDefs['menuju_timbangan_out']['durations'][] = $prevToOut->diffInMinutes($tmbOut);
-            }
-
-            // 6. Check-Out Timbangan: timbangan_out_time -> check_out_time
+            // 5. Check-Out Timbangan: timbangan_out_time -> check_out_time
             if ($tmbOut && $checkOut && $checkOut->gte($tmbOut)) {
                 $stageDefs['checkout_timbangan']['durations'][] = $tmbOut->diffInMinutes($checkOut);
             }
