@@ -237,6 +237,13 @@ Route::prefix('kempu')->name('api.kempu.')->group(function () {
         // Pengecekan Biasa / Individual (QC PM, QC Pre Cuci, QC After Filling)
         Route::post('/lookup', [KempuQcController::class, 'lookup'])->name('lookup');
         Route::post('/decision', [KempuQcController::class, 'decision'])->name('decision');
+
+        // Report API QC Kempu
+        Route::prefix('report')->name('report.')->group(function () {
+            Route::get('/stats', [KempuQcController::class, 'reportStatsApi'])->name('stats');
+            Route::get('/data', [KempuQcController::class, 'reportDataApi'])->name('data');
+            Route::get('/export', [KempuQcController::class, 'exportReportApi'])->name('export');
+        });
     });
 
     // 2. API Produksi Kempu

@@ -1009,6 +1009,13 @@ Route::middleware('auth')->group(function () {
             Route::get('/scan/{type}', [KempuQcController::class, 'scan'])->name('scan');
             Route::post('/lookup', [KempuQcController::class, 'lookup'])->name('lookup');
             Route::post('/decision', [KempuQcController::class, 'decision'])->name('decision');
+
+            // Report QC Kempu
+            Route::prefix('report')->name('report.')->group(function () {
+                Route::get('/stats', [KempuQcController::class, 'reportStatsApi'])->name('stats');
+                Route::get('/data', [KempuQcController::class, 'reportDataApi'])->name('data');
+                Route::get('/export', [KempuQcController::class, 'exportReportApi'])->name('export');
+            });
         });
 
         // Engineering Kempu (Repair)

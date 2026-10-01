@@ -1233,4 +1233,385 @@ class KempuQcController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * API: Statistik KPI untuk Report QC Kempu
+     */
+    public function reportStatsApi(Request $request)
+    {
+        $today = today();
+
+        // Query dasar riwayat QC (QC_PM, QC_PROSES, QC_FORCE)
+        $qcStages = ['QC_PM', 'QC_PROSES', 'QC_FORCE'];
+        $baseHistory = KempuTrackingHistoryModel::whereIn('stage', $qcStages);
+
+        $totalQcToday = (clone $baseHistory)->whereDate('created_at', $today)->count();
+        $totalQcAll   = (clone $baseHistory)->count();
+
+        // QC PM
+        $qcPmQuery = KempuTrackingHistoryModel::where(function ($q) {
+            $q->where('stage', 'QC_PM')
+              ->orWhere(function ($sub) {
+                  $sub->where('stage', 'QC_FORCE')
+                      ->where('action', 'like', '%QC PM%');
+              });
+        });
+        $totalQcPmToday = (clone $qcPmQuery)->whereDate('created_at', $today)->count();
+        $totalQcPmAll   = (clone $qcPmQuery)->count();
+
+        // QC Proses
+        $qcProsesQuery = KempuTrackingHistoryModel::where(function ($q) {
+            $q->where('stage', 'QC_PROSES')
+              ->orWhere(function ($sub) {
+                  $sub->where('stage', 'QC_FORCE')
+                      ->where('action', 'not like', '%QC PM%');
+              });
+        });
+        $totalQcProsesToday = (clone $qcProsesQuery)->whereDate('created_at', $today)->count();
+        $totalQcProsesAll   = (clone $qcProsesQuery)->count();
+
+        // Force Scan
+        $forceScanQuery = KempuTrackingHistoryModel::where('stage', 'QC_FORCE');
+        $totalForceToday = (clone $forceScanQuery)->whereDate('created_at', $today)->count();
+        $totalForceAll   = (clone $forceScanQuery)->count();
+
+        // Hasil Keputusan QC
+        $totalOkAll     = (clone $baseHistory)->where('action_result', 'OK')->count();
+        $totalHoldAll   = (clone $baseHistory)->where('action_result', 'HOLD')->count();
+        $totalRejectAll = (clone $baseHistory)->where('action_result', 'NOT_OK')->count();
+        $totalScrapAll  = (clone $baseHistory)->where('action_result', 'SCRAPPED')->count();
+
+        // Stok Kempu di Area QC Saat Ini
+        $totalInQcPm = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_location', MasterKempuModel::LOC_QC_PM)
+              ->orWhereIn('current_status', [
+                  MasterKempuModel::STATUS_QC_PM_PENDING,
+                  MasterKempuModel::STATUS_GR_COMPLETED,
+                  'REGISTERED',
+              ]);
+        })->whereHas('main', function ($q) {
+            $q->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+        })->count();
+
+        $totalInQcProses = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_location', MasterKempuModel::LOC_QC_PROSES)
+              ->orWhereIn('current_status', [
+                  MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
+                  MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
+                  MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
+              ]);
+        })->whereHas('main', function ($q) {
+            $q->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+        })->count();
+
+        $totalWarningReused = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('reused_count', '>=', 18)
+              ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+        })->count();
+
+        return response()->json([
+            'status' => true,
+            'data'   => [
+                'total_qc_today'         => $totalQcToday,
+                'total_qc_all'           => $totalQcAll,
+                'total_qc_pm_today'      => $totalQcPmToday,
+                'total_qc_pm_all'        => $totalQcPmAll,
+                'total_qc_proses_today'  => $totalQcProsesToday,
+                'total_qc_proses_all'    => $totalQcProsesAll,
+                'total_force_today'      => $totalForceToday,
+                'total_force_all'        => $totalForceAll,
+                'total_ok_all'           => $totalOkAll,
+                'total_hold_all'         => $totalHoldAll,
+                'total_reject_all'       => $totalRejectAll,
+                'total_scrap_all'        => $totalScrapAll,
+                'total_in_qc_pm'         => $totalInQcPm,
+                'total_in_qc_proses'     => $totalInQcProses,
+                'total_warning_reused'   => $totalWarningReused,
+            ],
+        ]);
+    }
+
+    /**
+     * API: Data Report QC Kempu (Server-side Pagination & Filtering)
+     */
+    public function reportDataApi(Request $request)
+    {
+        $viewMode = $request->input('view_mode', 'history'); // 'history' | 'current'
+        $perPage  = min(100, max(5, (int) $request->input('per_page', 20)));
+
+        if ($viewMode === 'current') {
+            // Kempu yang saat ini berada di area QC atau berstatus pending QC
+            $query = MasterKempuModel::whereHas('main', function ($q) use ($request) {
+                $category = $request->input('qc_category', 'all');
+                if ($category === 'qc-pm') {
+                    $q->where(function ($sub) {
+                        $sub->where('current_location', MasterKempuModel::LOC_QC_PM)
+                            ->orWhereIn('current_status', [
+                                MasterKempuModel::STATUS_QC_PM_PENDING,
+                                MasterKempuModel::STATUS_GR_COMPLETED,
+                                'REGISTERED',
+                            ]);
+                    });
+                } elseif ($category === 'qc-proses') {
+                    $q->where(function ($sub) {
+                        $sub->where('current_location', MasterKempuModel::LOC_QC_PROSES)
+                            ->orWhereIn('current_status', [
+                                MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
+                                MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
+                                MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
+                            ]);
+                    });
+                } else {
+                    $q->where(function ($sub) {
+                        $sub->whereIn('current_location', [MasterKempuModel::LOC_QC_PM, MasterKempuModel::LOC_QC_PROSES])
+                            ->orWhereIn('current_status', [
+                                MasterKempuModel::STATUS_QC_PM_PENDING,
+                                MasterKempuModel::STATUS_GR_COMPLETED,
+                                'REGISTERED',
+                                MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
+                                MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
+                                MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
+                            ]);
+                    });
+                }
+
+                $q->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+            })->with(['main', 'createdBy:id,username,nama_lengkap']);
+
+            if ($request->filled('search')) {
+                $s = trim($request->search);
+                $query->where(function ($q) use ($s) {
+                    $q->where('id_kempu', 'like', "%{$s}%")
+                      ->orWhere('rfid', 'like', "%{$s}%")
+                      ->orWhere('no_spb', 'like', "%{$s}%")
+                      ->orWhere('keterangan', 'like', "%{$s}%");
+                });
+            }
+
+            if ($request->filled('reused_status')) {
+                $query->whereHas('main', function ($q) use ($request) {
+                    if ($request->reused_status === 'warning') {
+                        $q->whereBetween('reused_count', [18, 20]);
+                    } elseif ($request->reused_status === 'max') {
+                        $q->where('reused_count', '>=', 21);
+                    } elseif ($request->reused_status === 'normal') {
+                        $q->where('reused_count', '<', 18);
+                    }
+                });
+            }
+
+            $paginated = $query->latest('updated_at')->paginate($perPage);
+
+            return response()->json([
+                'status'     => true,
+                'view_mode'  => 'current',
+                'data'       => $paginated->items(),
+                'pagination' => [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page'    => $paginated->lastPage(),
+                    'total'        => $paginated->total(),
+                    'per_page'     => $paginated->perPage(),
+                ],
+            ]);
+        }
+
+        // View Mode: History
+        $query = KempuTrackingHistoryModel::whereIn('stage', ['QC_PM', 'QC_PROSES', 'QC_FORCE'])
+            ->with([
+                'createdBy:id,username,nama_lengkap',
+                'masterKempu:id,id_kempu,rfid,no_spb,status',
+            ]);
+
+        // Klasifikasi QC
+        $qcCategory = $request->input('qc_category', 'all');
+        if ($qcCategory === 'qc-pm') {
+            $query->where(function ($q) {
+                $q->where('stage', 'QC_PM')
+                  ->orWhere(function ($sub) {
+                      $sub->where('stage', 'QC_FORCE')
+                          ->where('action', 'like', '%QC PM%');
+                  });
+            });
+        } elseif ($qcCategory === 'qc-proses') {
+            $query->where(function ($q) {
+                $q->where('stage', 'QC_PROSES')
+                  ->orWhere(function ($sub) {
+                      $sub->where('stage', 'QC_FORCE')
+                          ->where('action', 'not like', '%QC PM%');
+                  });
+            });
+        } elseif ($qcCategory === 'qc-force') {
+            $query->where('stage', 'QC_FORCE');
+        }
+
+        // Filter Hasil Keputusan
+        if ($request->filled('action_result') && $request->action_result !== 'all') {
+            $query->where('action_result', $request->action_result);
+        }
+
+        // Filter Tanggal
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        // Filter Pencarian
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('id_kempu', 'like', "%{$s}%")
+                  ->orWhere('notes', 'like', "%{$s}%")
+                  ->orWhere('action', 'like', "%{$s}%")
+                  ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
+                  ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                      $mq->where('rfid', 'like', "%{$s}%")
+                         ->orWhere('no_spb', 'like', "%{$s}%");
+                  })
+                  ->orWhereHas('createdBy', function ($uq) use ($s) {
+                      $uq->where('username', 'like', "%{$s}%")
+                         ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                  });
+            });
+        }
+
+        $paginated = $query->latest('id')->paginate($perPage);
+
+        return response()->json([
+            'status'     => true,
+            'view_mode'  => 'history',
+            'data'       => $paginated->items(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'total'        => $paginated->total(),
+                'per_page'     => $paginated->perPage(),
+            ],
+        ]);
+    }
+
+    /**
+     * API: Export CSV untuk Report QC Kempu
+     */
+    public function exportReportApi(Request $request)
+    {
+        $query = KempuTrackingHistoryModel::whereIn('stage', ['QC_PM', 'QC_PROSES', 'QC_FORCE'])
+            ->with([
+                'createdBy:id,username,nama_lengkap',
+                'masterKempu:id,id_kempu,rfid,no_spb,status',
+            ]);
+
+        $qcCategory = $request->input('qc_category', 'all');
+        if ($qcCategory === 'qc-pm') {
+            $query->where(function ($q) {
+                $q->where('stage', 'QC_PM')
+                  ->orWhere(function ($sub) {
+                      $sub->where('stage', 'QC_FORCE')
+                          ->where('action', 'like', '%QC PM%');
+                  });
+            });
+        } elseif ($qcCategory === 'qc-proses') {
+            $query->where(function ($q) {
+                $q->where('stage', 'QC_PROSES')
+                  ->orWhere(function ($sub) {
+                      $sub->where('stage', 'QC_FORCE')
+                          ->where('action', 'not like', '%QC PM%');
+                  });
+            });
+        } elseif ($qcCategory === 'qc-force') {
+            $query->where('stage', 'QC_FORCE');
+        }
+
+        if ($request->filled('action_result') && $request->action_result !== 'all') {
+            $query->where('action_result', $request->action_result);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('id_kempu', 'like', "%{$s}%")
+                  ->orWhere('notes', 'like', "%{$s}%")
+                  ->orWhere('action', 'like', "%{$s}%")
+                  ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
+                  ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                      $mq->where('rfid', 'like', "%{$s}%")
+                         ->orWhere('no_spb', 'like', "%{$s}%");
+                  })
+                  ->orWhereHas('createdBy', function ($uq) use ($s) {
+                      $uq->where('username', 'like', "%{$s}%")
+                         ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                  });
+            });
+        }
+
+        $records = $query->latest('id')->get();
+        $filename = 'Report_Scan_QC_Kempu_' . now()->format('Ymd_His') . '.csv';
+
+        $callback = function () use ($records) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($file, [
+                'No',
+                'Tanggal & Waktu',
+                'ID Kempu',
+                'RFID',
+                'No SPB',
+                'Klasifikasi QC',
+                'Aksi Pemeriksaan',
+                'Hasil Keputusan',
+                'Dari Lokasi',
+                'Ke Lokasi',
+                'Siklus Reused',
+                'Kondisi',
+                'Catatan',
+                'Petugas QC',
+            ]);
+
+            $no = 1;
+            foreach ($records as $row) {
+                $stageName = 'QC PM';
+                if ($row->stage === 'QC_PROSES') {
+                    $stageName = 'QC Proses';
+                } elseif ($row->stage === 'QC_FORCE') {
+                    $stageName = 'Force Scan (Override)';
+                }
+
+                $actor = $row->operator_display_name ?? ($row->createdBy->nama_lengkap ?? $row->createdBy->username ?? ($row->metadata['operator_name'] ?? 'System'));
+
+                fputcsv($file, [
+                    $no++,
+                    $row->created_at ? $row->created_at->format('d/m/Y H:i:s') : '-',
+                    $row->id_kempu,
+                    $row->masterKempu->rfid ?? '-',
+                    $row->masterKempu->no_spb ?? '-',
+                    $stageName,
+                    $row->action,
+                    $row->action_result ?? 'OK',
+                    $row->from_location ?? '-',
+                    $row->to_location ?? '-',
+                    ($row->reused_count ?? 0) . ' / 21x',
+                    $row->condition ?? 'OK',
+                    $row->notes ?? '-',
+                    $actor,
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
 }
+
