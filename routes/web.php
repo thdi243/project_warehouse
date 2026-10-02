@@ -1031,6 +1031,14 @@ Route::middleware('auth')->group(function () {
             Route::get('/scan/{cardKey}', [KempuProduksiController::class, 'scan'])->name('scan');
             Route::post('/lookup', [KempuProduksiController::class, 'lookup'])->name('lookup');
             Route::post('/confirm', [KempuProduksiController::class, 'confirm'])->name('confirm');
+
+            // Report Produksi Kempu
+            Route::prefix('report')->name('report.')->group(function () {
+                Route::get('/', [KempuProduksiController::class, 'report'])->name('index');
+                Route::get('/stats', [KempuProduksiController::class, 'reportStatsApi'])->name('stats');
+                Route::get('/data', [KempuProduksiController::class, 'reportDataApi'])->name('data');
+                Route::get('/export', [KempuProduksiController::class, 'exportReportApi'])->name('export');
+            });
         });
 
         // Warehouse PAS

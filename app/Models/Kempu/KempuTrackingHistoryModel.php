@@ -38,11 +38,21 @@ class KempuTrackingHistoryModel extends Model
 
     public function getOperatorDisplayNameAttribute(): string
     {
-        return $this->createdBy?->nama_lengkap
-            ?? $this->createdBy?->username
-            ?? $this->metadata['operator_name']
-            ?? $this->metadata['operator_email']
-            ?? 'System';
+        // 1. Jika ada operator_name di metadata (disimpan dari portal eksternal seperti Production / QC / Digimon), dahulukan ini!
+        if (!empty($this->metadata['operator_name'])) {
+            return $this->metadata['operator_name'];
+        }
+
+        // 2. Jika tidak ada di metadata, cari dari relasi createdBy (tabel users Warehouse)
+        if ($this->createdBy) {
+            return $this->createdBy->nama_lengkap
+                ?? $this->createdBy->username
+                ?? $this->createdBy->name
+                ?? 'User #' . $this->created_by;
+        }
+
+        // 3. Fallback ke email operator atau System
+        return $this->metadata['operator_email'] ?? 'System';
     }
 
     public function masterKempu()

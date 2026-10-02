@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Kempu;
 use App\Http\Controllers\Controller;
 use App\Models\Kempu\KempuTrackingHistoryModel;
 use App\Models\Kempu\MasterKempuModel;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -159,7 +160,61 @@ class KempuProduksiController extends Controller
                 ],
                 'description'     => 'Pembuatan Berita Acara (BA) Scrap untuk kempu rusak permanen yang dinyatakan Scrap oleh Engineering Workshop / QC.',
             ],
+            'prod-force' => [
+                'key'             => 'prod-force',
+                'title'           => 'Force Scan Produksi',
+                'subtitle'        => 'Manual Override Bebas Alur',
+                'status_name'     => 'PROD_FORCE',
+                'stage'           => 'PRODUKSI_FORCE',
+                'location'        => MasterKempuModel::LOC_PRODUKSI,
+                'from_loc'        => MasterKempuModel::LOC_PRODUKSI,
+                'to_loc'          => MasterKempuModel::LOC_PRODUKSI,
+                'next_status'     => 'PROD_FORCE',
+                'icon'            => 'ri-shield-flash-line',
+                'badge_color'     => 'danger',
+                'btn_text'        => 'Buka Scanner Force Produksi',
+                'target_statuses' => ['*'],
+                'description'     => 'Eksekusi paksa alur dan status kempu di Produksi tanpa terikat urutan alur normal atau jeda waktu cuci (Khusus Otoritas Produksi).',
+                'count'           => 'Otoritas',
+                'count_label'     => 'Akses Khusus',
+            ],
         ];
+    }
+
+    /**
+     * Cek apakah user memiliki otoritas Force Scan di Produksi
+     */
+    public static function canForceScan($user = null): bool
+    {
+        $roleName = strtolower(trim(request()->input('user_role', request()->input('operator_role', ''))));
+        if ($roleName === 'operator') {
+            return false;
+        }
+
+        $user = $user ?? Auth::user();
+        if ($user) {
+            if (method_exists($user, 'hasAnyPermission')) {
+                try {
+                    if ($user->hasAnyPermission(['super-admin', 'kempu-prod-force', 'kempu-qc-force'])) {
+                        return true;
+                    }
+                } catch (\Throwable $e) {
+                }
+            }
+            if (method_exists($user, 'hasRole')) {
+                try {
+                    if ($user->hasRole('super-admin')) {
+                        return true;
+                    }
+                    if ($user->hasRole('operator')) {
+                        return false;
+                    }
+                } catch (\Throwable $e) {
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -171,6 +226,11 @@ class KempuProduksiController extends Controller
 
         foreach ($cards as $key => &$card) {
             $targetStatuses = $card['target_statuses'];
+            if ($targetStatuses === ['*'] || in_array('*', $targetStatuses)) {
+                $card['count'] = 'Otoritas';
+                $card['count_label'] = 'Akses Khusus';
+                continue;
+            }
             $card['count'] = MasterKempuModel::whereHas('main', function ($q) use ($targetStatuses) {
                 $q->whereIn('current_status', $targetStatuses)
                     ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
@@ -193,7 +253,7 @@ class KempuProduksiController extends Controller
     }
 
     /**
-     * Halaman Hub Index Menu Produksi (5 Cards)
+     * Halaman Hub Index Menu Produksi (Cards)
      */
     public function index()
     {
@@ -202,10 +262,16 @@ class KempuProduksiController extends Controller
         // Hitung kempu pada masing-masing proses
         foreach ($cards as $key => &$card) {
             $targetStatuses = $card['target_statuses'];
+            if ($targetStatuses === ['*'] || in_array('*', $targetStatuses)) {
+                $card['count'] = 'Otoritas';
+                $card['count_label'] = 'Akses Khusus';
+                continue;
+            }
             $card['count'] = MasterKempuModel::whereHas('main', function ($q) use ($targetStatuses) {
                 $q->whereIn('current_status', $targetStatuses);
             })->count();
         }
+        unset($card);
 
         $totalProduksi = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_PRODUKSI);
@@ -339,6 +405,11 @@ class KempuProduksiController extends Controller
         $currentStatus   = trim($kempu->main?->current_status ?? $kempu->current_status ?? '');
         $currentLocation = trim($kempu->main?->current_location ?? $kempu->current_location ?? '');
         $idKempu         = $kempu->id_kempu;
+
+        // Force Scan membebaskan validasi urutan flow untuk eksekusi alur kapanpun dan dimanapun
+        if ($cardKey === 'prod-force') {
+            return ['valid' => true, 'message' => null];
+        }
 
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
             return [
@@ -598,6 +669,7 @@ class KempuProduksiController extends Controller
                 'max_reused'       => (int)($kempu->main->max_reused ?? 21),
                 'condition'        => $kempu->main->condition ?? 'OK',
                 'card_title'       => $card['title'],
+                'is_force_scan'    => ($cardKey === 'prod-force'),
                 'is_flow_valid'    => $flowValidation['valid'],
                 'flow_error'       => $flowValidation['message'],
                 'cuci_info'        => ($cardKey === 'scan-1-filling-kempu') ? self::getCuciKempuTiming($kempu) : null,
@@ -659,7 +731,80 @@ class KempuProduksiController extends Controller
         $resultMessage = "Aksi '{$card['title']}' untuk kempu {$idKempu} berhasil diproses.";
 
         // Logika khusus per Card
-        if ($cardKey === 'scan-1-filling-kempu') {
+        if ($cardKey === 'prod-force') {
+            $forceTarget = strtoupper(trim($request->input('force_target', $request->input('target_status', ''))));
+
+            switch ($forceTarget) {
+                case 'PROD_TRANSFER_IN_WPM':
+                case 'TRANSFER-IN-FROM-WPM':
+                    $nextStatus    = MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING;
+                    $toLocation    = MasterKempuModel::LOC_PRODUKSI;
+                    $actionResult  = 'RECEIVED';
+                    $actionTitle   = '[FORCE SCAN] Transfer in from WPM';
+                    $resultMessage = "Force Scan: Kempu {$idKempu} berhasil dipaksa Transfer In dari WPM (Status: Menuju QC Pre Cuci).";
+                    $notes         = $notes ?: 'Force Decision: Paksa Transfer In dari WPM';
+                    break;
+
+                case 'PROD_CUCI_KEMPU':
+                case 'CUCI-KEMPU':
+                    $nextStatus    = MasterKempuModel::STATUS_PROD_CUCI_KEMPU;
+                    $toLocation    = MasterKempuModel::LOC_PRODUKSI;
+                    $condition     = 'OK';
+                    $actionResult  = 'OK';
+                    $actionTitle   = '[FORCE SCAN] Cuci Kempu Selesai';
+                    $resultMessage = "Force Scan: Pencucian kempu {$idKempu} berhasil dipaksa selesai (Siap Filling).";
+                    $notes         = $notes ?: 'Force Decision: Paksa Selesai Cuci Kempu';
+                    break;
+
+                case 'PROD_FILLING_KEMPU':
+                case 'SCAN-1-FILLING-KEMPU':
+                    $nextStatus    = MasterKempuModel::STATUS_PROD_FILLING_KEMPU;
+                    $toLocation    = MasterKempuModel::LOC_PRODUKSI;
+                    $condition     = 'OK';
+                    $actionResult  = 'OK';
+                    $actionTitle   = '[FORCE SCAN] Filling Kempu (Scan 1)';
+                    $resultMessage = "Force Scan: Pengisian (Filling) kempu {$idKempu} berhasil dipaksa selesai (Bypass Waktu Cuci, Siap QC After Filling).";
+                    $notes         = $notes ?: 'Force Decision: Paksa Filling Kempu (Bypass Aturan Waktu Cuci)';
+                    break;
+
+                case 'PROD_TRANSFER_OUT_WFG':
+                case 'TRANSFER-OUT-TO-WFG':
+                    $nextStatus    = MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG;
+                    $toLocation    = MasterKempuModel::LOC_WFG;
+                    $actionResult  = 'TRANSFERRED';
+                    $actionTitle   = '[FORCE SCAN] Transfer Out to WFG';
+                    $resultMessage = "Force Scan: Kempu {$idKempu} berhasil dipaksa Transfer Out ke Gudang Jadi (WFG).";
+                    $notes         = $notes ?: 'Force Decision: Paksa Transfer Out ke WFG';
+                    break;
+
+                case 'PROD_TRANSFER_IN_WFG':
+                case 'TRANSFER-IN-FROM-WFG':
+                    $nextStatus    = MasterKempuModel::STATUS_PROD_TRANSFER_IN_WFG;
+                    $toLocation    = MasterKempuModel::LOC_PRODUKSI;
+                    $actionResult  = 'RECEIVED';
+                    $actionTitle   = '[FORCE SCAN] Transfer in from WFG (Retur)';
+                    $resultMessage = "Force Scan: Kempu retur/reject dari WFG {$idKempu} berhasil dipaksa diterima di Produksi.";
+                    $notes         = $notes ?: 'Force Decision: Paksa Terima Retur WFG ke Produksi';
+                    break;
+
+                case 'SCRAPPED':
+                case 'CREATE-BA-SCRAP':
+                    $nextStatus    = MasterKempuModel::STATUS_SCRAPPED;
+                    $toLocation    = MasterKempuModel::LOC_SCRAP;
+                    $condition     = 'NOT_OK';
+                    $actionResult  = 'BA_SCRAP';
+                    $actionTitle   = '[FORCE SCAN] Create BA Scrap (Afkir)';
+                    $resultMessage = "Force Scan: Berita Acara Scrap kempu {$idKempu} berhasil dibuat. Status kempu resmi menjadi SCRAP (Afkir).";
+                    $notes         = $notes ?: 'Force Decision: Paksa Pembuatan BA Scrap (Afkir)';
+                    break;
+
+                default:
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Pilihan target keputusan Force Scan Produksi tidak valid.',
+                    ], 400);
+            }
+        } elseif ($cardKey === 'scan-1-filling-kempu') {
             // Reused telah ditambah saat QC Pre Cuci. Di sini mengisi muatan kempu dan lanjut ke QC After Filling
             $nextStatus    = MasterKempuModel::STATUS_PROD_FILLING_KEMPU;
             $toLocation    = MasterKempuModel::LOC_PRODUKSI;
@@ -719,16 +864,50 @@ class KempuProduksiController extends Controller
                 ]);
             }
 
+            // Identitas Operator dari berbagai portal (Production, Warehouse, dll)
+            $operatorName  = trim($request->input('operator_name', $request->input('user_name', '')));
+            $operatorEmail = trim($request->input('operator_email', $request->input('user_email', '')));
+            $operatorRole  = trim($request->input('operator_role', $request->input('user_role', '')));
+            $operatorNik   = trim($request->input('operator_nik', $request->input('user_nik', '')));
+            $appSource     = $request->input('app_source', Auth::check() ? 'warehouse' : 'production');
+
+            // Cek apakah user juga terdaftar di tabel users Warehouse berdasarkan EMAIL (BUKAN ID integer karena tabel user berbeda!)
+            $warehouseUser = $operatorEmail ? User::where('email', $operatorEmail)->first() : null;
+
+            if (empty($operatorName)) {
+                $operatorName = $warehouseUser?->nama_lengkap 
+                    ?? $warehouseUser?->username 
+                    ?? (Auth::user()?->nama_lengkap ?? Auth::user()?->username ?? Auth::user()?->name ?? 'Operator Produksi');
+            }
+
+            // created_by HANYA diisi jika user terverifikasi ada di tabel users Warehouse (via Auth::check() atau email match).
+            // JANGAN gunakan request->user_id langsung dari portal luar untuk menghindari salah relasi ke user Warehouse lain!
+            $creatorId = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
+
+            $trackingMetadata = [
+                'app_source'     => $appSource,
+                'operator_name'  => $operatorName,
+                'operator_email' => $operatorEmail ?: null,
+                'operator_role'  => $operatorRole ?: null,
+                'operator_nik'   => $operatorNik ?: null,
+                'portal_user_id' => $request->input('portal_user_id', $request->input('operator_id', $request->input('user_id'))),
+                'is_force_scan'  => ($cardKey === 'prod-force'),
+                'force_target'   => $forceTarget ?? null,
+            ];
+
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
                 'id_kempu'        => $kempu->id_kempu,
-                'stage'           => 'PRODUKSI',
+                'stage'           => ($cardKey === 'prod-force' ? 'PRODUKSI_FORCE' : 'PRODUKSI'),
                 'action'          => $actionTitle,
                 'action_result'   => $actionResult,
                 'from_location'   => $fromLocation,
                 'to_location'     => $toLocation,
+                'reused_count'    => $currentReused,
+                'condition'       => $condition,
                 'notes'           => $notes ?: null,
-                'created_by'      => Auth::id() ?? $request->input('user_id') ?? 1,
+                'metadata'        => $trackingMetadata,
+                'created_by'      => $creatorId,
             ]);
 
             DB::commit();
@@ -751,5 +930,393 @@ class KempuProduksiController extends Controller
                 'message' => 'Gagal memproses konfirmasi Produksi: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Halaman Web Report Scan Kempu Produksi
+     */
+    public function report(Request $request)
+    {
+        $cards = self::getCards();
+        return view('kempu.produksi.report', compact('cards'));
+    }
+
+    /**
+     * API: Statistik KPI untuk Report Produksi Kempu
+     */
+    public function reportStatsApi(Request $request)
+    {
+        $today = today();
+        $stages = ['PRODUKSI', 'PRODUKSI_FORCE'];
+        $baseHistory = KempuTrackingHistoryModel::whereIn('stage', $stages);
+
+        $totalToday = (clone $baseHistory)->whereDate('created_at', $today)->count();
+        $totalAll   = (clone $baseHistory)->count();
+
+        // 1. Transfer In WPM
+        $transferInWpmQuery = KempuTrackingHistoryModel::whereIn('stage', $stages)
+            ->where('action', 'like', '%Transfer in from WPM%');
+        $totalTransferInWpmToday = (clone $transferInWpmQuery)->whereDate('created_at', $today)->count();
+        $totalTransferInWpmAll   = (clone $transferInWpmQuery)->count();
+
+        // 2. Cuci Kempu
+        $cuciQuery = KempuTrackingHistoryModel::whereIn('stage', $stages)
+            ->where('action', 'like', '%Cuci Kempu%');
+        $totalCuciToday = (clone $cuciQuery)->whereDate('created_at', $today)->count();
+        $totalCuciAll   = (clone $cuciQuery)->count();
+
+        // 3. Filling Kempu
+        $fillingQuery = KempuTrackingHistoryModel::whereIn('stage', $stages)
+            ->where(function ($q) {
+                $q->where('action', 'like', '%Filling Kempu%')
+                    ->orWhere('action', 'like', '%Scan 1 Filling%');
+            });
+        $totalFillingToday = (clone $fillingQuery)->whereDate('created_at', $today)->count();
+        $totalFillingAll   = (clone $fillingQuery)->count();
+
+        // 4. Transfer Out to WFG
+        $transferOutWfgQuery = KempuTrackingHistoryModel::whereIn('stage', $stages)
+            ->where('action', 'like', '%Transfer Out to WFG%');
+        $totalTransferOutWfgToday = (clone $transferOutWfgQuery)->whereDate('created_at', $today)->count();
+        $totalTransferOutWfgAll   = (clone $transferOutWfgQuery)->count();
+
+        // 5. Transfer In from WFG (Retur)
+        $transferInWfgQuery = KempuTrackingHistoryModel::whereIn('stage', $stages)
+            ->where('action', 'like', '%Transfer in from WFG%');
+        $totalTransferInWfgToday = (clone $transferInWfgQuery)->whereDate('created_at', $today)->count();
+        $totalTransferInWfgAll   = (clone $transferInWfgQuery)->count();
+
+        // 6. Create BA Scrap
+        $scrapQuery = KempuTrackingHistoryModel::whereIn('stage', $stages)
+            ->where(function ($q) {
+                $q->where('action', 'like', '%BA Scrap%')
+                    ->orWhere('action_result', 'BA_SCRAP');
+            });
+        $totalScrapToday = (clone $scrapQuery)->whereDate('created_at', $today)->count();
+        $totalScrapAll   = (clone $scrapQuery)->count();
+
+        // 7. Force Scan Produksi
+        $forceScanQuery = KempuTrackingHistoryModel::where(function ($q) {
+            $q->where('stage', 'PRODUKSI_FORCE')
+                ->orWhere('action', 'like', '%[FORCE SCAN]%')
+                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.is_force_scan')) = 'true'");
+        });
+        $totalForceToday = (clone $forceScanQuery)->whereDate('created_at', $today)->count();
+        $totalForceAll   = (clone $forceScanQuery)->count();
+
+        // 8. Total Kempu Saat Ini di Produksi
+        $totalCurrentProduksi = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_location', MasterKempuModel::LOC_PRODUKSI)
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+        })->count();
+
+        // 9. Warning Reused
+        $totalWarningReused = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_location', MasterKempuModel::LOC_PRODUKSI)
+                ->where('reused_count', '>=', 18)
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+        })->count();
+
+        return response()->json([
+            'status' => true,
+            'data'   => [
+                'total_current_produksi'        => $totalCurrentProduksi,
+                'total_today'                   => $totalToday,
+                'total_all'                     => $totalAll,
+                'total_transfer_in_wpm_today'   => $totalTransferInWpmToday,
+                'total_transfer_in_wpm_all'     => $totalTransferInWpmAll,
+                'total_cuci_today'              => $totalCuciToday,
+                'total_cuci_all'                => $totalCuciAll,
+                'total_filling_today'           => $totalFillingToday,
+                'total_filling_all'             => $totalFillingAll,
+                'total_transfer_out_wfg_today'  => $totalTransferOutWfgToday,
+                'total_transfer_out_wfg_all'    => $totalTransferOutWfgAll,
+                'total_transfer_in_wfg_today'   => $totalTransferInWfgToday,
+                'total_transfer_in_wfg_all'     => $totalTransferInWfgAll,
+                'total_scrap_today'             => $totalScrapToday,
+                'total_scrap_all'               => $totalScrapAll,
+                'total_force_today'             => $totalForceToday,
+                'total_force_all'               => $totalForceAll,
+                'total_warning_reused'          => $totalWarningReused,
+            ],
+        ]);
+    }
+
+    /**
+     * API: Data Report Produksi Kempu (Server-side Pagination & Filtering)
+     */
+    public function reportDataApi(Request $request)
+    {
+        $viewMode = $request->input('view_mode', 'history'); // 'history' | 'current'
+        $perPage  = min(100, max(5, (int) $request->input('per_page', 20)));
+
+        if ($viewMode === 'current') {
+            // Data kempu yang saat ini berada di lokasi PRODUKSI
+            $query = MasterKempuModel::whereHas('main', function ($q) {
+                $q->where('current_location', MasterKempuModel::LOC_PRODUKSI);
+            })->with(['main', 'createdBy:id,username,nama_lengkap']);
+
+            if ($request->filled('search')) {
+                $s = trim($request->search);
+                $query->where(function ($q) use ($s) {
+                    $q->where('id_kempu', 'like', "%{$s}%")
+                        ->orWhere('rfid', 'like', "%{$s}%")
+                        ->orWhere('no_spb', 'like', "%{$s}%")
+                        ->orWhere('keterangan', 'like', "%{$s}%");
+                });
+            }
+
+            if ($request->filled('status_filter') && $request->status_filter !== 'all') {
+                $statusFilter = $request->status_filter;
+                $query->whereHas('main', function ($q) use ($statusFilter) {
+                    $q->where('current_status', $statusFilter);
+                });
+            }
+
+            if ($request->filled('reused_status')) {
+                $query->whereHas('main', function ($q) use ($request) {
+                    if ($request->reused_status === 'warning') {
+                        $q->whereBetween('reused_count', [18, 20]);
+                    } elseif ($request->reused_status === 'max') {
+                        $q->where('reused_count', '>=', 21);
+                    } elseif ($request->reused_status === 'normal') {
+                        $q->where('reused_count', '<', 18);
+                    }
+                });
+            }
+
+            $paginated = $query->latest('updated_at')->paginate($perPage);
+
+            return response()->json([
+                'status'     => true,
+                'view_mode'  => 'current',
+                'data'       => $paginated->items(),
+                'pagination' => [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page'    => $paginated->lastPage(),
+                    'total'        => $paginated->total(),
+                    'per_page'     => $paginated->perPage(),
+                ],
+            ]);
+        }
+
+        // View Mode: History (Log Transaksi Scan Produksi)
+        $query = KempuTrackingHistoryModel::whereIn('stage', ['PRODUKSI', 'PRODUKSI_FORCE'])
+            ->with([
+                'createdBy:id,username,nama_lengkap',
+                'masterKempu:id,id_kempu,rfid,no_spb,status',
+            ]);
+
+        // Filter Proses / Action
+        if ($request->filled('action_filter') && $request->action_filter !== 'all') {
+            $actionFilter = $request->action_filter;
+            if ($actionFilter === 'prod-force' || $actionFilter === 'force') {
+                $query->where(function ($q) {
+                    $q->where('stage', 'PRODUKSI_FORCE')
+                        ->orWhere('action', 'like', '%[FORCE SCAN]%')
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.is_force_scan')) = 'true'");
+                });
+            } elseif ($actionFilter === 'transfer-in-from-wpm') {
+                $query->where('action', 'like', '%Transfer in from WPM%');
+            } elseif ($actionFilter === 'cuci-kempu') {
+                $query->where('action', 'like', '%Cuci Kempu%');
+            } elseif ($actionFilter === 'scan-1-filling-kempu') {
+                $query->where(function ($q) {
+                    $q->where('action', 'like', '%Filling Kempu%')
+                        ->orWhere('action', 'like', '%Scan 1 Filling%');
+                });
+            } elseif ($actionFilter === 'transfer-out-to-wfg') {
+                $query->where('action', 'like', '%Transfer Out to WFG%');
+            } elseif ($actionFilter === 'transfer-in-from-wfg') {
+                $query->where('action', 'like', '%Transfer in from WFG%');
+            } elseif ($actionFilter === 'create-ba-scrap') {
+                $query->where(function ($q) {
+                    $q->where('action', 'like', '%BA Scrap%')
+                        ->orWhere('action_result', 'BA_SCRAP');
+                });
+            }
+        }
+
+        // Filter Hanya Force Scan
+        if ($request->filled('is_force_scan')) {
+            if ($request->is_force_scan === 'yes') {
+                $query->where(function ($q) {
+                    $q->where('stage', 'PRODUKSI_FORCE')
+                        ->orWhere('action', 'like', '%[FORCE SCAN]%')
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.is_force_scan')) = 'true'");
+                });
+            } elseif ($request->is_force_scan === 'no') {
+                $query->where('stage', '!=', 'PRODUKSI_FORCE')
+                    ->where('action', 'not like', '%[FORCE SCAN]%');
+            }
+        }
+
+        // Filter Tanggal
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        // Filter Pencarian
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('id_kempu', 'like', "%{$s}%")
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhere('action', 'like', "%{$s}%")
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
+                    ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                        $mq->where('rfid', 'like', "%{$s}%")
+                            ->orWhere('no_spb', 'like', "%{$s}%");
+                    })
+                    ->orWhereHas('createdBy', function ($uq) use ($s) {
+                        $uq->where('username', 'like', "%{$s}%")
+                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                    });
+            });
+        }
+
+        $paginated = $query->latest('id')->paginate($perPage);
+
+        return response()->json([
+            'status'     => true,
+            'view_mode'  => 'history',
+            'data'       => $paginated->items(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'total'        => $paginated->total(),
+                'per_page'     => $paginated->perPage(),
+            ],
+        ]);
+    }
+
+    /**
+     * API: Export CSV untuk Report Produksi Kempu
+     */
+    public function exportReportApi(Request $request)
+    {
+        $query = KempuTrackingHistoryModel::whereIn('stage', ['PRODUKSI', 'PRODUKSI_FORCE'])
+            ->with([
+                'createdBy:id,username,nama_lengkap',
+                'masterKempu:id,id_kempu,rfid,no_spb,status',
+            ]);
+
+        if ($request->filled('action_filter') && $request->action_filter !== 'all') {
+            $actionFilter = $request->action_filter;
+            if ($actionFilter === 'prod-force' || $actionFilter === 'force') {
+                $query->where(function ($q) {
+                    $q->where('stage', 'PRODUKSI_FORCE')
+                        ->orWhere('action', 'like', '%[FORCE SCAN]%');
+                });
+            } elseif ($actionFilter === 'transfer-in-from-wpm') {
+                $query->where('action', 'like', '%Transfer in from WPM%');
+            } elseif ($actionFilter === 'cuci-kempu') {
+                $query->where('action', 'like', '%Cuci Kempu%');
+            } elseif ($actionFilter === 'scan-1-filling-kempu') {
+                $query->where(function ($q) {
+                    $q->where('action', 'like', '%Filling Kempu%')
+                        ->orWhere('action', 'like', '%Scan 1 Filling%');
+                });
+            } elseif ($actionFilter === 'transfer-out-to-wfg') {
+                $query->where('action', 'like', '%Transfer Out to WFG%');
+            } elseif ($actionFilter === 'transfer-in-from-wfg') {
+                $query->where('action', 'like', '%Transfer in from WFG%');
+            } elseif ($actionFilter === 'create-ba-scrap') {
+                $query->where(function ($q) {
+                    $q->where('action', 'like', '%BA Scrap%')
+                        ->orWhere('action_result', 'BA_SCRAP');
+                });
+            }
+        }
+
+        if ($request->filled('is_force_scan')) {
+            if ($request->is_force_scan === 'yes') {
+                $query->where(function ($q) {
+                    $q->where('stage', 'PRODUKSI_FORCE')
+                        ->orWhere('action', 'like', '%[FORCE SCAN]%');
+                });
+            } elseif ($request->is_force_scan === 'no') {
+                $query->where('stage', '!=', 'PRODUKSI_FORCE')
+                    ->where('action', 'not like', '%[FORCE SCAN]%');
+            }
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('id_kempu', 'like', "%{$s}%")
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhere('action', 'like', "%{$s}%")
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"]);
+            });
+        }
+
+        $records = $query->latest('id')->get();
+
+        $filename = 'Report_Scan_Produksi_Kempu_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'             => '0',
+        ];
+
+        $callback = function () use ($records) {
+            $file = fopen('php://output', 'w');
+            fputs($file, "\xEF\xBB\xBF"); // UTF-8 BOM
+
+            // Header kolom CSV
+            fputcsv($file, [
+                'No',
+                'Tanggal & Waktu',
+                'ID Kempu',
+                'RFID',
+                'Proses / Tindakan',
+                'Tipe Scan',
+                'Hasil Keputusan',
+                'Dari Lokasi',
+                'Ke Lokasi',
+                'Siklus Reused',
+                'Kondisi',
+                'Operator',
+                'Catatan',
+            ]);
+
+            $no = 1;
+            foreach ($records as $item) {
+                $isForce = ($item->stage === 'PRODUKSI_FORCE' || stripos($item->action, '[FORCE SCAN]') !== false);
+                fputcsv($file, [
+                    $no++,
+                    $item->created_at ? $item->created_at->format('Y-m-d H:i:s') : '-',
+                    $item->id_kempu ?? '-',
+                    $item->masterKempu->rfid ?? '-',
+                    $item->action ?? '-',
+                    $isForce ? 'FORCE SCAN' : 'NORMAL SCAN',
+                    $item->action_result ?? '-',
+                    $item->from_location ?? '-',
+                    $item->to_location ?? '-',
+                    $item->reused_count ?? '0',
+                    $item->condition ?? 'OK',
+                    $item->operator_display_name,
+                    $item->notes ?? '-',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

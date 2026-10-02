@@ -251,6 +251,13 @@ Route::prefix('kempu')->name('api.kempu.')->group(function () {
         Route::get('/cards', [KempuProduksiController::class, 'cardsApi'])->name('cards');
         Route::post('/lookup', [KempuProduksiController::class, 'lookup'])->name('lookup');
         Route::post('/confirm', [KempuProduksiController::class, 'confirm'])->name('confirm');
+
+        // Report API Produksi Kempu
+        Route::prefix('report')->name('report.')->group(function () {
+            Route::get('/stats', [KempuProduksiController::class, 'reportStatsApi'])->name('stats');
+            Route::get('/data', [KempuProduksiController::class, 'reportDataApi'])->name('data');
+            Route::get('/export', [KempuProduksiController::class, 'exportReportApi'])->name('export');
+        });
     });
 
     // 3. API Engineering Kempu (Repair)

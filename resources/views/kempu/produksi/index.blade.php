@@ -32,10 +32,13 @@
                         <i class="ri-building-line me-1"></i> Total Kempu di Area Produksi:
                         <strong>{{ $totalProduksi }}</strong>
                     </span>
+                    <a href="{{ route('kempu.produksi.report.index') }}" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                        <i class="ri-file-chart-line me-1"></i> Laporan / Report Produksi
+                    </a>
                 </div>
             </div>
 
-            <!-- Cards Grid (5 Cards) -->
+            <!-- Cards Grid (Cards) -->
             <div class="row g-4 justify-content-center mb-4">
                 @php
                     $colorMap = [
@@ -55,7 +58,7 @@
                         $themeColor = $colorMap[$card['badge_color'] ?? 'primary'] ?? 'primary';
                     @endphp
                     <div class="col-xl-4 col-lg-4 col-md-6 col-sm-10">
-                        <a href="{{ route('kempu.produksi.scan', $key) }}" class="card card-animate text-decoration-none shadow-sm h-100">
+                        <a href="{{ route('kempu.produksi.scan', $key) }}" class="card card-animate text-decoration-none shadow-sm h-100 {{ $key === 'prod-force' ? 'border border-danger border-2' : '' }}">
                             <div class="card-body p-4 text-center d-flex flex-column align-items-center justify-content-center">
                                 <!-- Circular Icon -->
                                 <div class="avatar-md mx-auto mb-3">
@@ -70,7 +73,7 @@
                                 <!-- Counter Badge -->
                                 <div class="badge bg-soft-{{ $themeColor }} text-{{ $themeColor }} rounded-pill px-3 py-2 fs-12 mb-2">
                                     <i class="ri-time-line me-1"></i>
-                                    <span>{{ $card['count'] }} kempu</span>
+                                    <span>{{ is_numeric($card['count']) ? $card['count'] . ' kempu' : $card['count'] }}</span>
                                 </div>
 
                                 <!-- Click Hint -->
