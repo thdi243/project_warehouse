@@ -668,7 +668,7 @@
                         <div class="alert alert-success border border-success-subtle d-flex align-items-center gap-2 mb-3 py-2 px-3">
                             <i class="ri-add-circle-fill fs-18 text-success flex-shrink-0"></i>
                             <div class="fs-12 text-success">
-                                <strong>Siklus Reused Otomatis (+1):</strong> Kempu tiba dari <em>Transfer Out To Produksi</em>, siklus pemakaian bertambah dari <strong>${k.reused_count}x</strong> menjadi <strong>${k.target_reused_count}x</strong> saat dikonfirmasi.
+                                <strong>Siklus Reused Baru (1x):</strong> Kempu baru tiba membawa muatan Finished Goods, siklus pemakaian diinisialisasi menjadi <strong>${k.target_reused_count}x</strong> saat dikonfirmasi.
                             </div>
                         </div>
                     `).show();

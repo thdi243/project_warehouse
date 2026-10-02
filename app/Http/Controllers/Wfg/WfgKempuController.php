@@ -383,9 +383,6 @@ class WfgKempuController extends Controller
         $canEditReused = self::canEditReused();
         $flowValidation = self::validateStatusFlow($kempu, $cardKey);
 
-        // Cek apakah kempu berstatus sebelum Scan 1 Filling Produksi (misal bypass langsung dari WPM/QC)
-        $isPreScan1 = self::isPreScan1Status($currentStatus);
-
         $willIncrementReused = false;
         $targetReused = $reusedCount;
 
@@ -393,23 +390,17 @@ class WfgKempuController extends Controller
         if ($flowValidation['valid']) {
             if ($cardKey === 'transfer-in-from-produksi') {
                 if ($reusedCount > 0) {
-                    // Kempu sudah punya siklus pemakaian (> 0x)
+                    // Kempu sudah punya siklus pemakaian (> 0x), nilainya tetap dan tidak bertambah di WFG karena siklus sudah dihitung di QC Pre-Cuci
                     $hasReused = true;
-                    if ($isPreScan1) {
-                        $willIncrementReused = true;
-                        $targetReused = min(21, $reusedCount + 1);
-                    }
+                    $willIncrementReused = false;
+                    $targetReused = $reusedCount;
                 } else {
                     // reusedCount == 0
                     if (!$isOldKempu) {
-                        // Kempu Baru (YYMMDD) -> Siklus baru, tidak perlu registrasi reused
+                        // Kempu Baru (YYMMDD) -> Masuk siklus pemakaian pertama (1x) jika belum di-increment di QC
                         $hasReused = true;
-                        if ($isPreScan1) {
-                            $willIncrementReused = true;
-                            $targetReused = 1;
-                        } else {
-                            $targetReused = 0;
-                        }
+                        $willIncrementReused = true;
+                        $targetReused = 1;
                     } else {
                         // Kempu Lama -> jika masih 0, wajib registrasi reused oleh otoritator
                         $hasReused = false;
@@ -501,21 +492,17 @@ class WfgKempuController extends Controller
         $currentReused = (int)($kempu->main?->reused_count ?? 0);
         $isOldKempu    = MasterKempuModel::isOldKempu($kempu->id_kempu);
 
-        $isPreScan1 = self::isPreScan1Status($currentStatus);
-
         $targetReused = $currentReused;
 
         if ($cardKey === 'transfer-in-from-produksi') {
             if ($currentReused > 0) {
-                // Jika belum melalui Scan 1 Filling Produksi -> auto +1
-                if ($isPreScan1) {
-                    $targetReused = min(21, $currentReused + 1);
-                }
+                // Kempu sudah memiliki siklus pemakaian (> 0x), pertahankan nilai reused yang sudah tercatat
+                $targetReused = $currentReused;
             } else {
                 // currentReused == 0
                 if (!$isOldKempu) {
-                    // Kempu baru siklus baru -> otomatis menjadi 1 jika belum melalui Scan 1 Filling
-                    $targetReused = $isPreScan1 ? 1 : 0;
+                    // Kempu baru siklus baru -> otomatis menjadi 1x saat pertama kali tiba di WFG
+                    $targetReused = 1;
                 } else {
                     // Kempu lama belum punya nilai reused
                     if ($newReusedCount !== null && $newReusedCount !== '') {
