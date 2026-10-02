@@ -250,11 +250,13 @@
                     </div>
 
                     @if ($card['key'] === 'prod-force')
-                        <div class="alert alert-danger py-2 px-3 mb-3 fs-12 d-flex align-items-start gap-2 border-danger-subtle bg-danger-subtle text-danger">
+                        <div
+                            class="alert alert-danger py-2 px-3 mb-3 fs-12 d-flex align-items-start gap-2 border-danger-subtle bg-danger-subtle text-danger">
                             <i class="ri-alert-line fs-18 flex-shrink-0 mt-1"></i>
                             <div>
                                 <strong>Mode Force Scan Produksi (Otoritas Khusus):</strong><br>
-                                Fitur ini mengizinkan Anda menentukan status atau mengeksekusi tahapan alur kempu di Produksi secara manual tanpa terhalang urutan alur normal atau jeda waktu cuci.
+                                Fitur ini mengizinkan Anda menentukan status atau mengeksekusi tahapan alur kempu di
+                                Produksi secara manual tanpa terhalang urutan alur normal atau jeda waktu cuci.
                             </div>
                         </div>
 
@@ -263,14 +265,22 @@
                             <label for="modalForceTarget" class="form-label fs-12 fw-bold text-danger mb-1">
                                 <i class="ri-git-branch-line me-1"></i> Pilih Alur / Target Keputusan Produksi:
                             </label>
-                            <select class="form-select form-select-lg border-danger fw-semibold fs-14" id="modalForceTarget">
-                                <option value="PROD_TRANSFER_IN_WPM">&#x1F7E2; Transfer in from WPM (Paksa Terima dari WPM &rarr; Menuju QC Pre Cuci)</option>
-                                <option value="PROD_CUCI_KEMPU">&#x1F535; Cuci Kempu Selesai (Paksa Selesai Cuci &rarr; Siap Filling)</option>
-                                <option value="PROD_FILLING_KEMPU">&#x1F7E2; Filling Kempu (Scan 1) (Paksa Pengisian &rarr; Bypass Jeda Cuci)</option>
-                                <option value="PROD_TRANSFER_OUT_WFG">&#x1F7E2; Transfer Out to WFG (Paksa Kirim ke Gudang Jadi WFG)</option>
-                                <option value="PROD_REPRO_KEMPU">&#x1F504; Repro Kempu (Paksa Selesai Repro &rarr; Kirim ke Repair)</option>
-                                <option value="PROD_TRANSFER_IN_WFG">&#x1F7E1; Transfer in from WFG (Paksa Terima Retur/Reject WFG)</option>
-                                <option value="SCRAPPED">&#x26AB; Create BA Scrap (Paksa Afkir / Kempu Rusak Permanen)</option>
+                            <select class="form-select form-select-lg border-danger fw-semibold fs-14"
+                                id="modalForceTarget">
+                                <option value="PROD_TRANSFER_IN_WPM">&#x1F7E2; Transfer in from WPM (Paksa Terima dari WPM
+                                    &rarr; Menuju QC Pre Cuci)</option>
+                                <option value="PROD_CUCI_KEMPU">&#x1F535; Cuci Kempu Selesai (Paksa Selesai Cuci &rarr;
+                                    Siap Filling)</option>
+                                <option value="PROD_FILLING_KEMPU">&#x1F7E2; Filling Kempu (Scan 1) (Paksa Pengisian &rarr;
+                                    Bypass Jeda Cuci)</option>
+                                <option value="PROD_TRANSFER_OUT_WFG">&#x1F7E2; Transfer Out to WFG (Paksa Kirim ke Gudang
+                                    Jadi WFG)</option>
+                                <option value="PROD_REPRO_KEMPU">&#x1F504; Repro Kempu (Paksa Selesai Repro &rarr; Kirim ke
+                                    Repair)</option>
+                                <option value="PROD_TRANSFER_IN_WFG">&#x1F7E1; Transfer in from WFG (Paksa Terima
+                                    Retur/Reject WFG)</option>
+                                <option value="SCRAPPED">&#x26AB; Create BA Scrap (Paksa Afkir / Kempu Rusak Permanen)
+                                </option>
                             </select>
                         </div>
                     @endif
@@ -289,7 +299,8 @@
                         <button type="button"
                             class="btn btn-{{ $card['badge_color'] }} btn-lg w-100 py-3 fw-bold fs-15 shadow-sm"
                             id="btnModalConfirm">
-                            <i class="{{ $card['key'] === 'prod-force' ? 'ri-shield-flash-line' : 'ri-checkbox-circle-line' }} me-1"></i>
+                            <i
+                                class="{{ $card['key'] === 'prod-force' ? 'ri-shield-flash-line' : 'ri-checkbox-circle-line' }} me-1"></i>
                             {{ $card['key'] === 'prod-force' ? 'Eksekusi Force Decision' : 'Konfirmasi ' . $card['title'] }}
                         </button>
                     </div>
@@ -451,7 +462,7 @@
                     return;
                 }
 
-                playBeep('success');
+                // playBeep('success');
                 $('#scanTargetFrame').addClass('scanned');
 
                 if (qrScanner && isScannerActive) {
@@ -524,7 +535,7 @@
                         if (res.status && res.data) {
                             openConfirmModal(res.data);
                         } else {
-                            playBeep('error');
+                            // playBeep('error');
                             Swal.fire('Tidak Ditemukan', res.message || 'Kempu tidak ditemukan.',
                                 'error').then(() => {
                                 resumeScanner();
@@ -532,7 +543,7 @@
                         }
                     },
                     error: function(xhr) {
-                        playBeep('error');
+                        // playBeep('error');
                         let msg = 'Kempu tidak ditemukan atau terjadi kesalahan server.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             msg = xhr.responseJSON.message;
@@ -561,7 +572,7 @@
 
                 // Validasi Alur
                 if (!k.is_flow_valid) {
-                    playBeep('error');
+                    // playBeep('error');
                     let iconClass = 'ri-alert-line text-danger';
                     let titleText = 'Peringatan Alur Kempu:';
                     if (CARD_KEY === 'scan-1-filling-kempu') {
@@ -579,7 +590,7 @@
                     `).removeClass('alert-warning').addClass('alert-danger').show();
                     $('#btnModalConfirm').prop('disabled', true).addClass('disabled');
                 } else {
-                    playBeep('success');
+                    // playBeep('success');
                     $('#btnModalConfirm').prop('disabled', false).removeClass('disabled');
 
                     if (CARD_KEY === 'cuci-kempu') {
@@ -642,7 +653,8 @@
                 if (CARD_KEY === 'prod-force') {
                     $('#btnModalConfirm').html('<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
                 } else {
-                    $('#btnModalConfirm').html(`<i class="ri-checkbox-circle-line me-1"></i> Konfirmasi ${CARD_TITLE}`);
+                    $('#btnModalConfirm').html(
+                        `<i class="ri-checkbox-circle-line me-1"></i> Konfirmasi ${CARD_TITLE}`);
                 }
                 confirmModal.show();
             }
@@ -677,13 +689,13 @@
                     data: postData,
                     success: function(res) {
                         btn.prop('disabled', false).html(
-                            CARD_KEY === 'prod-force' 
-                                ? '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision'
-                                : `<i class="ri-checkbox-circle-line me-1"></i> Konfirmasi ${CARD_TITLE}`
+                            CARD_KEY === 'prod-force' ?
+                            '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision' :
+                            `<i class="ri-checkbox-circle-line me-1"></i> Konfirmasi ${CARD_TITLE}`
                         );
                         if (res.status) {
                             confirmModal.hide();
-                            playBeep('confirm');
+                            // playBeep('confirm');
 
                             Swal.fire({
                                 icon: 'success',
@@ -694,7 +706,7 @@
                                 showConfirmButton: false
                             });
                         } else {
-                            playBeep('error');
+                            // playBeep('error');
                             Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
                         }
                     },
@@ -702,7 +714,7 @@
                         btn.prop('disabled', false).html(
                             `<i class="ri-checkbox-circle-line me-1"></i> Konfirmasi ${CARD_TITLE}`
                         );
-                        playBeep('error');
+                        // playBeep('error');
                         let msg = 'Terjadi kesalahan server saat memproses konfirmasi.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             msg = xhr.responseJSON.message;

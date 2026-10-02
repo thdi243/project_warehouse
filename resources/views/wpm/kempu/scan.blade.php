@@ -396,27 +396,62 @@
                     const ctx = new(window.AudioContext || window.webkitAudioContext)();
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
+
                     osc.connect(gain);
                     gain.connect(ctx.destination);
 
                     if (type === 'success') {
-                        osc.frequency.setValueAtTime(850, ctx.currentTime);
-                        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                        // Scan biasa: bip pendek
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(700, ctx.currentTime);
+
+                        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(
+                            0.001,
+                            ctx.currentTime + 0.08
+                        );
+
                         osc.start();
-                        osc.stop(ctx.currentTime + 0.15);
+                        osc.stop(ctx.currentTime + 0.08);
+
                     } else if (type === 'confirm') {
-                        osc.frequency.setValueAtTime(600, ctx.currentTime);
-                        osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.2);
-                        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                        // Confirm: TING!
+                        osc.type = 'triangle';
+
+                        osc.frequency.setValueAtTime(1400, ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(
+                            700,
+                            ctx.currentTime + 0.12
+                        );
+
+                        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(
+                            0.001,
+                            ctx.currentTime + 0.18
+                        );
+
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.18);
+
+                    } else {
+                        // Error: boop
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(280, ctx.currentTime);
+
+                        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(
+                            0.001,
+                            ctx.currentTime + 0.25
+                        );
+
                         osc.start();
                         osc.stop(ctx.currentTime + 0.25);
-                    } else {
-                        osc.frequency.setValueAtTime(280, ctx.currentTime);
-                        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                        osc.start();
-                        osc.stop(ctx.currentTime + 0.3);
                     }
-                    if (navigator.vibrate) navigator.vibrate(80);
+
+                    if (navigator.vibrate) {
+                        navigator.vibrate(80);
+                    }
+
                 } catch (e) {
                     console.log('Audio feedback fallback');
                 }
@@ -553,7 +588,7 @@
                     return;
                 }
 
-                playBeep('success');
+                // playBeep('success');
                 $('#scanTargetFrame').addClass('scanned');
 
                 // Pause camera scan during modal inspection
@@ -590,7 +625,7 @@
                         if (res.status && res.data) {
                             currentKempu = res.data;
                             if (res.data.is_flow_valid === false) {
-                                playBeep('error');
+                                // playBeep('error');
                             }
                             openConfirmModal(res.data);
                         } else {
@@ -598,7 +633,7 @@
                         }
                     },
                     error: function(xhr) {
-                        playBeep('error');
+                        // playBeep('error');
                         let msg =
                             'Kempu dengan barcode tersebut tidak ditemukan dalam database Master Kempu.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
@@ -698,7 +733,7 @@
 
                     // Cek Validasi Alur Status (Urutan & Duplikat Scan)
                     if (k.is_flow_valid === false) {
-                        playBeep('error');
+                        // playBeep('error');
                         $('#alertFlowErrorBox').html(`
                             <div class="alert alert-danger d-flex align-items-start gap-2 mb-3 py-2 px-3">
                                 <i class="ri-error-warning-fill fs-20 text-danger flex-shrink-0 mt-1"></i>
@@ -887,7 +922,7 @@
                     method: "POST",
                     data: payload,
                     success: function(res) {
-                        playBeep('confirm');
+                        // playBeep('confirm');
 
                         // Tutup modal
                         confirmModal.hide();
@@ -903,7 +938,7 @@
                         });
                     },
                     error: function(xhr) {
-                        playBeep('error');
+                        // playBeep('error');
                         btn.prop('disabled', false).html(
                             `<i class="ri-check-double-line me-1"></i> Konfirmasi`
                         );
@@ -999,7 +1034,7 @@
                             $('#reusedEditMode').addClass('d-none');
                             $('#reusedDisplayMode').removeClass('d-none');
 
-                            playBeep('confirm');
+                            // playBeep('confirm');
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Nilai Reused Disimpan',

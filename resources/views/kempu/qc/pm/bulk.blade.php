@@ -488,7 +488,7 @@
                 if (now - lastScanTime < 2000) return; // Debounce 2 detik
                 lastScanTime = now;
 
-                playBeep('success');
+                // playBeep('success');
                 $('#scanTargetFrame').addClass('scanned');
 
                 pauseScanner();
@@ -611,7 +611,7 @@
                     },
                     error: function(xhr) {
                         Swal.close();
-                        playBeep('error');
+                        // playBeep('error');
                         let msg = 'Terjadi kesalahan saat memuat data.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             msg = xhr.responseJSON.message;
@@ -648,7 +648,8 @@
                         '<span class="badge bg-danger-subtle text-danger fs-12 px-2 py-1"><i class="ri-close-line me-1"></i> Reject (Workshop)</span>';
 
                     let statusBadgeClass = 'bg-soft-primary text-primary';
-                    if (item.is_release || item.is_passed) statusBadgeClass = 'bg-soft-success text-success';
+                    if (item.is_release || item.is_passed) statusBadgeClass =
+                    'bg-soft-success text-success';
                     else if (item.is_reject) statusBadgeClass = 'bg-soft-danger text-danger';
 
                     const rowHtml = `
@@ -708,12 +709,12 @@
                     $row.removeClass('row-reject').addClass('row-ok');
                     $decisionCell.html(
                         '<span class="badge bg-success-subtle text-success fs-12 px-2 py-1"><i class="ri-check-line me-1"></i> Lolos (Release)</span>'
-                        );
+                    );
                 } else {
                     $row.removeClass('row-ok').addClass('row-reject');
                     $decisionCell.html(
                         '<span class="badge bg-danger-subtle text-danger fs-12 px-2 py-1"><i class="ri-close-line me-1"></i> Reject (Workshop)</span>'
-                        );
+                    );
                 }
 
                 updateCounters();
@@ -831,7 +832,7 @@
                     success: function(res) {
                         Swal.close();
                         if (res.status) {
-                            playBeep('success');
+                            // playBeep('success');
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Berhasil Diproses!',
@@ -841,7 +842,7 @@
                                 resetBulkForm();
                             });
                         } else {
-                            playBeep('error');
+                            // playBeep('error');
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Gagal Menyimpan',
@@ -851,7 +852,7 @@
                     },
                     error: function(xhr) {
                         Swal.close();
-                        playBeep('error');
+                        // playBeep('error');
                         let msg = 'Gagal menyimpan keputusan QC Bulk.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             msg = xhr.responseJSON.message;

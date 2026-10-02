@@ -56,9 +56,11 @@
                 top: 8%;
                 opacity: 0.3;
             }
+
             50% {
                 opacity: 1;
             }
+
             100% {
                 top: 92%;
                 opacity: 0.3;
@@ -114,7 +116,8 @@
                         </div>
                         <div>
                             <h5 class="mb-1 fw-bold text-body">Engineering Workshop - Repair Kempu</h5>
-                            <p class="mb-0 text-muted fs-12">Pemeriksaan dan perbaikan fisik kempu reject (Bisa Repair / Tidak Bisa Repair)</p>
+                            <p class="mb-0 text-muted fs-12">Pemeriksaan dan perbaikan fisik kempu reject (Bisa Repair /
+                                Tidak Bisa Repair)</p>
                         </div>
                     </div>
                 </div>
@@ -159,7 +162,8 @@
                                     <i class="ri-keyboard-line text-muted me-1"></i> Atau Masukkan ID Kempu Manual:
                                 </label>
                                 <div class="input-group input-group-lg">
-                                    <span class="input-group-text bg-light text-muted"><i class="ri-barcode-line"></i></span>
+                                    <span class="input-group-text bg-light text-muted"><i
+                                            class="ri-barcode-line"></i></span>
                                     <input type="text" id="inputManualId" class="form-control font-monospace"
                                         placeholder="Contoh: KMP-001 lalu tekan Enter..." autocomplete="off">
                                     <button class="btn btn-primary px-4 fw-semibold" type="button" id="btnLookupManual">
@@ -176,8 +180,8 @@
     </div>
 
     <!-- MODAL DECISION ENGINEERING (BISA REPAIR ATAU TIDAK BISA REPAIR) -->
-    <div class="modal fade" id="modalEngDecision" tabindex="-1" aria-labelledby="modalEngDecisionLabel"
-        aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade" id="modalEngDecision" tabindex="-1" aria-labelledby="modalEngDecisionLabel" aria-hidden="true"
+        data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <!-- Modal Header -->
@@ -198,13 +202,16 @@
                 <!-- Modal Body -->
                 <div class="modal-body p-4">
                     <!-- Barcode Title Banner -->
-                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3 bg-light border border-dashed">
+                    <div
+                        class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3 bg-light border border-dashed">
                         <div>
                             <div class="text-muted fs-11 text-uppercase fw-semibold">ID / Barcode Kempu</div>
                             <div class="fs-22 fw-bold font-monospace text-primary" id="modalKempuId">-</div>
                         </div>
                         <div class="text-end">
-                            <span class="badge bg-soft-info text-info border border-info-subtle px-2 py-1 fs-12 mb-1 d-inline-block" id="modalKempuLoc">
+                            <span
+                                class="badge bg-soft-info text-info border border-info-subtle px-2 py-1 fs-12 mb-1 d-inline-block"
+                                id="modalKempuLoc">
                                 -
                             </span>
                         </div>
@@ -240,13 +247,15 @@
                     <!-- Action Decision Buttons: Bisa Repair vs Tidak Bisa Repair -->
                     <div class="row g-2 pt-2 border-top">
                         <div class="col-6">
-                            <button type="button" class="btn btn-success btn-lg w-100 py-3 fw-bold fs-15 shadow-sm" id="btnDecisionBisa">
+                            <button type="button" class="btn btn-success btn-lg w-100 py-3 fw-bold fs-15 shadow-sm"
+                                id="btnDecisionBisa">
                                 <i class="ri-checkbox-circle-line me-1"></i> Bisa Repair
                             </button>
                             <div class="text-muted fs-11 text-center mt-1">Kembalikan ke QC PM</div>
                         </div>
                         <div class="col-6">
-                            <button type="button" class="btn btn-danger btn-lg w-100 py-3 fw-bold fs-15 shadow-sm" id="btnDecisionTidakBisa">
+                            <button type="button" class="btn btn-danger btn-lg w-100 py-3 fw-bold fs-15 shadow-sm"
+                                id="btnDecisionTidakBisa">
                                 <i class="ri-close-circle-line me-1"></i> Tidak Bisa Repair
                             </button>
                             <div class="text-muted fs-11 text-center mt-1">Teruskan BA Scrap</div>
@@ -279,10 +288,11 @@
 
             // Inisialisasi Audio Beep (Web Audio API)
             let audioCtx = null;
+
             function playBeep(type = 'beep') {
                 try {
                     if (!audioCtx) {
-                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                     }
                     if (audioCtx.state === 'suspended') {
                         audioCtx.resume();
@@ -349,7 +359,8 @@
                         // Filter kamera virtual (OBS Virtual Camera, dsb)
                         let realCameras = devices.filter(d => {
                             const lbl = (d.label || '').toLowerCase();
-                            return !lbl.includes('obs') && !lbl.includes('virtual') && !lbl.includes('fake');
+                            return !lbl.includes('obs') && !lbl.includes('virtual') && !lbl
+                                .includes('fake');
                         });
 
                         availableCameras = realCameras.length > 0 ? realCameras : devices;
@@ -357,7 +368,8 @@
                         // Jika ada kamera belakang (misal di HP), utamakan kamera belakang
                         let backCamIdx = availableCameras.findIndex(d => {
                             const lbl = (d.label || '').toLowerCase();
-                            return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('belakang');
+                            return lbl.includes('back') || lbl.includes('rear') || lbl.includes(
+                                'environment') || lbl.includes('belakang');
                         });
 
                         if (backCamIdx !== -1 && currentCameraIndex === 0) {
@@ -376,16 +388,18 @@
                             function(err) {} // silent on continuous frame
                         );
                     } else {
-                        return qrScanner.start(
-                            { facingMode: currentFacing },
+                        return qrScanner.start({
+                                facingMode: currentFacing
+                            },
                             config,
                             onScanSuccess,
                             function(err) {}
                         );
                     }
                 }).catch(err => {
-                    return qrScanner.start(
-                        { facingMode: currentFacing },
+                    return qrScanner.start({
+                            facingMode: currentFacing
+                        },
                         config,
                         onScanSuccess,
                         function(err) {}
@@ -413,7 +427,7 @@
                     return;
                 }
 
-                playBeep('success');
+                // playBeep('success');
                 $('#scanTargetFrame').addClass('scanned');
 
                 if (qrScanner && isScannerActive) {
@@ -486,7 +500,7 @@
                             currentKempu = res.data;
 
                             if (!res.data.is_flow_valid) {
-                                playBeep('error');
+                                // playBeep('error');
                                 Swal.fire({
                                     icon: 'warning',
                                     title: 'Alur Tidak Sesuai',
@@ -498,17 +512,18 @@
                                 return;
                             }
 
-                            playBeep('success');
+                            // playBeep('success');
                             showDecisionModal(res.data);
                         } else {
-                            playBeep('error');
-                            Swal.fire('Tidak Ditemukan', res.message || 'Data kempu tidak ditemukan.', 'error').then(() => {
+                            // playBeep('error');
+                            Swal.fire('Tidak Ditemukan', res.message || 'Data kempu tidak ditemukan.',
+                                'error').then(() => {
                                 resumeScanner();
                             });
                         }
                     },
                     error: function(xhr) {
-                        playBeep('error');
+                        // playBeep('error');
                         let msg = 'Kempu tidak ditemukan atau terjadi kesalahan server.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             msg = xhr.responseJSON.message;
@@ -529,8 +544,10 @@
                 $('#modalKempuReused').text((k.reused_count || 0) + 'x');
                 $('#modalInputNotes').val('');
 
-                $('#btnDecisionBisa').prop('disabled', false).html('<i class="ri-checkbox-circle-line me-1"></i> Bisa Repair');
-                $('#btnDecisionTidakBisa').prop('disabled', false).html('<i class="ri-close-circle-line me-1"></i> Tidak Bisa Repair');
+                $('#btnDecisionBisa').prop('disabled', false).html(
+                    '<i class="ri-checkbox-circle-line me-1"></i> Bisa Repair');
+                $('#btnDecisionTidakBisa').prop('disabled', false).html(
+                    '<i class="ri-close-circle-line me-1"></i> Tidak Bisa Repair');
 
                 decisionModal.show();
             }
@@ -566,15 +583,18 @@
                         notes: $('#modalInputNotes').val().trim()
                     },
                     success: function(res) {
-                        btnBisa.prop('disabled', false).html('<i class="ri-checkbox-circle-line me-1"></i> Bisa Repair');
-                        btnTidakBisa.prop('disabled', false).html('<i class="ri-close-circle-line me-1"></i> Tidak Bisa Repair');
+                        btnBisa.prop('disabled', false).html(
+                            '<i class="ri-checkbox-circle-line me-1"></i> Bisa Repair');
+                        btnTidakBisa.prop('disabled', false).html(
+                            '<i class="ri-close-circle-line me-1"></i> Tidak Bisa Repair');
 
                         if (res.status) {
                             decisionModal.hide();
-                            playBeep('success');
+                            // playBeep('success');
 
                             const badgeColor = decision === 'BISA_REPAIR' ? 'success' : 'danger';
-                            const label = decision === 'BISA_REPAIR' ? 'BISA REPAIR' : 'TIDAK BISA REPAIR (SCRAP)';
+                            const label = decision === 'BISA_REPAIR' ? 'BISA REPAIR' :
+                                'TIDAK BISA REPAIR (SCRAP)';
 
                             Swal.fire({
                                 icon: decision === 'BISA_REPAIR' ? 'success' : 'warning',
@@ -585,14 +605,16 @@
                                 showConfirmButton: false
                             });
                         } else {
-                            playBeep('error');
+                            // playBeep('error');
                             Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
                         }
                     },
                     error: function(xhr) {
-                        btnBisa.prop('disabled', false).html('<i class="ri-checkbox-circle-line me-1"></i> Bisa Repair');
-                        btnTidakBisa.prop('disabled', false).html('<i class="ri-close-circle-line me-1"></i> Tidak Bisa Repair');
-                        playBeep('error');
+                        btnBisa.prop('disabled', false).html(
+                            '<i class="ri-checkbox-circle-line me-1"></i> Bisa Repair');
+                        btnTidakBisa.prop('disabled', false).html(
+                            '<i class="ri-close-circle-line me-1"></i> Tidak Bisa Repair');
+                        // playBeep('error');
 
                         let msg = 'Terjadi kesalahan server saat menyimpan keputusan.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
@@ -617,7 +639,8 @@
             $('#btnLookupManual').on('click', function() {
                 const val = $('#inputManualId').val().trim();
                 if (!val) {
-                    Swal.fire('Peringatan', 'Silakan masukkan ID Kempu atau Scan Barcode terlebih dahulu.', 'warning');
+                    Swal.fire('Peringatan', 'Silakan masukkan ID Kempu atau Scan Barcode terlebih dahulu.',
+                        'warning');
                     $('#inputManualId').focus();
                     return;
                 }
