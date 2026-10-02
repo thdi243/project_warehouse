@@ -20,26 +20,29 @@ class KempuQcController extends Controller
     {
         // 1. Cek jika request datang dari API eksternal terpercaya (Digimon / QC App)
         $appSource = request()->input('app_source') ?? request()->header('X-App-Source');
-        $qcRole    = strtolower(trim(request()->input('operator_role', request()->input('role', ''))));
+        $qcRole    = strtolower(trim(request()->input('operator_role', request()->input('role', request()->input('user_role', '')))));
         $secret    = request()->header('X-QC-App-Secret') ?? request()->input('app_secret');
         $expectedSecret = env('QC_API_SECRET', 'BAS_QC_SECRET_2026');
+
+        if ($qcRole === 'operator') {
+            return false;
+        }
 
         if (($appSource === 'digimon_v2' || request()->hasHeader('X-QC-App-Secret')) && $secret === $expectedSecret) {
             // Otoritas valid jika role di Digimon BUKAN operator
             return ($qcRole !== '' && $qcRole !== 'operator');
         }
 
+        // Jika request dari luar membawa role otoritas (bukan operator)
+        if ($qcRole !== '' && $qcRole !== 'operator') {
+            return true;
+        }
+
         $user = $user ?? Auth::user();
         if (!$user) {
-            $userEmail = request()->input('operator_email', request()->input('email'));
+            $userEmail = request()->input('operator_email', request()->input('email', request()->input('user_email')));
             if ($userEmail) {
                 $user = User::where('email', $userEmail)->first();
-            }
-            if (!$user) {
-                $userId = request()->input('user_id', request()->input('operator_id'));
-                if ($userId) {
-                    $user = User::find($userId);
-                }
             }
         }
 
@@ -146,8 +149,8 @@ class KempuQcController extends Controller
             'qc-after-filling' => [
                 'key'         => 'qc-after-filling',
                 'title'       => 'Cek After Filling',
-                'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Reject)',
-                'description' => 'Pemeriksaan kempu setelah proses Scan 1 Filling. Tentukan status Lolos (OK), Tahan (Hold), atau Tidak OK (Reject).',
+                'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Repro / Reject)',
+                'description' => 'Pemeriksaan kempu setelah proses Scan 1 Filling. Tentukan status Lolos (OK), Tahan (Hold), Repro (Produk Reject ke Produksi), atau Tidak OK (Repair).',
                 'icon'        => 'ri-flask-line',
                 'badge_color' => 'success',
                 'stage'       => 'QC_PROSES',
@@ -304,7 +307,7 @@ class KempuQcController extends Controller
                     'qc-after-filling' => [
                         'key'         => 'qc-after-filling',
                         'title'       => 'Cek After Filling',
-                        'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Reject)',
+                        'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Repro / Reject)',
                         'description' => 'Pemeriksaan kempu setelah pengisian muatan (Scan 1 Filling).',
                         'count'       => $totalAfterFillingPending,
                         'count_label' => 'kempu siap periksa',
@@ -437,8 +440,8 @@ class KempuQcController extends Controller
             'qc-after-filling' => [
                 'key'         => 'qc-after-filling',
                 'title'       => 'Cek After Filling',
-                'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Reject)',
-                'description' => 'Pemeriksaan kempu setelah pengisian muatan (Scan 1 Filling). Tentukan status Lolos (OK), Tahan (Hold), atau Tidak OK (Reject).',
+                'subtitle'    => 'Pemeriksaan Pasca Pengisian (OK / Hold / Repro / Reject)',
+                'description' => 'Pemeriksaan kempu setelah pengisian muatan (Scan 1 Filling). Tentukan status Lolos (OK), Tahan (Hold), Repro (Produk Reject ke Produksi), atau Tidak OK (Repair).',
                 'icon'        => 'ri-flask-line',
                 'badge_color' => 'success',
                 'route'       => route('kempu.qc.scan', 'qc-after-filling'),
@@ -903,6 +906,8 @@ class KempuQcController extends Controller
                 'condition'        => $kempu->condition ?? 'OK',
                 'qc_title'         => $card['title'],
                 'is_force_scan'    => ($qcType === 'qc-force'),
+                'can_manual_reused' => self::canForceScan(),
+                'next_auto_reused' => min(21, (int)($kempu->main->reused_count ?? 0) + 1),
                 'is_flow_valid'    => $flowValidation['valid'],
                 'flow_error'       => $flowValidation['message'],
             ],
@@ -916,7 +921,7 @@ class KempuQcController extends Controller
     {
         $idKempu  = strtoupper(trim($request->input('id_kempu', $request->input('barcode', ''))));
         $qcType   = $request->input('qc_type', $request->input('scan_type'));
-        $decision = strtoupper(trim($request->input('decision', ''))); // 'OK', 'HOLD', 'NOT_OK'
+        $decision = strtoupper(trim($request->input('decision', $request->input('force_target', ''))));
         $notes    = trim($request->input('notes', ''));
 
         if (!$idKempu || !$qcType) {
@@ -941,6 +946,8 @@ class KempuQcController extends Controller
                 'OK',
                 'HOLD',
                 'NOT_OK',
+                'REPRO',
+                'REPRO_PRODUKSI',
                 'RELEASE_PM',
                 'RELEASE_PRE_CUCI',
                 'RELEASE_AFTER_FILLING',
@@ -948,7 +955,7 @@ class KempuQcController extends Controller
                 'SCRAP'
             ];
         } elseif ($qcType === 'qc-after-filling') {
-            $validDecisions = ['OK', 'HOLD', 'NOT_OK'];
+            $validDecisions = ['OK', 'HOLD', 'NOT_OK', 'REPRO'];
         } else {
             $validDecisions = ['OK', 'NOT_OK'];
         }
@@ -1011,20 +1018,46 @@ class KempuQcController extends Controller
             }
         } elseif ($qcType === 'qc-pre-cuci' || $qcType === 'qc-proses') {
             if ($decision === 'OK') {
-                // Di QC Pre Cuci: Reused +1!
-                if ($currentReused >= 21) {
-                    return response()->json([
-                        'status'  => false,
-                        'message' => "Kempu {$idKempu} telah mencapai batas 21x Reused. Tidak dapat digunakan lagi.",
-                    ], 422);
+                $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
+
+                if ($manualReused !== null && $manualReused !== '') {
+                    // Validasi wewenang otoritas (Non-Operator / Supervisor / Permission)
+                    if (!self::canForceScan()) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Akses ditolak: Anda tidak memiliki wewenang untuk mengubah nilai Reused kempu secara manual (Khusus Otoritas QC / Non-Operator).',
+                        ], 403);
+                    }
+
+                    $targetReused = (int)$manualReused;
+                    if ($targetReused < 0 || $targetReused > 21) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Nilai Reused manual harus berada di rentang 0 sampai 21x.',
+                        ], 422);
+                    }
+
+                    $oldReused     = $currentReused;
+                    $currentReused = $targetReused;
+                    $actionTitle   = 'Cek Pre Cuci Lolos (Manual Reused)';
+                    $notes         = $notes ?: "Lolos Cek Pre Cuci (Release) - Nilai Reused diubah manual menjadi {$currentReused}/21 (sebelumnya {$oldReused}/21) oleh Otoritas QC";
+                } else {
+                    // Default Di QC Pre Cuci: Reused +1!
+                    if ($currentReused >= 21) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Kempu {$idKempu} telah mencapai batas 21x Reused. Tidak dapat digunakan lagi.",
+                        ], 422);
+                    }
+                    $currentReused += 1;
+                    $actionTitle  = 'Cek Incoming & Pre Cuci Lolos (Release)';
+                    $notes        = $notes ?: "Lolos Cek Incoming & Pre Cuci (Release) - Siklus Reused ke-{$currentReused}/21";
                 }
-                $currentReused += 1;
+
                 $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE;
                 $nextLocation = MasterKempuModel::LOC_PRODUKSI;
                 $actionResult = 'OK';
                 $condition    = 'OK';
-                $actionTitle  = 'Cek Incoming & Pre Cuci Lolos (Release)';
-                $notes        = $notes ?: "Lolos Cek Incoming & Pre Cuci (Release) - Siklus Reused ke-{$currentReused}/21";
             } else {
                 $nextStatus   = MasterKempuModel::STATUS_ENG_REPAIR;
                 $nextLocation = MasterKempuModel::LOC_ENG;
@@ -1048,13 +1081,20 @@ class KempuQcController extends Controller
                 $condition    = 'HOLD';
                 $actionTitle  = 'After Filling Tahan (HOLD)';
                 $notes        = $notes ?: 'After Filling Ditahan (Hold) - Menunggu Evaluasi Lanjutan';
+            } elseif ($decision === 'REPRO') {
+                $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO;
+                $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                $actionResult = 'REPRO';
+                $condition    = 'NOT_OK';
+                $actionTitle  = 'After Filling Repro (Produk Reject)';
+                $notes        = $notes ?: 'Reject Produk (Repro) - Kirim ke Produksi untuk Pengosongan Muatan';
             } else {
-                $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_REJECT;
+                $nextStatus   = MasterKempuModel::STATUS_ENG_REPAIR;
                 $nextLocation = MasterKempuModel::LOC_ENG;
                 $actionResult = 'NOT_OK';
                 $condition    = 'NOT_OK';
-                $actionTitle  = 'After Filling Reject';
-                $notes        = $notes ?: 'Reject After Filling - Penanganan Produksi/Engineering';
+                $actionTitle  = 'After Filling Reject (Kirim Repair)';
+                $notes        = $notes ?: 'Reject Kempu After Filling - Langsung Kirim ke Workshop Engineering (Repair)';
             }
         } elseif ($qcType === 'qc-force') {
             $forceTarget = strtoupper(trim($request->input('force_target', $decision)));
@@ -1070,15 +1110,22 @@ class KempuQcController extends Controller
                     break;
 
                 case 'RELEASE_PRE_CUCI':
-                    if ($currentReused < 21) {
-                        $currentReused += 1;
+                    $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
+                    if ($manualReused !== null && $manualReused !== '') {
+                        $oldReused     = $currentReused;
+                        $currentReused = min(21, max(0, (int)$manualReused));
+                        $notes         = $notes ?: "Force Decision: Lolos Pre Cuci - Nilai Reused diset manual ke {$currentReused}/21";
+                    } else {
+                        if ($currentReused < 21) {
+                            $currentReused += 1;
+                        }
+                        $notes = $notes ?: "Force Decision: Lolos Pre Cuci - Siklus Reused {$currentReused}/21";
                     }
                     $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE;
                     $nextLocation = MasterKempuModel::LOC_PRODUKSI;
                     $actionResult = 'OK';
                     $condition    = 'OK';
                     $actionTitle  = '[FORCE SCAN] Cek Pre Cuci Lolos (Release)';
-                    $notes        = $notes ?: "Force Decision: Lolos Pre Cuci - Siklus Reused {$currentReused}/21";
                     break;
 
                 case 'RELEASE_AFTER_FILLING':
@@ -1097,6 +1144,16 @@ class KempuQcController extends Controller
                     $condition    = 'HOLD';
                     $actionTitle  = '[FORCE SCAN] QC Ditahan (HOLD)';
                     $notes        = $notes ?: 'Force Decision: Ditahan (HOLD) untuk evaluasi lanjutan';
+                    break;
+
+                case 'REPRO':
+                case 'REPRO_PRODUKSI':
+                    $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO;
+                    $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                    $actionResult = 'REPRO';
+                    $condition    = 'NOT_OK';
+                    $actionTitle  = '[FORCE SCAN] QC After Filling Repro';
+                    $notes        = $notes ?: 'Force Decision: Repro Produk - Kirim ke Produksi untuk Pengosongan Muatan';
                     break;
 
                 case 'SCRAP':
@@ -1183,16 +1240,17 @@ class KempuQcController extends Controller
 
             $operatorEmail = $request->input('operator_email');
             $warehouseUser = $operatorEmail ? User::where('email', $operatorEmail)->first() : null;
-            if (!$warehouseUser && $request->filled('user_id')) {
-                $warehouseUser = User::find($request->input('user_id'));
-            }
-            $creatorId = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
+            $creatorId     = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
 
             $trackingMetadata = [
-                'app_source'     => $request->input('app_source', 'warehouse'),
-                'operator_name'  => $request->input('operator_name', $warehouseUser?->nama_lengkap ?? ($warehouseUser?->username ?? 'System QC')),
-                'operator_role'  => $request->input('operator_role', 'QC'),
-                'operator_email' => $operatorEmail,
+                'app_source'            => $request->input('app_source', 'warehouse'),
+                'operator_name'         => $request->input('operator_name', $warehouseUser?->nama_lengkap ?? ($warehouseUser?->username ?? 'System QC')),
+                'operator_role'         => $request->input('operator_role', 'QC'),
+                'operator_email'        => $operatorEmail,
+                'portal_user_id'        => $request->input('portal_user_id', $request->input('operator_id', $request->input('user_id'))),
+                'is_manual_reused'      => isset($oldReused),
+                'manual_reused_from'    => $oldReused ?? null,
+                'manual_reused_to'      => isset($oldReused) ? $currentReused : null,
             ];
 
             KempuTrackingHistoryModel::create([
@@ -1212,7 +1270,13 @@ class KempuQcController extends Controller
 
             DB::commit();
 
-            $decisionLabel = $decision === 'OK' ? 'OK (Lolos)' : ($decision === 'HOLD' ? 'HOLD (Tahan)' : 'TIDAK OK (Reject)');
+            $decisionLabel = match ($actionResult) {
+                'OK'       => 'OK (Lolos)',
+                'HOLD'     => 'HOLD (Tahan)',
+                'REPRO'    => 'REPRO (Kirim ke Produksi)',
+                'SCRAPPED' => 'Afkir (Scrap)',
+                default    => 'TIDAK OK (Reject)',
+            };
 
             return response()->json([
                 'status'  => true,
@@ -1251,10 +1315,10 @@ class KempuQcController extends Controller
         // QC PM
         $qcPmQuery = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'QC_PM')
-              ->orWhere(function ($sub) {
-                  $sub->where('stage', 'QC_FORCE')
-                      ->where('action', 'like', '%QC PM%');
-              });
+                ->orWhere(function ($sub) {
+                    $sub->where('stage', 'QC_FORCE')
+                        ->where('action', 'like', '%QC PM%');
+                });
         });
         $totalQcPmToday = (clone $qcPmQuery)->whereDate('created_at', $today)->count();
         $totalQcPmAll   = (clone $qcPmQuery)->count();
@@ -1262,10 +1326,10 @@ class KempuQcController extends Controller
         // QC Proses
         $qcProsesQuery = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'QC_PROSES')
-              ->orWhere(function ($sub) {
-                  $sub->where('stage', 'QC_FORCE')
-                      ->where('action', 'not like', '%QC PM%');
-              });
+                ->orWhere(function ($sub) {
+                    $sub->where('stage', 'QC_FORCE')
+                        ->where('action', 'not like', '%QC PM%');
+                });
         });
         $totalQcProsesToday = (clone $qcProsesQuery)->whereDate('created_at', $today)->count();
         $totalQcProsesAll   = (clone $qcProsesQuery)->count();
@@ -1284,29 +1348,29 @@ class KempuQcController extends Controller
         // Stok Kempu di Area QC Saat Ini
         $totalInQcPm = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_QC_PM)
-              ->orWhereIn('current_status', [
-                  MasterKempuModel::STATUS_QC_PM_PENDING,
-                  MasterKempuModel::STATUS_GR_COMPLETED,
-                  'REGISTERED',
-              ]);
+                ->orWhereIn('current_status', [
+                    MasterKempuModel::STATUS_QC_PM_PENDING,
+                    MasterKempuModel::STATUS_GR_COMPLETED,
+                    'REGISTERED',
+                ]);
         })->whereHas('main', function ($q) {
             $q->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         $totalInQcProses = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_QC_PROSES)
-              ->orWhereIn('current_status', [
-                  MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
-                  MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
-                  MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
-              ]);
+                ->orWhereIn('current_status', [
+                    MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
+                    MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
+                    MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
+                ]);
         })->whereHas('main', function ($q) {
             $q->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         $totalWarningReused = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('reused_count', '>=', 18)
-              ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         return response()->json([
@@ -1382,9 +1446,9 @@ class KempuQcController extends Controller
                 $s = trim($request->search);
                 $query->where(function ($q) use ($s) {
                     $q->where('id_kempu', 'like', "%{$s}%")
-                      ->orWhere('rfid', 'like', "%{$s}%")
-                      ->orWhere('no_spb', 'like', "%{$s}%")
-                      ->orWhere('keterangan', 'like', "%{$s}%");
+                        ->orWhere('rfid', 'like', "%{$s}%")
+                        ->orWhere('no_spb', 'like', "%{$s}%")
+                        ->orWhere('keterangan', 'like', "%{$s}%");
                 });
             }
 
@@ -1427,18 +1491,18 @@ class KempuQcController extends Controller
         if ($qcCategory === 'qc-pm') {
             $query->where(function ($q) {
                 $q->where('stage', 'QC_PM')
-                  ->orWhere(function ($sub) {
-                      $sub->where('stage', 'QC_FORCE')
-                          ->where('action', 'like', '%QC PM%');
-                  });
+                    ->orWhere(function ($sub) {
+                        $sub->where('stage', 'QC_FORCE')
+                            ->where('action', 'like', '%QC PM%');
+                    });
             });
         } elseif ($qcCategory === 'qc-proses') {
             $query->where(function ($q) {
                 $q->where('stage', 'QC_PROSES')
-                  ->orWhere(function ($sub) {
-                      $sub->where('stage', 'QC_FORCE')
-                          ->where('action', 'not like', '%QC PM%');
-                  });
+                    ->orWhere(function ($sub) {
+                        $sub->where('stage', 'QC_FORCE')
+                            ->where('action', 'not like', '%QC PM%');
+                    });
             });
         } elseif ($qcCategory === 'qc-force') {
             $query->where('stage', 'QC_FORCE');
@@ -1462,17 +1526,17 @@ class KempuQcController extends Controller
             $s = trim($request->search);
             $query->where(function ($q) use ($s) {
                 $q->where('id_kempu', 'like', "%{$s}%")
-                  ->orWhere('notes', 'like', "%{$s}%")
-                  ->orWhere('action', 'like', "%{$s}%")
-                  ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
-                  ->orWhereHas('masterKempu', function ($mq) use ($s) {
-                      $mq->where('rfid', 'like', "%{$s}%")
-                         ->orWhere('no_spb', 'like', "%{$s}%");
-                  })
-                  ->orWhereHas('createdBy', function ($uq) use ($s) {
-                      $uq->where('username', 'like', "%{$s}%")
-                         ->orWhere('nama_lengkap', 'like', "%{$s}%");
-                  });
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhere('action', 'like', "%{$s}%")
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
+                    ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                        $mq->where('rfid', 'like', "%{$s}%")
+                            ->orWhere('no_spb', 'like', "%{$s}%");
+                    })
+                    ->orWhereHas('createdBy', function ($uq) use ($s) {
+                        $uq->where('username', 'like', "%{$s}%")
+                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                    });
             });
         }
 
@@ -1506,18 +1570,18 @@ class KempuQcController extends Controller
         if ($qcCategory === 'qc-pm') {
             $query->where(function ($q) {
                 $q->where('stage', 'QC_PM')
-                  ->orWhere(function ($sub) {
-                      $sub->where('stage', 'QC_FORCE')
-                          ->where('action', 'like', '%QC PM%');
-                  });
+                    ->orWhere(function ($sub) {
+                        $sub->where('stage', 'QC_FORCE')
+                            ->where('action', 'like', '%QC PM%');
+                    });
             });
         } elseif ($qcCategory === 'qc-proses') {
             $query->where(function ($q) {
                 $q->where('stage', 'QC_PROSES')
-                  ->orWhere(function ($sub) {
-                      $sub->where('stage', 'QC_FORCE')
-                          ->where('action', 'not like', '%QC PM%');
-                  });
+                    ->orWhere(function ($sub) {
+                        $sub->where('stage', 'QC_FORCE')
+                            ->where('action', 'not like', '%QC PM%');
+                    });
             });
         } elseif ($qcCategory === 'qc-force') {
             $query->where('stage', 'QC_FORCE');
@@ -1538,17 +1602,17 @@ class KempuQcController extends Controller
             $s = trim($request->search);
             $query->where(function ($q) use ($s) {
                 $q->where('id_kempu', 'like', "%{$s}%")
-                  ->orWhere('notes', 'like', "%{$s}%")
-                  ->orWhere('action', 'like', "%{$s}%")
-                  ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
-                  ->orWhereHas('masterKempu', function ($mq) use ($s) {
-                      $mq->where('rfid', 'like', "%{$s}%")
-                         ->orWhere('no_spb', 'like', "%{$s}%");
-                  })
-                  ->orWhereHas('createdBy', function ($uq) use ($s) {
-                      $uq->where('username', 'like', "%{$s}%")
-                         ->orWhere('nama_lengkap', 'like', "%{$s}%");
-                  });
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhere('action', 'like', "%{$s}%")
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
+                    ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                        $mq->where('rfid', 'like', "%{$s}%")
+                            ->orWhere('no_spb', 'like', "%{$s}%");
+                    })
+                    ->orWhereHas('createdBy', function ($uq) use ($s) {
+                        $uq->where('username', 'like', "%{$s}%")
+                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                    });
             });
         }
 
@@ -1614,4 +1678,3 @@ class KempuQcController extends Controller
         ]);
     }
 }
-

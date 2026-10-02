@@ -287,6 +287,7 @@
                                     <option value="cuci-kempu">Cuci Kempu</option>
                                     <option value="scan-1-filling-kempu">Filling Kempu (Scan 1)</option>
                                     <option value="transfer-out-to-wfg">Transfer Out to WFG</option>
+                                    <option value="repro-kempu">Repro Kempu</option>
                                     <option value="transfer-in-from-wfg">Transfer in from WFG (Retur)</option>
                                     <option value="create-ba-scrap">Create BA Scrap</option>
                                     <option value="prod-force" class="fw-bold text-danger">⚡ Force Scan Produksi Saja</option>

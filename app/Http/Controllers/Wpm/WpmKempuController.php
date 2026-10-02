@@ -132,7 +132,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah berstatus 'Transfer In From PAS' (duplikat scan). Silakan lanjutkan ke tahap 'Transfer Out To Produksi'.",
+                        'message' => "Kempu {$idKempu} sudah berstatus 'Transfer In From PAS' (duplikat scan). Silakan lanjutkan ke tahap pemeriksaan 'QC PM'.",
                     ];
                 }
 
@@ -202,6 +202,7 @@ class WpmKempuController extends Controller
                 if (
                     strcasecmp($currentStatus, 'Transfer Out To Produksi') === 0 ||
                     strcasecmp($currentStatus, MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD) === 0 ||
+                    strcasecmp($currentStatus, 'WPM_TRANSFER_OUT_TO_PROD') === 0 ||
                     strcasecmp($currentStatus, 'IN_TRANSIT_PRODUKSI') === 0
                 ) {
                     return [
@@ -222,10 +223,40 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 3. Cek jika masih di area WFG
+                // 3. Cek jika kempu baru selesai di-Transfer In From PAS (belum diperiksa & disetujui oleh QC PM)
+                if (
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS) === 0 ||
+                    strcasecmp($currentStatus, 'WPM_TRANSFER_IN_PAS') === 0 ||
+                    strcasecmp($currentStatus, 'WPM_TRANSFER_IN_FROM_PAS') === 0 ||
+                    strcasecmp($currentStatus, 'Transfer In From PAS') === 0 ||
+                    strcasecmp($currentStatus, 'Transfer in From PAS') === 0
+                ) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} baru diterima dari PAS (status: '{$currentStatus}'). Kempu wajib melewati proses pemeriksaan 'QC PM' terlebih dahulu dan dinyatakan Lolos (Release) sebelum dapat di-Transfer Out ke Produksi.",
+                    ];
+                }
+
+                // 4. Cek jika kempu baru masih berstatus awal pendaftaran / GR (belum diperiksa oleh QC PM)
+                if (
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_REGISTERED) === 0 ||
+                    strcasecmp($currentStatus, 'REGISTERED') === 0 ||
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_GR_COMPLETED) === 0 ||
+                    strcasecmp($currentStatus, 'GR_COMPLETED') === 0 ||
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_QC_PM_PENDING) === 0 ||
+                    strcasecmp($currentStatus, 'QC_PM_PENDING') === 0
+                ) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} belum diperiksa oleh QC PM (status saat ini: '{$currentStatus}'). Kempu wajib melewati proses pemeriksaan 'QC PM' terlebih dahulu dan dinyatakan Lolos (Release) sebelum dapat di-Transfer Out ke Produksi.",
+                    ];
+                }
+
+                // 5. Cek jika masih berada di area WFG
                 if (in_array(strtolower($currentStatus), [
                     'transfer in from produksi',
                     strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
+                    'wfg_transfer_in_from_prod',
                 ])) {
                     return [
                         'valid'   => false,
@@ -233,33 +264,63 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 4. Khusus KEMPU BARU dengan Reused = 0: Wajib melewati proses QC PM terlebih dahulu
-                $isOldKempu  = MasterKempuModel::isOldKempu($idKempu);
-                $reusedCount = (int)($kempu->main?->reused_count ?? $kempu->reused_count ?? 0);
+                // 6. Cek jika masih berada di area Produksi
+                if (in_array(strtolower($currentStatus), [
+                    strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_IN_WPM),
+                    'prod_transfer_in_from_wpm',
+                    'transfer in from wpm',
+                    strtolower(MasterKempuModel::STATUS_PROD_CUCI_KEMPU),
+                    'prod_cuci_kempu',
+                    strtolower(MasterKempuModel::STATUS_PROD_FILLING_KEMPU),
+                    'prod_filling_kempu',
+                    strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG),
+                    'prod_transfer_out_to_wfg',
+                    strtolower(MasterKempuModel::STATUS_PROD_REPRO_KEMPU),
+                    'prod_repro_kempu',
+                ])) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini masih berada di area Produksi (status: '{$currentStatus}').",
+                    ];
+                }
 
-                if (!$isOldKempu && $reusedCount <= 0) {
-                    $passedQcPm = (
-                        strcasecmp($currentStatus, MasterKempuModel::STATUS_QC_PM_RELEASE) === 0 ||
-                        strcasecmp($currentStatus, MasterKempuModel::STATUS_QC_PM_PASSED) === 0 ||
-                        strcasecmp($currentStatus, 'QC_PM_RELEASE') === 0 ||
-                        strcasecmp($currentStatus, 'QC PM Release') === 0 ||
-                        strcasecmp($currentStatus, 'QC PM Passed') === 0 ||
-                        strcasecmp($currentStatus, 'QC_PM_PASSED') === 0
-                    ) || $kempu->trackingHistories()
-                        ->where(function ($q) {
-                            $q->where('stage', MasterKempuModel::LOC_QC_PM)
-                                ->orWhere('action', 'LIKE', '%QC PM%')
-                                ->orWhere('action', 'LIKE', '%QC_PM%');
-                        })
-                        ->whereIn('action_result', ['OK', 'SUCCESS'])
-                        ->exists();
+                // 7. Cek jika kempu berstatus Reject / Menunggu Perbaikan
+                if (
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+                    strcasecmp($currentStatus, 'ENG_REPAIR') === 0 ||
+                    strcasecmp($currentStatus, 'QC_PM_REJECT') === 0
+                ) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Kempu {$idKempu} berstatus Reject / Menunggu Perbaikan di Engineering Workshop (status: '{$currentStatus}') dan tidak dapat dikirim ke Produksi.",
+                    ];
+                }
 
-                    if (!$passedQcPm) {
-                        return [
-                            'valid'   => false,
-                            'message' => "Urutan salah: Kempu baru {$idKempu} (siklus Reused 0x) wajib melewati proses pemeriksaan 'QC PM' terlebih dahulu dan dinyatakan Lolos (OK) sebelum dapat di-Transfer Out ke Produksi (status saat ini: '{$currentStatus}').",
-                        ];
+                // 8. Seluruh kempu (baik baru maupun lama yang datang dari PAS) WAJIB dinyatakan Lolos (Release) oleh QC PM
+                $passedQcPmStatuses = [
+                    MasterKempuModel::STATUS_QC_PM_RELEASE,
+                    MasterKempuModel::STATUS_QC_PM_PASSED,
+                    'QC_PM_RELEASE',
+                    'QC_PM_PASSED',
+                    'QC PM Release',
+                    'QC PM Passed',
+                    'QC PM Lolos (OK)',
+                    'QC PM Lolos (Release)',
+                ];
+
+                $isQcPmReleased = false;
+                foreach ($passedQcPmStatuses as $st) {
+                    if (strcasecmp($currentStatus, $st) === 0) {
+                        $isQcPmReleased = true;
+                        break;
                     }
+                }
+
+                if (!$isQcPmReleased) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Kempu (baru maupun lama dari PAS) wajib dinyatakan Lolos (Release) oleh QC PM terlebih dahulu sebelum dapat di-Transfer Out ke Produksi.",
+                    ];
                 }
                 break;
         }

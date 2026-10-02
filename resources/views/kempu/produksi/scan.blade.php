@@ -268,6 +268,7 @@
                                 <option value="PROD_CUCI_KEMPU">&#x1F535; Cuci Kempu Selesai (Paksa Selesai Cuci &rarr; Siap Filling)</option>
                                 <option value="PROD_FILLING_KEMPU">&#x1F7E2; Filling Kempu (Scan 1) (Paksa Pengisian &rarr; Bypass Jeda Cuci)</option>
                                 <option value="PROD_TRANSFER_OUT_WFG">&#x1F7E2; Transfer Out to WFG (Paksa Kirim ke Gudang Jadi WFG)</option>
+                                <option value="PROD_REPRO_KEMPU">&#x1F504; Repro Kempu (Paksa Selesai Repro &rarr; Kirim ke Repair)</option>
                                 <option value="PROD_TRANSFER_IN_WFG">&#x1F7E1; Transfer in from WFG (Paksa Terima Retur/Reject WFG)</option>
                                 <option value="SCRAPPED">&#x26AB; Create BA Scrap (Paksa Afkir / Kempu Rusak Permanen)</option>
                             </select>

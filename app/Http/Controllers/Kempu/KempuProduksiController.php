@@ -112,6 +112,28 @@ class KempuProduksiController extends Controller
                 ],
                 'description'     => 'Pengeluaran kempu yang telah lolos QC After Filling dari Produksi menuju Warehouse Finished Goods (WFG).',
             ],
+            'repro-kempu' => [
+                'key'             => 'repro-kempu',
+                'title'           => 'Repro Kempu',
+                'subtitle'        => 'Pengosongan Produk Reject',
+                'status_name'     => MasterKempuModel::STATUS_PROD_REPRO_KEMPU,
+                'stage'           => 'PRODUKSI',
+                'location'        => MasterKempuModel::LOC_PRODUKSI,
+                'from_loc'        => MasterKempuModel::LOC_PRODUKSI,
+                'to_loc'          => MasterKempuModel::LOC_ENG,
+                'next_status'     => MasterKempuModel::STATUS_ENG_REPAIR,
+                'icon'            => 'ri-recycle-line',
+                'badge_color'     => 'warning',
+                'btn_text'        => 'Buka Scanner Repro Kempu',
+                'target_statuses' => [
+                    MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO,
+                    'QC_AFTER_FILLING_REPRO',
+                    'QC After Filling Repro',
+                    'QC After Filling Repro (Produk Reject)',
+                    'REPRO',
+                ],
+                'description'     => 'Pengosongan muatan produk reject hasil QC After Filling. Setelah discan, kempu otomatis diteruskan ke Workshop Engineering (Repair).',
+            ],
             'transfer-in-from-wfg' => [
                 'key'             => 'transfer-in-from-wfg',
                 'title'           => 'Transfer in From WFG',
@@ -584,6 +606,11 @@ class KempuProduksiController extends Controller
                     'valid'   => false,
                     'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Pengisian (Filling) hanya dapat diproses setelah kempu selesai melalui tahap Cuci Kempu.",
                 ];
+            } elseif ($cardKey === 'repro-kempu') {
+                return [
+                    'valid'   => false,
+                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Repro Kempu' hanya untuk kempu yang dinyatakan Repro (Produk Reject) pada pemeriksaan QC After Filling.",
+                ];
             }
 
             return [
@@ -798,6 +825,18 @@ class KempuProduksiController extends Controller
                     $notes         = $notes ?: 'Force Decision: Paksa Pembuatan BA Scrap (Afkir)';
                     break;
 
+                case 'PROD_REPRO_KEMPU':
+                case 'REPRO-KEMPU':
+                case 'REPRO':
+                    $nextStatus    = MasterKempuModel::STATUS_ENG_REPAIR;
+                    $toLocation    = MasterKempuModel::LOC_ENG;
+                    $condition     = 'NOT_OK';
+                    $actionResult  = 'REPRO_COMPLETED';
+                    $actionTitle   = '[FORCE SCAN] Repro Kempu (Kirim Repair)';
+                    $resultMessage = "Force Scan: Repro Kempu {$idKempu} berhasil dipaksa selesai dan diteruskan ke Workshop Engineering (Repair).";
+                    $notes         = $notes ?: 'Force Decision: Paksa Repro Kempu ke Repair';
+                    break;
+
                 default:
                     return response()->json([
                         'status'  => false,
@@ -838,6 +877,13 @@ class KempuProduksiController extends Controller
             $toLocation    = MasterKempuModel::LOC_WFG;
             $actionResult  = 'TRANSFERRED';
             $resultMessage = "Kempu berhasil di-Transfer Out dari Produksi menuju WFG.";
+        } elseif ($cardKey === 'repro-kempu') {
+            $nextStatus    = MasterKempuModel::STATUS_ENG_REPAIR;
+            $toLocation    = MasterKempuModel::LOC_ENG;
+            $condition     = 'NOT_OK';
+            $actionResult  = 'REPRO_COMPLETED';
+            $actionTitle   = 'Repro Kempu (Kirim ke Repair)';
+            $resultMessage = "Proses Repro Kempu {$idKempu} selesai (produk dikosongkan). Kempu berhasil diteruskan ke Workshop Engineering (Repair).";
         }
 
         DB::beginTransaction();
@@ -995,7 +1041,16 @@ class KempuProduksiController extends Controller
         $totalScrapToday = (clone $scrapQuery)->whereDate('created_at', $today)->count();
         $totalScrapAll   = (clone $scrapQuery)->count();
 
-        // 7. Force Scan Produksi
+        // 7. Repro Kempu
+        $reproQuery = KempuTrackingHistoryModel::whereIn('stage', $stages)
+            ->where(function ($q) {
+                $q->where('action', 'like', '%Repro Kempu%')
+                    ->orWhere('action_result', 'REPRO_COMPLETED');
+            });
+        $totalReproToday = (clone $reproQuery)->whereDate('created_at', $today)->count();
+        $totalReproAll   = (clone $reproQuery)->count();
+
+        // 8. Force Scan Produksi
         $forceScanQuery = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'PRODUKSI_FORCE')
                 ->orWhere('action', 'like', '%[FORCE SCAN]%')
@@ -1004,13 +1059,13 @@ class KempuProduksiController extends Controller
         $totalForceToday = (clone $forceScanQuery)->whereDate('created_at', $today)->count();
         $totalForceAll   = (clone $forceScanQuery)->count();
 
-        // 8. Total Kempu Saat Ini di Produksi
+        // 9. Total Kempu Saat Ini di Produksi
         $totalCurrentProduksi = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_PRODUKSI)
                 ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
-        // 9. Warning Reused
+        // 10. Warning Reused
         $totalWarningReused = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_PRODUKSI)
                 ->where('reused_count', '>=', 18)
@@ -1031,6 +1086,8 @@ class KempuProduksiController extends Controller
                 'total_filling_all'             => $totalFillingAll,
                 'total_transfer_out_wfg_today'  => $totalTransferOutWfgToday,
                 'total_transfer_out_wfg_all'    => $totalTransferOutWfgAll,
+                'total_repro_today'             => $totalReproToday,
+                'total_repro_all'               => $totalReproAll,
                 'total_transfer_in_wfg_today'   => $totalTransferInWfgToday,
                 'total_transfer_in_wfg_all'     => $totalTransferInWfgAll,
                 'total_scrap_today'             => $totalScrapToday,
@@ -1127,6 +1184,11 @@ class KempuProduksiController extends Controller
                 });
             } elseif ($actionFilter === 'transfer-out-to-wfg') {
                 $query->where('action', 'like', '%Transfer Out to WFG%');
+            } elseif ($actionFilter === 'repro-kempu') {
+                $query->where(function ($q) {
+                    $q->where('action', 'like', '%Repro Kempu%')
+                        ->orWhere('action_result', 'REPRO_COMPLETED');
+                });
             } elseif ($actionFilter === 'transfer-in-from-wfg') {
                 $query->where('action', 'like', '%Transfer in from WFG%');
             } elseif ($actionFilter === 'create-ba-scrap') {
@@ -1222,6 +1284,11 @@ class KempuProduksiController extends Controller
                 });
             } elseif ($actionFilter === 'transfer-out-to-wfg') {
                 $query->where('action', 'like', '%Transfer Out to WFG%');
+            } elseif ($actionFilter === 'repro-kempu') {
+                $query->where(function ($q) {
+                    $q->where('action', 'like', '%Repro Kempu%')
+                        ->orWhere('action_result', 'REPRO_COMPLETED');
+                });
             } elseif ($actionFilter === 'transfer-in-from-wfg') {
                 $query->where('action', 'like', '%Transfer in from WFG%');
             } elseif ($actionFilter === 'create-ba-scrap') {

@@ -23,7 +23,8 @@
 
             <!-- Header Section -->
             <div class="text-center mb-4">
-                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 mb-2 rounded-pill bg-soft-primary text-primary fw-semibold fs-12">
+                <div
+                    class="d-inline-flex align-items-center gap-2 px-3 py-1 mb-2 rounded-pill bg-soft-primary text-primary fw-semibold fs-12">
                     <i class="ri-settings-4-line"></i> Departemen Produksi
                 </div>
                 <h3 class="fw-bold mb-1 text-body">Siklus Pemindaian Kempu Produksi</h3>
@@ -32,7 +33,8 @@
                         <i class="ri-building-line me-1"></i> Total Kempu di Area Produksi:
                         <strong>{{ $totalProduksi }}</strong>
                     </span>
-                    <a href="{{ route('kempu.produksi.report.index') }}" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                    <a href="{{ route('kempu.produksi.report.index') }}"
+                        class="btn btn-sm btn-outline-info rounded-pill px-3">
                         <i class="ri-file-chart-line me-1"></i> Laporan / Report Produksi
                     </a>
                 </div>
@@ -42,14 +44,14 @@
             <div class="row g-4 justify-content-center mb-4">
                 @php
                     $colorMap = [
-                        'teal'      => 'success',
-                        'purple'    => 'primary',
-                        'primary'   => 'primary',
-                        'success'   => 'success',
-                        'warning'   => 'warning',
-                        'info'      => 'info',
+                        'teal' => 'success',
+                        'purple' => 'primary',
+                        'primary' => 'primary',
+                        'success' => 'success',
+                        'warning' => 'warning',
+                        'info' => 'info',
                         'secondary' => 'secondary',
-                        'danger'    => 'danger',
+                        'danger' => 'danger',
                     ];
                 @endphp
 
@@ -57,12 +59,15 @@
                     @php
                         $themeColor = $colorMap[$card['badge_color'] ?? 'primary'] ?? 'primary';
                     @endphp
-                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-10">
-                        <a href="{{ route('kempu.produksi.scan', $key) }}" class="card card-animate text-decoration-none shadow-sm h-100 {{ $key === 'prod-force' ? 'border border-danger border-2' : '' }}">
-                            <div class="card-body p-4 text-center d-flex flex-column align-items-center justify-content-center">
+                    <div class="col-xl-3 col-lg-3 col-md-4 col-sm-10">
+                        <a href="{{ route('kempu.produksi.scan', $key) }}"
+                            class="card card-animate text-decoration-none shadow-sm h-100 {{ $key === 'prod-force' ? 'border border-danger border-2' : '' }}">
+                            <div
+                                class="card-body p-4 text-center d-flex flex-column align-items-center justify-content-center">
                                 <!-- Circular Icon -->
                                 <div class="avatar-md mx-auto mb-3">
-                                    <span class="avatar-title bg-soft-{{ $themeColor }} text-{{ $themeColor }} rounded-circle fs-24">
+                                    <span
+                                        class="avatar-title bg-soft-{{ $themeColor }} text-{{ $themeColor }} rounded-circle fs-24">
                                         <i class="{{ $card['icon'] }}"></i>
                                     </span>
                                 </div>
@@ -71,7 +76,8 @@
                                 <h5 class="fs-16 fw-bold text-body mb-3">{{ $card['title'] }}</h5>
 
                                 <!-- Counter Badge -->
-                                <div class="badge bg-soft-{{ $themeColor }} text-{{ $themeColor }} rounded-pill px-3 py-2 fs-12 mb-2">
+                                <div
+                                    class="badge bg-soft-{{ $themeColor }} text-{{ $themeColor }} rounded-pill px-3 py-2 fs-12 mb-2">
                                     <i class="ri-time-line me-1"></i>
                                     <span>{{ is_numeric($card['count']) ? $card['count'] . ' kempu' : $card['count'] }}</span>
                                 </div>
