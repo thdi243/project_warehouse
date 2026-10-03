@@ -121,6 +121,7 @@ class KempuQcController extends Controller
                 'location'    => MasterKempuModel::LOC_QC_PM,
                 'target_statuses' => [
                     MasterKempuModel::STATUS_QC_PM_PENDING,
+                    MasterKempuModel::STATUS_QC_PM_HOLD,
                     MasterKempuModel::STATUS_GR_COMPLETED,
                     MasterKempuModel::STATUS_REGISTERED,
                     MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
@@ -139,6 +140,7 @@ class KempuQcController extends Controller
                 'location'    => MasterKempuModel::LOC_QC_PROSES,
                 'target_statuses' => [
                     MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
+                    MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD,
                     MasterKempuModel::STATUS_PROD_TRANSFER_IN_WPM,
                     'QC_PRE_CUCI_PENDING',
                     'Transfer in from WPM',
@@ -165,6 +167,28 @@ class KempuQcController extends Controller
                     'QC_AFTER_FILLING_HOLD',
                     'QC After Filling Hold',
                 ],
+            ],
+            'qc-pm-force' => [
+                'key'         => 'qc-pm-force',
+                'title'       => 'Force Scan QC PM',
+                'subtitle'    => 'Manual Override QC PM (Release / Hold / Reject)',
+                'description' => 'Inspeksi & manual override keputusan QC PM untuk kempu kapanpun dan dimanapun tanpa terikat alur urutan status normal (Khusus Otoritas QC / Non-Operator).',
+                'icon'        => 'ri-shield-flash-line',
+                'badge_color' => 'danger',
+                'stage'       => 'QC_FORCE',
+                'location'    => MasterKempuModel::LOC_QC_PM,
+                'target_statuses' => ['*'],
+            ],
+            'qc-proses-force' => [
+                'key'         => 'qc-proses-force',
+                'title'       => 'Force Scan QC Proses',
+                'subtitle'    => 'Manual Override QC Proses (Pre Cuci & After Filling)',
+                'description' => 'Inspeksi & manual override keputusan QC Proses (Pre Cuci & After Filling) untuk kempu kapanpun dan dimanapun tanpa terikat alur urutan status normal (Khusus Otoritas QC / Non-Operator).',
+                'icon'        => 'ri-shield-flash-line',
+                'badge_color' => 'danger',
+                'stage'       => 'QC_FORCE',
+                'location'    => MasterKempuModel::LOC_QC_PROSES,
+                'target_statuses' => ['*'],
             ],
             'qc-force' => [
                 'key'         => 'qc-force',
@@ -257,10 +281,10 @@ class KempuQcController extends Controller
                         'count_label' => 'SPB Incoming aktif',
                     ],
                     'qc-force' => [
-                        'key'         => 'qc-force',
-                        'title'       => 'Force Scan QC',
-                        'subtitle'    => 'Decision Bebas Kapanpun & Dimanapun',
-                        'description' => 'Inspeksi darurat & manual override keputusan QC untuk kempu kapanpun dan dimanapun (Khusus Otoritas QC / Non-Operator).',
+                        'key'         => 'qc-pm-force',
+                        'title'       => 'Force Scan QC PM',
+                        'subtitle'    => 'Manual Override QC PM (Release / Hold / Reject)',
+                        'description' => 'Inspeksi darurat & manual override keputusan QC PM (Release / Hold / Reject) untuk kempu kapanpun (Khusus Otoritas QC / Non-Operator).',
                         'badge_color' => 'danger',
                         'icon'        => 'ri-shield-flash-line',
                         'count'       => 'Otoritas',
@@ -313,10 +337,10 @@ class KempuQcController extends Controller
                         'count_label' => 'kempu siap periksa',
                     ],
                     'qc-force' => [
-                        'key'         => 'qc-force',
-                        'title'       => 'Force Scan QC',
-                        'subtitle'    => 'Decision Bebas Kapanpun & Dimanapun',
-                        'description' => 'Inspeksi darurat & manual override keputusan QC untuk kempu kapanpun dan dimanapun (Khusus Otoritas QC / Non-Operator).',
+                        'key'         => 'qc-proses-force',
+                        'title'       => 'Force Scan QC Proses',
+                        'subtitle'    => 'Manual Override QC Proses (Pre Cuci & After Filling)',
+                        'description' => 'Inspeksi darurat & manual override keputusan QC Proses (Pre Cuci & After Filling) untuk kempu kapanpun (Khusus Otoritas QC / Non-Operator).',
                         'badge_color' => 'danger',
                         'icon'        => 'ri-shield-flash-line',
                         'count'       => 'Otoritas',
@@ -717,7 +741,7 @@ class KempuQcController extends Controller
             return redirect()->route('kempu.qc.proses.index');
         }
 
-        if ($type === 'qc-force') {
+        if (in_array($type, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
             if (!self::canForceScan()) {
                 return redirect()->route('kempu.qc.pm.index')
                     ->with('error', 'Akses ditolak: Fitur Force Scan hanya diperuntukkan bagi Supervisor / Leader atau user dengan hak akses kempu-qc-force.');
@@ -745,7 +769,7 @@ class KempuQcController extends Controller
         $idKempu = $kempu->id_kempu;
 
         // Force Scan membebaskan validasi urutan flow untuk decision kapanpun dan dimanapun
-        if ($qcType === 'qc-force') {
+        if (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
             return ['valid' => true, 'message' => null];
         }
 
@@ -846,7 +870,7 @@ class KempuQcController extends Controller
             ], 400);
         }
 
-        if ($qcType === 'qc-force') {
+        if (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
             if (!self::canForceScan()) {
                 return response()->json([
                     'status'  => false,
@@ -905,7 +929,7 @@ class KempuQcController extends Controller
                 'reused_count'     => (int)($kempu->main->reused_count ?? 0),
                 'condition'        => $kempu->condition ?? 'OK',
                 'qc_title'         => $card['title'],
-                'is_force_scan'    => ($qcType === 'qc-force'),
+                'is_force_scan'    => in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force']),
                 'can_manual_reused' => self::canForceScan(),
                 'next_auto_reused' => min(21, (int)($kempu->main->reused_count ?? 0) + 1),
                 'is_flow_valid'    => $flowValidation['valid'],
@@ -931,20 +955,38 @@ class KempuQcController extends Controller
             ], 400);
         }
 
-        if ($qcType === 'qc-force') {
+        if (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
             if (!self::canForceScan()) {
                 return response()->json([
                     'status'  => false,
                     'message' => 'Akses ditolak: Anda tidak memiliki wewenang untuk melakukan Force Decision QC.',
                 ], 403);
             }
+
+            if (!$notes) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Catatan/alasan wajib diisi untuk eksekusi Force Scan QC.',
+                ], 422);
+            }
         }
 
         // Validasi keputusan per tipe QC
-        if ($qcType === 'qc-force') {
+        if ($qcType === 'qc-pm-force') {
             $validDecisions = [
                 'OK',
                 'HOLD',
+                'HOLD_PM',
+                'NOT_OK',
+                'RELEASE_PM',
+                'REJECT_WORKSHOP'
+            ];
+        } elseif (in_array($qcType, ['qc-force', 'qc-proses-force'])) {
+            $validDecisions = [
+                'OK',
+                'HOLD',
+                'HOLD_PRE_CUCI',
+                'HOLD_AFTER_FILLING',
                 'NOT_OK',
                 'REPRO',
                 'REPRO_PRODUKSI',
@@ -956,6 +998,8 @@ class KempuQcController extends Controller
             ];
         } elseif ($qcType === 'qc-after-filling') {
             $validDecisions = ['OK', 'HOLD', 'NOT_OK', 'REPRO'];
+        } elseif (in_array($qcType, ['qc-pm', 'qc-pre-cuci', 'qc-proses'])) {
+            $validDecisions = ['OK', 'HOLD', 'NOT_OK'];
         } else {
             $validDecisions = ['OK', 'NOT_OK'];
         }
@@ -1008,6 +1052,13 @@ class KempuQcController extends Controller
                 $condition    = 'OK';
                 $actionTitle  = 'QC PM Lolos (Release)';
                 $notes        = $notes ?: 'Lolos QC PM (Release)';
+            } elseif ($decision === 'HOLD') {
+                $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
+                $nextLocation = MasterKempuModel::LOC_WPM;
+                $actionResult = 'HOLD';
+                $condition    = 'HOLD';
+                $actionTitle  = 'QC PM Ditahan (Hold)';
+                $notes        = $notes ?: 'Ditahan di QC PM untuk evaluasi / sampling';
             } else {
                 $nextStatus   = MasterKempuModel::STATUS_ENG_REPAIR;
                 $nextLocation = MasterKempuModel::LOC_ENG;
@@ -1058,6 +1109,13 @@ class KempuQcController extends Controller
                 $nextLocation = MasterKempuModel::LOC_PRODUKSI;
                 $actionResult = 'OK';
                 $condition    = 'OK';
+            } elseif ($decision === 'HOLD') {
+                $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD;
+                $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                $actionResult = 'HOLD';
+                $condition    = 'HOLD';
+                $actionTitle  = 'Cek Pre Cuci Ditahan (Hold)';
+                $notes        = $notes ?: 'Ditahan di QC Pre Cuci untuk evaluasi kelayakan kempu';
             } else {
                 $nextStatus   = MasterKempuModel::STATUS_ENG_REPAIR;
                 $nextLocation = MasterKempuModel::LOC_ENG;
@@ -1096,7 +1154,7 @@ class KempuQcController extends Controller
                 $actionTitle  = 'After Filling Reject (Kirim Repair)';
                 $notes        = $notes ?: 'Reject Kempu After Filling - Langsung Kirim ke Workshop Engineering (Repair)';
             }
-        } elseif ($qcType === 'qc-force') {
+        } elseif (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
             $forceTarget = strtoupper(trim($request->input('force_target', $decision)));
 
             switch ($forceTarget) {
@@ -1107,6 +1165,51 @@ class KempuQcController extends Controller
                     $condition    = 'OK';
                     $actionTitle  = '[FORCE SCAN] QC PM Lolos (Release)';
                     $notes        = $notes ?: 'Force Decision: Lolos QC PM (Release ke WPM)';
+                    break;
+
+                case 'HOLD_PM':
+                    $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
+                    $nextLocation = MasterKempuModel::LOC_WPM;
+                    $actionResult = 'HOLD';
+                    $condition    = 'HOLD';
+                    $actionTitle  = '[FORCE SCAN] QC PM Ditahan (Hold)';
+                    $notes        = $notes ?: 'Force Decision: Ditahan di QC PM (Hold) untuk evaluasi / sampling';
+                    break;
+
+                case 'HOLD_PRE_CUCI':
+                    $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD;
+                    $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                    $actionResult = 'HOLD';
+                    $condition    = 'HOLD';
+                    $actionTitle  = '[FORCE SCAN] Cek Pre Cuci Ditahan (Hold)';
+                    $notes        = $notes ?: 'Force Decision: Ditahan di QC Pre Cuci (Hold) untuk evaluasi kelayakan kempu';
+                    break;
+
+                case 'HOLD_AFTER_FILLING':
+                    $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD;
+                    $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                    $actionResult = 'HOLD';
+                    $condition    = 'HOLD';
+                    $actionTitle  = '[FORCE SCAN] After Filling Ditahan (Hold)';
+                    $notes        = $notes ?: 'Force Decision: Ditahan After Filling (Hold) untuk evaluasi lanjutan';
+                    break;
+
+                case 'HOLD':
+                    if ($qcType === 'qc-pm-force') {
+                        $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
+                        $nextLocation = MasterKempuModel::LOC_WPM;
+                        $actionResult = 'HOLD';
+                        $condition    = 'HOLD';
+                        $actionTitle  = '[FORCE SCAN] QC PM Ditahan (Hold)';
+                        $notes        = $notes ?: 'Force Decision: Ditahan di QC PM (Hold) untuk evaluasi / sampling';
+                    } else {
+                        $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD;
+                        $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                        $actionResult = 'HOLD';
+                        $condition    = 'HOLD';
+                        $actionTitle  = '[FORCE SCAN] QC Ditahan (HOLD)';
+                        $notes        = $notes ?: 'Force Decision: Ditahan (HOLD) untuk evaluasi lanjutan';
+                    }
                     break;
 
                 case 'RELEASE_PRE_CUCI':
@@ -1137,15 +1240,6 @@ class KempuQcController extends Controller
                     $notes        = $notes ?: 'Force Decision: Lolos After Filling (Release ke WFG)';
                     break;
 
-                case 'HOLD':
-                    $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD;
-                    $nextLocation = MasterKempuModel::LOC_PRODUKSI;
-                    $actionResult = 'HOLD';
-                    $condition    = 'HOLD';
-                    $actionTitle  = '[FORCE SCAN] QC Ditahan (HOLD)';
-                    $notes        = $notes ?: 'Force Decision: Ditahan (HOLD) untuk evaluasi lanjutan';
-                    break;
-
                 case 'REPRO':
                 case 'REPRO_PRODUKSI':
                     $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO;
@@ -1171,13 +1265,13 @@ class KempuQcController extends Controller
                     $nextLocation = MasterKempuModel::LOC_ENG;
                     $actionResult = 'NOT_OK';
                     $condition    = 'NOT_OK';
-                    $actionTitle  = '[FORCE SCAN] QC Reject (Kirim Workshop)';
+                    $actionTitle  = ($qcType === 'qc-pm-force') ? '[FORCE SCAN] QC PM Reject (Kirim Workshop)' : '[FORCE SCAN] QC Reject (Kirim Workshop)';
                     $notes        = $notes ?: 'Force Decision: Reject QC - Kirim Workshop Engineering';
                     break;
 
                 default:
                     if ($decision === 'OK') {
-                        if (strtoupper($fromLocation) === MasterKempuModel::LOC_WPM || in_array(strtoupper($currentStatus), ['REGISTERED', 'QC_PM_PENDING', 'QC_PM_RELEASE'])) {
+                        if ($qcType === 'qc-pm-force' || strtoupper($fromLocation) === MasterKempuModel::LOC_WPM || in_array(strtoupper($currentStatus), ['REGISTERED', 'QC_PM_PENDING', 'QC_PM_RELEASE'])) {
                             $nextStatus   = MasterKempuModel::STATUS_QC_PM_RELEASE;
                             $nextLocation = MasterKempuModel::LOC_WPM;
                             $actionResult = 'OK';
@@ -1196,18 +1290,27 @@ class KempuQcController extends Controller
                             $notes        = $notes ?: "Force Decision: Lolos QC - Reused {$currentReused}/21";
                         }
                     } elseif ($decision === 'HOLD') {
-                        $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD;
-                        $nextLocation = MasterKempuModel::LOC_PRODUKSI;
-                        $actionResult = 'HOLD';
-                        $condition    = 'HOLD';
-                        $actionTitle  = '[FORCE SCAN] QC Ditahan (HOLD)';
-                        $notes        = $notes ?: 'Force Decision: Ditahan (HOLD)';
+                        if ($qcType === 'qc-pm-force') {
+                            $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
+                            $nextLocation = MasterKempuModel::LOC_WPM;
+                            $actionResult = 'HOLD';
+                            $condition    = 'HOLD';
+                            $actionTitle  = '[FORCE SCAN] QC PM Ditahan (Hold)';
+                            $notes        = $notes ?: 'Force Decision: Ditahan di QC PM (Hold) untuk evaluasi / sampling';
+                        } else {
+                            $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD;
+                            $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                            $actionResult = 'HOLD';
+                            $condition    = 'HOLD';
+                            $actionTitle  = '[FORCE SCAN] QC Ditahan (HOLD)';
+                            $notes        = $notes ?: 'Force Decision: Ditahan (HOLD)';
+                        }
                     } else {
                         $nextStatus   = MasterKempuModel::STATUS_ENG_REPAIR;
                         $nextLocation = MasterKempuModel::LOC_ENG;
                         $actionResult = 'NOT_OK';
                         $condition    = 'NOT_OK';
-                        $actionTitle  = '[FORCE SCAN] QC Reject (Kirim Workshop)';
+                        $actionTitle  = ($qcType === 'qc-pm-force') ? '[FORCE SCAN] QC PM Reject (Kirim Workshop)' : '[FORCE SCAN] QC Reject (Kirim Workshop)';
                         $notes        = $notes ?: 'Force Decision: Reject QC - Kirim Workshop Engineering';
                     }
                     break;

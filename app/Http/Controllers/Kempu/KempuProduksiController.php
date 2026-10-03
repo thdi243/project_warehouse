@@ -759,6 +759,13 @@ class KempuProduksiController extends Controller
 
         // Logika khusus per Card
         if ($cardKey === 'prod-force') {
+            if (!$notes) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Catatan/alasan wajib diisi untuk eksekusi Force Scan Produksi.',
+                ], 422);
+            }
+
             $forceTarget = strtoupper(trim($request->input('force_target', $request->input('target_status', ''))));
 
             switch ($forceTarget) {

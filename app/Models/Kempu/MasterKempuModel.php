@@ -34,6 +34,7 @@ class MasterKempuModel extends Model
     // 2. QC Packaging Material (QC PM)
     const STATUS_QC_PM_PENDING            = 'QC_PM_PENDING';
     const STATUS_QC_PM_RELEASE            = 'QC_PM_RELEASE';
+    const STATUS_QC_PM_HOLD               = 'QC_PM_HOLD';
 
     // 3. Engineering Workshop (Repair)
     const STATUS_ENG_REPAIR               = 'ENG_REPAIR';
@@ -55,6 +56,7 @@ class MasterKempuModel extends Model
     // 6. QC Proses (Pre Cuci & After Filling)
     const STATUS_QC_PRE_CUCI_PENDING      = 'QC_PRE_CUCI_PENDING';
     const STATUS_QC_PRE_CUCI_RELEASE      = 'QC_PRE_CUCI_RELEASE';
+    const STATUS_QC_PRE_CUCI_HOLD         = 'QC_PRE_CUCI_HOLD';
     const STATUS_QC_AFTER_FILLING_PENDING = 'QC_AFTER_FILLING_PENDING';
     const STATUS_QC_AFTER_FILLING_RELEASE = 'QC_AFTER_FILLING_RELEASE';
     const STATUS_QC_AFTER_FILLING_HOLD    = 'QC_AFTER_FILLING_HOLD';
