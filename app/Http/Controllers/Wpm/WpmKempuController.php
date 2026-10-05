@@ -163,28 +163,45 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 4. Cek jika masih di area WFG / PAS
-                if (in_array(strtolower($currentStatus), [
-                    'transfer in from produksi',
-                    strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
-                ])) {
-                    return [
-                        'valid'   => false,
-                        'message' => "Kempu {$idKempu} saat ini masih berada di area WFG (status: '{$currentStatus}'). Kempu harus menyelesaikan pengiriman 'Transfer Out to PAS' terlebih dahulu sebelum dapat di-Transfer In ke WPM.",
-                    ];
-                }
-
+                // 4. Cek jika kempu masih dalam perjalanan ke PAS (Transfer Out to PAS dari WFG)
                 if (
-                    strcasecmp($currentStatus, 'Transfer in From BAS') === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_PAS_TRANSFER_IN_BAS) === 0
+                    strcasecmp($currentStatus, 'Transfer Out to PAS') === 0 ||
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS) === 0 ||
+                    strcasecmp($currentStatus, 'WFG_TRANSFER_OUT_TO_PAS') === 0 ||
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_IN_TRANSIT_PAS) === 0
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} masih berada di Warehouse PAS (status: 'Transfer in From BAS'). Kempu harus menyelesaikan pengiriman 'Transfer Out to BAS' terlebih dahulu sebelum dapat di-Transfer In ke WPM.",
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus 'Transfer Out to PAS' (sedang dalam perjalanan menuju PT PAS) dan belum diterima di PT PAS ('Transfer in From BAS'). Kempu harus menyelesaikan siklus penerimaan dan pengembalian di PT PAS terlebih dahulu sebelum dapat di-Transfer In ke WPM.",
                     ];
                 }
 
-                // 5. Cek jika masih di status Transfer Out To Produksi
+                // 5. Cek jika masih di area WFG
+                if (in_array(strtolower($currentStatus), [
+                    'transfer in from produksi',
+                    strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
+                    strtolower(MasterKempuModel::STATUS_WFG_RECEIVED),
+                ])) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini masih berada di area WFG (status: '{$currentStatus}'). Kempu harus dikirim ke PT PAS terlebih dahulu.",
+                    ];
+                }
+
+                // 6. Cek jika kempu masih berada di Warehouse PT PAS (belum di-Transfer Out dari PAS)
+                if (
+                    strcasecmp($currentStatus, 'Transfer in From BAS') === 0 ||
+                    strcasecmp($currentStatus, 'Transfer In From BAS') === 0 ||
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_PAS_TRANSFER_IN_BAS) === 0 ||
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_PAS_RECEIVED) === 0
+                ) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} masih berada di Warehouse PT PAS (status: 'Transfer in From BAS'). Kempu harus menyelesaikan pengiriman 'Transfer Out to BAS' dari PAS terlebih dahulu sebelum dapat di-Transfer In ke WPM.",
+                    ];
+                }
+
+                // 7. Cek jika masih di status Transfer Out To Produksi atau area Produksi
                 if (
                     strcasecmp($currentStatus, 'Transfer Out To Produksi') === 0 ||
                     strcasecmp($currentStatus, MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD) === 0 ||
@@ -192,7 +209,41 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} saat ini berstatus 'Transfer Out To Produksi' (sedang menuju Produksi/WFG). Harus menyelesaikan siklus hingga PAS sebelum dapat di-Transfer In ke WPM.",
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus 'Transfer Out To Produksi' (sedang menuju Produksi/WFG). Harus menyelesaikan siklus hingga PAS sebelum dapat di-Transfer In ke WPM.",
+                    ];
+                }
+
+                if (in_array(strtolower($currentStatus), [
+                    strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_IN_WPM),
+                    'prod_transfer_in_from_wpm',
+                    'transfer in from wpm',
+                    strtolower(MasterKempuModel::STATUS_PROD_CUCI_KEMPU),
+                    'prod_cuci_kempu',
+                    strtolower(MasterKempuModel::STATUS_PROD_FILLING_KEMPU),
+                    'prod_filling_kempu',
+                    strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG),
+                    'prod_transfer_out_to_wfg',
+                    strtolower(MasterKempuModel::STATUS_PROD_REPRO_KEMPU),
+                    'prod_repro_kempu',
+                ])) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini masih berada di area Produksi (status: '{$currentStatus}').",
+                    ];
+                }
+
+                // 8. Whitelist: HANYA kempu yang sudah di-Transfer Out dari PAS yang sah untuk di-Transfer In ke WPM
+                $allowedFromPas = [
+                    'transfer out to bas',
+                    strtolower(MasterKempuModel::STATUS_PAS_TRANSFER_OUT_BAS),
+                    'pas_transfer_out_to_bas',
+                    strtolower(MasterKempuModel::STATUS_IN_TRANSIT_WPM),
+                ];
+
+                if (!in_array(strtolower($currentStatus), $allowedFromPas)) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Untuk menjalankan 'Transfer In From PAS', kempu harus berstatus 'Transfer Out to BAS' dari Warehouse PT PAS.",
                     ];
                 }
                 break;
@@ -763,8 +814,8 @@ class WpmKempuController extends Controller
         // Default: Log Riwayat Scan WPM
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'WPM')
-              ->orWhere('from_location', MasterKempuModel::LOC_WPM)
-              ->orWhere('to_location', MasterKempuModel::LOC_WPM);
+                ->orWhere('from_location', MasterKempuModel::LOC_WPM)
+                ->orWhere('to_location', MasterKempuModel::LOC_WPM);
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',
@@ -789,11 +840,11 @@ class WpmKempuController extends Controller
                     ->orWhere('notes', 'like', "%{$s}%")
                     ->orWhereHas('masterKempu', function ($mq) use ($s) {
                         $mq->where('rfid', 'like', "%{$s}%")
-                           ->orWhere('no_spb', 'like', "%{$s}%");
+                            ->orWhere('no_spb', 'like', "%{$s}%");
                     })
                     ->orWhereHas('createdBy', function ($uq) use ($s) {
                         $uq->where('username', 'like', "%{$s}%")
-                           ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
                     });
             });
         }
@@ -820,8 +871,8 @@ class WpmKempuController extends Controller
     {
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'WPM')
-              ->orWhere('from_location', MasterKempuModel::LOC_WPM)
-              ->orWhere('to_location', MasterKempuModel::LOC_WPM);
+                ->orWhere('from_location', MasterKempuModel::LOC_WPM)
+                ->orWhere('to_location', MasterKempuModel::LOC_WPM);
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',
@@ -846,11 +897,11 @@ class WpmKempuController extends Controller
                     ->orWhere('notes', 'like', "%{$s}%")
                     ->orWhereHas('masterKempu', function ($mq) use ($s) {
                         $mq->where('rfid', 'like', "%{$s}%")
-                           ->orWhere('no_spb', 'like', "%{$s}%");
+                            ->orWhere('no_spb', 'like', "%{$s}%");
                     })
                     ->orWhereHas('createdBy', function ($uq) use ($s) {
                         $uq->where('username', 'like', "%{$s}%")
-                           ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
                     });
             });
         }
