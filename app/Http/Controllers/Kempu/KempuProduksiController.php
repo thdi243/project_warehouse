@@ -346,10 +346,20 @@ class KempuProduksiController extends Controller
             $cuciAt = Carbon::parse($kempu->main->last_scanned_at);
         } elseif ($kempu->main?->last_scanned_at && in_array($kempu->main->current_status, [
             MasterKempuModel::STATUS_CUCI_KEMPU_COMPLETED,
+            MasterKempuModel::STATUS_PROD_CUCI_KEMPU,
+            'PROD_CUCI_KEMPU',
             'CUCI_KEMPU_COMPLETED',
             'Cuci Kempu Selesai',
         ])) {
             $cuciAt = Carbon::parse($kempu->main->last_scanned_at);
+        } elseif ($kempu->main?->updated_at && in_array($kempu->main->current_status, [
+            MasterKempuModel::STATUS_CUCI_KEMPU_COMPLETED,
+            MasterKempuModel::STATUS_PROD_CUCI_KEMPU,
+            'PROD_CUCI_KEMPU',
+            'CUCI_KEMPU_COMPLETED',
+            'Cuci Kempu Selesai',
+        ])) {
+            $cuciAt = Carbon::parse($kempu->main->updated_at);
         }
 
         if (!$cuciAt) {
@@ -619,6 +629,43 @@ class KempuProduksiController extends Controller
             ];
         }
 
+        // Pengecekan Khusus untuk Cuci Kempu:
+        // Jika kempu sudah berstatus Cuci Kempu, HANYA boleh dicuci ulang jika sudah lewat batas waktu (> H+3 / Kadaluarsa).
+        // Jika masih dalam rentang masa berlaku higienis (H+0 s/d H+3), maka ditolak karena DUPLIKAT.
+        if ($cardKey === 'cuci-kempu') {
+            $cuciStatuses = [
+                MasterKempuModel::STATUS_PROD_CUCI_KEMPU,
+                MasterKempuModel::STATUS_CUCI_KEMPU_COMPLETED,
+                'PROD_CUCI_KEMPU',
+                'CUCI_KEMPU_COMPLETED',
+                'Cuci Kempu Selesai',
+            ];
+
+            $isAlreadyCuci = false;
+            foreach ($cuciStatuses as $cs) {
+                if (strcasecmp($currentStatus, $cs) === 0) {
+                    $isAlreadyCuci = true;
+                    break;
+                }
+            }
+
+            if ($isAlreadyCuci) {
+                $timing = self::getCuciKempuTiming($kempu);
+                // Jika masih dalam masa berlaku (H+0 s/d H+3), tolak karena duplikat
+                if ($timing['has_cuci'] && $timing['diff_days'] !== null && $timing['diff_days'] <= 3) {
+                    $hLabel      = $timing['h_label'] ?? "H+{$timing['diff_days']}";
+                    $cuciDateStr = $timing['cuci_date'] ?? '-';
+                    $maxDate     = $timing['max_date'] ?? '-';
+
+                    return [
+                        'valid'   => false,
+                        'message' => "Duplikat Scan (Sudah Dicuci): Kempu {$idKempu} sudah selesai dicuci pada {$cuciDateStr} ({$hLabel}). Masa higienis kempu masih berlaku hingga tanggal {$maxDate} (maksimal H+3). Kempu tidak perlu dicuci ulang, silakan lanjutkan ke proses 'Filling Kempu'.",
+                    ];
+                }
+                // Jika $timing['diff_days'] > 3 (sudah kadaluarsa > H+3), lolos validasi untuk cuci ulang
+            }
+        }
+
         // Pengecekan Waktu Khusus untuk Scan Filling Kempu (Wajib H+1 s/d H+3 dari Cuci Kempu)
         if ($cardKey === 'scan-1-filling-kempu') {
             $timing = self::getCuciKempuTiming($kempu);
@@ -699,7 +746,7 @@ class KempuProduksiController extends Controller
                 'is_force_scan'    => ($cardKey === 'prod-force'),
                 'is_flow_valid'    => $flowValidation['valid'],
                 'flow_error'       => $flowValidation['message'],
-                'cuci_info'        => ($cardKey === 'scan-1-filling-kempu') ? self::getCuciKempuTiming($kempu) : null,
+                'cuci_info'        => in_array($cardKey, ['scan-1-filling-kempu', 'cuci-kempu']) ? self::getCuciKempuTiming($kempu) : null,
             ],
         ]);
     }

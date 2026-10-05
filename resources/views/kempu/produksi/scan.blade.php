@@ -578,6 +578,9 @@
                     if (CARD_KEY === 'scan-1-filling-kempu') {
                         iconClass = 'ri-time-line text-danger';
                         titleText = 'Syarat Waktu Cuci & Filling:';
+                    } else if (CARD_KEY === 'cuci-kempu' && k.flow_error && k.flow_error.includes('Duplikat')) {
+                        iconClass = 'ri-error-warning-line text-danger';
+                        titleText = 'Duplikat Scan (Sudah Dicuci):';
                     }
                     $('#alertFlowErrorBox').html(`
                         <div class="d-flex align-items-start gap-2">
