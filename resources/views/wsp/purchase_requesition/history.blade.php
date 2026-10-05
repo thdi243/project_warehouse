@@ -259,7 +259,7 @@
                             <i class="mdi mdi-information-outline me-1"></i> Format Pesan (Otomatis By Sistem):
                         </label>
                         <div class="p-2 border rounded bg-light text-dark font-monospace" id="wa_preview_box"
-                            style="font-size: 12px; white-space: pre-wrap; max-height: 175px; overflow-y: auto;">
+                            style="font-size: 12px; white-space: pre-wrap; max-height: 230px; overflow-y: auto;">
                         </div>
                         <small class="text-muted" style="font-size: 11px;">Pesan dikirim langsung via Fonnte WhatsApp
                             Gateway ke nomor di atas.</small>
@@ -779,26 +779,25 @@
             let currentFollowUpApproval = null;
 
             function generateDefaultWaMessage(pr, approval) {
-                const approverName = approval?.approver?.nama_lengkap || approval?.role || 'Bapak/Ibu Approver';
+                const approverName = approval?.approver?.nama_lengkap || approval?.role || 'Approver';
                 const role = approval?.role ? approval.role.replace(/_/g, ' ') : 'Approver';
                 const level = approval?.level || '-';
                 const noDoc = pr.no_doc || '-';
-                const prNumber = pr.pr_number || '-';
                 const reqBy = pr.requested_by || '-';
-                const dept = (pr.department || '').replace(/_/g, ' ').toUpperCase();
-                // Gunakan URL alias singkat /pr-app
+                const dept = (pr.department || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                 const urlShort = 'https://tinyurl.com/ApprovalPR';
 
-                return `*Halo Bapak/Ibu ${approverName},*\n\n` +
-                    `Pengingat persetujuan (approval) Purchase Requisition di sistem *PR Online*:\n` +
-                    `• *No. Dokumen*: ${noDoc}\n` +
-                    `• *Pengaju*: ${reqBy}\n` +
-                    `• *Departemen*: ${dept}\n` +
-                    `• *Tahap*: Level ${level} - ${role}\n\n` +
-                    `Mohon kesediaan Bapak/Ibu untuk memeriksa notifikasi di *Inbox* atau folder *Spam* email Anda.\n\n` +
-                    `👉 *Silakan setujui di sini / tinjau:*\n` +
+                return `🔔 *PEMBERITAHUAN SISTEM*\n\n` +
+                    `Yth. *Bapak/Ibu ${approverName}*,\n\n` +
+                    `Terdapat dokumen *Purchase Requisition (PR)* yang memerlukan persetujuan (*approval*) Anda:\n\n` +
+                    `• *No. Dokumen:* \`${noDoc}\`\n` +
+                    `• *Pengaju:* ${reqBy} (${dept})\n` +
+                    `• *Tahap:* Level ${level} - ${role}\n\n` +
+                    `Mohon periksa notifikasi pada email (Inbox/Spam) Anda, atau langsung lakukan persetujuan melalui tautan berikut:\n\n` +
+                    `🔗 *Setujui Sekarang:*\n` +
                     `${urlShort}\n\n` +
-                    `Terima kasih atas kerja samanya.\n` +
+                    `Terima kasih atas perhatian dan kerja samanya.\n` +
+                    `─────────────────\n` +
                     `_Sistem PR Online_`;
             }
 

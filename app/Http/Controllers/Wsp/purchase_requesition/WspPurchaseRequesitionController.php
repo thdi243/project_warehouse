@@ -1911,20 +1911,21 @@ class WspPurchaseRequesitionController extends Controller
             ], 429);
         }
 
-        $urlDwm = url('https://tinyurl.com/ApprovalPR');
+        $urlDwm = 'https://tinyurl.com/ApprovalPR';
         $dept = ucwords(str_replace('_', ' ', $pr->department ?? '-'));
 
-        // Pesan otomatis by sistem
-        $message = "*Halo Bapak/Ibu {$recipientName},*\n\n"
-            . "Pengingat persetujuan (approval) Purchase Requisition di sistem PR Online:\n"
-            . "• *No. Dokumen*: {$pr->no_doc}\n"
-            . "• *Pengaju*: {$pr->requested_by}\n"
-            . "• *Departemen*: {$dept}\n"
-            . "• *Tahap*: Level {$targetApproval->level} - {$targetApproval->role}\n\n"
-            . "Mohon kesediaan Bapak/Ibu untuk memeriksa notifikasi di *Inbox* atau folder *Spam* email Anda. Atau,\n\n"
-            . "👉 *Silakan setujui di sini:*\n"
+        // Pesan otomatis by sistem (Format Formal, Rapi & Elegan)
+        $message = "🔔 *PEMBERITAHUAN SISTEM*\n\n"
+            . "Yth. *Bapak/Ibu {$recipientName}*,\n\n"
+            . "Terdapat dokumen *Purchase Requisition (PR)* yang memerlukan persetujuan (*approval*) Anda:\n\n"
+            . "• *No. Dokumen:* `{$pr->no_doc}`\n"
+            . "• *Pengaju:* {$pr->requested_by} ({$dept})\n"
+            . "• *Tahap:* Level {$targetApproval->level} - {$targetApproval->role}\n\n"
+            . "Mohon periksa notifikasi pada email (Inbox/Spam) Anda, atau langsung lakukan persetujuan melalui tautan berikut:\n\n"
+            . "*Setujui Sekarang:*\n"
             . "{$urlDwm}\n\n"
-            . "Terima kasih atas kerja samanya.\n"
+            . "Terima kasih atas perhatian dan kerja samanya.\n"
+            . "─────────────────\n"
             . "_Sistem PR Online_";
 
         $sendResult = $fonnteService->sendMessage($targetNoHp, $message);
