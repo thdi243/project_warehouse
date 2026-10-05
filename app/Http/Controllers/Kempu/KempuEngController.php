@@ -247,6 +247,24 @@ class KempuEngController extends Controller
                 ]);
             }
 
+            // Update data master kempu (kempu_master)
+            $userId = auth()->id() ?? $request->input('user_id') ?? 1;
+            if ($decision === 'BISA_REPAIR') {
+                $kempu->update([
+                    'status'     => 'active',
+                    'keterangan' => $notes ? 'Selesai Repair Workshop: ' . $notes : 'Selesai Repair Engineering Workshop',
+                    'updated_by' => $userId,
+                ]);
+            } else {
+                // Keputusan resmi SCRAP ada di tangan Produksi saat scan Create BA Scrap,
+                // maka di Workshop status master tetap 'maintenance' (menunggu BA Scrap di Produksi).
+                $kempu->update([
+                    'status'     => 'maintenance',
+                    'keterangan' => $notes ? 'Tidak Bisa Repair (Menunggu BA Scrap Produksi): ' . $notes : 'Tidak Bisa Repair (Menunggu BA Scrap Produksi)',
+                    'updated_by' => $userId,
+                ]);
+            }
+
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
                 'id_kempu'        => $kempu->id_kempu,

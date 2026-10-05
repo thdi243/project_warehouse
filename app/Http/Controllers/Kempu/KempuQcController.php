@@ -409,13 +409,13 @@ class KempuQcController extends Controller
                 'count_label' => 'SPB Incoming aktif',
             ],
             'qc-force' => [
-                'key'         => 'qc-force',
-                'title'       => 'Force Scan QC',
-                'subtitle'    => 'Decision Bebas Kapanpun & Dimanapun',
-                'description' => 'Inspeksi darurat & manual override keputusan QC untuk kempu kapanpun dan dimanapun (Khusus Otoritas QC / Non-Operator).',
+                'key'         => 'qc-pm-force',
+                'title'       => 'Force Scan QC PM',
+                'subtitle'    => 'Manual Override QC PM (Release / Hold / Reject / Scrap)',
+                'description' => 'Inspeksi darurat & manual override keputusan QC PM (Release / Hold / Reject / Scrap) untuk kempu kapanpun (Khusus Otoritas QC / Non-Operator).',
                 'icon'        => 'ri-shield-flash-line',
                 'badge_color' => 'danger',
-                'route'       => route('kempu.qc.scan', 'qc-force'),
+                'route'       => route('kempu.qc.scan', 'qc-pm-force'),
                 'count'       => 'Otoritas',
                 'count_label' => 'Akses Terbatas',
             ],
@@ -695,6 +695,18 @@ class KempuQcController extends Controller
                     ]);
                 }
 
+                // Update data master kempu (kempu_master)
+                $masterUpdate = [
+                    'updated_by' => $creatorId,
+                ];
+                if ($nextStatus === MasterKempuModel::STATUS_ENG_REPAIR) {
+                    $masterUpdate['status']     = 'maintenance';
+                    $masterUpdate['keterangan'] = $actionNote;
+                } elseif ($actionResult === 'OK') {
+                    $masterUpdate['status'] = 'active';
+                }
+                $kempu->update($masterUpdate);
+
                 KempuTrackingHistoryModel::create([
                     'kempu_master_id' => $kempu->id,
                     'id_kempu'        => $kempu->id_kempu,
@@ -776,7 +788,7 @@ class KempuQcController extends Controller
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
             return [
                 'valid'   => false,
-                'message' => "Kempu {$idKempu} berstatus SCRAP / Afkir dan tidak dapat diproses di QC.",
+                'message' => "Kempu {$idKempu} berstatus SCRAP dan tidak dapat diproses di QC.",
             ];
         }
 
@@ -979,7 +991,8 @@ class KempuQcController extends Controller
                 'HOLD_PM',
                 'NOT_OK',
                 'RELEASE_PM',
-                'REJECT_WORKSHOP'
+                'REJECT_WORKSHOP',
+                'SCRAP'
             ];
         } elseif (in_array($qcType, ['qc-force', 'qc-proses-force'])) {
             $validDecisions = [
@@ -1255,8 +1268,8 @@ class KempuQcController extends Controller
                     $nextLocation = MasterKempuModel::LOC_SCRAP;
                     $actionResult = 'SCRAPPED';
                     $condition    = 'NOT_OK';
-                    $actionTitle  = '[FORCE SCAN] QC Afkir (Scrap)';
-                    $notes        = $notes ?: 'Force Decision: Afkir / Scrap (Kempu Rusak Berat)';
+                    $actionTitle  = ($qcType === 'qc-pm-force') ? '[FORCE SCAN] QC PM Scrap' : '[FORCE SCAN] QC Scrap';
+                    $notes        = $notes ?: 'Force Decision: Scrap';
                     break;
 
                 case 'NOT_OK':
@@ -1345,6 +1358,22 @@ class KempuQcController extends Controller
             $warehouseUser = $operatorEmail ? User::where('email', $operatorEmail)->first() : null;
             $creatorId     = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
 
+            // Update data master kempu (kempu_master)
+            $masterUpdate = [
+                'updated_by' => $creatorId,
+            ];
+            if ($nextStatus === MasterKempuModel::STATUS_ENG_REPAIR) {
+                $masterUpdate['status']     = 'maintenance';
+                $masterUpdate['keterangan'] = $notes ?: 'Reject QC - Kirim Workshop Engineering (Repair)';
+            } elseif ($nextStatus === MasterKempuModel::STATUS_SCRAPPED) {
+                $masterUpdate['status']     = 'scrap';
+                $masterUpdate['keterangan'] = $notes ?: 'Force Decision Scrap oleh QC';
+            } elseif ($actionResult === 'OK') {
+                $masterUpdate['status'] = 'active';
+            }
+
+            $kempu->update($masterUpdate);
+
             $trackingMetadata = [
                 'app_source'            => $request->input('app_source', 'warehouse'),
                 'operator_name'         => $request->input('operator_name', $warehouseUser?->nama_lengkap ?? ($warehouseUser?->username ?? 'System QC')),
@@ -1377,7 +1406,7 @@ class KempuQcController extends Controller
                 'OK'       => 'OK (Lolos)',
                 'HOLD'     => 'HOLD (Tahan)',
                 'REPRO'    => 'REPRO (Kirim ke Produksi)',
-                'SCRAPPED' => 'Afkir (Scrap)',
+                'SCRAPPED' => 'Scrap',
                 default    => 'TIDAK OK (Reject)',
             };
 

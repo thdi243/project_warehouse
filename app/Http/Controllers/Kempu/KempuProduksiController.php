@@ -161,7 +161,7 @@ class KempuProduksiController extends Controller
             'create-ba-scrap' => [
                 'key'             => 'create-ba-scrap',
                 'title'           => 'Create BA Scrap',
-                'subtitle'        => 'Berita Acara Scrap (Afkir)',
+                'subtitle'        => 'Berita Acara Scrap',
                 'status_name'     => MasterKempuModel::STATUS_SCRAPPED,
                 'stage'           => 'PRODUKSI',
                 'location'        => MasterKempuModel::LOC_PRODUKSI,
@@ -446,7 +446,7 @@ class KempuProduksiController extends Controller
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
             return [
                 'valid'   => false,
-                'message' => "Kempu {$idKempu} sudah berstatus SCRAP (Afkir) dan tidak dapat diproses lagi.",
+                'message' => "Kempu {$idKempu} sudah berstatus SCRAP dan tidak dapat diproses lagi.",
             ];
         }
 
@@ -874,9 +874,9 @@ class KempuProduksiController extends Controller
                     $toLocation    = MasterKempuModel::LOC_SCRAP;
                     $condition     = 'NOT_OK';
                     $actionResult  = 'BA_SCRAP';
-                    $actionTitle   = '[FORCE SCAN] Create BA Scrap (Afkir)';
-                    $resultMessage = "Force Scan: Berita Acara Scrap kempu {$idKempu} berhasil dibuat. Status kempu resmi menjadi SCRAP (Afkir).";
-                    $notes         = $notes ?: 'Force Decision: Paksa Pembuatan BA Scrap (Afkir)';
+                    $actionTitle   = '[FORCE SCAN] Create BA Scrap';
+                    $resultMessage = "Force Scan: Berita Acara Scrap kempu {$idKempu} berhasil dibuat. Status kempu resmi menjadi SCRAP.";
+                    $notes         = $notes ?: 'Force Decision: Paksa Pembuatan BA Scrap';
                     break;
 
                 case 'PROD_REPRO_KEMPU':
@@ -915,7 +915,7 @@ class KempuProduksiController extends Controller
             $toLocation    = MasterKempuModel::LOC_SCRAP;
             $condition     = 'NOT_OK';
             $actionResult  = 'BA_SCRAP';
-            $resultMessage = "Berita Acara (BA) Scrap berhasil dibuat di Produksi. Status kempu resmi menjadi SCRAP (Afkir).";
+            $resultMessage = "Berita Acara (BA) Scrap berhasil dibuat di Produksi. Status kempu resmi menjadi SCRAP.";
         } elseif ($cardKey === 'transfer-in-from-wpm') {
             $nextStatus    = MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING;
             $toLocation    = MasterKempuModel::LOC_PRODUKSI;
@@ -975,14 +975,25 @@ class KempuProduksiController extends Controller
             $warehouseUser = $operatorEmail ? User::where('email', $operatorEmail)->first() : null;
 
             if (empty($operatorName)) {
-                $operatorName = $warehouseUser?->nama_lengkap 
-                    ?? $warehouseUser?->username 
+                $operatorName = $warehouseUser?->nama_lengkap
+                    ?? $warehouseUser?->username
                     ?? (Auth::user()?->nama_lengkap ?? Auth::user()?->username ?? Auth::user()?->name ?? 'Operator Produksi');
             }
 
             // created_by HANYA diisi jika user terverifikasi ada di tabel users Warehouse (via Auth::check() atau email match).
             // JANGAN gunakan request->user_id langsung dari portal luar untuk menghindari salah relasi ke user Warehouse lain!
             $creatorId = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
+
+            // Update data master kempu (kempu_master)
+            // Keputusan resmi SCRAP berada di tangan Produksi saat scan Create BA Scrap
+            $masterUpdate = [
+                'updated_by' => $creatorId,
+            ];
+            if ($nextStatus === MasterKempuModel::STATUS_SCRAPPED) {
+                $masterUpdate['status']     = 'scrap';
+                $masterUpdate['keterangan'] = $notes ?: 'Berita Acara Scrap oleh Produksi';
+            }
+            $kempu->update($masterUpdate);
 
             $trackingMetadata = [
                 'app_source'     => $appSource,

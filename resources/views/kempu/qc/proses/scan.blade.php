@@ -300,7 +300,7 @@
                                 <strong>Tidak OK (Kempu Rusak ke Repair)</strong>.
                             </div>
                         </div>
-                    @elseif ($card['key'] === 'qc-force')
+                    @elseif (in_array($card['key'], ['qc-force', 'qc-pm-force', 'qc-proses-force']))
                         <div
                             class="alert alert-danger py-2 px-3 mb-3 fs-12 d-flex align-items-start gap-2 border-danger-subtle bg-danger-subtle text-danger">
                             <i class="ri-alert-line fs-18 flex-shrink-0 mt-1"></i>
@@ -318,19 +318,30 @@
                             </label>
                             <select class="form-select form-select-lg border-danger fw-semibold fs-14"
                                 id="modalForceTarget">
-                                <optgroup label="── Keputusan Release (Lolos) ──">
-                                    <option value="RELEASE_PM">&#x1F7E2; Lolos QC PM (Release ke WPM)</option>
-                                    <option value="RELEASE_PRE_CUCI">&#x1F7E2; Lolos Pre-Cuci (+1 Reused, Siap Cuci)
-                                    </option>
-                                    <option value="RELEASE_AFTER_FILLING">&#x1F7E2; Lolos After Filling (Siap Kirim WFG)
-                                    </option>
-                                </optgroup>
-                                <optgroup label="── Keputusan Khusus / Masalah ──">
-                                    <option value="HOLD">&#x1F7E1; Tahan / Hold (Evaluasi)</option>
-                                    <option value="REPRO">&#x1F504; Repro (Produk Reject ke Produksi)</option>
-                                    <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
-                                    <option value="SCRAP">&#x26AB; Afkir / Rusak Berat (Scrap)</option>
-                                </optgroup>
+                                @if ($card['key'] === 'qc-pm-force')
+                                    <optgroup label="── Keputusan Release (Lolos) ──">
+                                        <option value="RELEASE_PM">&#x1F7E2; Lolos QC PM (Release ke WPM)</option>
+                                    </optgroup>
+                                    <optgroup label="── Keputusan Khusus / Masalah ──">
+                                        <option value="HOLD">&#x1F7E1; Tahan / Hold (Evaluasi)</option>
+                                        <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
+                                        <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
+                                    </optgroup>
+                                @else
+                                    <optgroup label="── Keputusan Release (Lolos) ──">
+                                        <option value="RELEASE_PM">&#x1F7E2; Lolos QC PM (Release ke WPM)</option>
+                                        <option value="RELEASE_PRE_CUCI">&#x1F7E2; Lolos Pre-Cuci (+1 Reused, Siap Cuci)
+                                        </option>
+                                        <option value="RELEASE_AFTER_FILLING">&#x1F7E2; Lolos After Filling (Siap Kirim WFG)
+                                        </option>
+                                    </optgroup>
+                                    <optgroup label="── Keputusan Khusus / Masalah ──">
+                                        <option value="HOLD">&#x1F7E1; Tahan / Hold (Evaluasi)</option>
+                                        <option value="REPRO">&#x1F504; Repro (Produk Reject ke Produksi)</option>
+                                        <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
+                                        <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
+                                    </optgroup>
+                                @endif
                             </select>
                         </div>
 
@@ -380,7 +391,7 @@
                     </div>
 
                     <!-- Action Decision Buttons -->
-                    @if ($card['key'] === 'qc-force')
+                    @if (in_array($card['key'], ['qc-force', 'qc-pm-force', 'qc-proses-force']))
                         <div class="pt-2 border-top">
                             <button type="button" class="btn btn-danger btn-lg w-100 py-3 fw-bold fs-15 shadow-sm"
                                 id="btnDecisionForce">
@@ -877,11 +888,11 @@
                     _token: "{{ csrf_token() }}",
                     id_kempu: currentKempu.id_kempu,
                     qc_type: QC_TYPE,
-                    decision: (QC_TYPE === 'qc-force' ? (forceTarget || 'OK') : decision),
+                    decision: (['qc-force', 'qc-pm-force', 'qc-proses-force'].includes(QC_TYPE) ? (forceTarget || 'OK') : decision),
                     notes: $('#modalInputNotes').val().trim()
                 };
 
-                if (QC_TYPE === 'qc-force' && forceTarget) {
+                if (['qc-force', 'qc-pm-force', 'qc-proses-force'].includes(QC_TYPE) && forceTarget) {
                     postData.force_target = forceTarget;
                 }
 
@@ -925,10 +936,10 @@
                             let label = 'Release (OK)';
                             let iconType = 'success';
 
-                            if (QC_TYPE === 'qc-force') {
-                                badgeColor = 'primary';
+                            if (['qc-force', 'qc-pm-force', 'qc-proses-force'].includes(QC_TYPE)) {
+                                badgeColor = (res.data.new_status === 'SCRAPPED' ? 'dark' : 'primary');
                                 label = 'FORCE SCAN: ' + (res.data.new_status || 'Berhasil');
-                                iconType = 'success';
+                                iconType = (res.data.new_status === 'SCRAPPED' ? 'warning' : 'success');
                             } else if (decision === 'HOLD') {
                                 badgeColor = 'warning text-dark';
                                 label = 'HOLD (Tahan)';
