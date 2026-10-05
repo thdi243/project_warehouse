@@ -324,6 +324,7 @@
                                     </optgroup>
                                     <optgroup label="── Keputusan Khusus / Masalah ──">
                                         <option value="HOLD">&#x1F7E1; Tahan / Hold (Evaluasi)</option>
+                                        <option value="REPRO" id="optForcePmRepro" class="d-none">&#x1F504; Repro (Produk Reject ke Produksi)</option>
                                         <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
                                         <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
                                     </optgroup>
@@ -807,6 +808,18 @@
                     $('#checkManualReusedForce').prop('checked', false);
                     $('#boxManualReusedInputForce').addClass('d-none');
                     checkForceTargetPreCuci();
+
+                    // Khusus Force Scan QC PM: Opsi REPRO hanya muncul jika kempu posisinya di WFG
+                    if (QC_TYPE === 'qc-pm-force') {
+                        if (k.is_in_wfg) {
+                            $('#optForcePmRepro').removeClass('d-none');
+                        } else {
+                            $('#optForcePmRepro').addClass('d-none');
+                            if ($('#modalForceTarget').val() === 'REPRO') {
+                                $('#modalForceTarget').val('RELEASE_PM');
+                            }
+                        }
+                    }
                 }
 
                 $('#btnDecisionOk').prop('disabled', false).html(

@@ -781,10 +781,12 @@ class KempuQcController extends Controller
         $idKempu = $kempu->id_kempu;
 
         // 1. Kempu SCRAP / Non-aktif tidak dapat diproses di QC manapun (termasuk Force Scan)
-        if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0 ||
+        if (
+            strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0 ||
             strcasecmp($currentStatus, 'SCRAP') === 0 ||
             strcasecmp($currentStatus, 'nonaktif') === 0 ||
-            strcasecmp($kempu->status ?? '', 'nonaktif') === 0) {
+            strcasecmp($kempu->status ?? '', 'nonaktif') === 0
+        ) {
             return [
                 'valid'   => false,
                 'message' => "Kempu {$idKempu} berstatus SCRAP / Non-aktif dan tidak dapat diproses di QC.",
@@ -800,9 +802,11 @@ class KempuQcController extends Controller
         $isQcProsesContext = in_array($qcType, ['qc-pre-cuci', 'qc-proses', 'qc-proses-force', 'qc-force']);
         if ($isQcProsesContext) {
             // a. Jika kempu berstatus REPAIR di Workshop Engineering (Reject Incoming / QC)
-            if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+            if (
+                strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
                 strcasecmp($currentStatus, 'ENG_REPAIR') === 0 ||
-                strcasecmp($currentLocation, MasterKempuModel::LOC_ENG) === 0) {
+                strcasecmp($currentLocation, MasterKempuModel::LOC_ENG) === 0
+            ) {
                 return [
                     'valid'   => false,
                     'message' => "Alur Wajib: Kempu {$idKempu} saat ini berstatus REPAIR di Workshop Engineering (Reject Incoming / QC). Kempu wajib diperbaiki oleh Engineering, lalu diverifikasi di QC PM dan ditransfer oleh WPM ke Produksi terlebih dahulu. Status reject di incoming tidak boleh di-force scan di QC Proses.",
@@ -855,13 +859,22 @@ class KempuQcController extends Controller
             }
         }
 
-        // 3. Batas Maksimal 21x Reused untuk QC Pre Cuci & QC Proses (termasuk Force Scan)
-        if (in_array($qcType, ['qc-pre-cuci', 'qc-proses', 'qc-proses-force'])) {
-            $reused = (int)($kempu->main?->reused_count ?? 0);
+        // 3. Batas Maksimal Reused untuk QC
+        $reused = (int)($kempu->main?->reused_count ?? 0);
+        // Yang ke-22 (> 21) baru dilarang secara mutlak untuk semua pemeriksaan/force scan
+        if ($reused > 21) {
+            return [
+                'valid'   => false,
+                'message' => "Batas Maksimal Terlampaui: Kempu {$idKempu} telah melebihi batas maksimal 21x reused (saat ini: {$reused}x). Siklus ke-22 tidak diperbolehkan dan kempu harus dialihkan ke SCRAP / Engineering.",
+            ];
+        }
+
+        // Khusus QC Pre-Cuci biasa (alur normal), kempu yang sudah 21x tidak boleh memulai siklus baru lagi
+        if (in_array($qcType, ['qc-pre-cuci', 'qc-proses'])) {
             if ($reused >= 21) {
                 return [
                     'valid'   => false,
-                    'message' => "Batas Maksimal Tercapai: Kempu {$idKempu} telah mencapai batas pemakaian 21x reused (saat ini: {$reused}x). Kempu tidak dapat digunakan lagi dan harus dialihkan ke SCRAP / Engineering.",
+                    'message' => "Batas Maksimal Tercapai: Kempu {$idKempu} telah mencapai batas pemakaian 21x reused (saat ini: {$reused}x). Kempu tidak dapat digunakan untuk siklus baru lagi dan harus dialihkan ke SCRAP / Engineering.",
                 ];
             }
         }
@@ -975,6 +988,20 @@ class KempuQcController extends Controller
             $kempu->load('main');
         }
 
+        $currentLoc = strtoupper(trim($kempu->main?->current_location ?? $kempu->current_location ?? ''));
+        $currentSt  = strtoupper(trim($kempu->main?->current_status ?? $kempu->current_status ?? ''));
+        $isInWfg    = (
+            $currentLoc === MasterKempuModel::LOC_WFG ||
+            str_contains($currentSt, 'WFG') ||
+            in_array($currentSt, [
+                MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
+                MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD,
+                MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS,
+                MasterKempuModel::STATUS_WFG_REJECT_PROD,
+                'IN_TRANSIT_WFG',
+            ])
+        );
+
         $flowValidation = self::validateQcFlow($kempu, $qcType);
 
         return response()->json([
@@ -991,6 +1018,7 @@ class KempuQcController extends Controller
                 'is_force_scan'    => in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force']),
                 'can_manual_reused' => self::canForceScan(),
                 'next_auto_reused' => min(21, (int)($kempu->main->reused_count ?? 0) + 1),
+                'is_in_wfg'        => $isInWfg,
                 'is_flow_valid'    => $flowValidation['valid'],
                 'flow_error'       => $flowValidation['message'],
             ],
@@ -1038,6 +1066,8 @@ class KempuQcController extends Controller
                 'HOLD_PM',
                 'NOT_OK',
                 'RELEASE_PM',
+                'REPRO',
+                'REPRO_PRODUKSI',
                 'REJECT_WORKSHOP',
                 'SCRAP'
             ];
@@ -1340,7 +1370,7 @@ class KempuQcController extends Controller
                     $nextLocation = MasterKempuModel::LOC_PRODUKSI;
                     $actionResult = 'REPRO';
                     $condition    = 'NOT_OK';
-                    $actionTitle  = '[FORCE SCAN] QC After Filling Repro';
+                    $actionTitle  = ($qcType === 'qc-pm-force') ? '[FORCE SCAN] QC PM Repro (WFG ke Produksi)' : '[FORCE SCAN] QC After Filling Repro';
                     $notes        = $notes ?: 'Force Decision: Repro Produk - Kirim ke Produksi untuk Pengosongan Muatan';
                     break;
 
