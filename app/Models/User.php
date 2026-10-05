@@ -32,6 +32,7 @@ class User extends Authenticatable
         'bagian',
         'image',
         'is_active',
+        'no_hp',
     ];
 
     /**

@@ -263,7 +263,13 @@ Route::middleware('auth')->group(function () {
             Route::get('/show/{id}', [WspPurchaseRequesitionController::class, 'show'])->name('stock.pr.show');
             Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action'])->name('stock.pr.approval-action');
             Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
+            Route::post('/follow-up-wa', [WspPurchaseRequesitionController::class, 'followUpWhatsApp'])->name('stock.pr.follow-up-wa');
         });
+
+        // Alias URL singkat untuk WhatsApp Follow Up PR
+        Route::get('/pr-app', function () {
+            return redirect('/purchase-requesition/approval');
+        })->name('stock.pr.alias-app');
     });
 
     // Warehouse Raw Material

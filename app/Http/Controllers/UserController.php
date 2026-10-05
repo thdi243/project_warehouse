@@ -25,7 +25,7 @@ class UserController extends Controller
     public function profileIndex()
     {
         try {
-            $user = User::select('id', 'nama_lengkap', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image')
+            $user = User::select('id', 'nama_lengkap', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image', 'no_hp')
                 ->findOrFail(Auth::id());
 
             // Proses image_url sama seperti logic Anda
@@ -57,7 +57,7 @@ class UserController extends Controller
     public function create()
     {
         try {
-            $data = User::select('id', 'nama_lengkap', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image', 'is_active')->get();
+            $data = User::select('id', 'nama_lengkap', 'username', 'email', 'nik', 'jabatan', 'departemen', 'bagian', 'image', 'is_active', 'no_hp')->get();
 
             $data = $data->map(function ($user) {
                 $imageName = trim($user->image ?? '', '/');
@@ -102,6 +102,7 @@ class UserController extends Controller
             'username' => 'required|unique:users',
             'password' => 'required|min:6',
             'email' => 'required|email',
+            'no_hp' => 'nullable|string|max:30',
             'jabatan' => 'required',
             'nik' => 'required',
             'departemen' => 'required',
@@ -138,6 +139,7 @@ class UserController extends Controller
             'username' => $request->username,
             'password' => bcrypt($request->password),
             'email' => $request->email,
+            'no_hp' => $request->no_hp,
             'nik' => $request->nik,
             'jabatan' => $request->jabatan,
             'departemen' => $request->departemen,
@@ -229,6 +231,7 @@ class UserController extends Controller
             'nama_lengkap' => 'required|string|max:255',
             'username'   => 'required|unique:users,username,' . $id,
             'email'      => 'required|email',
+            'no_hp'      => 'nullable|string|max:30',
             'password'   => 'nullable|min:6',
             'jabatan'    => 'required',
             'nik'        => 'required',
@@ -254,6 +257,7 @@ class UserController extends Controller
                 'nama_lengkap'   => $request->nama_lengkap,
                 'username'   => $request->username,
                 'email'      => $request->email,
+                'no_hp'      => $request->no_hp,
                 'nik'        => $request->nik,
                 'jabatan'    => $request->jabatan,
                 'departemen' => $request->input('departemen', $user->departemen ?? 'warehouse'),
@@ -505,6 +509,7 @@ class UserController extends Controller
             'username'   => 'required|unique:users,username,' . $user->id,
             'email'      => 'required|email',
             'nik'        => 'required',
+            'no_hp'      => Auth::user()->jabatan === 'operator' ? 'nullable' : 'nullable|string|max:30',
             'jabatan'    => Auth::user()->jabatan === 'operator' ? 'nullable' : 'required',
             'departemen' => Auth::user()->jabatan === 'operator' ? 'nullable' : 'required',
             'bagian'     => Auth::user()->jabatan === 'operator' ? 'nullable' : 'required',
@@ -524,6 +529,7 @@ class UserController extends Controller
                 $data['jabatan'] = $request->jabatan;
                 $data['departemen'] = $request->departemen;
                 $data['bagian'] = $request->bagian;
+                $data['no_hp'] = $request->no_hp;
             }
 
             // Photo Profile upload

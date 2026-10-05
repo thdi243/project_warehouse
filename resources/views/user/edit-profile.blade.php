@@ -107,6 +107,21 @@
                                         </div>
                                     </div>
 
+                                    @if (Auth::user()->jabatan !== 'operator')
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="no_hp" class="form-label fw-semibold">No. WhatsApp / HP</label>
+                                                <input type="text" class="form-control" id="no_hp" name="no_hp"
+                                                    placeholder="Contoh: 081234567890"
+                                                    value="{{ old('no_hp', $user->no_hp) }}">
+                                                @error('no_hp')
+                                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                                @enderror
+                                                <small class="text-muted">Digunakan untuk notifikasi WhatsApp via Fonnte Gateway.</small>
+                                            </div>
+                                        </div>
+                                    @endif
+
                                     @if (Auth::user()->jabatan == 'admin')
                                         <div class="col-md-6">
                                             <div class="mb-3">

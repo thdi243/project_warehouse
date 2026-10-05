@@ -117,6 +117,15 @@
                                 <div class="col-sm-8 info-value fw-medium text-capitalize">{{ str_replace('_', ' ', $user->bagian) }}</div>
                             </div>
 
+                            @if (!empty($user->no_hp))
+                                <div class="row mb-3 pb-2 border-bottom border-light">
+                                    <div class="col-sm-4 info-label text-muted">No. WhatsApp / HP:</div>
+                                    <div class="col-sm-8 info-value fw-medium">
+                                        <i class="bx bxl-whatsapp text-success me-1"></i>{{ $user->no_hp }}
+                                    </div>
+                                </div>
+                            @endif
+
                             @if (Auth::user()->id == $user->id)
                                 <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4 pt-3">
                                     <a href="{{ route('user.profile.change-password') }}" class="btn btn-outline-danger px-4">

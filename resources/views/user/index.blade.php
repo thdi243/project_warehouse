@@ -195,6 +195,11 @@
                                     <div class="invalid-feedback">Please enter a valid email.</div>
                                 </div>
                                 <div class="mb-3">
+                                    <label for="no_hp" class="form-label">No. WhatsApp / HP</label>
+                                    <input type="text" class="form-control" id="no_hp" name="no_hp"
+                                        placeholder="Contoh: 081234567890" />
+                                </div>
+                                <div class="mb-3">
                                     <label for="nik" class="form-label">NIK <span
                                             class="text-danger">*</span></label>
                                     <input type="number" class="form-control" id="nik" name="nik"
@@ -363,6 +368,13 @@
                                     <label for="editNik" class="form-label">NIK <span
                                             class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="editNik" name="editNik" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editNoHp" class="form-label">No. WhatsApp / HP</label>
+                                    <input type="text" class="form-control" id="editNoHp" name="no_hp"
+                                        placeholder="Contoh: 081234567890">
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -814,8 +826,9 @@
                                         </span>
                                     </div>
                                     <span class="badge ${badgeClass} px-3 py-2 mb-2 fs-7 jabatan">${user.jabatan}</span>
-                                    <p class="card-text text-muted mb-1 email"><i class="bi bi-envelope"></i> ${user.email}</p>
-                                    <p class="card-text text-muted mb-1 nik"><i class="bi bi-telephone"></i> ${user.nik}</p>
+                                    <p class="card-text text-muted mb-1 email"><i class="bi bi-envelope"></i> ${user.email || '-'}</p>
+                                    <p class="card-text text-muted mb-1 nik"><i class="bi bi-person-badge"></i> ${user.nik || '-'}</p>
+                                    ${user.no_hp ? `<p class="card-text text-muted mb-1 no-hp"><i class="bx bxl-whatsapp text-success me-1"></i>${user.no_hp}</p>` : ''}
                                     <p class="card-text text-muted mb-1 bagian"><i class="bi bi-building"></i> ${bagianFormatted}</p>
                                 </div>
                                 <div class="card-footer border-0 d-flex justify-content-between align-items-center">
@@ -931,6 +944,7 @@
                                     <div>
                                         <h5 class="fs-14 m-0 text-capitalize username">${user.nama_lengkap || user.username}</h5>
                                         <p class="text-muted mb-0 email"><i class="bi bi-envelope me-1"></i>${user.email || '-'}</p>
+                                        ${user.no_hp ? `<p class="text-muted mb-0 small"><i class="bx bxl-whatsapp text-success me-1"></i>${user.no_hp}</p>` : ''}
                                     </div>
                                 </div>
                             </td>
@@ -1207,6 +1221,7 @@
                         $("#editUsername").val(user.username);
                         $("#editEmail").val(user.email);
                         $("#editNik").val(user.nik);
+                        $("#editNoHp").val(user.no_hp || '');
                         $("#editJabatan").val(user.jabatan);
                         $("#editDepartemen").val(user.departemen);
                         $("#editBagian").val(user.bagian);
@@ -1290,6 +1305,7 @@
                 formData.append('nama_lengkap', $("#editNamaLengkap").val());
                 formData.append('username', $("#editUsername").val());
                 formData.append('email', $("#editEmail").val());
+                formData.append('no_hp', $("#editNoHp").val());
                 formData.append('jabatan', $("#editJabatan").val());
                 formData.append('nik', $("#editNik").val());
                 formData.append('departemen', $("#editDepartemen").val());
