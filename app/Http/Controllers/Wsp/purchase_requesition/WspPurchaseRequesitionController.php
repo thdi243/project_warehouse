@@ -7,14 +7,17 @@ use App\Jobs\SendPrApprovalEmail;
 use App\Jobs\SendPrRejectedEmail;
 use App\Models\NotificationsModel;
 use App\Models\User;
+use App\Services\FonnteService;
 use App\Models\UserSignatureModel;
 use App\Models\Wsp\BarangModel;
+use App\Models\Wsp\purchase_requesition\WspPrWaLogModel;
 use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionApprovalModel;
 use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionItemApprovalModel;
 use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionModel;
 use App\Models\Wsp\purchase_requesition\WspStockReservations;
 use App\Models\Wsp\stock_manage\StockOnHandWspModel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1823,5 +1826,136 @@ class WspPurchaseRequesitionController extends Controller
         }
 
         return;
+    }
+
+    public function followUpWhatsApp(Request $request, FonnteService $fonnteService)
+    {
+        $validator = Validator::make($request->all(), [
+            'pr_id'       => 'required|exists:wsp_purchase_requesition,id',
+            'approval_id' => 'nullable|exists:wsp_purchase_requesition_approval,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $pr = WspPurchaseRequesitionModel::with(['approval.approver'])->findOrFail($request->pr_id);
+
+        // Cari approver terkait
+        $targetApproval = null;
+        if ($request->filled('approval_id')) {
+            $targetApproval = $pr->approval->firstWhere('id', $request->approval_id);
+        } else {
+            // Ambil approver pending dengan level terendah
+            $targetApproval = $pr->approval
+                ->where('status', 'pending')
+                ->sortBy('level')
+                ->first();
+        }
+
+        if (!$targetApproval) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ditemukan approver berstatus pending untuk dokumen PR ini.',
+            ], 404);
+        }
+
+        $approver = $targetApproval->approver;
+        $recipientName = $approver ? $approver->nama_lengkap : ($targetApproval->role ?? 'Approver');
+
+        // Ambil target nomor HP resmi dari database user approver
+        $targetNoHp = trim($approver ? ($approver->no_hp ?? '') : '');
+        $targetNoHp = preg_replace('/[^0-9]/', '', $targetNoHp);
+
+        if (empty($targetNoHp)) {
+            return response()->json([
+                'success'       => false,
+                'empty_hp'      => true,
+                'approver_name' => $recipientName,
+                'approval_id'   => $targetApproval->id,
+                'message'       => "Nomor WhatsApp untuk approver {$recipientName} belum terdaftar di sistem. Silakan hubungi Tim IT atau Admin WSP untuk mendaftarkan nomor telepon.",
+            ], 422);
+        }
+
+        // Format angka bersih untuk perbandingan anti-spam (standar 62...)
+        $cleanPhone = $targetNoHp;
+        if (str_starts_with($cleanPhone, '0')) {
+            $cleanPhone = '62' . substr($cleanPhone, 1);
+        }
+
+        // 1. Anti-spam: Periksa apakah persetujuan tahap ini sudah di-follow up hari ini
+        if ($targetApproval->last_wa_follow_up_at && Carbon::parse($targetApproval->last_wa_follow_up_at)->isToday()) {
+            $jam = Carbon::parse($targetApproval->last_wa_follow_up_at)->format('H:i');
+            return response()->json([
+                'success'            => false,
+                'already_sent_today' => true,
+                'message'            => "Pengingat persetujuan tahap ini (Level {$targetApproval->level} - {$targetApproval->role}) sudah dikirim hari ini pada pukul {$jam} WIB. Untuk mencegah spam, follow up hanya dapat dikirim maksimal 1 kali sehari.",
+            ], 429);
+        }
+
+        // 2. Anti-spam: Periksa apakah nomor tujuan yang sama sudah pernah dikirim follow up hari ini
+        $todayPhoneLog = WspPrWaLogModel::where('phone_number', $cleanPhone)
+            ->whereDate('created_at', Carbon::today())
+            ->latest()
+            ->first();
+
+        if ($todayPhoneLog) {
+            $jam = Carbon::parse($todayPhoneLog->created_at)->format('H:i');
+            return response()->json([
+                'success'            => false,
+                'already_sent_today' => true,
+                'message'            => "Nomor WhatsApp ({$targetNoHp}) sudah pernah menerima pesan follow up hari ini pada pukul {$jam} WIB. Untuk mencegah spam, pengiriman ke nomor yang sama dibatasi maksimal 1 kali sehari.",
+            ], 429);
+        }
+
+        $urlDwm = url('https://tinyurl.com/ApprovalPR');
+        $dept = ucwords(str_replace('_', ' ', $pr->department ?? '-'));
+
+        // Pesan otomatis by sistem
+        $message = "*Halo Bapak/Ibu {$recipientName},*\n\n"
+            . "Pengingat persetujuan (approval) Purchase Requisition di sistem PR Online:\n"
+            . "• *No. Dokumen*: {$pr->no_doc}\n"
+            . "• *Pengaju*: {$pr->requested_by}\n"
+            . "• *Departemen*: {$dept}\n"
+            . "• *Tahap*: Level {$targetApproval->level} - {$targetApproval->role}\n\n"
+            . "Mohon kesediaan Bapak/Ibu untuk memeriksa notifikasi di *Inbox* atau folder *Spam* email Anda. Atau,\n\n"
+            . "👉 *Silakan setujui di sini:*\n"
+            . "{$urlDwm}\n\n"
+            . "Terima kasih atas kerja samanya.\n"
+            . "_Sistem PR Online_";
+
+        $sendResult = $fonnteService->sendMessage($targetNoHp, $message);
+
+        if ($sendResult['status']) {
+            // Simpan log pengiriman WA
+            WspPrWaLogModel::create([
+                'pr_id'        => $pr->id,
+                'approval_id'  => $targetApproval->id,
+                'user_id'      => Auth::id(),
+                'phone_number' => $cleanPhone,
+                'status'       => 'success',
+                'message'      => $message,
+            ]);
+
+            // Update timestamp follow up terakhir pada tahap approval
+            $targetApproval->update([
+                'last_wa_follow_up_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Pesan WhatsApp berhasil dikirim ke {$recipientName} ({$targetNoHp}).",
+                'data'    => $sendResult['data'] ?? [],
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal mengirim pesan WhatsApp: ' . ($sendResult['message'] ?? 'Terjadi kesalahan pengiriman'),
+            'raw'     => $sendResult['raw'] ?? null,
+        ], 500);
     }
 }

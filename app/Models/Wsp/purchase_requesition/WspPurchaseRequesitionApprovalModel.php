@@ -18,7 +18,12 @@ class WspPurchaseRequesitionApprovalModel extends Model
         'action_at',
         'action_by',
         'catatan',
-        'ttd'
+        'ttd',
+        'last_wa_follow_up_at'
+    ];
+
+    protected $casts = [
+        'last_wa_follow_up_at' => 'datetime',
     ];
 
     public function purchaseRequisition()
@@ -29,5 +34,10 @@ class WspPurchaseRequesitionApprovalModel extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approver_id');
+    }
+
+    public function waLogs()
+    {
+        return $this->hasMany(WspPrWaLogModel::class, 'approval_id');
     }
 }

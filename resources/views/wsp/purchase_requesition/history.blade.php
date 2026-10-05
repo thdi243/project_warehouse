@@ -193,6 +193,88 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Follow Up WhatsApp Approver --}}
+    <div class="modal fade" id="modalFollowUpWa" tabindex="-1" aria-labelledby="modalFollowUpWaLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-success text-white py-3">
+                    <h5 class="modal-title fw-bold text-white d-flex align-items-center" id="modalFollowUpWaLabel">
+                        <i class="bx bxl-whatsapp fs-20 me-2"></i> Follow Up WhatsApp Approver
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="wa_pr_id">
+                    <input type="hidden" id="wa_approval_id">
+
+                    <div class="alert border mb-3 py-2 px-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">No. Dokumen:</span>
+                            <span class="fw-bold text-dark" id="wa_no_doc">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">Pengaju:</span>
+                            <span class="fw-semibold text-dark" id="wa_requested_by">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">Departemen:</span>
+                            <span class="fw-semibold text-dark" id="wa_department">-</span>
+                        </div>
+                        <hr class="my-2 border-light">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Approver Tujuan:</span>
+                            <span class="fw-bold text-primary" id="wa_approver_name">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Tahap Menunggu:</span>
+                            <span class="badge bg-warning text-dark" id="wa_approver_role">-</span>
+                        </div>
+                    </div>
+
+                    <div id="wa_rate_limit_alert_container"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted mb-1 small">
+                            <i class="bx bxl-whatsapp text-success me-1"></i> Nomor WhatsApp Approver:
+                        </label>
+                        <div class="p-2 border rounded bg-light" id="wa_target_phone_container">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center">
+                                    <i class="bx bx-phone text-muted me-2 fs-16"></i>
+                                    <span class="fw-bold font-monospace text-dark" id="wa_target_phone_display">-</span>
+                                </div>
+                                <span class="badge" id="wa_target_phone_badge">Terdaftar</span>
+                            </div>
+                        </div>
+                        <small class="text-muted" style="font-size: 11px;">
+                            *Nomor diambil otomatis dari data akun user approver untuk mencegah penyalahgunaan.
+                        </small>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-muted mb-1 small">
+                            <i class="mdi mdi-information-outline me-1"></i> Format Pesan (Otomatis By Sistem):
+                        </label>
+                        <div class="p-2 border rounded bg-light text-dark font-monospace" id="wa_preview_box"
+                            style="font-size: 12px; white-space: pre-wrap; max-height: 175px; overflow-y: auto;">
+                        </div>
+                        <small class="text-muted" style="font-size: 11px;">Pesan dikirim langsung via Fonnte WhatsApp
+                            Gateway ke nomor di atas.</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-success d-flex align-items-center" id="btnSendWa">
+                        <i class="bx bxl-whatsapp fs-16 me-1"></i>
+                        <span id="btnSendWaText">Kirim WhatsApp</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -311,6 +393,19 @@
                         }
                     }
 
+                    let waSentToday = false;
+                    if (pr.approval && pr.approval.length > 0) {
+                        const pendingApproval = pr.approval.find(a => a.status === 'pending');
+                        if (pendingApproval && pendingApproval.last_wa_follow_up_at) {
+                            const d = new Date(pendingApproval.last_wa_follow_up_at);
+                            const now = new Date();
+                            if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() &&
+                                d.getDate() === now.getDate()) {
+                                waSentToday = true;
+                            }
+                        }
+                    }
+
                     tbody.append(`
                         <tr>
                             <td>${startIndex + index + 1}</td>
@@ -334,8 +429,13 @@
                                     <i class="mdi mdi-eye"></i>
                                 </button>
                                 <button class="btn btn-warning btn-print btn-sm" onclick="printPR(${pr.id})" title="Download PDF">
-                                        <i class="mdi mdi-printer"></i>
+                                    <i class="mdi mdi-printer"></i>
                                 </button>
+                                @can('permission', 'wsp-pr-follow-wa')
+                                    <button class="btn ${waSentToday ? 'btn-outline-success' : 'btn-success'} btn-sm btn-wa-followup" onclick="openFollowUpModal(${pr.id})" title="${waSentToday ? 'Follow Up WhatsApp (Sudah dikirim hari ini)' : 'Follow Up WhatsApp Approver'}">
+                                        <i class="bx ${waSentToday ? 'bx-check-double' : 'bxl-whatsapp'}"></i>
+                                    </button>
+                                @endcan
                             </td>
                         </tr>
                     `);
@@ -396,6 +496,21 @@
                         const desc = pr.jenis === 'Jasa' ? (item.desc || '-') : (item.barang
                             ?.nama_barang || item.desc || '-');
 
+                        let keteranganHtml = '-';
+                        if (item.keterangan) {
+                            keteranganHtml = `
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <span>${item.keterangan}</span>
+                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                            style="flex-shrink: 0;"
+                                            data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                            title="Copy Keterangan">
+                                        <i class="mdi mdi-content-copy"></i>
+                                    </button>
+                                </div>
+                            `;
+                        }
+
                         tbody.append(`
                             <tr>
                                 <td>${i + 1}</td>
@@ -405,19 +520,7 @@
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
                                 <td>${item.alasan ?? '-'}</td>
-                                <td>
-                                    ${item.keterangan ? `
-                                                                        <div class="d-flex align-items-center justify-content-between gap-2">
-                                                                            <span>${item.keterangan}</span>
-                                                                            <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                                                    style="flex-shrink: 0;"
-                                                                                    data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                                                    title="Copy Keterangan">
-                                                                                <i class="mdi mdi-content-copy"></i>
-                                                                            </button>
-                                                                        </div>
-                                                                    ` : '-'}
-                                </td>
+                                <td>${keteranganHtml}</td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
                                 <td class="text-center">${formatBadge(statusWrh)}</td>
                             </tr>
@@ -560,21 +663,28 @@
                     filteredPR = allPR;
                 } else {
                     filteredPR = allPR.filter(item => {
-                        const requestedBy = item.requested_by ? item.requested_by.toLowerCase() : '';
+                        const requestedBy = item.requested_by ? item.requested_by.toLowerCase() :
+                            '';
                         const noDoc = item.no_doc ? item.no_doc.toLowerCase() : '';
                         const prNumber = item.pr_number ? item.pr_number.toLowerCase() : '';
                         const department = item.department ? item.department.toLowerCase() : '';
 
                         const hasMatchingItem = item.items && item.items.some(prItem => {
-                            const mid = prItem.barang?.mid_barang ? String(prItem.barang.mid_barang).toLowerCase() : '';
-                            const namaBarang = prItem.barang?.nama_barang ? String(prItem.barang.nama_barang).toLowerCase() : '';
-                            const desc = prItem.desc ? String(prItem.desc).toLowerCase() : '';
-                            const keterangan = prItem.keterangan ? String(prItem.keterangan).toLowerCase() : '';
+                            const mid = prItem.barang?.mid_barang ? String(prItem.barang
+                                .mid_barang).toLowerCase() : '';
+                            const namaBarang = prItem.barang?.nama_barang ? String(prItem
+                                .barang.nama_barang).toLowerCase() : '';
+                            const desc = prItem.desc ? String(prItem.desc).toLowerCase() :
+                                '';
+                            const keterangan = prItem.keterangan ? String(prItem.keterangan)
+                                .toLowerCase() : '';
 
-                            return mid.includes(keyword) || namaBarang.includes(keyword) || desc.includes(keyword) || keterangan.includes(keyword);
+                            return mid.includes(keyword) || namaBarang.includes(keyword) ||
+                                desc.includes(keyword) || keterangan.includes(keyword);
                         });
 
-                        return requestedBy.includes(keyword) || noDoc.includes(keyword) || prNumber.includes(keyword) || department.includes(keyword) || hasMatchingItem;
+                        return requestedBy.includes(keyword) || noDoc.includes(keyword) || prNumber
+                            .includes(keyword) || department.includes(keyword) || hasMatchingItem;
                     });
                 }
                 currentPage = 1;
@@ -607,6 +717,34 @@
                         text = 'Rejected';
                     }
 
+                    let catatanHtml = '';
+                    if (a.catatan) {
+                        catatanHtml =
+                            `<div class="small mt-1 text-dark bg-light p-2 rounded">Catatan: ${a.catatan}</div>`;
+                    }
+
+                    let lastWaHtml = '';
+                    if (a.last_wa_follow_up_at) {
+                        const formattedWaDate = new Date(a.last_wa_follow_up_at).toLocaleString(
+                            'id-ID');
+                        lastWaHtml = `
+                            <div class="small text-muted mt-1">
+                                <i class="bx bxl-whatsapp text-success me-1"></i> Follow up WA terakhir: <span class="fw-semibold text-dark">${formattedWaDate}</span>
+                            </div>
+                        `;
+                    }
+
+                    let btnFollowUpHtml = '';
+                    if (a.status === 'pending') {
+                        btnFollowUpHtml = `
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fs-12" onclick="$('#approvalModal').modal('hide'); setTimeout(() => openFollowUpModal(${pr.id}, ${a.id}), 350);" title="Follow Up WhatsApp">
+                                    <i class="bx bxl-whatsapp me-1"></i> Follow Up WhatsApp
+                                </button>
+                            </div>
+                        `;
+                    }
+
                     html += `
                         <div class="d-flex align-items-start mb-3 border-bottom pb-2">
                             <div class="me-3">
@@ -623,7 +761,11 @@
                                 <div class="small text-muted mt-1">
                                     ${a.approver ? a.approver.nama_lengkap : '-'} | ${a.approver && a.approver.departemen ? a.approver.departemen.replace(/_/g, ' ').toUpperCase() : '-'}
                                 </div>
-                                ${a.catatan ? `<div class="small mt-1 text-dark bg-light p-2 rounded">Catatan: ${a.catatan}</div>` : ''}
+                                ${catatanHtml}
+                                @can('permission', 'wsp-pr-follow-wa')
+                                    ${lastWaHtml}
+                                    ${btnFollowUpHtml}
+                                @endcan
                             </div>
                         </div>
                     `;
@@ -632,6 +774,263 @@
                 $('#approvalTracking').html(html);
                 $('#approvalModal').modal('show');
             }
+
+            let currentFollowUpPr = null;
+            let currentFollowUpApproval = null;
+
+            function generateDefaultWaMessage(pr, approval) {
+                const approverName = approval?.approver?.nama_lengkap || approval?.role || 'Bapak/Ibu Approver';
+                const role = approval?.role ? approval.role.replace(/_/g, ' ') : 'Approver';
+                const level = approval?.level || '-';
+                const noDoc = pr.no_doc || '-';
+                const prNumber = pr.pr_number || '-';
+                const reqBy = pr.requested_by || '-';
+                const dept = (pr.department || '').replace(/_/g, ' ').toUpperCase();
+                // Gunakan URL alias singkat /pr-app
+                const urlShort = 'https://tinyurl.com/ApprovalPR';
+
+                return `*Halo Bapak/Ibu ${approverName},*\n\n` +
+                    `Pengingat persetujuan (approval) Purchase Requisition di sistem *PR Online*:\n` +
+                    `• *No. Dokumen*: ${noDoc}\n` +
+                    `• *Pengaju*: ${reqBy}\n` +
+                    `• *Departemen*: ${dept}\n` +
+                    `• *Tahap*: Level ${level} - ${role}\n\n` +
+                    `Mohon kesediaan Bapak/Ibu untuk memeriksa notifikasi di *Inbox* atau folder *Spam* email Anda.\n\n` +
+                    `👉 *Silakan setujui di sini / tinjau:*\n` +
+                    `${urlShort}\n\n` +
+                    `Terima kasih atas kerja samanya.\n` +
+                    `_Sistem PR Online_`;
+            }
+
+            window.openFollowUpModal = function(id, preferredApprovalId = null) {
+                const pr = allPR.find(p => p.id === id);
+                if (!pr) {
+                    Swal.fire('Error', 'Data PR tidak ditemukan', 'error');
+                    return;
+                }
+
+                const approvals = pr.approval ? [...pr.approval].sort((a, b) => a.level - b.level) : [];
+
+                // Cari approver pending yang aktif saat ini (level approve sekarang)
+                let targetApproval = null;
+                if (preferredApprovalId) {
+                    targetApproval = approvals.find(a => a.id === preferredApprovalId);
+                }
+                if (!targetApproval) {
+                    targetApproval = approvals.find(a => a.status === 'pending');
+                }
+
+                if (!targetApproval) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Tidak Ada Tahap Pending',
+                        text: 'Semua persetujuan pada dokumen PR ini sudah diproses atau selesai.',
+                    });
+                    return;
+                }
+
+                currentFollowUpPr = pr;
+                currentFollowUpApproval = targetApproval;
+
+                $('#wa_pr_id').val(pr.id);
+                $('#wa_approval_id').val(targetApproval.id);
+                $('#wa_no_doc').text(pr.no_doc || '-');
+                $('#wa_requested_by').text(pr.requested_by || '-');
+                $('#wa_department').text((pr.department || '').replace(/_/g, ' ').toUpperCase());
+
+                const approverName = targetApproval.approver ? targetApproval.approver.nama_lengkap :
+                    'Belum Ditentukan';
+                const approverRole =
+                    `Level ${targetApproval.level} - ${targetApproval.role.replace(/_/g, ' ')}`;
+                $('#wa_approver_name').text(approverName);
+                $('#wa_approver_role').text(approverRole);
+
+                // Ambil nomor whatsapp user approver jika ada, kosongkan jika belum ada
+                const phone = (targetApproval.approver?.no_hp || '').trim();
+                const hasPhone = phone.length > 0;
+
+                if (hasPhone) {
+                    $('#wa_target_phone_display').text(phone).removeClass('text-danger fst-italic').addClass(
+                        'text-dark');
+                    $('#wa_target_phone_badge')
+                        .removeClass('bg-soft-danger text-danger border-danger')
+                        .addClass('bg-soft-success text-success border border-success')
+                        .text('Terdaftar');
+                } else {
+                    $('#wa_target_phone_display').html(
+                        '<span class="text-danger fst-italic">Belum Terdaftar</span>');
+                    $('#wa_target_phone_badge')
+                        .removeClass('bg-soft-success text-success border-success')
+                        .addClass('bg-soft-danger text-danger border border-danger')
+                        .text('Belum Terdaftar');
+                }
+
+                // Preview pesan otomatis by sistem
+                const msg = generateDefaultWaMessage(pr, targetApproval);
+                $('#wa_preview_box').text(msg);
+
+                // Reset alert dan status tombol kirim
+                $('#wa_rate_limit_alert_container').empty();
+                $('#btnSendWa').prop('disabled', false).removeClass('disabled').html(
+                    '<i class="bx bxl-whatsapp fs-16 me-1"></i> <span id="btnSendWaText">Kirim WhatsApp</span>'
+                );
+
+                if (!hasPhone) {
+                    $('#wa_rate_limit_alert_container').html(`
+                        <div class="alert alert-danger py-2 px-3 small d-flex align-items-start mb-3">
+                            <i class="bx bx-error-circle fs-20 me-2 flex-shrink-0 text-danger mt-1"></i>
+                            <div>
+                                <strong>Nomor WhatsApp Belum Terdaftar!</strong><br>
+                                Akun approver <b>${approverName}</b> belum memiliki nomor WhatsApp di sistem.<br>
+                                Silakan hubungi <b>Tim IT</b> atau <b>Admin WSP</b> untuk mendaftarkan nomor telepon.
+                            </div>
+                        </div>
+                    `);
+                    $('#btnSendWa').prop('disabled', true).addClass('disabled').html(
+                        '<i class="bx bx-x-circle me-1"></i> Nomor Belum Terdaftar'
+                    );
+                } else if (targetApproval.last_wa_follow_up_at) {
+                    // Cek batas pengiriman: maksimal 1x sehari untuk tahap approval ini
+                    const lastDate = new Date(targetApproval.last_wa_follow_up_at);
+                    const now = new Date();
+                    const isSameDay = lastDate.getFullYear() === now.getFullYear() &&
+                        lastDate.getMonth() === now.getMonth() &&
+                        lastDate.getDate() === now.getDate();
+
+                    if (isSameDay) {
+                        const timeStr = lastDate.toLocaleTimeString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        $('#wa_rate_limit_alert_container').html(`
+                            <div class="alert alert-warning py-2 px-3 small d-flex align-items-center mb-3">
+                                <i class="bx bx-time-five fs-20 me-2 flex-shrink-0 text-warning"></i>
+                                <div>
+                                    <strong>Pengingat Sudah Terkirim Hari Ini</strong><br>
+                                    Pesan WhatsApp untuk tahap persetujuan ini sudah dikirim hari ini pada pukul <b>${timeStr} WIB</b>.<br>
+                                    Untuk mencegah spam, pengiriman dibatasi maksimal <b>1 kali sehari</b>.
+                                </div>
+                            </div>
+                        `);
+                        $('#btnSendWa').prop('disabled', true).addClass('disabled').html(
+                            '<i class="bx bx-check-double me-1"></i> Sudah Dikirim Hari Ini'
+                        );
+                    }
+                }
+
+                $('#modalFollowUpWa').modal('show');
+            };
+
+            $('#btnSendWa').on('click', function() {
+                const prId = $('#wa_pr_id').val();
+                const approvalId = $('#wa_approval_id').val();
+                const phone = (currentFollowUpApproval?.approver?.no_hp || '').trim();
+
+                if (!phone) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Nomor WhatsApp Belum Terdaftar',
+                        text: 'Nomor WhatsApp approver belum terdaftar di sistem. Silakan hubungi Tim IT atau Admin WSP untuk mendaftarkan nomor telepon.',
+                    });
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Kirim Pengingat WhatsApp?',
+                    text: `Pesan follow up akan dikirim ke nomor ${phone} via Fonnte.`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="bx bxl-whatsapp me-1"></i> Ya, Kirim Sekarang',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const btn = $('#btnSendWa');
+                        const originalHtml = btn.html();
+                        btn.prop('disabled', true).html(
+                            '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Mengirim...'
+                        );
+
+                        $.ajax({
+                            url: "{{ url('purchase-requesition/follow-up-wa') }}",
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                pr_id: prId,
+                                approval_id: approvalId
+                            },
+                            dataType: 'json',
+                            success: function(res) {
+                                btn.prop('disabled', false).html(originalHtml);
+                                if (res.success) {
+                                    if (currentFollowUpApproval) {
+                                        currentFollowUpApproval.last_wa_follow_up_at =
+                                            new Date().toISOString();
+                                    }
+
+                                    // Refresh tampilan tabel jika ada
+                                    if (typeof renderTable === 'function') {
+                                        renderTable();
+                                    }
+
+                                    $('#modalFollowUpWa').modal('hide');
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Berhasil Terkirim!',
+                                        text: res.message ||
+                                            'Pesan WhatsApp berhasil dikirim ke approver.',
+                                        timer: 3500,
+                                        showConfirmButton: true
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Gagal Mengirim',
+                                        text: res.message ||
+                                            'Terjadi kesalahan saat mengirim pesan WhatsApp.'
+                                    });
+                                }
+                            },
+                            error: function(xhr) {
+                                btn.prop('disabled', false).html(originalHtml);
+                                const err = xhr.responseJSON?.message ||
+                                    'Gagal menghubungi server WhatsApp Fonnte.';
+                                const isRateLimit = (xhr.status === 429) || (xhr
+                                    .responseJSON?.already_sent_today);
+
+                                Swal.fire({
+                                    icon: isRateLimit ? 'warning' : 'error',
+                                    title: isRateLimit ?
+                                        'Batas Pengiriman Tercapai' : 'Gagal',
+                                    text: err
+                                });
+
+                                if (isRateLimit && currentFollowUpApproval) {
+                                    currentFollowUpApproval.last_wa_follow_up_at =
+                                        new Date().toISOString();
+                                    $('#wa_rate_limit_alert_container').html(`
+                                        <div class="alert alert-warning py-2 px-3 small d-flex align-items-center mb-3">
+                                            <i class="bx bx-time-five fs-20 me-2 flex-shrink-0 text-warning"></i>
+                                            <div>
+                                                <strong>Batas Pengiriman Tercapai (1x Sehari)</strong><br>
+                                                ${err}
+                                            </div>
+                                        </div>
+                                    `);
+                                    btn.prop('disabled', true).addClass('disabled')
+                                        .html(
+                                            '<i class="bx bx-check-double me-1"></i> Sudah Dikirim Hari Ini'
+                                        );
+                                    if (typeof renderTable === 'function') {
+                                        renderTable();
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+            });
         });
     </script>
 @endsection

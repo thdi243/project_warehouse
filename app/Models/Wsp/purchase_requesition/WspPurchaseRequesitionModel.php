@@ -37,4 +37,9 @@ class WspPurchaseRequesitionModel extends Model
     {
         return $this->hasMany(WspPurchaseRequesitionApprovalModel::class, 'pr_id');
     }
+
+    public function waLogs()
+    {
+        return $this->hasMany(WspPrWaLogModel::class, 'pr_id');
+    }
 }
