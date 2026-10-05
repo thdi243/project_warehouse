@@ -136,9 +136,9 @@ class MasterKempuModel extends Model
             }
         });
 
-        // Sinkronisasi status SCRAP ke kempu_main
+        // Sinkronisasi status SCRAP / NONAKTIF ke kempu_main
         static::saved(function ($kempu) {
-            if ($kempu->status === 'scrap' || $kempu->status === 'damaged') {
+            if ($kempu->status === 'scrap' || $kempu->status === 'damaged' || $kempu->status === 'nonaktif') {
                 if ($kempu->main) {
                     $kempu->main->update([
                         'current_status'   => self::STATUS_SCRAPPED,

@@ -647,7 +647,7 @@
                         $('#alertReusedNotice').html(`
                             <div class="d-flex align-items-center gap-2 text-danger">
                                 <i class="ri-delete-bin-line fs-18"></i>
-                                <div>Kempu ini akan resmi dialihkan ke status <b>SCRAP (Afkir)</b>.</div>
+                                <div>Kempu ini akan resmi dibuatkan Berita Acara Scrap dan dialihkan ke status <b>NONAKTIF</b>.</div>
                             </div>
                         `).removeClass('alert-info').addClass('alert-danger').show();
                     }

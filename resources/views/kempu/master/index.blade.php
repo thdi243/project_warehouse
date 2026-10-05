@@ -767,6 +767,8 @@
                     let statusBadge = '';
                     if (isTrashed) {
                         statusBadge = '<span class="badge bg-danger">Nonaktif (Deleted)</span>';
+                    } else if (row.status === 'nonaktif') {
+                        statusBadge = '<span class="badge bg-danger">Nonaktif</span>';
                     } else if (row.status === 'scrap' || row.status === 'damaged' || row.current_status ===
                         'SCRAPPED') {
                         statusBadge = '<span class="badge badge-status-scrap">Scrap</span>';
@@ -776,7 +778,8 @@
                             'in_use': '<span class="badge badge-status-in_use">In Use</span>',
                             'maintenance': '<span class="badge badge-status-maintenance">Maintenance</span>',
                             'damaged': '<span class="badge badge-status-damaged">Scrap</span>',
-                            'scrap': '<span class="badge badge-status-scrap">Scrap</span>'
+                            'scrap': '<span class="badge badge-status-scrap">Scrap</span>',
+                            'nonaktif': '<span class="badge bg-danger">Nonaktif</span>'
                         };
                         statusBadge = statusMap[row.status] ||
                             `<span class="badge bg-secondary">${row.status || '-'}</span>`;

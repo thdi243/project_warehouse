@@ -179,6 +179,10 @@ class KempuProduksiController extends Controller
                     'Engineering Workshop (Tidak OK / Scrap)',
                     'NOT_OK',
                     MasterKempuModel::STATUS_QC_AFTER_FILLING_REJECT,
+                    MasterKempuModel::STATUS_SCRAPPED,
+                    'SCRAPPED',
+                    'SCRAP',
+                    'Scrap',
                 ],
                 'description'     => 'Pembuatan Berita Acara (BA) Scrap untuk kempu rusak permanen yang dinyatakan Scrap oleh Engineering Workshop / QC.',
             ],
@@ -253,17 +257,19 @@ class KempuProduksiController extends Controller
                 $card['count_label'] = 'Akses Khusus';
                 continue;
             }
-            $card['count'] = MasterKempuModel::whereHas('main', function ($q) use ($targetStatuses) {
-                $q->whereIn('current_status', $targetStatuses)
-                    ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
-            })->count();
+            $card['count'] = MasterKempuModel::whereHas('main', function ($q) use ($targetStatuses, $key) {
+                $q->whereIn('current_status', $targetStatuses);
+                if ($key !== 'create-ba-scrap') {
+                    $q->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+                }
+            })->where('status', '!=', 'nonaktif')->count();
         }
         unset($card);
 
         $totalProduksi = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_PRODUKSI)
                 ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
-        })->count();
+        })->where('status', '!=', 'nonaktif')->count();
 
         return response()->json([
             'status' => true,
@@ -289,9 +295,12 @@ class KempuProduksiController extends Controller
                 $card['count_label'] = 'Akses Khusus';
                 continue;
             }
-            $card['count'] = MasterKempuModel::whereHas('main', function ($q) use ($targetStatuses) {
+            $card['count'] = MasterKempuModel::whereHas('main', function ($q) use ($targetStatuses, $key) {
                 $q->whereIn('current_status', $targetStatuses);
-            })->count();
+                if ($key !== 'create-ba-scrap') {
+                    $q->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+                }
+            })->where('status', '!=', 'nonaktif')->count();
         }
         unset($card);
 
@@ -443,11 +452,22 @@ class KempuProduksiController extends Controller
             return ['valid' => true, 'message' => null];
         }
 
-        if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
-            return [
-                'valid'   => false,
-                'message' => "Kempu {$idKempu} sudah berstatus SCRAP dan tidak dapat diproses lagi.",
-            ];
+        if ($cardKey !== 'create-ba-scrap') {
+            if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0 || strcasecmp($kempu->status ?? '', 'nonaktif') === 0) {
+                return [
+                    'valid'   => false,
+                    'message' => "Kempu {$idKempu} sudah berstatus SCRAP / Nonaktif dan tidak dapat diproses lagi.",
+                ];
+            }
+        } else {
+            // Khusus Create BA Scrap:
+            // Jika kempu sudah berstatus nonaktif (BA Scrap sudah pernah dibuat dan dinonaktifkan):
+            if (strcasecmp($kempu->status ?? '', 'nonaktif') === 0) {
+                return [
+                    'valid'   => false,
+                    'message' => "Kempu {$idKempu} sudah berstatus NONAKTIF (BA Scrap sudah pernah dibuat sebelumnya).",
+                ];
+            }
         }
 
         $cards = self::getCards();
@@ -463,6 +483,13 @@ class KempuProduksiController extends Controller
             if (strcasecmp($currentStatus, $st) === 0) {
                 $isMatch = true;
                 break;
+            }
+        }
+
+        // Khusus Create BA Scrap: izinkan juga jika master kempu berstatus scrap/damaged
+        if ($cardKey === 'create-ba-scrap') {
+            if (in_array(strtolower($kempu->status ?? ''), ['scrap', 'damaged'])) {
+                $isMatch = true;
             }
         }
 
@@ -915,7 +942,7 @@ class KempuProduksiController extends Controller
             $toLocation    = MasterKempuModel::LOC_SCRAP;
             $condition     = 'NOT_OK';
             $actionResult  = 'BA_SCRAP';
-            $resultMessage = "Berita Acara (BA) Scrap berhasil dibuat di Produksi. Status kempu resmi menjadi SCRAP.";
+            $resultMessage = "Berita Acara (BA) Scrap berhasil dibuat di Produksi. Status kempu resmi menjadi NONAKTIF (Scrap).";
         } elseif ($cardKey === 'transfer-in-from-wpm') {
             $nextStatus    = MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING;
             $toLocation    = MasterKempuModel::LOC_PRODUKSI;
@@ -985,13 +1012,13 @@ class KempuProduksiController extends Controller
             $creatorId = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
 
             // Update data master kempu (kempu_master)
-            // Keputusan resmi SCRAP berada di tangan Produksi saat scan Create BA Scrap
+            // Keputusan resmi SCRAP dan penonaktifan kempu berada di tangan Produksi saat scan Create BA Scrap
             $masterUpdate = [
                 'updated_by' => $creatorId,
             ];
-            if ($nextStatus === MasterKempuModel::STATUS_SCRAPPED) {
-                $masterUpdate['status']     = 'scrap';
-                $masterUpdate['keterangan'] = $notes ?: 'Berita Acara Scrap oleh Produksi';
+            if ($cardKey === 'create-ba-scrap' || $nextStatus === MasterKempuModel::STATUS_SCRAPPED) {
+                $masterUpdate['status']     = 'nonaktif';
+                $masterUpdate['keterangan'] = $notes ?: 'Berita Acara Scrap (Nonaktif) oleh Produksi';
             }
             $kempu->update($masterUpdate);
 

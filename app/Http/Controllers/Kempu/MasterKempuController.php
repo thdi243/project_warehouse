@@ -29,17 +29,21 @@ class MasterKempuController extends Controller
         ]);
 
         if ($status === 'trashed') {
-            $query->onlyTrashed();
+            $query->where(function ($q) {
+                $q->onlyTrashed()->orWhere('status', 'nonaktif');
+            });
         } elseif ($status === 'scrap') {
             $query->where(function ($q) {
                 $q->where('status', 'scrap')
                     ->orWhere('status', 'damaged')
+                    ->orWhere('status', 'nonaktif')
                     ->orWhereHas('main', function ($mq) {
                         $mq->where('current_status', MasterKempuModel::STATUS_SCRAPPED);
                     });
             });
         } elseif ($status === 'active') {
             $query->where('status', 'active')
+                ->where('status', '!=', 'nonaktif')
                 ->whereDoesntHave('main', function ($mq) {
                     $mq->where('current_status', MasterKempuModel::STATUS_SCRAPPED);
                 });
