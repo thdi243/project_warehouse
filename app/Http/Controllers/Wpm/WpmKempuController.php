@@ -240,7 +240,22 @@ class WpmKempuController extends Controller
                     strtolower(MasterKempuModel::STATUS_IN_TRANSIT_WPM),
                 ];
 
-                if (!in_array(strtolower($currentStatus), $allowedFromPas)) {
+                $isFromPas = in_array(strtolower($currentStatus), $allowedFromPas);
+
+                // Pengecualian khusus Kempu Lama:
+                // Kempu lama yang baru dicatat fisiknya saat tiba kembali dari PAS (status awal atau belum pernah melewati WFG di sistem digital)
+                // dan sudah / sedang mengisi nilai Reused manual, DIIZINKAN untuk diproses pada 'Transfer In From PAS'.
+                $isInitialStatus = in_array(strtolower($currentStatus), [
+                    'registered',
+                    strtolower(MasterKempuModel::STATUS_REGISTERED),
+                    strtolower(MasterKempuModel::STATUS_QC_PM_PENDING),
+                    strtolower(MasterKempuModel::STATUS_QC_PM_RELEASE),
+                    strtolower(MasterKempuModel::STATUS_QC_PM_PASSED),
+                    strtolower(MasterKempuModel::STATUS_GR_COMPLETED),
+                ]);
+                $isOldKempuAllowed = ($isOldKempu && ($isInitialStatus || !$kempu->hasPassedWfg()));
+
+                if (!$isFromPas && !$isOldKempuAllowed) {
                     return [
                         'valid'   => false,
                         'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Untuk menjalankan 'Transfer In From PAS', kempu harus berstatus 'Transfer Out to BAS' dari Warehouse PT PAS.",
