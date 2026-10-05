@@ -447,8 +447,23 @@ class KempuProduksiController extends Controller
         $currentLocation = trim($kempu->main?->current_location ?? $kempu->current_location ?? '');
         $idKempu         = $kempu->id_kempu;
 
-        // Force Scan membebaskan validasi urutan flow untuk eksekusi alur kapanpun dan dimanapun
+        // Force Scan Produksi: Membebaskan urutan normal, KECUALI jika kempu sedang berstatus REJECT / REPAIR di Workshop Engineering
         if ($cardKey === 'prod-force') {
+            $isReject = (
+                strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+                strcasecmp($currentLocation, MasterKempuModel::LOC_ENG) === 0 ||
+                str_contains(strtoupper($currentStatus), 'REJECT') ||
+                str_contains(strtoupper($currentStatus), 'REPAIR') ||
+                in_array(strtolower($kempu->status ?? ''), ['maintenance', 'damaged', 'reject'])
+            );
+
+            if ($isReject) {
+                return [
+                    'valid'   => false,
+                    'message' => "Alur Wajib: Kempu {$idKempu} saat ini sedang berstatus REJECT / REPAIR di Workshop Engineering ('{$currentStatus}' - Lokasi: {$currentLocation}). Kempu reject wajib diperbaiki oleh Engineering dan melalui verifikasi ulang di QC PM serta WPM terlebih dahulu sebelum dapat diproses kembali di Produksi. Status reject tidak boleh di-force scan.",
+                ];
+            }
+
             return ['valid' => true, 'message' => null];
         }
 
