@@ -327,6 +327,21 @@
                                         <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
                                         <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
                                     </optgroup>
+                                @elseif ($card['key'] === 'qc-proses-force')
+                                    <optgroup label="── Alur 1: Cek Incoming & Pre Cuci ──">
+                                        <option value="RELEASE_PRE_CUCI">&#x1F7E2; Lolos Pre-Cuci (+1 Reused, Siap Cuci)</option>
+                                        <option value="HOLD_PRE_CUCI">&#x1F7E1; Tahan / Hold Pre Cuci (Evaluasi)</option>
+                                        <option value="REJECT_WORKSHOP">&#x1F534; Reject Pre-Cuci (Kirim Workshop Engineering)</option>
+                                    </optgroup>
+                                    <optgroup label="── Alur 2: Cek After Filling ──">
+                                        <option value="RELEASE_AFTER_FILLING">&#x1F7E2; Lolos After Filling (Siap Kirim WFG)</option>
+                                        <option value="HOLD_AFTER_FILLING">&#x1F7E1; Tahan / Hold After Filling (Evaluasi)</option>
+                                        <option value="REPRO">&#x1F504; Repro (Produk Reject ke Produksi)</option>
+                                        <option value="REJECT_WORKSHOP">&#x1F534; Reject After Filling (Kirim Workshop)</option>
+                                    </optgroup>
+                                    <optgroup label="── Keputusan Khusus ──">
+                                        <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
+                                    </optgroup>
                                 @else
                                     <optgroup label="── Keputusan Release (Lolos) ──">
                                         <option value="RELEASE_PM">&#x1F7E2; Lolos QC PM (Release ke WPM)</option>

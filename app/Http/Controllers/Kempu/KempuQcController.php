@@ -780,16 +780,95 @@ class KempuQcController extends Controller
         $currentLocation = trim($kempu->main?->current_location ?? $kempu->current_location ?? '');
         $idKempu = $kempu->id_kempu;
 
-        // Force Scan membebaskan validasi urutan flow untuk decision kapanpun dan dimanapun
-        if (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
-            return ['valid' => true, 'message' => null];
-        }
-
-        if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
+        // 1. Kempu SCRAP / Non-aktif tidak dapat diproses di QC manapun (termasuk Force Scan)
+        if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0 ||
+            strcasecmp($currentStatus, 'SCRAP') === 0 ||
+            strcasecmp($currentStatus, 'nonaktif') === 0 ||
+            strcasecmp($kempu->status ?? '', 'nonaktif') === 0) {
             return [
                 'valid'   => false,
-                'message' => "Kempu {$idKempu} berstatus SCRAP dan tidak dapat diproses di QC.",
+                'message' => "Kempu {$idKempu} berstatus SCRAP / Non-aktif dan tidak dapat diproses di QC.",
             ];
+        }
+
+        // 2. ATURAN REJECT INCOMING & ALUR BALIK QC PROSES (GABISA WALAUPUN FORCE SCAN):
+        // Jika kempu reject di QC Proses (Cek Pre Cuci & Incoming) ke Engineering, kempu WAJIB mengikuti alur:
+        // Engineering (Bisa Repair) -> QC PM (WPM) -> QC PM Release -> WPM Transfer Out -> Produksi Transfer In.
+        // Di QC Proses (baik Cek Pre Cuci biasa maupun Force Scan QC Proses), reject di incoming GABOLEH di-force:
+        // a. Masih berstatus ENG_REPAIR (sedang di Engineering)
+        // b. Masih berstatus di alur WPM / QC PM / In Transit (belum di-Transfer In oleh Produksi)
+        $isQcProsesContext = in_array($qcType, ['qc-pre-cuci', 'qc-proses', 'qc-proses-force', 'qc-force']);
+        if ($isQcProsesContext) {
+            // a. Jika kempu berstatus REPAIR di Workshop Engineering (Reject Incoming / QC)
+            if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+                strcasecmp($currentStatus, 'ENG_REPAIR') === 0 ||
+                strcasecmp($currentLocation, MasterKempuModel::LOC_ENG) === 0) {
+                return [
+                    'valid'   => false,
+                    'message' => "Alur Wajib: Kempu {$idKempu} saat ini berstatus REPAIR di Workshop Engineering (Reject Incoming / QC). Kempu wajib diperbaiki oleh Engineering, lalu diverifikasi di QC PM dan ditransfer oleh WPM ke Produksi terlebih dahulu. Status reject di incoming tidak boleh di-force scan di QC Proses.",
+                ];
+            }
+
+            // b. Jika kempu masih di WPM / QC PM / In Transit ke Produksi (belum di-Transfer In oleh Produksi)
+            $wpmOrTransitStatuses = [
+                MasterKempuModel::STATUS_QC_PM_PENDING,
+                MasterKempuModel::STATUS_QC_PM_HOLD,
+                MasterKempuModel::STATUS_QC_PM_RELEASE,
+                MasterKempuModel::STATUS_QC_PM_PASSED,
+                'QC_PM_PENDING',
+                'QC_PM_HOLD',
+                'QC_PM_RELEASE',
+                'QC PM Release',
+                'QC PM Passed',
+                'QC PM Lolos (OK)',
+                MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD,
+                MasterKempuModel::STATUS_IN_TRANSIT_PROD,
+                'WPM_TRANSFER_OUT_TO_PROD',
+                'IN_TRANSIT_PRODUKSI',
+                'Transfer Out To Produksi',
+                'Transfer Out to Produksi',
+                MasterKempuModel::STATUS_REGISTERED,
+                'REGISTERED',
+                MasterKempuModel::STATUS_GR_COMPLETED,
+                'GR_COMPLETED',
+                MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
+                'WPM_TRANSFER_IN_FROM_PAS',
+                'Transfer In From PAS',
+            ];
+
+            $isWpmOrTransit = false;
+            foreach ($wpmOrTransitStatuses as $st) {
+                if (strcasecmp($currentStatus, $st) === 0) {
+                    $isWpmOrTransit = true;
+                    break;
+                }
+            }
+
+            // Di QC Proses (baik pre-cuci biasa maupun qc-proses-force), kempu yang belum di-transfer in oleh produksi dilarang keras diproses
+            if ($qcType === 'qc-proses-force' || $qcType === 'qc-pre-cuci' || $qcType === 'qc-proses') {
+                if ($isWpmOrTransit || in_array(strtoupper($currentLocation), [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Alur Wajib: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Kempu reject incoming / dari WPM wajib menyelesaikan verifikasi QC PM, Transfer Out WPM, dan di-Transfer In oleh bagian Produksi terlebih dahulu sebelum dapat di-QC Pre Cuci. Status tidak boleh di-force scan di QC Proses.",
+                    ];
+                }
+            }
+        }
+
+        // 3. Batas Maksimal 21x Reused untuk QC Pre Cuci & QC Proses (termasuk Force Scan)
+        if (in_array($qcType, ['qc-pre-cuci', 'qc-proses', 'qc-proses-force'])) {
+            $reused = (int)($kempu->main?->reused_count ?? 0);
+            if ($reused >= 21) {
+                return [
+                    'valid'   => false,
+                    'message' => "Batas Maksimal Tercapai: Kempu {$idKempu} telah mencapai batas pemakaian 21x reused (saat ini: {$reused}x). Kempu tidak dapat digunakan lagi dan harus dialihkan ke SCRAP / Engineering.",
+                ];
+            }
+        }
+
+        // 4. Force Scan membebaskan validasi urutan flow selain kondisi alur wajib di atas
+        if (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
+            return ['valid' => true, 'message' => null];
         }
 
         $configs = self::getQcConfig();
@@ -812,30 +891,9 @@ class KempuQcController extends Controller
             if ($qcType === 'qc-pm') {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). QC PM hanya menerima kempu baru hasil GR atau kempu dari 'Transfer In From PAS' di WPM.",
+                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). QC PM hanya menerima kempu baru hasil GR, kempu dari 'Transfer In From PAS' di WPM, atau kempu hasil repair dari Engineering.",
                 ];
             } elseif ($qcType === 'qc-pre-cuci' || $qcType === 'qc-proses') {
-                // Beri pesan khusus jika kempu masih berstatus Transfer Out dari WPM / In Transit ke Produksi
-                $inTransitStatuses = [
-                    MasterKempuModel::STATUS_IN_TRANSIT_PROD,
-                    'IN_TRANSIT_PRODUKSI',
-                    'Transfer Out To Produksi',
-                    'Transfer Out to Produksi',
-                    MasterKempuModel::STATUS_QC_PM_RELEASE,
-                    MasterKempuModel::STATUS_QC_PM_PASSED,
-                    'QC PM Release',
-                    'QC PM Passed',
-                    'QC PM Lolos (OK)',
-                ];
-                foreach ($inTransitStatuses as $st) {
-                    if (strcasecmp($currentStatus, $st) === 0) {
-                        return [
-                            'valid'   => false,
-                            'message' => "Alur Tidak Sesuai: Kempu {$idKempu} belum di-Transfer In oleh bagian Produksi (Status saat ini: '{$currentStatus}'). Operator Produksi wajib melakukan scan 'Transfer in from WPM' terlebih dahulu sebelum kempu dapat di-QC Pre Cuci.",
-                        ];
-                    }
-                }
-
                 return [
                     'valid'   => false,
                     'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Cek Incoming & Pre Cuci hanya dapat diproses setelah kempu di-Transfer In dari WPM oleh bagian Produksi.",
@@ -849,17 +907,6 @@ class KempuQcController extends Controller
                 return [
                     'valid'   => false,
                     'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Status tidak memenuhi syarat untuk {$card['title']}.",
-                ];
-            }
-        }
-
-        // Cek jika kempu di QC Pre Cuci sudah mencapai batas 21x Reused
-        if ($qcType === 'qc-pre-cuci' || $qcType === 'qc-proses') {
-            $reused = (int)($kempu->main?->reused_count ?? 0);
-            if ($reused >= 21) {
-                return [
-                    'valid'   => false,
-                    'message' => "Batas Maksimal Tercapai: Kempu {$idKempu} telah mencapai batas pemakaian 21x reused (saat ini: {$reused}x). Kempu tidak dapat digunakan lagi dan harus dialihkan ke SCRAP / Engineering.",
                 ];
             }
         }
@@ -1226,6 +1273,40 @@ class KempuQcController extends Controller
                     break;
 
                 case 'RELEASE_PRE_CUCI':
+                case 'HOLD_PRE_CUCI':
+                    if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 || strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Kempu {$idKempu} sedang berstatus REPAIR di Workshop Engineering (Reject Incoming / QC). Kempu wajib diperbaiki oleh Engineering, lalu diverifikasi di QC PM dan ditransfer oleh WPM ke Produksi terlebih dahulu sebelum dapat diproses Pre Cuci. Status reject di incoming tidak boleh di-force.",
+                        ], 422);
+                    }
+                    if (in_array(strtoupper($currentStatus), [
+                        MasterKempuModel::STATUS_QC_PM_PENDING,
+                        MasterKempuModel::STATUS_QC_PM_HOLD,
+                        MasterKempuModel::STATUS_QC_PM_RELEASE,
+                        MasterKempuModel::STATUS_QC_PM_PASSED,
+                        MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD,
+                        MasterKempuModel::STATUS_IN_TRANSIT_PROD,
+                        MasterKempuModel::STATUS_REGISTERED,
+                        MasterKempuModel::STATUS_GR_COMPLETED,
+                        MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
+                    ]) || in_array(strtoupper($fromLocation), [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Alur Wajib: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$fromLocation}). Kempu reject incoming / dari WPM wajib menyelesaikan verifikasi QC PM, Transfer Out WPM, dan di-Transfer In oleh bagian Produksi terlebih dahulu sebelum dapat diproses Pre Cuci. Status tidak boleh di-force.",
+                        ], 422);
+                    }
+
+                    if ($forceTarget === 'HOLD_PRE_CUCI') {
+                        $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD;
+                        $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                        $actionResult = 'HOLD';
+                        $condition    = 'HOLD';
+                        $actionTitle  = '[FORCE SCAN] Cek Pre Cuci Ditahan (Hold)';
+                        $notes        = $notes ?: 'Force Decision: Ditahan di QC Pre Cuci (Hold) untuk evaluasi kelayakan kempu';
+                        break;
+                    }
+
                     $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
                     if ($manualReused !== null && $manualReused !== '') {
                         $oldReused     = $currentReused;
@@ -1292,6 +1373,12 @@ class KempuQcController extends Controller
                             $actionTitle  = '[FORCE SCAN] QC PM Lolos (Release)';
                             $notes        = $notes ?: 'Force Decision: Lolos QC PM (Release ke WPM)';
                         } else {
+                            if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 || strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0) {
+                                return response()->json([
+                                    'status'  => false,
+                                    'message' => "Kempu {$idKempu} sedang berstatus REPAIR di Workshop Engineering (Reject Incoming / QC). Status reject di incoming tidak dapat di-force ke QC Proses.",
+                                ], 422);
+                            }
                             if ($currentReused < 21) {
                                 $currentReused += 1;
                             }
