@@ -136,7 +136,49 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 2. Cek kempu baru dan reused count masih 0 (hanya boleh Transfer Out To Produksi)
+                // 2. Cek jika kempu sudah berstatus QC_PM_RELEASE / QC_PM_PASSED
+                // Kempu yang sudah lolos QC PM wajib melanjutkan ke 'Transfer Out To Produksi', tidak boleh scan Transfer In From PAS!
+                $qcPmReleaseStatuses = [
+                    strtolower(MasterKempuModel::STATUS_QC_PM_RELEASE),
+                    strtolower(MasterKempuModel::STATUS_QC_PM_PASSED),
+                    'qc_pm_release',
+                    'qc pm release',
+                    'qc pm passed',
+                    'qc pm lolos (ok)',
+                ];
+                if (in_array(strtolower($currentStatus), $qcPmReleaseStatuses)) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini sudah berstatus '{$currentStatus}' (Lolos QC PM). Kempu tidak dapat di-Transfer In From PAS lagi dan harus dilanjutkan ke tahap 'Transfer Out to Produksi'.",
+                    ];
+                }
+
+                // 3. Cek jika kempu sedang dalam antrean/pemeriksaan QC PM (QC_PM_PENDING / QC_PM_HOLD)
+                $qcPmPendingStatuses = [
+                    strtolower(MasterKempuModel::STATUS_QC_PM_PENDING),
+                    strtolower(MasterKempuModel::STATUS_QC_PM_HOLD),
+                    'qc_pm_pending',
+                    'qc_pm_hold',
+                ];
+                if (in_array(strtolower($currentStatus), $qcPmPendingStatuses)) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Kempu sedang dalam antrean/pemeriksaan QC PM dan tidak dapat di-Transfer In From PAS. Silakan selesaikan pemeriksaan QC PM terlebih dahulu.",
+                    ];
+                }
+
+                // 4. Cek jika kempu berstatus REPAIR di Workshop Engineering
+                if (
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+                    strcasecmp($currentStatus, 'ENG_REPAIR') === 0
+                ) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus REPAIR di Workshop Engineering. Kempu harus diselesaikan perbaikannya terlebih dahulu.",
+                    ];
+                }
+
+                // 5. Cek kempu baru dan reused count masih 0 (hanya boleh Transfer Out To Produksi)
                 $isOldKempu  = MasterKempuModel::isOldKempu($idKempu);
                 $reusedCount = (int)($kempu->main?->reused_count ?? $kempu->reused_count ?? 0);
 
@@ -147,7 +189,7 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 3. Khusus kempu baru: Cek jika status masih awal (REGISTERED, QC_PM_PENDING, QC_PM_RELEASE, GR_COMPLETED) dan belum pernah melewati siklus WFG/PAS
+                // 6. Khusus kempu baru: Cek jika status masih awal (REGISTERED, QC_PM_PENDING, QC_PM_RELEASE, GR_COMPLETED) dan belum pernah melewati siklus WFG/PAS
                 $initialStatuses = [
                     'registered',
                     strtolower(MasterKempuModel::STATUS_REGISTERED),
@@ -163,7 +205,7 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 4. Cek jika kempu masih dalam perjalanan ke PAS (Transfer Out to PAS dari WFG)
+                // 7. Cek jika kempu masih dalam perjalanan ke PAS (Transfer Out to PAS dari WFG)
                 if (
                     strcasecmp($currentStatus, 'Transfer Out to PAS') === 0 ||
                     strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS) === 0 ||
@@ -176,7 +218,7 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 5. Cek jika masih di area WFG
+                // 8. Cek jika masih di area WFG
                 if (in_array(strtolower($currentStatus), [
                     'transfer in from produksi',
                     strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
@@ -188,7 +230,7 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 6. Cek jika kempu masih berada di Warehouse PT PAS (belum di-Transfer Out dari PAS)
+                // 9. Cek jika kempu masih berada di Warehouse PT PAS (belum di-Transfer Out dari PAS)
                 if (
                     strcasecmp($currentStatus, 'Transfer in From BAS') === 0 ||
                     strcasecmp($currentStatus, 'Transfer In From BAS') === 0 ||
@@ -201,7 +243,7 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 7. Cek jika masih di status Transfer Out To Produksi atau area Produksi
+                // 10. Cek jika masih di status Transfer Out To Produksi atau area Produksi
                 if (
                     strcasecmp($currentStatus, 'Transfer Out To Produksi') === 0 ||
                     strcasecmp($currentStatus, MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD) === 0 ||
@@ -232,7 +274,7 @@ class WpmKempuController extends Controller
                     ];
                 }
 
-                // 8. Whitelist: HANYA kempu yang sudah di-Transfer Out dari PAS yang sah untuk di-Transfer In ke WPM
+                // 11. Whitelist: HANYA kempu yang sudah di-Transfer Out dari PAS yang sah untuk di-Transfer In ke WPM
                 $allowedFromPas = [
                     'transfer out to bas',
                     strtolower(MasterKempuModel::STATUS_PAS_TRANSFER_OUT_BAS),
@@ -243,19 +285,18 @@ class WpmKempuController extends Controller
                 $isFromPas = in_array(strtolower($currentStatus), $allowedFromPas);
 
                 // Pengecualian khusus Kempu Lama:
-                // Kempu lama yang baru dicatat fisiknya saat tiba kembali dari PAS (status awal atau belum pernah melewati WFG di sistem digital)
-                // dan sudah / sedang mengisi nilai Reused manual, DIIZINKAN untuk diproses pada 'Transfer In From PAS'.
-                $isInitialStatus = in_array(strtolower($currentStatus), [
+                // HANYA kempu lama yang baru didaftarkan di sistem (status awal REGISTERED / GR_COMPLETED) dan siklus reused masih 0
+                // yang diizinkan untuk diinput reused manual pertama kali di 'Transfer In From PAS'.
+                // Jika kempu sudah memiliki siklus reused (> 0) atau statusnya sudah melewati registrasi awal (seperti QC_PM_RELEASE), kempu WAJIB mengikuti alur normal dari PAS ($isFromPas).
+                $isInitialRegistration = in_array(strtolower($currentStatus), [
                     'registered',
                     strtolower(MasterKempuModel::STATUS_REGISTERED),
-                    strtolower(MasterKempuModel::STATUS_QC_PM_PENDING),
-                    strtolower(MasterKempuModel::STATUS_QC_PM_RELEASE),
-                    strtolower(MasterKempuModel::STATUS_QC_PM_PASSED),
                     strtolower(MasterKempuModel::STATUS_GR_COMPLETED),
+                    'gr_completed',
                 ]);
-                $isOldKempuAllowed = ($isOldKempu && ($isInitialStatus || !$kempu->hasPassedWfg()));
+                $isOldKempuInitialAllowed = ($isOldKempu && $isInitialRegistration && $reusedCount <= 0 && !$kempu->hasPassedWfg());
 
-                if (!$isFromPas && !$isOldKempuAllowed) {
+                if (!$isFromPas && !$isOldKempuInitialAllowed) {
                     return [
                         'valid'   => false,
                         'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Untuk menjalankan 'Transfer In From PAS', kempu harus berstatus 'Transfer Out to BAS' dari Warehouse PT PAS.",
