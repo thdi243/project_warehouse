@@ -177,14 +177,18 @@ class WfgKempuController extends Controller
             MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_PASSED,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
+            MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO,
             'QC_AFTER_FILLING_PENDING',
             'QC_AFTER_FILLING_RELEASE',
             'QC_AFTER_FILLING_PASSED',
             'QC_AFTER_FILLING_HOLD',
+            'QC_AFTER_FILLING_REPRO',
             'QC AFTER FILLING RELEASE',
             'QC AFTER FILLING PASSED',
             'QC AFTER FILLING LOLOS (OK)',
             'QC_AFTER_FILLING_LOLOS_(OK)',
+            'QC AFTER FILLING REPRO',
+            'REPRO',
 
             // 5. Produksi Transfer Out to WFG
             MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
@@ -224,11 +228,45 @@ class WfgKempuController extends Controller
         $currentStatus = trim($kempu->main?->current_status ?? $kempu->current_status ?? '');
         $idKempu = $kempu->id_kempu;
 
-        // Cek jika kempu berstatus SCRAP
+        // 1. Cek jika kempu berstatus SCRAP
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
             return [
                 'valid'   => false,
                 'message' => "Kempu {$idKempu} berstatus SCRAP / Afkir dan tidak dapat diproses.",
+            ];
+        }
+
+        // 2. Cek jika kempu berstatus REPAIR di Workshop Engineering
+        if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 || strcasecmp($currentStatus, 'ENG_REPAIR') === 0) {
+            return [
+                'valid'   => false,
+                'message' => "Alur Tidak Sesuai: Kempu {$idKempu} sedang berstatus REPAIR di Workshop Engineering dan tidak dapat diproses di WFG.",
+            ];
+        }
+
+        // 3. Cek jika kempu berstatus REPRO di Produksi (Produk Reject After Filling)
+        if (
+            strcasecmp($currentStatus, MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO) === 0 ||
+            strcasecmp($currentStatus, 'QC_AFTER_FILLING_REPRO') === 0 ||
+            strcasecmp($currentStatus, 'REPRO') === 0 ||
+            str_contains(strtoupper($currentStatus), 'REPRO')
+        ) {
+            return [
+                'valid'   => false,
+                'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Produk Reject / Repro). Kempu harus diproses kembali oleh Produksi untuk pengosongan muatan dan tidak boleh di-scan di WFG.",
+            ];
+        }
+
+        // 4. Cek jika kempu masih berstatus Ditahan / HOLD oleh QC
+        if (
+            strcasecmp($currentStatus, MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD) === 0 ||
+            strcasecmp($currentStatus, MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD) === 0 ||
+            strcasecmp($currentStatus, MasterKempuModel::STATUS_QC_PM_HOLD) === 0 ||
+            str_contains(strtoupper($currentStatus), '_HOLD')
+        ) {
+            return [
+                'valid'   => false,
+                'message' => "Alur Tidak Sesuai: Kempu {$idKempu} sedang berstatus Ditahan / HOLD oleh QC ('{$currentStatus}'). Kempu belum dinyatakan Lolos (Release) sehingga tidak dapat diproses di WFG.",
             ];
         }
 
