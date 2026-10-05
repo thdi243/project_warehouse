@@ -990,17 +990,29 @@ class KempuQcController extends Controller
 
         $currentLoc = strtoupper(trim($kempu->main?->current_location ?? $kempu->current_location ?? ''));
         $currentSt  = strtoupper(trim($kempu->main?->current_status ?? $kempu->current_status ?? ''));
-        $isInWfg    = (
+
+        // Deteksi konteks alur proses (Pre Cuci vs After Filling)
+        // Posisi kempu diantara cuci, filling, out to wfg, atau wfg -> after_filling
+        $isAfterFilling = (
             $currentLoc === MasterKempuModel::LOC_WFG ||
             str_contains($currentSt, 'WFG') ||
             in_array($currentSt, [
+                MasterKempuModel::STATUS_PROD_CUCI_KEMPU,
+                MasterKempuModel::STATUS_PROD_FILLING_KEMPU,
+                MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
+                MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE,
+                MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
+                MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO,
                 MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
                 MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD,
                 MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS,
                 MasterKempuModel::STATUS_WFG_REJECT_PROD,
+                'SCAN1_FILLED',
                 'IN_TRANSIT_WFG',
             ])
         );
+
+        $qcStageContext = $isAfterFilling ? 'after_filling' : 'pre_cuci';
 
         $flowValidation = self::validateQcFlow($kempu, $qcType);
 
@@ -1010,15 +1022,16 @@ class KempuQcController extends Controller
                 'id'               => $kempu->id,
                 'id_kempu'         => $kempu->id_kempu,
                 'rfid'             => $kempu->rfid ?? '-',
-                'current_location' => $kempu->current_location ?? 'WPM',
-                'current_status'   => $kempu->current_status ?? 'REGISTERED',
+                'current_location' => $kempu->main?->current_location ?? $kempu->current_location ?? 'WPM',
+                'current_status'   => $kempu->main?->current_status ?? $kempu->current_status ?? 'REGISTERED',
                 'reused_count'     => (int)($kempu->main->reused_count ?? 0),
                 'condition'        => $kempu->condition ?? 'OK',
                 'qc_title'         => $card['title'],
                 'is_force_scan'    => in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force']),
                 'can_manual_reused' => self::canForceScan(),
                 'next_auto_reused' => min(21, (int)($kempu->main->reused_count ?? 0) + 1),
-                'is_in_wfg'        => $isInWfg,
+                'is_in_wfg'        => $isAfterFilling,
+                'qc_stage_context' => $qcStageContext,
                 'is_flow_valid'    => $flowValidation['valid'],
                 'flow_error'       => $flowValidation['message'],
             ],
@@ -1058,82 +1071,49 @@ class KempuQcController extends Controller
             }
         }
 
-        // Validasi keputusan per tipe QC
-        if ($qcType === 'qc-pm-force') {
-            $validDecisions = [
-                'OK',
-                'HOLD',
-                'HOLD_PM',
-                'NOT_OK',
-                'RELEASE_PM',
-                'REPRO',
-                'REPRO_PRODUKSI',
-                'REJECT_WORKSHOP',
-                'SCRAP'
-            ];
-        } elseif (in_array($qcType, ['qc-force', 'qc-proses-force'])) {
-            $validDecisions = [
-                'OK',
-                'HOLD',
-                'HOLD_PRE_CUCI',
-                'HOLD_AFTER_FILLING',
-                'NOT_OK',
-                'REPRO',
-                'REPRO_PRODUKSI',
-                'RELEASE_PM',
-                'RELEASE_PRE_CUCI',
-                'RELEASE_AFTER_FILLING',
-                'REJECT_WORKSHOP',
-                'SCRAP'
-            ];
-        } elseif ($qcType === 'qc-after-filling') {
-            $validDecisions = ['OK', 'HOLD', 'NOT_OK', 'REPRO'];
-        } elseif (in_array($qcType, ['qc-pm', 'qc-pre-cuci', 'qc-proses'])) {
-            $validDecisions = ['OK', 'HOLD', 'NOT_OK'];
-        } else {
-            $validDecisions = ['OK', 'NOT_OK'];
-        }
-
-        if (!in_array($decision, $validDecisions)) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Keputusan QC tidak valid untuk tipe pemeriksaan ini.',
-            ], 400);
-        }
-
-        $configs = self::getQcConfig();
-        if (!isset($configs[$qcType])) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Tipe QC tidak valid.',
-            ], 400);
-        }
-
-        $card = $configs[$qcType];
-
-        $kempu = MasterKempuModel::with('main')->where('id_kempu', $idKempu)->first();
+        $kempu = MasterKempuModel::with('main')
+            ->where(function ($q) use ($idKempu) {
+                $q->where('id_kempu', $idKempu)
+                    ->orWhere('rfid', $idKempu);
+            })
+            ->first();
 
         if (!$kempu) {
             return response()->json([
                 'status'  => false,
-                'message' => "Kempu '{$idKempu}' tidak ditemukan.",
+                'message' => "Kempu dengan barcode/RFID '{$idKempu}' tidak ditemukan.",
             ], 404);
         }
 
-        // Validasi Alur
-        $flowValidation = self::validateQcFlow($kempu, $qcType);
-        if (!$flowValidation['valid']) {
-            return response()->json([
-                'status'  => false,
-                'message' => $flowValidation['message'],
-            ], 422);
-        }
-
+        $fromLocation  = strtoupper(trim($kempu->main?->current_location ?? $kempu->current_location ?? MasterKempuModel::LOC_WPM));
+        $currentStatus = strtoupper(trim($kempu->main?->current_status ?? $kempu->current_status ?? MasterKempuModel::STATUS_REGISTERED));
         $currentReused = (int)($kempu->main?->reused_count ?? 0);
-        $fromLocation  = $kempu->main?->current_location ?? $kempu->current_location ?? 'PRODUKSI';
-        $currentStatus = trim($kempu->main?->current_status ?? $kempu->current_status ?? '');
 
         // Tentukan Status dan Lokasi Tujuan Berdasarkan Tipe QC & Keputusan
+        // Konteks After Filling: diantara cuci, filling, out to wfg, atau sedang di WFG
+        $isAfterFilling = (
+            $fromLocation === MasterKempuModel::LOC_WFG ||
+            str_contains($currentStatus, 'WFG') ||
+            in_array($currentStatus, [
+                MasterKempuModel::STATUS_PROD_CUCI_KEMPU,
+                MasterKempuModel::STATUS_PROD_FILLING_KEMPU,
+                MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
+                MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE,
+                MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
+                MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO,
+                MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
+                'PROD_TRANSFER_OUT_TO_WFG',
+                MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD,
+                'WFG_TRANSFER_IN_FROM_PROD',
+                MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS,
+                'WFG_TRANSFER_OUT_TO_PAS',
+                MasterKempuModel::STATUS_WFG_REJECT_PROD,
+                'WFG_REJECT_FROM_PROD',
+                'SCAN1_FILLED',
+                'IN_TRANSIT_WFG',
+            ])
+        );
+
         if ($qcType === 'qc-pm') {
             if ($decision === 'OK') {
                 $nextStatus   = MasterKempuModel::STATUS_QC_PM_RELEASE;
@@ -1248,120 +1228,95 @@ class KempuQcController extends Controller
             $forceTarget = strtoupper(trim($request->input('force_target', $decision)));
 
             switch ($forceTarget) {
+                case 'RELEASE':
+                case 'OK':
                 case 'RELEASE_PM':
-                    $nextStatus   = MasterKempuModel::STATUS_QC_PM_RELEASE;
-                    $nextLocation = MasterKempuModel::LOC_WPM;
-                    $actionResult = 'OK';
-                    $condition    = 'OK';
-                    $actionTitle  = '[FORCE SCAN] QC PM Lolos (Release)';
-                    $notes        = $notes ?: 'Force Decision: Lolos QC PM (Release ke WPM)';
-                    break;
+                case 'RELEASE_PRE_CUCI':
+                case 'RELEASE_AFTER_FILLING':
+                    if ($qcType === 'qc-pm-force' || $forceTarget === 'RELEASE_PM') {
+                        $nextStatus   = MasterKempuModel::STATUS_QC_PM_RELEASE;
+                        $nextLocation = MasterKempuModel::LOC_WPM;
+                        $actionResult = 'OK';
+                        $condition    = 'OK';
+                        $actionTitle  = '[FORCE SCAN] QC PM Lolos (Release)';
+                        $notes        = $notes ?: 'Force Decision: Lolos QC PM (Release ke WPM)';
+                    } elseif ($isAfterFilling || $forceTarget === 'RELEASE_AFTER_FILLING') {
+                        $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE;
+                        $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                        $actionResult = 'OK';
+                        $condition    = 'OK';
+                        $actionTitle  = '[FORCE SCAN] After Filling Lolos (Release)';
+                        $notes        = $notes ?: 'Force Decision: Lolos After Filling (Release ke WFG)';
+                    } else {
+                        // Konteks Pre Cuci (Incoming / Sebelum Cuci)
+                        if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 || strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0) {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => "Kempu {$idKempu} sedang berstatus REPAIR di Workshop Engineering (Reject Incoming / QC). Kempu wajib diperbaiki oleh Engineering, lalu diverifikasi di QC PM dan ditransfer oleh WPM ke Produksi terlebih dahulu sebelum dapat diproses Pre Cuci. Status reject di incoming tidak boleh di-force.",
+                            ], 422);
+                        }
+                        if (in_array($currentStatus, [
+                            MasterKempuModel::STATUS_QC_PM_PENDING,
+                            MasterKempuModel::STATUS_QC_PM_HOLD,
+                            MasterKempuModel::STATUS_QC_PM_RELEASE,
+                            MasterKempuModel::STATUS_QC_PM_PASSED,
+                            MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD,
+                            MasterKempuModel::STATUS_IN_TRANSIT_PROD,
+                            MasterKempuModel::STATUS_REGISTERED,
+                            MasterKempuModel::STATUS_GR_COMPLETED,
+                            MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
+                        ]) || in_array($fromLocation, [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])) {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => "Alur Wajib: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$fromLocation}). Kempu reject incoming / dari WPM wajib menyelesaikan verifikasi QC PM, Transfer Out WPM, dan di-Transfer In oleh bagian Produksi terlebih dahulu sebelum dapat diproses Pre Cuci. Status tidak boleh di-force.",
+                            ], 422);
+                        }
 
-                case 'HOLD_PM':
-                    $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
-                    $nextLocation = MasterKempuModel::LOC_WPM;
-                    $actionResult = 'HOLD';
-                    $condition    = 'HOLD';
-                    $actionTitle  = '[FORCE SCAN] QC PM Ditahan (Hold)';
-                    $notes        = $notes ?: 'Force Decision: Ditahan di QC PM (Hold) untuk evaluasi / sampling';
-                    break;
-
-                case 'HOLD_PRE_CUCI':
-                    $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD;
-                    $nextLocation = MasterKempuModel::LOC_PRODUKSI;
-                    $actionResult = 'HOLD';
-                    $condition    = 'HOLD';
-                    $actionTitle  = '[FORCE SCAN] Cek Pre Cuci Ditahan (Hold)';
-                    $notes        = $notes ?: 'Force Decision: Ditahan di QC Pre Cuci (Hold) untuk evaluasi kelayakan kempu';
-                    break;
-
-                case 'HOLD_AFTER_FILLING':
-                    $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD;
-                    $nextLocation = MasterKempuModel::LOC_PRODUKSI;
-                    $actionResult = 'HOLD';
-                    $condition    = 'HOLD';
-                    $actionTitle  = '[FORCE SCAN] After Filling Ditahan (Hold)';
-                    $notes        = $notes ?: 'Force Decision: Ditahan After Filling (Hold) untuk evaluasi lanjutan';
+                        $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
+                        if ($manualReused !== null && $manualReused !== '') {
+                            $oldReused     = $currentReused;
+                            $currentReused = min(21, max(0, (int)$manualReused));
+                            $notes         = $notes ?: "Force Decision: Lolos Pre Cuci - Nilai Reused diset manual ke {$currentReused}/21";
+                        } else {
+                            if ($currentReused < 21) {
+                                $currentReused += 1;
+                            }
+                            $notes = $notes ?: "Force Decision: Lolos Pre Cuci - Siklus Reused {$currentReused}/21";
+                        }
+                        $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE;
+                        $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                        $actionResult = 'OK';
+                        $condition    = 'OK';
+                        $actionTitle  = '[FORCE SCAN] Cek Pre Cuci Lolos (Release)';
+                    }
                     break;
 
                 case 'HOLD':
-                    if ($qcType === 'qc-pm-force') {
+                case 'HOLD_PM':
+                case 'HOLD_PRE_CUCI':
+                case 'HOLD_AFTER_FILLING':
+                    if ($qcType === 'qc-pm-force' || $forceTarget === 'HOLD_PM') {
                         $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
                         $nextLocation = MasterKempuModel::LOC_WPM;
                         $actionResult = 'HOLD';
                         $condition    = 'HOLD';
                         $actionTitle  = '[FORCE SCAN] QC PM Ditahan (Hold)';
                         $notes        = $notes ?: 'Force Decision: Ditahan di QC PM (Hold) untuk evaluasi / sampling';
-                    } else {
+                    } elseif ($isAfterFilling || $forceTarget === 'HOLD_AFTER_FILLING') {
                         $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD;
                         $nextLocation = MasterKempuModel::LOC_PRODUKSI;
                         $actionResult = 'HOLD';
                         $condition    = 'HOLD';
-                        $actionTitle  = '[FORCE SCAN] QC Ditahan (HOLD)';
-                        $notes        = $notes ?: 'Force Decision: Ditahan (HOLD) untuk evaluasi lanjutan';
-                    }
-                    break;
-
-                case 'RELEASE_PRE_CUCI':
-                case 'HOLD_PRE_CUCI':
-                    if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 || strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0) {
-                        return response()->json([
-                            'status'  => false,
-                            'message' => "Kempu {$idKempu} sedang berstatus REPAIR di Workshop Engineering (Reject Incoming / QC). Kempu wajib diperbaiki oleh Engineering, lalu diverifikasi di QC PM dan ditransfer oleh WPM ke Produksi terlebih dahulu sebelum dapat diproses Pre Cuci. Status reject di incoming tidak boleh di-force.",
-                        ], 422);
-                    }
-                    if (in_array(strtoupper($currentStatus), [
-                        MasterKempuModel::STATUS_QC_PM_PENDING,
-                        MasterKempuModel::STATUS_QC_PM_HOLD,
-                        MasterKempuModel::STATUS_QC_PM_RELEASE,
-                        MasterKempuModel::STATUS_QC_PM_PASSED,
-                        MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD,
-                        MasterKempuModel::STATUS_IN_TRANSIT_PROD,
-                        MasterKempuModel::STATUS_REGISTERED,
-                        MasterKempuModel::STATUS_GR_COMPLETED,
-                        MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
-                    ]) || in_array(strtoupper($fromLocation), [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])) {
-                        return response()->json([
-                            'status'  => false,
-                            'message' => "Alur Wajib: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$fromLocation}). Kempu reject incoming / dari WPM wajib menyelesaikan verifikasi QC PM, Transfer Out WPM, dan di-Transfer In oleh bagian Produksi terlebih dahulu sebelum dapat diproses Pre Cuci. Status tidak boleh di-force.",
-                        ], 422);
-                    }
-
-                    if ($forceTarget === 'HOLD_PRE_CUCI') {
+                        $actionTitle  = '[FORCE SCAN] After Filling Ditahan (Hold)';
+                        $notes        = $notes ?: 'Force Decision: Ditahan After Filling (Hold) untuk evaluasi lanjutan';
+                    } else {
                         $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD;
                         $nextLocation = MasterKempuModel::LOC_PRODUKSI;
                         $actionResult = 'HOLD';
                         $condition    = 'HOLD';
                         $actionTitle  = '[FORCE SCAN] Cek Pre Cuci Ditahan (Hold)';
                         $notes        = $notes ?: 'Force Decision: Ditahan di QC Pre Cuci (Hold) untuk evaluasi kelayakan kempu';
-                        break;
                     }
-
-                    $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
-                    if ($manualReused !== null && $manualReused !== '') {
-                        $oldReused     = $currentReused;
-                        $currentReused = min(21, max(0, (int)$manualReused));
-                        $notes         = $notes ?: "Force Decision: Lolos Pre Cuci - Nilai Reused diset manual ke {$currentReused}/21";
-                    } else {
-                        if ($currentReused < 21) {
-                            $currentReused += 1;
-                        }
-                        $notes = $notes ?: "Force Decision: Lolos Pre Cuci - Siklus Reused {$currentReused}/21";
-                    }
-                    $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE;
-                    $nextLocation = MasterKempuModel::LOC_PRODUKSI;
-                    $actionResult = 'OK';
-                    $condition    = 'OK';
-                    $actionTitle  = '[FORCE SCAN] Cek Pre Cuci Lolos (Release)';
-                    break;
-
-                case 'RELEASE_AFTER_FILLING':
-                    $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE;
-                    $nextLocation = MasterKempuModel::LOC_PRODUKSI;
-                    $actionResult = 'OK';
-                    $condition    = 'OK';
-                    $actionTitle  = '[FORCE SCAN] After Filling Lolos (Release)';
-                    $notes        = $notes ?: 'Force Decision: Lolos After Filling (Release ke WFG)';
                     break;
 
                 case 'REPRO':
@@ -1383,6 +1338,7 @@ class KempuQcController extends Controller
                     $notes        = $notes ?: 'Force Decision: Scrap';
                     break;
 
+                case 'REJECT':
                 case 'NOT_OK':
                 case 'REJECT_WORKSHOP':
                     $nextStatus   = MasterKempuModel::STATUS_ENG_REPAIR;
@@ -1395,46 +1351,35 @@ class KempuQcController extends Controller
 
                 default:
                     if ($decision === 'OK') {
-                        if ($qcType === 'qc-pm-force' || strtoupper($fromLocation) === MasterKempuModel::LOC_WPM || in_array(strtoupper($currentStatus), ['REGISTERED', 'QC_PM_PENDING', 'QC_PM_RELEASE'])) {
+                        if ($qcType === 'qc-pm-force') {
                             $nextStatus   = MasterKempuModel::STATUS_QC_PM_RELEASE;
                             $nextLocation = MasterKempuModel::LOC_WPM;
-                            $actionResult = 'OK';
-                            $condition    = 'OK';
-                            $actionTitle  = '[FORCE SCAN] QC PM Lolos (Release)';
-                            $notes        = $notes ?: 'Force Decision: Lolos QC PM (Release ke WPM)';
+                        } elseif ($isAfterFilling) {
+                            $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE;
+                            $nextLocation = MasterKempuModel::LOC_PRODUKSI;
                         } else {
-                            if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 || strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0) {
-                                return response()->json([
-                                    'status'  => false,
-                                    'message' => "Kempu {$idKempu} sedang berstatus REPAIR di Workshop Engineering (Reject Incoming / QC). Status reject di incoming tidak dapat di-force ke QC Proses.",
-                                ], 422);
-                            }
-                            if ($currentReused < 21) {
-                                $currentReused += 1;
-                            }
                             $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE;
                             $nextLocation = MasterKempuModel::LOC_PRODUKSI;
-                            $actionResult = 'OK';
-                            $condition    = 'OK';
-                            $actionTitle  = '[FORCE SCAN] QC Lolos (Release)';
-                            $notes        = $notes ?: "Force Decision: Lolos QC - Reused {$currentReused}/21";
                         }
+                        $actionResult = 'OK';
+                        $condition    = 'OK';
+                        $actionTitle  = '[FORCE SCAN] QC Lolos (Release)';
+                        $notes        = $notes ?: 'Force Decision: Lolos QC';
                     } elseif ($decision === 'HOLD') {
                         if ($qcType === 'qc-pm-force') {
                             $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
                             $nextLocation = MasterKempuModel::LOC_WPM;
-                            $actionResult = 'HOLD';
-                            $condition    = 'HOLD';
-                            $actionTitle  = '[FORCE SCAN] QC PM Ditahan (Hold)';
-                            $notes        = $notes ?: 'Force Decision: Ditahan di QC PM (Hold) untuk evaluasi / sampling';
-                        } else {
+                        } elseif ($isAfterFilling) {
                             $nextStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD;
                             $nextLocation = MasterKempuModel::LOC_PRODUKSI;
-                            $actionResult = 'HOLD';
-                            $condition    = 'HOLD';
-                            $actionTitle  = '[FORCE SCAN] QC Ditahan (HOLD)';
-                            $notes        = $notes ?: 'Force Decision: Ditahan (HOLD)';
+                        } else {
+                            $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD;
+                            $nextLocation = MasterKempuModel::LOC_PRODUKSI;
                         }
+                        $actionResult = 'HOLD';
+                        $condition    = 'HOLD';
+                        $actionTitle  = '[FORCE SCAN] QC Ditahan (HOLD)';
+                        $notes        = $notes ?: 'Force Decision: Ditahan (HOLD)';
                     } else {
                         $nextStatus   = MasterKempuModel::STATUS_ENG_REPAIR;
                         $nextLocation = MasterKempuModel::LOC_ENG;
