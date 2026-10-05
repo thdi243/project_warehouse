@@ -1055,6 +1055,9 @@ class KempuQcController extends Controller
             ], 400);
         }
 
+        $configs = self::getQcConfig();
+        $card    = $configs[$qcType] ?? null;
+
         if (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
             if (!self::canForceScan()) {
                 return response()->json([
@@ -1450,7 +1453,7 @@ class KempuQcController extends Controller
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
                 'id_kempu'        => $kempu->id_kempu,
-                'stage'           => $card['stage'],
+                'stage'           => $card['stage'] ?? (str_contains($qcType, 'pm') ? 'QC_PM' : (str_contains($qcType, 'force') ? 'QC_FORCE' : 'QC_PROSES')),
                 'action'          => $actionTitle,
                 'action_result'   => $actionResult,
                 'from_location'   => $fromLocation,
