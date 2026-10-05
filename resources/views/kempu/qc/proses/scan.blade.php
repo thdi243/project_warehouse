@@ -249,6 +249,12 @@
                         </div>
                     </div>
 
+                    <!-- Alert Peringatan Batas Reused Kempu (Pre Cuci) -->
+                    <div id="alertMaxReusedNotice" class="alert alert-danger d-none mb-3 py-2 px-3 fs-13 border-danger">
+                        <i class="ri-error-warning-fill me-1 align-middle fs-16"></i>
+                        <strong>Batas Maksimal Penggunaan Tercapai (21x).</strong> Kempu ini telah mencapai batas pemakaian maksimal dan tidak dapat digunakan lagi. Silakan konfirmasi untuk melakukan <strong>Scrap Kempu</strong>.
+                    </div>
+
                     @if ($card['key'] === 'qc-pre-cuci' || $card['key'] === 'qc-proses')
                         <div class="alert alert-info py-2 px-3 mb-3 fs-12 d-flex align-items-center gap-2">
                             <i class="ri-information-line fs-16 flex-shrink-0 text-primary"></i>
@@ -428,7 +434,7 @@
                             </div>
                         </div>
                     @else
-                        <div class="row g-2 pt-2 border-top">
+                        <div id="boxNormalButtons" class="row g-2 pt-2 border-top">
                             <div class="col-6">
                                 <button type="button" class="btn btn-success btn-lg w-100 py-3 fw-bold fs-15 shadow-sm"
                                     id="btnDecisionOk">
@@ -441,6 +447,14 @@
                                     <i class="ri-close-circle-line me-1"></i> Tidak OK
                                 </button>
                             </div>
+                        </div>
+
+                        <!-- Tombol Khusus Max Reused: Hanya Konfirmasi Scrap -->
+                        <div id="boxMaxReusedScrapButton" class="pt-2 border-top d-none">
+                            <button type="button" class="btn btn-dark btn-lg w-100 py-3 fw-bold fs-15 shadow-sm text-white"
+                                id="btnDecisionScrapPreCuci">
+                                <i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)
+                            </button>
                         </div>
                     @endif
                 </div>
@@ -817,6 +831,20 @@
                     checkForceTargetPreCuci();
                 }
 
+                // Cek apakah mencapai batas maksimal reused di Pre Cuci (21x)
+                const isMaxReusedPreCuci = (QC_TYPE === 'qc-pre-cuci' || QC_TYPE === 'qc-proses') && (k.is_max_reused || (k.reused_count || 0) >= 21);
+
+                if (isMaxReusedPreCuci) {
+                    $('#alertMaxReusedNotice').removeClass('d-none');
+                    $('#boxNormalButtons').addClass('d-none');
+                    $('#boxMaxReusedScrapButton').removeClass('d-none');
+                    $('#wrapperManualReused').addClass('d-none');
+                } else {
+                    $('#alertMaxReusedNotice').addClass('d-none');
+                    $('#boxNormalButtons').removeClass('d-none');
+                    $('#boxMaxReusedScrapButton').addClass('d-none');
+                }
+
                 $('#btnDecisionOk').prop('disabled', false).html(
                     '<i class="ri-checkbox-circle-line me-1"></i> Release (OK)');
                 if ($('#btnDecisionHold').length) {
@@ -833,6 +861,10 @@
                 if ($('#btnDecisionForce').length) {
                     $('#btnDecisionForce').prop('disabled', false).html(
                         '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
+                }
+                if ($('#btnDecisionScrapPreCuci').length) {
+                    $('#btnDecisionScrapPreCuci').prop('disabled', false).html(
+                        '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)');
                 }
 
                 decisionModal.show();
@@ -891,16 +923,21 @@
                 const btnRepro = $('#btnDecisionRepro');
                 const btnNotOk = $('#btnDecisionNotOk');
                 const btnForce = $('#btnDecisionForce');
+                const btnScrapPreCuci = $('#btnDecisionScrapPreCuci');
 
                 btnOk.prop('disabled', true);
                 if (btnHold.length) btnHold.prop('disabled', true);
                 if (btnRepro.length) btnRepro.prop('disabled', true);
                 btnNotOk.prop('disabled', true);
                 if (btnForce.length) btnForce.prop('disabled', true);
+                if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', true);
 
                 if (decision === 'FORCE') {
                     if (btnForce.length) btnForce.html(
                         '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
+                } else if (decision === 'SCRAP') {
+                    if (btnScrapPreCuci.length) btnScrapPreCuci.html(
+                        '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan Scrap...');
                 } else if (decision === 'OK') {
                     btnOk.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
                 } else if (decision === 'HOLD') {
@@ -957,6 +994,8 @@
                             '<i class="ri-close-circle-line me-1"></i> Tidak OK');
                         if (btnForce.length) btnForce.prop('disabled', false).html(
                             '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
+                        if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', false).html(
+                            '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)');
 
                         if (res.status) {
                             decisionModal.hide();
@@ -970,6 +1009,10 @@
                                 badgeColor = (res.data.new_status === 'SCRAPPED' ? 'dark' : 'primary');
                                 label = 'FORCE SCAN: ' + (res.data.new_status || 'Berhasil');
                                 iconType = (res.data.new_status === 'SCRAPPED' ? 'warning' : 'success');
+                            } else if (decision === 'SCRAP') {
+                                badgeColor = 'dark';
+                                label = 'SCRAP (Batas Reused Maksimal)';
+                                iconType = 'warning';
                             } else if (decision === 'HOLD') {
                                 badgeColor = 'warning text-dark';
                                 label = 'HOLD (Tahan)';
@@ -1019,6 +1062,8 @@
                             '<i class="ri-close-circle-line me-1"></i> Tidak OK');
                         if (btnForce.length) btnForce.prop('disabled', false).html(
                             '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
+                        if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', false).html(
+                            '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)');
                         // playBeep('error');
 
                         let msg = 'Terjadi kesalahan server saat menyimpan hasil QC.';
@@ -1054,6 +1099,24 @@
             $('#btnDecisionForce').on('click', function() {
                 const target = $('#modalForceTarget').val();
                 submitDecision('FORCE', target);
+            });
+
+            // Tombol Decision Scrap (Batas Maksimal Reused Pre-Cuci)
+            $('#btnDecisionScrapPreCuci').on('click', function() {
+                Swal.fire({
+                    title: 'Konfirmasi Scrap Kempu?',
+                    html: `Kempu <b>${currentKempu.id_kempu}</b> telah mencapai batas maksimal pemakaian (21x).<br><br>Status kempu akan dialihkan menjadi <b>SCRAPPED</b>.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#212529',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="ri-delete-bin-line me-1"></i> Ya, Scrap Kempu',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        submitDecision('SCRAP');
+                    }
+                });
             });
 
             // Inisialisasi awal

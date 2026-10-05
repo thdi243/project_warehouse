@@ -861,20 +861,15 @@ class KempuQcController extends Controller
 
         // 3. Batas Maksimal Reused untuk QC
         $reused = (int)($kempu->main?->reused_count ?? 0);
-        // Yang ke-22 (> 21) baru dilarang secara mutlak untuk semua pemeriksaan/force scan
-        if ($reused > 21) {
-            return [
-                'valid'   => false,
-                'message' => "Batas Maksimal Terlampaui: Kempu {$idKempu} telah melebihi batas maksimal 21x reused (saat ini: {$reused}x). Siklus ke-22 tidak diperbolehkan dan kempu harus dialihkan ke SCRAP / Engineering.",
-            ];
-        }
 
-        // Khusus QC Pre-Cuci biasa (alur normal), kempu yang sudah 21x tidak boleh memulai siklus baru lagi
-        if (in_array($qcType, ['qc-pre-cuci', 'qc-proses'])) {
-            if ($reused >= 21) {
+        // Khusus QC Pre-Cuci biasa (alur normal), jika kempu telah mencapai batas pemakaian (>= 21x),
+        // JANGAN kirim error alur. Izinkan scan berhasil agar QC dapat mengonfirmasi keputusan SCRAP.
+        if (!in_array($qcType, ['qc-pre-cuci', 'qc-proses'])) {
+            // Yang ke-22 (> 21) dilarang secara mutlak untuk pemeriksaan QC lainnya / force scan
+            if ($reused > 21) {
                 return [
                     'valid'   => false,
-                    'message' => "Batas Maksimal Tercapai: Kempu {$idKempu} telah mencapai batas pemakaian 21x reused (saat ini: {$reused}x). Kempu tidak dapat digunakan untuk siklus baru lagi dan harus dialihkan ke SCRAP / Engineering.",
+                    'message' => "Batas Maksimal Terlampaui: Kempu {$idKempu} telah melebihi batas maksimal 21x reused (saat ini: {$reused}x). Siklus ke-22 tidak diperbolehkan dan kempu harus dialihkan ke SCRAP / Engineering.",
                 ];
             }
         }
@@ -1032,6 +1027,7 @@ class KempuQcController extends Controller
                 'next_auto_reused' => min(21, (int)($kempu->main->reused_count ?? 0) + 1),
                 'is_in_wfg'        => $isAfterFilling,
                 'qc_stage_context' => $qcStageContext,
+                'is_max_reused'    => ((int)($kempu->main->reused_count ?? 0) >= 21),
                 'is_flow_valid'    => $flowValidation['valid'],
                 'flow_error'       => $flowValidation['message'],
             ],
@@ -1141,7 +1137,24 @@ class KempuQcController extends Controller
                 $notes        = $notes ?: 'Reject QC PM - Menunggu Perbaikan';
             }
         } elseif ($qcType === 'qc-pre-cuci' || $qcType === 'qc-proses') {
-            if ($decision === 'OK') {
+            if ($decision === 'SCRAP') {
+                $nextStatus   = MasterKempuModel::STATUS_SCRAPPED;
+                $nextLocation = MasterKempuModel::LOC_SCRAP;
+                $actionResult = 'SCRAPPED';
+                $condition    = 'NOT_OK';
+                $actionTitle  = 'Cek Pre Cuci Scrap (Batas Maksimal 21x)';
+                $notes        = $notes ?: "Scrap Kempu di QC Pre Cuci - Telah mencapai batas maksimal siklus pemakaian {$currentReused}/21x";
+            } elseif ($decision === 'OK') {
+                if ($currentReused >= 21) {
+                    $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
+                    if ($manualReused === null || $manualReused === '') {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Kempu {$idKempu} telah mencapai batas pemakaian 21x Reused. Kempu tidak dapat di-Release dan hanya dapat dikonfirmasi untuk SCRAP.",
+                        ], 422);
+                    }
+                }
+
                 $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
 
                 if ($manualReused !== null && $manualReused !== '') {
