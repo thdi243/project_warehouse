@@ -110,6 +110,7 @@ class MonitoringController extends Controller
         $query = StockOnHand::query()
             ->join('wrm_master_barang', 'wrm_stock_on_hand.barang_id', '=', 'wrm_master_barang.id')
             ->selectRaw("
+                COUNT(wrm_stock_on_hand.pallet_id) as total_pallet,
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'UNREST' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_unrest,
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'QI' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_qi,
                 SUM(CASE WHEN wrm_stock_on_hand.status = 'BLOCKED' THEN wrm_stock_on_hand.qty ELSE 0 END) as qty_blocked
@@ -133,6 +134,7 @@ class MonitoringController extends Controller
             ->fromSub(clone $query, 'sub')
             ->select(
                 'uom',
+                DB::raw("SUM(total_pallet) as total_pallet"),
                 DB::raw("SUM(qty_unrest) as total_unrest"),
                 DB::raw("SUM(qty_qi) as total_qi"),
                 DB::raw("SUM(qty_blocked) as total_blocked")
@@ -153,6 +155,7 @@ class MonitoringController extends Controller
             'grand_total_per_uom' => $totalsPerUom->map(function ($item) {
                 return [
                     'uom' => $item->uom,
+                    'total_pallet' => $item->total_pallet ?? 0,
                     'unrest' => $item->total_unrest ?? 0,
                     'qi' => $item->total_qi ?? 0,
                     'blocked' => $item->total_blocked ?? 0,

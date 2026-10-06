@@ -26,15 +26,18 @@ $(document).ready(function () {
             if (!totals[uom]) {
                 totals[uom] = {
                     uom: uom,
+                    pallet: 0,
                     unrest: 0,
                     qi: 0,
                     blocked: 0,
                     all: 0
                 };
             }
+            const pallet = parseFloat(row.total_pallet || 0);
             const unrest = parseFloat(row.qty_unrest || 0);
             const qi = parseFloat(row.qty_qi || 0);
             const blocked = parseFloat(row.qty_blocked || 0);
+            totals[uom].pallet += pallet;
             totals[uom].unrest += unrest;
             totals[uom].qi += qi;
             totals[uom].blocked += blocked;
@@ -75,7 +78,7 @@ $(document).ready(function () {
         return Object.values(totals);
     }
 
-    function renderPageFooter(selector, pageTotals, totalColspan) {
+    function renderPageFooter(selector, pageTotals, totalColspan, includePallet = false) {
         let footerHtml = '';
         const totalRows = pageTotals.length;
 
@@ -94,6 +97,7 @@ $(document).ready(function () {
 
             footerHtml += `
                     <td class="text-start fw-bold">${item.uom}</td>
+                    ${includePallet ? `<td class="text-end fw-bold">${formatNumber.display(item.pallet)}</td>` : ''}
                     <td class="text-end fw-bold">${formatNumber.display(item.unrest)}</td>
                     <td class="text-end fw-bold">${formatNumber.display(item.qi)}</td>
                     <td class="text-end fw-bold">${formatNumber.display(item.blocked)}</td>
@@ -501,7 +505,7 @@ $(document).ready(function () {
 
         const $tbody = $('#table-summary-item tbody');
         $tbody.html(
-            '<tr><td colspan="7" class="text-center py-4 text-muted"><i class="ri-loader-4-line ri-spin me-2 fs-5"></i>Loading data...</td></tr>'
+            '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="ri-loader-4-line ri-spin me-2 fs-5"></i>Loading data...</td></tr>'
         );
 
         $.ajax({
@@ -520,7 +524,7 @@ $(document).ready(function () {
 
                 if (data.length === 0) {
                     $tbody.html(
-                        '<tr><td colspan="7" class="text-center py-4 text-muted">Tidak ada data.</td></tr>'
+                        '<tr><td colspan="8" class="text-center py-4 text-muted">Tidak ada data.</td></tr>'
                     );
                     $('#table-item-footer').empty();
                     $('#table-item-pagination').empty();
@@ -536,6 +540,7 @@ $(document).ready(function () {
                             <td>${row.mid || '-'}</td>
                             <td>${row.nama_barang || '-'}</td>
                             <td>${row.uom || '-'}</td>
+                            <td class="text-end">${formatNumber.display(row.total_pallet || 0)}</td>
                             <td class="text-end">${formatNumber.display(row.qty_unrest)}</td>
                             <td class="text-end">${formatNumber.display(row.qty_qi)}</td>
                             <td class="text-end">${formatNumber.display(row.qty_blocked)}</td>
@@ -547,7 +552,7 @@ $(document).ready(function () {
 
                 // Render Footer (Page Totals)
                 const pageTotals = calculatePageTotalsPerUom(data);
-                renderPageFooter('#table-item-footer', pageTotals, 2);
+                renderPageFooter('#table-item-footer', pageTotals, 2, true);
 
                 // Render Pagination
                 renderPagination('#table-item-pagination', response.recordsTotal, itemStart,
@@ -558,7 +563,7 @@ $(document).ready(function () {
             },
             error: function (xhr, status, error) {
                 $tbody.html(
-                    `<tr><td colspan="7" class="text-center text-danger py-4">Gagal memuat data: ${error}</td></tr>`
+                    `<tr><td colspan="8" class="text-center text-danger py-4">Gagal memuat data: ${error}</td></tr>`
                 );
             }
         });

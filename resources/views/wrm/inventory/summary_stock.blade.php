@@ -874,6 +874,7 @@
                                                     <th>MID</th>
                                                     <th>Nama Barang</th>
                                                     <th>UoM</th>
+                                                    <th class="text-end">Jumlah Pallet</th>
                                                     <th class="text-end">Qty Unrest</th>
                                                     <th class="text-end">Qty QI</th>
                                                     <th class="text-end">Qty Blocked</th>
