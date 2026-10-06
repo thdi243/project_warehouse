@@ -10,6 +10,7 @@ use App\Http\Controllers\Dashboard\IkatTerpalDashboardController;
 use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
 use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\Dashboard\StockOpnameDashboardController;
+use App\Http\Controllers\Dashboard\KempuDashboardController;
 use App\Http\Controllers\Kempu\MasterKempuController;
 use App\Http\Controllers\Kempu\KempuTraceabilityController;
 use App\Http\Controllers\Kempu\KempuQcController;
@@ -160,6 +161,15 @@ Route::middleware('auth')->group(function () {
                 ->middleware(['permission:dashboard']);
             Route::get('/stock-opname/data', [StockOpnameDashboardController::class, 'getData'])->name('dashboard.stock-opname.data')
                 ->middleware(['permission:dashboard']);
+
+            // Kempu Monitoring Dashboard
+            Route::get('/kempu', [KempuDashboardController::class, 'index'])->name('dashboard.kempu');
+            Route::get('/kempu/kpi', [KempuDashboardController::class, 'getKpi'])->name('dashboard.kempu.kpi');
+            Route::get('/kempu/charts', [KempuDashboardController::class, 'getCharts'])->name('dashboard.kempu.charts');
+            Route::get('/kempu/data', [KempuDashboardController::class, 'getData'])->name('dashboard.kempu.data');
+            Route::get('/kempu/recent-scans', [KempuDashboardController::class, 'getRecentScans'])->name('dashboard.kempu.recent_scans');
+            Route::get('/kempu/history/{id}', [KempuDashboardController::class, 'getHistory'])->name('dashboard.kempu.history');
+            Route::get('/kempu/export', [KempuDashboardController::class, 'exportData'])->name('dashboard.kempu.export');
         });
     });
 

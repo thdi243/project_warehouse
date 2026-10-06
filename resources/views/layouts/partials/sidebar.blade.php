@@ -123,7 +123,7 @@
                         @include('layouts.partials.sidebar.wcp')
                         @include('layouts.partials.sidebar.pas')
                         {{-- @include('layouts.partials.sidebar.qc') --}}
-                        @include('layouts.partials.sidebar.eng')
+                        {{-- @include('layouts.partials.sidebar.eng') --}}
                         {{-- @include('layouts.partials.sidebar.produksi') --}}
 
 
