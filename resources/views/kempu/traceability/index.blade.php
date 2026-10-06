@@ -113,7 +113,10 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                         <h4 class="mb-sm-0">Traceability Kempu & Siklus Reused 21x</h4>
-                        <div class="page-title-right">
+                        <div class="page-title-right d-flex align-items-center gap-2">
+                            <a href="{{ route('dashboard.kempu') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="mdi mdi-view-dashboard-outline me-1"></i> Dashboard Monitoring
+                            </a>
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="{{ route('kempu.master.index') }}">Kempu</a></li>
                                 <li class="breadcrumb-item active">Traceability</li>

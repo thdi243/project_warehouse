@@ -104,6 +104,11 @@
                     </div>
 
                     <div class="d-flex gap-2 align-items-center">
+                        <!-- Dashboard Monitoring Button -->
+                        <a href="{{ route('dashboard.kempu') }}" class="btn btn-outline-info btn-sm">
+                            <i class="mdi mdi-cube-scan me-1"></i> Dashboard Monitoring
+                        </a>
+
                         <!-- Upload Button -->
                         <button type="button" class="btn btn-outline-success btn-sm" id="btnUpload">
                             <i class="ri-upload-cloud-2-line align-bottom me-1"></i> Upload Data

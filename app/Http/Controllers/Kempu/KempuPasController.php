@@ -85,8 +85,9 @@ class KempuPasController extends Controller
         }
 
         $card = $cards[$cardKey];
+        $canManualInput = MasterKempuModel::canManualInput();
 
-        return view('kempu.pas.scan', compact('card', 'cards'));
+        return view('kempu.pas.scan', compact('card', 'cards', 'canManualInput'));
     }
 
     /**
@@ -280,6 +281,39 @@ class KempuPasController extends Controller
         $canEditReused = self::canEditReused();
         $flowValidation = self::validateStatusFlow($kempu, $cardKey);
 
+        $isManual = $request->boolean('is_manual') || $request->input('input_type') === 'manual';
+        if ($isManual) {
+            if (!MasterKempuModel::canManualInput()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
+                ], 403);
+            }
+
+            // Catat aktivitas pengetikan ID manual ke History Scan
+            $user = Auth::user();
+            $opName = $user?->nama_lengkap ?? $user?->username ?? 'User';
+            $opRole = $user?->role ?? ($user?->roles?->first()?->name ?? 'Staff');
+            $kempu->recordTracking(
+                stage: $card['stage'] ?? 'PAS',
+                action: 'Input Manual ID (' . ($card['title'] ?? 'Lookup') . ')',
+                actionResult: 'MANUAL_SCAN',
+                fromLocation: $kempu->main?->current_location ?? 'PAS',
+                toLocation: $kempu->main?->current_location ?? 'PAS',
+                condition: $kempu->main?->condition ?? 'OK',
+                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
+                userId: $user?->id,
+                metadata: [
+                    'input_method'  => 'MANUAL',
+                    'is_manual'     => true,
+                    'card_key'      => $cardKey,
+                    'action_title'  => $card['title'],
+                    'operator_name' => $opName,
+                    'operator_role' => $opRole,
+                ]
+            );
+        }
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -345,6 +379,15 @@ class KempuPasController extends Controller
             ], 404);
         }
 
+        $isManual       = $request->boolean('is_manual');
+
+        if ($isManual && !MasterKempuModel::canManualInput()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengonfirmasi transaksi dari pengetikan ID manual.',
+            ], 403);
+        }
+
         // Validasi Alur Status
         $flowValidation = self::validateStatusFlow($kempu, $cardKey);
         if (!$flowValidation['valid']) {
@@ -388,6 +431,10 @@ class KempuPasController extends Controller
                 ]);
             }
 
+            if ($isManual && !str_contains($notes ?? '', '[Input Manual]')) {
+                $notes = $notes ? $notes . ' [Input Manual]' : '[Input Manual]';
+            }
+
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
                 'id_kempu'        => $kempu->id_kempu,
@@ -399,6 +446,10 @@ class KempuPasController extends Controller
                 'reused_count'    => $targetReused,
                 'condition'       => $kempu->main->condition ?? 'OK',
                 'notes'           => $notes,
+                'metadata'        => [
+                    'input_method' => $isManual ? 'MANUAL' : 'SCANNER',
+                    'is_manual'    => $isManual,
+                ],
                 'created_by'      => Auth::id(),
             ]);
 

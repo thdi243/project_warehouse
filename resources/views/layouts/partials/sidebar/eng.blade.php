@@ -41,9 +41,9 @@
                     </li>
                 @endcan
                 <li class="nav-item">
-                    <a href="{{ route('kempu.traceability.index') }}"
-                        class="nav-link menu-link {{ request()->routeIs('kempu.traceability.*') ? 'active' : '' }}">
-                        <i class="ri-flask-line"></i> <span data-key="t-traceability">Traceability</span>
+                    <a href="{{ route('dashboard.kempu') }}"
+                        class="nav-link menu-link {{ request()->routeIs('dashboard.kempu*') ? 'active' : '' }}">
+                        <i class="ri-route-line"></i> <span data-key="t-traceability">Traceability & Monitoring</span>
                     </a>
                 </li>
             </ul>

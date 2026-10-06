@@ -390,4 +390,54 @@ class MasterKempuModel extends Model
             'created_by'     => $userId,
         ]);
     }
+
+    /**
+     * Cek apakah user berhak mengetik ID kempu secara manual (Bukan operator biasa / memiliki wewenang)
+     * Otoritas: role != 'operator' ATAU memiliki permission 'kempu-manual-input' / 'super-admin'
+     */
+    public static function canManualInput($user = null): bool
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return false;
+        }
+
+        if (method_exists($user, 'hasRole') && $user->hasRole('super-admin')) {
+            return true;
+        }
+
+        if (method_exists($user, 'hasAnyPermission') && $user->hasAnyPermission(['kempu-manual-input', 'super-admin'])) {
+            return true;
+        }
+
+        // Cek roles relasi tabel
+        if (method_exists($user, 'roles') && $user->roles()->exists()) {
+            $roles = $user->roles()->pluck('name')->map(fn($r) => strtolower(trim($r)))->toArray();
+            foreach ($roles as $r) {
+                if ($r !== 'operator') {
+                    return true;
+                }
+            }
+            if (in_array('operator', $roles)) {
+                return false;
+            }
+        }
+
+        // Cek atribut string role
+        $role = strtolower(trim($user->role ?? ''));
+        if ($role && $role !== 'operator') {
+            return true;
+        }
+
+        if ($role === 'operator') {
+            return false;
+        }
+
+        $jabatan = strtolower(trim($user->jabatan ?? ''));
+        if ($jabatan && str_contains($jabatan, 'operator') && !str_contains($jabatan, 'leader') && !str_contains($jabatan, 'foreman') && !str_contains($jabatan, 'spv')) {
+            return false;
+        }
+
+        return true;
+    }
 }

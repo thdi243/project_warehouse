@@ -323,8 +323,9 @@ class KempuProduksiController extends Controller
         }
 
         $card = $cards[$cardKey];
+        $canManualInput = MasterKempuModel::canManualInput();
 
-        return view('kempu.produksi.scan', compact('card', 'cards'));
+        return view('kempu.produksi.scan', compact('card', 'cards', 'canManualInput'));
     }
 
     /**
@@ -773,6 +774,48 @@ class KempuProduksiController extends Controller
 
         $flowValidation = self::validateProduksiFlow($kempu, $cardKey);
 
+        $isManual = $request->boolean('is_manual') || $request->input('input_type') === 'manual';
+        if ($isManual) {
+            $callerRole = strtolower(trim($request->input('operator_role', $request->input('user_role', ''))));
+            $isAuthorized = MasterKempuModel::canManualInput();
+            if ($callerRole && $callerRole === 'operator' && !auth()->user()) {
+                $isAuthorized = false;
+            } elseif ($callerRole && $callerRole !== 'operator') {
+                $isAuthorized = true;
+            }
+
+            if (!$isAuthorized) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
+                ], 403);
+            }
+
+            $opName = $request->input('operator_name', $request->input('user_name', Auth::user()?->nama_lengkap ?? Auth::user()?->username ?? 'User'));
+            $opRole = $callerRole ?: (Auth::user()?->role ?? 'Staff');
+            $portalUserId = $request->input('operator_id', $request->input('user_id', Auth::id()));
+
+            $kempu->recordTracking(
+                stage: ($cardKey === 'prod-force' ? 'PRODUKSI_FORCE' : 'PRODUKSI'),
+                action: 'Input Manual ID (' . ($card['title'] ?? 'Lookup') . ')',
+                actionResult: 'MANUAL_SCAN',
+                fromLocation: $kempu->main?->current_location ?? 'PRODUKSI',
+                toLocation: $kempu->main?->current_location ?? 'PRODUKSI',
+                condition: $kempu->main?->condition ?? 'OK',
+                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
+                userId: $portalUserId,
+                metadata: [
+                    'input_method'  => 'MANUAL',
+                    'is_manual'     => true,
+                    'card_key'      => $cardKey,
+                    'action_title'  => $card['title'],
+                    'operator_name' => $opName,
+                    'operator_role' => $opRole,
+                    'app_source'    => $request->input('app_source', 'warehouse'),
+                ]
+            );
+        }
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -801,6 +844,28 @@ class KempuProduksiController extends Controller
         $idKempu = strtoupper(trim($request->input('id_kempu', $request->input('barcode', ''))));
         $cardKey = $request->input('card_key', $request->input('card', ''));
         $notes   = trim($request->input('notes', ''));
+        $isManual = $request->boolean('is_manual');
+
+        if ($isManual) {
+            $callerRole = strtolower(trim($request->input('operator_role', $request->input('user_role', ''))));
+            $isAuthorized = MasterKempuModel::canManualInput();
+            if ($callerRole && $callerRole === 'operator' && !auth()->user()) {
+                $isAuthorized = false;
+            } elseif ($callerRole && $callerRole !== 'operator') {
+                $isAuthorized = true;
+            }
+
+            if (!$isAuthorized) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengonfirmasi transaksi dari pengetikan ID manual.',
+                ], 403);
+            }
+
+            if (!str_contains($notes, '[Input Manual]')) {
+                $notes = $notes ? $notes . ' [Input Manual]' : '[Input Manual]';
+            }
+        }
 
         if (!$idKempu || !$cardKey) {
             return response()->json([
@@ -1046,6 +1111,8 @@ class KempuProduksiController extends Controller
                 'portal_user_id' => $request->input('portal_user_id', $request->input('operator_id', $request->input('user_id'))),
                 'is_force_scan'  => ($cardKey === 'prod-force'),
                 'force_target'   => $forceTarget ?? null,
+                'input_method'   => $isManual ? 'MANUAL' : 'SCANNER',
+                'is_manual'      => $isManual,
             ];
 
             KempuTrackingHistoryModel::create([

@@ -15,7 +15,8 @@ class KempuEngController extends Controller
      */
     public function scan()
     {
-        return view('kempu.eng.scan');
+        $canManualInput = MasterKempuModel::canManualInput();
+        return view('kempu.eng.scan', compact('canManualInput'));
     }
 
     /**
@@ -153,6 +154,38 @@ class KempuEngController extends Controller
 
         $flowValidation = self::validateEngFlow($kempu);
 
+        $isManual = $request->boolean('is_manual') || $request->input('input_type') === 'manual';
+        if ($isManual) {
+            if (!MasterKempuModel::canManualInput()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
+                ], 403);
+            }
+
+            // Catat aktivitas pengetikan ID manual ke History Scan
+            $user = auth()->user();
+            $opName = $user?->nama_lengkap ?? $user?->username ?? 'User';
+            $opRole = $user?->role ?? ($user?->roles?->first()?->name ?? 'ENG Staff');
+            $kempu->recordTracking(
+                stage: 'ENGINEERING_WORKSHOP',
+                action: 'Input Manual ID (Lookup Repair)',
+                actionResult: 'MANUAL_SCAN',
+                fromLocation: $kempu->main?->current_location ?? 'ENG',
+                toLocation: $kempu->main?->current_location ?? 'ENG',
+                condition: $kempu->main?->condition ?? 'NOT_OK',
+                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
+                userId: $user?->id,
+                metadata: [
+                    'input_method'  => 'MANUAL',
+                    'is_manual'     => true,
+                    'action_title'  => 'Lookup Repair',
+                    'operator_name' => $opName,
+                    'operator_role' => $opRole,
+                ]
+            );
+        }
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -177,6 +210,20 @@ class KempuEngController extends Controller
         $idKempu  = strtoupper(trim($request->input('id_kempu', $request->input('barcode', ''))));
         $decision = strtoupper(trim($request->input('decision', ''))); // 'BISA_REPAIR' atau 'TIDAK_BISA_REPAIR'
         $notes    = trim($request->input('notes', ''));
+        $isManual = $request->boolean('is_manual');
+
+        if ($isManual) {
+            if (!MasterKempuModel::canManualInput()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengonfirmasi transaksi dari pengetikan ID manual.',
+                ], 403);
+            }
+
+            if (!str_contains($notes, '[Input Manual]')) {
+                $notes = $notes ? $notes . ' [Input Manual]' : '[Input Manual]';
+            }
+        }
 
         if (!$idKempu || !in_array($decision, ['BISA_REPAIR', 'TIDAK_BISA_REPAIR'])) {
             return response()->json([
@@ -274,6 +321,10 @@ class KempuEngController extends Controller
                 'from_location'   => $fromLocation,
                 'to_location'     => $nextLocation,
                 'notes'           => $notes ?: null,
+                'metadata'        => [
+                    'input_method' => $isManual ? 'MANUAL' : 'SCANNER',
+                    'is_manual'    => $isManual,
+                ],
                 'created_by'      => auth()->id() ?? $request->input('user_id') ?? 1,
             ]);
 

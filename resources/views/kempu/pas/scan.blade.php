@@ -168,18 +168,31 @@
 
                             <!-- Manual Input Box -->
                             <div class="mt-4 pt-2 border-top">
-                                <label class="form-label fs-13 fw-semibold text-body mb-2">
-                                    <i class="ri-keyboard-line text-muted me-1"></i> Atau Masukkan ID Kempu Manual:
-                                </label>
-                                <div class="input-group input-group-lg">
-                                    <span class="input-group-text bg-light text-muted"><i
-                                            class="ri-barcode-line"></i></span>
-                                    <input type="text" id="inputManualId" class="form-control font-monospace"
-                                        placeholder="Contoh: KMP-001 lalu tekan Enter..." autocomplete="off">
-                                    <button class="btn btn-primary px-4 fw-semibold" type="button" id="btnLookupManual">
-                                        <i class="ri-search-line me-1"></i> Cari Kempu
-                                    </button>
-                                </div>
+                                @php
+                                    $canManualInput = $canManualInput ?? \App\Models\Kempu\MasterKempuModel::canManualInput();
+                                @endphp
+                                @if ($canManualInput)
+                                    <label class="form-label fs-13 fw-semibold text-body mb-2 d-flex align-items-center justify-content-between">
+                                        <span><i class="ri-keyboard-line text-muted me-1"></i> Masukkan ID Kempu Manual:</span>
+                                        <span class="badge bg-info-subtle text-info fs-11"><i class="ri-shield-user-line me-1"></i> Otoritas Khusus Aktif</span>
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-light text-muted"><i
+                                                class="ri-barcode-line"></i></span>
+                                        <input type="text" id="inputManualId" class="form-control font-monospace"
+                                            placeholder="Contoh: KMP-001 lalu tekan Enter..." autocomplete="off">
+                                        <button class="btn btn-primary px-4 fw-semibold" type="button" id="btnLookupManual">
+                                            <i class="ri-search-line me-1"></i> Cari Kempu
+                                        </button>
+                                    </div>
+                                @else
+                                    <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2 px-3">
+                                        <i class="ri-lock-line fs-20 text-warning flex-shrink-0"></i>
+                                        <div class="fs-12 text-muted">
+                                            <strong class="text-body">Pengetikan Manual Terkunci:</strong> Operator wajib memindai kempu via kamera / barcode scanner. Pengetikan ID manual hanya diperuntukkan bagi Foreman / Leader / Supervisor.
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -443,7 +456,7 @@
             }
 
             // Lookup Kempu via AJAX
-            function lookupKempu(idKempu) {
+            function lookupKempu(idKempu, isManual = false) {
                 const loadingToast = Swal.mixin({
                     toast: true,
                     position: 'top-end',
@@ -461,11 +474,13 @@
                     data: {
                         _token: "{{ csrf_token() }}",
                         id_kempu: idKempu,
-                        card_key: CARD_KEY
+                        card_key: CARD_KEY,
+                        is_manual: isManual ? 1 : 0
                     },
                     success: function(res) {
                         if (res.status && res.data) {
                             currentKempu = res.data;
+                            currentKempu.is_manual = isManual;
                             if (res.data.is_flow_valid === false) {
                                 // playBeep('error');
                             }
@@ -596,7 +611,7 @@
                 if (qrScanner && isScannerActive) {
                     qrScanner.pause();
                 }
-                lookupKempu(val.toUpperCase());
+                lookupKempu(val.toUpperCase(), true);
             });
 
             $('#inputManualId').on('keypress', function(e) {
@@ -636,6 +651,7 @@
                     id_kempu: currentKempu.id_kempu,
                     card_key: CARD_KEY,
                     notes: $('#modalInputNotes').val(),
+                    is_manual: (currentKempu && currentKempu.is_manual) ? 1 : 0
                 };
 
                 $.ajax({

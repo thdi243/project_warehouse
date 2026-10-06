@@ -85,8 +85,9 @@ class WfgKempuController extends Controller
         }
 
         $card = $cards[$cardKey];
+        $canManualInput = MasterKempuModel::canManualInput();
 
-        return view('wfg.kempu.scan', compact('card', 'cards'));
+        return view('wfg.kempu.scan', compact('card', 'cards', 'canManualInput'));
     }
 
     /**
@@ -452,6 +453,39 @@ class WfgKempuController extends Controller
             $hasReused = (!$isOldKempu || $reusedCount > 0);
         }
 
+        $isManual = $request->boolean('is_manual') || $request->input('input_type') === 'manual';
+        if ($isManual) {
+            if (!MasterKempuModel::canManualInput()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
+                ], 403);
+            }
+
+            // Catat aktivitas pengetikan ID manual ke History Scan
+            $user = Auth::user();
+            $opName = $user?->nama_lengkap ?? $user?->username ?? 'User';
+            $opRole = $user?->role ?? ($user?->roles?->first()?->name ?? 'Staff');
+            $kempu->recordTracking(
+                stage: $card['stage'] ?? 'WFG',
+                action: 'Input Manual ID (' . ($card['title'] ?? 'Lookup') . ')',
+                actionResult: 'MANUAL_SCAN',
+                fromLocation: $kempu->main?->current_location ?? 'WFG',
+                toLocation: $kempu->main?->current_location ?? 'WFG',
+                condition: $kempu->main?->condition ?? 'OK',
+                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
+                userId: $user?->id,
+                metadata: [
+                    'input_method'  => 'MANUAL',
+                    'is_manual'     => true,
+                    'card_key'      => $cardKey,
+                    'action_title'  => $card['title'],
+                    'operator_name' => $opName,
+                    'operator_role' => $opRole,
+                ]
+            );
+        }
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -515,6 +549,15 @@ class WfgKempuController extends Controller
                 'status'  => false,
                 'message' => "Kempu dengan barcode '{$idKempu}' tidak ditemukan.",
             ], 404);
+        }
+
+        $isManual       = $request->boolean('is_manual');
+
+        if ($isManual && !MasterKempuModel::canManualInput()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengonfirmasi transaksi dari pengetikan ID manual.',
+            ], 403);
         }
 
         // Validasi Alur Status (Urutan & Cegah Duplikat Scan)
@@ -598,6 +641,9 @@ class WfgKempuController extends Controller
         $physicalCheck[] = 'NTI: ' . ($hasNti ? 'Ada' : 'Tidak Ada');
         $checklistStr = '[Fisik: ' . implode(', ', $physicalCheck) . ']';
         $finalNotes = $notes ? $checklistStr . ' - ' . $notes : $checklistStr;
+        if ($isManual) {
+            $finalNotes .= ' [Input Manual]';
+        }
 
         DB::beginTransaction();
         try {
@@ -640,9 +686,11 @@ class WfgKempuController extends Controller
                 'condition'       => $kempu->main->condition ?? 'OK',
                 'notes'           => $finalNotes,
                 'metadata'        => [
-                    'has_barcode' => $hasBarcode,
-                    'has_rfid'    => $hasRfid,
-                    'has_nti'   => $hasNti,
+                    'has_barcode'  => $hasBarcode,
+                    'has_rfid'     => $hasRfid,
+                    'has_nti'      => $hasNti,
+                    'input_method' => $isManual ? 'MANUAL' : 'SCANNER',
+                    'is_manual'    => $isManual,
                 ],
                 'created_by'      => Auth::id(),
             ]);

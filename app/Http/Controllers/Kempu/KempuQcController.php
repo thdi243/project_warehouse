@@ -767,8 +767,9 @@ class KempuQcController extends Controller
         }
 
         $card = $cards[$type];
+        $canManualInput = MasterKempuModel::canManualInput();
 
-        return view('kempu.qc.proses.scan', compact('card', 'cards'));
+        return view('kempu.qc.proses.scan', compact('card', 'cards', 'canManualInput'));
     }
 
     /**
@@ -1011,6 +1012,49 @@ class KempuQcController extends Controller
 
         $flowValidation = self::validateQcFlow($kempu, $qcType);
 
+        $isManual = $request->boolean('is_manual') || $request->input('input_type') === 'manual';
+        if ($isManual) {
+            $callerRole = strtolower(trim($request->input('operator_role', $request->input('user_role', ''))));
+            $isAuthorized = MasterKempuModel::canManualInput();
+            if ($callerRole && $callerRole === 'operator' && !auth()->user()) {
+                $isAuthorized = false;
+            } elseif ($callerRole && $callerRole !== 'operator') {
+                $isAuthorized = true;
+            }
+
+            if (!$isAuthorized) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
+                ], 403);
+            }
+
+            $opName = $request->input('operator_name', $request->input('user_name', Auth::user()?->nama_lengkap ?? Auth::user()?->username ?? 'User'));
+            $opRole = $callerRole ?: (Auth::user()?->role ?? 'QC');
+            $portalUserId = $request->input('operator_id', $request->input('user_id', Auth::id()));
+            $qcStage = $card['stage'] ?? (str_contains($qcType, 'pm') ? 'QC_PM' : (str_contains($qcType, 'force') ? 'QC_FORCE' : 'QC_PROSES'));
+
+            $kempu->recordTracking(
+                stage: $qcStage,
+                action: 'Input Manual ID (' . ($card['title'] ?? 'Lookup') . ')',
+                actionResult: 'MANUAL_SCAN',
+                fromLocation: $kempu->main?->current_location ?? 'WPM',
+                toLocation: $kempu->main?->current_location ?? 'WPM',
+                condition: $kempu->main?->condition ?? 'OK',
+                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
+                userId: $portalUserId,
+                metadata: [
+                    'input_method'  => 'MANUAL',
+                    'is_manual'     => true,
+                    'qc_type'       => $qcType,
+                    'action_title'  => $card['title'],
+                    'operator_name' => $opName,
+                    'operator_role' => $opRole,
+                    'app_source'    => $request->input('app_source', 'warehouse'),
+                ]
+            );
+        }
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -1043,6 +1087,28 @@ class KempuQcController extends Controller
         $qcType   = $request->input('qc_type', $request->input('scan_type'));
         $decision = strtoupper(trim($request->input('decision', $request->input('force_target', ''))));
         $notes    = trim($request->input('notes', ''));
+        $isManual = $request->boolean('is_manual');
+
+        if ($isManual) {
+            $callerRole = strtolower(trim($request->input('operator_role', $request->input('user_role', ''))));
+            $isAuthorized = MasterKempuModel::canManualInput();
+            if ($callerRole && $callerRole === 'operator' && !auth()->user()) {
+                $isAuthorized = false;
+            } elseif ($callerRole && $callerRole !== 'operator') {
+                $isAuthorized = true;
+            }
+
+            if (!$isAuthorized) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengonfirmasi transaksi dari pengetikan ID manual.',
+                ], 403);
+            }
+
+            if (!str_contains($notes, '[Input Manual]')) {
+                $notes = $notes ? $notes . ' [Input Manual]' : '[Input Manual]';
+            }
+        }
 
         if (!$idKempu || !$qcType) {
             return response()->json([
@@ -1288,6 +1354,17 @@ class KempuQcController extends Controller
                             ], 422);
                         }
 
+                        // Jika kempu telah mencapai batas 21x reused di konteks Pre Cuci, wajib Scrap (tidak boleh di-Release tanpa override manual)
+                        if ($currentReused >= 21) {
+                            $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
+                            if ($manualReused === null || $manualReused === '') {
+                                return response()->json([
+                                    'status'  => false,
+                                    'message' => "Kempu {$idKempu} telah mencapai batas pemakaian 21x Reused. Kempu tidak dapat di-Release dan harus dikonfirmasi untuk SCRAP.",
+                                ], 422);
+                            }
+                        }
+
                         $manualReused = $request->input('manual_reused', $request->input('custom_reused', $request->input('reused_count')));
                         if ($manualReused !== null && $manualReused !== '') {
                             $oldReused     = $currentReused;
@@ -1461,6 +1538,8 @@ class KempuQcController extends Controller
                 'is_manual_reused'      => isset($oldReused),
                 'manual_reused_from'    => $oldReused ?? null,
                 'manual_reused_to'      => isset($oldReused) ? $currentReused : null,
+                'input_method'          => $isManual ? 'MANUAL' : 'SCANNER',
+                'is_manual'             => $isManual,
             ];
 
             KempuTrackingHistoryModel::create([
