@@ -274,6 +274,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/approval-pr/action/{id}', [WspPurchaseRequesitionController::class, 'action'])->name('stock.pr.approval-action');
             Route::get('/getRiwayat', [WspPurchaseRequesitionController::class, 'getRiwayatPR'])->name('stock.pr.riwayat');
             Route::post('/follow-up-wa', [WspPurchaseRequesitionController::class, 'followUpWhatsApp'])->name('stock.pr.follow-up-wa');
+            Route::get('/export-approval-history', [WspPurchaseRequesitionController::class, 'exportApprovalHistory'])->name('stock.pr.export-approval-history');
         });
 
         // Alias URL singkat untuk WhatsApp Follow Up PR

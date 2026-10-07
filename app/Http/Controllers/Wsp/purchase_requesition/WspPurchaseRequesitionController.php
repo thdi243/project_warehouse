@@ -26,6 +26,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class WspPurchaseRequesitionController extends Controller
 {
@@ -46,6 +51,255 @@ class WspPurchaseRequesitionController extends Controller
     public function history()
     {
         return view('wsp.purchase_requesition.history');
+    }
+
+    public function exportApprovalHistory(Request $request)
+    {
+        ini_set('max_execution_time', 300);
+        ini_set('memory_limit', '512M');
+
+        try {
+            $query = WspPurchaseRequesitionModel::with(['user', 'approval' => function ($q) {
+                $q->orderBy('level', 'asc');
+            }]);
+
+            if ($request->filled('start_date')) {
+                $query->whereDate('pr_date', '>=', $request->start_date);
+            }
+
+            if ($request->filled('end_date')) {
+                $query->whereDate('pr_date', '<=', $request->end_date);
+            }
+
+            if ($request->filled('departemen') && $request->departemen !== 'all') {
+                $query->where('department', $request->departemen);
+            }
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('requested_by', 'like', "%{$search}%")
+                        ->orWhere('no_doc', 'like', "%{$search}%")
+                        ->orWhere('pr_number', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->filled('status') && $request->status !== 'all') {
+                if ($request->status === 'rejected') {
+                    $query->where('status', 'rejected');
+                } elseif (in_array((string)$request->status, ['1', '2', '3', '4', '5'])) {
+                    $level = (int)$request->status;
+                    $query->where('status', '!=', 'rejected')
+                        ->whereRaw("COALESCE((
+                            SELECT MIN(level) FROM wsp_purchase_requesition_approval 
+                            WHERE pr_id = wsp_purchase_requesition.id AND status = 'pending'
+                        ), 5) = ?", [$level]);
+                } else {
+                    $query->where('status', $request->status);
+                }
+            }
+
+            $prs = $query->orderBy('pr_date', 'desc')->orderBy('id', 'desc')->get();
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('History Approval PR');
+
+            // Header title
+            $sheet->setCellValue('A1', 'DATA HISTORY WAKTU APPROVAL PURCHASE REQUISITION');
+            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+            $periodeText = 'Semua Tanggal';
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $periodeText = Carbon::parse($request->start_date)->format('d/m/Y') . ' s/d ' . Carbon::parse($request->end_date)->format('d/m/Y');
+            } elseif ($request->filled('start_date')) {
+                $periodeText = 'Mulai ' . Carbon::parse($request->start_date)->format('d/m/Y');
+            } elseif ($request->filled('end_date')) {
+                $periodeText = 'Sampai ' . Carbon::parse($request->end_date)->format('d/m/Y');
+            }
+
+            $sheet->setCellValue('A2', 'Periode: ' . $periodeText . ' | Tanggal Export: ' . Carbon::now()->format('d/m/Y H:i:s'));
+            $sheet->getStyle('A2')->getFont()->setItalic(true)->setSize(10);
+
+            $headers = [
+                'A' => 'No',
+                'B' => 'No Doc',
+                'C' => 'Peminta',
+                'D' => 'Dept',
+                'E' => 'Jenis',
+                'F' => 'Status PR',
+                'G' => 'Level 1 (Peminta)',
+                'H' => 'Level 2 (Supervisor)',
+                'I' => 'Level 3 (Mgr Dept)',
+                'J' => 'Level 4 (Mgr WH)',
+                'K' => 'Level 5 (Admin WSP)',
+                'L' => 'Total Waktu (Menit)',
+            ];
+
+            $headerRow = 4;
+            foreach ($headers as $col => $title) {
+                $sheet->setCellValue($col . $headerRow, $title);
+                $sheet->getStyle($col . $headerRow)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFFFFFFF'));
+                $sheet->getStyle($col . $headerRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F497D'); // Dark Navy
+                $sheet->getStyle($col . $headerRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+            }
+            $sheet->getRowDimension($headerRow)->setRowHeight(28);
+
+            $currentRow = $headerRow + 1;
+            $no = 1;
+
+            $level2Diffs = [];
+            $level3Diffs = [];
+            $level4Diffs = [];
+            $level5Diffs = [];
+
+            if ($prs->isEmpty()) {
+                $sheet->setCellValue('A' . $currentRow, 'Tidak ada data Purchase Requisition pada periode ini');
+                $sheet->mergeCells("A{$currentRow}:L{$currentRow}");
+                $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("A{$currentRow}")->getFont()->setItalic(true);
+                $currentRow++;
+            } else {
+                foreach ($prs as $pr) {
+                    $approvals = $pr->approval->keyBy('level');
+
+                    $l1 = $approvals->get(1);
+                    $l2 = $approvals->get(2);
+                    $l3 = $approvals->get(3);
+                    $l4 = $approvals->get(4);
+                    $l5 = $approvals->get(5);
+
+                    $l1Date = ($l1 && $l1->action_at) ? Carbon::parse($l1->action_at) : ($pr->created_at ? Carbon::parse($pr->created_at) : null);
+                    $l2Date = ($l2 && $l2->action_at) ? Carbon::parse($l2->action_at) : null;
+                    $l3Date = ($l3 && $l3->action_at) ? Carbon::parse($l3->action_at) : null;
+                    $l4Date = ($l4 && $l4->action_at) ? Carbon::parse($l4->action_at) : null;
+                    $l5Date = ($l5 && $l5->action_at) ? Carbon::parse($l5->action_at) : null;
+
+                    $formatApproval = function ($approval, $date) {
+                        if (!$approval) return '-';
+                        if ($approval->status === 'approved' && $date) {
+                            return $date->format('Y-m-d H:i:s');
+                        }
+                        if ($approval->status === 'rejected') {
+                            return $date ? 'Rejected (' . $date->format('Y-m-d H:i:s') . ')' : 'Rejected';
+                        }
+                        if ($approval->status === 'pending') {
+                            return 'Pending';
+                        }
+                        return ucfirst($approval->status ?? '-');
+                    };
+
+                    // Hitung durasi per tahapan (dalam menit)
+                    if ($l1Date && $l2Date) {
+                        $level2Diffs[] = max(0, $l1Date->diffInMinutes($l2Date));
+                    }
+                    if ($l2Date && $l3Date) {
+                        $level3Diffs[] = max(0, $l2Date->diffInMinutes($l3Date));
+                    }
+                    if ($l3Date && $l4Date) {
+                        $level4Diffs[] = max(0, $l3Date->diffInMinutes($l4Date));
+                    }
+                    if ($l4Date && $l5Date) {
+                        $level5Diffs[] = max(0, $l4Date->diffInMinutes($l5Date));
+                    }
+
+                    $totalMinutes = null;
+                    if ($l1Date && $l5Date && $l5 && $l5->status === 'approved') {
+                        $totalMinutes = max(0, $l1Date->diffInMinutes($l5Date));
+                    }
+
+                    $sheet->setCellValue('A' . $currentRow, $no++);
+                    $sheet->setCellValueExplicit('B' . $currentRow, $pr->no_doc ?: ($pr->pr_number ?: '-'), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                    $sheet->setCellValue('C' . $currentRow, $pr->requested_by ?: ($pr->user ? $pr->user->nama_lengkap : '-'));
+                    $sheet->setCellValue('D' . $currentRow, strtoupper(str_replace('_', ' ', $pr->department ?? '-')));
+                    $sheet->setCellValue('E' . $currentRow, ucfirst($pr->jenis ?? '-'));
+                    $sheet->setCellValue('F' . $currentRow, strtoupper($pr->status ?? '-'));
+                    $sheet->setCellValue('G' . $currentRow, $formatApproval($l1, $l1Date));
+                    $sheet->setCellValue('H' . $currentRow, $formatApproval($l2, $l2Date));
+                    $sheet->setCellValue('I' . $currentRow, $formatApproval($l3, $l3Date));
+                    $sheet->setCellValue('J' . $currentRow, $formatApproval($l4, $l4Date));
+                    $sheet->setCellValue('K' . $currentRow, $formatApproval($l5, $l5Date));
+
+                    if ($totalMinutes !== null) {
+                        $sheet->setCellValue('L' . $currentRow, $totalMinutes);
+                    } else {
+                        $sheet->setCellValue('L' . $currentRow, '');
+                    }
+
+                    $sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle('E' . $currentRow . ':F' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle('G' . $currentRow . ':K' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle('L' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+                    $currentRow++;
+                }
+            }
+
+            $lastDataRow = $currentRow - 1;
+
+            // Summary Rows: Total & Average
+            $totalRow = $currentRow;
+            $avgRow = $currentRow + 1;
+
+            $sheet->setCellValue('A' . $totalRow, 'TOTAL WAKTU (MENIT)');
+            $sheet->mergeCells("A{$totalRow}:F{$totalRow}");
+            $sheet->getStyle("A{$totalRow}:F{$totalRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$totalRow}:F{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+            $sheet->setCellValue('G' . $totalRow, '-');
+            $sheet->setCellValue('H' . $totalRow, count($level2Diffs) > 0 ? array_sum($level2Diffs) : '-');
+            $sheet->setCellValue('I' . $totalRow, count($level3Diffs) > 0 ? array_sum($level3Diffs) : '-');
+            $sheet->setCellValue('J' . $totalRow, count($level4Diffs) > 0 ? array_sum($level4Diffs) : '-');
+            $sheet->setCellValue('K' . $totalRow, count($level5Diffs) > 0 ? array_sum($level5Diffs) : '-');
+            $sheet->setCellValue('L' . $totalRow, $prs->isNotEmpty() ? "=IFERROR(SUM(L5:L{$lastDataRow}), 0)" : 0);
+
+            $sheet->setCellValue('A' . $avgRow, 'RATA-RATA / AVG WAKTU (MENIT)');
+            $sheet->mergeCells("A{$avgRow}:F{$avgRow}");
+            $sheet->getStyle("A{$avgRow}:F{$avgRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$avgRow}:F{$avgRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+            $sheet->setCellValue('G' . $avgRow, '-');
+            $sheet->setCellValue('H' . $avgRow, count($level2Diffs) > 0 ? round(array_sum($level2Diffs) / count($level2Diffs), 2) : '-');
+            $sheet->setCellValue('I' . $avgRow, count($level3Diffs) > 0 ? round(array_sum($level3Diffs) / count($level3Diffs), 2) : '-');
+            $sheet->setCellValue('J' . $avgRow, count($level4Diffs) > 0 ? round(array_sum($level4Diffs) / count($level4Diffs), 2) : '-');
+            $sheet->setCellValue('K' . $avgRow, count($level5Diffs) > 0 ? round(array_sum($level5Diffs) / count($level5Diffs), 2) : '-');
+            $sheet->setCellValue('L' . $avgRow, $prs->isNotEmpty() ? "=IFERROR(ROUND(AVERAGE(L5:L{$lastDataRow}), 2), 0)" : 0);
+
+            // Styles for summary rows
+            foreach ([$totalRow, $avgRow] as $sRow) {
+                $sheet->getStyle("A{$sRow}:L{$sRow}")->getFont()->setBold(true);
+                $sheet->getStyle("A{$sRow}:L{$sRow}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF2F4F7');
+                $sheet->getStyle("G{$sRow}:L{$sRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("L{$sRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            }
+
+            // Auto size columns
+            foreach (range('A', 'L') as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+
+            // Apply borders
+            $styleBorder = [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['argb' => 'FFD0D5DD'],
+                    ],
+                ],
+            ];
+            $sheet->getStyle("A{$headerRow}:L{$avgRow}")->applyFromArray($styleBorder);
+
+            $filename = 'History_Approval_PR_' . date('Ymd_His') . '.xlsx';
+
+            return response()->streamDownload(function () use ($spreadsheet) {
+                $writer = new Xlsx($spreadsheet);
+                $writer->save('php://output');
+            }, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal mengekspor data history approval: ' . $e->getMessage());
+        }
     }
 
     public function store(Request $request)

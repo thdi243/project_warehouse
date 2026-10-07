@@ -18,8 +18,8 @@
         <div class="container-fluid">
             <!-- Page Header -->
             <div class="page-header mb-3">
-                <div class="row d-flex ">
-                    <div class="col-md-6">
+                <div class="row d-flex align-items-end justify-content-between">
+                    <div class="col-md-5">
                         <label class="form-label mb-1 small text-muted">Periode Tanggal</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light">
@@ -29,6 +29,11 @@
                             <span class="input-group-text bg-light border-start-0 border-end-0">s/d</span>
                             <input type="date" id="filterEndDate" class="form-control" title="Tanggal Akhir">
                         </div>
+                    </div>
+                    <div class="col-md-7 text-md-end mt-2 mt-md-0">
+                        <button type="button" class="btn btn-success" id="btnExportApprovalHistory">
+                            <i class="mdi mdi-file-excel me-1"></i> Export History Waktu Approval (Excel)
+                        </button>
                     </div>
                 </div>
             </div>
@@ -173,10 +178,15 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-light py-3">
                     <div class="row align-items-center">
-                        <div class="col-md-5">
+                        <div class="col-md-6">
                             <h5 class="mb-0">
                                 <i class="mdi mdi-table me-2"></i>Data Purchase Requesition
                             </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button type="button" class="btn btn-sm btn-success" id="btnExportApprovalHistoryCard">
+                                <i class="mdi mdi-file-excel me-1"></i> Export History Waktu Approval (Excel)
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -800,6 +810,24 @@
             $('#filterStatusPR').on('change', () => loadPRData(1));
             $('#filterDepartemen').on('change', () => loadPRData(1));
             $('#filterStartDate, #filterEndDate').on('change', () => loadPRData(1));
+
+            // Export History Approval (Excel)
+            $('#btnExportApprovalHistory, #btnExportApprovalHistoryCard').on('click', function() {
+                const startDate = $('#filterStartDate').val();
+                const endDate = $('#filterEndDate').val();
+                const departemen = $('#filterDepartemen').val();
+                const status = $('#filterStatusPR').val();
+                const search = $('#searchInput').val();
+
+                const params = new URLSearchParams();
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+                if (departemen && departemen !== 'all') params.append('departemen', departemen);
+                if (status && status !== 'all') params.append('status', status);
+                if (search) params.append('search', search);
+
+                window.location.href = "{{ route('stock.pr.export-approval-history') }}?" + params.toString();
+            });
 
             // Refresh button
             $('#btnRefresh').on('click', function() {
