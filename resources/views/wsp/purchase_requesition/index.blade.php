@@ -31,9 +31,35 @@
                         </div>
                     </div>
                     <div class="col-md-7 text-md-end mt-2 mt-md-0">
-                        <button type="button" class="btn btn-success" id="btnExportApprovalHistory">
-                            <i class="mdi mdi-file-excel me-1"></i> Export History Waktu Approval (Excel)
-                        </button>
+                        <div class="dropdown d-inline-block">
+                            <button type="button" class="btn btn-success dropdown-toggle" id="btnExportDropdown"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                <i class="mdi mdi-file-excel me-1"></i> Export Estimasi Waktu Approval (Excel)
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end p-3 shadow-lg border-0 text-start"
+                                style="width: 320px; z-index: 1055;" aria-labelledby="btnExportDropdown">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="mdi mdi-calendar-clock text-success fs-5 me-2"></i>
+                                    <h6 class="mb-0 fw-bold">Filter Periode Export</h6>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small text-muted mb-1">Dari Tanggal</label>
+                                    <input type="date" id="exportStartDate" class="form-control form-control-sm">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted mb-1">Sampai Tanggal</label>
+                                    <input type="date" id="exportEndDate" class="form-control form-control-sm">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" id="btnExportAllDates">
+                                        Semua
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-success flex-fill" id="btnSubmitExport">
+                                        <i class="mdi mdi-download me-1"></i> Download
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -178,15 +204,10 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-light py-3">
                     <div class="row align-items-center">
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <h5 class="mb-0">
                                 <i class="mdi mdi-table me-2"></i>Data Purchase Requesition
                             </h5>
-                        </div>
-                        <div class="col-md-6 text-end">
-                            <button type="button" class="btn btn-sm btn-success" id="btnExportApprovalHistoryCard">
-                                <i class="mdi mdi-file-excel me-1"></i> Export History Waktu Approval (Excel)
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -811,22 +832,36 @@
             $('#filterDepartemen').on('change', () => loadPRData(1));
             $('#filterStartDate, #filterEndDate').on('change', () => loadPRData(1));
 
-            // Export History Approval (Excel)
-            $('#btnExportApprovalHistory, #btnExportApprovalHistoryCard').on('click', function() {
-                const startDate = $('#filterStartDate').val();
-                const endDate = $('#filterEndDate').val();
-                const departemen = $('#filterDepartemen').val();
-                const status = $('#filterStatusPR').val();
-                const search = $('#searchInput').val();
+            // Export History Approval (Excel) via Dropdown Filter
+            $('#btnSubmitExport').on('click', function() {
+                const startDate = $('#exportStartDate').val();
+                const endDate = $('#exportEndDate').val();
 
                 const params = new URLSearchParams();
                 if (startDate) params.append('start_date', startDate);
                 if (endDate) params.append('end_date', endDate);
-                if (departemen && departemen !== 'all') params.append('departemen', departemen);
-                if (status && status !== 'all') params.append('status', status);
-                if (search) params.append('search', search);
+
+                // Close dropdown after click
+                const dropdownEl = document.getElementById('btnExportDropdown');
+                if (dropdownEl && typeof bootstrap !== 'undefined') {
+                    const bsDropdown = bootstrap.Dropdown.getInstance(dropdownEl);
+                    if (bsDropdown) bsDropdown.hide();
+                }
 
                 window.location.href = "{{ route('stock.pr.export-approval-history') }}?" + params.toString();
+            });
+
+            $('#btnExportAllDates').on('click', function() {
+                $('#exportStartDate').val('');
+                $('#exportEndDate').val('');
+
+                const dropdownEl = document.getElementById('btnExportDropdown');
+                if (dropdownEl && typeof bootstrap !== 'undefined') {
+                    const bsDropdown = bootstrap.Dropdown.getInstance(dropdownEl);
+                    if (bsDropdown) bsDropdown.hide();
+                }
+
+                window.location.href = "{{ route('stock.pr.export-approval-history') }}";
             });
 
             // Refresh button

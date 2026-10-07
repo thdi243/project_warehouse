@@ -108,6 +108,7 @@ class WspPurchaseRequesitionController extends Controller
             // Header title
             $sheet->setCellValue('A1', 'DATA HISTORY WAKTU APPROVAL PURCHASE REQUISITION');
             $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+            $sheet->mergeCells('A1:L1');
 
             $periodeText = 'Semua Tanggal';
             if ($request->filled('start_date') && $request->filled('end_date')) {
@@ -120,6 +121,7 @@ class WspPurchaseRequesitionController extends Controller
 
             $sheet->setCellValue('A2', 'Periode: ' . $periodeText . ' | Tanggal Export: ' . Carbon::now()->format('d/m/Y H:i:s'));
             $sheet->getStyle('A2')->getFont()->setItalic(true)->setSize(10);
+            $sheet->mergeCells('A2:L2');
 
             $headers = [
                 'A' => 'No',
@@ -273,8 +275,9 @@ class WspPurchaseRequesitionController extends Controller
                 $sheet->getStyle("L{$sRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             }
 
-            // Auto size columns
-            foreach (range('A', 'L') as $col) {
+            // Auto size columns B to L, set fixed compact width for column A (No)
+            $sheet->getColumnDimension('A')->setAutoSize(false)->setWidth(7);
+            foreach (range('B', 'L') as $col) {
                 $sheet->getColumnDimension($col)->setAutoSize(true);
             }
 
