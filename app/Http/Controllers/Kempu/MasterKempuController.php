@@ -29,8 +29,9 @@ class MasterKempuController extends Controller
         ]);
 
         if ($status === 'trashed') {
-            $query->where(function ($q) {
-                $q->onlyTrashed()->orWhere('status', 'nonaktif');
+            $query->withTrashed()->where(function ($q) {
+                $q->whereNotNull('kempu_master.deleted_at')
+                    ->orWhere('kempu_master.status', 'nonaktif');
             });
         } elseif ($status === 'scrap') {
             $query->where(function ($q) {
@@ -47,8 +48,9 @@ class MasterKempuController extends Controller
                 ->whereDoesntHave('main', function ($mq) {
                     $mq->where('current_status', MasterKempuModel::STATUS_SCRAPPED);
                 });
+        } elseif ($status === 'all') {
+            $query->withTrashed();
         }
-        // 'all' loads all non-deleted records
 
         $kempuList = $query->latest('id')->get();
 
@@ -349,7 +351,21 @@ class MasterKempuController extends Controller
     {
         try {
             $kempu = MasterKempuModel::findOrFail($id);
+            $kempu->update(['status' => 'nonaktif']);
             $kempu->delete();
+
+            // Catat log pelacakan penonaktifan kempu
+            KempuTrackingHistoryModel::create([
+                'kempu_master_id' => $kempu->id,
+                'id_kempu'        => $kempu->id_kempu,
+                'stage'           => 'MASTER_REGISTRATION',
+                'action'          => 'Penonaktifan Master Kempu',
+                'action_result'   => 'DEACTIVATED',
+                'from_location'   => $kempu->main?->current_location ?? MasterKempuModel::LOC_WPM,
+                'to_location'     => MasterKempuModel::LOC_SCRAP,
+                'notes'           => 'Master kempu dinonaktifkan (dihapus).',
+                'created_by'      => Auth::id(),
+            ]);
 
             return response()->json([
                 'status'  => true,
@@ -366,8 +382,33 @@ class MasterKempuController extends Controller
     public function restore($id)
     {
         try {
-            $kempu = MasterKempuModel::onlyTrashed()->findOrFail($id);
-            $kempu->restore();
+            $kempu = MasterKempuModel::withTrashed()->findOrFail($id);
+            if ($kempu->trashed()) {
+                $kempu->restore();
+            }
+            $kempu->update(['status' => 'active']);
+
+            if ($kempu->main && $kempu->main->current_status === MasterKempuModel::STATUS_SCRAPPED) {
+                $kempu->main->update([
+                    'current_status'   => MasterKempuModel::STATUS_QC_PM_PENDING,
+                    'current_location' => MasterKempuModel::LOC_WPM,
+                    'condition'        => 'OK',
+                    'last_action'      => 'Dipulihkan dari Nonaktif',
+                ]);
+            }
+
+            // Catat log pelacakan pemulihan kempu
+            KempuTrackingHistoryModel::create([
+                'kempu_master_id' => $kempu->id,
+                'id_kempu'        => $kempu->id_kempu,
+                'stage'           => 'MASTER_REGISTRATION',
+                'action'          => 'Pemulihan Master Kempu',
+                'action_result'   => 'RESTORED',
+                'from_location'   => MasterKempuModel::LOC_SCRAP,
+                'to_location'     => MasterKempuModel::LOC_WPM,
+                'notes'           => 'Master kempu dipulihkan ke status aktif.',
+                'created_by'      => Auth::id(),
+            ]);
 
             return response()->json([
                 'status'  => true,
@@ -384,7 +425,7 @@ class MasterKempuController extends Controller
     public function forceDelete($id)
     {
         try {
-            $kempu = MasterKempuModel::onlyTrashed()->findOrFail($id);
+            $kempu = MasterKempuModel::withTrashed()->findOrFail($id);
             $kempu->forceDelete();
 
             return response()->json([

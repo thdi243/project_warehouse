@@ -705,12 +705,14 @@
                         const grDate = (item.gr_date || '').toLowerCase();
                         const status = (item.status || '').toLowerCase();
                         const ket = (item.keterangan || '').toLowerCase();
+                        const isDeleted = (item.deleted_at || item.status === 'nonaktif') ? 'nonaktif deleted' : '';
 
                         return idKempu.includes(keyword) ||
                             noSpb.includes(keyword) ||
                             rfid.includes(keyword) ||
                             grDate.includes(keyword) ||
                             status.includes(keyword) ||
+                            isDeleted.includes(keyword) ||
                             ket.includes(keyword);
                     });
                 }
@@ -766,14 +768,12 @@
                 let html = '';
                 rows.forEach((row, index) => {
                     const rowNum = startIndex + index + 1;
-                    const isTrashed = Boolean(row.deleted_at);
+                    const isTrashed = Boolean(row.deleted_at) || row.status === 'nonaktif';
 
                     // Status Badge
                     let statusBadge = '';
                     if (isTrashed) {
                         statusBadge = '<span class="badge bg-danger">Nonaktif (Deleted)</span>';
-                    } else if (row.status === 'nonaktif') {
-                        statusBadge = '<span class="badge bg-danger">Nonaktif</span>';
                     } else if (row.status === 'scrap' || row.status === 'damaged' || row.current_status ===
                         'SCRAPPED') {
                         statusBadge = '<span class="badge badge-status-scrap">Scrap</span>';
@@ -1471,7 +1471,13 @@
                                 if (res.status) {
                                     Swal.fire('Berhasil', res.message, 'success');
                                     loadData();
+                                } else {
+                                    Swal.fire('Gagal', res.message || 'Gagal memulihkan data', 'error');
                                 }
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal', xhr.responseJSON?.message ||
+                                    'Gagal memulihkan data', 'error');
                             }
                         });
                     }
@@ -1503,7 +1509,13 @@
                                 if (res.status) {
                                     Swal.fire('Berhasil', res.message, 'success');
                                     loadData();
+                                } else {
+                                    Swal.fire('Gagal', res.message || 'Gagal menghapus data permanen', 'error');
                                 }
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal', xhr.responseJSON?.message ||
+                                    'Gagal menghapus data permanen', 'error');
                             }
                         });
                     }

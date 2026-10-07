@@ -148,6 +148,49 @@ class MasterKempuModel extends Model
                 }
             }
         });
+
+        // Otomatis ubah status menjadi nonaktif dan update kempu_main saat di-soft delete
+        static::deleting(function ($kempu) {
+            if (!$kempu->isForceDeleting()) {
+                $kempu->status = 'nonaktif';
+                $kempu->saveQuietly();
+
+                if ($kempu->main) {
+                    $kempu->main->update([
+                        'current_status'   => self::STATUS_SCRAPPED,
+                        'current_location' => self::LOC_SCRAP,
+                        'condition'        => 'NOT_OK',
+                        'last_action'      => 'Dinonaktifkan / Dihapus',
+                    ]);
+                }
+            }
+        });
+
+        // Otomatis pulihkan status menjadi active dan update kempu_main saat di-restore
+        static::restoring(function ($kempu) {
+            $kempu->status = 'active';
+            $kempu->saveQuietly();
+
+            if ($kempu->main) {
+                $kempu->main->update([
+                    'current_status'   => self::STATUS_QC_PM_PENDING,
+                    'current_location' => self::LOC_WPM,
+                    'condition'        => 'OK',
+                    'last_action'      => 'Dipulihkan dari Nonaktif',
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Accessor untuk memastikan status selalu 'nonaktif' jika record di-soft delete
+     */
+    public function getStatusAttribute($value)
+    {
+        if ($this->trashed()) {
+            return 'nonaktif';
+        }
+        return $value;
     }
 
     /**
