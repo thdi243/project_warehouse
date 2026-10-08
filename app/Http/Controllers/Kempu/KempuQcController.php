@@ -1064,8 +1064,31 @@ class KempuQcController extends Controller
         $currentReusedCount = (int)($kempu->main->reused_count ?? 0);
         $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
             ->where('reused_count', $currentReusedCount)
+            ->whereNotNull('no_po')
+            ->where('no_po', '!=', '')
             ->first();
-        $cycleNoPo = $cycleFilling?->no_po ?? $kempu->main?->no_po ?? '';
+
+        $latestFilledCycle = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->whereNotNull('no_po')
+            ->where('no_po', '!=', '')
+            ->latest('id')
+            ->first();
+
+        // Nomor PO/SPB tetap tampil di area WPM, Retur WFG, Pre Cuci, hingga Cuci, dan baru di-reset saat Filling Kempu
+        $cycleNoPo = $cycleFilling?->no_po
+            ?: ($kempu->main?->no_po
+            ?: ($latestFilledCycle?->no_po
+            ?: ($kempu->no_spb ?? '')));
+
+        if (empty($cycleNoPo)) {
+            $lastTracking = KempuTrackingHistoryModel::where('kempu_master_id', $kempu->id)
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.no_po')) IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.no_po')) != ''")
+                ->latest('id')
+                ->first();
+            if ($lastTracking && !empty($lastTracking->metadata['no_po'])) {
+                $cycleNoPo = $lastTracking->metadata['no_po'];
+            }
+        }
 
         return response()->json([
             'status' => true,

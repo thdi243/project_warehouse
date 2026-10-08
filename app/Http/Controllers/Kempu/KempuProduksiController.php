@@ -823,10 +823,31 @@ class KempuProduksiController extends Controller
         $currentReusedCount = (int)($kempu->main->reused_count ?? 0);
         $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
             ->where('reused_count', $currentReusedCount)
+            ->whereNotNull('no_po')
+            ->where('no_po', '!=', '')
             ->first();
 
-        // Data PO dan foto spesifik per siklus reused
-        $cycleNoPo = $cycleFilling?->no_po ?? $kempu->main?->no_po ?? '';
+        $latestFilledCycle = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->whereNotNull('no_po')
+            ->where('no_po', '!=', '')
+            ->latest('id')
+            ->first();
+
+        // Nomor PO/SPB tetap tampil di area WPM, Retur WFG, Pre Cuci, hingga Cuci, dan baru di-reset saat Filling Kempu
+        $cycleNoPo = $cycleFilling?->no_po
+            ?: ($kempu->main?->no_po
+            ?: ($latestFilledCycle?->no_po
+            ?: ($kempu->no_spb ?? '')));
+
+        if (empty($cycleNoPo)) {
+            $lastTracking = KempuTrackingHistoryModel::where('kempu_master_id', $kempu->id)
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.no_po')) IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.no_po')) != ''")
+                ->latest('id')
+                ->first();
+            if ($lastTracking && !empty($lastTracking->metadata['no_po'])) {
+                $cycleNoPo = $lastTracking->metadata['no_po'];
+            }
+        }
 
         return response()->json([
             'status' => true,
@@ -1173,19 +1194,19 @@ class KempuProduksiController extends Controller
                     ]
                 );
             } elseif ($cardKey === 'cuci-kempu') {
-                // Saat masuk ke siklus pencucian baru (reused berganti), sesuaikan No PO & foto dengan siklus baru tsb
+                // Saat masuk ke siklus pencucian baru, nomor PO & foto dari siklus sebelumnya tetap tersimpan
+                // sampai operator resmi melakukan proses Scan 1 Filling Kempu yang baru.
                 $nextCycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
                     ->where('reused_count', $currentReused)
                     ->first();
 
-                $mainPayload['no_po']       = $nextCycleFilling?->no_po ?? null;
-                $mainPayload['foto_1']      = $nextCycleFilling?->foto_1 ?? null;
-                $mainPayload['foto_2']      = $nextCycleFilling?->foto_2 ?? null;
-                $mainPayload['foto_3']      = $nextCycleFilling?->foto_3 ?? null;
-                $mainPayload['foto_4']      = $nextCycleFilling?->foto_4 ?? null;
-                $mainPayload['has_barcode'] = (bool)($nextCycleFilling?->has_barcode ?? true);
-                $mainPayload['has_rfid']    = (bool)($nextCycleFilling?->has_rfid ?? true);
-                $mainPayload['has_nti']     = (bool)($nextCycleFilling?->has_nti ?? true);
+                if ($nextCycleFilling && $nextCycleFilling->no_po) {
+                    $mainPayload['no_po'] = $nextCycleFilling->no_po;
+                }
+                // Pertahankan no_po sebelumnya jika siklus baru belum di-filling
+                $mainPayload['has_barcode'] = (bool)($nextCycleFilling?->has_barcode ?? $kempu->main?->has_barcode ?? true);
+                $mainPayload['has_rfid']    = (bool)($nextCycleFilling?->has_rfid ?? $kempu->main?->has_rfid ?? true);
+                $mainPayload['has_nti']     = (bool)($nextCycleFilling?->has_nti ?? $kempu->main?->has_nti ?? true);
             }
 
             if (!$kempu->main) {

@@ -712,7 +712,13 @@
 
                 $('#modalKempuId').text(k.id_kempu);
                 $('#modalKempuRfid').text(k.rfid || '-');
-                $('#modalKempuNoPo').text(k.no_po || '-');
+
+                if (CARD_KEY === 'scan-1-filling-kempu') {
+                    $('#modalKempuNoPo').html('<span class="badge bg-soft-warning text-warning border border-warning-subtle fw-normal">Menunggu Input PO</span>');
+                    $('#modalInputNoPo').val(''); // Reset input form untuk nomor PO baru
+                } else {
+                    $('#modalKempuNoPo').text(k.no_po || '-');
+                }
                 $('#modalKempuLoc').text(k.current_location);
                 $('#modalKempuStatus').text(k.current_status);
                 $('#modalKempuReused').text(`${k.reused_count} / ${k.max_reused}x`);
@@ -763,7 +769,7 @@
                             </div>
                         `).removeClass('alert-danger alert-warning alert-success').addClass('alert-info').show();
                     } else if (CARD_KEY === 'scan-1-filling-kempu') {
-                        $('#modalInputNoPo').val(k.no_po || '');
+                        $('#modalInputNoPo').val('');
                         for (let i = 1; i <= 4; i++) {
                             selectedPhotos[i] = null;
                             $('#modalInputFoto' + i).val('');
