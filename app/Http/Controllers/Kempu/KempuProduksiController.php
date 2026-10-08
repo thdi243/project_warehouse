@@ -826,7 +826,7 @@ class KempuProduksiController extends Controller
             ->first();
 
         // Data PO dan foto spesifik per siklus reused
-        $cycleNoPo = $cycleFilling?->no_po ?? '';
+        $cycleNoPo = $cycleFilling?->no_po ?? $kempu->main?->no_po ?? '';
 
         return response()->json([
             'status' => true,

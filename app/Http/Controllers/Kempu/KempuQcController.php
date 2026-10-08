@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Kempu;
 use App\Http\Controllers\Controller;
 use App\Models\Kempu\KempuTrackingHistoryModel;
 use App\Models\Kempu\MasterKempuModel;
+use App\Models\Kempu\KempuCycleFillingModel;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1060,12 +1061,19 @@ class KempuQcController extends Controller
             );
         }
 
+        $currentReusedCount = (int)($kempu->main->reused_count ?? 0);
+        $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->where('reused_count', $currentReusedCount)
+            ->first();
+        $cycleNoPo = $cycleFilling?->no_po ?? $kempu->main?->no_po ?? '';
+
         return response()->json([
             'status' => true,
             'data'   => [
                 'id'               => $kempu->id,
                 'id_kempu'         => $kempu->id_kempu,
                 'rfid'             => $kempu->rfid ?? '-',
+                'no_po'            => $cycleNoPo,
                 'current_location' => $kempu->main?->current_location ?? $kempu->current_location ?? 'WPM',
                 'current_status'   => $kempu->main?->current_status ?? $kempu->current_status ?? 'REGISTERED',
                 'reused_count'     => (int)($kempu->main->reused_count ?? 0),
