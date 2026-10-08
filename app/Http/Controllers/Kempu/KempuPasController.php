@@ -317,7 +317,30 @@ class KempuPasController extends Controller
 
         $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
             ->where('reused_count', $reusedCount)
+            ->whereNotNull('no_po')
+            ->where('no_po', '!=', '')
             ->first();
+
+        $latestFilledCycle = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->whereNotNull('no_po')
+            ->where('no_po', '!=', '')
+            ->latest('id')
+            ->first();
+
+        $cycleNoPo = $cycleFilling?->no_po
+            ?: ($kempu->main?->no_po
+            ?: ($latestFilledCycle?->no_po
+            ?: ($kempu->no_spb ?? '')));
+
+        if (empty($cycleNoPo)) {
+            $lastTracking = KempuTrackingHistoryModel::where('kempu_master_id', $kempu->id)
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.no_po')) IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.no_po')) != ''")
+                ->latest('id')
+                ->first();
+            if ($lastTracking && !empty($lastTracking->metadata['no_po'])) {
+                $cycleNoPo = $lastTracking->metadata['no_po'];
+            }
+        }
 
         return response()->json([
             'status' => true,
@@ -327,6 +350,7 @@ class KempuPasController extends Controller
                 'is_old_kempu'           => $isOldKempu,
                 'is_new_kempu'           => !$isOldKempu,
                 'rfid'                   => $kempu->rfid ?? '-',
+                'no_po'                  => $cycleNoPo,
                 'current_location'       => $kempu->current_location ?? 'WAREHOUSE_PAS',
                 'current_status'         => $currentStatus ?: 'REGISTERED',
                 'reused_count'           => $reusedCount,

@@ -242,15 +242,19 @@
                     <!-- Detail Grid -->
                     <div class="bg-light p-3 rounded-3 mb-3 border">
                         <div class="row g-2 fs-13">
-                            <div class="col-4 text-center">
+                            <div class="col-6 col-sm-3 text-center">
                                 <span class="text-muted d-block fs-11">RFID:</span>
                                 <span class="fw-semibold font-monospace text-body" id="modalKempuRfid">-</span>
                             </div>
-                            <div class="col-4 text-center">
+                            <div class="col-6 col-sm-3 text-center">
+                                <span class="text-muted d-block fs-11">Nomor PO:</span>
+                                <span class="fw-bold font-monospace text-success" id="modalKempuNoPo">-</span>
+                            </div>
+                            <div class="col-6 col-sm-3 text-center">
                                 <span class="text-muted d-block fs-11">Status Saat Ini:</span>
                                 <span class="badge bg-light text-body border" id="modalKempuStatus">-</span>
                             </div>
-                            <div class="col-4 text-center">
+                            <div class="col-6 col-sm-3 text-center">
                                 <span class="text-muted d-block fs-11">Siklus Reused:</span>
                                 <div id="reusedDisplayMode">
                                     <span class="fw-bold text-body" id="modalKempuReused">-</span>
@@ -642,6 +646,7 @@
             function openConfirmModal(k) {
                 $('#modalKempuId').text(k.id_kempu);
                 $('#modalKempuRfid').text(k.rfid || '-');
+                $('#modalKempuNoPo').text(k.no_po || '-');
                 $('#modalKempuLoc').text(k.current_location);
                 $('#modalKempuStatus').text(k.current_status);
                 $('#modalKempuCondition').text(k.condition);
