@@ -100,7 +100,7 @@
         /* Custom dropdown styles */
         .custom-filter-dropdown .dropdown-toggle {
             /* border: 1px solid #ced4da;
-                                border-radius: 0.25rem; */
+                                    border-radius: 0.25rem; */
             padding: 0.47rem 0.75rem;
             font-size: 0.875rem;
             box-shadow: 0 0 0 0 !important;
@@ -317,7 +317,7 @@
                     <div class="collapse" id="collapseAdvancedFilter">
                         <div class="pt-4 mt-4 border-top">
                             <div class="row g-3">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label fw-semibold text-muted mb-2">Supplier</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-supplier">
                                         <button
@@ -348,7 +348,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label fw-semibold text-muted mb-2">Group</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-group">
                                         <button
@@ -379,7 +379,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label fw-semibold text-muted mb-2">Status</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-status">
                                         <button
@@ -431,7 +431,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label fw-semibold text-muted mb-2">Jenis Pallet</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-pallet">
                                         <button
@@ -678,7 +678,8 @@
                         <div class="mb-2">
                             <label>Qty Zak / Drum / Dus</label>
                             <div class="input-group">
-                                <input type="number" step="any" min="0" class="form-control" name="zak" id="zakEdit" placeholder="0">
+                                <input type="number" step="any" min="0" class="form-control" name="zak"
+                                    id="zakEdit" placeholder="0">
                                 <span class="input-group-text" id="uomZakEdit">Zak</span>
                             </div>
                         </div>
@@ -1477,9 +1478,9 @@
                 $('#midEdit').val(`${detail.barang.mid} - ${detail.barang.nama_barang}`);
                 $('#qtyEdit').val(parseFloat(detail.qty));
 
-                let rawZak = (detail.zak !== null && detail.zak !== undefined && detail.zak !== '')
-                    ? detail.zak
-                    : (detail.qty_zak !== undefined && detail.qty_zak !== null ? detail.qty_zak : '');
+                let rawZak = (detail.zak !== null && detail.zak !== undefined && detail.zak !== '') ?
+                    detail.zak :
+                    (detail.qty_zak !== undefined && detail.qty_zak !== null ? detail.qty_zak : '');
                 let formattedZak = '';
                 if (rawZak !== '') {
                     let numZak = parseFloat(rawZak);
