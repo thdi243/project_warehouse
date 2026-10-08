@@ -298,6 +298,46 @@
                         </div>
                     @endif
 
+                    @if ($card['key'] === 'scan-1-filling-kempu')
+                        <!-- Field Nomor PO (Wajib) -->
+                        <div class="mb-3">
+                            <label for="modalInputNoPo" class="form-label fs-12 fw-bold text-body mb-1">
+                                <i class="ri-file-list-3-line text-success me-1"></i> Nomor PO (Purchase Order): <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control form-control-lg fw-semibold font-monospace" id="modalInputNoPo"
+                                placeholder="Contoh: PO-2026-00123" required autocomplete="off">
+                            <div class="form-text fs-11 text-muted">Nomor PO wajib diisi saat proses pengisian muatan kempu.</div>
+                        </div>
+
+                        <!-- Upload 4 Foto Kempu -->
+                        <div class="mb-3">
+                            <label class="form-label fs-12 fw-bold text-body mb-2 d-flex align-items-center justify-content-between">
+                                <span><i class="ri-camera-lens-line text-success me-1"></i> Dokumentasi Foto Kempu:</span>
+                                <span class="text-muted fs-11 fw-normal">Maksimal 4 Foto</span>
+                            </label>
+                            <div class="row g-2">
+                                @for ($i = 1; $i <= 4; $i++)
+                                    <div class="col-6 col-sm-3">
+                                        <div class="border rounded-3 p-2 text-center position-relative photo-upload-box bg-light"
+                                             id="photoBox{{ $i }}" data-index="{{ $i }}" style="min-height: 110px; cursor: pointer; overflow: hidden;">
+                                            <input type="file" id="modalInputFoto{{ $i }}" class="d-none input-foto-kempu" accept="image/*" capture="environment">
+                                            <div class="photo-placeholder" id="placeholderFoto{{ $i }}">
+                                                <i class="ri-camera-fill fs-24 text-secondary d-block mt-2 mb-1"></i>
+                                                <span class="fs-11 fw-medium text-muted">Foto {{ $i }}</span>
+                                            </div>
+                                            <img src="" id="previewFoto{{ $i }}" class="img-fluid rounded d-none" style="max-height: 95px; width: 100%; object-fit: cover;">
+                                            <button type="button" class="btn btn-danger btn-xs position-absolute top-0 end-0 m-1 rounded-circle p-0 d-none btn-remove-photo"
+                                                    data-index="{{ $i }}" style="line-height: 1; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;">
+                                                <i class="ri-close-line fs-12"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endfor
+                            </div>
+                            <div class="form-text fs-11 text-muted mt-1">Klik kotak untuk mengambil foto atau unggah dari galeri.</div>
+                        </div>
+                    @endif
+
                     <!-- Notes Input (Opsional) -->
                     <div class="mb-3">
                         <label for="modalInputNotes" class="form-label fs-12 fw-semibold text-body mb-1">
@@ -613,19 +653,35 @@
                     $('#btnModalConfirm').prop('disabled', false).removeClass('disabled');
 
                     if (CARD_KEY === 'cuci-kempu') {
+                        let targetReused = Math.min(21, (k.reused_count || 0) + 1);
                         let noteText =
-                            'Kempu telah lolos <strong>Cek Incoming & Pre Cuci</strong> dan siap dilakukan pencucian serta pembersihan sebelum proses pengisian.';
+                            `Kempu telah lolos <strong>Cek Incoming & Pre Cuci</strong>. Pada konfirmasi Cuci Kempu ini, <strong>Siklus Reused otomatis bertambah (+1)</strong> menjadi <strong>${targetReused}/21x</strong>.`;
                         if (k.current_status && k.current_status.toUpperCase().includes('CUCI')) {
                             noteText =
-                                'Kempu ini dicuci ulang karena telah melewati batas waktu pengisian (> H+3). Setelah konfirmasi, riwayat waktu cuci akan diperbarui.';
+                                `Kempu dicuci ulang karena melewati batas waktu (> H+3). Siklus Reused akan bertambah (+1) menjadi <strong>${targetReused}/21x</strong>.`;
                         }
                         $('#alertReusedNotice').html(`
                             <div class="d-flex align-items-center gap-2">
-                                <i class="ri-water-flash-line fs-18 text-info"></i>
+                                <i class="ri-water-flash-line fs-20 text-info"></i>
                                 <div>${noteText}</div>
                             </div>
-                        `).removeClass('alert-danger alert-warning').addClass('alert-info').show();
+                        `).removeClass('alert-danger alert-warning alert-success').addClass('alert-info').show();
                     } else if (CARD_KEY === 'scan-1-filling-kempu') {
+                        $('#modalInputNoPo').val(k.no_po || '');
+                        for (let i = 1; i <= 4; i++) {
+                            $('#modalInputFoto' + i).val('');
+                            const existingPhoto = (k.cycle_photos && k.cycle_photos['foto_' + i]) ? k.cycle_photos['foto_' + i] : null;
+                            if (existingPhoto) {
+                                $('#previewFoto' + i).attr('src', existingPhoto).removeClass('d-none');
+                                $('#placeholderFoto' + i).addClass('d-none');
+                                $(`.btn-remove-photo[data-index="${i}"]`).removeClass('d-none');
+                            } else {
+                                $('#previewFoto' + i).attr('src', '').addClass('d-none');
+                                $('#placeholderFoto' + i).removeClass('d-none');
+                                $(`.btn-remove-photo[data-index="${i}"]`).addClass('d-none');
+                            }
+                        }
+
                         let cuciBadge = '';
                         if (k.cuci_info && k.cuci_info.cuci_date && k.cuci_info.cuci_date !== '-') {
                             cuciBadge = `
@@ -641,7 +697,7 @@
                                 ${cuciBadge}
                                 <div class="d-flex align-items-center gap-2">
                                     <i class="ri-checkbox-circle-line fs-18 text-success flex-shrink-0"></i>
-                                    <div>Kempu siap untuk proses <strong>Filling</strong>. Siklus pemakaian kempu: <strong>${k.reused_count}/21 Reused</strong>. Setelah ini kempu akan melalui pemeriksaan <strong>After Filling</strong> oleh QC.</div>
+                                    <div>Kempu siap untuk proses <strong>Filling</strong>. Siklus pemakaian kempu: <strong>${k.reused_count}/21 Reused</strong>. Silakan isi Nomor PO dan lampirkan foto dokumentasi kempu.</div>
                                 </div>
                             </div>
                         `).removeClass('alert-danger alert-warning').addClass('alert-success').show();
@@ -678,6 +734,37 @@
                 confirmModal.show();
             }
 
+            // Photo Upload Interaction Handlers
+            $(document).on('click', '.photo-upload-box', function(e) {
+                if ($(e.target).closest('.btn-remove-photo').length) return;
+                const idx = $(this).data('index');
+                $(`#modalInputFoto${idx}`).trigger('click');
+            });
+
+            $(document).on('change', '.input-foto-kempu', function() {
+                const input = this;
+                const id = $(input).attr('id');
+                const idx = id.replace('modalInputFoto', '');
+                if (input.files && input.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $(`#previewFoto${idx}`).attr('src', e.target.result).removeClass('d-none');
+                        $(`#placeholderFoto${idx}`).addClass('d-none');
+                        $(`.btn-remove-photo[data-index="${idx}"]`).removeClass('d-none');
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                }
+            });
+
+            $(document).on('click', '.btn-remove-photo', function(e) {
+                e.stopPropagation();
+                const idx = $(this).data('index');
+                $(`#modalInputFoto${idx}`).val('');
+                $(`#previewFoto${idx}`).attr('src', '').addClass('d-none');
+                $(`#placeholderFoto${idx}`).removeClass('d-none');
+                $(this).addClass('d-none');
+            });
+
             // Reset saat modal ditutup
             $('#modalKempuConfirm').on('hidden.bs.modal', function() {
                 resumeScanner();
@@ -688,25 +775,46 @@
             $('#btnModalConfirm').on('click', function() {
                 if (!currentKempu) return;
 
+                if (CARD_KEY === 'scan-1-filling-kempu') {
+                    const noPoVal = $('#modalInputNoPo').val().trim();
+                    if (!noPoVal) {
+                        Swal.fire('Validasi Gagal', 'Nomor PO (no_po) wajib diisi untuk proses Filling Kempu.', 'warning');
+                        $('#modalInputNoPo').focus();
+                        return;
+                    }
+                }
+
                 const btn = $(this);
                 btn.prop('disabled', true).html(
                     '<i class="ri-loader-4-line ri-spin me-1"></i> Memproses...');
 
-                const postData = {
-                    _token: "{{ csrf_token() }}",
-                    id_kempu: currentKempu.id_kempu,
-                    card_key: CARD_KEY,
-                    notes: $('#modalInputNotes').val().trim(),
-                    is_manual: (currentKempu && currentKempu.is_manual) ? 1 : 0
-                };
+                const formData = new FormData();
+                formData.append('_token', "{{ csrf_token() }}");
+                formData.append('id_kempu', currentKempu.id_kempu);
+                formData.append('card_key', CARD_KEY);
+                formData.append('notes', $('#modalInputNotes').val().trim());
+                formData.append('is_manual', (currentKempu && currentKempu.is_manual) ? 1 : 0);
+
                 if (CARD_KEY === 'prod-force') {
-                    postData.force_target = $('#modalForceTarget').val();
+                    formData.append('force_target', $('#modalForceTarget').val());
+                }
+
+                if (CARD_KEY === 'scan-1-filling-kempu') {
+                    formData.append('no_po', $('#modalInputNoPo').val().trim());
+                    for (let i = 1; i <= 4; i++) {
+                        const fileInput = document.getElementById('modalInputFoto' + i);
+                        if (fileInput && fileInput.files && fileInput.files[0]) {
+                            formData.append('foto_' + i, fileInput.files[0]);
+                        }
+                    }
                 }
 
                 $.ajax({
                     url: "{{ route('kempu.produksi.confirm') }}",
                     method: "POST",
-                    data: postData,
+                    data: formData,
+                    processData: false,
+                    contentType: false,
                     success: function(res) {
                         btn.prop('disabled', false).html(
                             CARD_KEY === 'prod-force' ?

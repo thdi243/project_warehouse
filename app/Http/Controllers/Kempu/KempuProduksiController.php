@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Kempu;
 
 use App\Http\Controllers\Controller;
+use App\Models\Kempu\KempuCycleFillingModel;
 use App\Models\Kempu\KempuTrackingHistoryModel;
 use App\Models\Kempu\MasterKempuModel;
 use App\Models\User;
@@ -115,13 +116,13 @@ class KempuProduksiController extends Controller
             'repro-kempu' => [
                 'key'             => 'repro-kempu',
                 'title'           => 'Repro Kempu',
-                'subtitle'        => 'Pengosongan Produk Reject',
+                'subtitle'        => 'Pengosongan Produk Reject / Retur',
                 'status_name'     => MasterKempuModel::STATUS_PROD_REPRO_KEMPU,
                 'stage'           => 'PRODUKSI',
                 'location'        => MasterKempuModel::LOC_PRODUKSI,
                 'from_loc'        => MasterKempuModel::LOC_PRODUKSI,
-                'to_loc'          => MasterKempuModel::LOC_ENG,
-                'next_status'     => MasterKempuModel::STATUS_ENG_REPAIR,
+                'to_loc'          => MasterKempuModel::LOC_QC_PROSES,
+                'next_status'     => MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
                 'icon'            => 'ri-recycle-line',
                 'badge_color'     => 'warning',
                 'btn_text'        => 'Buka Scanner Repro Kempu',
@@ -131,8 +132,11 @@ class KempuProduksiController extends Controller
                     'QC After Filling Repro',
                     'QC After Filling Repro (Produk Reject)',
                     'REPRO',
+                    'WFG_RETUR_FROM_PAS',
+                    'Retur From PAS',
+                    'PAS_RETUR_TO_WFG',
                 ],
-                'description'     => 'Pengosongan muatan produk reject hasil QC After Filling. Setelah discan, kempu otomatis diteruskan ke Workshop Engineering (Repair).',
+                'description'     => 'Pengosongan muatan produk reject atau retur dari PAS. Setelah discan, kempu diteruskan ke QC Cek Pre Cuci.',
             ],
             // 'transfer-in-from-wfg' => [
             //     'key'             => 'transfer-in-from-wfg',
@@ -662,7 +666,7 @@ class KempuProduksiController extends Controller
             } elseif ($cardKey === 'repro-kempu') {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Repro Kempu' hanya untuk kempu yang dinyatakan Repro (Produk Reject) pada pemeriksaan QC After Filling.",
+                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Repro Kempu' hanya untuk kempu berstatus Repro (Reject QC After Filling atau Retur Dari PAS).",
                 ];
             }
 
@@ -816,22 +820,42 @@ class KempuProduksiController extends Controller
             );
         }
 
+        $currentReusedCount = (int)($kempu->main->reused_count ?? 0);
+        $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->where('reused_count', $currentReusedCount)
+            ->first();
+
+        // Data PO dan foto spesifik per siklus reused
+        $cycleNoPo = $cycleFilling?->no_po ?? '';
+
         return response()->json([
             'status' => true,
             'data'   => [
-                'id'               => $kempu->id,
-                'id_kempu'         => $kempu->id_kempu,
-                'rfid'             => $kempu->rfid ?? '-',
-                'current_location' => $kempu->main->current_location ?? 'PRODUKSI',
-                'current_status'   => $kempu->main->current_status ?? '-',
-                'reused_count'     => (int)($kempu->main->reused_count ?? 0),
-                'max_reused'       => (int)($kempu->main->max_reused ?? 21),
-                'condition'        => $kempu->main->condition ?? 'OK',
-                'card_title'       => $card['title'],
-                'is_force_scan'    => ($cardKey === 'prod-force'),
-                'is_flow_valid'    => $flowValidation['valid'],
-                'flow_error'       => $flowValidation['message'],
-                'cuci_info'        => in_array($cardKey, ['scan-1-filling-kempu', 'cuci-kempu']) ? self::getCuciKempuTiming($kempu) : null,
+                'id'                    => $kempu->id,
+                'id_kempu'              => $kempu->id_kempu,
+                'rfid'                  => $kempu->rfid ?? '-',
+                'current_location'      => $kempu->main->current_location ?? 'PRODUKSI',
+                'current_status'        => $kempu->main->current_status ?? '-',
+                'reused_count'          => $currentReusedCount,
+                'target_reused_count'   => ($cardKey === 'cuci-kempu') ? min(21, $currentReusedCount + 1) : $currentReusedCount,
+                'will_increment_reused' => ($flowValidation['valid'] && $cardKey === 'cuci-kempu'),
+                'max_reused'            => (int)($kempu->main->max_reused ?? 21),
+                'no_po'                 => $cycleNoPo,
+                'cycle_photos'          => [
+                    'foto_1' => $cycleFilling?->foto_1 ? asset('storage/' . $cycleFilling->foto_1) : null,
+                    'foto_2' => $cycleFilling?->foto_2 ? asset('storage/' . $cycleFilling->foto_2) : null,
+                    'foto_3' => $cycleFilling?->foto_3 ? asset('storage/' . $cycleFilling->foto_3) : null,
+                    'foto_4' => $cycleFilling?->foto_4 ? asset('storage/' . $cycleFilling->foto_4) : null,
+                ],
+                'condition'             => $kempu->main->condition ?? 'OK',
+                'has_barcode'           => (bool)($cycleFilling?->has_barcode ?? $kempu->main?->has_barcode ?? true),
+                'has_rfid'              => (bool)($cycleFilling?->has_rfid ?? $kempu->main?->has_rfid ?? true),
+                'has_nti'               => (bool)($cycleFilling?->has_nti ?? $kempu->main?->has_nti ?? true),
+                'card_title'            => $card['title'],
+                'is_force_scan'         => ($cardKey === 'prod-force'),
+                'is_flow_valid'         => $flowValidation['valid'],
+                'flow_error'            => $flowValidation['message'],
+                'cuci_info'             => in_array($cardKey, ['scan-1-filling-kempu', 'cuci-kempu']) ? self::getCuciKempuTiming($kempu) : null,
             ],
         ]);
     }
@@ -989,13 +1013,13 @@ class KempuProduksiController extends Controller
                 case 'PROD_REPRO_KEMPU':
                 case 'REPRO-KEMPU':
                 case 'REPRO':
-                    $nextStatus    = MasterKempuModel::STATUS_ENG_REPAIR;
-                    $toLocation    = MasterKempuModel::LOC_ENG;
-                    $condition     = 'NOT_OK';
+                    $nextStatus    = MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING;
+                    $toLocation    = MasterKempuModel::LOC_QC_PROSES;
+                    $condition     = 'OK';
                     $actionResult  = 'REPRO_COMPLETED';
-                    $actionTitle   = '[FORCE SCAN] Repro Kempu (Kirim Repair)';
-                    $resultMessage = "Force Scan: Repro Kempu {$idKempu} berhasil dipaksa selesai dan diteruskan ke Workshop Engineering (Repair).";
-                    $notes         = $notes ?: 'Force Decision: Paksa Repro Kempu ke Repair';
+                    $actionTitle   = '[FORCE SCAN] Repro Kempu (Kirim ke QC Pre Cuci)';
+                    $resultMessage = "Force Scan: Repro Kempu {$idKempu} berhasil dipaksa selesai dan diteruskan ke QC Cek Pre Cuci.";
+                    $notes         = $notes ?: 'Force Decision: Paksa Repro Kempu ke QC Pre Cuci';
                     break;
 
                 default:
@@ -1005,18 +1029,34 @@ class KempuProduksiController extends Controller
                     ], 400);
             }
         } elseif ($cardKey === 'scan-1-filling-kempu') {
-            // Reused telah ditambah saat QC Pre Cuci. Di sini mengisi muatan kempu dan lanjut ke QC After Filling
+            $noPo = trim($request->input('no_po', ''));
+            if (!$noPo) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Nomor PO (no_po) wajib diisi untuk proses Filling Kempu.',
+                ], 422);
+            }
+
+            $uploadedPhotos = [];
+            for ($i = 1; $i <= 4; $i++) {
+                if ($request->hasFile("foto_{$i}")) {
+                    $uploadedPhotos["foto_{$i}"] = $request->file("foto_{$i}")->store('kempu/filling', 'public');
+                }
+            }
+
             $nextStatus    = MasterKempuModel::STATUS_PROD_FILLING_KEMPU;
             $toLocation    = MasterKempuModel::LOC_PRODUKSI;
             $condition     = 'OK';
             $actionResult  = 'OK';
-            $resultMessage = "Scan 1 Filling Kempu berhasil. Kempu siap untuk pemeriksaan QC After Filling.";
+            $resultMessage = "Scan 1 Filling Kempu (PO: {$noPo}) berhasil. Kempu siap untuk pemeriksaan QC After Filling.";
         } elseif ($cardKey === 'cuci-kempu') {
+            // Reused siklus bertambah +1 di Cuci Kempu Produksi
+            $currentReused = min(21, $currentReused + 1);
             $nextStatus    = MasterKempuModel::STATUS_PROD_CUCI_KEMPU;
             $toLocation    = MasterKempuModel::LOC_PRODUKSI;
             $condition     = 'OK';
             $actionResult  = 'OK';
-            $resultMessage = "Cuci Kempu berhasil diselesaikan. Kempu siap untuk proses Scan 1 Filling.";
+            $resultMessage = "Cuci Kempu berhasil diselesaikan (Siklus Reused bertambah: {$currentReused}/21x). Kempu siap untuk proses Scan 1 Filling.";
         } elseif ($cardKey === 'create-ba-scrap') {
             $nextStatus    = MasterKempuModel::STATUS_SCRAPPED;
             $toLocation    = MasterKempuModel::LOC_SCRAP;
@@ -1039,38 +1079,16 @@ class KempuProduksiController extends Controller
             $actionResult  = 'TRANSFERRED';
             $resultMessage = "Kempu berhasil di-Transfer Out dari Produksi menuju WFG.";
         } elseif ($cardKey === 'repro-kempu') {
-            $nextStatus    = MasterKempuModel::STATUS_ENG_REPAIR;
-            $toLocation    = MasterKempuModel::LOC_ENG;
-            $condition     = 'NOT_OK';
+            $nextStatus    = MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING;
+            $toLocation    = MasterKempuModel::LOC_QC_PROSES;
+            $condition     = 'OK';
             $actionResult  = 'REPRO_COMPLETED';
-            $actionTitle   = 'Repro Kempu (Kirim ke Repair)';
-            $resultMessage = "Proses Repro Kempu {$idKempu} selesai (produk dikosongkan). Kempu berhasil diteruskan ke Workshop Engineering (Repair).";
+            $actionTitle   = 'Repro Kempu (Kirim ke QC Pre Cuci)';
+            $resultMessage = "Proses Repro Kempu {$idKempu} selesai. Kempu berhasil diteruskan ke QC Cek Pre Cuci.";
         }
 
         DB::beginTransaction();
         try {
-            if (!$kempu->main) {
-                $kempu->main()->create([
-                    'id_kempu'         => $kempu->id_kempu,
-                    'current_location' => $toLocation,
-                    'current_status'   => $nextStatus,
-                    'reused_count'     => $currentReused,
-                    'max_reused'       => 21,
-                    'condition'        => $condition,
-                    'last_scanned_at'  => now(),
-                    'last_action'      => $actionTitle,
-                ]);
-            } else {
-                $kempu->main->update([
-                    'current_status'   => $nextStatus,
-                    'current_location' => $toLocation,
-                    'reused_count'     => $currentReused,
-                    'condition'        => $condition,
-                    'last_scanned_at'  => now(),
-                    'last_action'      => $actionTitle,
-                ]);
-            }
-
             // Identitas Operator dari berbagai portal (Production, Warehouse, dll)
             $operatorName  = trim($request->input('operator_name', $request->input('user_name', '')));
             $operatorEmail = trim($request->input('operator_email', $request->input('user_email', '')));
@@ -1088,8 +1106,83 @@ class KempuProduksiController extends Controller
             }
 
             // created_by HANYA diisi jika user terverifikasi ada di tabel users Warehouse (via Auth::check() atau email match).
-            // JANGAN gunakan request->user_id langsung dari portal luar untuk menghindari salah relasi ke user Warehouse lain!
             $creatorId = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
+
+            $mainPayload = [
+                'current_status'   => $nextStatus,
+                'current_location' => $toLocation,
+                'reused_count'     => $currentReused,
+                'condition'        => $condition,
+                'last_scanned_at'  => now(),
+                'last_action'      => $actionTitle,
+            ];
+
+            if ($cardKey === 'scan-1-filling-kempu') {
+                $existingCycle = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+                    ->where('reused_count', $currentReused)
+                    ->first();
+
+                $foto1 = $uploadedPhotos['foto_1'] ?? $existingCycle?->foto_1;
+                $foto2 = $uploadedPhotos['foto_2'] ?? $existingCycle?->foto_2;
+                $foto3 = $uploadedPhotos['foto_3'] ?? $existingCycle?->foto_3;
+                $foto4 = $uploadedPhotos['foto_4'] ?? $existingCycle?->foto_4;
+
+                $hasBarcode = filter_var($request->input('has_barcode', $existingCycle?->has_barcode ?? $kempu->main?->has_barcode ?? true), FILTER_VALIDATE_BOOLEAN);
+                $hasRfid    = filter_var($request->input('has_rfid', $existingCycle?->has_rfid ?? $kempu->main?->has_rfid ?? true), FILTER_VALIDATE_BOOLEAN);
+                $hasNti     = filter_var($request->input('has_nti', $existingCycle?->has_nti ?? $kempu->main?->has_nti ?? true), FILTER_VALIDATE_BOOLEAN);
+
+                $mainPayload['no_po']       = $noPo;
+                $mainPayload['foto_1']      = $foto1;
+                $mainPayload['foto_2']      = $foto2;
+                $mainPayload['foto_3']      = $foto3;
+                $mainPayload['foto_4']      = $foto4;
+                $mainPayload['has_barcode'] = $hasBarcode;
+                $mainPayload['has_rfid']    = $hasRfid;
+                $mainPayload['has_nti']     = $hasNti;
+
+                // Simpan / perbarui arsip siklus filling kempu per nilai reused_count
+                KempuCycleFillingModel::updateOrCreate(
+                    [
+                        'kempu_master_id' => $kempu->id,
+                        'reused_count'    => $currentReused,
+                    ],
+                    [
+                        'id_kempu'    => $kempu->id_kempu,
+                        'no_po'       => $noPo,
+                        'foto_1'      => $foto1,
+                        'foto_2'      => $foto2,
+                        'foto_3'      => $foto3,
+                        'foto_4'      => $foto4,
+                        'has_barcode' => $hasBarcode,
+                        'has_rfid'    => $hasRfid,
+                        'has_nti'     => $hasNti,
+                        'filled_at'   => now(),
+                        'created_by'  => $creatorId ?? Auth::id(),
+                    ]
+                );
+            } elseif ($cardKey === 'cuci-kempu') {
+                // Saat masuk ke siklus pencucian baru (reused berganti), sesuaikan No PO & foto dengan siklus baru tsb
+                $nextCycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+                    ->where('reused_count', $currentReused)
+                    ->first();
+
+                $mainPayload['no_po']       = $nextCycleFilling?->no_po ?? null;
+                $mainPayload['foto_1']      = $nextCycleFilling?->foto_1 ?? null;
+                $mainPayload['foto_2']      = $nextCycleFilling?->foto_2 ?? null;
+                $mainPayload['foto_3']      = $nextCycleFilling?->foto_3 ?? null;
+                $mainPayload['foto_4']      = $nextCycleFilling?->foto_4 ?? null;
+                $mainPayload['has_barcode'] = (bool)($nextCycleFilling?->has_barcode ?? true);
+                $mainPayload['has_rfid']    = (bool)($nextCycleFilling?->has_rfid ?? true);
+                $mainPayload['has_nti']     = (bool)($nextCycleFilling?->has_nti ?? true);
+            }
+
+            if (!$kempu->main) {
+                $mainPayload['id_kempu']   = $kempu->id_kempu;
+                $mainPayload['max_reused'] = 21;
+                $kempu->main()->create($mainPayload);
+            } else {
+                $kempu->main->update($mainPayload);
+            }
 
             // Update data master kempu (kempu_master)
             // Keputusan resmi SCRAP dan penonaktifan kempu berada di tangan Produksi saat scan Create BA Scrap
@@ -1114,6 +1207,11 @@ class KempuProduksiController extends Controller
                 'input_method'   => $isManual ? 'MANUAL' : 'SCANNER',
                 'is_manual'      => $isManual,
             ];
+
+            if ($cardKey === 'scan-1-filling-kempu') {
+                $trackingMetadata['no_po'] = $noPo;
+                $trackingMetadata['photos'] = $uploadedPhotos;
+            }
 
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,

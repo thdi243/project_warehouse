@@ -221,6 +221,11 @@ class MasterKempuModel extends Model
         return $this->hasMany(KempuTrackingHistoryModel::class, 'kempu_master_id')->latest('id');
     }
 
+    public function cycleFillings()
+    {
+        return $this->hasMany(KempuCycleFillingModel::class, 'kempu_master_id')->orderBy('reused_count', 'desc');
+    }
+
     // =========================================================================
     // ACCESSOR & MUTATOR DELEGATION KE KEMPU_MAIN (SEAMLESS COMPATIBILITY)
     // =========================================================================
@@ -309,19 +314,54 @@ class MasterKempuModel extends Model
         }
     }
 
+    public function getCurrentCycleFillingAttribute()
+    {
+        return $this->cycleFillings?->firstWhere('reused_count', $this->reused_count);
+    }
+
     public function getHasBarcodeAttribute()
     {
-        return (bool)($this->main?->has_barcode ?? true);
+        return (bool)($this->current_cycle_filling?->has_barcode ?? $this->main?->has_barcode ?? true);
     }
 
     public function getHasRfidAttribute()
     {
-        return (bool)($this->main?->has_rfid ?? true);
+        return (bool)($this->current_cycle_filling?->has_rfid ?? $this->main?->has_rfid ?? true);
+    }
+
+    public function getHasNtiAttribute()
+    {
+        return (bool)($this->current_cycle_filling?->has_nti ?? $this->main?->has_nti ?? true);
     }
 
     public function getHasKitirAttribute()
     {
-        return (bool)($this->main?->has_kitir ?? true);
+        return $this->has_nti;
+    }
+
+    public function getNoPoAttribute()
+    {
+        return $this->main?->no_po;
+    }
+
+    public function getFoto1Attribute()
+    {
+        return $this->main?->foto_1;
+    }
+
+    public function getFoto2Attribute()
+    {
+        return $this->main?->foto_2;
+    }
+
+    public function getFoto3Attribute()
+    {
+        return $this->main?->foto_3;
+    }
+
+    public function getFoto4Attribute()
+    {
+        return $this->main?->foto_4;
     }
 
     /**

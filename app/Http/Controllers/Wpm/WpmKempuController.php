@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Wpm;
 
 use App\Http\Controllers\Controller;
+use App\Models\Kempu\KempuCycleFillingModel;
 use App\Models\Kempu\KempuTrackingHistoryModel;
 use App\Models\Kempu\MasterKempuModel;
 use Illuminate\Http\Request;
@@ -531,6 +532,10 @@ class WpmKempuController extends Controller
             );
         }
 
+        $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->where('reused_count', $reusedCount)
+            ->first();
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -546,9 +551,9 @@ class WpmKempuController extends Controller
                 'has_reused'       => $hasReused,
                 'can_edit_reused'  => $canEditReused,
                 'condition'        => $kempu->condition ?? 'OK',
-                'has_barcode'      => (bool)($kempu->main?->has_barcode ?? true),
-                'has_rfid'         => (bool)($kempu->main?->has_rfid ?? true),
-                'has_nti'        => (bool)($kempu->main?->has_nti ?? true),
+                'has_barcode'      => (bool)($cycleFilling?->has_barcode ?? $kempu->main?->has_barcode ?? true),
+                'has_rfid'         => (bool)($cycleFilling?->has_rfid ?? $kempu->main?->has_rfid ?? true),
+                'has_nti'          => (bool)($cycleFilling?->has_nti ?? $kempu->main?->has_nti ?? true),
                 'last_scanned_at'  => $kempu->last_scanned_at ? $kempu->last_scanned_at->format('d/m/Y H:i') : '-',
                 'last_action'      => $kempu->last_action ?? '-',
                 'target_status'    => $card['status_name'],
@@ -684,11 +689,25 @@ class WpmKempuController extends Controller
                     'reused_count'     => $currentReused,
                     'has_barcode'      => $hasBarcode,
                     'has_rfid'         => $hasRfid,
-                    'has_nti'        => $hasNti,
+                    'has_nti'          => $hasNti,
                     'last_scanned_at'  => now(),
                     'last_action'      => $card['title'],
                 ]);
             }
+
+            // Simpan / perbarui status kelengkapan fisik per siklus reused
+            KempuCycleFillingModel::updateOrCreate(
+                [
+                    'kempu_master_id' => $kempu->id,
+                    'reused_count'    => $currentReused,
+                ],
+                [
+                    'id_kempu'    => $kempu->id_kempu,
+                    'has_barcode' => $hasBarcode,
+                    'has_rfid'    => $hasRfid,
+                    'has_nti'     => $hasNti,
+                ]
+            );
 
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
@@ -765,22 +784,44 @@ class WpmKempuController extends Controller
             ], 404);
         }
 
+        $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->where('reused_count', (int)$newReused)
+            ->first();
+
+        $mainData = [
+            'reused_count' => (int)$newReused,
+            'has_barcode'  => (bool)($cycleFilling?->has_barcode ?? true),
+            'has_rfid'     => (bool)($cycleFilling?->has_rfid ?? true),
+            'has_nti'      => (bool)($cycleFilling?->has_nti ?? true),
+            'no_po'        => $cycleFilling?->no_po ?? null,
+            'foto_1'       => $cycleFilling?->foto_1 ?? null,
+            'foto_2'       => $cycleFilling?->foto_2 ?? null,
+            'foto_3'       => $cycleFilling?->foto_3 ?? null,
+            'foto_4'       => $cycleFilling?->foto_4 ?? null,
+            'last_action'  => 'Koreksi Reused Manual oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
+        ];
+
         if (!$kempu->main) {
-            $kempu->main()->create([
-                'id_kempu'         => $kempu->id_kempu,
-                'current_location' => MasterKempuModel::LOC_WPM,
-                'current_status'   => 'REGISTERED',
-                'reused_count'     => (int)$newReused,
-                'max_reused'       => 21,
-                'condition'        => 'OK',
-                'last_action'      => 'Koreksi Reused Manual oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
-            ]);
+            $mainData['id_kempu']         = $kempu->id_kempu;
+            $mainData['current_location'] = MasterKempuModel::LOC_WPM;
+            $mainData['current_status']   = 'REGISTERED';
+            $mainData['max_reused']       = 21;
+            $mainData['condition']        = 'OK';
+            $kempu->main()->create($mainData);
         } else {
-            $kempu->main->update([
-                'reused_count' => (int)$newReused,
-                'last_action'  => 'Koreksi Reused Manual oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
-            ]);
+            $kempu->main->update($mainData);
         }
+
+        $kempu->recordTracking(
+            stage: 'WPM',
+            action: 'Koreksi Reused Manual',
+            actionResult: 'UPDATED',
+            fromLocation: $kempu->main?->current_location ?? MasterKempuModel::LOC_WPM,
+            toLocation: $kempu->main?->current_location ?? MasterKempuModel::LOC_WPM,
+            condition: $kempu->main?->condition ?? 'OK',
+            notes: "Siklus Reused disesuaikan manual ke {$newReused}x",
+            userId: Auth::id()
+        );
 
         return response()->json([
             'status'       => true,

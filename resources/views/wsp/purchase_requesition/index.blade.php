@@ -3,14 +3,6 @@
 @section('title', '| Purchase Requesition')
 
 @section('styles')
-    <style>
-        .signature-canvas {
-            width: 100%;
-            height: 200px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-        }
-    </style>
 @endsection
 
 @section('content')
@@ -51,7 +43,8 @@
                                     <input type="date" id="exportEndDate" class="form-control form-control-sm">
                                 </div>
                                 <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" id="btnExportAllDates">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill"
+                                        id="btnExportAllDates">
                                         Semua
                                     </button>
                                     <button type="button" class="btn btn-sm btn-success flex-fill" id="btnSubmitExport">
@@ -848,7 +841,8 @@
                     if (bsDropdown) bsDropdown.hide();
                 }
 
-                window.location.href = "{{ route('stock.pr.export-approval-history') }}?" + params.toString();
+                window.location.href = "{{ route('stock.pr.export-approval-history') }}?" + params
+                .toString();
             });
 
             $('#btnExportAllDates').on('click', function() {

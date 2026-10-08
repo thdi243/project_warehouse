@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Kempu;
 
 use App\Http\Controllers\Controller;
+use App\Models\Kempu\KempuCycleFillingModel;
 use App\Models\Kempu\KempuTrackingHistoryModel;
 use App\Models\Kempu\MasterKempuModel;
 use Illuminate\Http\Request;
@@ -314,6 +315,10 @@ class KempuPasController extends Controller
             );
         }
 
+        $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->where('reused_count', $reusedCount)
+            ->first();
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -331,9 +336,9 @@ class KempuPasController extends Controller
                 'has_reused'             => true,
                 'can_edit_reused'        => $canEditReused,
                 'condition'              => $kempu->condition ?? 'OK',
-                'has_barcode'            => (bool)($kempu->main?->has_barcode ?? true),
-                'has_rfid'               => (bool)($kempu->main?->has_rfid ?? true),
-                'has_kitir'              => (bool)($kempu->main?->has_kitir ?? true),
+                'has_barcode'            => (bool)($cycleFilling?->has_barcode ?? $kempu->main?->has_barcode ?? true),
+                'has_rfid'               => (bool)($cycleFilling?->has_rfid ?? $kempu->main?->has_rfid ?? true),
+                'has_kitir'              => (bool)($cycleFilling?->has_nti ?? $kempu->main?->has_nti ?? true),
                 'last_scanned_at'        => $kempu->last_scanned_at ? $kempu->last_scanned_at->format('d/m/Y H:i') : '-',
                 'last_action'            => $kempu->last_action ?? '-',
                 'target_status'          => $card['status_name'],
@@ -408,26 +413,44 @@ class KempuPasController extends Controller
             }
         }
 
+        // Penentuan kondisi muatan untuk Transfer Out to BAS (Kosongan ke WPM vs Ada isinya ke WFG)
+        $kondisiMuatan = strtolower(trim($request->input('kondisi_muatan', 'kosong')));
+        $targetStatus  = $card['status_name'];
+        $toLocation    = $card['to_loc'];
+        $actionTitle   = $card['title'];
+
+        if ($cardKey === 'transfer-out-to-bas') {
+            if ($kondisiMuatan === 'isi') {
+                $targetStatus = 'PAS_RETUR_TO_WFG';
+                $toLocation   = MasterKempuModel::LOC_WFG;
+                $actionTitle  = 'Transfer Out to BAS (Retur Berisi ke WFG)';
+            } else {
+                $targetStatus = MasterKempuModel::STATUS_PAS_TRANSFER_OUT_BAS;
+                $toLocation   = MasterKempuModel::LOC_WPM;
+                $actionTitle  = 'Transfer Out to BAS (Kosongan ke WPM)';
+            }
+        }
+
         DB::beginTransaction();
         try {
             if (!$kempu->main) {
                 $kempu->main()->create([
                     'id_kempu'         => $kempu->id_kempu,
-                    'current_location' => $card['location'],
-                    'current_status'   => $card['status_name'],
+                    'current_location' => $toLocation,
+                    'current_status'   => $targetStatus,
                     'reused_count'     => $targetReused,
                     'max_reused'       => 21,
                     'condition'        => 'OK',
                     'last_scanned_at'  => now(),
-                    'last_action'      => $card['title'],
+                    'last_action'      => $actionTitle,
                 ]);
             } else {
                 $kempu->main->update([
-                    'current_status'   => $card['status_name'],
-                    'current_location' => $card['location'],
+                    'current_status'   => $targetStatus,
+                    'current_location' => $toLocation,
                     'reused_count'     => $targetReused,
                     'last_scanned_at'  => now(),
-                    'last_action'      => $card['title'],
+                    'last_action'      => $actionTitle,
                 ]);
             }
 
@@ -435,39 +458,48 @@ class KempuPasController extends Controller
                 $notes = $notes ? $notes . ' [Input Manual]' : '[Input Manual]';
             }
 
+            $trackingMetadata = [
+                'input_method'   => $isManual ? 'MANUAL' : 'SCANNER',
+                'is_manual'      => $isManual,
+                'kondisi_muatan' => $kondisiMuatan,
+            ];
+
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
                 'id_kempu'        => $kempu->id_kempu,
                 'stage'           => $card['stage'],
-                'action'          => $card['title'],
+                'action'          => $actionTitle,
                 'action_result'   => 'SUCCESS',
                 'from_location'   => $card['from_loc'],
-                'to_location'     => $card['to_loc'],
+                'to_location'     => $toLocation,
                 'reused_count'    => $targetReused,
                 'condition'       => $kempu->main->condition ?? 'OK',
                 'notes'           => $notes,
-                'metadata'        => [
-                    'input_method' => $isManual ? 'MANUAL' : 'SCANNER',
-                    'is_manual'    => $isManual,
-                ],
+                'metadata'        => $trackingMetadata,
                 'created_by'      => Auth::id(),
             ]);
 
             DB::commit();
 
-            $successMsg = "Kempu {$kempu->id_kempu} berhasil dikonfirmasi ke status '{$card['status_name']}' (Reused: {$targetReused}/21x).";
+            if ($cardKey === 'transfer-out-to-bas' && $kondisiMuatan === 'isi') {
+                $successMsg = "Kempu {$kempu->id_kempu} berhasil di-Transfer Out dari PAS (Kondisi: Ada isinya) menuju Warehouse WFG (Retur).";
+            } else {
+                $successMsg = "Kempu {$kempu->id_kempu} berhasil dikonfirmasi ke status '{$targetStatus}' (Reused: {$targetReused}/21x).";
+            }
 
             return response()->json([
                 'status'  => true,
                 'message' => $successMsg,
                 'data'    => [
-                    'id_kempu'     => $kempu->id_kempu,
-                    'rfid'         => $kempu->rfid ?? '-',
-                    'new_status'   => $card['status_name'],
-                    'reused_count' => $targetReused,
-                    'timestamp'    => now()->format('d/m/Y H:i:s'),
-                    'user'         => Auth::user()->nama_lengkap ?? Auth::user()->username ?? 'Operator',
-                    'notes'        => $notes,
+                    'id_kempu'       => $kempu->id_kempu,
+                    'rfid'           => $kempu->rfid ?? '-',
+                    'new_status'     => $targetStatus,
+                    'new_location'   => $toLocation,
+                    'kondisi_muatan' => $kondisiMuatan,
+                    'reused_count'   => $targetReused,
+                    'timestamp'      => now()->format('d/m/Y H:i:s'),
+                    'user'           => Auth::user()->nama_lengkap ?? Auth::user()->username ?? 'Operator',
+                    'notes'          => $notes,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -509,22 +541,44 @@ class KempuPasController extends Controller
             ], 404);
         }
 
+        $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->where('reused_count', (int)$newReused)
+            ->first();
+
+        $mainData = [
+            'reused_count' => (int)$newReused,
+            'has_barcode'  => (bool)($cycleFilling?->has_barcode ?? true),
+            'has_rfid'     => (bool)($cycleFilling?->has_rfid ?? true),
+            'has_nti'      => (bool)($cycleFilling?->has_nti ?? true),
+            'no_po'        => $cycleFilling?->no_po ?? null,
+            'foto_1'       => $cycleFilling?->foto_1 ?? null,
+            'foto_2'       => $cycleFilling?->foto_2 ?? null,
+            'foto_3'       => $cycleFilling?->foto_3 ?? null,
+            'foto_4'       => $cycleFilling?->foto_4 ?? null,
+            'last_action'  => 'Koreksi Reused Manual di PAS oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
+        ];
+
         if (!$kempu->main) {
-            $kempu->main()->create([
-                'id_kempu'         => $kempu->id_kempu,
-                'current_location' => MasterKempuModel::LOC_PAS,
-                'current_status'   => 'REGISTERED',
-                'reused_count'     => (int)$newReused,
-                'max_reused'       => 21,
-                'condition'        => 'OK',
-                'last_action'      => 'Koreksi Reused Manual di PAS oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
-            ]);
+            $mainData['id_kempu']         = $kempu->id_kempu;
+            $mainData['current_location'] = MasterKempuModel::LOC_PAS;
+            $mainData['current_status']   = 'REGISTERED';
+            $mainData['max_reused']       = 21;
+            $mainData['condition']        = 'OK';
+            $kempu->main()->create($mainData);
         } else {
-            $kempu->main->update([
-                'reused_count' => (int)$newReused,
-                'last_action'  => 'Koreksi Reused Manual di PAS oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
-            ]);
+            $kempu->main->update($mainData);
         }
+
+        $kempu->recordTracking(
+            stage: 'PAS',
+            action: 'Koreksi Reused Manual',
+            actionResult: 'UPDATED',
+            fromLocation: $kempu->main?->current_location ?? MasterKempuModel::LOC_PAS,
+            toLocation: $kempu->main?->current_location ?? MasterKempuModel::LOC_PAS,
+            condition: $kempu->main?->condition ?? 'OK',
+            notes: "Siklus Reused disesuaikan manual ke {$newReused}x",
+            userId: Auth::id()
+        );
 
         return response()->json([
             'status'       => true,

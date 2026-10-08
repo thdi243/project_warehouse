@@ -800,8 +800,7 @@
                 if ($('#checkManualReused').length) {
                     $('#checkManualReused').prop('checked', false);
                     $('#boxManualReusedInput').addClass('d-none');
-                    const nextReused = k.next_auto_reused !== undefined ? k.next_auto_reused : Math.min(21, (k
-                        .reused_count || 0) + 1);
+                    const nextReused = k.next_auto_reused !== undefined ? k.next_auto_reused : (k.reused_count || 0);
                     $('#inputManualReused').val(nextReused);
                     $('#badgeAutoNextReused').text(nextReused + '/21');
 
@@ -840,8 +839,7 @@
                         }
                     }
 
-                    const nextReusedForce = k.next_auto_reused !== undefined ? k.next_auto_reused : Math.min(21, (k
-                        .reused_count || 0) + 1);
+                    const nextReusedForce = k.next_auto_reused !== undefined ? k.next_auto_reused : (k.reused_count || 0);
                     $('#inputManualReusedForce').val(nextReusedForce);
                     $('#badgeAutoNextReusedForce').text(nextReusedForce + '/21');
                     $('#checkManualReusedForce').prop('checked', false);

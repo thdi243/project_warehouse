@@ -132,8 +132,8 @@ class KempuQcController extends Controller
             'qc-pre-cuci' => [
                 'key'         => 'qc-pre-cuci',
                 'title'       => 'Cek Incoming & Pre Cuci',
-                'subtitle'    => 'Pemeriksaan Masuk & Pre-Cuci (+1 Reused)',
-                'description' => 'Pemeriksaan kempu masuk dari WPM sekaligus inspeksi kelayakan pre-cuci. Keputusan OK akan menambahkan siklus pemakaian (+1 Reused).',
+                'subtitle'    => 'Pemeriksaan Masuk & Pre-Cuci',
+                'description' => 'Pemeriksaan kempu masuk dari WPM atau pasca Repro untuk evaluasi kelayakan pre-cuci sebelum proses Cuci Kempu di Produksi.',
                 'icon'        => 'ri-shield-check-line',
                 'badge_color' => 'primary',
                 'stage'       => 'QC_PROSES',
@@ -142,10 +142,15 @@ class KempuQcController extends Controller
                     MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING,
                     MasterKempuModel::STATUS_QC_PRE_CUCI_HOLD,
                     MasterKempuModel::STATUS_PROD_TRANSFER_IN_WPM,
+                    MasterKempuModel::STATUS_PROD_REPRO_KEMPU,
                     'QC_PRE_CUCI_PENDING',
                     'Transfer in from WPM',
                     'Transfer In From WPM',
                     'PROD_RECEIVED',
+                    'PROD_REPRO_KEMPU',
+                    'REPRO',
+                    'REPRO_COMPLETED',
+                    'Repro Kempu (Kirim ke QC Pre Cuci)',
                 ],
             ],
             'qc-after-filling' => [
@@ -323,8 +328,8 @@ class KempuQcController extends Controller
                     'qc-pre-cuci' => [
                         'key'         => 'qc-pre-cuci',
                         'title'       => 'Cek Incoming & Pre Cuci',
-                        'subtitle'    => 'Pemeriksaan Masuk & Pre-Cuci (+1 Reused)',
-                        'description' => 'Pemeriksaan kempu masuk (Incoming dari WPM) sekaligus verifikasi kelayakan Pre-Cuci.',
+                        'subtitle'    => 'Pemeriksaan Masuk & Pre-Cuci',
+                        'description' => 'Pemeriksaan kempu masuk (Incoming dari WPM) atau pasca Repro untuk evaluasi kelayakan Pre-Cuci.',
                         'count'       => $totalPreCuciPending,
                         'count_label' => 'kempu siap periksa',
                     ],
@@ -905,7 +910,7 @@ class KempuQcController extends Controller
             } elseif ($qcType === 'qc-pre-cuci' || $qcType === 'qc-proses') {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Cek Incoming & Pre Cuci hanya dapat diproses setelah kempu di-Transfer In dari WPM oleh bagian Produksi.",
+                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Cek Incoming & Pre Cuci hanya dapat diproses setelah kempu di-Transfer In dari WPM atau selesai proses Repro Kempu oleh bagian Produksi.",
                 ];
             } elseif ($qcType === 'qc-after-filling') {
                 return [
@@ -1068,7 +1073,8 @@ class KempuQcController extends Controller
                 'qc_title'         => $card['title'],
                 'is_force_scan'    => in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force']),
                 'can_manual_reused' => self::canForceScan(),
-                'next_auto_reused' => min(21, (int)($kempu->main->reused_count ?? 0) + 1),
+                'next_auto_reused' => (int)($kempu->main->reused_count ?? 0),
+                'will_increment_reused' => false,
                 'is_in_wfg'        => $isAfterFilling,
                 'qc_stage_context' => $qcStageContext,
                 'is_max_reused'    => ((int)($kempu->main->reused_count ?? 0) >= 21),
@@ -1245,16 +1251,9 @@ class KempuQcController extends Controller
                     $actionTitle   = 'Cek Pre Cuci Lolos (Manual Reused)';
                     $notes         = $notes ?: "Lolos Cek Pre Cuci (Release) - Nilai Reused diubah manual menjadi {$currentReused}/21 (sebelumnya {$oldReused}/21) oleh Otoritas QC";
                 } else {
-                    // Default Di QC Pre Cuci: Reused +1!
-                    if ($currentReused >= 21) {
-                        return response()->json([
-                            'status'  => false,
-                            'message' => "Kempu {$idKempu} telah mencapai batas 21x Reused. Tidak dapat digunakan lagi.",
-                        ], 422);
-                    }
-                    $currentReused += 1;
+                    // Siklus reused tidak ditambah di QC Pre Cuci (Reused +1 dilakukan saat Cuci Kempu di Produksi)
                     $actionTitle  = 'Cek Incoming & Pre Cuci Lolos (Release)';
-                    $notes        = $notes ?: "Lolos Cek Incoming & Pre Cuci (Release) - Siklus Reused ke-{$currentReused}/21";
+                    $notes        = $notes ?: "Lolos Cek Incoming & Pre Cuci (Release) - Siap Cuci Kempu (Siklus Reused: {$currentReused}/21x)";
                 }
 
                 $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE;
@@ -1371,9 +1370,6 @@ class KempuQcController extends Controller
                             $currentReused = min(21, max(0, (int)$manualReused));
                             $notes         = $notes ?: "Force Decision: Lolos Pre Cuci - Nilai Reused diset manual ke {$currentReused}/21";
                         } else {
-                            if ($currentReused < 21) {
-                                $currentReused += 1;
-                            }
                             $notes = $notes ?: "Force Decision: Lolos Pre Cuci - Siklus Reused {$currentReused}/21";
                         }
                         $nextStatus   = MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE;

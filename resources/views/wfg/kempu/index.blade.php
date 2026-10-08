@@ -55,7 +55,7 @@
                     @php
                         $themeColor = $colorMap[$card['badge_color'] ?? 'primary'] ?? 'primary';
                     @endphp
-                    <div class="col-xl-5 col-lg-5 col-md-6 col-sm-10">
+                    <div class="col-xl-4 col-lg-4 col-md-6 col-sm-10">
                         <a href="{{ route('wfg.kempu.scan', $key) }}"
                             class="card card-animate text-decoration-none shadow-sm h-100 rounded">
                             <div

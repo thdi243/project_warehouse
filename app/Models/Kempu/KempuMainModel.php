@@ -22,6 +22,11 @@ class KempuMainModel extends Model
         'has_barcode',
         'has_rfid',
         'has_nti',
+        'no_po',
+        'foto_1',
+        'foto_2',
+        'foto_3',
+        'foto_4',
         'last_scanned_at',
         'last_action',
     ];

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Wfg;
 
 use App\Http\Controllers\Controller;
+use App\Models\Kempu\KempuCycleFillingModel;
 use App\Models\Kempu\KempuTrackingHistoryModel;
 use App\Models\Kempu\MasterKempuModel;
 use Illuminate\Http\Request;
@@ -48,6 +49,22 @@ class WfgKempuController extends Controller
                 'icon_color'  => '#7c3aed',
                 'btn_color'   => '#6d28d9',
                 'btn_text'    => 'Buka Scanner Transfer Out',
+            ],
+            'retur-from-pas' => [
+                'key'         => 'retur-from-pas',
+                'title'       => 'Retur From PAS',
+                'status_name' => 'PAS_RETUR_TO_WFG',
+                'location'    => MasterKempuModel::LOC_WFG,
+                'from_loc'    => MasterKempuModel::LOC_PAS,
+                'to_loc'      => MasterKempuModel::LOC_PRODUKSI,
+                'stage'       => 'WFG',
+                'description' => 'Penerimaan kempu retur yang masih ada isinya dari Warehouse PAS. Diteruskan langsung ke Produksi untuk proses Repro.',
+                'icon'        => 'ri-reply-all-line',
+                'badge_color' => 'warning',
+                'bg_tint'     => '#fffbeb',
+                'icon_color'  => '#d97706',
+                'btn_color'   => '#b45309',
+                'btn_text'    => 'Buka Scanner Retur PAS',
             ],
         ];
     }
@@ -365,6 +382,34 @@ class WfgKempuController extends Controller
                     ];
                 }
                 break;
+
+            case 'retur-from-pas':
+                // 1. Cek duplikat scan
+                if (
+                    strcasecmp($currentStatus, 'WFG_RETUR_FROM_PAS') === 0 ||
+                    strcasecmp($currentStatus, 'Retur From PAS') === 0
+                ) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Kempu {$idKempu} sudah diterima sebagai Retur dari PAS (duplikat scan). Kempu sedang dialirkan ke bagian Produksi untuk Repro.",
+                    ];
+                }
+
+                // 2. Wajib dari Transfer Out to BAS yang berisi (PAS_RETUR_TO_WFG)
+                $allowedPrev = [
+                    'pas_retur_to_wfg',
+                    'transfer out to wfg (retur berisi)',
+                    'transfer out to bas (retur berisi ke wfg)',
+                    'pas_retur_to_bas_isi',
+                    'retur to wfg',
+                ];
+                if (!in_array(strtolower($currentStatus), $allowedPrev)) {
+                    return [
+                        'valid'   => false,
+                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Untuk menerima Retur dari PAS, kempu harus berstatus 'PAS_RETUR_TO_WFG' (dikirim dari PAS dengan kondisi Berisi).",
+                    ];
+                }
+                break;
         }
 
         return ['valid' => true, 'message' => null];
@@ -486,6 +531,10 @@ class WfgKempuController extends Controller
             );
         }
 
+        $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->where('reused_count', $reusedCount)
+            ->first();
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -503,12 +552,12 @@ class WfgKempuController extends Controller
                 'has_reused'             => $hasReused,
                 'can_edit_reused'        => $canEditReused,
                 'condition'              => $kempu->condition ?? 'OK',
-                'has_barcode'            => (bool)($kempu->main?->has_barcode ?? true),
-                'has_rfid'               => (bool)($kempu->main?->has_rfid ?? true),
-                'has_nti'                => (bool)($kempu->main?->has_nti ?? true),
+                'has_barcode'            => (bool)($cycleFilling?->has_barcode ?? $kempu->main?->has_barcode ?? true),
+                'has_rfid'               => (bool)($cycleFilling?->has_rfid ?? $kempu->main?->has_rfid ?? true),
+                'has_nti'                => (bool)($cycleFilling?->has_nti ?? $kempu->main?->has_nti ?? true),
                 'last_scanned_at'        => $kempu->last_scanned_at ? $kempu->last_scanned_at->format('d/m/Y H:i') : '-',
                 'last_action'            => $kempu->last_action ?? '-',
-                'target_status'          => $card['status_name'],
+                'target_status'          => ($cardKey === 'retur-from-pas') ? MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO : $card['status_name'],
                 'card_title'             => $card['title'],
                 'is_flow_valid'          => $flowValidation['valid'],
                 'flow_error'             => $flowValidation['message'],
@@ -645,13 +694,25 @@ class WfgKempuController extends Controller
             $finalNotes .= ' [Input Manual]';
         }
 
+        $targetStatus   = $card['status_name'];
+        $targetLocation = $card['location'];
+        $toLocation     = $card['to_loc'];
+        $actionTitle    = $card['title'];
+
+        if ($cardKey === 'retur-from-pas') {
+            $targetStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO;
+            $targetLocation = MasterKempuModel::LOC_PRODUKSI;
+            $toLocation     = MasterKempuModel::LOC_PRODUKSI;
+            $actionTitle    = 'Retur From PAS (Kirim ke Repro Produksi)';
+        }
+
         DB::beginTransaction();
         try {
             if (!$kempu->main) {
                 $kempu->main()->create([
                     'id_kempu'         => $kempu->id_kempu,
-                    'current_location' => $card['location'],
-                    'current_status'   => $card['status_name'],
+                    'current_location' => $targetLocation,
+                    'current_status'   => $targetStatus,
                     'reused_count'     => $targetReused,
                     'max_reused'       => 21,
                     'condition'        => 'OK',
@@ -659,29 +720,43 @@ class WfgKempuController extends Controller
                     'has_rfid'         => $hasRfid,
                     'has_nti'        => $hasNti,
                     'last_scanned_at'  => now(),
-                    'last_action'      => $card['title'],
+                    'last_action'      => $actionTitle,
                 ]);
             } else {
                 $kempu->main->update([
-                    'current_status'   => $card['status_name'],
-                    'current_location' => $card['location'],
+                    'current_status'   => $targetStatus,
+                    'current_location' => $targetLocation,
                     'reused_count'     => $targetReused,
                     'has_barcode'      => $hasBarcode,
                     'has_rfid'         => $hasRfid,
-                    'has_nti'        => $hasNti,
+                    'has_nti'          => $hasNti,
                     'last_scanned_at'  => now(),
-                    'last_action'      => $card['title'],
+                    'last_action'      => $actionTitle,
                 ]);
             }
+
+            // Simpan / perbarui status kelengkapan fisik per siklus reused
+            KempuCycleFillingModel::updateOrCreate(
+                [
+                    'kempu_master_id' => $kempu->id,
+                    'reused_count'    => $targetReused,
+                ],
+                [
+                    'id_kempu'    => $kempu->id_kempu,
+                    'has_barcode' => $hasBarcode,
+                    'has_rfid'    => $hasRfid,
+                    'has_nti'     => $hasNti,
+                ]
+            );
 
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
                 'id_kempu'        => $kempu->id_kempu,
                 'stage'           => $card['stage'],
-                'action'          => $card['title'],
+                'action'          => $actionTitle,
                 'action_result'   => 'SUCCESS',
                 'from_location'   => $card['from_loc'],
-                'to_location'     => $card['to_loc'],
+                'to_location'     => $toLocation,
                 'reused_count'    => $targetReused,
                 'condition'       => $kempu->main->condition ?? 'OK',
                 'notes'           => $finalNotes,
@@ -697,11 +772,15 @@ class WfgKempuController extends Controller
 
             DB::commit();
 
-            $successMsg = "Kempu {$kempu->id_kempu} berhasil dikonfirmasi ke status '{$card['status_name']}'";
-            if ($targetReused > $currentReused) {
-                $successMsg .= " (Siklus Reused otomatis bertambah: {$currentReused}x → {$targetReused}/21x).";
+            if ($cardKey === 'retur-from-pas') {
+                $successMsg = "Kempu {$kempu->id_kempu} berhasil diterima sebagai Retur dari PAS dan langsung diteruskan ke Produksi untuk proses Repro.";
             } else {
-                $successMsg .= " (Reused: {$targetReused}/21x).";
+                $successMsg = "Kempu {$kempu->id_kempu} berhasil dikonfirmasi ke status '{$targetStatus}'";
+                if ($targetReused > $currentReused) {
+                    $successMsg .= " (Siklus Reused otomatis bertambah: {$currentReused}x → {$targetReused}/21x).";
+                } else {
+                    $successMsg .= " (Reused: {$targetReused}/21x).";
+                }
             }
 
             return response()->json([
@@ -710,7 +789,8 @@ class WfgKempuController extends Controller
                 'data'    => [
                     'id_kempu'        => $kempu->id_kempu,
                     'rfid'            => $kempu->rfid ?? '-',
-                    'new_status'      => $card['status_name'],
+                    'new_status'      => $targetStatus,
+                    'new_location'    => $toLocation,
                     'reused_count'    => $targetReused,
                     'timestamp'       => now()->format('d/m/Y H:i:s'),
                     'user'            => Auth::user()->nama_lengkap ?? Auth::user()->username ?? 'Operator',
@@ -756,22 +836,44 @@ class WfgKempuController extends Controller
             ], 404);
         }
 
+        $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+            ->where('reused_count', (int)$newReused)
+            ->first();
+
+        $mainData = [
+            'reused_count' => (int)$newReused,
+            'has_barcode'  => (bool)($cycleFilling?->has_barcode ?? true),
+            'has_rfid'     => (bool)($cycleFilling?->has_rfid ?? true),
+            'has_nti'      => (bool)($cycleFilling?->has_nti ?? true),
+            'no_po'        => $cycleFilling?->no_po ?? null,
+            'foto_1'       => $cycleFilling?->foto_1 ?? null,
+            'foto_2'       => $cycleFilling?->foto_2 ?? null,
+            'foto_3'       => $cycleFilling?->foto_3 ?? null,
+            'foto_4'       => $cycleFilling?->foto_4 ?? null,
+            'last_action'  => 'Koreksi Reused Manual oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
+        ];
+
         if (!$kempu->main) {
-            $kempu->main()->create([
-                'id_kempu'         => $kempu->id_kempu,
-                'current_location' => MasterKempuModel::LOC_WFG,
-                'current_status'   => 'REGISTERED',
-                'reused_count'     => (int)$newReused,
-                'max_reused'       => 21,
-                'condition'        => 'OK',
-                'last_action'      => 'Koreksi Reused Manual oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
-            ]);
+            $mainData['id_kempu']         = $kempu->id_kempu;
+            $mainData['current_location'] = MasterKempuModel::LOC_WFG;
+            $mainData['current_status']   = 'REGISTERED';
+            $mainData['max_reused']       = 21;
+            $mainData['condition']        = 'OK';
+            $kempu->main()->create($mainData);
         } else {
-            $kempu->main->update([
-                'reused_count' => (int)$newReused,
-                'last_action'  => 'Koreksi Reused Manual oleh ' . (Auth::user()->nama_lengkap ?? Auth::user()->username),
-            ]);
+            $kempu->main->update($mainData);
         }
+
+        $kempu->recordTracking(
+            stage: 'WFG',
+            action: 'Koreksi Reused Manual',
+            actionResult: 'UPDATED',
+            fromLocation: $kempu->main?->current_location ?? MasterKempuModel::LOC_WFG,
+            toLocation: $kempu->main?->current_location ?? MasterKempuModel::LOC_WFG,
+            condition: $kempu->main?->condition ?? 'OK',
+            notes: "Siklus Reused disesuaikan manual ke {$newReused}x",
+            userId: Auth::id()
+        );
 
         return response()->json([
             'status'       => true,

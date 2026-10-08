@@ -267,9 +267,24 @@
                         <i class="ri-arrow-right-circle-line fs-24 text-info flex-shrink-0"></i>
                         <div>
                             <div class="fs-11 text-muted text-uppercase fw-semibold">Status Baru yang Akan Disimpan:</div>
-                            <div class="fs-15 fw-bold text-info">{{ $card['status_name'] }}</div>
+                            <div class="fs-15 fw-bold text-info" id="targetStatusName">{{ $card['status_name'] }}</div>
                         </div>
                     </div>
+
+                    @if ($card['key'] === 'transfer-out-to-bas')
+                        <div class="mb-3" id="kondisiMuatanBox">
+                            <label for="modalKondisiMuatan" class="form-label fs-12 fw-bold text-body mb-1">
+                                <i class="ri-truck-line text-primary me-1"></i> Kondisi Muatan Kempu:
+                            </label>
+                            <select id="modalKondisiMuatan" class="form-select form-select-sm fw-semibold">
+                                <option value="kosong" selected>Kosongan (Default &rarr; Ke WPM BAS)</option>
+                                <option value="isi">Ada isinya (Retur Muatan &rarr; Ke WFG BAS)</option>
+                            </select>
+                            <div class="form-text fs-11 text-muted">
+                                Pilih <strong>Kosongan</strong> untuk alur biasa ke WPM, atau <strong>Ada isinya</strong> jika kempu masih bermuatan untuk dialirkan ke WFG (Retur From PAS).
+                            </div>
+                        </div>
+                    @endif
 
                     <!-- Catatan Tambahan (Opsional) -->
                     <div id="notesBox" class="mb-2">
@@ -558,6 +573,8 @@
                         })
                         .html(`<i class="ri-forbid-line me-1"></i> Alur Tidak Sesuai`);
                 } else {
+                    $('#targetStatusName').text("{{ $card['status_name'] }}");
+                    $('#modalKondisiMuatan').val('kosong');
                     $('#btnModalConfirm')
                         .prop('disabled', false)
                         .css({
@@ -570,6 +587,14 @@
 
                 confirmModal.show();
             }
+
+            $('#modalKondisiMuatan').on('change', function() {
+                if ($(this).val() === 'isi') {
+                    $('#targetStatusName').text('PAS_RETUR_TO_WFG (Retur Berisi ke WFG)');
+                } else {
+                    $('#targetStatusName').text("{{ $card['status_name'] }}");
+                }
+            });
 
             function handleLookupNotFound(message) {
                 Swal.fire({
@@ -651,6 +676,7 @@
                     id_kempu: currentKempu.id_kempu,
                     card_key: CARD_KEY,
                     notes: $('#modalInputNotes').val(),
+                    kondisi_muatan: $('#modalKondisiMuatan').length ? $('#modalKondisiMuatan').val() : 'kosong',
                     is_manual: (currentKempu && currentKempu.is_manual) ? 1 : 0
                 };
 
