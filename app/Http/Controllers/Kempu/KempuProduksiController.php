@@ -127,6 +127,9 @@ class KempuProduksiController extends Controller
                 'badge_color'     => 'warning',
                 'btn_text'        => 'Buka Scanner Repro Kempu',
                 'target_statuses' => [
+                    MasterKempuModel::STATUS_PROD_REPRO_KEMPU,
+                    'PROD_REPRO_KEMPU',
+                    'Prod Repro Kempu',
                     MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO,
                     'QC_AFTER_FILLING_REPRO',
                     'QC After Filling Repro',
@@ -666,7 +669,7 @@ class KempuProduksiController extends Controller
             } elseif ($cardKey === 'repro-kempu') {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Repro Kempu' hanya untuk kempu berstatus Repro (Reject QC After Filling atau Retur Dari PAS).",
+                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Repro Kempu' hanya untuk kempu berstatus Repro (PROD_REPRO_KEMPU, Reject QC After Filling, atau Retur Dari PAS).",
                 ];
             }
 

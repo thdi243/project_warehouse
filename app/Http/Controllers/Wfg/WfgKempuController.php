@@ -51,20 +51,21 @@ class WfgKempuController extends Controller
                 'btn_text'    => 'Buka Scanner Transfer Out',
             ],
             'retur-from-pas' => [
-                'key'         => 'retur-from-pas',
-                'title'       => 'Retur From PAS',
-                'status_name' => 'PAS_RETUR_TO_WFG',
-                'location'    => MasterKempuModel::LOC_WFG,
-                'from_loc'    => MasterKempuModel::LOC_PAS,
-                'to_loc'      => MasterKempuModel::LOC_PRODUKSI,
-                'stage'       => 'WFG',
-                'description' => 'Penerimaan kempu retur yang masih ada isinya dari Warehouse PAS. Diteruskan langsung ke Produksi untuk proses Repro.',
-                'icon'        => 'ri-reply-all-line',
-                'badge_color' => 'warning',
-                'bg_tint'     => '#fffbeb',
-                'icon_color'  => '#d97706',
-                'btn_color'   => '#b45309',
-                'btn_text'    => 'Buka Scanner Retur PAS',
+                'key'          => 'retur-from-pas',
+                'title'        => 'Retur From PAS',
+                'status_name'  => MasterKempuModel::STATUS_PROD_REPRO_KEMPU,
+                'queue_status' => 'PAS_RETUR_TO_WFG',
+                'location'     => MasterKempuModel::LOC_WFG,
+                'from_loc'     => MasterKempuModel::LOC_WFG,
+                'to_loc'       => MasterKempuModel::LOC_PRODUKSI,
+                'stage'        => 'WFG',
+                'description'  => 'Penerimaan kempu retur yang masih ada isinya dari Warehouse PAS dan pengiriman ke Produksi untuk proses Repro.',
+                'icon'         => 'ri-reply-all-line',
+                'badge_color'  => 'warning',
+                'bg_tint'      => '#fffbeb',
+                'icon_color'   => '#d97706',
+                'btn_color'    => '#b45309',
+                'btn_text'     => 'Buka Scanner Retur PAS',
             ],
         ];
     }
@@ -78,8 +79,9 @@ class WfgKempuController extends Controller
 
         // Hitung kempu dengan status masing-masing card
         foreach ($cards as $key => &$card) {
-            $card['count'] = MasterKempuModel::whereHas('main', function ($q) use ($card) {
-                $q->where('current_status', $card['status_name']);
+            $filterStatus = $card['queue_status'] ?? $card['status_name'];
+            $card['count'] = MasterKempuModel::whereHas('main', function ($q) use ($filterStatus) {
+                $q->where('current_status', $filterStatus);
             })->count();
         }
 
@@ -196,11 +198,13 @@ class WfgKempuController extends Controller
             MasterKempuModel::STATUS_QC_AFTER_FILLING_PASSED,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO,
+            MasterKempuModel::STATUS_PROD_REPRO_KEMPU,
             'QC_AFTER_FILLING_PENDING',
             'QC_AFTER_FILLING_RELEASE',
             'QC_AFTER_FILLING_PASSED',
             'QC_AFTER_FILLING_HOLD',
             'QC_AFTER_FILLING_REPRO',
+            'PROD_REPRO_KEMPU',
             'QC AFTER FILLING RELEASE',
             'QC AFTER FILLING PASSED',
             'QC AFTER FILLING LOLOS (OK)',
@@ -387,7 +391,9 @@ class WfgKempuController extends Controller
                 // 1. Cek duplikat scan
                 if (
                     strcasecmp($currentStatus, 'WFG_RETUR_FROM_PAS') === 0 ||
-                    strcasecmp($currentStatus, 'Retur From PAS') === 0
+                    strcasecmp($currentStatus, 'Retur From PAS') === 0 ||
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_PROD_REPRO_KEMPU) === 0 ||
+                    strcasecmp($currentStatus, 'PROD_REPRO_KEMPU') === 0
                 ) {
                     return [
                         'valid'   => false,
@@ -581,7 +587,7 @@ class WfgKempuController extends Controller
                 'has_nti'                => (bool)($cycleFilling?->has_nti ?? $kempu->main?->has_nti ?? true),
                 'last_scanned_at'        => $kempu->last_scanned_at ? $kempu->last_scanned_at->format('d/m/Y H:i') : '-',
                 'last_action'            => $kempu->last_action ?? '-',
-                'target_status'          => ($cardKey === 'retur-from-pas') ? MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO : $card['status_name'],
+                'target_status'          => $card['status_name'],
                 'card_title'             => $card['title'],
                 'is_flow_valid'          => $flowValidation['valid'],
                 'flow_error'             => $flowValidation['message'],
@@ -724,7 +730,7 @@ class WfgKempuController extends Controller
         $actionTitle    = $card['title'];
 
         if ($cardKey === 'retur-from-pas') {
-            $targetStatus   = MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO;
+            $targetStatus   = MasterKempuModel::STATUS_PROD_REPRO_KEMPU;
             $targetLocation = MasterKempuModel::LOC_PRODUKSI;
             $toLocation     = MasterKempuModel::LOC_PRODUKSI;
             $actionTitle    = 'Retur From PAS (Kirim ke Repro Produksi)';

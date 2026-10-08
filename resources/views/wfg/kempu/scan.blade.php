@@ -310,7 +310,7 @@
                         <i class="ri-arrow-right-circle-line fs-24 text-info flex-shrink-0"></i>
                         <div>
                             <div class="fs-11 text-muted text-uppercase fw-semibold">Status Baru yang Akan Disimpan:</div>
-                            <div class="fs-15 fw-bold text-info">{{ $card['status_name'] }}</div>
+                            <div class="fs-15 fw-bold text-info" id="modalTargetStatusText">{{ $card['status_name'] }}</div>
                         </div>
                     </div>
 
@@ -733,6 +733,7 @@
                     }
                 } else {
                     $('#targetStatusBox').removeClass('d-none').addClass('d-flex');
+                    $('#modalTargetStatusText').text(k.target_status || "{{ $card['status_name'] }}");
                     $('#physicalChecklistCard').show();
                     $('#notesBox').show();
 
