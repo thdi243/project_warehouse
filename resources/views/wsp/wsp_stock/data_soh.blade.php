@@ -375,14 +375,22 @@
             <div class="card shadow-sm" data-aos="fade-up">
                 <div class="table-header">
                     <div class="row align-items-center">
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <h5><i class="mdi mdi-table me-2"></i>Data Stock On Hand</h5>
                         </div>
-                        <div class="col-md-6 mt-3 mt-md-0">
-                            <div class="search-box ms-auto">
-                                <i class="mdi mdi-magnify"></i>
-                                <input type="text" class="form-control" id="searchInput"
-                                    placeholder="Cari Mid atau desc...">
+                        <div class="col-md-7 mt-3 mt-md-0">
+                            <div class="d-flex align-items-center justify-content-md-end gap-3 flex-wrap">
+                                <div class="form-check form-switch mb-0 d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-1 shadow-sm">
+                                    <input class="form-check-input mt-0" type="checkbox" id="filterExcludeZero" style="cursor: pointer;">
+                                    <label class="form-check-label small fw-semibold text-secondary mb-0" for="filterExcludeZero" style="cursor: pointer; user-select: none;">
+                                        <i class="mdi mdi-filter-remove-outline me-1 text-danger"></i>Exclude Stock 0
+                                    </label>
+                                </div>
+                                <div class="search-box">
+                                    <i class="mdi mdi-magnify"></i>
+                                    <input type="text" class="form-control" id="searchInput"
+                                        placeholder="Cari Mid atau desc...">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -584,8 +592,7 @@
                     success: function(res) {
                         if (res.success && Array.isArray(res.data)) {
                             allSoh = res.data;
-                            filteredSoh = allSoh;
-                            renderTable();
+                            applyFilter();
                         } else {
                             $('#tableBody').html(
                                 '<tr><td colspan="11" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
@@ -718,24 +725,34 @@
                 renderTable();
             }
 
-            // Event search
-            $('#searchInput').on('input', function() {
-                const keyword = $(this).val().toLowerCase().trim();
+            // Filter data (Search & Exclude Stock 0)
+            function applyFilter() {
+                const keyword = $('#searchInput').val().toLowerCase().trim();
+                const excludeZero = $('#filterExcludeZero').is(':checked');
 
-                if (keyword === '') {
-                    filteredSoh = allSoh; // reset
-                } else {
-                    filteredSoh = allSoh.filter(item =>
-                        item.mid_barang &&
-                        item.mid_barang.toLowerCase().includes(keyword) ||
-                        item.nama_barang &&
-                        item.nama_barang.toLowerCase().includes(keyword)
-                    );
-                }
+                filteredSoh = allSoh.filter(item => {
+                    // Filter Exclude Stock 0 (Total Qty SOH <= 0)
+                    if (excludeZero) {
+                        const qty = parseFloat(item.qty_soh) || 0;
+                        if (qty <= 0) return false;
+                    }
 
-                currentPage = 1; // reset ke page 1 saat mencari
+                    // Filter Keyword (Mid atau Desc/Nama Barang)
+                    if (keyword !== '') {
+                        const midMatch = item.mid_barang && item.mid_barang.toLowerCase().includes(keyword);
+                        const descMatch = item.nama_barang && item.nama_barang.toLowerCase().includes(keyword);
+                        if (!midMatch && !descMatch) return false;
+                    }
+
+                    return true;
+                });
+
+                currentPage = 1; // reset ke page 1 saat filter berubah
                 renderTable();
-            });
+            }
+
+            $('#searchInput').on('input', applyFilter);
+            $('#filterExcludeZero').on('change', applyFilter);
 
             // submit add & edit form
             $('#formStockOnHand').submit(function(e) {

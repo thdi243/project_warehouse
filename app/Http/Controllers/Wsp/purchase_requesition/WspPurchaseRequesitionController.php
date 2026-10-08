@@ -80,7 +80,19 @@ class WspPurchaseRequesitionController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->where('requested_by', 'like', "%{$search}%")
                         ->orWhere('no_doc', 'like', "%{$search}%")
-                        ->orWhere('pr_number', 'like', "%{$search}%");
+                        ->orWhere('pr_number', 'like', "%{$search}%")
+                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('no_io', 'like', "%{$search}%")
+                        ->orWhere('jenis', 'like', "%{$search}%")
+                        ->orWhere('detail_jenis', 'like', "%{$search}%")
+                        ->orWhereHas('items', function ($itemQuery) use ($search) {
+                            $itemQuery->where('desc', 'like', "%{$search}%")
+                                ->orWhere('keterangan', 'like', "%{$search}%")
+                                ->orWhereHas('barang', function ($barangQuery) use ($search) {
+                                    $barangQuery->where('mid_barang', 'like', "%{$search}%")
+                                        ->orWhere('nama_barang', 'like', "%{$search}%");
+                                });
+                        });
                 });
             }
 
@@ -614,7 +626,20 @@ class WspPurchaseRequesitionController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('requested_by', 'like', "%{$search}%")
-                    ->orWhere('no_doc', 'like', "%{$search}%");
+                    ->orWhere('no_doc', 'like', "%{$search}%")
+                    ->orWhere('pr_number', 'like', "%{$search}%")
+                    ->orWhere('department', 'like', "%{$search}%")
+                    ->orWhere('no_io', 'like', "%{$search}%")
+                    ->orWhere('jenis', 'like', "%{$search}%")
+                    ->orWhere('detail_jenis', 'like', "%{$search}%")
+                    ->orWhereHas('items', function ($itemQuery) use ($search) {
+                        $itemQuery->where('desc', 'like', "%{$search}%")
+                            ->orWhere('keterangan', 'like', "%{$search}%")
+                            ->orWhereHas('barang', function ($barangQuery) use ($search) {
+                                $barangQuery->where('mid_barang', 'like', "%{$search}%")
+                                    ->orWhere('nama_barang', 'like', "%{$search}%");
+                            });
+                    });
             });
         }
 

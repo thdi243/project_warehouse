@@ -180,7 +180,7 @@
                                     <i class="mdi mdi-magnify"></i>
                                 </span>
                                 <input type="text" class="form-control" id="searchInput"
-                                    placeholder="Cari User / No Doc ...">
+                                    placeholder="Cari semua data (User, Doc, PR, Dept, MID, Desc, IO, Jenis)...">
                             </div>
                         </div>
                         <div class="col-md-2">
