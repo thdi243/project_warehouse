@@ -318,23 +318,34 @@
                             <div class="row g-2">
                                 @for ($i = 1; $i <= 4; $i++)
                                     <div class="col-6 col-sm-3">
+                                        <!-- Hidden Inputs (Kamera langsung & Galeri) -->
+                                        <input type="file" id="modalInputFoto{{ $i }}" class="d-none input-foto-kempu" data-index="{{ $i }}" accept="image/*" capture="environment">
+                                        <input type="file" id="modalInputFotoGallery{{ $i }}" class="d-none input-foto-kempu" data-index="{{ $i }}" accept="image/*">
+
                                         <div class="border rounded-3 p-2 text-center position-relative photo-upload-box bg-light"
-                                             id="photoBox{{ $i }}" data-index="{{ $i }}" style="min-height: 110px; cursor: pointer; overflow: hidden;">
-                                            <input type="file" id="modalInputFoto{{ $i }}" class="d-none input-foto-kempu" accept="image/*" capture="environment">
-                                            <div class="photo-placeholder" id="placeholderFoto{{ $i }}">
-                                                <i class="ri-camera-fill fs-24 text-secondary d-block mt-2 mb-1"></i>
-                                                <span class="fs-11 fw-medium text-muted">Foto {{ $i }}</span>
+                                             id="photoBox{{ $i }}" data-index="{{ $i }}" style="min-height: 118px; cursor: pointer; overflow: hidden;">
+                                            <div class="photo-placeholder d-flex flex-column align-items-center justify-content-center py-1" id="placeholderFoto{{ $i }}">
+                                                <i class="ri-camera-fill fs-22 text-success mb-1"></i>
+                                                <span class="fs-12 fw-semibold text-dark">Foto {{ $i }}</span>
+                                                <span class="fs-10 text-muted mb-2"><i class="ri-camera-line me-1"></i>Kamera</span>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btn-choose-gallery"
+                                                        data-index="{{ $i }}" style="font-size: 10px; border-radius: 8px;">
+                                                    <i class="ri-image-line me-1"></i>Galeri
+                                                </button>
                                             </div>
-                                            <img src="" id="previewFoto{{ $i }}" class="img-fluid rounded d-none" style="max-height: 95px; width: 100%; object-fit: cover;">
+                                            <img src="" id="previewFoto{{ $i }}" class="img-fluid rounded d-none" style="max-height: 100px; width: 100%; object-fit: cover;">
                                             <button type="button" class="btn btn-danger btn-xs position-absolute top-0 end-0 m-1 rounded-circle p-0 d-none btn-remove-photo"
-                                                    data-index="{{ $i }}" style="line-height: 1; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;">
+                                                    data-index="{{ $i }}" style="line-height: 1; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; z-index: 5;"
+                                                    title="Hapus Foto">
                                                 <i class="ri-close-line fs-12"></i>
                                             </button>
                                         </div>
                                     </div>
                                 @endfor
                             </div>
-                            <div class="form-text fs-11 text-muted mt-1">Klik kotak untuk mengambil foto atau unggah dari galeri.</div>
+                            <div class="form-text fs-11 text-muted mt-1">
+                                <i class="ri-information-line text-info me-1"></i>Klik kotak foto untuk langsung membuka <strong>Kamera</strong>, atau klik tombol <strong>Galeri</strong> untuk memilih file.
+                            </div>
                         </div>
                     @endif
 
@@ -371,6 +382,85 @@
         $(document).ready(function() {
             const CARD_KEY = "{{ $card['key'] }}";
             const CARD_TITLE = "{{ $card['title'] }}";
+
+            // State file foto terkompresi (Slot 1 - 4)
+            const selectedPhotos = { 1: null, 2: null, 3: null, 4: null };
+            let activeCompressions = 0;
+
+            // Fungsi kompresi gambar di browser (HTML5 Canvas)
+            async function compressImage(file, maxDimension = 1600, quality = 0.8) {
+                if (!file || !file.type.match(/image.*/)) return file;
+
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > maxDimension || height > maxDimension) {
+                                if (width > height) {
+                                    height = Math.round((height * maxDimension) / width);
+                                    width = maxDimension;
+                                } else {
+                                    width = Math.round((width * maxDimension) / height);
+                                    height = maxDimension;
+                                }
+                            }
+
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            canvas.toBlob(
+                                function(blob) {
+                                    if (!blob) return resolve(file);
+
+                                    // Jika masih > 1.8MB, kompres ulang dengan kualitas 0.6
+                                    if (blob.size > 1.8 * 1024 * 1024 && quality > 0.5) {
+                                        canvas.toBlob(function(secondBlob) {
+                                            const resBlob = secondBlob || blob;
+                                            const cleanName = (file.name || 'foto.jpg').replace(/\.[^/.]+$/, "") + ".jpg";
+                                            resolve(new File([resBlob], cleanName, { type: 'image/jpeg', lastModified: Date.now() }));
+                                        }, 'image/jpeg', 0.6);
+                                        return;
+                                    }
+
+                                    const cleanName = (file.name || 'foto.jpg').replace(/\.[^/.]+$/, "") + ".jpg";
+                                    const compressedFile = new File([blob], cleanName, {
+                                        type: 'image/jpeg',
+                                        lastModified: Date.now()
+                                    });
+                                    resolve(compressedFile);
+                                },
+                                'image/jpeg',
+                                quality
+                            );
+                        };
+                        img.onerror = () => resolve(file);
+                        img.src = e.target.result;
+                    };
+                    reader.onerror = () => resolve(file);
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            function updateSubmitButtonState() {
+                if (activeCompressions > 0) {
+                    $('#btnModalConfirm').prop('disabled', true).addClass('disabled').html(
+                        '<i class="ri-loader-4-line ri-spin me-1"></i> Mengompres foto...'
+                    );
+                } else {
+                    $('#btnModalConfirm').prop('disabled', false).removeClass('disabled').html(
+                        CARD_KEY === 'prod-force' ?
+                        '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision' :
+                        `<i class="ri-checkbox-circle-line me-1"></i> Konfirmasi ${CARD_TITLE}`
+                    );
+                }
+            }
 
             let qrScanner = null;
             let currentFacing = "environment";
@@ -669,7 +759,9 @@
                     } else if (CARD_KEY === 'scan-1-filling-kempu') {
                         $('#modalInputNoPo').val(k.no_po || '');
                         for (let i = 1; i <= 4; i++) {
+                            selectedPhotos[i] = null;
                             $('#modalInputFoto' + i).val('');
+                            $('#modalInputFotoGallery' + i).val('');
                             const existingPhoto = (k.cycle_photos && k.cycle_photos['foto_' + i]) ? k.cycle_photos['foto_' + i] : null;
                             if (existingPhoto) {
                                 $('#previewFoto' + i).attr('src', existingPhoto).removeClass('d-none');
@@ -677,7 +769,15 @@
                                 $(`.btn-remove-photo[data-index="${i}"]`).removeClass('d-none');
                             } else {
                                 $('#previewFoto' + i).attr('src', '').addClass('d-none');
-                                $('#placeholderFoto' + i).removeClass('d-none');
+                                $(`#placeholderFoto${i}`).html(`
+                                    <i class="ri-camera-fill fs-22 text-success mb-1"></i>
+                                    <span class="fs-12 fw-semibold text-dark">Foto ${i}</span>
+                                    <span class="fs-10 text-muted mb-2"><i class="ri-camera-line me-1"></i>Kamera</span>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btn-choose-gallery"
+                                            data-index="${i}" style="font-size: 10px; border-radius: 8px;">
+                                        <i class="ri-image-line me-1"></i>Galeri
+                                    </button>
+                                `).removeClass('d-none');
                                 $(`.btn-remove-photo[data-index="${i}"]`).addClass('d-none');
                             }
                         }
@@ -737,31 +837,88 @@
             // Photo Upload Interaction Handlers
             $(document).on('click', '.photo-upload-box', function(e) {
                 if ($(e.target).closest('.btn-remove-photo').length) return;
+                if ($(e.target).closest('.btn-choose-gallery').length) return;
+                if ($(e.target).is('input[type="file"]')) return;
+
                 const idx = $(this).data('index');
+                // Klik kotak langsung membuka kamera
                 $(`#modalInputFoto${idx}`).trigger('click');
             });
 
-            $(document).on('change', '.input-foto-kempu', function() {
+            // Klik tombol galeri membuka file picker tanpa capture kamera langsung
+            $(document).on('click', '.btn-choose-gallery', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const idx = $(this).data('index');
+                $(`#modalInputFotoGallery${idx}`).trigger('click');
+            });
+
+            $(document).on('change', '.input-foto-kempu', async function() {
                 const input = this;
-                const id = $(input).attr('id');
-                const idx = id.replace('modalInputFoto', '');
+                const idx = $(input).data('index');
                 if (input.files && input.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        $(`#previewFoto${idx}`).attr('src', e.target.result).removeClass('d-none');
-                        $(`#placeholderFoto${idx}`).addClass('d-none');
-                        $(`.btn-remove-photo[data-index="${idx}"]`).removeClass('d-none');
-                    };
-                    reader.readAsDataURL(input.files[0]);
+                    const rawFile = input.files[0];
+
+                    if (input.id === 'modalInputFoto' + idx) {
+                        $('#modalInputFotoGallery' + idx).val('');
+                    } else {
+                        $('#modalInputFoto' + idx).val('');
+                    }
+
+                    activeCompressions++;
+                    updateSubmitButtonState();
+
+                    // Tampilkan indikator proses kompresi
+                    $(`#placeholderFoto${idx}`).html(`
+                        <div class="spinner-border spinner-border-sm text-success mb-1" role="status"></div>
+                        <span class="fs-11 text-muted d-block">Mengompres...</span>
+                    `).removeClass('d-none');
+
+                    try {
+                        const compressedFile = await compressImage(rawFile, 1600, 0.8);
+                        selectedPhotos[idx] = compressedFile;
+
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            $(`#previewFoto${idx}`).attr('src', e.target.result).removeClass('d-none');
+                            $(`#placeholderFoto${idx}`).addClass('d-none');
+                            $(`.btn-remove-photo[data-index="${idx}"]`).removeClass('d-none');
+                        };
+                        reader.readAsDataURL(compressedFile);
+                    } catch (err) {
+                        console.error('Gagal kompresi foto:', err);
+                        selectedPhotos[idx] = rawFile;
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            $(`#previewFoto${idx}`).attr('src', e.target.result).removeClass('d-none');
+                            $(`#placeholderFoto${idx}`).addClass('d-none');
+                            $(`.btn-remove-photo[data-index="${idx}"]`).removeClass('d-none');
+                        };
+                        reader.readAsDataURL(rawFile);
+                    } finally {
+                        activeCompressions = Math.max(0, activeCompressions - 1);
+                        updateSubmitButtonState();
+                    }
                 }
             });
 
             $(document).on('click', '.btn-remove-photo', function(e) {
+                e.preventDefault();
                 e.stopPropagation();
                 const idx = $(this).data('index');
+                selectedPhotos[idx] = null;
                 $(`#modalInputFoto${idx}`).val('');
+                $(`#modalInputFotoGallery${idx}`).val('');
                 $(`#previewFoto${idx}`).attr('src', '').addClass('d-none');
-                $(`#placeholderFoto${idx}`).removeClass('d-none');
+                $(`#placeholderFoto${idx}`).html(`
+                    <i class="ri-camera-fill fs-22 text-success mb-1"></i>
+                    <span class="fs-12 fw-semibold text-dark">Foto ${idx}</span>
+                    <span class="fs-10 text-muted mb-2"><i class="ri-camera-line me-1"></i>Kamera</span>
+                    <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btn-choose-gallery"
+                            data-index="${idx}" style="font-size: 10px; border-radius: 8px;">
+                        <i class="ri-image-line me-1"></i>Galeri
+                    </button>
+                `).removeClass('d-none');
                 $(this).addClass('d-none');
             });
 
@@ -774,6 +931,11 @@
             // Tombol Confirm Action di Dalam Modal
             $('#btnModalConfirm').on('click', function() {
                 if (!currentKempu) return;
+
+                if (activeCompressions > 0) {
+                    Swal.fire('Mohon Tunggu', 'Foto masih dalam proses kompresi otomatis...', 'info');
+                    return;
+                }
 
                 if (CARD_KEY === 'scan-1-filling-kempu') {
                     const noPoVal = $('#modalInputNoPo').val().trim();
@@ -802,9 +964,8 @@
                 if (CARD_KEY === 'scan-1-filling-kempu') {
                     formData.append('no_po', $('#modalInputNoPo').val().trim());
                     for (let i = 1; i <= 4; i++) {
-                        const fileInput = document.getElementById('modalInputFoto' + i);
-                        if (fileInput && fileInput.files && fileInput.files[0]) {
-                            formData.append('foto_' + i, fileInput.files[0]);
+                        if (selectedPhotos[i]) {
+                            formData.append('foto_' + i, selectedPhotos[i]);
                         }
                     }
                 }

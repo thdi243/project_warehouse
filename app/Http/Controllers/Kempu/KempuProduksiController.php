@@ -1037,6 +1037,18 @@ class KempuProduksiController extends Controller
                 ], 422);
             }
 
+            for ($i = 1; $i <= 4; $i++) {
+                if ($request->hasFile("foto_{$i}")) {
+                    $file = $request->file("foto_{$i}");
+                    if ($file->getSize() > 2 * 1024 * 1024) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Ukuran Foto {$i} melebihi batas maksimal 2MB.",
+                        ], 422);
+                    }
+                }
+            }
+
             $uploadedPhotos = [];
             for ($i = 1; $i <= 4; $i++) {
                 if ($request->hasFile("foto_{$i}")) {
