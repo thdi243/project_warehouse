@@ -269,7 +269,7 @@
                     </div>
 
                     @if ($card['key'] === 'qc-pre-cuci' || $card['key'] === 'qc-proses')
-                        <div class="alert alert-info py-2 px-3 mb-3 fs-12 d-flex align-items-center gap-2">
+                        <div id="alertPreCuciIncomingInfo" class="alert alert-info py-2 px-3 mb-3 fs-12 d-flex align-items-center gap-2">
                             <i class="ri-information-line fs-16 flex-shrink-0 text-primary"></i>
                             <div><strong>Cek Incoming & Pre Cuci:</strong> Pemeriksaan fisik incoming kempu sekaligus
                                 verifikasi kelayakan pre-cuci. Keputusan <strong>OK (Lolos)</strong> secara normal akan
@@ -796,6 +796,10 @@
                 $('#modalKempuReused').text((k.reused_count || 0) + 'x');
                 $('#modalInputNotes').val('');
 
+                const isAfter = (k.qc_stage_context === 'after_filling' || Boolean(k.is_in_wfg));
+                const isPreCuciContext = (k.qc_stage_context === 'pre_cuci' || !isAfter);
+                const isMaxReusedPreCuci = ['qc-pre-cuci', 'qc-proses', 'qc-proses-force', 'qc-force'].includes(QC_TYPE) && isPreCuciContext && (k.is_max_reused || (k.reused_count || 0) >= 21);
+
                 // Inisialisasi Otoritas Manual Reused (Pre Cuci)
                 if ($('#checkManualReused').length) {
                     $('#checkManualReused').prop('checked', false);
@@ -804,8 +808,8 @@
                     $('#inputManualReused').val(nextReused);
                     $('#badgeAutoNextReused').text(nextReused + '/21');
 
-                    // Tampilkan hanya jika memiliki wewenang otoritas
-                    if (k.can_manual_reused) {
+                    // Tampilkan hanya jika memiliki wewenang otoritas dan belum mencapai batas maksimal
+                    if (k.can_manual_reused && !isMaxReusedPreCuci) {
                         $('#wrapperManualReused').removeClass('d-none');
                     } else {
                         $('#wrapperManualReused').addClass('d-none');
@@ -814,8 +818,6 @@
 
                 // Inisialisasi Force Scan Target & Reused Pre-Cuci
                 if ($('#modalForceTarget').length) {
-                    const isAfter = (k.qc_stage_context === 'after_filling' || k.is_in_wfg);
-
                     if (QC_TYPE === 'qc-proses-force') {
                         if (isAfter) {
                             $('#optForceProsesRepro').removeClass('d-none');
@@ -848,11 +850,9 @@
                 }
 
                 // Cek apakah mencapai batas maksimal reused di Pre Cuci (21x)
-                const isPreCuciContext = (k.qc_stage_context === 'pre_cuci' || !isAfter);
-                const isMaxReusedPreCuci = ['qc-pre-cuci', 'qc-proses', 'qc-proses-force', 'qc-force'].includes(QC_TYPE) && isPreCuciContext && (k.is_max_reused || (k.reused_count || 0) >= 21);
-
                 if (isMaxReusedPreCuci) {
                     $('#alertMaxReusedNotice').removeClass('d-none');
+                    $('#alertPreCuciIncomingInfo').addClass('d-none');
                     if ($('#boxNormalButtons').length) $('#boxNormalButtons').addClass('d-none');
                     if ($('#boxForceButtons').length) $('#boxForceButtons').addClass('d-none');
                     if ($('#boxForceControls').length) $('#boxForceControls').addClass('d-none');
@@ -862,6 +862,7 @@
                     if ($('#modalForceTarget').length) $('#modalForceTarget').val('SCRAP');
                 } else {
                     $('#alertMaxReusedNotice').addClass('d-none');
+                    $('#alertPreCuciIncomingInfo').removeClass('d-none');
                     if ($('#boxNormalButtons').length) $('#boxNormalButtons').removeClass('d-none');
                     if ($('#boxForceButtons').length) $('#boxForceButtons').removeClass('d-none');
                     if ($('#boxForceControls').length) $('#boxForceControls').removeClass('d-none');
@@ -898,6 +899,14 @@
                 const val = $('#modalForceTarget').val();
                 const isRelease = (val === 'RELEASE' || val === 'RELEASE_PRE_CUCI');
                 const isPreCuci = (currentKempu && currentKempu.qc_stage_context === 'pre_cuci');
+
+                const isMax = (currentKempu && (currentKempu.is_max_reused || (currentKempu.reused_count || 0) >= 21));
+                if (isMax) {
+                    $('#wrapperManualReusedForce').addClass('d-none');
+                    $('#checkManualReusedForce').prop('checked', false);
+                    $('#boxManualReusedInputForce').addClass('d-none');
+                    return;
+                }
 
                 if ($('#modalForceTarget').length && isRelease && isPreCuci && (currentKempu.can_manual_reused !==
                         false)) {
