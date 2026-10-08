@@ -432,6 +432,37 @@
                                 </div>
 
                                 <div class="col-md-4">
+                                    <label class="form-label fw-semibold text-muted mb-2">Jenis Pallet</label>
+                                    <div class="dropdown custom-filter-dropdown" id="dropdown-pallet">
+                                        <button
+                                            class="btn dropdown-toggle text-start w-100 d-flex justify-content-between align-items-center"
+                                            type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                            aria-expanded="false">
+                                            <span class="dropdown-placeholder text-muted"
+                                                data-placeholder="Pilih Jenis Pallet...">Pilih Jenis Pallet...</span>
+                                            <span class="badge bg-success rounded-pill ms-2 selected-count d-none">0</span>
+                                        </button>
+                                        <div class="dropdown-menu p-3 shadow-lg border-0"
+                                            style="min-width: 320px; max-width: 400px; max-height: 400px; overflow: hidden;">
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control form-control-sm search-options"
+                                                    placeholder="Cari Jenis Pallet...">
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 select-all-options text-decoration-none fw-semibold">Select
+                                                    All</button>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm p-0 text-danger clear-all-options text-decoration-none fw-semibold">Clear
+                                                    All</button>
+                                            </div>
+                                            <hr class="dropdown-divider my-2">
+                                            <div class="options-list" style="max-height: 250px; overflow-y: auto;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
                                     <label class="form-label fw-semibold text-muted mb-2">Lokasi</label>
                                     <div class="dropdown custom-filter-dropdown" id="dropdown-location">
                                         <button
@@ -640,8 +671,16 @@
                         </div>
 
                         <div class="mb-2">
-                            <label>Qty</label>
-                            <input type="number" class="form-control" name="qty" id="qtyEdit">
+                            <label>Qty (Kg)</label>
+                            <input type="number" step="any" class="form-control" name="qty" id="qtyEdit">
+                        </div>
+
+                        <div class="mb-2">
+                            <label>Qty Zak / Drum / Dus</label>
+                            <div class="input-group">
+                                <input type="number" step="any" min="0" class="form-control" name="zak" id="zakEdit" placeholder="0">
+                                <span class="input-group-text" id="uomZakEdit">Zak</span>
+                            </div>
                         </div>
 
                         <div class="mb-2">
@@ -721,6 +760,7 @@
                     <!-- Hidden filter inputs to apply currently active UI filters to the export -->
                     <input type="hidden" name="group" id="exportGroup">
                     <input type="hidden" name="status" id="exportStatus">
+                    <input type="hidden" name="pallet" id="exportPallet">
                     <input type="hidden" name="jenis_bahan" id="exportJenisBahan">
                     <input type="hidden" name="supplier" id="exportSupplier">
                     <input type="hidden" name="location" id="exportLocation">
@@ -811,6 +851,7 @@
 
                 $('#exportGroup').val(getFilterVal('#dropdown-group'));
                 $('#exportStatus').val(getFilterVal('#dropdown-status'));
+                $('#exportPallet').val(getFilterVal('#dropdown-pallet'));
                 $('#exportSupplier').val(getFilterVal('#dropdown-supplier'));
                 $('#exportLocation').val(getFilterVal('#dropdown-location'));
                 $('#exportNoSpb').val(getFilterVal('#dropdown-no-spb'));
@@ -946,6 +987,7 @@
                 addFilter('end_date', '#filterEndDate');
                 addFilter('supplier', '#dropdown-supplier');
                 addFilter('status', '#dropdown-status');
+                addFilter('pallet', '#dropdown-pallet');
                 addFilter('no_spb', '#dropdown-no-spb');
                 addFilter('location', '#dropdown-location');
                 addFilter('catatan', '#filterCatatan');
@@ -1017,7 +1059,7 @@
                                     <td>${d.group ?? '-'}</td>
                                     <td>${d.pallet_id}</td>
                                     <td class="text-end">${numberFormat(d.qty)}</td>
-                                    <td class="text-end">${numberFormat(d.qty_zak)} ${d.uom_zak ?? ''}</td>
+                                    <td class="text-end">${numberFormat(d.zak !== null && d.zak !== undefined && d.zak !== '' ? d.zak : d.qty_zak)} ${d.uom_zak ?? ''}</td>
                                     <td class='text-center'>${badgeStatus}</td>
                                     <td>${d.bin?.location ? `${d.bin.location.plant} - ${d.bin.location.s_loc} - ${d.bin.location.gudang} - ${d.bin.location.zona} - ${d.bin.location.bin} - ${d.bin.kolom}.${d.bin.level}` : (d.bin ? `${d.bin.kolom}.${d.bin.level}` : '-')}</td>
                                     <td>${d.supplier ?? '-'}</td>
@@ -1434,6 +1476,18 @@
                 $('#barangIdEdit').val(detail.barang.id);
                 $('#midEdit').val(`${detail.barang.mid} - ${detail.barang.nama_barang}`);
                 $('#qtyEdit').val(parseFloat(detail.qty));
+
+                let rawZak = (detail.zak !== null && detail.zak !== undefined && detail.zak !== '')
+                    ? detail.zak
+                    : (detail.qty_zak !== undefined && detail.qty_zak !== null ? detail.qty_zak : '');
+                let formattedZak = '';
+                if (rawZak !== '') {
+                    let numZak = parseFloat(rawZak);
+                    formattedZak = isNaN(numZak) ? '' : (numZak % 1 === 0 ? parseInt(numZak) : numZak);
+                }
+                $('#zakEdit').val(formattedZak);
+                $('#uomZakEdit').text(detail.uom_zak || 'Zak');
+
                 $('#statusEdit').val(detail.status);
                 $('#groupEdit').val(detail.group);
                 $('#palletEdit').val(detail.pallet_id ?? '');
@@ -1455,6 +1509,12 @@
                 }
 
                 $('#modalFormEdit').modal('show');
+            });
+
+            $('#modalFormEdit').on('hidden.bs.modal', function() {
+                $('#formStockEdit')[0].reset();
+                $('#zakEdit').val('');
+                $('#uomZakEdit').text('Zak');
             });
 
             $('#formStockEdit').on('submit', function(e) {
@@ -1604,6 +1664,7 @@
             initDynamicDropdown('dropdown-supplier', 'Pilih Supplier...', onFilterChange);
             initDynamicDropdown('dropdown-group', 'Pilih Group...', onFilterChange);
             initDynamicDropdown('dropdown-status', 'Pilih Status...', onFilterChange);
+            initDynamicDropdown('dropdown-pallet', 'Pilih Jenis Pallet...', onFilterChange);
             initDynamicDropdown('dropdown-location', 'Pilih Lokasi...', onFilterChange);
 
             function initDynamicDropdown(id, placeholder, onChange) {
@@ -1720,6 +1781,7 @@
                 $('#dropdown-supplier').data('reset')();
                 $('#dropdown-no-spb').data('reset')();
                 $('#dropdown-status').data('reset')();
+                $('#dropdown-pallet').data('reset')();
                 $('#dropdown-location').data('reset')();
                 $('#filterStartDate').val('');
                 $('#filterEndDate').val('');
@@ -1740,6 +1802,7 @@
 
                 $.get("{{ route('wrm.inventory.getFilter') }}", params, function(res) {
                     updateDropdownOptions('dropdown-group', res.groups, 'Pilih Group...');
+                    updateDropdownOptions('dropdown-pallet', res.pallets, 'Pilih Jenis Pallet...');
                     updateDropdownOptions('dropdown-supplier', res.suppliers, 'Pilih Supplier...');
                     updateDropdownOptions('dropdown-no-spb', res.no_spbs, 'Pilih No SPB...');
                     updateDropdownOptions('dropdown-mid', res.mids, 'Pilih MID...', true);

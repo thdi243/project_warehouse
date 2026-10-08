@@ -549,6 +549,10 @@ class InboundController extends Controller
             $q->whereIn('wrm_stock_on_hand.status', (array)$request->status);
         });
 
+        $query->when($request->filled('pallet'), function ($q) use ($request) {
+            $q->whereIn('wrm_stock_on_hand.pallet', (array)$request->pallet);
+        });
+
         $query->when($request->filled('jenis_bahan'), function ($q) use ($request) {
             $q->whereHas('barang', function ($q2) use ($request) {
                 $q2->whereIn('nama_barang', (array)$request->jenis_bahan);
@@ -645,7 +649,7 @@ class InboundController extends Controller
 
     public function getFilter(Request $request)
     {
-        $all = Cache::store('redis')->remember('wrm_stock_on_hand_all_array', 3600, function () {
+        $fetchFilterData = function () {
             return StockOnHand::with([
                 'barang:id,mid,nama_barang',
                 'bin.location'
@@ -668,9 +672,16 @@ class InboundController extends Controller
                         'location_text' => $location
                             ? "{$location->plant} - {$location->s_loc} - {$location->gudang} - {$location->bin}"
                             : '',
+                        'pallet'        => $item->pallet,
                     ];
                 });
-        });
+        };
+
+        try {
+            $all = Cache::store('redis')->remember('wrm_stock_on_hand_all_array', 3600, $fetchFilterData);
+        } catch (\Throwable $e) {
+            $all = $fetchFilterData();
+        }
 
         $filterCollection = function ($items, $exclude = null) use ($request) {
             return $items->filter(function ($item) use ($exclude, $request) {
@@ -682,6 +693,12 @@ class InboundController extends Controller
 
                 if ($exclude !== 'status' && $request->filled('status')) {
                     if (!in_array($item['status'], (array)$request->status)) {
+                        return false;
+                    }
+                }
+
+                if ($exclude !== 'pallet' && $request->filled('pallet')) {
+                    if (!in_array($item['pallet'], (array)$request->pallet)) {
                         return false;
                     }
                 }
@@ -772,6 +789,18 @@ class InboundController extends Controller
             ->values()
             ->toArray();
 
+        $pallets = $filterCollection($all, 'pallet')
+            ->pluck('pallet')
+            ->filter(fn($val) => !is_null($val) && $val !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+
+        if (empty($pallets) && !$request->filled('pallet')) {
+            $pallets = \App\Models\Wrm\MasterPalletModel::pluck('nama_pallet')->sort()->values()->toArray();
+        }
+
         $locations = $filterCollection($all, 'location')
             ->filter(fn($item) => !is_null($item['location_id']) && $item['location_id'] !== '')
             ->map(fn($item) => [
@@ -790,6 +819,7 @@ class InboundController extends Controller
             'no_spbs'      => $noSpbs,
             'suppliers'    => $suppliers,
             'statuses'     => $statuses,
+            'pallets'      => $pallets,
             'locations'    => $locations,
         ]);
     }
@@ -846,6 +876,7 @@ class InboundController extends Controller
                 'pallet_id' => $request->pallet_id,
                 'group'     => $request->group,
                 'qty'       => $request->qty,
+                'zak'       => ($request->zak !== null && $request->zak !== '') ? $request->zak : null,
                 'status'    => $request->status,
                 'loc_id'    => $request->loc_id,
                 'catatan'   => $request->catatan,
@@ -2098,6 +2129,9 @@ class InboundController extends Controller
 
     private function getZakDrumQty($item)
     {
+        if (isset($item->zak) && $item->zak !== null && $item->zak !== '') {
+            return (float) $item->zak;
+        }
         $mid = $item->barang?->mid ?? $item->mid ?? null;
         $qty = $item->qty ?? 0;
         return self::calculateZakQty($mid, $qty);
@@ -2149,6 +2183,7 @@ class InboundController extends Controller
 
         $applyFilter($query, 'group', 'wrm_stock_on_hand.group');
         $applyFilter($query, 'status', 'wrm_stock_on_hand.status');
+        $applyFilter($query, 'pallet', 'wrm_stock_on_hand.pallet');
         $applyFilter($query, 'supplier', 'wrm_stock_on_hand.supplier');
         $applyFilter($query, 'no_spb', 'wrm_stock_on_hand.no_spb');
 
