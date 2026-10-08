@@ -842,7 +842,7 @@
                 }
 
                 window.location.href = "{{ route('stock.pr.export-approval-history') }}?" + params
-                .toString();
+                    .toString();
             });
 
             $('#btnExportAllDates').on('click', function() {
@@ -1157,9 +1157,10 @@
                     const plant = item.barang?.rak?.plant ?? '1006';
                     const noIo = pr.no_io ?? '';
 
-                    let colA = noIo ? 'F' : (pr.jenis == 'Jasa' ? 'K' : '');
-                    let colB = pr.jenis == 'Jasa' ? 'D' : '';
-                    let colD = pr.jenis == 'Jasa' ? item.desc : '';
+                    const isJasa = pr.jenis == 'Jasa' || pr.jenis?.toLowerCase() === 'jasa';
+                    let colA = isJasa ? (noIo ? 'F' : 'K') : '';
+                    let colB = isJasa ? 'D' : '';
+                    let colD = isJasa ? (item.desc || '') : '';
 
                     const row = [
                         colA,
