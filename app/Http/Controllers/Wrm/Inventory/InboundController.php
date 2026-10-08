@@ -449,6 +449,10 @@ class InboundController extends Controller
 
                 $header = $headers[$temp->no_spb];
 
+                $zakVal = isset($request->zak[$tempId]) && $request->zak[$tempId] !== ''
+                    ? (float) $request->zak[$tempId]
+                    : ($temp->zak ?? self::calculateZakQty($temp->mid, $temp->qty));
+
                 // Store with bin_id in loc_id field (as per new FK)
                 $detail = StockInboundDetail::create([
                     'inbound_id' => $header->id,
@@ -457,6 +461,7 @@ class InboundController extends Controller
                     'pallet_id'  => $temp->pallet_id,
                     'group'      => $temp->group ?? null,
                     'qty'        => $temp->qty,
+                    'zak'        => $zakVal,
                     'status'     => $request->status[$tempId] ?? 'UNREST',
                     'loc_id'     => $binId,
                     'pallet'     => $request->pallet ?? $temp->pallet,
@@ -474,6 +479,7 @@ class InboundController extends Controller
                     'pallet_id'  => $temp->pallet_id,
                     'group'      => $temp->group ?? null,
                     'qty'        => $temp->qty,
+                    'zak'        => $zakVal,
                     'status'     => $request->status[$tempId] ?? 'UNREST',
                     'loc_id'     => $binId,
                     'pallet'     => $request->pallet ?? $temp->pallet,
@@ -1175,6 +1181,7 @@ class InboundController extends Controller
                     'mid'         => $mid,
                     'pallet_id'   => $palletId,
                     'qty'         => $qty,
+                    'zak'         => self::calculateZakQty($mid, $qty),
                     'group'       => $group,
                     'incoming_date' => now(),
                     'expired_date' => $expired ?? null,
@@ -1277,6 +1284,7 @@ class InboundController extends Controller
                     'mid'           => $barang->mid,
                     'pallet_id'     => str_pad($i, 2, '0', STR_PAD_LEFT),
                     'qty'           => $currentQty,
+                    'zak'           => self::calculateZakQty($barang->mid, $currentQty),
                     'group'         => null,
                     'incoming_date' => now(),
                     'expired_date'  => $request->expired_date ?? null,
@@ -1376,6 +1384,7 @@ class InboundController extends Controller
                     'mid'           => $mid,
                     'pallet_id'     => $palletId,
                     'qty'           => (float) $qty,
+                    'zak'           => self::calculateZakQty($mid, (float) $qty),
                     'group'         => null,
                     'incoming_date' => now(),
                     'expired_date'  => $expired ?? null,
@@ -2015,15 +2024,12 @@ class InboundController extends Controller
         exit;
     }
 
-    private function getZakDrumQty($item)
+    public static function calculateZakQty($mid, $qty)
     {
-        $mid = $item->barang?->mid;
-        $qty = $item->qty ?? 0;
-
         $conversion = 1;
 
         if ($mid) {
-            switch ($mid) {
+            switch ((string) $mid) {
                 case '20000054': // GULA PASIR
                 case '20000156': // GARAM HALUS
                     $conversion = 50;
@@ -2068,14 +2074,13 @@ class InboundController extends Controller
             }
         }
 
-        return $qty / $conversion;
+        return $conversion > 0 ? ($qty / $conversion) : $qty;
     }
 
-    private function getZakDrumUnit($item)
+    public static function calculateZakUnit($mid)
     {
-        $mid = $item->barang?->mid;
         if ($mid) {
-            switch ($mid) {
+            switch ((string) $mid) {
                 case '20000097': // ND 08505
                     return 'Dus';
                 case '20000813': // SKM KIMLAN
@@ -2089,6 +2094,19 @@ class InboundController extends Controller
             }
         }
         return 'Zak';
+    }
+
+    private function getZakDrumQty($item)
+    {
+        $mid = $item->barang?->mid ?? $item->mid ?? null;
+        $qty = $item->qty ?? 0;
+        return self::calculateZakQty($mid, $qty);
+    }
+
+    private function getZakDrumUnit($item)
+    {
+        $mid = $item->barang?->mid ?? $item->mid ?? null;
+        return self::calculateZakUnit($mid);
     }
 
     public function exportListExcel(Request $request)

@@ -50,6 +50,7 @@ class StockInboundDetail extends Model
         'pallet_id',
         'group',
         'qty',
+        'zak',
         'status',
         'loc_id',
         'catatan',

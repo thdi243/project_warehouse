@@ -18,6 +18,7 @@ class TempUploadModel extends Model
         'mid',
         'pallet_id',
         'qty',
+        'zak',
         'group',
         // 'status',
         'incoming_date',

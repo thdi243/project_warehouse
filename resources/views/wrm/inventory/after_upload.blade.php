@@ -113,6 +113,7 @@
                                         <th>MID</th>
                                         <th>Pallet ID</th>
                                         <th>Qty</th>
+                                        <th>Zak</th>
                                         <th>Group</th>
                                         <th>Status
                                             <select id="globalStatus" class="form-select form-select-sm mt-1"
@@ -141,6 +142,19 @@
                                             <td>{{ $row->mid }}</td>
                                             <td>{{ $row->pallet_id }}</td>
                                             <td>{{ (float) $row->qty }}</td>
+                                            <td style="min-width: 110px;">
+                                                @php
+                                                    $calculatedZak = $row->zak ?? \App\Http\Controllers\Wrm\Inventory\InboundController::calculateZakQty($row->mid, $row->qty);
+                                                    $formattedZak = (float) $calculatedZak == (int) $calculatedZak ? (int) $calculatedZak : round($calculatedZak, 2);
+                                                    $zakUnit = \App\Http\Controllers\Wrm\Inventory\InboundController::calculateZakUnit($row->mid);
+                                                @endphp
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" step="any" min="0" name="zak[{{ $row->id }}]"
+                                                        class="form-control form-control-sm text-end"
+                                                        value="{{ $formattedZak }}" placeholder="0">
+                                                    <span class="input-group-text px-1 text-muted small" style="font-size: 0.75rem;">{{ $zakUnit }}</span>
+                                                </div>
+                                            </td>
                                             <td>{{ $row->group }}</td>
                                             <td>
                                                 <select name="status[{{ $row->id }}]"
