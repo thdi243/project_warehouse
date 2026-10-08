@@ -169,19 +169,24 @@
                             <!-- Manual Input Box -->
                             <div class="mt-4 pt-2 border-top">
                                 @php
-                                    $canManualInput = $canManualInput ?? \App\Models\Kempu\MasterKempuModel::canManualInput();
+                                    $canManualInput =
+                                        $canManualInput ?? \App\Models\Kempu\MasterKempuModel::canManualInput();
                                 @endphp
                                 @if ($canManualInput)
-                                    <label class="form-label fs-13 fw-semibold text-body mb-2 d-flex align-items-center justify-content-between">
-                                        <span><i class="ri-keyboard-line text-muted me-1"></i> Masukkan ID Kempu Manual:</span>
-                                        <span class="badge bg-info-subtle text-info fs-11"><i class="ri-shield-user-line me-1"></i> Otoritas Khusus Aktif</span>
+                                    <label
+                                        class="form-label fs-13 fw-semibold text-body mb-2 d-flex align-items-center justify-content-between">
+                                        <span><i class="ri-keyboard-line text-muted me-1"></i> Masukkan ID Kempu
+                                            Manual:</span>
+                                        <span class="badge bg-info-subtle text-info fs-11"><i
+                                                class="ri-shield-user-line me-1"></i> Otoritas Khusus Aktif</span>
                                     </label>
                                     <div class="input-group input-group-lg">
                                         <span class="input-group-text bg-light text-muted"><i
                                                 class="ri-barcode-line"></i></span>
                                         <input type="text" id="inputManualId" class="form-control font-monospace"
                                             placeholder="Contoh: KMP-001 lalu tekan Enter..." autocomplete="off">
-                                        <button class="btn btn-primary px-4 fw-semibold" type="button" id="btnLookupManual">
+                                        <button class="btn btn-primary px-4 fw-semibold" type="button"
+                                            id="btnLookupManual">
                                             <i class="ri-search-line me-1"></i> Cari Kempu
                                         </button>
                                     </div>
@@ -189,7 +194,9 @@
                                     <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2 px-3">
                                         <i class="ri-lock-line fs-20 text-warning flex-shrink-0"></i>
                                         <div class="fs-12 text-muted">
-                                            <strong class="text-body">Pengetikan Manual Terkunci:</strong> Operator wajib memindai kempu via kamera / barcode scanner. Pengetikan ID manual hanya diperuntukkan bagi Foreman / Leader / Supervisor.
+                                            <strong class="text-body">Pengetikan Manual Terkunci:</strong> Operator wajib
+                                            memindai kempu via kamera / barcode scanner. Pengetikan ID manual hanya
+                                            diperuntukkan bagi Foreman / Leader / Supervisor.
                                         </div>
                                     </div>
                                 @endif
@@ -237,39 +244,30 @@
 
                     <!-- Detail Grid -->
                     <div class="bg-light p-3 rounded-3 mb-3 border">
-                        <div class="row g-2 fs-13">
-                            <div class="col-4 text-center">
+                        <!-- Baris 1: Data Ringkas (RFID, PO, Reused) -->
+                        <div class="row g-2 fs-13 text-center mb-2 pb-2 border-bottom">
+                            <div class="col-4">
                                 <span class="text-muted d-block fs-11">RFID:</span>
                                 <span class="fw-semibold font-monospace text-body" id="modalKempuRfid">-</span>
                             </div>
-                            <div class="col-4 text-center">
-                                <span class="text-muted d-block fs-11">Status Saat Ini:</span>
-                                <span class="badge bg-light text-body border" id="modalKempuStatus">-</span>
+                            <div class="col-4">
+                                <span class="text-muted d-block fs-11">Nomor PO:</span>
+                                <span class="fw-bold font-monospace text-success" id="modalKempuNoPo">-</span>
                             </div>
-                            <div class="col-4 text-center">
+                            <div class="col-4">
                                 <span class="text-muted d-block fs-11">Siklus Reused:</span>
                                 <div id="reusedDisplayMode">
                                     <span class="fw-bold text-body" id="modalKempuReused">-</span>
                                 </div>
-                                {{-- <div id="reusedEditMode" class="d-none mt-1">
-                                    <div class="input-group input-group-sm" style="max-width: 170px;">
-                                        <input type="number" id="inputReusedInline"
-                                            class="form-control form-control-sm font-monospace fw-bold text-center"
-                                            min="0" max="21">
-                                        <span class="input-group-text bg-white px-1 fs-11">/21x</span>
-                                        <button class="btn btn-sm btn-success px-2" type="button"
-                                            id="btnSaveReusedInline" title="Simpan">
-                                            <i class="ri-check-line"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary px-2" type="button"
-                                            id="btnCancelReusedInline" title="Batal">
-                                            <i class="ri-close-line"></i>
-                                        </button>
-                                    </div>
-                                    <small class="text-muted d-block" style="font-size: 10px;">Tekan <i
-                                            class="ri-check-line text-success"></i> untuk simpan</small>
-                                </div> --}}
                             </div>
+                        </div>
+
+                        <!-- Baris 2: Status Saat Ini (Full-Width) -->
+                        <div class="text-center">
+                            <span class="text-muted d-block fs-11 mb-1">Status Saat Ini:</span>
+                            <span
+                                class="badge bg-white text-secondary border px-3 py-2 text-wrap text-break font-monospace fs-12"
+                                id="modalKempuStatus">-</span>
                         </div>
                     </div>
 
@@ -663,6 +661,7 @@
             function openConfirmModal(k) {
                 $('#modalKempuId').text(k.id_kempu);
                 $('#modalKempuRfid').text(k.rfid || '-');
+                $('#modalKempuNoPo').text(k.no_po || '-');
                 $('#modalKempuStatus').text(k.current_status);
                 $('#modalKempuReused').text(`${k.reused_count} / ${k.max_reused}x`);
                 $('#modalKempuCondition').text(k.condition);
