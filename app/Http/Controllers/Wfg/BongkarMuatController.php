@@ -241,7 +241,61 @@ class BongkarMuatController extends Controller
             })
             ->values();
 
+        // Koreksi otomatis jika draft memiliki no_mobil tidak utuh / suffix match dari kendaraan aktif
+        if (!empty($draft->no_mobil)) {
+            [$resolvedNoMobil, $resolvedDriver] = $this->resolveVehicleInfo($draft->no_mobil, $draft->driver_name);
+            $updateDraft = [];
+            if ($resolvedNoMobil && $draft->no_mobil !== $resolvedNoMobil) {
+                $updateDraft['no_mobil'] = $resolvedNoMobil;
+                $draft->no_mobil = $resolvedNoMobil;
+            }
+            if ($resolvedDriver && empty($draft->driver_name)) {
+                $updateDraft['driver_name'] = $resolvedDriver;
+                $draft->driver_name = $resolvedDriver;
+            }
+            if (!empty($updateDraft)) {
+                $draft->update($updateDraft);
+            }
+        }
+
         return view('wfg.bongkar_muat.form', compact('forkliftDrivers', 'checkers', 'destinations', 'draft', 'bookedGates', 'allDrafts', 'wfgVehicles'));
+    }
+
+    /**
+     * Cari kecocokan transaksi kendaraan aktif di WFG dan normalisasi nopol + nama driver.
+     */
+    private function resolveVehicleInfo(?string $noMobil, ?string $driverName): array
+    {
+        if (empty($noMobil)) {
+            return [null, null];
+        }
+
+        $cleanNoMobil = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $noMobil));
+        $noMobilSuffix = preg_replace('/^[A-Z]{1,2}/', '', $cleanNoMobil);
+
+        // 1. Coba exact match setelah clean karakter pemisah
+        $matchedTx = VehicleTransaction::with('vehicle')->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
+            $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
+        })->whereNotIn('status', ['completed', 'timbangan_out'])->latest()->first();
+
+        // 2. Jika tidak match exact, cocokkan suffix (misal input '9657UEU' vs nopol asli 'B 9657 UEU')
+        if (!$matchedTx && !empty($noMobilSuffix) && strlen($noMobilSuffix) >= 3) {
+            $matchedTx = VehicleTransaction::with('vehicle')->whereHas('vehicle', function ($q) use ($noMobilSuffix) {
+                $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') LIKE ?", ['%' . $noMobilSuffix]);
+            })->whereNotIn('status', ['completed', 'timbangan_out'])->latest()->first();
+        }
+
+        $resolvedNoMobil = $noMobil;
+        $resolvedDriver = $driverName;
+
+        if ($matchedTx && $matchedTx->vehicle && !empty($matchedTx->vehicle->no_pol)) {
+            $resolvedNoMobil = $matchedTx->vehicle->no_pol;
+            if (empty($resolvedDriver) && !empty($matchedTx->nama_driver)) {
+                $resolvedDriver = $matchedTx->nama_driver;
+            }
+        }
+
+        return [$resolvedNoMobil, $resolvedDriver];
     }
 
     private function generateNoDokumen()
@@ -314,19 +368,7 @@ class BongkarMuatController extends Controller
             //     }
             // }
 
-            $driverName = $request->driver_name;
-            if (empty($request->no_mobil)) {
-                $driverName = null;
-            } elseif (empty($driverName)) {
-                $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $request->no_mobil));
-                $matchedTx = VehicleTransaction::whereHas('vehicle', function ($q) use ($cleanNoMobil) {
-                    $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
-                })->whereNotIn('status', ['completed', 'timbangan_out'])->latest()->first();
-
-                if ($matchedTx && !empty($matchedTx->nama_driver)) {
-                    $driverName = $matchedTx->nama_driver;
-                }
-            }
+            [$resolvedNoMobil, $driverName] = $this->resolveVehicleInfo($request->no_mobil, $request->driver_name);
 
             $order->update([
                 'tanggal' => $request->tanggal,
@@ -337,7 +379,7 @@ class BongkarMuatController extends Controller
                 'wavepick_bas' => $request->wavepick_bas,
                 'forklift_driver_id' => $request->forklift_driver_id,
                 'destinasi_id' => $request->destinasi_id,
-                'no_mobil' => $request->no_mobil,
+                'no_mobil' => $resolvedNoMobil,
                 'driver_name' => $driverName,
                 'gate' => $request->gate,
                 'no_kontainer' => $request->no_kontainer,
@@ -441,7 +483,8 @@ class BongkarMuatController extends Controller
                 'message' => 'Progress saved.',
                 'jam_muat' => $order->jam_muat,
                 'tanggal' => $formattedTanggal,
-                'driver_name' => $order->driver_name
+                'driver_name' => $order->driver_name,
+                'no_mobil' => $order->no_mobil,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -581,19 +624,7 @@ class BongkarMuatController extends Controller
                 $noDok = $order->no_dokumen;
             }
 
-            $driverName = $request->driver_name;
-            if (empty($request->no_mobil)) {
-                $driverName = null;
-            } elseif (empty($driverName)) {
-                $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $request->no_mobil));
-                $matchedTx = VehicleTransaction::whereHas('vehicle', function ($q) use ($cleanNoMobil) {
-                    $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
-                })->whereNotIn('status', ['completed', 'timbangan_out'])->latest()->first();
-
-                if ($matchedTx && !empty($matchedTx->nama_driver)) {
-                    $driverName = $matchedTx->nama_driver;
-                }
-            }
+            [$resolvedNoMobil, $driverName] = $this->resolveVehicleInfo($request->no_mobil, $request->driver_name);
 
             $orderData = [
                 'tanggal' => $request->tanggal,
@@ -605,7 +636,7 @@ class BongkarMuatController extends Controller
                 'forklift_driver_id' => $request->forklift_driver_id,
                 'checker_id' => $order->checker_id ?? Auth::id(),
                 'destinasi_id' => $request->destinasi_id,
-                'no_mobil' => $request->no_mobil,
+                'no_mobil' => $resolvedNoMobil,
                 'driver_name' => $driverName,
                 'gate' => $request->gate,
                 'no_kontainer' => $request->no_kontainer,

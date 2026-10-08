@@ -210,28 +210,40 @@
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">No. Mobil <small class="text-muted">(Pilih WFG / Ketik
                                                 Manual)</small></label>
+                                        @php
+                                            $cleanDraftNoMobil = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $draft->no_mobil ?? ''));
+                                            $draftSuffix = preg_replace('/^[A-Z]{1,2}/', '', $cleanDraftNoMobil);
+
+                                            $matchVehicle = function($noPol) use ($cleanDraftNoMobil, $draftSuffix) {
+                                                if (empty($cleanDraftNoMobil) || empty($noPol)) return false;
+                                                $cleanV = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $noPol));
+                                                if ($cleanV === $cleanDraftNoMobil) return true;
+                                                
+                                                $vSuffix = preg_replace('/^[A-Z]{1,2}/', '', $cleanV);
+                                                if (!empty($draftSuffix) && !empty($vSuffix) && $draftSuffix === $vSuffix) {
+                                                    return true;
+                                                }
+                                                return false;
+                                            };
+
+                                            $matchedWfgTx = $wfgVehicles->first(fn($v) => $matchVehicle($v->vehicle->no_pol ?? ''));
+                                            $isDraftInWfg = !empty($matchedWfgTx);
+                                            $driverNameVal = $draft->driver_name ?? ($matchedWfgTx->nama_driver ?? '');
+                                        @endphp
                                         <select name="no_mobil" id="no_mobil" class="form-select select2-tags">
                                             <option value="" @selected(empty($draft->no_mobil))></option>
                                             @foreach ($wfgVehicles as $vTx)
                                                 @php
                                                     $vNoPol = $vTx->vehicle->no_pol;
                                                     $vDriver = $vTx->nama_driver ?? '';
-                                                    $isSelected =
-                                                        !empty($draft->no_mobil) &&
-                                                        strtoupper(
-                                                            str_replace([' ', '-', '.', '_'], '', $draft->no_mobil),
-                                                        ) ===
-                                                            strtoupper(str_replace([' ', '-', '.', '_'], '', $vNoPol));
+                                                    $isSelected = $matchVehicle($vNoPol);
                                                 @endphp
                                                 <option value="{{ $vNoPol }}" data-driver="{{ $vDriver }}"
                                                     @selected($isSelected)>
                                                     {{ $vNoPol }}{{ !empty($vDriver) ? ' - ' . $vDriver : '' }}
                                                 </option>
                                             @endforeach
-                                            @if (
-                                                !empty($draft->no_mobil) &&
-                                                    !$wfgVehicles->contains(fn($v) => strtoupper(str_replace([' ', '-', '.', '_'], '', $v->vehicle->no_pol ?? '')) ===
-                                                            strtoupper(str_replace([' ', '-', '.', '_'], '', $draft->no_mobil))))
+                                            @if (!empty($draft->no_mobil) && !$isDraftInWfg)
                                                 <option value="{{ $draft->no_mobil }}"
                                                     data-driver="{{ $draft->driver_name ?? '' }}" selected>
                                                     {{ $draft->no_mobil }}
@@ -239,11 +251,11 @@
                                             @endif
                                         </select>
                                         <input type="hidden" name="driver_name" id="driver_name"
-                                            value="{{ $draft->driver_name ?? '' }}">
+                                            value="{{ $driverNameVal }}">
                                         <div id="driver-indicator"
-                                            class="mt-1 small text-success {{ !empty($draft->driver_name) ? '' : 'd-none' }}">
+                                            class="mt-1 small text-success {{ !empty($driverNameVal) ? '' : 'd-none' }}">
                                             <i class="ri-user-line me-1"></i> Driver: <strong
-                                                id="driver-indicator-name">{{ $draft->driver_name ?? '' }}</strong>
+                                                id="driver-indicator-name">{{ $driverNameVal }}</strong>
                                         </div>
                                     </div>
                                     <div class="col-md-6 mb-3">
@@ -599,6 +611,11 @@
                         $('#driver-indicator-name').text(res.driver_name);
                         $('#driver-indicator').removeClass('d-none');
                     }
+                    if (res.no_mobil && $('#no_mobil').val() !== res.no_mobil) {
+                        if ($('#no_mobil option[value="' + res.no_mobil + '"]').length) {
+                            $('#no_mobil').val(res.no_mobil).trigger('change.select2');
+                        }
+                    }
                     previousGate = $('#gate').val();
                     console.log('Progress saved automatically');
                 }
@@ -938,14 +955,83 @@
                 width: '100%'
             });
 
+            function cleanPlateString(str) {
+                return (str || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+            }
+
+            function getPlateSuffix(cleanStr) {
+                return (cleanStr || '').replace(/^[A-Z]{1,2}/, '');
+            }
+
             $('#no_mobil').select2({
                 width: '100%',
                 tags: true,
                 placeholder: '-- Pilih Kendaraan WFG / Ketik Manual --',
                 allowClear: true,
+                matcher: function(params, data) {
+                    if ($.trim(params.term) === '') return data;
+                    if (typeof data.text === 'undefined') return null;
+
+                    var term = cleanPlateString(params.term);
+                    var text = cleanPlateString(data.text);
+                    var val = cleanPlateString(data.id);
+
+                    // 1. Substring match pada teks atau value nopol
+                    if (text.indexOf(term) > -1 || val.indexOf(term) > -1) {
+                        return data;
+                    }
+
+                    // 2. Suffix match (misal user ketik 9657UEU vs data B9657UEU)
+                    var termSuffix = getPlateSuffix(term);
+                    var valSuffix = getPlateSuffix(val);
+                    if (termSuffix.length >= 3 && valSuffix.length >= 3 && valSuffix.indexOf(termSuffix) > -1) {
+                        return data;
+                    }
+
+                    return null;
+                },
                 createTag: function(params) {
                     var term = $.trim(params.term);
                     if (term === '') return null;
+
+                    var cleanTerm = cleanPlateString(term);
+                    var termSuffix = getPlateSuffix(cleanTerm);
+
+                    // Cek apakah term cocok atau sebagian cocok dengan opsi kendaraan WFG yang sudah ada
+                    var existsInOptions = false;
+                    $('#no_mobil option').each(function() {
+                        var val = $(this).val();
+                        var text = $(this).text();
+                        if (!val) return;
+
+                        var cleanVal = cleanPlateString(val);
+                        var cleanText = cleanPlateString(text);
+                        var valSuffix = getPlateSuffix(cleanVal);
+
+                        // Match exact
+                        if (cleanVal === cleanTerm) {
+                            existsInOptions = true;
+                            return false;
+                        }
+
+                        // Match suffix nopol (misal user ketik 9657UEU vs nopol B9657UEU)
+                        if (termSuffix.length >= 3 && valSuffix.length >= 3 && termSuffix === valSuffix) {
+                            existsInOptions = true;
+                            return false;
+                        }
+
+                        // Match substring jika user sedang mencari mobil WFG
+                        if (cleanVal.indexOf(cleanTerm) !== -1 || cleanText.indexOf(cleanTerm) !== -1) {
+                            existsInOptions = true;
+                            return false;
+                        }
+                    });
+
+                    // JANGAN BUAT TAG BARU jika nopol terindikasi ada di list WFG!
+                    if (existsInOptions) {
+                        return null;
+                    }
+
                     return {
                         id: term.toUpperCase(),
                         text: term.toUpperCase(),
