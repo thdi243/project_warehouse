@@ -31,6 +31,78 @@
             background-color: #d1ecf1;
             color: #0c5460;
         }
+
+        /* Checkbox Checklist Styling (Enlarged & Prominent Border) */
+        .check-item,
+        .check-sub-item,
+        #checkAllItems,
+        #checkAllTable {
+            width: 1.35rem !important;
+            height: 1.35rem !important;
+            border: 2px solid #495057 !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            margin: 0 !important;
+            float: none !important;
+            transition: all 0.15s ease-in-out !important;
+            vertical-align: middle !important;
+        }
+
+        .check-item:hover,
+        .check-sub-item:hover,
+        #checkAllItems:hover,
+        #checkAllTable:hover {
+            border-color: #0d6efd !important;
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.18) !important;
+        }
+
+        .check-item:focus,
+        .check-sub-item:focus,
+        #checkAllItems:focus,
+        #checkAllTable:focus {
+            border-color: #0d6efd !important;
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25) !important;
+        }
+
+        .check-item:checked,
+        .check-sub-item:checked,
+        #checkAllItems:checked,
+        #checkAllTable:checked {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+        }
+
+        [data-layout-mode="dark"] .check-item,
+        [data-layout-mode="dark"] .check-sub-item,
+        [data-layout-mode="dark"] #checkAllItems,
+        [data-layout-mode="dark"] #checkAllTable {
+            border-color: #878a99 !important;
+            background-color: #212529 !important;
+        }
+
+        [data-layout-mode="dark"] .check-item:checked,
+        [data-layout-mode="dark"] .check-sub-item:checked,
+        [data-layout-mode="dark"] #checkAllItems:checked,
+        [data-layout-mode="dark"] #checkAllTable:checked {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+        }
+
+        /* Center checkboxes in tables */
+        .table .form-check {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: auto;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+
+        .item-check-col {
+            text-align: center;
+            vertical-align: middle;
+            width: 48px;
+        }
     </style>
 @endsection
 
@@ -159,7 +231,12 @@
                         <table class="table table-hover align-middle mb-0" id="approvalTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 40px;" class="ps-3">NO</th>
+                                    <th style="width: 48px;" class="text-center" id="colHeaderCheck">
+                                        <span id="headerColNo">NO</span>
+                                        <div class="form-check d-none" id="headerColCheckWrapper">
+                                            <input class="form-check-input" type="checkbox" id="checkAllTable" title="Pilih Semua">
+                                        </div>
+                                    </th>
                                     <th>PR Date</th>
                                     <th>No Doc</th>
                                     <th>Requested By</th>
@@ -211,7 +288,7 @@
                             <table class="table table-sm table-bordered">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="item-check-col" style="width: 40px;">
+                                        <th class="item-check-col" style="width: 48px;">
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" id="checkAllItems">
                                             </div>
@@ -254,6 +331,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="actionSummaryInfo" class="alert alert-info py-2 px-3 mb-3 d-none"></div>
                     <form id="formAction">
                         <div class="mb-3 d-none" id="noPrWrapper">
                             <label class="form-label fw-bold">No PR <span class="text-danger">*</span></label>
@@ -510,7 +588,7 @@
 
                     tbody.append(`
                         <tr>
-                            <td class="ps-3">${checkboxOrIndex}</td>
+                            <td class="text-center">${checkboxOrIndex}</td>
                             <td>${pr.pr_date}</td>
                             <td><span class="fw-bold text-primary">${pr.no_doc}</span></td>
                             <td>${pr.requested_by}</td>
@@ -539,18 +617,17 @@
 
             // Checkbox Logic
             $('#btnSelectAll').on('click', function() {
+                const totalCheckboxes = $('.check-item').length;
+                if (totalCheckboxes === 0) return;
+
                 const anyUnchecked = $('.check-item:not(:checked)').length > 0;
-                if (anyUnchecked) {
-                    $('.check-item').prop('checked', true);
-                    $(this).html(
-                        '<i class="mdi mdi-checkbox-multiple-blank-outline me-1"></i> Batal Pilih');
-                    $(this).removeClass('btn-outline-secondary').addClass('btn-outline-danger');
-                } else {
-                    $('.check-item').prop('checked', false);
-                    $(this).html(
-                        '<i class="mdi mdi-checkbox-multiple-marked-outline me-1"></i> Pilih Semua');
-                    $(this).removeClass('btn-outline-danger').addClass('btn-outline-secondary');
-                }
+                $('.check-item').prop('checked', anyUnchecked);
+                updateSelectedIds();
+            });
+
+            $(document).on('change', '#checkAllTable', function() {
+                const isChecked = $(this).is(':checked');
+                $('.check-item').prop('checked', isChecked);
                 updateSelectedIds();
             });
 
@@ -569,19 +646,41 @@
             function updateBulkUI() {
                 if (currentFilterLevel == 5) {
                     $('.bulk-actions-wrapper').addClass('d-none');
+                    $('#headerColNo').removeClass('d-none');
+                    $('#headerColCheckWrapper').addClass('d-none');
                     return;
                 } else {
                     $('.bulk-actions-wrapper').removeClass('d-none');
+                    $('#headerColNo').addClass('d-none');
+                    $('#headerColCheckWrapper').removeClass('d-none');
                 }
+
+                const totalCheckboxes = $('.check-item').length;
+                const checkedCount = $('.check-item:checked').length;
+                const isAllChecked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+
+                // Sinkronisasi teks tombol Pilih Semua / Batal Pilih & Header Checkbox
+                if (isAllChecked) {
+                    $('#btnSelectAll')
+                        .html('<i class="mdi mdi-checkbox-multiple-blank-outline me-1"></i> Batal Pilih')
+                        .removeClass('btn-outline-secondary')
+                        .addClass('btn-outline-danger');
+                    $('#checkAllTable').prop('checked', true);
+                } else {
+                    $('#btnSelectAll')
+                        .html('<i class="mdi mdi-checkbox-multiple-marked-outline me-1"></i> Pilih Semua')
+                        .removeClass('btn-outline-danger')
+                        .addClass('btn-outline-secondary');
+                    $('#checkAllTable').prop('checked', false);
+                }
+
+                $('#checkAllTable').prop('disabled', totalCheckboxes === 0);
 
                 if (selectedIds.length > 0) {
                     $('.bulk-actions').removeClass('d-none');
                     $('.selected-count').text(`${selectedIds.length} terpilih`);
                 } else {
                     $('.bulk-actions').addClass('d-none');
-                    $('#btnSelectAll').html(
-                        '<i class="mdi mdi-checkbox-multiple-marked-outline me-1"></i> Pilih Semua');
-                    $('#btnSelectAll').removeClass('btn-outline-danger').addClass('btn-outline-secondary');
                 }
             }
 
@@ -701,7 +800,7 @@
                     if (isLevel3Or5) {
                         if (item.jenis === 'pr') {
                             checkHtml = `
-                            <td class="item-check-col">
+                            <td class="item-check-col text-center">
                                 <div class="form-check">
                                     <input class="form-check-input check-sub-item" type="checkbox" value="${item.id}" checked>
                                 </div>
@@ -872,14 +971,15 @@
             function openActionModal(status) {
                 currentAction = status;
                 const isLevel5 = currentFilterLevel == 5;
+                const isApproved = status === 'approved';
 
-                $('#actionModalTitle').text(isLevel5 ? (status === 'approved' ? 'Konfirmasi PR (Confirm)' :
-                    'Konfirmasi Penolakan') : (status === 'approved' ? 'Konfirmasi Approval' :
+                $('#actionModalTitle').text(isLevel5 ? (isApproved ? 'Konfirmasi PR (Confirm)' :
+                    'Konfirmasi Penolakan') : (isApproved ? 'Konfirmasi Approval' :
                     'Konfirmasi Penolakan'));
                 $('#btnSubmitAction').removeClass('btn-primary btn-success btn-danger')
-                    .addClass(status === 'approved' ? 'btn-success' : 'btn-danger')
-                    .text(isLevel5 ? (status === 'approved' ? 'Confirm Sekarang' : 'Reject Sekarang') : (status ===
-                        'approved' ? 'Approve Sekarang' : 'Reject Sekarang'));
+                    .addClass(isApproved ? 'btn-success' : 'btn-danger')
+                    .text(isLevel5 ? (isApproved ? 'Confirm Sekarang' : 'Reject Sekarang') : (isApproved ?
+                        'Approve Sekarang' : 'Reject Sekarang'));
 
                 if (status === 'rejected') {
                     $('#signatureWrapper').addClass('d-none');
@@ -887,11 +987,56 @@
                     $('#signatureWrapper').removeClass('d-none');
                 }
 
-                if (isLevel5 && status === 'approved') {
+                if (isLevel5 && isApproved) {
                     $('#noPrWrapper').removeClass('d-none');
                     $('#actionNoPr').val('');
                 } else {
                     $('#noPrWrapper').addClass('d-none');
+                }
+
+                // Summary Info di dalam Modal Action
+                const countDocs = selectedIds.length;
+                const selectedPRs = allPending.filter(p => selectedIds.includes(p.id) || selectedIds.includes(String(p.id)));
+                const docNumbers = selectedPRs.map(p => p.no_doc).filter(Boolean);
+                const actionLabel = isApproved ? (isLevel5 ? 'Confirm' : 'Approve') : 'Reject';
+
+                let summaryHtml = '';
+                if (countDocs > 1) {
+                    summaryHtml = `
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="mdi ${isApproved ? 'mdi-check-circle' : 'mdi-alert-circle'} fs-5 ${isApproved ? 'text-success' : 'text-danger'}"></i>
+                            <div>
+                                <div class="fw-bold">Total ${countDocs} Dokumen PR akan di-${actionLabel} masal:</div>
+                                <div class="small mt-1 text-muted text-break">${docNumbers.join(', ')}</div>
+                            </div>
+                        </div>
+                    `;
+                } else if (countDocs === 1) {
+                    const pr = selectedPRs[0];
+                    const noDoc = pr ? pr.no_doc : (docNumbers[0] || '-');
+                    let itemsDetail = '';
+                    if (window.currentSelectedItems && window.currentSelectedItems.length > 0) {
+                        itemsDetail = `<span class="badge bg-primary ms-1">${window.currentSelectedItems.length} item dipilih</span>`;
+                    } else if (pr && pr.items && pr.items.length > 0) {
+                        itemsDetail = `<span class="badge bg-secondary ms-1">Semua (${pr.items.length}) item</span>`;
+                    }
+                    summaryHtml = `
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="mdi ${isApproved ? 'mdi-check-circle' : 'mdi-alert-circle'} fs-5 ${isApproved ? 'text-success' : 'text-danger'}"></i>
+                            <div>
+                                <span>Akan di-<b>${actionLabel}</b> untuk PR:</span> <b class="text-primary">${noDoc}</b> ${itemsDetail}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (summaryHtml) {
+                    $('#actionSummaryInfo')
+                        .removeClass('alert-info alert-success alert-danger d-none')
+                        .addClass(isApproved ? 'alert-success' : 'alert-danger')
+                        .html(summaryHtml);
+                } else {
+                    $('#actionSummaryInfo').addClass('d-none');
                 }
 
                 // Reset signature option to stored if available
@@ -909,6 +1054,11 @@
             });
 
             $('#btnSubmitAction').on('click', function() {
+                if (!selectedIds || selectedIds.length === 0) {
+                    Swal.fire('Peringatan', 'Tidak ada data PR yang dipilih.', 'warning');
+                    return;
+                }
+
                 const useStored = $('#useStoredSignature').val() == '1';
                 const isLevel5 = currentFilterLevel == 5;
                 const noPr = $('#actionNoPr').val().trim();
@@ -941,6 +1091,69 @@
                     update_signature: $('#updateSignatureCheckbox').is(':checked') ? 1 : 0
                 };
 
+                const countDocs = selectedIds.length;
+                const selectedPRs = allPending.filter(p => selectedIds.includes(p.id) || selectedIds.includes(String(p.id)));
+                const docNumbers = selectedPRs.map(p => p.no_doc).filter(Boolean);
+                const isApprove = currentAction === 'approved';
+                const actionVerb = isApprove ? (isLevel5 ? 'konfirmasi (confirm)' : 'menyetujui') : 'menolak';
+                const actionTitle = isApprove ? (isLevel5 ? 'Konfirmasi PR (Confirm)' : 'Konfirmasi Approval PR') : 'Konfirmasi Penolakan PR';
+
+                let confirmHtml = '';
+                if (countDocs > 1) {
+                    confirmHtml = `
+                        <div class="text-start">
+                            <p class="mb-2">Anda akan <b>${actionVerb}</b> sebanyak <b>${countDocs} dokumen PR</b>:</p>
+                            <div class="p-2 bg-light rounded border mb-3 small text-muted text-break" style="max-height: 120px; overflow-y: auto;">
+                                ${docNumbers.join(', ')}
+                            </div>
+                            <p class="mb-0 fw-semibold text-dark">Apakah Anda yakin ingin memproses data ini?</p>
+                        </div>
+                    `;
+                } else {
+                    const pr = selectedPRs[0];
+                    const noDoc = pr ? pr.no_doc : (docNumbers[0] || '-');
+                    let itemInfoHtml = '';
+                    if (window.currentSelectedItems && window.currentSelectedItems.length > 0) {
+                        itemInfoHtml = `<div class="mt-2 small text-muted"><i class="mdi mdi-checkbox-marked-circle-outline text-success me-1"></i>Jumlah item terpilih: <b class="text-dark">${window.currentSelectedItems.length} item</b></div>`;
+                    } else if (pr && pr.items && pr.items.length > 0) {
+                        itemInfoHtml = `<div class="mt-2 small text-muted"><i class="mdi mdi-format-list-bulleted me-1"></i>Total item: <b class="text-dark">${pr.items.length} item</b></div>`;
+                    }
+
+                    confirmHtml = `
+                        <div class="text-start">
+                            <p class="mb-2">Anda akan <b>${actionVerb}</b> dokumen PR:</p>
+                            <div class="p-3 bg-light rounded border mb-2">
+                                <div class="fw-bold text-primary fs-6">${noDoc}</div>
+                                ${pr ? `<div class="small text-muted mt-1">Requested by: <b>${pr.requested_by || '-'}</b> (${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()})</div>` : ''}
+                                ${isLevel5 && noPr ? `<div class="small text-success mt-1">No PR: <b>${noPr}</b></div>` : ''}
+                                ${itemInfoHtml}
+                            </div>
+                            <p class="mb-0 fw-semibold text-dark mt-2">Apakah Anda yakin ingin memproses data ini?</p>
+                        </div>
+                    `;
+                }
+
+                Swal.fire({
+                    title: actionTitle,
+                    html: confirmHtml,
+                    icon: isApprove ? 'question' : 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: isApprove 
+                        ? `<i class="mdi mdi-check me-1"></i> Ya, ${isLevel5 ? 'Confirm' : 'Approve'}` 
+                        : `<i class="mdi mdi-close me-1"></i> Ya, Tolak`,
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: isApprove ? '#198754' : '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
+                    focusCancel: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        sendBulkActionAjax(data);
+                    }
+                });
+            });
+
+            function sendBulkActionAjax(data) {
                 Swal.fire({
                     title: 'Memproses...',
                     text: 'Harap tunggu sebentar',
@@ -971,7 +1184,7 @@
                         Swal.fire('Error', msg, 'error');
                     }
                 });
-            });
+            }
 
             window.escapeHtmlAttribute = function(str) {
                 if (!str) return '';
