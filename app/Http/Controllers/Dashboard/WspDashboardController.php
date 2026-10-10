@@ -152,9 +152,27 @@ class WspDashboardController extends Controller
 
         $activeReservations = WspStockReservations::where('status', 'active')->count();
 
-        $pendingBottlenecksCount = WspPurchaseRequesitionModel::where('status', 'pending')
-            ->where('created_at', '<=', now()->subHours(24))
-            ->count();
+        // Pending Bottlenecks (>24 jam tertahan di level aktif saat ini)
+        $pendingPrsKpi = WspPurchaseRequesitionModel::where('status', 'pending')
+            ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('department', $departmentFilter))
+            ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('jenis', $jenisFilter))
+            ->with(['approval' => function ($q) {
+                $q->orderBy('level', 'asc');
+            }])
+            ->get();
+
+        $pendingBottlenecksCount = 0;
+        foreach ($pendingPrsKpi as $pr) {
+            $activeApproval = $pr->approval->where('status', 'pending')->sortBy('level')->first();
+            if (!$activeApproval) continue;
+            $prevApproval = $pr->approval->where('level', $activeApproval->level - 1)->first();
+            $levelStartTime = ($prevApproval && $prevApproval->action_at)
+                ? Carbon::parse($prevApproval->action_at)
+                : Carbon::parse($pr->created_at);
+            if ($levelStartTime->diffInHours(now()) >= 24) {
+                $pendingBottlenecksCount++;
+            }
+        }
 
         // Overall Average PR Lead Time (Creation to Last Approval / Finish)
         $completedPrTat = DB::table('wsp_purchase_requesition')
@@ -404,66 +422,130 @@ class WspDashboardController extends Controller
      */
     private function getWorkflowData($start, $end, $departmentFilter, $jenisFilter)
     {
-        // Pending approvals per role
-        $approvalBottlenecksRaw = DB::table('wsp_purchase_requesition_approval')
-            ->join('wsp_purchase_requesition', 'wsp_purchase_requesition_approval.pr_id', '=', 'wsp_purchase_requesition.id')
-            ->where('wsp_purchase_requesition.status', 'pending')
-            ->where('wsp_purchase_requesition_approval.status', 'pending')
-            ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('wsp_purchase_requesition.department', $departmentFilter))
-            ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('wsp_purchase_requesition.jenis', $jenisFilter))
-            ->select('wsp_purchase_requesition_approval.role', DB::raw('COUNT(*) as pending_count'))
-            ->groupBy('wsp_purchase_requesition_approval.role')
-            ->orderByDesc('pending_count')
+        $levelNames = [
+            1 => 'User (Pengaju)',
+            2 => 'Supervisor User',
+            3 => 'Manager User',
+            4 => 'Manager Warehouse',
+            5 => 'Admin WSP',
+        ];
+
+        // 1. Bottleneck Antrian PR Pending per Active Level (Level terendah yang sedang pending)
+        $bottlenecksRaw = DB::table('wsp_purchase_requesition as pr')
+            ->join('wsp_purchase_requesition_approval as a', function ($join) {
+                $join->on('a.pr_id', '=', 'pr.id');
+            })
+            ->where('pr.status', 'pending')
+            ->whereRaw('a.level = (SELECT MIN(a2.level) FROM wsp_purchase_requesition_approval a2 WHERE a2.pr_id = pr.id AND a2.status = "pending")')
+            ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('pr.department', $departmentFilter))
+            ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('pr.jenis', $jenisFilter))
+            ->select('a.level', DB::raw('COUNT(*) as pending_count'))
+            ->groupBy('a.level')
+            ->orderBy('a.level', 'asc')
             ->get();
 
-        $approvalBottlenecks = $approvalBottlenecksRaw->map(function ($item) {
+        $approvalBottlenecks = $bottlenecksRaw->map(function ($item) use ($levelNames) {
+            $roleLabel = $levelNames[$item->level] ?? "Level {$item->level}";
             return [
-                'role' => ucwords(str_replace('_', ' ', $item->role)),
+                'level' => $item->level,
+                'role' => "Level {$item->level}: {$roleLabel}",
                 'pending_count' => (int) $item->pending_count,
             ];
         });
 
-        // Average Lead Time / Turnaround Time (TAT) in Hours for completed approvals
-        $tatRaw = DB::table('wsp_purchase_requesition_approval')
-            ->whereNotNull('action_at')
-            ->where('status', 'approved')
+        // 2. Average Turnaround Time (TAT) dari level ke level:
+        // Level 1 ke 2 (Supervisor User): diff antara Lvl 1 action_at (atau submit PR) dan Lvl 2 action_at
+        // Level 2 ke 3 (Manager User): diff antara Lvl 2 action_at dan Lvl 3 action_at
+        // Level 3 ke 4 (Manager Warehouse): diff antara Lvl 3 action_at dan Lvl 4 action_at
+        // Level 4 ke 5 (Admin WSP): diff antara Lvl 4 action_at dan Lvl 5 action_at
+        $transitions = DB::table('wsp_purchase_requesition_approval as curr')
+            ->join('wsp_purchase_requesition as pr', 'pr.id', '=', 'curr.pr_id')
+            ->leftJoin('wsp_purchase_requesition_approval as prev', function ($join) {
+                $join->on('prev.pr_id', '=', 'curr.pr_id')
+                    ->whereRaw('prev.level = curr.level - 1');
+            })
+            ->where('curr.level', '>=', 2)
+            ->whereNotNull('curr.action_at')
+            ->whereIn('curr.status', ['approved', 'rejected'])
+            ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('pr.department', $departmentFilter))
+            ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('pr.jenis', $jenisFilter))
             ->select(
-                'role',
-                DB::raw('AVG(TIMESTAMPDIFF(MINUTE, created_at, action_at)) as avg_minutes'),
-                DB::raw('COUNT(*) as sample_count')
+                'curr.level',
+                'curr.role',
+                DB::raw('COALESCE(prev.action_at, curr.created_at, pr.created_at) as start_time'),
+                'curr.action_at',
+                DB::raw('TIMESTAMPDIFF(MINUTE, COALESCE(prev.action_at, curr.created_at, pr.created_at), curr.action_at) as diff_minutes')
             )
-            ->groupBy('role')
-            ->orderBy('avg_minutes', 'asc')
             ->get();
 
-        $stageTat = $tatRaw->map(function ($item) {
-            $mins = round($item->avg_minutes);
-            $hours = round($mins / 60, 1);
-            $formatted = $hours >= 24 ? round($hours / 24, 1) . ' hr' : $hours . ' jam';
-            return [
-                'role' => ucwords(str_replace('_', ' ', $item->role)),
-                'avg_minutes' => $mins,
-                'avg_hours' => $hours,
-                'formatted' => $formatted,
-                'sample_count' => $item->sample_count,
-            ];
-        });
+        $stageDefinitions = [
+            2 => ['code' => 'L1 ke L2', 'title' => 'L1 ke L2 (Supervisor User)'],
+            3 => ['code' => 'L2 ke L3', 'title' => 'L2 ke L3 (Manager User)'],
+            4 => ['code' => 'L3 ke L4', 'title' => 'L3 ke L4 (Manager Warehouse)'],
+            5 => ['code' => 'L4 ke L5', 'title' => 'L4 ke L5 (Admin WSP)'],
+        ];
 
-        // Longest Pending PRs (Attention List / Bottlenecks)
+        $stageTat = [];
+        foreach ([2, 3, 4, 5] as $lvl) {
+            $stageRows = $transitions->where('level', $lvl);
+            $sampleCount = $stageRows->count();
+            $validMinutes = $stageRows->map(fn($r) => max(0, (int) $r->diff_minutes))->values();
+            $avgMinutes = $sampleCount > 0 ? round($validMinutes->avg()) : 0;
+            $avgHours = round($avgMinutes / 60, 1);
+
+            $formatted = $sampleCount === 0
+                ? 'Belum ada data'
+                : ($avgHours >= 24
+                    ? round($avgHours / 24, 1) . ' Hari'
+                    : ($avgHours > 0 ? $avgHours . ' Jam' : $avgMinutes . ' Menit'));
+
+            $stageTat[] = [
+                'level' => $lvl,
+                'code' => $stageDefinitions[$lvl]['code'],
+                'role' => $stageDefinitions[$lvl]['title'],
+                'avg_minutes' => $avgMinutes,
+                'avg_hours' => $avgHours,
+                'formatted' => $formatted,
+                'sample_count' => $sampleCount,
+            ];
+        }
+
+        // 3. Longest Pending PRs (Diurutkan berdasarkan lamanya menunggu di level aktif saat ini)
         $longestPendingPrsRaw = WspPurchaseRequesitionModel::where('status', 'pending')
             ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('department', $departmentFilter))
             ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('jenis', $jenisFilter))
             ->with(['approval' => function ($q) {
-                $q->where('status', 'pending')->orderBy('level', 'asc');
+                $q->orderBy('level', 'asc');
             }, 'items', 'user'])
-            ->orderBy('created_at', 'asc')
-            ->limit(10)
             ->get();
 
-        $longestPendingPrs = $longestPendingPrsRaw->map(function ($pr) {
-            $currentApproval = $pr->approval->first();
-            $agingHours = round(Carbon::parse($pr->created_at)->diffInHours(now()));
-            $agingFormatted = $agingHours >= 24 ? round($agingHours / 24) . 'h ' . ($agingHours % 24) . 'j' : $agingHours . ' jam';
+        $longestPendingPrs = $longestPendingPrsRaw->map(function ($pr) use ($levelNames) {
+            // Level pending aktif (level terkecil dengan status pending)
+            $activeApproval = $pr->approval->where('status', 'pending')->sortBy('level')->first();
+            $prevApproval = null;
+            if ($activeApproval) {
+                $prevApproval = $pr->approval->where('level', $activeApproval->level - 1)->first();
+            }
+
+            // Timestamp mulai menunggu di level ini
+            $levelStartTime = ($prevApproval && $prevApproval->action_at)
+                ? Carbon::parse($prevApproval->action_at)
+                : Carbon::parse($pr->created_at);
+
+            $levelWaitingHours = (int) $levelStartTime->diffInHours(now());
+            $totalAgeHours = (int) Carbon::parse($pr->created_at)->diffInHours(now());
+
+            $agingFormatted = $levelWaitingHours >= 24
+                ? floor($levelWaitingHours / 24) . 'h ' . ($levelWaitingHours % 24) . 'j'
+                : $levelWaitingHours . ' jam';
+
+            $totalAgeFormatted = $totalAgeHours >= 24
+                ? floor($totalAgeHours / 24) . 'h ' . ($totalAgeHours % 24) . 'j'
+                : $totalAgeHours . ' jam';
+
+            $activeLevel = $activeApproval ? $activeApproval->level : 5;
+            $roleLabel = $levelNames[$activeLevel] ?? ($activeApproval ? ucwords($activeApproval->role) : 'Pending Final');
+            $currentRoleFormatted = "L{$activeLevel}: {$roleLabel}";
 
             return [
                 'id' => $pr->id,
@@ -472,13 +554,14 @@ class WspDashboardController extends Controller
                 'department' => strtoupper($pr->department ?: 'N/A'),
                 'jenis' => strtoupper($pr->jenis ?: 'REGULER'),
                 'created_at' => Carbon::parse($pr->created_at)->format('d M Y H:i'),
-                'aging_hours' => $agingHours,
+                'aging_hours' => $levelWaitingHours,
                 'aging_formatted' => $agingFormatted,
-                'current_role' => $currentApproval ? ucwords($currentApproval->role) : 'Pending Final',
+                'total_age_formatted' => $totalAgeFormatted,
+                'current_role' => $currentRoleFormatted,
                 'item_count' => $pr->items->count(),
                 'status' => $pr->status,
             ];
-        });
+        })->sortByDesc('aging_hours')->values()->take(10);
 
         return [
             'bottlenecks' => $approvalBottlenecks,

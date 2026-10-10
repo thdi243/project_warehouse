@@ -412,6 +412,66 @@
             ::-webkit-scrollbar-thumb:hover {
                 background: #263c61;
             }
+
+            /* Card Loading Overlay & Glowing Spinners */
+            .card-loading-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(11, 20, 38, 0.88);
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 25;
+                border-radius: 10px;
+                opacity: 1;
+                transition: opacity 0.25s ease;
+                pointer-events: none;
+            }
+
+            .card-loading-overlay.fade-out {
+                opacity: 0;
+            }
+
+            .spinner-glow {
+                width: 2.2rem;
+                height: 2.2rem;
+                border: 2.5px solid rgba(56, 189, 248, 0.2);
+                border-top-color: #38bdf8;
+                border-radius: 50%;
+                animation: spin-glow 0.8s linear infinite;
+                box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
+            }
+
+            @keyframes spin-glow {
+                to { transform: rotate(360deg); }
+            }
+
+            .loading-text-glow {
+                font-size: 10px;
+                font-weight: 700;
+                font-family: 'JetBrains Mono', monospace;
+                letter-spacing: 0.08em;
+                color: #38bdf8;
+                text-transform: uppercase;
+                margin-top: 10px;
+            }
+
+            .kpi-loader-spinner {
+                display: inline-block;
+                width: 1.1rem;
+                height: 1.1rem;
+                border: 2px solid rgba(56, 189, 248, 0.25);
+                border-top-color: #38bdf8;
+                border-radius: 50%;
+                animation: spin-glow 0.8s linear infinite;
+                vertical-align: middle;
+            }
         </style>
     </head>
 
@@ -941,7 +1001,7 @@
                                 <div class="card-header-icon red"><i class="mdi mdi-filter-variant-remove"></i></div>
                                 <div>
                                     <h6 class="card-title-text">BOTTLENECK TAHAPAN APPROVAL PR</h6>
-                                    <span class="card-subtitle-text">DISTRIBUSI ANTRIAN PR PENDING PER ROLE</span>
+                                    <span class="card-subtitle-text">ANTRIAN TERTUNDA DI TAHAP AKTIF SAAT INI</span>
                                 </div>
                             </div>
                         </div>
@@ -958,9 +1018,8 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon cyan"><i class="mdi mdi-clock-check-outline"></i></div>
                                 <div>
-                                    <h6 class="card-title-text">RERATA WAKTU RESPON (TAT) PER ROLE</h6>
-                                    <span class="card-subtitle-text">SPEED OF ACTION DARI PENGAJUAN HINGGA
-                                        APPROVAL</span>
+                                    <h6 class="card-title-text">RERATA WAKTU RESPON (TAT) ANTAR LEVEL</h6>
+                                    <span class="card-subtitle-text">SPEED OF ACTION LEVEL KE LEVEL (L1 &rarr; L2 &rarr; L3 &rarr; L4 &rarr; L5)</span>
                                 </div>
                             </div>
                         </div>
@@ -981,7 +1040,7 @@
                                 <div>
                                     <h6 class="card-title-text">PRIORITY ATTENTION: DOKUMEN PR MENUNGGU PALING LAMA
                                     </h6>
-                                    <span class="card-subtitle-text">AGING TRACKER &amp; ESCALATION ACTION LIST</span>
+                                    <span class="card-subtitle-text">AGING TRACKER &amp; ESCALATION (DURASI MENUNGGU DI LEVEL AKTIF)</span>
                                 </div>
                             </div>
                             <div>
@@ -1000,7 +1059,7 @@
                                             <th>KLASIFIKASI</th>
                                             <th>ITEM</th>
                                             <th>TANGGAL PENGAJUAN</th>
-                                            <th class="text-center">AGING DURASI</th>
+                                            <th class="text-center">MENUNGGU DI LEVEL AKTIF</th>
                                             <th>TAHAP PENDING SAAT INI</th>
                                         </tr>
                                     </thead>
@@ -1119,8 +1178,93 @@
                     return params;
                 }
 
+                // Loader helpers for individual card overlays
+                function showCardLoader($el, message) {
+                    if (!$el || !$el.length) return;
+                    $el.each(function() {
+                        const $target = $(this);
+                        const $card = $target.is('.wwtp-card') ? $target : $target.closest('.wwtp-card');
+                        if (!$card.length) return;
+
+                        let $overlay = $card.children('.card-loading-overlay');
+                        if ($overlay.length) {
+                            $overlay.removeClass('fade-out');
+                            $overlay.find('.loading-text-glow').text(message || 'MEMUAT DATA...');
+                        } else {
+                            $card.append(`
+                                <div class="card-loading-overlay">
+                                    <div class="spinner-glow"></div>
+                                    <div class="loading-text-glow">${message || 'MEMUAT DATA...'}</div>
+                                </div>
+                            `);
+                        }
+                    });
+                }
+
+                function hideCardLoader($el) {
+                    if (!$el || !$el.length) return;
+                    $el.each(function() {
+                        const $target = $(this);
+                        const $card = $target.is('.wwtp-card') ? $target : $target.closest('.wwtp-card');
+                        if (!$card.length) return;
+
+                        const $overlay = $card.children('.card-loading-overlay');
+                        if ($overlay.length) {
+                            $overlay.addClass('fade-out');
+                            setTimeout(() => {
+                                $overlay.remove();
+                            }, 250);
+                        }
+                    });
+                }
+
+                // Cluster loader controls
+                function showClusterLoader(cluster) {
+                    if (cluster === 'kpi') {
+                        $('#kpiTotalSohQty, #kpiTotalSkus, #kpiZeroStockCount, #kpiTotalPr, #kpiApprovalRate, #kpiPendingBottlenecks, #kpiOverallTat')
+                            .html('<span class="kpi-loader-spinner"></span>');
+                        $('#kpiUnrestQty, #kpiPrApproved, #kpiPrRejected, #kpiPrPending, #kpiActiveReservations').text('--');
+                        $('#kpiInStockRate').text('--%');
+                    } else if (cluster === 'soh') {
+                        showCardLoader($('#chartSohComposition'), 'MEMUAT KOMPOSISI SOH...');
+                        showCardLoader($('#chartStockHealth'), 'MEMUAT KATALOG & RATIO...');
+                        showCardLoader($('#chartRakDistribution'), 'MEMUAT DISTRIBUSI RAK...');
+                        showCardLoader($('#topStockTableBody'), 'MEMUAT TOP SPAREPART...');
+                        showCardLoader($('#zeroStockTableBody'), 'MEMERIKSA ZERO-STOCK...');
+                    } else if (cluster === 'pr') {
+                        showCardLoader($('#chartPrTrend'), 'MEMUAT TREN PENGAJUAN PR...');
+                        showCardLoader($('#chartPrDepartment'), 'MEMUAT PR PER DEPARTEMEN...');
+                        showCardLoader($('#topRequestedTableBody'), 'MEMUAT PERMINTAAN SPAREPART...');
+                        showCardLoader($('#chartPrJenis'), 'MEMUAT KLASIFIKASI & RESERVASI...');
+                    } else if (cluster === 'workflow') {
+                        showCardLoader($('#chartApprovalBottlenecks'), 'MENGANALISIS BOTTLENECK...');
+                        showCardLoader($('#chartApprovalTat'), 'MENGHITUNG LEAD TIME TAT...');
+                        showCardLoader($('#longestPendingTableBody'), 'MEMUAT DOKUMEN AGING...');
+                    }
+                }
+
+                function hideClusterLoader(cluster) {
+                    if (cluster === 'soh') {
+                        hideCardLoader($('#chartSohComposition'));
+                        hideCardLoader($('#chartStockHealth'));
+                        hideCardLoader($('#chartRakDistribution'));
+                        hideCardLoader($('#topStockTableBody'));
+                        hideCardLoader($('#zeroStockTableBody'));
+                    } else if (cluster === 'pr') {
+                        hideCardLoader($('#chartPrTrend'));
+                        hideCardLoader($('#chartPrDepartment'));
+                        hideCardLoader($('#topRequestedTableBody'));
+                        hideCardLoader($('#chartPrJenis'));
+                    } else if (cluster === 'workflow') {
+                        hideCardLoader($('#chartApprovalBottlenecks'));
+                        hideCardLoader($('#chartApprovalTat'));
+                        hideCardLoader($('#longestPendingTableBody'));
+                    }
+                }
+
                 // Lazy asynchronous data fetchers per section
                 function fetchKpiSection(params, onDone) {
+                    showClusterLoader('kpi');
                     if (xhrKpi && xhrKpi.readyState !== 4) xhrKpi.abort();
                     xhrKpi = $.ajax({
                         url: "{{ route('dashboard.wsp.data') }}",
@@ -1135,6 +1279,7 @@
                         error: function(err) {
                             if (err.statusText !== 'abort') {
                                 console.error('Failed to load WSP KPI section:', err);
+                                $('#kpiTotalSohQty, #kpiTotalSkus, #kpiZeroStockCount, #kpiTotalPr, #kpiApprovalRate, #kpiPendingBottlenecks, #kpiOverallTat').text('-');
                             }
                         },
                         complete: function() {
@@ -1144,6 +1289,7 @@
                 }
 
                 function fetchSohSection(params, onDone) {
+                    showClusterLoader('soh');
                     if (xhrSoh && xhrSoh.readyState !== 4) xhrSoh.abort();
                     xhrSoh = $.ajax({
                         url: "{{ route('dashboard.wsp.data') }}",
@@ -1161,12 +1307,14 @@
                             }
                         },
                         complete: function() {
+                            hideClusterLoader('soh');
                             if (typeof onDone === 'function') onDone();
                         }
                     });
                 }
 
                 function fetchPrSection(params, onDone) {
+                    showClusterLoader('pr');
                     if (xhrPr && xhrPr.readyState !== 4) xhrPr.abort();
                     xhrPr = $.ajax({
                         url: "{{ route('dashboard.wsp.data') }}",
@@ -1184,12 +1332,14 @@
                             }
                         },
                         complete: function() {
+                            hideClusterLoader('pr');
                             if (typeof onDone === 'function') onDone();
                         }
                     });
                 }
 
                 function fetchWorkflowSection(params, onDone) {
+                    showClusterLoader('workflow');
                     if (xhrWorkflow && xhrWorkflow.readyState !== 4) xhrWorkflow.abort();
                     xhrWorkflow = $.ajax({
                         url: "{{ route('dashboard.wsp.data') }}",
@@ -1207,6 +1357,7 @@
                             }
                         },
                         complete: function() {
+                            hideClusterLoader('workflow');
                             if (typeof onDone === 'function') onDone();
                         }
                     });
@@ -1220,6 +1371,8 @@
                         toastr.info('Memperbarui data analitik WSP...', 'Refresh');
                     }
 
+                    $('#btnReloadData i').addClass('ri-spin');
+
                     // Reset table placeholders while loading
                     $('#topStockTableBody').html('<tr><td colspan="6" class="text-center text-muted py-4"><i class="ri-loader-4-line ri-spin fs-16 text-cyan me-1"></i> Memuat data stok sparepart...</td></tr>');
                     $('#zeroStockTableBody').html('<tr><td colspan="4" class="text-center text-muted py-4"><i class="ri-loader-4-line ri-spin fs-16 text-warning me-1"></i> Memeriksa zero-stock watchlist...</td></tr>');
@@ -1229,8 +1382,11 @@
                     let completedCount = 0;
                     const onSectionDone = () => {
                         completedCount++;
-                        if (completedCount === 4 && isReload && window.toastr) {
-                            toastr.success('Semua klaster data WSP selesai dimutakhirkan!', 'Selesai');
+                        if (completedCount === 4) {
+                            $('#btnReloadData i').removeClass('ri-spin');
+                            if (isReload && window.toastr) {
+                                toastr.success('Semua klaster data WSP selesai dimutakhirkan!', 'Selesai');
+                            }
                         }
                     };
 
@@ -1871,9 +2027,10 @@
                                 <td><span class="mono fw-bold">${pr.item_count} Item</span></td>
                                 <td class="mono fs-10 text-muted">${pr.created_at}</td>
                                 <td class="text-center">
-                                    <span class="status-pill ${isSevere ? 'red' : 'amber'} mono">
+                                    <span class="status-pill ${isSevere ? 'red' : 'amber'} mono" title="Total usia PR sejak diajukan: ${pr.total_age_formatted}">
                                         <i class="mdi ${isSevere ? 'mdi-alert' : 'mdi-clock'} me-0.5"></i> ${pr.aging_formatted}
                                     </span>
+                                    <small class="d-block text-muted mono mt-1" style="font-size: 8.5px;">TOTAL: ${pr.total_age_formatted}</small>
                                 </td>
                                 <td><span class="status-pill cyan fw-bold">${pr.current_role}</span></td>
                             </tr>
