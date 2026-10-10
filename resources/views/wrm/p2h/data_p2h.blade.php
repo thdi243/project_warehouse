@@ -177,17 +177,17 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label>Tanggal</label>
-                                <input type="date" class="form-control" name="tanggal" id="editTanggalDisplay"
+                                <input type="date" class="form-control" id="editTanggalDisplay"
                                     readonly>
                             </div>
                             <div class="col-md-4">
                                 <label>Nomor Unit</label>
-                                <input type="text" class="form-control" name="nomor_unit" id="editNomorUnitDisplay"
+                                <input type="text" class="form-control" id="editNomorUnitDisplay"
                                     readonly>
                             </div>
                             <div class="col-md-4">
                                 <label>Jenis</label>
-                                <input type="text" class="form-control" name="janis_p2h" id="editJenisDisplay"
+                                <input type="text" class="form-control" id="editJenisDisplay"
                                     readonly>
                             </div>
                         </div>
@@ -780,6 +780,7 @@
                     // Di dalam loop shift
                     let headerHtml = `
                         <input type="hidden" name="shifts[${shift}][id]" value="${shiftData.id || ''}">
+                        <input type="hidden" name="shifts[${shift}][shift]" value="${shift}">
                         <div class="row mb-4">
                             <div class="col-md-${item.jenis_p2h !== 'Pallet Mover' ? '6' : '12'}">
                                 <label>Operator</label>

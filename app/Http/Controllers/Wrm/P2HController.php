@@ -230,15 +230,48 @@ class P2HController extends Controller
         //     ], 422);
         // }
 
-        // Validasi jam operasional
+        // === VALIDASI JAM OPERASIONAL ===
+        $jamSekarang = (float) $request->jam_operasional;
+
+        // Cari record SEBELUMNYA untuk unit ini
         $lastRecord = P2HForklfitModel::where('nomor_unit', $request->nomor_unit)
-            ->orderByDesc('created_at')
+            ->where(function ($query) use ($request) {
+                $query->where('tanggal', '<', $request->tanggal)
+                    ->orWhere(function ($q) use ($request) {
+                        $q->where('tanggal', $request->tanggal)
+                            ->where('shift', '<', $request->shift);
+                    });
+            })
+            ->whereNotNull('jam_operasional')
+            ->orderByDesc('tanggal')
+            ->orderByDesc('shift')
             ->first();
 
-        if ($lastRecord && $request->jam_operasional < $lastRecord->jam_operasional) {
+        if ($lastRecord && $jamSekarang < (float) $lastRecord->jam_operasional) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hours Meter unit ini tidak boleh lebih kecil dari data sebelumnya (' . $lastRecord->jam_operasional . '). Cek kembali!'
+                'message' => "Hours Meter unit ini ({$jamSekarang}) tidak boleh lebih kecil dari data sebelumnya ({$lastRecord->tanggal} Shift {$lastRecord->shift}: {$lastRecord->jam_operasional}). Cek kembali!"
+            ], 422);
+        }
+
+        // Cari record SESUDAHNYA untuk unit ini
+        $nextRecord = P2HForklfitModel::where('nomor_unit', $request->nomor_unit)
+            ->where(function ($query) use ($request) {
+                $query->where('tanggal', '>', $request->tanggal)
+                    ->orWhere(function ($q) use ($request) {
+                        $q->where('tanggal', $request->tanggal)
+                            ->where('shift', '>', $request->shift);
+                    });
+            })
+            ->whereNotNull('jam_operasional')
+            ->orderBy('tanggal', 'asc')
+            ->orderBy('shift', 'asc')
+            ->first();
+
+        if ($nextRecord && $jamSekarang > (float) $nextRecord->jam_operasional) {
+            return response()->json([
+                'success' => false,
+                'message' => "Hours Meter unit ini ({$jamSekarang}) tidak boleh lebih besar dari data berikutnya ({$nextRecord->tanggal} Shift {$nextRecord->shift}: {$nextRecord->jam_operasional}). Cek kembali!"
             ], 422);
         }
 
@@ -1032,6 +1065,12 @@ class P2HController extends Controller
                 $checklistFields
             );
 
+            // Kumpulkan semua ID yang dikirim dalam form agar tidak terhitung sebagai record lain
+            $submittedIds = collect($shifts)
+                ->pluck('id')
+                ->filter()
+                ->toArray();
+
             // **HANYA PROSES SHIFT YANG ADA DATA**
             foreach ($shifts as $shiftNumber => $data) {
                 if (!is_array($data)) {
@@ -1142,28 +1181,79 @@ class P2HController extends Controller
                 $finalCatatan = implode(' | ', array_filter($notes));
 
                 // === VALIDASI JAM OPERASIONAL ===
-                $jamSekarang = (float) $data['jam_operasional']; // pastikan numeric/float
+                if (isset($data['jam_operasional']) && $data['jam_operasional'] !== '' && is_numeric($data['jam_operasional'])) {
+                    $jamSekarang = (float) $data['jam_operasional'];
 
-                // Cari record "sebelumnya" untuk unit ini
-                $lastRecord = P2HForklfitModel::where('nomor_unit', $nomorUnit)
-                    ->where(function ($query) use ($tanggal, $shift) {
-                        $query->where('tanggal', '<', $tanggal)
-                            ->orWhere(function ($q) use ($tanggal, $shift) {
-                                $q->where('tanggal', $tanggal)
-                                    ->where('shift', '<', $shift);
-                            });
-                    })
-                    ->orderByDesc('tanggal')
-                    ->orderByDesc('shift')
-                    ->first();
+                    // 1. Validasi terhadap shift lain di form yang sama (tanggal yang sama)
+                    foreach ($shifts as $otherShiftNumber => $otherData) {
+                        $otherShiftNum = (int) $otherShiftNumber;
+                        if ($otherShiftNum === (int) $shift || !isset($otherData['jam_operasional']) || $otherData['jam_operasional'] === '' || !is_numeric($otherData['jam_operasional'])) {
+                            continue;
+                        }
+                        $otherJam = (float) $otherData['jam_operasional'];
+                        if ($otherShiftNum < (int) $shift && $jamSekarang < $otherJam) {
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Shift {$shift} ({$tanggal}): Jam operasional ({$jamSekarang}) tidak boleh lebih kecil dari Shift {$otherShiftNum} di tanggal yang sama ({$otherJam}). Cek kembali!"
+                            ], 422);
+                        }
+                        if ($otherShiftNum > (int) $shift && $jamSekarang > $otherJam) {
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Shift {$shift} ({$tanggal}): Jam operasional ({$jamSekarang}) tidak boleh lebih besar dari Shift {$otherShiftNum} di tanggal yang sama ({$otherJam}). Cek kembali!"
+                            ], 422);
+                        }
+                    }
 
-                // Jika ada record sebelumnya DAN jam sekarang lebih kecil → tolak
-                if ($lastRecord && $jamSekarang < $lastRecord->jam_operasional) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Shift {$shift} ({$tanggal}): Jam operasional {$jamSekarang} tidak boleh lebih kecil dari data sebelumnya "
-                            . "({$lastRecord->tanggal} shift {$lastRecord->shift}: {$lastRecord->jam_operasional}). Cek kembali!"
-                    ], 422);
+                    // 2. Cari record SEBELUMNYA di database untuk unit ini (kecuali record yang ada di form request ini)
+                    $lastRecord = P2HForklfitModel::where('nomor_unit', $nomorUnit)
+                        ->whereNotIn('id', $submittedIds)
+                        ->where(function ($query) use ($tanggal, $shift) {
+                            $query->where('tanggal', '<', $tanggal)
+                                ->orWhere(function ($q) use ($tanggal, $shift) {
+                                    $q->where('tanggal', $tanggal)
+                                        ->where('shift', '<', $shift);
+                                });
+                        })
+                        ->whereNotNull('jam_operasional')
+                        ->orderByDesc('tanggal')
+                        ->orderByDesc('shift')
+                        ->first();
+
+                    if ($lastRecord && $jamSekarang < (float) $lastRecord->jam_operasional) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Shift {$shift} ({$tanggal}): Jam operasional {$jamSekarang} tidak boleh lebih kecil dari data sebelumnya "
+                                . "({$lastRecord->tanggal} Shift {$lastRecord->shift}: {$lastRecord->jam_operasional}). Cek kembali!"
+                        ], 422);
+                    }
+
+                    // 3. Cari record SESUDAHNYA di database untuk unit ini (kecuali record yang ada di form request ini)
+                    $nextRecord = P2HForklfitModel::where('nomor_unit', $nomorUnit)
+                        ->whereNotIn('id', $submittedIds)
+                        ->where(function ($query) use ($tanggal, $shift) {
+                            $query->where('tanggal', '>', $tanggal)
+                                ->orWhere(function ($q) use ($tanggal, $shift) {
+                                    $q->where('tanggal', $tanggal)
+                                        ->where('shift', '>', $shift);
+                                });
+                        })
+                        ->whereNotNull('jam_operasional')
+                        ->orderBy('tanggal', 'asc')
+                        ->orderBy('shift', 'asc')
+                        ->first();
+
+                    if ($nextRecord && $jamSekarang > (float) $nextRecord->jam_operasional) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Shift {$shift} ({$tanggal}): Jam operasional {$jamSekarang} tidak boleh lebih besar dari data berikutnya "
+                                . "({$nextRecord->tanggal} Shift {$nextRecord->shift}: {$nextRecord->jam_operasional}). Cek kembali!"
+                        ], 422);
+                    }
                 }
 
                 // Hitung persentase (sama seperti sebelumnya)
@@ -1201,9 +1291,27 @@ class P2HController extends Controller
                     $payload['foto_kondisi_accu'] = $request->file("shifts.{$shiftNumber}.foto_kondisi_accu")->store('p2h/accu', 'public');
                 }
 
-                if ($id) {
-                    P2HForklfitModel::where('id', $id)->update($payload);
+                // Cari record yang ada agar selalu UPDATE (tidak membuat data ganda / create baru)
+                $existing = null;
+                if (!empty($id)) {
+                    $existing = P2HForklfitModel::find($id);
+                }
+
+                if (!$existing) {
+                    $existing = P2HForklfitModel::where('nomor_unit', $nomorUnit)
+                        ->where('tanggal', $tanggal)
+                        ->where('shift', $shift)
+                        ->first();
+                }
+
+                if ($existing) {
+                    $existing->update($payload);
                 } else {
+                    $payload['tanggal']    = $tanggal;
+                    $payload['nomor_unit'] = $nomorUnit;
+                    $payload['jenis_p2h']  = $jenisP2H ?? 'Forklift';
+                    $payload['shift']      = $shift;
+                    $payload['dept']       = 'Warehouse';
                     P2HForklfitModel::create($payload);
                 }
             }
@@ -1524,6 +1632,8 @@ class P2HController extends Controller
             'shifts'     => 'required|array',
         ]);
 
+        $tanggal   = $request->tanggal;
+        $nomorUnit = $request->nomor_unit;
         $shifts    = $request->shifts;
 
         DB::beginTransaction();
@@ -1663,9 +1773,27 @@ class P2HController extends Controller
                     $payload['foto_kondisi_accu'] = $request->file("shifts.{$shiftNumber}.foto_kondisi_accu")->store('p2h/accu', 'public');
                 }
 
-                if ($id) {
-                    P2HPalletMoverModel::where('id', $id)->update($payload);
+                // Cari record yang ada agar selalu UPDATE (tidak membuat data ganda / create baru)
+                $existing = null;
+                if (!empty($id)) {
+                    $existing = P2HPalletMoverModel::find($id);
+                }
+
+                if (!$existing) {
+                    $existing = P2HPalletMoverModel::where('nomor_unit', $nomorUnit)
+                        ->where('tanggal', $tanggal)
+                        ->where('shift', $shiftNumber)
+                        ->first();
+                }
+
+                if ($existing) {
+                    $existing->update($payload);
                 } else {
+                    $payload['tanggal']    = $tanggal;
+                    $payload['nomor_unit'] = $nomorUnit;
+                    $payload['jenis_p2h']  = 'Pallet Mover';
+                    $payload['shift']      = $shiftNumber;
+                    $payload['dept']       = 'Warehouse';
                     P2HPalletMoverModel::create($payload);
                 }
             }
