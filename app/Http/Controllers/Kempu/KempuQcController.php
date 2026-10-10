@@ -1014,7 +1014,11 @@ class KempuQcController extends Controller
             ])
         );
 
-        $qcStageContext = $isAfterFilling ? 'after_filling' : 'pre_cuci';
+        if (str_contains($qcType, 'pm')) {
+            $qcStageContext = 'qc_pm';
+        } else {
+            $qcStageContext = $isAfterFilling ? 'after_filling' : 'pre_cuci';
+        }
 
         $flowValidation = self::validateQcFlow($kempu, $qcType);
 
@@ -1103,7 +1107,7 @@ class KempuQcController extends Controller
                 'condition'        => $kempu->condition ?? 'OK',
                 'qc_title'         => $card['title'],
                 'is_force_scan'    => in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force']),
-                'can_manual_reused' => self::canForceScan(),
+                'can_manual_reused' => !str_contains($qcType, 'pm') && self::canForceScan(),
                 'next_auto_reused' => (int)($kempu->main->reused_count ?? 0),
                 'will_increment_reused' => false,
                 'is_in_wfg'        => $isAfterFilling,

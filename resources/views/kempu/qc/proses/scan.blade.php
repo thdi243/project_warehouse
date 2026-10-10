@@ -363,39 +363,41 @@
                                 </select>
                             </div>
 
-                            <!-- Panel Otoritas Koreksi Reused Manual di Force Scan (Muncul jika pilih RELEASE_PRE_CUCI) -->
-                            <div class="card border border-warning-subtle bg-soft-warning p-3 mb-3 d-none"
-                                id="wrapperManualReusedForce">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <span class="fw-bold text-dark fs-13">
-                                            <i class="ri-edit-2-line text-warning me-1"></i> Koreksi Manual Reused (Force
-                                            Pre-Cuci)
-                                        </span>
-                                        <div class="text-muted fs-11" id="labelReusedHelpForce">
-                                            Default: auto <span class="badge bg-primary"
-                                                id="badgeAutoNextReusedForce">+1</span>. Centang untuk atur manual.
+                            <!-- Panel Otoritas Koreksi Reused Manual di Force Scan (Muncul jika pilih RELEASE_PRE_CUCI di QC Proses) -->
+                            @if ($card['key'] !== 'qc-pm-force')
+                                <div class="card border border-warning-subtle bg-soft-warning p-3 mb-3 d-none"
+                                    id="wrapperManualReusedForce">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <span class="fw-bold text-dark fs-13">
+                                                <i class="ri-edit-2-line text-warning me-1"></i> Koreksi Manual Reused (Force
+                                                Pre-Cuci)
+                                            </span>
+                                            <div class="text-muted fs-11" id="labelReusedHelpForce">
+                                                Default: auto <span class="badge bg-primary"
+                                                    id="badgeAutoNextReusedForce">+1</span>. Centang untuk atur manual.
+                                            </div>
+                                        </div>
+                                        <div class="form-check form-switch fs-16 mb-0">
+                                            <input class="form-check-input" type="checkbox" id="checkManualReusedForce">
                                         </div>
                                     </div>
-                                    <div class="form-check form-switch fs-16 mb-0">
-                                        <input class="form-check-input" type="checkbox" id="checkManualReusedForce">
+                                    <div class="mt-2 d-none" id="boxManualReusedInputForce">
+                                        <label for="inputManualReusedForce" class="form-label fs-12 fw-semibold text-dark mb-1">
+                                            Set Nilai Siklus Reused Baru (0 - 21x):
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control font-monospace fw-bold"
+                                                id="inputManualReusedForce" min="0" max="21" placeholder="0 - 21">
+                                            <span class="input-group-text fs-12 bg-white fw-semibold">/ 21 kali</span>
+                                        </div>
+                                        <small class="text-muted fs-11 mt-1 d-block">
+                                            <i class="ri-information-line text-warning"></i> Nilai ini akan menggantikan
+                                            auto-increment +1 saat eksekusi Force Release Pre-Cuci.
+                                        </small>
                                     </div>
                                 </div>
-                                <div class="mt-2 d-none" id="boxManualReusedInputForce">
-                                    <label for="inputManualReusedForce" class="form-label fs-12 fw-semibold text-dark mb-1">
-                                        Set Nilai Siklus Reused Baru (0 - 21x):
-                                    </label>
-                                    <div class="input-group">
-                                        <input type="number" class="form-control font-monospace fw-bold"
-                                            id="inputManualReusedForce" min="0" max="21" placeholder="0 - 21">
-                                        <span class="input-group-text fs-12 bg-white fw-semibold">/ 21 kali</span>
-                                    </div>
-                                    <small class="text-muted fs-11 mt-1 d-block">
-                                        <i class="ri-information-line text-warning"></i> Nilai ini akan menggantikan
-                                        auto-increment +1 saat eksekusi Force Release Pre-Cuci.
-                                    </small>
-                                </div>
-                            </div>
+                            @endif
                         </div>
                     @endif
 
@@ -797,7 +799,7 @@
                 $('#modalInputNotes').val('');
 
                 const isAfter = (k.qc_stage_context === 'after_filling' || Boolean(k.is_in_wfg));
-                const isPreCuciContext = (k.qc_stage_context === 'pre_cuci' || !isAfter);
+                const isPreCuciContext = !['qc-pm', 'qc-pm-force'].includes(QC_TYPE) && (k.qc_stage_context === 'pre_cuci' || !isAfter);
                 const isMaxReusedPreCuci = ['qc-pre-cuci', 'qc-proses', 'qc-proses-force', 'qc-force'].includes(QC_TYPE) && isPreCuciContext && (k.is_max_reused || (k.reused_count || 0) >= 21);
 
                 // Inisialisasi Otoritas Manual Reused (Pre Cuci)
@@ -841,12 +843,18 @@
                         }
                     }
 
-                    const nextReusedForce = k.next_auto_reused !== undefined ? k.next_auto_reused : (k.reused_count || 0);
-                    $('#inputManualReusedForce').val(nextReusedForce);
-                    $('#badgeAutoNextReusedForce').text(nextReusedForce + '/21');
-                    $('#checkManualReusedForce').prop('checked', false);
-                    $('#boxManualReusedInputForce').addClass('d-none');
-                    checkForceTargetPreCuci();
+                    if (QC_TYPE === 'qc-pm-force') {
+                        $('#wrapperManualReusedForce').addClass('d-none');
+                        $('#checkManualReusedForce').prop('checked', false);
+                        $('#boxManualReusedInputForce').addClass('d-none');
+                    } else {
+                        const nextReusedForce = k.next_auto_reused !== undefined ? k.next_auto_reused : (k.reused_count || 0);
+                        $('#inputManualReusedForce').val(nextReusedForce);
+                        $('#badgeAutoNextReusedForce').text(nextReusedForce + '/21');
+                        $('#checkManualReusedForce').prop('checked', false);
+                        $('#boxManualReusedInputForce').addClass('d-none');
+                        checkForceTargetPreCuci();
+                    }
                 }
 
                 // Cek apakah mencapai batas maksimal reused di Pre Cuci (21x)
@@ -896,6 +904,13 @@
 
             // Fungsi cek target Force Scan apakah Pre-Cuci
             function checkForceTargetPreCuci() {
+                if (QC_TYPE === 'qc-pm-force' || QC_TYPE === 'qc-pm') {
+                    $('#wrapperManualReusedForce').addClass('d-none');
+                    $('#checkManualReusedForce').prop('checked', false);
+                    $('#boxManualReusedInputForce').addClass('d-none');
+                    return;
+                }
+
                 const val = $('#modalForceTarget').val();
                 const isRelease = (val === 'RELEASE' || val === 'RELEASE_PRE_CUCI');
                 const isPreCuci = (currentKempu && currentKempu.qc_stage_context === 'pre_cuci');
