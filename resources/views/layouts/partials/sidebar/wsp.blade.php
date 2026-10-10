@@ -9,6 +9,12 @@
         <div class="collapse menu-dropdown {{ request()->routeIs('stock.*') || request()->routeIs('wsp.stock_opname.*') ? 'show' : '' }}"
             id="sideBarRak">
             <ul class="nav nav-sm flex-column">
+                <li class="nav-item">
+                    <a href="{{ route('dashboard.wsp') }}" target="_blank"
+                        class="nav-link menu-link text-info fw-bold {{ request()->routeIs('dashboard.wsp*') ? 'active' : '' }}">
+                        <i class="mdi mdi-chart-box-outline fs-14"></i> <span data-key="t-wsp-analytics">WSP Analytics</span>
+                    </a>
+                </li>
                 @can('permission', 'wsp-stock-location')
                     <li class="nav-item">
                         <a href="{{ route('stock.stock-location') }}"

@@ -11,6 +11,7 @@ use App\Http\Controllers\Dashboard\WfgBongkarMuatDashboardController;
 use App\Http\Controllers\Dashboard\WrmInventoryController;
 use App\Http\Controllers\Dashboard\StockOpnameDashboardController;
 use App\Http\Controllers\Dashboard\KempuDashboardController;
+use App\Http\Controllers\Dashboard\WspDashboardController;
 use App\Http\Controllers\Kempu\MasterKempuController;
 use App\Http\Controllers\Kempu\KempuTraceabilityController;
 use App\Http\Controllers\Kempu\KempuQcController;
@@ -170,6 +171,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/kempu/recent-scans', [KempuDashboardController::class, 'getRecentScans'])->name('dashboard.kempu.recent_scans');
             Route::get('/kempu/history/{id}', [KempuDashboardController::class, 'getHistory'])->name('dashboard.kempu.history');
             Route::get('/kempu/export', [KempuDashboardController::class, 'exportData'])->name('dashboard.kempu.export');
+
+            // WSP Analytics Dashboard
+            Route::get('/wsp', [WspDashboardController::class, 'index'])->name('dashboard.wsp');
+            Route::get('/wsp/data', [WspDashboardController::class, 'data'])->name('dashboard.wsp.data');
         });
     });
 

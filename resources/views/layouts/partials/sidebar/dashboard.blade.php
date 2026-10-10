@@ -79,6 +79,11 @@
                             <i class="mdi mdi-cube-scan"></i> Monitoring & Traceability Kempu </a>
                     </li>
                 @endif
+                <li class="nav-item">
+                    <a href="{{ route('dashboard.wsp') }}" target="_blank"
+                        class="nav-link {{ request()->routeIs('dashboard.wsp*') ? 'active' : '' }}">
+                        <i class="mdi mdi-chart-box-outline"></i> WSP Analytics </a>
+                </li>
             </ul>
         </div>
     </li>
