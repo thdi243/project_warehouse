@@ -41,57 +41,161 @@ class WspDashboardController extends Controller
     }
 
     /**
-     * Aggregate data for WSP Analytic Clusters.
+     * Aggregate data for WSP Analytic Clusters with Lazy/Modular Section Loading support.
      */
     public function data(Request $request)
     {
-        $period = $request->input('period', '30days');
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
+        [$start, $end, $period, $daysDiff] = $this->parseDateRange($request);
         $departmentFilter = $request->input('department');
         $jenisFilter = $request->input('jenis');
         $rakFilter = $request->input('rak_id');
+        $section = $request->input('section', 'all');
 
-        // Date Range Calculation
-        if ($startDate && $endDate) {
-            $start = Carbon::parse($startDate)->startOfDay();
-            $end = Carbon::parse($endDate)->endOfDay();
-        } else {
-            switch ($period) {
-                case 'today':
-                    $start = Carbon::today()->startOfDay();
-                    $end = Carbon::today()->endOfDay();
-                    break;
-                case '7days':
-                    $start = Carbon::now()->subDays(6)->startOfDay();
-                    $end = Carbon::now()->endOfDay();
-                    break;
-                case 'month':
-                    $start = Carbon::now()->startOfMonth();
-                    $end = Carbon::now()->endOfDay();
-                    break;
-                case 'all':
-                    $start = Carbon::create(2020, 1, 1)->startOfDay();
-                    $end = Carbon::now()->endOfDay();
-                    break;
-                case '30days':
-                default:
-                    $start = Carbon::now()->subDays(29)->startOfDay();
-                    $end = Carbon::now()->endOfDay();
-                    break;
-            }
+        $periodMeta = [
+            'selected' => $period,
+            'start' => $start->format('d M Y'),
+            'end' => $end->format('d M Y'),
+            'days' => $daysDiff + 1,
+        ];
+
+        switch ($section) {
+            case 'kpi':
+                return response()->json([
+                    'success' => true,
+                    'section' => 'kpi',
+                    'period' => $periodMeta,
+                    'kpi' => $this->getKpiData($start, $end, $departmentFilter, $jenisFilter, $rakFilter),
+                ]);
+
+            case 'soh':
+                return response()->json([
+                    'success' => true,
+                    'section' => 'soh',
+                    'soh' => $this->getSohData($rakFilter),
+                ]);
+
+            case 'pr':
+                return response()->json([
+                    'success' => true,
+                    'section' => 'pr',
+                    'period' => $periodMeta,
+                    'pr' => $this->getPrData($start, $end, $daysDiff, $departmentFilter, $jenisFilter),
+                    'reservations' => $this->getReservationsData(),
+                ]);
+
+            case 'workflow':
+                return response()->json([
+                    'success' => true,
+                    'section' => 'workflow',
+                    'workflow' => $this->getWorkflowData($start, $end, $departmentFilter, $jenisFilter),
+                ]);
+
+            case 'all':
+            default:
+                return response()->json([
+                    'success' => true,
+                    'section' => 'all',
+                    'period' => $periodMeta,
+                    'kpi' => $this->getKpiData($start, $end, $departmentFilter, $jenisFilter, $rakFilter),
+                    'soh' => $this->getSohData($rakFilter),
+                    'pr' => $this->getPrData($start, $end, $daysDiff, $departmentFilter, $jenisFilter),
+                    'workflow' => $this->getWorkflowData($start, $end, $departmentFilter, $jenisFilter),
+                    'reservations' => $this->getReservationsData(),
+                ]);
+        }
+    }
+
+    /**
+     * 1. KPI Data calculation
+     */
+    private function getKpiData($start, $end, $departmentFilter, $jenisFilter, $rakFilter)
+    {
+        // SOH Summary
+        $sohStats = DB::table('wsp_stock_on_hand')
+            ->selectRaw('
+                COUNT(*) as total_records,
+                COUNT(DISTINCT barang_id) as total_skus,
+                COALESCE(SUM(qty_soh), 0) as total_qty,
+                COALESCE(SUM(unrest), 0) as total_unrest,
+                COALESCE(SUM(qual_insp), 0) as total_qi,
+                COALESCE(SUM(blocked), 0) as total_blocked,
+                COALESCE(SUM(transf), 0) as total_transf,
+                COUNT(CASE WHEN qty_soh = 0 THEN 1 END) as zero_stock_count,
+                COUNT(CASE WHEN qty_soh > 0 THEN 1 END) as in_stock_count
+            ')->first();
+
+        // PR Query: note that both 'approved' and 'finished' count as approved PRs
+        $prQuery = WspPurchaseRequesitionModel::whereBetween('created_at', [$start, $end]);
+
+        if ($departmentFilter && $departmentFilter !== 'all') {
+            $prQuery->where('department', $departmentFilter);
         }
 
-        // ==========================================
-        // 1. SOH (STOCK ON HAND) INTELLIGENCE
-        // ==========================================
-        $sohQuery = StockOnHandWspModel::query();
-        if ($rakFilter && $rakFilter !== 'all') {
-            $sohQuery->whereHas('barang.activeStockLocation', function ($q) use ($rakFilter) {
-                $q->where('rak_id', $rakFilter);
-            });
+        if ($jenisFilter && $jenisFilter !== 'all') {
+            $prQuery->where('jenis', $jenisFilter);
         }
 
+        $allFilteredPrs = $prQuery->get();
+        $prIds = $allFilteredPrs->pluck('id');
+
+        $totalPrCount = $allFilteredPrs->count();
+        // Include both 'approved' and 'finished' for approved metrics
+        $prApprovedCount = $allFilteredPrs->whereIn('status', ['approved', 'finished'])->count();
+        $prPendingCount = $allFilteredPrs->where('status', 'pending')->count();
+        $prRejectedCount = $allFilteredPrs->where('status', 'rejected')->count();
+
+        $prApprovalRate = $totalPrCount > 0 ? round(($prApprovedCount / $totalPrCount) * 100, 1) : 0;
+
+        $prItemsStats = WspPurchaseRequesitionItemsModel::whereIn('pr_id', $prIds)
+            ->selectRaw('COUNT(*) as total_items, COALESCE(SUM(qty), 0) as total_qty')
+            ->first();
+
+        $activeReservations = WspStockReservations::where('status', 'active')->count();
+
+        $pendingBottlenecksCount = WspPurchaseRequesitionModel::where('status', 'pending')
+            ->where('created_at', '<=', now()->subHours(24))
+            ->count();
+
+        // Overall Average PR Lead Time (Creation to Last Approval / Finish)
+        $completedPrTat = DB::table('wsp_purchase_requesition')
+            ->whereIn('status', ['approved', 'finished'])
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, updated_at)) as avg_lead_hours')
+            ->first();
+        $overallTatHours = round($completedPrTat->avg_lead_hours ?? 0, 1);
+        $overallTatFormatted = $overallTatHours >= 24 ? round($overallTatHours / 24, 1) . ' Hari' : $overallTatHours . ' Jam';
+
+        $incomingCount = WspIncomingModel::count();
+        $outgoingCount = WspOutgoingModel::count();
+
+        return [
+            'total_soh_qty' => (int) ($sohStats->total_qty ?? 0),
+            'total_skus' => (int) ($sohStats->total_skus ?? 0),
+            'total_unrest_qty' => (int) ($sohStats->total_unrest ?? 0),
+            'total_blocked_qty' => (int) ($sohStats->total_blocked ?? 0),
+            'total_qi_qty' => (int) ($sohStats->total_qi ?? 0),
+            'zero_stock_count' => (int) ($sohStats->zero_stock_count ?? 0),
+            'in_stock_count' => (int) ($sohStats->in_stock_count ?? 0),
+            'in_stock_rate' => ($sohStats->total_skus ?? 0) > 0 ? round(($sohStats->in_stock_count / $sohStats->total_skus) * 100, 1) : 0,
+            'total_pr_count' => $totalPrCount,
+            'pr_approved_count' => $prApprovedCount,
+            'pr_pending_count' => $prPendingCount,
+            'pr_rejected_count' => $prRejectedCount,
+            'pr_approval_rate' => $prApprovalRate,
+            'total_items_requested' => (int) ($prItemsStats->total_items ?? 0),
+            'total_items_qty' => (int) ($prItemsStats->total_qty ?? 0),
+            'active_reservations' => $activeReservations,
+            'pending_bottlenecks' => $pendingBottlenecksCount,
+            'overall_tat_formatted' => $overallTatFormatted,
+            'incoming_count' => $incomingCount,
+            'outgoing_count' => $outgoingCount,
+        ];
+    }
+
+    /**
+     * 2. SOH Intelligence cluster
+     */
+    private function getSohData($rakFilter)
+    {
         $sohStats = DB::table('wsp_stock_on_hand')
             ->selectRaw('
                 COUNT(*) as total_records,
@@ -145,34 +249,30 @@ class WspDashboardController extends Controller
             ->limit(8)
             ->get();
 
-        // ==========================================
-        // 2. PURCHASE REQUISITION (PR) INTELLIGENCE
-        // ==========================================
-        $prQuery = WspPurchaseRequesitionModel::whereBetween('created_at', [$start, $end]);
+        return [
+            'composition' => [
+                'unrestricted' => (int) ($sohStats->total_unrest ?? 0),
+                'qual_insp' => (int) ($sohStats->total_qi ?? 0),
+                'blocked' => (int) ($sohStats->total_blocked ?? 0),
+                'transf' => (int) ($sohStats->total_transf ?? 0),
+            ],
+            'stats' => [
+                'in_stock' => (int) ($sohStats->in_stock_count ?? 0),
+                'zero_stock' => (int) ($sohStats->zero_stock_count ?? 0),
+                'total_skus' => (int) ($sohStats->total_skus ?? 0),
+                'in_stock_rate' => ($sohStats->total_skus ?? 0) > 0 ? round(($sohStats->in_stock_count / $sohStats->total_skus) * 100, 1) : 0,
+            ],
+            'top_items' => $topStockItems,
+            'zero_stock_items' => $zeroStockItems,
+            'rak_distribution' => $rakDistribution,
+        ];
+    }
 
-        if ($departmentFilter && $departmentFilter !== 'all') {
-            $prQuery->where('department', $departmentFilter);
-        }
-
-        if ($jenisFilter && $jenisFilter !== 'all') {
-            $prQuery->where('jenis', $jenisFilter);
-        }
-
-        $allFilteredPrs = $prQuery->get();
-        $prIds = $allFilteredPrs->pluck('id');
-
-        $totalPrCount = $allFilteredPrs->count();
-        $prApprovedCount = $allFilteredPrs->where('status', 'approved')->count();
-        $prPendingCount = $allFilteredPrs->where('status', 'pending')->count();
-        $prRejectedCount = $allFilteredPrs->where('status', 'rejected')->count();
-
-        $prApprovalRate = $totalPrCount > 0 ? round(($prApprovedCount / $totalPrCount) * 100, 1) : 0;
-
-        // Total PR Items Requested
-        $prItemsStats = WspPurchaseRequesitionItemsModel::whereIn('pr_id', $prIds)
-            ->selectRaw('COUNT(*) as total_items, COALESCE(SUM(qty), 0) as total_qty')
-            ->first();
-
+    /**
+     * 3. PR Intelligence cluster
+     */
+    private function getPrData($start, $end, $daysDiff, $departmentFilter, $jenisFilter)
+    {
         // PR Inflow Trend Over Time
         $prTrendRaw = WspPurchaseRequesitionModel::whereBetween('created_at', [$start, $end])
             ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('department', $departmentFilter))
@@ -188,7 +288,9 @@ class WspDashboardController extends Controller
             if (!isset($trendMap[$d])) {
                 $trendMap[$d] = ['approved' => 0, 'pending' => 0, 'rejected' => 0];
             }
-            $trendMap[$d][$row->status] = (int) $row->count;
+            // Map both 'approved' and 'finished' to 'approved' category for trend chart
+            $statusKey = in_array(strtolower($row->status), ['approved', 'finished']) ? 'approved' : strtolower($row->status);
+            $trendMap[$d][$statusKey] = ($trendMap[$d][$statusKey] ?? 0) + (int) $row->count;
         }
 
         $prTrendCategories = [];
@@ -197,7 +299,6 @@ class WspDashboardController extends Controller
         $prTrendRejected = [];
 
         // Generate full daily series for smoother line/bar chart if <= 31 days
-        $daysDiff = $start->diffInDays($end);
         if ($daysDiff <= 31) {
             $cursor = $start->copy();
             while ($cursor->lte($end)) {
@@ -213,8 +314,9 @@ class WspDashboardController extends Controller
             $prTrendGrouped = WspPurchaseRequesitionModel::whereBetween('created_at', [$start, $end])
                 ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('department', $departmentFilter))
                 ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('jenis', $jenisFilter))
-                ->selectRaw("DATE_FORMAT(created_at, '%b %Y') as m_label, status, COUNT(*) as count")
+                ->selectRaw("DATE_FORMAT(created_at, '%b %Y') as m_label, status, COUNT(*) as count, MIN(created_at) as min_date")
                 ->groupBy('m_label', 'status')
+                ->orderBy('min_date', 'asc')
                 ->get();
 
             $mMap = [];
@@ -223,14 +325,15 @@ class WspDashboardController extends Controller
                 if (!isset($mMap[$lbl])) {
                     $mMap[$lbl] = ['approved' => 0, 'pending' => 0, 'rejected' => 0];
                 }
-                $mMap[$lbl][$row->status] = (int) $row->count;
+                $statusKey = in_array(strtolower($row->status), ['approved', 'finished']) ? 'approved' : strtolower($row->status);
+                $mMap[$lbl][$statusKey] = ($mMap[$lbl][$statusKey] ?? 0) + (int) $row->count;
             }
 
             foreach ($mMap as $mLabel => $counts) {
                 $prTrendCategories[] = $mLabel;
-                $prTrendApproved[] = $counts['approved'];
-                $prTrendPending[] = $counts['pending'];
-                $prTrendRejected[] = $counts['rejected'];
+                $prTrendApproved[] = $counts['approved'] ?? 0;
+                $prTrendPending[] = $counts['pending'] ?? 0;
+                $prTrendRejected[] = $counts['rejected'] ?? 0;
             }
         }
 
@@ -249,7 +352,7 @@ class WspDashboardController extends Controller
             ];
         });
 
-        // PR by Jenis & Detail Jenis
+        // PR by Jenis
         $prByJenisRaw = WspPurchaseRequesitionModel::whereBetween('created_at', [$start, $end])
             ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('department', $departmentFilter))
             ->select('jenis', DB::raw('COUNT(*) as count'))
@@ -265,6 +368,11 @@ class WspDashboardController extends Controller
         });
 
         // Top 10 Most Requested Items in PR
+        $prIds = WspPurchaseRequesitionModel::whereBetween('created_at', [$start, $end])
+            ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('department', $departmentFilter))
+            ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('jenis', $jenisFilter))
+            ->pluck('id');
+
         $topRequestedItems = WspPurchaseRequesitionItemsModel::whereIn('pr_id', $prIds)
             ->leftJoin('wsp_barang', 'wsp_purchase_requesition_items.barang_id', '=', 'wsp_barang.id')
             ->select(
@@ -278,14 +386,31 @@ class WspDashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // ==========================================
-        // 3. APPROVAL WORKFLOW & BOTTLENECK ANALYSIS (LIKE VEHICLE STAGE CYCLE TIME)
-        // ==========================================
+        return [
+            'trend' => [
+                'categories' => $prTrendCategories,
+                'approved' => $prTrendApproved,
+                'pending' => $prTrendPending,
+                'rejected' => $prTrendRejected,
+            ],
+            'by_department' => $prByDept,
+            'by_jenis' => $prByJenis,
+            'top_requested_items' => $topRequestedItems,
+        ];
+    }
+
+    /**
+     * 4. Approval Workflow & Bottlenecks cluster
+     */
+    private function getWorkflowData($start, $end, $departmentFilter, $jenisFilter)
+    {
         // Pending approvals per role
         $approvalBottlenecksRaw = DB::table('wsp_purchase_requesition_approval')
             ->join('wsp_purchase_requesition', 'wsp_purchase_requesition_approval.pr_id', '=', 'wsp_purchase_requesition.id')
             ->where('wsp_purchase_requesition.status', 'pending')
             ->where('wsp_purchase_requesition_approval.status', 'pending')
+            ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('wsp_purchase_requesition.department', $departmentFilter))
+            ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('wsp_purchase_requesition.jenis', $jenisFilter))
             ->select('wsp_purchase_requesition_approval.role', DB::raw('COUNT(*) as pending_count'))
             ->groupBy('wsp_purchase_requesition_approval.role')
             ->orderByDesc('pending_count')
@@ -324,16 +449,10 @@ class WspDashboardController extends Controller
             ];
         });
 
-        // Overall Average PR Lead Time (Creation to Last Approval)
-        $completedPrTat = DB::table('wsp_purchase_requesition')
-            ->where('status', 'approved')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, updated_at)) as avg_lead_hours')
-            ->first();
-        $overallTatHours = round($completedPrTat->avg_lead_hours ?? 0, 1);
-        $overallTatFormatted = $overallTatHours >= 24 ? round($overallTatHours / 24, 1) . ' Hari' : $overallTatHours . ' Jam';
-
         // Longest Pending PRs (Attention List / Bottlenecks)
         $longestPendingPrsRaw = WspPurchaseRequesitionModel::where('status', 'pending')
+            ->when($departmentFilter && $departmentFilter !== 'all', fn($q) => $q->where('department', $departmentFilter))
+            ->when($jenisFilter && $jenisFilter !== 'all', fn($q) => $q->where('jenis', $jenisFilter))
             ->with(['approval' => function ($q) {
                 $q->where('status', 'pending')->orderBy('level', 'asc');
             }, 'items', 'user'])
@@ -361,85 +480,71 @@ class WspDashboardController extends Controller
             ];
         });
 
-        $pendingBottlenecksCount = WspPurchaseRequesitionModel::where('status', 'pending')
-            ->where('created_at', '<=', now()->subHours(24))
-            ->count();
+        return [
+            'bottlenecks' => $approvalBottlenecks,
+            'stage_tat' => $stageTat,
+            'longest_pending_prs' => $longestPendingPrs,
+        ];
+    }
 
-        // ==========================================
-        // 4. STOCK RESERVATIONS & MATERIAL MOVEMENT
-        // ==========================================
+    /**
+     * 5. Reservations data
+     */
+    private function getReservationsData()
+    {
         $activeReservations = WspStockReservations::where('status', 'active')->count();
         $totalReservations = WspStockReservations::count();
         $confirmedReservations = WspStockReservations::where('status', 'confirmed')->count();
         $expiredReservations = WspStockReservations::whereIn('status', ['expired', 'released'])->count();
 
-        // Recent Inbound (Incoming) & Outbound Movement
-        $incomingCount = WspIncomingModel::count();
-        $outgoingCount = WspOutgoingModel::count();
+        return [
+            'total' => $totalReservations,
+            'active' => $activeReservations,
+            'confirmed' => $confirmedReservations,
+            'expired' => $expiredReservations,
+        ];
+    }
 
-        return response()->json([
-            'success' => true,
-            'period' => [
-                'selected' => $period,
-                'start' => $start->format('d M Y'),
-                'end' => $end->format('d M Y'),
-                'days' => $daysDiff + 1,
-            ],
-            'kpi' => [
-                'total_soh_qty' => (int) $sohStats->total_qty,
-                'total_skus' => (int) $sohStats->total_skus,
-                'total_unrest_qty' => (int) $sohStats->total_unrest,
-                'total_blocked_qty' => (int) $sohStats->total_blocked,
-                'total_qi_qty' => (int) $sohStats->total_qi,
-                'zero_stock_count' => (int) $sohStats->zero_stock_count,
-                'in_stock_count' => (int) $sohStats->in_stock_count,
-                'in_stock_rate' => $sohStats->total_skus > 0 ? round(($sohStats->in_stock_count / $sohStats->total_skus) * 100, 1) : 0,
-                'total_pr_count' => $totalPrCount,
-                'pr_approved_count' => $prApprovedCount,
-                'pr_pending_count' => $prPendingCount,
-                'pr_rejected_count' => $prRejectedCount,
-                'pr_approval_rate' => $prApprovalRate,
-                'total_items_requested' => (int) ($prItemsStats->total_items ?? 0),
-                'total_items_qty' => (int) ($prItemsStats->total_qty ?? 0),
-                'active_reservations' => $activeReservations,
-                'pending_bottlenecks' => $pendingBottlenecksCount,
-                'overall_tat_formatted' => $overallTatFormatted,
-                'incoming_count' => $incomingCount,
-                'outgoing_count' => $outgoingCount,
-            ],
-            'soh' => [
-                'composition' => [
-                    'unrestricted' => (int) $sohStats->total_unrest,
-                    'qual_insp' => (int) $sohStats->total_qi,
-                    'blocked' => (int) $sohStats->total_blocked,
-                    'transf' => (int) $sohStats->total_transf,
-                ],
-                'top_items' => $topStockItems,
-                'zero_stock_items' => $zeroStockItems,
-                'rak_distribution' => $rakDistribution,
-            ],
-            'pr' => [
-                'trend' => [
-                    'categories' => $prTrendCategories,
-                    'approved' => $prTrendApproved,
-                    'pending' => $prTrendPending,
-                    'rejected' => $prTrendRejected,
-                ],
-                'by_department' => $prByDept,
-                'by_jenis' => $prByJenis,
-                'top_requested_items' => $topRequestedItems,
-            ],
-            'workflow' => [
-                'bottlenecks' => $approvalBottlenecks,
-                'stage_tat' => $stageTat,
-                'longest_pending_prs' => $longestPendingPrs,
-            ],
-            'reservations' => [
-                'total' => $totalReservations,
-                'active' => $activeReservations,
-                'confirmed' => $confirmedReservations,
-                'expired' => $expiredReservations,
-            ],
-        ]);
+    /**
+     * Parse date range from request.
+     */
+    private function parseDateRange(Request $request)
+    {
+        $period = $request->input('period', '30days');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        if ($startDate && $endDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
+        } else {
+            switch ($period) {
+                case 'today':
+                    $start = Carbon::today()->startOfDay();
+                    $end = Carbon::today()->endOfDay();
+                    break;
+                case '7days':
+                    $start = Carbon::now()->subDays(6)->startOfDay();
+                    $end = Carbon::now()->endOfDay();
+                    break;
+                case 'month':
+                    $start = Carbon::now()->startOfMonth();
+                    $end = Carbon::now()->endOfDay();
+                    break;
+                case 'all':
+                    $start = Carbon::create(2020, 1, 1)->startOfDay();
+                    $end = Carbon::now()->endOfDay();
+                    break;
+                case '30days':
+                default:
+                    $start = Carbon::now()->subDays(29)->startOfDay();
+                    $end = Carbon::now()->endOfDay();
+                    break;
+            }
+        }
+
+        $daysDiff = $start->diffInDays($end);
+
+        return [$start, $end, $period, $daysDiff];
     }
 }

@@ -587,7 +587,7 @@
                             <div class="kpi-main-number text-white" id="kpiTotalPr">0</div>
                             <div class="kpi-target-tag green">
                                 <i class="mdi mdi-check"></i>
-                                <span id="kpiPrApproved">0</span> APPROVED
+                                <span id="kpiPrApproved">0</span> APPROVED / FINISHED
                             </div>
                         </div>
                     </div>
@@ -825,7 +825,7 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-success bg-opacity-25 text-success mono fs-10">APPROVED</span>
+                                <span class="badge bg-success bg-opacity-25 text-success mono fs-10">APPROVED / FINISHED</span>
                                 <span class="badge bg-warning bg-opacity-25 text-warning mono fs-10">PENDING</span>
                                 <span class="badge bg-danger bg-opacity-25 text-danger mono fs-10">REJECTED</span>
                             </div>
@@ -1095,8 +1095,14 @@
                     loadDashboardData(true);
                 });
 
-                // Data Fetcher
-                function loadDashboardData(isReload = false) {
+                // XHR handles for lazy request cancellation
+                let xhrKpi = null;
+                let xhrSoh = null;
+                let xhrPr = null;
+                let xhrWorkflow = null;
+
+                // Helper to get active filter parameters
+                function getFilterParams() {
                     const activePeriod = $('.period-btn.active').data('period') || '30days';
                     const params = {
                         period: activePeriod,
@@ -1110,35 +1116,129 @@
                         params.end_date = $('#filterEndDate').val();
                     }
 
+                    return params;
+                }
+
+                // Lazy asynchronous data fetchers per section
+                function fetchKpiSection(params, onDone) {
+                    if (xhrKpi && xhrKpi.readyState !== 4) xhrKpi.abort();
+                    xhrKpi = $.ajax({
+                        url: "{{ route('dashboard.wsp.data') }}",
+                        type: "GET",
+                        data: Object.assign({}, params, { section: 'kpi' }),
+                        dataType: "json",
+                        success: function(res) {
+                            if (res.success && res.kpi) {
+                                renderKpiSection(res.kpi);
+                            }
+                        },
+                        error: function(err) {
+                            if (err.statusText !== 'abort') {
+                                console.error('Failed to load WSP KPI section:', err);
+                            }
+                        },
+                        complete: function() {
+                            if (typeof onDone === 'function') onDone();
+                        }
+                    });
+                }
+
+                function fetchSohSection(params, onDone) {
+                    if (xhrSoh && xhrSoh.readyState !== 4) xhrSoh.abort();
+                    xhrSoh = $.ajax({
+                        url: "{{ route('dashboard.wsp.data') }}",
+                        type: "GET",
+                        data: Object.assign({}, params, { section: 'soh' }),
+                        dataType: "json",
+                        success: function(res) {
+                            if (res.success && res.soh) {
+                                renderSohSection(res.soh);
+                            }
+                        },
+                        error: function(err) {
+                            if (err.statusText !== 'abort') {
+                                console.error('Failed to load WSP SOH section:', err);
+                            }
+                        },
+                        complete: function() {
+                            if (typeof onDone === 'function') onDone();
+                        }
+                    });
+                }
+
+                function fetchPrSection(params, onDone) {
+                    if (xhrPr && xhrPr.readyState !== 4) xhrPr.abort();
+                    xhrPr = $.ajax({
+                        url: "{{ route('dashboard.wsp.data') }}",
+                        type: "GET",
+                        data: Object.assign({}, params, { section: 'pr' }),
+                        dataType: "json",
+                        success: function(res) {
+                            if (res.success && res.pr) {
+                                renderPrSection(res.pr, res.reservations);
+                            }
+                        },
+                        error: function(err) {
+                            if (err.statusText !== 'abort') {
+                                console.error('Failed to load WSP PR section:', err);
+                            }
+                        },
+                        complete: function() {
+                            if (typeof onDone === 'function') onDone();
+                        }
+                    });
+                }
+
+                function fetchWorkflowSection(params, onDone) {
+                    if (xhrWorkflow && xhrWorkflow.readyState !== 4) xhrWorkflow.abort();
+                    xhrWorkflow = $.ajax({
+                        url: "{{ route('dashboard.wsp.data') }}",
+                        type: "GET",
+                        data: Object.assign({}, params, { section: 'workflow' }),
+                        dataType: "json",
+                        success: function(res) {
+                            if (res.success && res.workflow) {
+                                renderWorkflowSection(res.workflow);
+                            }
+                        },
+                        error: function(err) {
+                            if (err.statusText !== 'abort') {
+                                console.error('Failed to load WSP Workflow section:', err);
+                            }
+                        },
+                        complete: function() {
+                            if (typeof onDone === 'function') onDone();
+                        }
+                    });
+                }
+
+                // Main Loader: loads sections concurrently so whichever finishes first displays immediately
+                function loadDashboardData(isReload = false) {
+                    const params = getFilterParams();
+
                     if (isReload && window.toastr) {
                         toastr.info('Memperbarui data analitik WSP...', 'Refresh');
                     }
 
-                    $.ajax({
-                        url: "{{ route('dashboard.wsp.data') }}",
-                        type: "GET",
-                        data: params,
-                        dataType: "json",
-                        success: function(res) {
-                            if (res.success) {
-                                renderKpiSection(res.kpi);
-                                renderSohSection(res.soh);
-                                renderPrSection(res.pr);
-                                renderWorkflowSection(res.workflow);
-                                renderReservations(res.reservations);
+                    // Reset table placeholders while loading
+                    $('#topStockTableBody').html('<tr><td colspan="6" class="text-center text-muted py-4"><i class="ri-loader-4-line ri-spin fs-16 text-cyan me-1"></i> Memuat data stok sparepart...</td></tr>');
+                    $('#zeroStockTableBody').html('<tr><td colspan="4" class="text-center text-muted py-4"><i class="ri-loader-4-line ri-spin fs-16 text-warning me-1"></i> Memeriksa zero-stock watchlist...</td></tr>');
+                    $('#topRequestedTableBody').html('<tr><td colspan="4" class="text-center text-muted py-4"><i class="ri-loader-4-line ri-spin fs-16 text-cyan me-1"></i> Memuat item permintaan PR...</td></tr>');
+                    $('#longestPendingTableBody').html('<tr><td colspan="8" class="text-center text-muted py-4"><i class="ri-loader-4-line ri-spin fs-16 text-danger me-1"></i> Memuat antrian dokumen PR...</td></tr>');
 
-                                if (isReload && window.toastr) {
-                                    toastr.success('Data WSP berhasil dimutakhirkan!', 'Selesai');
-                                }
-                            }
-                        },
-                        error: function(err) {
-                            console.error('Failed to load WSP dashboard data:', err);
-                            if (window.toastr) {
-                                toastr.error('Gagal mengambil data analitik WSP', 'Error');
-                            }
+                    let completedCount = 0;
+                    const onSectionDone = () => {
+                        completedCount++;
+                        if (completedCount === 4 && isReload && window.toastr) {
+                            toastr.success('Semua klaster data WSP selesai dimutakhirkan!', 'Selesai');
                         }
-                    });
+                    };
+
+                    // Fire all 4 section queries in parallel - completed cards appear immediately without waiting
+                    fetchKpiSection(params, onSectionDone);
+                    fetchSohSection(params, onSectionDone);
+                    fetchPrSection(params, onSectionDone);
+                    fetchWorkflowSection(params, onSectionDone);
                 }
 
                 // 1. KPI Rendering
@@ -1231,13 +1331,16 @@
                     chartSohComposition.render();
 
                     // Donut 2: In-Stock vs Zero-Stock
-                    const inStock = (soh.top_items && soh.top_items.length) ? $('#kpiTotalSkus').text().replace(/\./g,
-                        '') : 0;
-                    const zeroStock = $('#kpiZeroStockCount').text().replace(/\./g, '');
+                    const stats = soh.stats || {};
+                    const inStock = Number(stats.in_stock || 0);
+                    const zeroStock = Number(stats.zero_stock || 0);
+                    const inStockRateText = (stats.in_stock_rate !== undefined) ? stats.in_stock_rate + '%' : '0%';
+
+                    $('#badgeInStockSkus').text(inStock.toLocaleString('id-ID') + ' SKU');
+                    $('#badgeZeroStockSkus').text(zeroStock.toLocaleString('id-ID') + ' SKU');
+
                     const optHealth = {
-                        series: [Number($('#badgeInStockSkus').text()) || (Number(inStock) - Number(zeroStock)),
-                            Number(zeroStock)
-                        ],
+                        series: [inStock, zeroStock],
                         labels: ['Ready In-Stock', 'Zero-Stock Alert'],
                         chart: {
                             type: 'donut',
@@ -1285,7 +1388,7 @@
                                             label: 'READY RATIO',
                                             color: '#10b981',
                                             fontSize: '10px',
-                                            formatter: () => $('#kpiInStockRate').text()
+                                            formatter: () => inStockRateText
                                         }
                                     }
                                 }
@@ -1415,11 +1518,14 @@
                 }
 
                 // 3. PR Intelligence Rendering
-                function renderPrSection(pr) {
+                function renderPrSection(pr, reservations = null) {
+                    if (reservations) {
+                        renderReservations(reservations);
+                    }
                     const trend = pr.trend || {};
                     const optTrend = {
                         series: [{
-                                name: 'APPROVED',
+                                name: 'APPROVED / FINISHED',
                                 data: trend.approved || []
                             },
                             {
