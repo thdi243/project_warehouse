@@ -301,8 +301,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if (!$startTime) {
                     $tempQuery = WspSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -366,8 +366,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if ($batches === 0 && $pallets === 0) {
                     $tempQuery = WrmSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -388,8 +388,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if (!$startTime) {
                     $tempQuery = WrmSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -454,8 +454,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if (!$startTime) {
                     $tempQuery = WpmSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -520,8 +520,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if (!$startTime) {
                     $tempQuery = WcpSoTempModel::whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -591,8 +591,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if ($pallets === 0) {
                     $tempQuery = WfgSopTempModel::where('principal', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -614,8 +614,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if (!$startTime) {
                     $tempQuery = WfgSopTempModel::where('principal', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -631,20 +631,20 @@ class StockOpnameDashboardController extends Controller
 
                     $hasStartedSMU = WfgSopStatusModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', $jenisSo)->exists()
                         || WfgSopTempModel::whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month)->where('principal', '!=', 'BAS')
-                            ->whereHas('soh', function ($q) use ($jenisSo) {
-                                $q->where('jenis_so', $jenisSo);
-                            })
-                            ->exists();
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
                 } else {
                     $hasFinishedSMU = WfgSopModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('jenis_so', $jenisSo)->exists()
                         || WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'finished')->where('jenis_so', $jenisSo)->exists();
 
                     $hasStartedSMU = WfgSopStatusModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')->where('status', 'started')->where('jenis_so', $jenisSo)->exists()
                         || WfgSopTempModel::whereDate('tgl_opname', $tglOpname)->where('principal', '!=', 'BAS')
-                            ->whereHas('soh', function ($q) use ($jenisSo) {
-                                $q->where('jenis_so', $jenisSo);
-                            })
-                            ->exists();
+                        ->whereHas('soh', function ($q) use ($jenisSo) {
+                            $q->where('jenis_so', $jenisSo);
+                        })
+                        ->exists();
                 }
 
                 if ($hasFinishedSMU && !$hasStartedSMU) {
@@ -689,8 +689,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if ($pallets === 0) {
                     $tempQuery = WfgSopTempModel::where('principal', '!=', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -712,8 +712,8 @@ class StockOpnameDashboardController extends Controller
                 }
                 if (!$startTime) {
                     $tempQuery = WfgSopTempModel::where('principal', '!=', 'BAS')->whereHas('soh', function ($q) use ($jenisSo) {
-                            $q->where('jenis_so', $jenisSo);
-                        });
+                        $q->where('jenis_so', $jenisSo);
+                    });
                     if ($jenisSo === 'monthly') {
                         $tempQuery->whereYear('tgl_opname', $year)->whereMonth('tgl_opname', $month);
                     } else {
@@ -1279,6 +1279,7 @@ class StockOpnameDashboardController extends Controller
         return [
             'section' => $sectionName,
             'mid' => optional($s->barang)->mid_barang ?? (optional($s->barang)->mid ?? 'N/A'),
+            'uom' => optional($s->barang)->uom ?? 'N/A',
             'name' => optional($s->barang)->nama_barang ?? 'N/A',
             'qty_sistem' => (int) $s->qty_sistem,
             'qty_fisik' => (int) $s->qty_fisik,

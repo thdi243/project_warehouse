@@ -258,17 +258,20 @@
                         </div>
                         <div>
                             <h3 class="dashboard-header-title mb-1" id="dashboardTitle">Daily Stock Opname Dashboard</h3>
-                            <p class="text-muted mb-0 fw-medium" id="dashboardSubtitle">Analisa progress & akurasi stock gudang secara harian</p>
+                            <p class="text-muted mb-0 fw-medium" id="dashboardSubtitle">Analisa progress & akurasi stock
+                                gudang secara harian</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-sm-4 text-sm-end mt-3 mt-sm-0">
                     <div class="d-inline-flex align-items-center gap-2">
                         <div class="btn-group btn-group-sm me-1" role="group" aria-label="Jenis SO Switch">
-                            <input type="radio" class="btn-check" name="jenis_so_switch" id="switchDaily" value="cycle_count" checked>
+                            <input type="radio" class="btn-check" name="jenis_so_switch" id="switchDaily"
+                                value="cycle_count" checked>
                             <label class="btn btn-outline-primary px-3 fw-semibold" for="switchDaily">Daily</label>
 
-                            <input type="radio" class="btn-check" name="jenis_so_switch" id="switchMonthly" value="monthly">
+                            <input type="radio" class="btn-check" name="jenis_so_switch" id="switchMonthly"
+                                value="monthly">
                             <label class="btn btn-outline-primary px-3 fw-semibold" for="switchMonthly">Monthly</label>
                         </div>
                         <span
@@ -408,7 +411,8 @@
                             </div>
                         </div>
                         <h3 class="huge-number mb-2 text-success" id="lblItemMatch">0</h3>
-                        <p class="text-muted small mb-0"><span class="text-success fw-bold" id="lblItemMatchPct">0%</span>
+                        <p class="text-muted small mb-0"><span class="text-success fw-bold"
+                                id="lblItemMatchPct">0%</span>
                             dari total diopname</p>
                     </div>
                 </div>
@@ -477,6 +481,7 @@
                                         <th class="text-end">Qty Sistem</th>
                                         <th class="text-end">Qty Fisik</th>
                                         <th class="text-center">Selisih Qty</th>
+                                        <th class="text-center">UoM</th>
                                         <th>Keterangan / Alasan SC</th>
                                     </tr>
                                 </thead>
@@ -530,7 +535,8 @@
                         dateInput.val(dateVal + '-01');
                     } else if (!dateVal) {
                         const t = new Date();
-                        dateInput.val(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'));
+                        dateInput.val(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') +
+                            '-' + String(t.getDate()).padStart(2, '0'));
                     }
                 }
                 loadDashboardData();
@@ -903,7 +909,8 @@
                             <td class="text-end fw-semibold">${row.qty_sistem.toLocaleString('id-ID')}</td>
                             <td class="text-end fw-semibold">${row.qty_fisik.toLocaleString('id-ID')}</td>
                             <td class="text-center ${selisihClass}">${selisihText}</td>
-                            <td class="text-muted small">${row.keterangan}</td>
+                            <td class="text-center">${row.uom ?? '-'}</td>
+                            <td class="text-muted small">${row.keterangan ?? '-'}</td>
                         </tr>
                     `;
                 });
