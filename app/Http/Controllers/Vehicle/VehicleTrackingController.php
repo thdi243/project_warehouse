@@ -1199,6 +1199,14 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Cancel WPM loading/unloading process.
+     */
+    public function wpmCancelLoading(Request $request, $id)
+    {
+        return $this->processCancelLoading($request, $id, 'C001', 'WPM');
+    }
+
+    /**
      * Helper to reorder and compact QC queue numbers sequentially (#01, #02, ...).
      */
     private function reorderQcQueue()
@@ -1794,6 +1802,14 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Cancel WRM loading/unloading process.
+     */
+    public function wrmCancelLoading(Request $request, $id)
+    {
+        return $this->processCancelLoading($request, $id, 'B006', 'WRM');
+    }
+
+    /**
      * WFG Loading/Unloading View.
      */
     public function wfgIndex()
@@ -2017,6 +2033,14 @@ class VehicleTrackingController extends Controller
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal menyelesaikan bongkar/muat: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Cancel WFG loading/unloading process.
+     */
+    public function wfgCancelLoading(Request $request, $id)
+    {
+        return $this->processCancelLoading($request, $id, 'A001', 'WFG');
     }
 
     /**
@@ -2274,6 +2298,140 @@ class VehicleTrackingController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal memproses SMU: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Cancel SMU loading/unloading process.
+     */
+    public function smuCancelLoading(Request $request, $id)
+    {
+        return $this->processCancelLoading($request, $id, 'SMU', 'SMU');
+    }
+
+    /**
+     * Unified helper to cancel loading/unloading process across areas (WPM, WRM, WFG, SMU).
+     */
+    private function processCancelLoading(Request $request, $id, string $areaCode, string $areaName)
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction = VehicleTransaction::findOrFail($id);
+            $jenis = strtolower(trim($transaction->jenis ?? ''));
+
+            // Tentukan nama aksi: Bongkar / Muat
+            $actionName = ($jenis === 'bongkaran') ? 'Bongkar' : 'Muat';
+            if ($areaCode === 'SMU') {
+                $actionName = ($jenis === 'slipsheet' || $jenis === 'curah') ? 'Muat' : 'Bongkar';
+            }
+
+            $reason = trim($request->input('reason', ''));
+            $reasonNote = !empty($reason) ? " Alasan: {$reason}." : "";
+
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+            $oldAntrian = $transaction->no_antrian;
+
+            // Conclude active tracking at current area
+            $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
+                ->where('location_id', $transaction->current_location_id)
+                ->whereNull('departure_time')
+                ->latest()
+                ->first();
+
+            $now = Carbon::now();
+            $duration = $activeTrack ? abs($now->diffInSeconds($activeTrack->arrival_time, false)) : 0;
+
+            if ($activeTrack) {
+                $activeTrack->update([
+                    'departure_time' => $now,
+                    'duration_seconds' => $duration,
+                    'status_notes' => "Batal Proses {$actionName} di {$areaName}.{$reasonNote} Truk kembali ke Timbangan."
+                ]);
+            }
+
+            // Release kantong parkir slot jika ada
+            $this->releaseKantongParkirSlot($noPol, "Batal proses {$actionName} di {$areaName}");
+
+            $timbanganLoc = Location::where('s_loc', 'TMB')->first();
+            if (!$timbanganLoc) {
+                throw new \Exception('Lokasi TIMBANGAN tidak ditemukan di database.');
+            }
+
+            $isAlreadyCompleted = ($transaction->status === 'completed' || !empty($transaction->check_out_time));
+
+            $updateData = [
+                'unloading_status' => 'cancelled',
+                'finish_loading_time' => $transaction->finish_loading_time ?? $now,
+                'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
+                'no_antrian' => null,
+                'follow_up_notes' => "Batal {$actionName} ({$areaName})" . (!empty($reason) ? ": {$reason}" : ""),
+                'updated_by' => Auth::id()
+            ];
+
+            if (!$isAlreadyCompleted) {
+                $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
+                $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
+                $updateData['current_location_id'] = $timbanganLoc->id;
+                $updateData['status'] = 'timbangan_out';
+            }
+
+            $transaction->update($updateData);
+
+            // Reorder antrian yang tersisa
+            if ($areaCode === 'SMU') {
+                $this->reorderSmuQueue();
+            } elseif ($areaCode === 'A001' && $oldAntrian) {
+                $oldAntrianInt = (int)$oldAntrian;
+                $shiftQuery = VehicleTransaction::where('status', 'wfg')
+                    ->whereNotNull('no_antrian');
+                if (!empty($jenis)) {
+                    $shiftQuery->where('jenis', $jenis);
+                }
+                $remaining = $shiftQuery->get();
+                foreach ($remaining as $tx) {
+                    $curr = (int)$tx->no_antrian;
+                    if ($curr > $oldAntrianInt) {
+                        $tx->update(['no_antrian' => str_pad($curr - 1, 2, '0', STR_PAD_LEFT)]);
+                    }
+                }
+            }
+
+            if (!$isAlreadyCompleted) {
+                // Create new tracking log for Timbangan
+                VehicleTracking::create([
+                    'vehicle_transaction_id' => $transaction->id,
+                    'location_id' => $timbanganLoc->id,
+                    'arrival_time' => $now,
+                    'status_notes' => "Tiba di Timbangan untuk Check-Out (Batal {$actionName} di {$areaName}).",
+                    'created_by' => Auth::id(),
+                ]);
+            }
+
+            $broadcastStatus = $isAlreadyCompleted ? 'completed' : 'timbangan_out';
+            $broadcastLoc = $isAlreadyCompleted ? ($transaction->currentLocation ? $transaction->currentLocation->s_loc : 'TIMBANGAN') : 'TIMBANGAN';
+            $broadcastMsg = "Proses {$actionName} Truk {$noPol} di {$areaName} dibatalkan. Truk kembali ke Timbangan untuk Check-Out.";
+
+            event(new VehicleStatusUpdated([
+                'transaction_id' => $transaction->id,
+                'no_pol' => $noPol,
+                'current_location' => $broadcastLoc,
+                'status' => $broadcastStatus,
+                'message' => $broadcastMsg,
+                'time' => $now->format('H:i:s')
+            ]));
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "Proses {$actionName} truk {$noPol} di {$areaName} berhasil dibatalkan. Truk diarahkan kembali ke Timbangan untuk Check-Out."
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membatalkan proses: ' . $e->getMessage()
+            ], 500);
         }
     }
 

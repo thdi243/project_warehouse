@@ -936,6 +936,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/wpm', [VehicleTrackingController::class, 'wpmIndex'])->name('wpm');
             Route::get('/wpm/data', [VehicleTrackingController::class, 'wpmData'])->name('wpm.data');
             Route::post('/wpm/start-loading/{id}', [VehicleTrackingController::class, 'wpmStartLoading'])->name('wpm.start_loading');
+            Route::post('/wpm/cancel-loading/{id}', [VehicleTrackingController::class, 'wpmCancelLoading'])->name('wpm.cancel_loading');
             Route::post('/wpm/complete/{id}', [VehicleTrackingController::class, 'wpmComplete'])->name('wpm.complete');
         });
 
@@ -944,6 +945,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/wrm', [VehicleTrackingController::class, 'wrmIndex'])->name('wrm');
             Route::get('/wrm/data', [VehicleTrackingController::class, 'wrmData'])->name('wrm.data');
             Route::post('/wrm/start-loading/{id}', [VehicleTrackingController::class, 'wrmStartLoading'])->name('wrm.start_loading');
+            Route::post('/wrm/cancel-loading/{id}', [VehicleTrackingController::class, 'wrmCancelLoading'])->name('wrm.cancel_loading');
             Route::post('/wrm/update-unloading/{id}', [VehicleTrackingController::class, 'wrmUpdateUnloading'])->name('wrm.update_unloading');
         });
 
@@ -952,6 +954,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/wfg', [VehicleTrackingController::class, 'wfgIndex'])->name('wfg');
             Route::get('/wfg/data', [VehicleTrackingController::class, 'wfgData'])->name('wfg.data');
             Route::post('/wfg/start-loading/{id}', [VehicleTrackingController::class, 'wfgStartLoading'])->name('wfg.start_loading');
+            Route::post('/wfg/cancel-loading/{id}', [VehicleTrackingController::class, 'wfgCancelLoading'])->name('wfg.cancel_loading');
             Route::post('/wfg/update-loading/{id}', [VehicleTrackingController::class, 'wfgUpdateLoading'])->name('wfg.update_loading');
         });
 
@@ -960,6 +963,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/smu', [VehicleTrackingController::class, 'smuIndex'])->name('smu');
             Route::get('/smu/data', [VehicleTrackingController::class, 'smuData'])->name('smu.data');
             Route::post('/smu/start-loading/{id}', [VehicleTrackingController::class, 'smuStartLoading'])->name('smu.start_loading');
+            Route::post('/smu/cancel-loading/{id}', [VehicleTrackingController::class, 'smuCancelLoading'])->name('smu.cancel_loading');
             Route::post('/smu/complete/{id}', [VehicleTrackingController::class, 'smuComplete'])->name('smu.complete');
         });
 

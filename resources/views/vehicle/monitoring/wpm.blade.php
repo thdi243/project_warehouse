@@ -171,20 +171,38 @@
                         // Tombol Aksi
                         let actionBtn = '';
                         if (!isProcess) {
-                            actionBtn = `<button type="button" class="btn btn-sm btn-primary btn-start-loading" 
-                                data-id="${tx.id}" 
-                                data-nopol="${tx.no_pol}"
-                                data-qc="${tx.qc_status || ''}"
-                                data-action="${actionLabel}">
-                                <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
-                            </button>`;
+                            actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                <button type="button" class="btn btn-sm btn-primary btn-start-loading" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-qc="${tx.qc_status || ''}"
+                                    data-action="${actionLabel}">
+                                    <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger btn-cancel-loading" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-action="Batal ${actionLabel}"
+                                    title="Batal ${actionLabel}">
+                                    <i class="ri-close-circle-line me-1 align-middle"></i> Batal ${actionLabel}
+                                </button>
+                            </div>`;
                         } else {
-                            actionBtn = `<button type="button" class="btn btn-sm btn-success btn-complete-loading" 
-                                data-id="${tx.id}" 
-                                data-nopol="${tx.no_pol}"
-                                data-action="${actionLabel}">
-                                <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai ${actionLabel}
-                            </button>`;
+                            actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                <button type="button" class="btn btn-sm btn-success btn-complete-loading" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-action="${actionLabel}">
+                                    <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai ${actionLabel}
+                                </button>
+                                <button type="button" class="btn btn-sm btn-soft-danger btn-cancel-loading" 
+                                    data-id="${tx.id}" 
+                                    data-nopol="${tx.no_pol}"
+                                    data-action="Batal ${actionLabel}"
+                                    title="Batal ${actionLabel}">
+                                    <i class="ri-close-circle-line me-1 align-middle"></i> Batal ${actionLabel}
+                                </button>
+                            </div>`;
                         }
 
                         // Timeline breakdown
@@ -476,6 +494,45 @@
                                     .message :
                                     `Gagal menyelesaikan ${actionLabel.toLowerCase()}.`,
                                     'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Batal Bongkar / Batal Muat Click Handler
+            $(document).on('click', '.btn-cancel-loading', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+                const action = $(this).data('action');
+
+                Swal.fire({
+                    title: `${action}?`,
+                    html: `Apakah Anda yakin membatalkan proses ${action.toLowerCase().replace('batal ', '')} untuk truk <strong>${nopol}</strong>?<br><span class="text-muted small">Truk akan diarahkan kembali ke Timbangan untuk Check-Out tanpa ${action.toLowerCase().replace('batal ', '')}.</span>`,
+                    input: 'text',
+                    inputPlaceholder: 'Masukkan alasan pembatalan (opsional)...',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: `Ya, ${action}!`,
+                    cancelButtonText: 'Kembali'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const reason = result.value || '';
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/wpm/cancel-loading') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                reason: reason
+                            },
+                            success: function(response) {
+                                Swal.fire('Berhasil!', response.message, 'success');
+                                loadWpmData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON.message : 'Gagal membatalkan aktivitas.', 'error');
                             }
                         });
                     }

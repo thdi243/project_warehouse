@@ -630,6 +630,9 @@
                     } else if (tx.unloading_status === 'completed') {
                         html +=
                             `<span class="badge bg-soft-success text-success fs-12 px-2 py-1"><i class="ri-checkbox-circle-line me-1 align-middle"></i>Selesai ${actionLabel} WRM</span>`;
+                    } else if (tx.unloading_status === 'cancelled') {
+                        html +=
+                            `<span class="badge bg-soft-danger text-danger fs-12 px-2 py-1"><i class="ri-close-circle-line me-1 align-middle"></i>Batal ${actionLabel} WRM</span>`;
                     } else {
                         html +=
                             `<span class="badge bg-soft-secondary text-secondary fs-12 px-2 py-1"><i class="ri-hourglass-line me-1 align-middle"></i>Menunggu ${actionLabel} WRM</span>`;
@@ -647,6 +650,9 @@
                     } else if (tx.unloading_status === 'completed') {
                         html +=
                             `<span class="badge bg-soft-success text-success fs-12 px-2 py-1"><i class="ri-checkbox-circle-line me-1 align-middle"></i>Selesai Bongkar WPM</span>`;
+                    } else if (tx.unloading_status === 'cancelled') {
+                        html +=
+                            `<span class="badge bg-soft-danger text-danger fs-12 px-2 py-1"><i class="ri-close-circle-line me-1 align-middle"></i>Batal Bongkar WPM</span>`;
                     } else {
                         html +=
                             `<span class="badge bg-soft-secondary text-secondary fs-12 px-2 py-1"><i class="ri-hourglass-line me-1 align-middle"></i>Menunggu Bongkar WPM</span>`;
@@ -661,6 +667,12 @@
                             html +=
                                 `<small class="text-muted"><i class="ri-time-line me-1"></i>Mulai: <strong>${tx.start_loading_time}</strong></small>`;
                         }
+                    } else if (tx.unloading_status === 'completed') {
+                        html +=
+                            `<span class="badge bg-soft-success text-success fs-12 px-2 py-1"><i class="ri-checkbox-circle-line me-1 align-middle"></i>Selesai ${actionLabel} WFG</span>`;
+                    } else if (tx.unloading_status === 'cancelled') {
+                        html +=
+                            `<span class="badge bg-soft-danger text-danger fs-12 px-2 py-1"><i class="ri-close-circle-line me-1 align-middle"></i>Batal ${actionLabel} WFG</span>`;
                     } else if (tx.no_antrian) {
                         html +=
                             `<span class="badge bg-soft-warning text-warning fs-12 px-2 py-1"><i class="ri-time-line me-1 align-middle"></i>Antri WFG #${tx.no_antrian}</span>`;
@@ -680,6 +692,12 @@
                             html +=
                                 `<small class="text-muted"><i class="ri-time-line me-1"></i>Mulai: <strong>${tx.start_loading_time}</strong></small>`;
                         }
+                    } else if (tx.unloading_status === 'completed') {
+                        html +=
+                            `<span class="badge bg-soft-success text-success fs-12 px-2 py-1"><i class="ri-checkbox-circle-line me-1 align-middle"></i>Selesai ${actionLabel} SMU</span>`;
+                    } else if (tx.unloading_status === 'cancelled') {
+                        html +=
+                            `<span class="badge bg-soft-danger text-danger fs-12 px-2 py-1"><i class="ri-close-circle-line me-1 align-middle"></i>Batal ${actionLabel} SMU</span>`;
                     } else if (tx.no_antrian) {
                         html +=
                             `<span class="badge bg-soft-warning text-warning fs-12 px-2 py-1"><i class="ri-time-line me-1 align-middle"></i>Antri SMU #${tx.no_antrian}</span>`;

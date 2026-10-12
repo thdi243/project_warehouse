@@ -312,46 +312,81 @@
                         }
 
                         let actionBtn = '';
+                        const canOperateWfg = canPengawasWfg || canAdminWfg;
+
                         if (!tx.no_antrian) {
-                            // Belum ambil antrian: Pengawas WFG dapat langsung Mulai tanpa harus ambil antrian manual
-                            if (canPengawasWfg) {
-                                actionBtn = `<button type="button" class="btn btn-sm btn-primary btn-start-loading" 
-                                    data-id="${tx.id}" 
-                                    data-nopol="${tx.no_pol}"
-                                    data-action="Mulai ${actionLabel}">
-                                    <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
-                                </button>`;
+                            // Belum ambil antrian: Pengawas / Admin WFG dapat langsung Mulai atau Batal jika gajadi
+                            if (canOperateWfg) {
+                                actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                    <button type="button" class="btn btn-sm btn-primary btn-start-loading" 
+                                        data-id="${tx.id}" 
+                                        data-nopol="${tx.no_pol}"
+                                        data-action="Mulai ${actionLabel}">
+                                        <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-danger btn-cancel-loading" 
+                                        data-id="${tx.id}" 
+                                        data-nopol="${tx.no_pol}"
+                                        data-action="Batal ${actionLabel}"
+                                        title="Batal ${actionLabel}">
+                                        <i class="ri-close-circle-line me-1 align-middle"></i> Batal ${actionLabel}
+                                    </button>
+                                </div>`;
                             } else {
                                 actionBtn = `<span class="text-muted small">-</span>`;
                             }
                         } else if (!isProcess) {
-                            let cancelBtn = '';
+                            let cancelQueueBtn = '';
                             if (canAdminWfg) {
-                                cancelBtn = `<button type="button" class="btn btn-sm btn-soft-danger btn-cancel-queue" 
+                                cancelQueueBtn = `<button type="button" class="btn btn-sm btn-soft-warning btn-cancel-queue" 
                                     data-id="${tx.id}" 
                                     data-nopol="${tx.no_pol}"
                                     data-antrian="${tx.no_antrian}"
-                                    title="Batalkan Antrian">
-                                    <i class="ri-close-circle-line me-1 align-middle"></i> Batal Antrian
+                                    title="Batalkan Nomor Antrian (Kembali ke Menunggu Antrian)">
+                                    <i class="ri-refresh-line me-1 align-middle"></i> Batal Antrian
                                 </button>`;
                             }
 
-                            actionBtn = `<div class="d-flex gap-1 justify-content-center">
-                                <button type="button" class="btn btn-sm btn-primary btn-start-loading" 
-                                    data-id="${tx.id}" 
-                                    data-nopol="${tx.no_pol}"
-                                    data-action="Mulai ${actionLabel}">
-                                    <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
-                                </button>
-                                ${cancelBtn}
-                            </div>`;
+                            if (canOperateWfg) {
+                                actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                    <button type="button" class="btn btn-sm btn-primary btn-start-loading" 
+                                        data-id="${tx.id}" 
+                                        data-nopol="${tx.no_pol}"
+                                        data-action="Mulai ${actionLabel}">
+                                        <i class="ri-play-circle-line me-1 align-middle"></i> Mulai ${actionLabel}
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-danger btn-cancel-loading" 
+                                        data-id="${tx.id}" 
+                                        data-nopol="${tx.no_pol}"
+                                        data-action="Batal ${actionLabel}"
+                                        title="Batal ${actionLabel}">
+                                        <i class="ri-close-circle-line me-1 align-middle"></i> Batal ${actionLabel}
+                                    </button>
+                                    ${cancelQueueBtn}
+                                </div>`;
+                            } else {
+                                actionBtn = cancelQueueBtn || `<span class="text-muted small">-</span>`;
+                            }
                         } else {
-                            actionBtn = `<button type="button" class="btn btn-sm btn-success btn-complete-loading" 
-                                data-id="${tx.id}" 
-                                data-nopol="${tx.no_pol}"
-                                data-action="Selesai ${actionLabel}">
-                                <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai ${actionLabel}
-                            </button>`;
+                            if (canOperateWfg) {
+                                actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                    <button type="button" class="btn btn-sm btn-success btn-complete-loading" 
+                                        data-id="${tx.id}" 
+                                        data-nopol="${tx.no_pol}"
+                                        data-action="Selesai ${actionLabel}">
+                                        <i class="ri-checkbox-circle-line me-1 align-middle"></i> Selesai ${actionLabel}
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-soft-danger btn-cancel-loading" 
+                                        data-id="${tx.id}" 
+                                        data-nopol="${tx.no_pol}"
+                                        data-action="Batal ${actionLabel}"
+                                        title="Batal ${actionLabel}">
+                                        <i class="ri-close-circle-line me-1 align-middle"></i> Batal ${actionLabel}
+                                    </button>
+                                </div>`;
+                            } else {
+                                actionBtn = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang ${actionLabel}</span>`;
+                            }
                         }
 
                         // Timeline breakdown
@@ -737,6 +772,45 @@
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message ||
                                     'Gagal membatalkan nomor antrian.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Batal Bongkar / Batal Muat Click Handler
+            $(document).on('click', '.btn-cancel-loading', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+                const action = $(this).data('action');
+
+                Swal.fire({
+                    title: `${action}?`,
+                    html: `Apakah Anda yakin membatalkan proses ${action.toLowerCase().replace('batal ', '')} untuk truk <strong>${nopol}</strong>?<br><span class="text-muted small">Truk akan diarahkan kembali ke Timbangan untuk Check-Out tanpa ${action.toLowerCase().replace('batal ', '')}.</span>`,
+                    input: 'text',
+                    inputPlaceholder: 'Masukkan alasan pembatalan (opsional)...',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: `Ya, ${action}!`,
+                    cancelButtonText: 'Kembali'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const reason = result.value || '';
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/wfg/cancel-loading') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                reason: reason
+                            },
+                            success: function(response) {
+                                Swal.fire('Berhasil!', response.message, 'success');
+                                loadWfgData();
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal membatalkan aktivitas.', 'error');
                             }
                         });
                     }
