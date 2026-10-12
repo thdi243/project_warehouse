@@ -13,6 +13,7 @@ use App\Models\Wsp\BarangModel;
 use App\Models\Wsp\purchase_requesition\WspPrWaLogModel;
 use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionApprovalModel;
 use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionItemApprovalModel;
+use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionItemsModel;
 use App\Models\Wsp\purchase_requesition\WspPurchaseRequesitionModel;
 use App\Models\Wsp\purchase_requesition\WspStockReservations;
 use App\Models\Wsp\stock_manage\StockOnHandWspModel;
@@ -2240,5 +2241,572 @@ class WspPurchaseRequesitionController extends Controller
             'message' => 'Gagal mengirim pesan WhatsApp: ' . ($sendResult['message'] ?? 'Terjadi kesalahan pengiriman'),
             'raw'     => $sendResult['raw'] ?? null,
         ], 500);
+    }
+
+    public function reportIndex()
+    {
+        $user = Auth::user();
+        $userDept = strtolower(trim($user->departemen ?? ''));
+        $isAdmin = $user->hasRole('super-admin')
+            || $user->hasRole('admin')
+            || $user->hasPermission('super-admin')
+            || in_array($userDept, ['admin', 'super-admin'])
+            || str_contains(strtolower($user->username ?? ''), 'admin')
+            || strtolower(trim($user->jabatan ?? '')) === 'admin';
+
+        $canViewAll = $isAdmin;
+
+        $departments = [];
+        if ($canViewAll) {
+            $departments = WspPurchaseRequesitionModel::whereNotNull('department')
+                ->where('department', '!=', '')
+                ->distinct()
+                ->pluck('department')
+                ->sort()
+                ->values();
+        }
+
+        return view('wsp.purchase_requesition.report', compact('departments', 'userDept', 'canViewAll'));
+    }
+
+    private function buildReportPRQuery(Request $request)
+    {
+        $user = Auth::user();
+        $userDept = strtolower(trim($user->departemen ?? ''));
+        $isAdmin = $user->hasRole('super-admin')
+            || $user->hasRole('admin')
+            || $user->hasPermission('super-admin')
+            || in_array($userDept, ['admin', 'super-admin'])
+            || str_contains(strtolower($user->username ?? ''), 'admin')
+            || strtolower(trim($user->jabatan ?? '')) === 'admin';
+
+        $canViewAll = $isAdmin;
+
+        $query = WspPurchaseRequesitionItemsModel::with([
+            'pr' => function ($q) {
+                $q->with([
+                    'user:id,nama_lengkap,departemen',
+                    'approval' => function ($appQ) {
+                        $appQ->with('approver:id,nama_lengkap,departemen,jabatan')
+                            ->orderBy('level', 'asc');
+                    }
+                ]);
+            },
+            'barang:id,mid_barang,nama_barang,uom',
+            'approval.approval'
+        ])->whereHas('pr');
+
+        // Jika bukan admin: kunci data sesuai departemen user masing-masing
+        if (!$canViewAll) {
+            $query->whereHas('pr', function ($q) use ($user, $userDept) {
+                if ($userDept !== '') {
+                    $q->where(function ($sub) use ($user, $userDept) {
+                        $sub->whereRaw('LOWER(TRIM(department)) = ?', [$userDept])
+                            ->orWhere('user_id', $user->id);
+                    });
+                } else {
+                    $q->where('user_id', $user->id);
+                }
+            });
+        } else {
+            // Khusus Admin: default all dept, atau filter departemen tertentu jika dipilih
+            if ($request->filled('departemen') && $request->departemen !== 'all') {
+                $dept = strtolower(trim($request->departemen));
+                $query->whereHas('pr', function ($q) use ($dept) {
+                    $q->whereRaw('LOWER(TRIM(department)) = ?', [$dept]);
+                });
+            }
+        }
+
+        // Filter: Tanggal PR (start_date & end_date)
+        if ($request->filled('start_date')) {
+            $query->whereHas('pr', function ($q) use ($request) {
+                $q->whereDate('pr_date', '>=', $request->start_date);
+            });
+        }
+        if ($request->filled('end_date')) {
+            $query->whereHas('pr', function ($q) use ($request) {
+                $q->whereDate('pr_date', '<=', $request->end_date);
+            });
+        }
+
+        // Filter: Status Dokumen PR
+        if ($request->filled('status_pr') && $request->status_pr !== 'all') {
+            $statusPr = $request->status_pr;
+            if ($statusPr === 'rejected') {
+                $query->whereHas('pr', function ($q) {
+                    $q->where('status', 'rejected');
+                });
+            } elseif ($statusPr === 'approved') {
+                $query->whereHas('pr', function ($q) {
+                    $q->where('status', 'approved');
+                });
+            } elseif ($statusPr === 'pending') {
+                $query->whereHas('pr', function ($q) {
+                    $q->where('status', 'pending');
+                });
+            } elseif (in_array((string)$statusPr, ['1', '2', '3', '4', '5'])) {
+                $level = (int)$statusPr;
+                $query->whereHas('pr', function ($q) use ($level) {
+                    $q->where('status', '!=', 'rejected')
+                        ->whereRaw("COALESCE((
+                            SELECT MAX(level) 
+                            FROM wsp_purchase_requesition_approval 
+                            WHERE wsp_purchase_requesition_approval.pr_id = wsp_purchase_requesition.id 
+                              AND wsp_purchase_requesition_approval.status = 'approved'
+                        ), 1) = ?", [$level]);
+                });
+            } elseif (str_starts_with($statusPr, 'pending_lvl_')) {
+                $pendingLevel = (int)str_replace('pending_lvl_', '', $statusPr);
+                $query->whereHas('pr', function ($q) use ($pendingLevel) {
+                    $q->where('status', 'pending')
+                        ->whereRaw("COALESCE((
+                            SELECT MIN(level)
+                            FROM wsp_purchase_requesition_approval
+                            WHERE wsp_purchase_requesition_approval.pr_id = wsp_purchase_requesition.id
+                              AND wsp_purchase_requesition_approval.status = 'pending'
+                        ), 0) = ?", [$pendingLevel]);
+                });
+            }
+        }
+
+        // Filter: Status Item
+        if ($request->filled('status_item') && $request->status_item !== 'all') {
+            $statusItem = $request->status_item;
+            if ($statusItem === 'approved') {
+                $query->where('status', 1);
+            } elseif ($statusItem === 'rejected') {
+                $query->where('status', 0);
+            } elseif ($statusItem === 'pending') {
+                $query->whereNull('status');
+            }
+        }
+
+        // Filter: Tipe Item (pr / blocked)
+        if ($request->filled('tipe_item') && $request->tipe_item !== 'all') {
+            $query->where('jenis', $request->tipe_item);
+        }
+
+        // Filter: Kategori PR (Barang / Jasa)
+        if ($request->filled('kategori_pr') && $request->kategori_pr !== 'all') {
+            $kategori = $request->kategori_pr;
+            $query->whereHas('pr', function ($q) use ($kategori) {
+                $q->where('jenis', $kategori);
+            });
+        }
+
+        // Filter: MID spesifik
+        if ($request->filled('mid')) {
+            $mid = trim($request->mid);
+            $query->whereHas('barang', function ($q) use ($mid) {
+                $q->where('mid_barang', 'like', "%{$mid}%");
+            });
+        }
+
+        // Filter: Nama Barang spesifik
+        if ($request->filled('nama_barang')) {
+            $nama = trim($request->nama_barang);
+            $query->where(function ($q) use ($nama) {
+                $q->whereHas('barang', function ($b) use ($nama) {
+                    $b->where('nama_barang', 'like', "%{$nama}%");
+                })->orWhere('desc', 'like', "%{$nama}%");
+            });
+        }
+
+        // Filter: Search universal
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('pr', function ($prQ) use ($search) {
+                    $prQ->where('no_doc', 'like', "%{$search}%")
+                        ->orWhere('pr_number', 'like', "%{$search}%")
+                        ->orWhere('requested_by', 'like', "%{$search}%")
+                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('no_io', 'like', "%{$search}%")
+                        ->orWhere('detail_jenis', 'like', "%{$search}%");
+                })
+                    ->orWhere('desc', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%")
+                    ->orWhere('alasan', 'like', "%{$search}%")
+                    ->orWhereHas('barang', function ($bQ) use ($search) {
+                        $bQ->where('mid_barang', 'like', "%{$search}%")
+                            ->orWhere('nama_barang', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        return $query;
+    }
+
+    public function getReportPRData(Request $request)
+    {
+        $query = $this->buildReportPRQuery($request);
+
+        // Summary KPI statistics
+        $summaryQuery = clone $query;
+        $totalItems = $summaryQuery->count();
+        $totalQty = (float)$summaryQuery->sum('qty');
+        $totalDocs = (clone $query)->distinct('pr_id')->count('pr_id');
+        $totalPRType = (clone $query)->where('jenis', 'pr')->count();
+        $totalReservationType = (clone $query)->where('jenis', 'blocked')->count();
+
+        $totalApprovedDocs = (clone $query)->whereHas('pr', function ($q) {
+            $q->where('status', 'approved');
+        })->distinct('pr_id')->count('pr_id');
+
+        $totalPendingDocs = (clone $query)->whereHas('pr', function ($q) {
+            $q->where('status', 'pending');
+        })->distinct('pr_id')->count('pr_id');
+
+        $totalRejectedDocs = (clone $query)->whereHas('pr', function ($q) {
+            $q->where('status', 'rejected');
+        })->distinct('pr_id')->count('pr_id');
+
+        // Sorting
+        $sortBy = $request->input('sort_by', 'pr_date');
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if ($sortBy === 'pr_date') {
+            $query->orderBy(
+                WspPurchaseRequesitionModel::select('pr_date')
+                    ->whereColumn('wsp_purchase_requesition.id', 'wsp_purchase_requesition_items.pr_id'),
+                $sortDir
+            )->orderBy('id', $sortDir);
+        } elseif ($sortBy === 'no_doc') {
+            $query->orderBy(
+                WspPurchaseRequesitionModel::select('no_doc')
+                    ->whereColumn('wsp_purchase_requesition.id', 'wsp_purchase_requesition_items.pr_id'),
+                $sortDir
+            );
+        } elseif ($sortBy === 'pr_number') {
+            $query->orderBy(
+                WspPurchaseRequesitionModel::select('pr_number')
+                    ->whereColumn('wsp_purchase_requesition.id', 'wsp_purchase_requesition_items.pr_id'),
+                $sortDir
+            );
+        } elseif ($sortBy === 'department') {
+            $query->orderBy(
+                WspPurchaseRequesitionModel::select('department')
+                    ->whereColumn('wsp_purchase_requesition.id', 'wsp_purchase_requesition_items.pr_id'),
+                $sortDir
+            );
+        } elseif ($sortBy === 'requested_by') {
+            $query->orderBy(
+                WspPurchaseRequesitionModel::select('requested_by')
+                    ->whereColumn('wsp_purchase_requesition.id', 'wsp_purchase_requesition_items.pr_id'),
+                $sortDir
+            );
+        } elseif ($sortBy === 'qty') {
+            $query->orderBy('qty', $sortDir);
+        } elseif ($sortBy === 'jenis') {
+            $query->orderBy('jenis', $sortDir);
+        } else {
+            $query->orderBy('id', $sortDir);
+        }
+
+        $perPage = min(max((int)$request->input('per_page', 25), 5), 250);
+        $paginated = $query->paginate($perPage);
+
+        // Map and enrich data for frontend
+        $items = $paginated->getCollection()->map(function ($item) {
+            $pr = $item->pr;
+            $barang = $item->barang;
+
+            // Current PR Stage info
+            $currentStage = 'Pending';
+            $pendingApproverName = null;
+            $pendingRole = null;
+            $pendingApprovalId = null;
+            $lastWaDate = null;
+            $waSentToday = false;
+
+            if ($pr) {
+                if ($pr->status === 'rejected') {
+                    $currentStage = 'Rejected';
+                } elseif ($pr->status === 'approved') {
+                    $currentStage = 'Approved';
+                } else {
+                    $pendingApp = $pr->approval->firstWhere('status', 'pending');
+                    if ($pendingApp) {
+                        $currentStage = "Level {$pendingApp->level} - {$pendingApp->role}";
+                        $pendingRole = $pendingApp->role;
+                        $pendingApprovalId = $pendingApp->id;
+                        $pendingApproverName = $pendingApp->approver->nama_lengkap ?? '-';
+                        if ($pendingApp->last_wa_follow_up_at) {
+                            $lastWaDate = Carbon::parse($pendingApp->last_wa_follow_up_at)->format('d/m/Y H:i');
+                            $waSentToday = Carbon::parse($pendingApp->last_wa_follow_up_at)->isToday();
+                        }
+                    } else {
+                        $currentStage = 'Pending';
+                    }
+                }
+            }
+
+            // Approvals array
+            $approvalsData = [];
+            if ($pr && $pr->approval) {
+                foreach ($pr->approval->sortBy('level') as $app) {
+                    $approvalsData[] = [
+                        'id' => $app->id,
+                        'level' => $app->level,
+                        'role' => $app->role,
+                        'status' => $app->status ?? 'pending',
+                        'approver_name' => $app->approver->nama_lengkap ?? '-',
+                        'action_at' => $app->action_at ? Carbon::parse($app->action_at)->format('d/m/Y H:i') : null,
+                        'catatan' => $app->catatan,
+                        'ttd' => $app->ttd ? asset('storage/' . $app->ttd) : null,
+                        'last_wa_follow_up_at' => $app->last_wa_follow_up_at ? Carbon::parse($app->last_wa_follow_up_at)->format('d/m/Y H:i') : null,
+                    ];
+                }
+            }
+
+            // Item approval details (Manager User, Manager WH)
+            $itemApprovalsData = [];
+            if ($item->approval) {
+                foreach ($item->approval as $ia) {
+                    $itemApprovalsData[] = [
+                        'id' => $ia->id,
+                        'status' => $ia->status,
+                        'catatan' => $ia->catatan,
+                        'role' => $ia->approval->role ?? '-',
+                    ];
+                }
+            }
+
+            return [
+                'id' => $item->id,
+                'pr_id' => $item->pr_id,
+                'pr_date' => $pr ? ($pr->pr_date ? Carbon::parse($pr->pr_date)->format('d/m/Y') : '-') : '-',
+                'pr_date_raw' => $pr ? $pr->pr_date : null,
+                'no_doc' => $pr->no_doc ?? '-',
+                'pr_number' => $pr->pr_number ?? '-',
+                'department' => $pr ? strtoupper(str_replace('_', ' ', $pr->department ?? '')) : '-',
+                'requested_by' => $pr->requested_by ?? '-',
+                'kategori_pr' => $pr->jenis ?? 'Barang',
+                'detail_jenis' => $pr->detail_jenis ?? '-',
+                'no_io' => $pr->no_io ?? '-',
+                'pr_status' => $pr->status ?? 'pending',
+                'current_stage' => $currentStage,
+                'pending_approval_id' => $pendingApprovalId,
+                'pending_approver_name' => $pendingApproverName,
+                'pending_role' => $pendingRole,
+                'last_wa_date' => $lastWaDate,
+                'wa_sent_today' => $waSentToday,
+                'barang_id' => $item->barang_id,
+                'mid_barang' => $barang->mid_barang ?? '-',
+                'nama_barang' => $barang->nama_barang ?? $item->desc ?? '-',
+                'desc' => $item->desc ?? null,
+                'qty' => (float)$item->qty,
+                'uom' => $barang->uom ?? 'PCS',
+                'tipe_item' => $item->jenis === 'blocked' ? 'Reservasi' : 'PR',
+                'tipe_item_raw' => $item->jenis,
+                'alasan' => $item->alasan ?? '-',
+                'keterangan' => $item->keterangan ?? '-',
+                'status_item' => $item->status === 1 ? 'approved' : ($item->status === 0 ? 'rejected' : 'pending'),
+                'created_at' => $item->created_at ? Carbon::parse($item->created_at)->format('d/m/Y H:i') : '-',
+                'approvals' => $approvalsData,
+                'item_approvals' => $itemApprovalsData,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'current_page' => $paginated->currentPage(),
+                'data' => $items,
+                'from' => $paginated->firstItem(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'to' => $paginated->lastItem(),
+                'total' => $paginated->total(),
+            ],
+            'summary' => [
+                'total_items' => $totalItems,
+                'total_qty' => $totalQty,
+                'total_docs' => $totalDocs,
+                'total_pr_type' => $totalPRType,
+                'total_reservation_type' => $totalReservationType,
+                'total_approved_docs' => $totalApprovedDocs,
+                'total_pending_docs' => $totalPendingDocs,
+                'total_rejected_docs' => $totalRejectedDocs,
+            ]
+        ]);
+    }
+
+    public function exportReportPR(Request $request)
+    {
+        ini_set('max_execution_time', 300);
+        ini_set('memory_limit', '512M');
+
+        $query = $this->buildReportPRQuery($request);
+
+        // Sorting by pr_date desc
+        $query->orderBy(
+            WspPurchaseRequesitionModel::select('pr_date')
+                ->whereColumn('wsp_purchase_requesition.id', 'wsp_purchase_requesition_items.pr_id'),
+            'desc'
+        )->orderBy('id', 'desc');
+
+        $items = $query->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Report Detail PR');
+
+        // Main Title
+        $sheet->setCellValue('A1', 'LAPORAN DETAIL PURCHASE REQUISITION (PR)');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF1E3A8A'));
+        $sheet->mergeCells('A1:R1');
+
+        $periodeText = 'Semua Tanggal';
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $periodeText = Carbon::parse($request->start_date)->format('d/m/Y') . ' s/d ' . Carbon::parse($request->end_date)->format('d/m/Y');
+        } elseif ($request->filled('start_date')) {
+            $periodeText = 'Mulai ' . Carbon::parse($request->start_date)->format('d/m/Y');
+        } elseif ($request->filled('end_date')) {
+            $periodeText = 'Sampai ' . Carbon::parse($request->end_date)->format('d/m/Y');
+        }
+
+        $deptText = ($request->filled('departemen') && $request->departemen !== 'all') ? strtoupper($request->departemen) : 'Semua Departemen';
+        $statusText = ($request->filled('status_pr') && $request->status_pr !== 'all') ? strtoupper($request->status_pr) : 'Semua Status PR';
+
+        $sheet->setCellValue('A2', "Periode: {$periodeText} | Dept: {$deptText} | Status: {$statusText}");
+        $sheet->getStyle('A2')->getFont()->setItalic(true)->setSize(10)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF4B5563'));
+        $sheet->mergeCells('A2:R2');
+
+        $headers = [
+            'A' => 'No',
+            'B' => 'Tanggal PR',
+            'C' => 'No. Dokumen',
+            'D' => 'No. PR',
+            'E' => 'Departemen',
+            'F' => 'Peminta',
+            'G' => 'Kategori PR',
+            'H' => 'No. IO',
+            'I' => 'MID Barang',
+            'J' => 'Nama Barang / Deskripsi',
+            'K' => 'Tipe Item',
+            'L' => 'Qty',
+            'M' => 'Satuan (UOM)',
+            'N' => 'Alasan Pengajuan',
+            'O' => 'Keterangan Item',
+            'P' => 'Status PR',
+            'Q' => 'Tahap Approval',
+            'R' => 'Tanggal Dibuat',
+        ];
+
+        $headerRow = 4;
+        foreach ($headers as $col => $title) {
+            $sheet->setCellValue($col . $headerRow, $title);
+            $sheet->getStyle($col . $headerRow)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFFFFFFF'));
+            $sheet->getStyle($col . $headerRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1E3A8A'); // Navy Blue
+            $sheet->getStyle($col . $headerRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+        }
+        $sheet->getRowDimension($headerRow)->setRowHeight(28);
+
+        $currentRow = $headerRow + 1;
+        $no = 1;
+        $totalQtySum = 0;
+
+        if ($items->isEmpty()) {
+            $sheet->setCellValue('A' . $currentRow, 'Tidak ada data item Purchase Requisition sesuai filter.');
+            $sheet->mergeCells("A{$currentRow}:R{$currentRow}");
+            $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("A{$currentRow}")->getFont()->setItalic(true);
+            $currentRow++;
+        } else {
+            foreach ($items as $item) {
+                $pr = $item->pr;
+                $barang = $item->barang;
+
+                $stage = 'Pending';
+                if ($pr) {
+                    if ($pr->status === 'rejected') {
+                        $stage = 'Rejected';
+                    } elseif ($pr->status === 'approved') {
+                        $stage = 'Approved';
+                    } else {
+                        $pendingApp = $pr->approval->firstWhere('status', 'pending');
+                        $stage = $pendingApp ? "Level {$pendingApp->level} - {$pendingApp->role}" : 'Pending';
+                    }
+                }
+
+                $qty = (float)$item->qty;
+                $totalQtySum += $qty;
+
+                $sheet->setCellValue('A' . $currentRow, $no++);
+                $sheet->setCellValue('B' . $currentRow, $pr && $pr->pr_date ? Carbon::parse($pr->pr_date)->format('d/m/Y') : '-');
+                $sheet->setCellValue('C' . $currentRow, $pr->no_doc ?? '-');
+                $sheet->setCellValue('D' . $currentRow, $pr->pr_number ?? '-');
+                $sheet->setCellValue('E' . $currentRow, $pr ? strtoupper(str_replace('_', ' ', $pr->department ?? '')) : '-');
+                $sheet->setCellValue('F' . $currentRow, $pr->requested_by ?? '-');
+                $sheet->setCellValue('G' . $currentRow, $pr->jenis ?? 'Barang');
+                $sheet->setCellValue('H' . $currentRow, $pr->no_io ?? '-');
+                $sheet->setCellValue('I' . $currentRow, $barang->mid_barang ?? '-');
+                $sheet->setCellValue('J' . $currentRow, $barang->nama_barang ?? $item->desc ?? '-');
+                $sheet->setCellValue('K' . $currentRow, $item->jenis === 'blocked' ? 'Reservasi' : 'PR');
+                $sheet->setCellValue('L' . $currentRow, $qty);
+                $sheet->setCellValue('M' . $currentRow, $barang->uom ?? 'PCS');
+                $sheet->setCellValue('N' . $currentRow, $item->alasan ?? '-');
+                $sheet->setCellValue('O' . $currentRow, $item->keterangan ?? '-');
+                $sheet->setCellValue('P' . $currentRow, $pr ? strtoupper($pr->status) : '-');
+                $sheet->setCellValue('Q' . $currentRow, $stage);
+                $sheet->setCellValue('R' . $currentRow, $item->created_at ? Carbon::parse($item->created_at)->format('d/m/Y H:i') : '-');
+
+                // Alignments
+                $sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('B' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('C' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('D' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('G' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('I' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('K' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('L' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getStyle('M' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('P' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('R' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+                // Alternating row background
+                if ($currentRow % 2 === 0) {
+                    $sheet->getStyle("A{$currentRow}:R{$currentRow}")->getFill()
+                        ->setFillType(Fill::FILL_SOLID)
+                        ->getStartColor()->setARGB('FFF8FAFC');
+                }
+
+                $currentRow++;
+            }
+
+            // Total summary row
+            $sheet->setCellValue('A' . $currentRow, 'TOTAL');
+            $sheet->mergeCells("A{$currentRow}:K{$currentRow}");
+            $sheet->setCellValue('L' . $currentRow, $totalQtySum);
+            $sheet->getStyle("A{$currentRow}:R{$currentRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$currentRow}:R{$currentRow}")->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setARGB('FFE2E8F0');
+            $sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('L' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            $currentRow++;
+        }
+
+        // Borders
+        $sheet->getStyle("A4:R" . ($currentRow - 1))->getBorders()->getAllBorders()
+            ->setBorderStyle(Border::BORDER_THIN)
+            ->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFCBD5E1'));
+
+        // Auto size columns
+        foreach (range('A', 'R') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $fileName = 'Report_Detail_PR_' . Carbon::now()->format('Ymd_His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
     }
 }

@@ -9,12 +9,6 @@
         <div class="collapse menu-dropdown {{ request()->routeIs('stock.*') || request()->routeIs('wsp.stock_opname.*') ? 'show' : '' }}"
             id="sideBarRak">
             <ul class="nav nav-sm flex-column">
-                <li class="nav-item">
-                    <a href="{{ route('dashboard.wsp') }}" target="_blank"
-                        class="nav-link menu-link text-info fw-bold {{ request()->routeIs('dashboard.wsp*') ? 'active' : '' }}">
-                        <i class="mdi mdi-chart-box-outline fs-14"></i> <span data-key="t-wsp-analytics">WSP Analytics</span>
-                    </a>
-                </li>
                 @can('permission', 'wsp-stock-location')
                     <li class="nav-item">
                         <a href="{{ route('stock.stock-location') }}"
@@ -43,13 +37,13 @@
                         </a>
                     </li>
                 @endcan
-                @can('permission', 'wsp-riwayat-pr')
+                {{-- @can('permission', 'wsp-riwayat-pr')
                     <li class="nav-item">
                         <a href="{{ route('stock.pr.history') }}"
                             class="nav-link menu-link {{ request()->routeIs('stock.pr.history') ? 'active' : '' }}">
                             <i class="bx bx-git-commit fs-12"></i>Riwayat PR</a>
                     </li>
-                @endcan
+                @endcan --}}
                 @can('permission', 'wsp-data-pr')
                     <li class="nav-item">
                         <a href="{{ route('stock.pr.index') }}"
@@ -57,6 +51,13 @@
                             <i class="bx bx-git-commit fs-12"></i>Data PR</a>
                     </li>
                 @endcan
+                @if (Auth::user()->hasAnyPermission(['wsp-report-pr', 'wsp-riwayat-pr']) || Auth::user()->jabatan == 'admin')
+                    <li class="nav-item">
+                        <a href="{{ route('stock.pr.report') }}"
+                            class="nav-link menu-link {{ request()->routeIs('stock.pr.report') ? 'active' : '' }}">
+                            <i class="bx bx-git-commit fs-12"></i>Riwayat & Report PR</a>
+                    </li>
+                @endif
                 @can('permission', 'wsp-approval-pr')
                     <li class="nav-item">
                         <a href="{{ route('stock.pr.approval') }}"

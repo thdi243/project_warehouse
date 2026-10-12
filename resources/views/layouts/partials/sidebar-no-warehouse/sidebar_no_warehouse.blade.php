@@ -12,10 +12,16 @@
             <i class="bx bx-git-commit fs-12"></i> <span data-key="t-tkbm">Form PR</span>
         </a>
     </li>
-    <li class="nav-item">
+    {{-- <li class="nav-item">
         <a href="{{ route('stock.pr.history') }}"
             class="nav-link menu-link {{ request()->routeIs('stock.pr.history') ? 'active' : '' }}">
             <i class="bx bx-git-commit fs-12"></i><span> Data Riwayat PR</span>
+        </a>
+    </li> --}}
+    <li class="nav-item">
+        <a href="{{ route('stock.pr.report') }}"
+            class="nav-link menu-link {{ request()->routeIs('stock.pr.report') ? 'active' : '' }}">
+            <i class="bx bx-git-commit fs-12"></i><span> Riwayat & Report PR</span>
         </a>
     </li>
     @if ($jabatan == 'dept_head' || $jabatan == 'supervisor' || Auth::user()->hasRole('level_5_pr'))

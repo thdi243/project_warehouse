@@ -40,4 +40,10 @@ class WspPurchaseRequesitionItemsModel extends Model
     {
         return $this->hasMany(WspPurchaseRequesitionItemApprovalModel::class, 'pr_item_id');
     }
+
+    public function pr()
+    {
+        return $this->belongsTo(WspPurchaseRequesitionModel::class, 'pr_id');
+    }
 }
+
