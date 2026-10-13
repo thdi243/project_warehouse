@@ -374,12 +374,15 @@
                         <table class="table table-hover table-striped mb-0 text-nowrap" id="itemTable">
                             <thead class="table-info">
                                 <tr>
-                                    <th>No</th>
-                                    <th>Nama Barang</th>
+                                    <th class="text-center" style="width: 50px;">No</th>
                                     <th>MID</th>
+                                    <th>Nama Barang</th>
                                     <th>Principal</th>
+                                    <th class="text-center">Qty Box</th>
+                                    <th class="text-center">UOM</th>
+                                    <th>Dibuat Oleh</th>
                                     <th>Status</th>
-                                    <th class="text-center">Aksi</th>
+                                    <th class="text-center" style="width: 150px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="itemTableBody">
@@ -470,21 +473,6 @@
         </div>
     </div>
 
-    {{-- Offcanvas Detail Barang --}}
-    <div class="offcanvas offcanvas-end offcanvas-detail" tabindex="-1" id="detailOffcanvas"
-        aria-labelledby="detailOffcanvasLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="detailOffcanvasLabel">
-                <i class="mdi mdi-information-outline me-2"></i>
-                Detail Barang
-            </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body">
-            <div id="detailContent">
-            </div>
-        </div>
-    </div>
 
     {{-- Modal upload barang --}}
     <div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
@@ -571,7 +559,6 @@
                         // TANGKAP SELURUH OBJEK PAGINATOR DARI BACKEND
                         const paginatedData = res.data;
                         const items = paginatedData.data;
-                        currentBarangData = {};
 
                         if (res.status === true && items.length > 0) {
                             $("#emptyState").hide();
@@ -580,7 +567,6 @@
 
                             // 3. Loop dan render baris tabel (TR)
                             $.each(items, function(i, item) {
-                                currentBarangData[item.id] = item;
                                 const perPage = paginatedData
                                     .per_page;
                                 const currentPage = paginatedData
@@ -615,35 +601,19 @@
 
                                 let row = `
                                      <tr id="row-${item.id}">
-                                        <td>${noUrut}</td>
-                                        <td><strong>${item.nama_barang}</strong></td>
-                                        <td>${item.mid_barang ?? '-'}</td>
+                                        <td class="text-center">${noUrut}</td>
+                                        <td><strong>${item.mid_barang ?? '-'}</strong></td>
+                                        <td>${item.nama_barang}</td>
                                         <td>${item.principal ?? '-'}</td>
+                                        <td class="text-center">${item.qty_box ?? '-'}</td>
+                                        <td class="text-center">${item.uom ?? '-'}</td>
+                                        <td>${item.created_by?.nama_lengkap ?? (item.created_by?.username ?? '-')}</td>
                                         <td>
                                             <span class="badge ${statusClass}">${item.status}</span>
                                         </td>
                                         <td class="text-center">
                                             <div class="d-flex gap-2 justify-content-center">
-                                                
-                                                <button class="btn btn-sm btn-outline-info collapse-trigger"
-                                                        type="button" 
-                                                        data-bs-toggle="collapse" 
-                                                        data-bs-target="#detail-${item.id}" 
-                                                        aria-expanded="false" 
-                                                        aria-controls="detail-${item.id}"
-                                                        title="Lihat Detail">
-                                                    <i id="collapse-icon-${item.id}" class="mdi mdi-chevron-down me-2"></i>Detail
-                                                </button>
-
                                                 ${actionButton}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr class="collapse-row">
-                                        <td colspan="6" class="p-0 border-0"> 
-                                            <div class="collapse p-0" id="detail-${item.id}"> 
-                                                <div class="p-3 bg-light border-bottom" id="detailContent-${item.id}">
-                                                    </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -654,19 +624,6 @@
 
                             // 4. Render tombol paginasi
                             renderPagination(paginatedData);
-
-                            $('#itemTableBody').find('.collapse').off('show.bs.collapse').on(
-                                'show.bs.collapse',
-                                function() {
-                                    const itemId = this.id.replace('detail-', '');
-                                    // Putar ikon panah ke atas dan panggil muat detail
-                                    $(`#collapse-icon-${itemId}`).addClass('rotated');
-                                    showDetailCollapse(parseInt(itemId));
-                                }).off('hide.bs.collapse').on('hide.bs.collapse', function() {
-                                const itemId = this.id.replace('detail-', '');
-                                // Kembalikan ikon panah ke bawah
-                                $(`#collapse-icon-${itemId}`).removeClass('rotated');
-                            });
 
                             if (typeof AOS !== 'undefined') {
                                 AOS.refresh();
@@ -1067,52 +1024,7 @@
             $("#itemModalLabel").html('<i class="mdi mdi-package-variant-closed me-2"></i>Tambah Barang Baru');
         }
 
-        let currentBarangData = {};
 
-        function showDetailCollapse(id) {
-            const item = currentBarangData[id];
-            const targetElement = $(`#detailContent-${id}`);
-
-            if (!item) {
-                targetElement.html(
-                    '<div class="alert alert-danger mb-0">Detail data tidak ditemukan di memori lokal.</div>');
-                return;
-            }
-
-            // Helper function untuk menampilkan badge status
-            const statusBadge =
-                `<span class="badge ${item.status === 'aktif' ? 'badge-soft-success' : 'badge-soft-danger'}">${item.status}</span>`;
-
-            // Konten Detail yang Ringkas dan Terbaca
-            let detailHTML = `
-                <div class="row g-3 text-wrap">
-                    <div class="col-md-4">
-                        <strong>MID:</strong> ${item.mid_barang ?? '-'}
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Nama Barang:</strong> ${item.nama_barang ?? '-'}
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Principal:</strong> ${item.principal ?? '-'}
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Qty per Box:</strong> ${item.qty_box ?? '-'}
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Uom:</strong> ${item.uom ?? '-'}
-                    </div>
-                    <div class="col-md-12 mt-3">
-                        <strong>Status Saat Ini:</strong> ${statusBadge}
-                        ${item.deleted_at ? '<span class="text-danger ms-2">(Telah di-Soft Delete)</span>' : ''}
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Dibuat Oleh:</strong> ${item.created_by?.nama_lengkap ?? '-'}
-                    </div>
-                </div>
-            `;
-
-            targetElement.html(detailHTML);
-        }
 
         function editBarang(id) {
             $.get(`/api/wfg/show/barang/${id}`, function(res) {

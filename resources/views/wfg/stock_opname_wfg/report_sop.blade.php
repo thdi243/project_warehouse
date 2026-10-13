@@ -332,7 +332,7 @@
                                 </div>
                                 <div class="col-md-3 col-6">
                                     <div class="approval-stat bg-soft-success">
-                                        <div class="text-success small mb-2 fw-semibold">Total Box</div>
+                                        <div class="text-success small mb-2 fw-semibold">Total Box / LSN</div>
                                         <div class="stat-value text-success" id="sumBoxCount">0</div>
                                     </div>
                                 </div>
@@ -348,7 +348,7 @@
                                             <th>Nama Barang</th>
                                             <th>UOM</th>
                                             <th class="text-end">Total Pallet</th>
-                                            <th class="text-end">Total Box</th>
+                                            <th class="text-end">Total Box / LSN</th>
                                             <th class="text-center" style="width: 100px;">Aksi</th>
                                         </tr>
                                     </thead>
@@ -360,7 +360,7 @@
 
                             <div id="pallet_counter_empty_state" class="text-center py-5" style="display:none;">
                                 <i class="mdi mdi-database-off-outline text-muted" style="font-size: 56px;"></i>
-                                <p class="text-muted mb-0">Tidak ada data pallet counter (UOM BOX) untuk opname ini.</p>
+                                <p class="text-muted mb-0">Tidak ada data pallet counter (UOM BOX & LSN) untuk opname ini.</p>
                             </div>
                         </div>
                     </div>
@@ -1071,9 +1071,10 @@
                     return;
                 }
 
-                // Filter details for UOM BOX only (case-insensitive)
+                // Filter details for UOM BOX & LSN (case-insensitive)
+                const allowedUoms = ['BOX', 'LSN'];
                 const boxDetails = response.details.filter(item => {
-                    return item.barang && item.barang.uom && item.barang.uom.trim().toUpperCase() === 'BOX';
+                    return item.barang && item.barang.uom && allowedUoms.includes(item.barang.uom.trim().toUpperCase());
                 });
 
                 if (boxDetails.length === 0) {
