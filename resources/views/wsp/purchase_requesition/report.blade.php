@@ -418,7 +418,8 @@
                                     <option value="pending_lvl_3">Pending Level 3 (Manager User)</option>
                                     <option value="pending_lvl_4">Pending Level 4 (Manager WH)</option>
                                     <option value="pending_lvl_5">Pending Level 5 (Admin WSP)</option>
-                                    <option value="approved">Disetujui Penuh (Approved)</option>
+                                    <option value="approved">Disetujui Penuh (Approved / Finished)</option>
+                                    <option value="finished">Selesai (Finished)</option>
                                     <option value="rejected">Ditolak (Rejected)</option>
                                 </select>
                             </div>
@@ -958,7 +959,10 @@
                     if (item.pr_status === 'rejected') {
                         prStatusBadge =
                             `<span class="badge badge-status-rejected py-1 px-2" style="cursor:pointer;" onclick="openTrackingModal(${item.id})" title="Klik untuk lihat tracking approval"><i class="mdi mdi-close-circle me-1"></i>Rejected</span>`;
-                    } else if (item.pr_status === 'approved') {
+                    } else if (item.pr_status === 'finished' || item.current_stage === 'Finished') {
+                        prStatusBadge =
+                            `<span class="badge badge-status-approved py-1 px-2" style="cursor:pointer;" onclick="openTrackingModal(${item.id})" title="Klik untuk lihat tracking approval"><i class="mdi mdi-check-circle me-1"></i>Finished</span>`;
+                    } else if (item.pr_status === 'approved' && !item.pending_approval_id) {
                         prStatusBadge =
                             `<span class="badge badge-status-approved py-1 px-2" style="cursor:pointer;" onclick="openTrackingModal(${item.id})" title="Klik untuk lihat tracking approval"><i class="mdi mdi-check-circle me-1"></i>Approved Penuh</span>`;
                     } else {
@@ -1290,8 +1294,13 @@
                 $('#detail_no_io').text(item.no_io);
 
                 let badge = '<span class="badge bg-warning text-dark">Pending</span>';
-                if (item.pr_status === 'approved') badge = '<span class="badge bg-success">Approved</span>';
-                if (item.pr_status === 'rejected') badge = '<span class="badge bg-danger">Rejected</span>';
+                if (item.pr_status === 'finished' || item.current_stage === 'Finished') {
+                    badge = '<span class="badge bg-success">Finished</span>';
+                } else if (item.pr_status === 'approved') {
+                    badge = '<span class="badge bg-success">Approved</span>';
+                } else if (item.pr_status === 'rejected') {
+                    badge = '<span class="badge bg-danger">Rejected</span>';
+                }
                 $('#detail_status_badge').html(badge);
 
                 // Fetch detail lengkap PR via API

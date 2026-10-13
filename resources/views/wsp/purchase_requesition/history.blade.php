@@ -369,6 +369,9 @@
                     if (pr.status === 'rejected') {
                         statusText = 'REJECTED';
                         badgeClass = 'danger';
+                    } else if (pr.status === 'finished') {
+                        statusText = 'FINISHED';
+                        badgeClass = 'success';
                     } else {
                         let maxApprovedLevel = 1;
                         if (pr.approval && pr.approval.length > 0) {
@@ -378,18 +381,22 @@
                                 }
                             });
                         }
-                        statusText = `LEVEL ${maxApprovedLevel}`;
 
                         if (maxApprovedLevel === 5) {
+                            statusText = 'FINISHED';
                             badgeClass = 'success';
                         } else if (maxApprovedLevel === 4) {
                             badgeClass = 'info';
+                            statusText = `LEVEL ${maxApprovedLevel}`;
                         } else if (maxApprovedLevel === 3) {
                             badgeClass = 'primary';
+                            statusText = `LEVEL ${maxApprovedLevel}`;
                         } else if (maxApprovedLevel === 2) {
                             badgeClass = 'secondary';
+                            statusText = `LEVEL ${maxApprovedLevel}`;
                         } else {
                             badgeClass = 'warning';
+                            statusText = `LEVEL ${maxApprovedLevel}`;
                         }
                     }
 

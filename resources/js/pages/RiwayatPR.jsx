@@ -22,6 +22,7 @@ import { Eye, Printer, Inbox } from "lucide-react";
 const statusVariant = {
     pending: "warning",
     approved: "success",
+    finished: "success",
     rejected: "destructive",
 };
 

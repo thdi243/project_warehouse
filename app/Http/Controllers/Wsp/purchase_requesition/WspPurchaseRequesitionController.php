@@ -1319,16 +1319,36 @@ class WspPurchaseRequesitionController extends Controller
 
     private function createApprovalFlow(WspPurchaseRequesitionModel $pr, $signatureBase64 = null)
     {
-        $requestedName = strtolower(trim($pr->requested_by));
+        // 1. Prioritaskan user_id dari data PR (Auth::id() saat submit)
+        $user = null;
+        if ($pr->user_id) {
+            $user = User::where('id', $pr->user_id)->where('is_active', true)->first();
+        }
 
-        $user = User::where('is_active', true)
-            ->where(function ($q) use ($requestedName) {
-                $q->whereRaw('LOWER(nama_lengkap) LIKE ?', ["%{$requestedName}%"])
-                    ->orWhereRaw('? LIKE CONCAT("%", LOWER(nama_lengkap), "%")', [$requestedName]);
-            })
-            ->first();
+        // 2. Jika tidak ditemukan lewat user_id, cari berdasarkan requested_by
+        if (!$user && !empty($pr->requested_by)) {
+            $requestedName = strtolower(trim($pr->requested_by));
 
-        $userId = $user->id ?? $pr->user_id;
+            // Cari exact match terlebih dahulu (nama_lengkap atau username)
+            $user = User::where('is_active', true)
+                ->where(function ($q) use ($requestedName) {
+                    $q->whereRaw('LOWER(nama_lengkap) = ?', [$requestedName])
+                        ->orWhereRaw('LOWER(username) = ?', [$requestedName]);
+                })
+                ->first();
+
+            // Jika belum ketemu, baru LIKE nama_lengkap/username
+            if (!$user && strlen($requestedName) >= 3) {
+                $user = User::where('is_active', true)
+                    ->where(function ($q) use ($requestedName) {
+                        $q->whereRaw('LOWER(nama_lengkap) LIKE ?', ["%{$requestedName}%"])
+                            ->orWhereRaw('LOWER(username) LIKE ?', ["%{$requestedName}%"]);
+                    })
+                    ->first();
+            }
+        }
+
+        $userId = $user ? $user->id : ($pr->user_id ?: Auth::id());
 
         $deptMap = [
             'ite' => 'engineering',
@@ -2339,7 +2359,11 @@ class WspPurchaseRequesitionController extends Controller
                 });
             } elseif ($statusPr === 'approved') {
                 $query->whereHas('pr', function ($q) {
-                    $q->where('status', 'approved');
+                    $q->whereIn('status', ['approved', 'finished']);
+                });
+            } elseif ($statusPr === 'finished') {
+                $query->whereHas('pr', function ($q) {
+                    $q->where('status', 'finished');
                 });
             } elseif ($statusPr === 'pending') {
                 $query->whereHas('pr', function ($q) {
@@ -2451,7 +2475,7 @@ class WspPurchaseRequesitionController extends Controller
         $totalReservationType = (clone $query)->where('jenis', 'blocked')->count();
 
         $totalApprovedDocs = (clone $query)->whereHas('pr', function ($q) {
-            $q->where('status', 'approved');
+            $q->whereIn('status', ['approved', 'finished']);
         })->distinct('pr_id')->count('pr_id');
 
         $totalPendingDocs = (clone $query)->whereHas('pr', function ($q) {
@@ -2523,8 +2547,8 @@ class WspPurchaseRequesitionController extends Controller
             if ($pr) {
                 if ($pr->status === 'rejected') {
                     $currentStage = 'Rejected';
-                } elseif ($pr->status === 'approved') {
-                    $currentStage = 'Approved';
+                } elseif ($pr->status === 'finished') {
+                    $currentStage = 'Finished';
                 } else {
                     $pendingApp = $pr->approval->firstWhere('status', 'pending');
                     if ($pendingApp) {
@@ -2537,7 +2561,7 @@ class WspPurchaseRequesitionController extends Controller
                             $waSentToday = Carbon::parse($pendingApp->last_wa_follow_up_at)->isToday();
                         }
                     } else {
-                        $currentStage = 'Pending';
+                        $currentStage = ($pr->status === 'approved') ? 'Approved' : 'Finished';
                     }
                 }
             }
@@ -2723,11 +2747,15 @@ class WspPurchaseRequesitionController extends Controller
                 if ($pr) {
                     if ($pr->status === 'rejected') {
                         $stage = 'Rejected';
-                    } elseif ($pr->status === 'approved') {
-                        $stage = 'Approved';
+                    } elseif ($pr->status === 'finished') {
+                        $stage = 'Finished';
                     } else {
                         $pendingApp = $pr->approval->firstWhere('status', 'pending');
-                        $stage = $pendingApp ? "Level {$pendingApp->level} - {$pendingApp->role}" : 'Pending';
+                        if ($pendingApp) {
+                            $stage = "Level {$pendingApp->level} - {$pendingApp->role}";
+                        } else {
+                            $stage = ($pr->status === 'approved') ? 'Approved' : 'Finished';
+                        }
                     }
                 }
 
