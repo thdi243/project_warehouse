@@ -72,18 +72,20 @@
                             <i class="mdi mdi-checkbox-marked-circle-outline"></i> Stock Opname </a>
                     </li>
                 @endcan
-                @if (auth()->user()->can('permission', 'dashboard-kempu') || auth()->user()->can('permission', 'dashboard') || auth()->user()->can('permission', 'master-kempu') || auth()->user()->hasRole('super-admin'))
+                @can('permission', 'dashboard-kempu-traceability')
                     <li class="nav-item">
                         <a href="{{ route('dashboard.kempu') }}"
                             class="nav-link {{ request()->routeIs('dashboard.kempu*') ? 'active' : '' }}">
                             <i class="mdi mdi-cube-scan"></i> Monitoring & Traceability Kempu </a>
                     </li>
-                @endif
-                <li class="nav-item">
-                    <a href="{{ route('dashboard.wsp') }}" target="_blank"
-                        class="nav-link {{ request()->routeIs('dashboard.wsp*') ? 'active' : '' }}">
-                        <i class="mdi mdi-chart-box-outline"></i> WSP Analytics </a>
-                </li>
+                @endcan
+                @can('permission', 'dashboard-wsp-analytics')
+                    <li class="nav-item">
+                        <a href="{{ route('dashboard.wsp') }}" target="_blank"
+                            class="nav-link {{ request()->routeIs('dashboard.wsp*') ? 'active' : '' }}">
+                            <i class="mdi mdi-chart-box-outline"></i> WSP Analytics </a>
+                    </li>
+                @endcan
             </ul>
         </div>
     </li>
