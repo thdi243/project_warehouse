@@ -27,7 +27,7 @@
         <link href="{{ asset('material/assets/css/custom.min.css') }}" rel="stylesheet" type="text/css" />
 
         <script src="{{ asset('material/assets/libs/sweetalert2/sweetalert2.min.js') }}"></script>
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="{{ asset('material/assets/js/jquery.min.js') }}"></script>
 
         <style>
             *,
@@ -492,8 +492,15 @@
                         <div class="card-subtitle">Masuk ke akun Anda untuk melanjutkan</div>
 
                         <!-- Form -->
-                        <form id="loginForm">
+                        <form id="loginForm" method="POST" action="{{ route('signin') }}">
                             @csrf
+
+                            @if ($errors->any())
+                                <div class="alert alert-danger py-2 mb-3" style="font-size: 0.85rem;">
+                                    <i class="ri-error-warning-line me-1 align-middle"></i> {{ $errors->first() }}
+                                </div>
+                            @endif
+
                             <div class="mb-form">
                                 <label for="username" class="form-label-custom">Username / NIK</label>
                                 <input type="text" class="form-control-custom" id="username" name="username"

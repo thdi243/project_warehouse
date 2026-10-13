@@ -47,10 +47,13 @@ class AuthController extends Controller
 
             if (!$user->is_active) {
                 Auth::logout();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.',
-                ], 403);
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.',
+                    ], 403);
+                }
+                return back()->withErrors(['username' => 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.'])->withInput(['username']);
             }
 
             $request->session()->regenerate();
@@ -64,17 +67,25 @@ class AuthController extends Controller
             // Hapus dari session biar tidak dipakai lagi
             session()->forget('url.intended');
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Login berhasil',
-                'redirect' => $intended,
-            ]);
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Login berhasil',
+                    'redirect' => $intended,
+                ]);
+            }
+
+            return redirect()->intended($intended);
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Login gagal. Periksa username atau password Anda.',
-        ], 401);
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Login gagal. Periksa username atau password Anda.',
+            ], 401);
+        }
+
+        return back()->withErrors(['username' => 'Login gagal. Periksa username atau password Anda.'])->withInput(['username']);
     }
 
     public function logout(Request $request)
