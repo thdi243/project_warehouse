@@ -24,8 +24,8 @@ class MasterBarangController extends Controller
     {
         $barang = WpmMasterBarangModel::create([
             'mid' => $request->mid,
-            'nama_barang' => $request->nama_barang,
-            'uom' => $request->uom,
+            'nama_barang' => strtoupper(trim($request->nama_barang)),
+            'uom' => strtoupper(trim($request->uom)),
             'qty_pallet' => $request->qty_pallet ?? 1,
             'created_by' => Auth::id(),
         ]);
@@ -71,8 +71,8 @@ class MasterBarangController extends Controller
 
         $barang->update([
             'mid' => $request->mid,
-            'nama_barang' => $request->nama_barang,
-            'uom' => $request->uom,
+            'nama_barang' => strtoupper(trim($request->nama_barang)),
+            'uom' => strtoupper(trim($request->uom)),
             'qty_pallet' => $request->qty_pallet,
             'updated_by' => Auth::id(),
         ]);
@@ -169,8 +169,8 @@ class MasterBarangController extends Controller
 
             $payload[] = [
                 'mid' => $mid,
-                'nama_barang' => $namaBarang,
-                'uom' => $uom,
+                'nama_barang' => strtoupper($namaBarang),
+                'uom' => strtoupper($uom),
                 'qty_pallet' => floatval($qtyPallet) ?? 1,
                 'created_by' => Auth::id(),
                 'created_at' => now(),

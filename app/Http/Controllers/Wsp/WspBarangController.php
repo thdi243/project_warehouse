@@ -50,8 +50,8 @@ class WspBarangController extends Controller
             $barang = BarangModel::create([
                 'created_by'     => Auth::id() ?? 1,
                 'mid_barang'  => $request->mid_barang,
-                'nama_barang' => $request->nama_barang,
-                'uom'         => $request->uom,
+                'nama_barang' => strtoupper($request->nama_barang),
+                'uom'         => strtoupper($request->uom),
                 'qty_pallet'  => $request->qty_pallet ?? 1,
                 'image'       => $imagePath,
             ]);
@@ -239,8 +239,8 @@ class WspBarangController extends Controller
 
         // Update data barang
         $barang->mid_barang = $request->midBarangEdit;
-        $barang->nama_barang = $request->namaBarangEdit;
-        $barang->uom = $request->uomEdit;
+        $barang->nama_barang = strtoupper($request->namaBarangEdit);
+        $barang->uom = strtoupper($request->uomEdit);
         $barang->qty_pallet = $request->qtyPalletEdit ?? 1;
 
         if ($request->hasFile('imageEdit')) {
