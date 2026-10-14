@@ -797,30 +797,6 @@ class KempuProduksiController extends Controller
                     'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
                 ], 403);
             }
-
-            $opName = $request->input('operator_name', $request->input('user_name', Auth::user()?->nama_lengkap ?? Auth::user()?->username ?? 'User'));
-            $opRole = $callerRole ?: (Auth::user()?->role ?? 'Staff');
-            $portalUserId = $request->input('operator_id', $request->input('user_id', Auth::id()));
-
-            $kempu->recordTracking(
-                stage: ($cardKey === 'prod-force' ? 'PRODUKSI_FORCE' : 'PRODUKSI'),
-                action: 'Input Manual ID (' . ($card['title'] ?? 'Lookup') . ')',
-                actionResult: 'MANUAL_SCAN',
-                fromLocation: $kempu->main?->current_location ?? 'PRODUKSI',
-                toLocation: $kempu->main?->current_location ?? 'PRODUKSI',
-                condition: $kempu->main?->condition ?? 'OK',
-                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
-                userId: $portalUserId,
-                metadata: [
-                    'input_method'  => 'MANUAL',
-                    'is_manual'     => true,
-                    'card_key'      => $cardKey,
-                    'action_title'  => $card['title'],
-                    'operator_name' => $opName,
-                    'operator_role' => $opRole,
-                    'app_source'    => $request->input('app_source', 'warehouse'),
-                ]
-            );
         }
 
         $currentReusedCount = (int)($kempu->main->reused_count ?? 0);

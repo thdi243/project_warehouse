@@ -1038,31 +1038,6 @@ class KempuQcController extends Controller
                     'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
                 ], 403);
             }
-
-            $opName = $request->input('operator_name', $request->input('user_name', Auth::user()?->nama_lengkap ?? Auth::user()?->username ?? 'User'));
-            $opRole = $callerRole ?: (Auth::user()?->role ?? 'QC');
-            $portalUserId = $request->input('operator_id', $request->input('user_id', Auth::id()));
-            $qcStage = $card['stage'] ?? (str_contains($qcType, 'pm') ? 'QC_PM' : (str_contains($qcType, 'force') ? 'QC_FORCE' : 'QC_PROSES'));
-
-            $kempu->recordTracking(
-                stage: $qcStage,
-                action: 'Input Manual ID (' . ($card['title'] ?? 'Lookup') . ')',
-                actionResult: 'MANUAL_SCAN',
-                fromLocation: $kempu->main?->current_location ?? 'WPM',
-                toLocation: $kempu->main?->current_location ?? 'WPM',
-                condition: $kempu->main?->condition ?? 'OK',
-                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
-                userId: $portalUserId,
-                metadata: [
-                    'input_method'  => 'MANUAL',
-                    'is_manual'     => true,
-                    'qc_type'       => $qcType,
-                    'action_title'  => $card['title'],
-                    'operator_name' => $opName,
-                    'operator_role' => $opRole,
-                    'app_source'    => $request->input('app_source', 'warehouse'),
-                ]
-            );
         }
 
         $currentReusedCount = (int)($kempu->main->reused_count ?? 0);

@@ -162,28 +162,6 @@ class KempuEngController extends Controller
                     'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
                 ], 403);
             }
-
-            // Catat aktivitas pengetikan ID manual ke History Scan
-            $user = auth()->user();
-            $opName = $user?->nama_lengkap ?? $user?->username ?? 'User';
-            $opRole = $user?->role ?? ($user?->roles?->first()?->name ?? 'ENG Staff');
-            $kempu->recordTracking(
-                stage: 'ENGINEERING_WORKSHOP',
-                action: 'Input Manual ID (Lookup Repair)',
-                actionResult: 'MANUAL_SCAN',
-                fromLocation: $kempu->main?->current_location ?? 'ENG',
-                toLocation: $kempu->main?->current_location ?? 'ENG',
-                condition: $kempu->main?->condition ?? 'NOT_OK',
-                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
-                userId: $user?->id,
-                metadata: [
-                    'input_method'  => 'MANUAL',
-                    'is_manual'     => true,
-                    'action_title'  => 'Lookup Repair',
-                    'operator_name' => $opName,
-                    'operator_role' => $opRole,
-                ]
-            );
         }
 
         return response()->json([

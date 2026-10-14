@@ -290,29 +290,6 @@ class KempuPasController extends Controller
                     'message' => 'Akses ditolak: Operator tidak memiliki izin untuk mengetik ID kempu secara manual. Wajib menggunakan pemindai kamera/barcode.',
                 ], 403);
             }
-
-            // Catat aktivitas pengetikan ID manual ke History Scan
-            $user = Auth::user();
-            $opName = $user?->nama_lengkap ?? $user?->username ?? 'User';
-            $opRole = $user?->role ?? ($user?->roles?->first()?->name ?? 'Staff');
-            $kempu->recordTracking(
-                stage: $card['stage'] ?? 'PAS',
-                action: 'Input Manual ID (' . ($card['title'] ?? 'Lookup') . ')',
-                actionResult: 'MANUAL_SCAN',
-                fromLocation: $kempu->main?->current_location ?? 'PAS',
-                toLocation: $kempu->main?->current_location ?? 'PAS',
-                condition: $kempu->main?->condition ?? 'OK',
-                notes: "ID Kempu diketik manual oleh {$opName} ({$opRole})",
-                userId: $user?->id,
-                metadata: [
-                    'input_method'  => 'MANUAL',
-                    'is_manual'     => true,
-                    'card_key'      => $cardKey,
-                    'action_title'  => $card['title'],
-                    'operator_name' => $opName,
-                    'operator_role' => $opRole,
-                ]
-            );
         }
 
         $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
