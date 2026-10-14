@@ -110,10 +110,58 @@ class WpmKempuController extends Controller
     }
 
     /**
+     * Cek apakah user saat ini memiliki wewenang supervisi di WPM Kempu
+     */
+    public static function canSupervisi($user = null): bool
+    {
+        $user = $user ?? Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        if (method_exists($user, 'hasAnyPermission')) {
+            try {
+                if ($user->hasAnyPermission(['super-admin', 'wpm-kempu-supervisi'])) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if (method_exists($user, 'hasPermission')) {
+            try {
+                if ($user->hasPermission('wpm-kempu-supervisi') || $user->hasPermission('super-admin')) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if (method_exists($user, 'hasRole')) {
+            try {
+                if ($user->hasRole('super-admin')) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        // Fallback pengecekan kolom atribut user
+        if (in_array(strtolower($user->role ?? ''), ['super-admin', 'superadmin', 'admin']) ||
+            in_array(strtolower($user->jabatan ?? ''), ['super-admin', 'superadmin', 'admin'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Validasi alur urutan status dan pencegahan duplikat scan di WPM
      */
-    public static function validateStatusFlow($kempu, string $cardKey): array
+    public static function validateStatusFlow($kempu, string $cardKey, $user = null): array
     {
+        $user = $user ?? Auth::user();
+        $isSupervisi = false;
         $currentStatus = trim($kempu->main?->current_status ?? $kempu->current_status ?? '');
         $idKempu = $kempu->id_kempu;
 
@@ -233,16 +281,21 @@ class WpmKempuController extends Controller
                 }
 
                 // 9. Cek jika kempu masih berada di Warehouse PT PAS (belum di-Transfer Out dari PAS)
-                if (
-                    strcasecmp($currentStatus, 'Transfer in From BAS') === 0 ||
-                    strcasecmp($currentStatus, 'Transfer In From BAS') === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_PAS_TRANSFER_IN_BAS) === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_PAS_RECEIVED) === 0
-                ) {
-                    return [
-                        'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} masih berada di Warehouse PT PAS (status: 'Transfer in From BAS'). Kempu harus menyelesaikan pengiriman 'Transfer Out to BAS' dari PAS terlebih dahulu sebelum dapat di-Transfer In ke WPM.",
-                    ];
+                $isPasReceived = in_array(strtolower($currentStatus), [
+                    'transfer in from bas',
+                    'pas_transfer_in_from_bas',
+                    'pas_received',
+                    strtolower(MasterKempuModel::STATUS_PAS_TRANSFER_IN_BAS),
+                    strtolower(MasterKempuModel::STATUS_PAS_RECEIVED),
+                ]);
+
+                if ($isPasReceived) {
+                    if (!self::canSupervisi($user)) {
+                        return [
+                            'valid'   => false,
+                            'message' => "Urutan salah: Kempu {$idKempu} masih berada di Warehouse PT PAS (status: 'Transfer in From BAS'). Kempu harus menyelesaikan pengiriman 'Transfer Out to BAS' dari PAS terlebih dahulu sebelum dapat di-Transfer In ke WPM.",
+                        ];
+                    }
                 }
 
                 // 10. Cek jika masih di status Transfer Out To Produksi atau area Produksi
@@ -298,11 +351,18 @@ class WpmKempuController extends Controller
                 ]);
                 $isOldKempuInitialAllowed = ($isOldKempu && $isInitialRegistration && $reusedCount <= 0 && !$kempu->hasPassedWfg());
 
-                if (!$isFromPas && !$isOldKempuInitialAllowed) {
+                // Pengecualian Supervisi: User dengan permission 'wpm-kempu-supervisi' dapat melewatkan validasi alur PAS
+                $isSupervisiAllowed = ($isPasReceived && self::canSupervisi($user));
+
+                if (!$isFromPas && !$isOldKempuInitialAllowed && !$isSupervisiAllowed) {
                     return [
                         'valid'   => false,
                         'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Untuk menjalankan 'Transfer In From PAS', kempu harus berstatus 'Transfer Out to BAS' dari Warehouse PT PAS.",
                     ];
+                }
+
+                if ($isSupervisiAllowed) {
+                    $isSupervisi = true;
                 }
                 break;
 
@@ -434,7 +494,11 @@ class WpmKempuController extends Controller
                 break;
         }
 
-        return ['valid' => true, 'message' => null];
+        return [
+            'valid'        => true,
+            'message'      => null,
+            'is_supervisi' => $isSupervisi,
+        ];
     }
 
     /**
@@ -582,8 +646,10 @@ class WpmKempuController extends Controller
                 'last_action'      => $kempu->last_action ?? '-',
                 'target_status'    => $card['status_name'],
                 'card_title'       => $card['title'],
+                'can_supervisi'    => self::canSupervisi(),
                 'is_flow_valid'    => $flowValidation['valid'],
                 'flow_error'       => $flowValidation['message'],
+                'is_supervisi'     => $flowValidation['is_supervisi'] ?? false,
             ],
         ]);
     }
@@ -623,6 +689,7 @@ class WpmKempuController extends Controller
             ], 404);
         }
 
+        $currentStatus  = trim($kempu->main?->current_status ?? $kempu->current_status ?? '-');
         $isManual       = $request->boolean('is_manual');
 
         if ($isManual && !MasterKempuModel::canManualInput()) {
@@ -689,6 +756,9 @@ class WpmKempuController extends Controller
         if ($isManual) {
             $finalNotes .= ' [Input Manual]';
         }
+        if (!empty($flowValidation['is_supervisi'])) {
+            $finalNotes .= ' [Supervisi: Bypass Alur Status PAS]';
+        }
 
         DB::beginTransaction();
         try {
@@ -733,6 +803,19 @@ class WpmKempuController extends Controller
                 ]
             );
 
+            $trackingMetadata = [
+                'has_barcode'  => $hasBarcode,
+                'has_rfid'     => $hasRfid,
+                'has_nti'      => $hasNti,
+                'input_method' => $isManual ? 'MANUAL' : 'SCANNER',
+                'is_manual'    => $isManual,
+            ];
+            if (!empty($flowValidation['is_supervisi'])) {
+                $trackingMetadata['is_supervisi'] = true;
+                $trackingMetadata['supervisi_permission'] = 'wpm-kempu-supervisi';
+                $trackingMetadata['bypass_reason'] = "Bypass status {$currentStatus} dari PT PAS ke WPM";
+            }
+
             KempuTrackingHistoryModel::create([
                 'kempu_master_id' => $kempu->id,
                 'id_kempu'        => $kempu->id_kempu,
@@ -744,13 +827,7 @@ class WpmKempuController extends Controller
                 'reused_count'    => $currentReused,
                 'condition'       => $kempu->main->condition ?? 'OK',
                 'notes'           => $finalNotes,
-                'metadata'        => [
-                    'has_barcode'  => $hasBarcode,
-                    'has_rfid'     => $hasRfid,
-                    'has_nti'      => $hasNti,
-                    'input_method' => $isManual ? 'MANUAL' : 'SCANNER',
-                    'is_manual'    => $isManual,
-                ],
+                'metadata'        => $trackingMetadata,
                 'created_by'      => Auth::id(),
             ]);
 

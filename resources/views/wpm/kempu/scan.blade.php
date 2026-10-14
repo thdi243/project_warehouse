@@ -767,6 +767,18 @@
                             })
                             .html(`<i class="ri-forbid-line me-1"></i> Alur Tidak Sesuai`);
                     } else {
+                        if (k.is_supervisi) {
+                            $('#alertFlowErrorBox').html(`
+                                <div class="alert alert-warning d-flex align-items-start gap-2 mb-3 py-2 px-3">
+                                    <i class="ri-shield-user-fill fs-20 text-warning flex-shrink-0 mt-1"></i>
+                                    <div>
+                                        <div class="fw-bold fs-13 text-warning">Otoritas Supervisi Aktif</div>
+                                        <div class="fs-12 text-dark">Validasi alur PT PAS dilewati dengan wewenang permission <strong>wpm-kempu-supervisi</strong> (Status kempu: <em>${k.current_status}</em>).</div>
+                                    </div>
+                                </div>
+                            `).show();
+                        }
+
                         $('#btnModalConfirm')
                             .prop('disabled', false)
                             .css({
