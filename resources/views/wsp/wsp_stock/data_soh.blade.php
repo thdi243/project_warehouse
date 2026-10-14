@@ -573,11 +573,12 @@
 @section('scripts')
     <script>
         $(document).ready(function() {
-            loadStockLocation();
-
             let currentPage = 1;
             let itemsPerPage = 10;
             let searchTimer = null;
+
+            // Load data pertama kali
+            loadStockLocation(1);
 
             // Ambil data dari backend (Server-side Pagination & Filtering)
             function loadStockLocation(page = 1) {
