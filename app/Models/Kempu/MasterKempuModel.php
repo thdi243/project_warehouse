@@ -22,6 +22,7 @@ class MasterKempuModel extends Model
     const LOC_WFG          = 'WFG';
     const LOC_PAS          = 'WAREHOUSE_PAS';
     const LOC_SCRAP        = 'SCRAP';
+    const LOC_IN_TRANSIT   = 'IN_TRANSIT';
 
     // =========================================================================
     // KONSTANTA STATUS TERSTANDARISASI SESUAI FLOW & CARD SETIAP AREA

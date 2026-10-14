@@ -38,7 +38,7 @@ class KempuPasController extends Controller
                 'key'         => 'transfer-out-to-bas',
                 'title'       => 'Transfer Out to BAS',
                 'status_name' => MasterKempuModel::STATUS_PAS_TRANSFER_OUT_BAS,
-                'location'    => MasterKempuModel::LOC_PAS,
+                'location'    => MasterKempuModel::LOC_IN_TRANSIT,
                 'from_loc'    => MasterKempuModel::LOC_PAS,
                 'to_loc'      => MasterKempuModel::LOC_WPM,
                 'stage'       => 'PAS',
@@ -432,12 +432,14 @@ class KempuPasController extends Controller
             }
         }
 
+        $targetLocation = ($cardKey === 'transfer-out-to-bas' ? MasterKempuModel::LOC_IN_TRANSIT : $toLocation);
+
         DB::beginTransaction();
         try {
             if (!$kempu->main) {
                 $kempu->main()->create([
                     'id_kempu'         => $kempu->id_kempu,
-                    'current_location' => $toLocation,
+                    'current_location' => $targetLocation,
                     'current_status'   => $targetStatus,
                     'reused_count'     => $targetReused,
                     'max_reused'       => 21,
@@ -448,7 +450,7 @@ class KempuPasController extends Controller
             } else {
                 $kempu->main->update([
                     'current_status'   => $targetStatus,
-                    'current_location' => $toLocation,
+                    'current_location' => $targetLocation,
                     'reused_count'     => $targetReused,
                     'last_scanned_at'  => now(),
                     'last_action'      => $actionTitle,
@@ -495,7 +497,7 @@ class KempuPasController extends Controller
                     'id_kempu'       => $kempu->id_kempu,
                     'rfid'           => $kempu->rfid ?? '-',
                     'new_status'     => $targetStatus,
-                    'new_location'   => $toLocation,
+                    'new_location'   => $targetLocation,
                     'kondisi_muatan' => $kondisiMuatan,
                     'reused_count'   => $targetReused,
                     'timestamp'      => now()->format('d/m/Y H:i:s'),

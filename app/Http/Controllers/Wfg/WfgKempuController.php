@@ -38,7 +38,7 @@ class WfgKempuController extends Controller
                 'key'         => 'transfer-out-to-pas',
                 'title'       => 'Transfer Out to PAS',
                 'status_name' => MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS,
-                'location'    => MasterKempuModel::LOC_WFG,
+                'location'    => MasterKempuModel::LOC_IN_TRANSIT,
                 'from_loc'    => MasterKempuModel::LOC_WFG,
                 'to_loc'      => MasterKempuModel::LOC_PAS,
                 'stage'       => 'WFG',

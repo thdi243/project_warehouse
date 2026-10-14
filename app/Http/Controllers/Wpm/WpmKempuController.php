@@ -22,7 +22,7 @@ class WpmKempuController extends Controller
                 'key'         => 'transfer-out-to-produksi',
                 'title'       => 'Transfer Out To Produksi',
                 'status_name' => MasterKempuModel::STATUS_WPM_TRANSFER_OUT_PROD,
-                'location'    => MasterKempuModel::LOC_WPM,
+                'location'    => MasterKempuModel::LOC_IN_TRANSIT,
                 'from_loc'    => MasterKempuModel::LOC_WPM,
                 'to_loc'      => MasterKempuModel::LOC_PRODUKSI,
                 'stage'       => 'WPM',

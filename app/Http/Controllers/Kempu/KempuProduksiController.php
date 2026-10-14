@@ -95,7 +95,7 @@ class KempuProduksiController extends Controller
                 'subtitle'        => 'Pengiriman ke WFG',
                 'status_name'     => MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
                 'stage'           => 'PRODUKSI',
-                'location'        => MasterKempuModel::LOC_PRODUKSI,
+                'location'        => MasterKempuModel::LOC_IN_TRANSIT,
                 'from_loc'        => MasterKempuModel::LOC_PRODUKSI,
                 'to_loc'          => MasterKempuModel::LOC_WFG,
                 'next_status'     => MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
@@ -1122,7 +1122,7 @@ class KempuProduksiController extends Controller
 
             $mainPayload = [
                 'current_status'   => $nextStatus,
-                'current_location' => $toLocation,
+                'current_location' => ($cardKey === 'transfer-out-to-wfg' ? MasterKempuModel::LOC_IN_TRANSIT : $toLocation),
                 'reused_count'     => $currentReused,
                 'condition'        => $condition,
                 'last_scanned_at'  => now(),
