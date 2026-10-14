@@ -265,7 +265,8 @@
                         style="max-height: 70vh; object-fit: contain;">
                 </div>
                 <div class="modal-footer py-2 justify-content-between">
-                    <a id="btnDownloadImage" href="" target="_blank" download class="btn btn-sm btn-outline-primary">
+                    <a id="btnDownloadImage" href="" target="_blank" download
+                        class="btn btn-sm btn-outline-primary">
                         <i class="mdi mdi-download me-1"></i> Buka / Unduh Asli
                     </a>
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -404,7 +405,9 @@
                     }
 
                     let creatorDisplay = row.created_by || row.username || '-';
-                    let dateDisplay = row.created_at ? `<small class="text-muted"><i class="mdi mdi-clock-outline me-1"></i>${row.created_at}</small>` : '';
+                    let dateDisplay = row.created_at ?
+                        `<small class="text-muted"><i class="mdi mdi-clock-outline me-1"></i>${row.created_at}</small>` :
+                        '';
 
                     let photoCol = '';
                     if (row.image) {
@@ -444,7 +447,7 @@
                                 </div>
                             </td>
                             <td class="text-center">
-                                <div class="d-flex gap-1 justify-content-center">
+                                <div class="d-flex gap-1 justify-content-center text-nowrap">
                                     ${actionBtn}
                                 </div>
                             </td>

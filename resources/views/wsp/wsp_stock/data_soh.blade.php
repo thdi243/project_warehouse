@@ -386,6 +386,15 @@
                                         <i class="mdi mdi-filter-remove-outline me-1 text-danger"></i>Exclude Stock 0
                                     </label>
                                 </div>
+                                <div class="d-flex align-items-center gap-2 bg-light border rounded-3 px-2 py-1 shadow-sm">
+                                    <label class="small fw-semibold text-secondary mb-0" for="perPageSelect">Baris:</label>
+                                    <select class="form-select form-select-sm border-0 bg-transparent py-0 px-1 fw-semibold text-secondary" id="perPageSelect" style="width: auto; cursor: pointer;">
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
                                 <div class="search-box">
                                     <i class="mdi mdi-magnify"></i>
                                     <input type="text" class="form-control" id="searchInput"
@@ -566,17 +575,26 @@
         $(document).ready(function() {
             loadStockLocation();
 
-            let allSoh = [];
-            let filteredSoh = [];
             let currentPage = 1;
-            const itemsPerPage = 10;
+            let itemsPerPage = 10;
+            let searchTimer = null;
 
-            // Ambil data dari backend
-            function loadStockLocation() {
+            // Ambil data dari backend (Server-side Pagination & Filtering)
+            function loadStockLocation(page = 1) {
+                currentPage = page;
+                const keyword = $('#searchInput').val().trim();
+                const excludeZero = $('#filterExcludeZero').is(':checked');
+
                 $.ajax({
                     url: "{{ route('stock.soh_data') }}",
                     type: "GET",
                     dataType: "json",
+                    data: {
+                        page: currentPage,
+                        per_page: itemsPerPage,
+                        search: keyword,
+                        exclude_zero: excludeZero ? 1 : 0
+                    },
                     beforeSend: function() {
                         $('#tableBody').html(`
                             <tr>
@@ -590,13 +608,22 @@
                         `);
                     },
                     success: function(res) {
-                        if (res.success && Array.isArray(res.data)) {
-                            allSoh = res.data;
-                            applyFilter();
+                        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+                            renderTable(res.data, res.pagination);
                         } else {
-                            $('#tableBody').html(
-                                '<tr><td colspan="11" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
-                            );
+                            $('#tableBody').html(`
+                                <tr class="empty-state-row">
+                                    <td colspan="11">
+                                        <div class="empty-state">
+                                            <i class="mdi mdi-package-variant-closed"></i>
+                                            <h6>Tidak Ada Data</h6>
+                                            <p>Data yang Anda cari tidak ditemukan</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `);
+                            updatePaginationInfo(0, 0, 0);
+                            $('#pagination').empty();
                         }
                     },
                     error: function(xhr) {
@@ -608,42 +635,25 @@
                                 </td>
                             </tr>
                         `);
+                        updatePaginationInfo(0, 0, 0);
+                        $('#pagination').empty();
                     }
                 });
             }
 
             // Render table
-            function renderTable() {
+            function renderTable(data, pagination) {
                 const tbody = $('#tableBody');
                 tbody.empty();
 
-                if (filteredSoh.length === 0) {
-                    tbody.html(`
-                        <tr class="empty-state-row">
-                            <td colspan="11">
-                                <div class="empty-state">
-                                    <i class="mdi mdi-package-variant-closed"></i>
-                                    <h6>Tidak Ada Data</h6>
-                                    <p>Data yang Anda cari tidak ditemukan</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `);
-                    updatePaginationInfo(0, 0, 0);
-                    return;
-                }
-
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const endIndex = Math.min(startIndex + itemsPerPage, filteredSoh.length);
-                const pageData = filteredSoh.slice(startIndex, endIndex);
-
-                pageData.forEach((soh, index) => {
+                data.forEach((soh, index) => {
+                    const rowNumber = (pagination && pagination.from) ? (pagination.from + index) : (index + 1);
                     tbody.append(`
                         <tr>
-                            <td>${startIndex + index + 1}</td>
-                            <td><strong>${soh.mid_barang}</strong></td>
-                            <td><strong>${soh.nama_barang}</strong></td>
-                            <td><strong>${soh.uom}</strong></td>
+                            <td>${rowNumber}</td>
+                            <td><strong>${soh.mid_barang ?? '-'}</strong></td>
+                            <td><strong>${soh.nama_barang ?? '-'}</strong></td>
+                            <td><strong>${soh.uom ?? '-'}</strong></td>
                             <td>${soh.qty_soh ?? 0}</td>
                             <td>${soh.unrest ?? 0}</td>
                             <td>${soh.qual_insp ?? 0}</td>
@@ -666,8 +676,10 @@
                     `);
                 });
 
-                updatePaginationInfo(startIndex + 1, endIndex, filteredSoh.length);
-                renderPagination();
+                if (pagination) {
+                    updatePaginationInfo(pagination.from, pagination.to, pagination.total);
+                    renderPagination(pagination);
+                }
             }
 
             // Update pagination info
@@ -678,39 +690,40 @@
             }
 
             // Render pagination
-            function renderPagination() {
-                const totalPages = Math.ceil(filteredSoh.length / itemsPerPage);
-                const pagination = $('#pagination');
-                pagination.empty();
+            function renderPagination(pagination) {
+                const totalPages = pagination.last_page;
+                const current = pagination.current_page;
+                const $pagination = $('#pagination');
+                $pagination.empty();
 
                 if (totalPages <= 1) return;
 
                 // Previous button
-                pagination.append(`
-                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
+                $pagination.append(`
+                    <li class="page-item ${current === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${current - 1}); return false;">
                             <i class="mdi mdi-chevron-left"></i>
                         </a>
                     </li>
                 `);
 
-                // Page numbers
+                // Smart page numbers
                 for (let i = 1; i <= totalPages; i++) {
-                    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                        pagination.append(`
-                            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                    if (i === 1 || i === totalPages || (i >= current - 1 && i <= current + 1)) {
+                        $pagination.append(`
+                            <li class="page-item ${i === current ? 'active' : ''}">
                                 <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
                             </li>
                         `);
-                    } else if (i === currentPage - 2 || i === currentPage + 2) {
-                        pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                    } else if (i === current - 2 || i === current + 2) {
+                        $pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
                     }
                 }
 
                 // Next button
-                pagination.append(`
-                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
+                $pagination.append(`
+                    <li class="page-item ${current === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${current + 1}); return false;">
                             <i class="mdi mdi-chevron-right"></i>
                         </a>
                     </li>
@@ -719,40 +732,27 @@
 
             // Change page
             window.changePage = function(page) {
-                const totalPages = Math.ceil(filteredSoh.length / itemsPerPage);
-                if (page < 1 || page > totalPages) return;
-                currentPage = page;
-                renderTable();
-            }
+                loadStockLocation(page);
+            };
 
-            // Filter data (Search & Exclude Stock 0)
-            function applyFilter() {
-                const keyword = $('#searchInput').val().toLowerCase().trim();
-                const excludeZero = $('#filterExcludeZero').is(':checked');
+            // Debounced Search
+            $('#searchInput').on('input', function() {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(function() {
+                    loadStockLocation(1);
+                }, 350);
+            });
 
-                filteredSoh = allSoh.filter(item => {
-                    // Filter Exclude Stock 0 (Total Qty SOH <= 0)
-                    if (excludeZero) {
-                        const qty = parseFloat(item.qty_soh) || 0;
-                        if (qty <= 0) return false;
-                    }
+            // Filter Exclude Stock 0
+            $('#filterExcludeZero').on('change', function() {
+                loadStockLocation(1);
+            });
 
-                    // Filter Keyword (Mid atau Desc/Nama Barang)
-                    if (keyword !== '') {
-                        const midMatch = item.mid_barang && item.mid_barang.toLowerCase().includes(keyword);
-                        const descMatch = item.nama_barang && item.nama_barang.toLowerCase().includes(keyword);
-                        if (!midMatch && !descMatch) return false;
-                    }
-
-                    return true;
-                });
-
-                currentPage = 1; // reset ke page 1 saat filter berubah
-                renderTable();
-            }
-
-            $('#searchInput').on('input', applyFilter);
-            $('#filterExcludeZero').on('change', applyFilter);
+            // Per page limit selector
+            $('#perPageSelect').on('change', function() {
+                itemsPerPage = parseInt($(this).val()) || 10;
+                loadStockLocation(1);
+            });
 
             // submit add & edit form
             $('#formStockOnHand').submit(function(e) {
@@ -788,7 +788,7 @@
                     success: function(res) {
                         toastr.success(res.message || 'Data berhasil disimpan');
                         $('#modalForm').modal('hide');
-                        loadStockLocation(); // reload data
+                        loadStockLocation(currentPage); // reload data
                     },
                     error: function(xhr) {
                         let msg = 'Gagal menyimpan data';
@@ -1112,7 +1112,7 @@
                             type: 'DELETE',
                             success: function(res) {
                                 toastr.success(res.message || 'Data berhasil dihapus');
-                                loadStockLocation(); // reload tabel
+                                loadStockLocation(currentPage); // reload tabel
                             },
                             error: function(xhr) {
                                 let msg = 'Gagal menghapus data';

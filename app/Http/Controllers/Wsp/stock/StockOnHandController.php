@@ -15,22 +15,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StockOnHandController extends Controller
 {
-    public function getDataSOH()
+    public function getDataSOH(Request $request)
     {
         try {
-            // subquery: ambil last_update terbaru per barang
+            $perPage = (int) $request->input('per_page', 10);
+            $search = trim($request->input('search', ''));
+            $excludeZero = filter_var($request->input('exclude_zero', false), FILTER_VALIDATE_BOOLEAN);
+
+            // subquery cepat: ambil id terbaru per barang dari wsp_stock_on_hand
             $latestPerBarang = StockOnHandWspModel::select('barang_id')
-                ->selectRaw('MAX(last_update) as last_update')
+                ->selectRaw('MAX(id) as max_id')
                 ->groupBy('barang_id');
 
-
-            $data = BarangModel::query()
+            $query = BarangModel::query()
                 ->leftJoinSub($latestPerBarang, 'latest', function ($join) {
                     $join->on('wsp_barang.id', '=', 'latest.barang_id');
                 })
                 ->leftJoin('wsp_stock_on_hand as soh', function ($join) {
-                    $join->on('wsp_barang.id', '=', 'soh.barang_id')
-                        ->on('soh.last_update', '=', 'latest.last_update');
+                    $join->on('soh.id', '=', 'latest.max_id');
                 })
                 ->select([
                     'soh.id',
@@ -44,20 +46,54 @@ class StockOnHandController extends Controller
                     DB::raw('COALESCE(soh.blocked, 0) as blocked'),
                     DB::raw('COALESCE(soh.transf, 0) as transf'),
                     'soh.last_update',
-                ])
-                ->orderBy('soh.last_update', 'desc')
-                ->get();
+                ]);
+
+            if ($excludeZero) {
+                $query->where('soh.qty_soh', '>', 0);
+            }
+
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('wsp_barang.mid_barang', 'like', "%{$search}%")
+                        ->orWhere('wsp_barang.nama_barang', 'like', "%{$search}%");
+                });
+            }
+
+            $query->orderBy('soh.last_update', 'desc')
+                  ->orderBy('wsp_barang.id', 'desc');
+
+            // Jika dipanggil dengan pagination (default untuk table blade)
+            if ($request->has('page') || $request->has('per_page')) {
+                $paginated = $query->paginate($perPage);
+
+                return response()->json([
+                    'success'    => true,
+                    'message'    => 'Data Stock On Hand berhasil diambil.',
+                    'data'       => $paginated->items(),
+                    'pagination' => [
+                        'total'        => $paginated->total(),
+                        'per_page'     => $paginated->perPage(),
+                        'current_page' => $paginated->currentPage(),
+                        'last_page'    => $paginated->lastPage(),
+                        'from'         => $paginated->firstItem() ?? 0,
+                        'to'           => $paginated->lastItem() ?? 0,
+                    ]
+                ], 200);
+            }
+
+            // Fallback non-paginated backward compatibility
+            $data = $query->get();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Data Stock On Hand berhasil diambil.',
-                'data' => $data,
+                'data'    => $data,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengambil data Stock On Hand.',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -435,7 +471,7 @@ class StockOnHandController extends Controller
     {
         try {
             $latestPerBarang = StockOnHandWspModel::select('barang_id')
-                ->selectRaw('MAX(last_update) as last_update')
+                ->selectRaw('MAX(id) as max_id')
                 ->groupBy('barang_id');
 
             $data = BarangModel::query()
@@ -443,8 +479,7 @@ class StockOnHandController extends Controller
                     $join->on('wsp_barang.id', '=', 'latest.barang_id');
                 })
                 ->leftJoin('wsp_stock_on_hand as soh', function ($join) {
-                    $join->on('wsp_barang.id', '=', 'soh.barang_id')
-                        ->on('soh.last_update', '=', 'latest.last_update');
+                    $join->on('soh.id', '=', 'latest.max_id');
                 })
                 ->select([
                     'wsp_barang.mid_barang',
