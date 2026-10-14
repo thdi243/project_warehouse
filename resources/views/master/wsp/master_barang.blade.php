@@ -247,49 +247,7 @@
         </div>
     </div>
 
-    {{-- Modal detail --}}
-    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detail Data Barang</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row gy-2">
-                        <div class="col-md-4">
-                            <strong>MID Barang:</strong>
-                            <p id="detailMid"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Nama Barang:</strong>
-                            <p id="detailNama"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Uom:</strong>
-                            <p id="detailUom"></p>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Dibuat Oleh:</strong>
-                            <p id="detailCreatedBy"></p>
-                        </div>
-                        <div class="col-md-12">
-                            <strong>Foto Barang:</strong>
-                            <div>
-                                <img id="detailImage" src="" alt="Foto Barang"
-                                    class="rounded border shadow-sm preview-image-btn"
-                                    style="max-width: 200px; max-height: 150px; cursor: pointer;"
-                                    title="Klik untuk perbesar foto">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Modal Preview Image -->
     <div class="modal fade" id="modalPreviewImage" tabindex="-1" aria-hidden="true">
@@ -430,11 +388,7 @@
                             `;
                         @endif
                     } else {
-                        actionBtn = `
-                            <button class="btn btn-sm btn-primary detail-btn" data-id="${row.id}" title="Detail Data">
-                                <i class="mdi mdi-eye me-1"></i>Detail
-                            </button>
-                        `;
+                        actionBtn = '';
                         @if (Session::get('jabatan') !== 'operator')
                             actionBtn += `
                                 <button class="btn btn-sm btn-info edit-btn" data-id="${row.id}" title="Edit Data">
@@ -444,6 +398,8 @@
                                     <i class="mdi mdi-delete me-1"></i>Delete
                                 </button>
                             `;
+                        @else
+                            actionBtn = `<span class="text-muted small">-</span>`;
                         @endif
                     }
 
@@ -911,36 +867,7 @@
                 });
             });
 
-            // Detail button click
-            $(document).on('click', '.detail-btn', function() {
-                const id = $(this).data('id');
 
-                $.ajax({
-                    url: `/api/wsp/show/barang/${id}`,
-                    type: 'GET',
-                    success: function(res) {
-                        $('#detailModal').modal('show');
-                        $('#detailMid').text(res.data.mid_barang);
-                        $('#detailNama').text(res.data.nama_barang);
-                        $('#detailUom').text(res.data.uom);
-                        $('#detailCreatedBy').text(res.data.created_by || res.data.username || '-');
-                        if (res.data.image) {
-                            let imgSrc = res.data.image.startsWith('http') ? res.data.image : `{{ asset('storage/') }}/${res.data.image}`;
-                            $('#detailImage')
-                                .attr('src', imgSrc)
-                                .data('image', imgSrc)
-                                .data('title', res.data.nama_barang)
-                                .data('mid', res.data.mid_barang)
-                                .show();
-                        } else {
-                            $('#detailImage').hide();
-                        }
-                    },
-                    error: function(xhr) {
-                        toastr.error('Gagal memuat data barang');
-                    }
-                });
-            });
 
             // Preview Image click event
             $(document).on('click', '.preview-image-btn', function() {
