@@ -386,9 +386,11 @@
                                         <i class="mdi mdi-filter-remove-outline me-1 text-danger"></i>Exclude Stock 0
                                     </label>
                                 </div>
-                                <div class="d-flex align-items-center gap-2 bg-light border rounded-3 px-2 py-1 shadow-sm">
-                                    <label class="small fw-semibold text-secondary mb-0" for="perPageSelect">Baris:</label>
-                                    <select class="form-select form-select-sm border-0 bg-transparent py-0 px-1 fw-semibold text-secondary" id="perPageSelect" style="width: auto; cursor: pointer;">
+                                <div class="d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-1 shadow-sm">
+                                    <label class="small fw-semibold text-secondary mb-0 text-nowrap" for="perPageSelect">
+                                        <i class="mdi mdi-format-list-numbered me-1 text-primary"></i>Baris:
+                                    </label>
+                                    <select class="form-select form-select-sm border-0 bg-transparent fw-semibold text-primary py-0 ps-1 pe-4" id="perPageSelect" style="width: auto; min-width: 68px; cursor: pointer; box-shadow: none;">
                                         <option value="10" selected>10</option>
                                         <option value="25">25</option>
                                         <option value="50">50</option>

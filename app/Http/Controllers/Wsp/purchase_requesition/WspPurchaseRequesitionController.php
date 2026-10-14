@@ -2104,7 +2104,7 @@ class WspPurchaseRequesitionController extends Controller
         $user = User::find($pr->user_id);
         if (!$user || !$user->is_active) return;
 
-        $url = "/purchase-requesition/history";
+        $url = "/purchase-requesition/report";
 
         // Ambil nama approver yang menolak
         $approverName = $approval->approver ? $approval->approver->nama_lengkap : 'Approver';

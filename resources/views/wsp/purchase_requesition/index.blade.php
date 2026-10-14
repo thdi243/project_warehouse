@@ -1168,6 +1168,7 @@
                     let colA = isJasa ? (noIo ? 'F' : 'K') : '';
                     let colB = isJasa ? 'D' : '';
                     let colD = isJasa ? (item.desc || '') : '';
+                    let colL = isJasa ? 113 : '';
 
                     const row = [
                         colA,
@@ -1181,7 +1182,7 @@
                         '',
                         plant,
                         sLoc,
-                        '',
+                        colL,
                         deptCode,
                         '',
                         noIo,
