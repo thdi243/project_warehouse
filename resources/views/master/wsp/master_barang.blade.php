@@ -57,12 +57,13 @@
                             style="width:100%">
                             <thead class="table-light text-uppercase">
                                 <tr>
-                                    <th>No</th>
-                                    <th>Mid Barang</th>
+                                    <th class="text-center" style="width: 50px;">No</th>
+                                    <th class="text-center" style="width: 80px;">Foto</th>
+                                    <th>MID Barang</th>
                                     <th>Nama Barang</th>
-                                    <th>Uom</th>
-                                    <th>Qty Pallet</th>
-                                    <th class="text-center">Aksi</th>
+                                    <th>UOM</th>
+                                    <th>Dibuat Oleh</th>
+                                    <th class="text-center" style="width: 140px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -269,20 +270,47 @@
                             <p id="detailUom"></p>
                         </div>
                         <div class="col-md-4">
-                            <strong>Qty Pallet:</strong>
-                            <p id="detailQtyPallet"></p>
+                            <strong>Dibuat Oleh:</strong>
+                            <p id="detailCreatedBy"></p>
                         </div>
                         <div class="col-md-12">
                             <strong>Foto Barang:</strong>
                             <div>
                                 <img id="detailImage" src="" alt="Foto Barang"
-                                    style="max-width: 200px; max-height: 150px;">
+                                    class="rounded border shadow-sm preview-image-btn"
+                                    style="max-width: 200px; max-height: 150px; cursor: pointer;"
+                                    title="Klik untuk perbesar foto">
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Preview Image -->
+    <div class="modal fade" id="modalPreviewImage" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header py-2 bg-light">
+                    <div>
+                        <h6 class="modal-title mb-0 fw-bold" id="previewImageTitle">Foto Barang</h6>
+                        <small class="text-muted" id="previewImageMid"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-3 bg-dark-subtle">
+                    <img id="modalPreviewImgSrc" src="" alt="Preview Foto" class="img-fluid rounded shadow-sm"
+                        style="max-height: 70vh; object-fit: contain;">
+                </div>
+                <div class="modal-footer py-2 justify-content-between">
+                    <a id="btnDownloadImage" href="" target="_blank" download class="btn btn-sm btn-outline-primary">
+                        <i class="mdi mdi-download me-1"></i> Buka / Unduh Asli
+                    </a>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
@@ -312,7 +340,7 @@
                     beforeSend: function() {
                         $('#wspTable tbody').html(`
                             <tr>
-                                <td colspan="6" class="text-center py-4">
+                                <td colspan="7" class="text-center py-4">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -327,7 +355,7 @@
                             applyFilters();
                         } else {
                             $('#wspTable tbody').html(
-                                '<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
+                                '<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada data.</td></tr>'
                             );
                         }
                     },
@@ -335,7 +363,7 @@
                         console.error(err);
                         $('#wspTable tbody').html(`
                             <tr>
-                                <td colspan="6" class="text-center text-danger py-3">
+                                <td colspan="7" class="text-center text-danger py-3">
                                     <i class="mdi mdi-alert-circle-outline me-1"></i> Gagal memuat data.
                                 </td>
                             </tr>
@@ -372,7 +400,7 @@
                 if (filteredBarang.length === 0) {
                     tbody.html(`
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 Tidak ada data yang cocok dengan pencarian.
                             </td>
                         </tr>
@@ -419,15 +447,45 @@
                         @endif
                     }
 
+                    let creatorDisplay = row.created_by || row.username || '-';
+                    let dateDisplay = row.created_at ? `<small class="text-muted"><i class="mdi mdi-clock-outline me-1"></i>${row.created_at}</small>` : '';
+
+                    let photoCol = '';
+                    if (row.image) {
+                        photoCol = `
+                            <a href="javascript:void(0);" class="preview-image-btn d-inline-block"
+                                data-image="${row.image}"
+                                data-title="${row.nama_barang || ''}"
+                                data-mid="${row.mid_barang || ''}">
+                                <img src="${row.image}" alt="${row.nama_barang || 'Barang'}"
+                                    class="rounded border shadow-sm"
+                                    style="width: 48px; height: 48px; object-fit: cover; cursor: pointer; transition: transform 0.2s;"
+                                    onmouseover="this.style.transform='scale(1.1)'"
+                                    onmouseout="this.style.transform='scale(1)'"
+                                    title="Klik untuk perbesar foto">
+                            </a>
+                        `;
+                    } else {
+                        photoCol = `
+                            <div class="d-inline-flex align-items-center justify-content-center bg-light text-muted rounded border"
+                                style="width: 48px; height: 48px;" title="Tidak ada foto">
+                                <i class="mdi mdi-image-off-outline fs-4"></i>
+                            </div>
+                        `;
+                    }
+
                     tbody.append(`
                         <tr>
                             <td class="text-center">${startIndex + index + 1}</td>
+                            <td class="text-center">${photoCol}</td>
                             <td><strong>${row.mid_barang || '-'}</strong></td>
                             <td>${row.nama_barang || '-'}</td>
-                            <td>${row.uom || '-'}</td>
-                            <td>${Number(row.qty_pallet || 1).toLocaleString('id-ID', {
-                                    maximumFractionDigits: 10
-                                })}
+                            <td><span class="badge bg-light text-dark border">${row.uom || '-'}</span></td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <span class="fw-medium text-dark">${creatorDisplay}</span>
+                                    ${dateDisplay}
+                                </div>
                             </td>
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-center">
@@ -865,10 +923,14 @@
                         $('#detailMid').text(res.data.mid_barang);
                         $('#detailNama').text(res.data.nama_barang);
                         $('#detailUom').text(res.data.uom);
-                        $('#detailQtyPallet').text(res.data.qty_pallet || '1');
+                        $('#detailCreatedBy').text(res.data.created_by || res.data.username || '-');
                         if (res.data.image) {
+                            let imgSrc = res.data.image.startsWith('http') ? res.data.image : `{{ asset('storage/') }}/${res.data.image}`;
                             $('#detailImage')
-                                .attr('src', `{{ asset('storage/') }}/${res.data.image}`)
+                                .attr('src', imgSrc)
+                                .data('image', imgSrc)
+                                .data('title', res.data.nama_barang)
+                                .data('mid', res.data.mid_barang)
                                 .show();
                         } else {
                             $('#detailImage').hide();
@@ -878,6 +940,21 @@
                         toastr.error('Gagal memuat data barang');
                     }
                 });
+            });
+
+            // Preview Image click event
+            $(document).on('click', '.preview-image-btn', function() {
+                const imgSrc = $(this).data('image') || $(this).attr('src');
+                const title = $(this).data('title') || 'Foto Barang';
+                const mid = $(this).data('mid') || '';
+
+                if (imgSrc) {
+                    $('#modalPreviewImgSrc').attr('src', imgSrc);
+                    $('#previewImageTitle').text(title);
+                    $('#previewImageMid').text(mid ? `MID: ${mid}` : '');
+                    $('#btnDownloadImage').attr('href', imgSrc);
+                    $('#modalPreviewImage').modal('show');
+                }
             });
         });
     </script>

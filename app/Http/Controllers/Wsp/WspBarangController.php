@@ -99,6 +99,8 @@ class WspBarangController extends Controller
             'qty_pallet' => $barang->qty_pallet ?? 1,
             'image' => $barang->image,
             'username' => $barang->user->username ?? null,
+            'created_by' => $barang->user?->nama_lengkap ?: ($barang->user?->username ?: '-'),
+            'created_at' => $barang->created_at ? $barang->created_at->format('d/m/Y H:i') : '-',
         ];
 
         // Kembalikan JSON
@@ -113,7 +115,7 @@ class WspBarangController extends Controller
     {
         $status = $request->input('status', 'active');
         $query = BarangModel::with([
-            'user:id,username'
+            'user:id,username,nama_lengkap'
         ]);
 
         if ($status === 'trashed') {
@@ -122,15 +124,18 @@ class WspBarangController extends Controller
             $query->withTrashed();
         }
 
-        $data = $query->get()
+        $data = $query->latest('id')->get()
             ->map(function ($barang) {
+                $creator = $barang->user?->nama_lengkap ?: ($barang->user?->username ?: '-');
                 return [
                     'id'          => $barang->id,
                     'mid_barang'  => $barang->mid_barang,
                     'nama_barang' => $barang->nama_barang,
                     'uom'         => $barang->uom,
                     'qty_pallet'  => $barang->qty_pallet ?? 1,
-                    'username'    => $barang->user->username ?? null,
+                    'username'    => $barang->user?->username ?? null,
+                    'created_by'  => $creator,
+                    'created_at'  => $barang->created_at ? $barang->created_at->format('d/m/Y H:i') : '-',
                     'image'       => $barang->image ? asset('storage/' . $barang->image) : null,
                 ];
             })
