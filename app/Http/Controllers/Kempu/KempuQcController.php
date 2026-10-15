@@ -207,6 +207,22 @@ class KempuQcController extends Controller
                 'location'    => MasterKempuModel::LOC_QC_PROSES,
                 'target_statuses' => ['*'],
             ],
+            'qc-retur' => [
+                'key'             => 'qc-retur',
+                'title'           => 'Cek Retur',
+                'subtitle'        => 'Pemeriksaan Kempu Retur dari PAS (Repro / Reject)',
+                'description'     => 'Pemeriksaan kempu retur yang diterima dari PAS di WFG. Tentukan keputusan: Repro (Kirim ke Produksi) atau Reject (Kirim ke Workshop Engineering).',
+                'icon'            => 'ri-reply-all-line',
+                'badge_color'     => 'warning',
+                'stage'           => 'QC_PROSES',
+                'location'        => MasterKempuModel::LOC_QC_PROSES,
+                'target_statuses' => [
+                    MasterKempuModel::STATUS_WFG_RETUR_FROM_PAS,
+                    'WFG_RETUR_FROM_PAS',
+                    'PAS_RETUR_TO_WFG',
+                    'Retur From PAS',
+                ],
+            ],
             // Alias backward compatibility untuk 'qc-proses'
             'qc-proses' => [
                 'key'         => 'qc-pre-cuci',
@@ -320,11 +336,21 @@ class KempuQcController extends Controller
                 ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
+        $totalReturPending = MasterKempuModel::whereHas('main', function ($q) {
+            $q->whereIn('current_status', [
+                MasterKempuModel::STATUS_WFG_RETUR_FROM_PAS,
+                'WFG_RETUR_FROM_PAS',
+                'PAS_RETUR_TO_WFG',
+                'Retur From PAS',
+            ])->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+        })->count();
+
         return response()->json([
             'status' => true,
             'data'   => [
                 'total_pre_cuci_pending'     => $totalPreCuciPending,
                 'total_after_filling_pending' => $totalAfterFillingPending,
+                'total_retur_pending'        => $totalReturPending,
                 'cards'                      => [
                     'qc-pre-cuci' => [
                         'key'         => 'qc-pre-cuci',
@@ -341,6 +367,16 @@ class KempuQcController extends Controller
                         'description' => 'Pemeriksaan kempu setelah pengisian muatan (Scan 1 Filling).',
                         'count'       => $totalAfterFillingPending,
                         'count_label' => 'kempu siap periksa',
+                    ],
+                    'qc-retur' => [
+                        'key'         => 'qc-retur',
+                        'title'       => 'Cek Retur',
+                        'subtitle'    => 'Pemeriksaan Kempu Retur dari PAS (Repro / Reject)',
+                        'description' => 'Pemeriksaan kempu retur yang diterima dari PAS di WFG. Tentukan keputusan: Repro (Kirim ke Produksi) atau Reject (Kirim Workshop Engineering).',
+                        'badge_color' => 'warning',
+                        'icon'        => 'ri-reply-all-line',
+                        'count'       => $totalReturPending,
+                        'count_label' => 'kempu retur siap periksa',
                     ],
                     'qc-force' => [
                         'key'         => 'qc-proses-force',
@@ -455,6 +491,16 @@ class KempuQcController extends Controller
                 ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
+        // Jumlah kempu yang siap di-QC Retur
+        $totalReturPending = MasterKempuModel::whereHas('main', function ($q) {
+            $q->whereIn('current_status', [
+                MasterKempuModel::STATUS_WFG_RETUR_FROM_PAS,
+                'WFG_RETUR_FROM_PAS',
+                'PAS_RETUR_TO_WFG',
+                'Retur From PAS',
+            ])->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+        })->count();
+
         $cards = [
             'qc-pre-cuci' => [
                 'key'         => 'qc-pre-cuci',
@@ -478,6 +524,17 @@ class KempuQcController extends Controller
                 'count'       => $totalAfterFillingPending,
                 'count_label' => 'kempu siap periksa',
             ],
+            'qc-retur' => [
+                'key'         => 'qc-retur',
+                'title'       => 'Cek Retur',
+                'subtitle'    => 'Pemeriksaan Kempu Retur PAS (Repro / Reject)',
+                'description' => 'Pemeriksaan kempu retur yang diterima dari PAS di WFG. Tentukan keputusan: Repro (Kirim ke Produksi) atau Reject (Kirim Workshop Engineering).',
+                'icon'        => 'ri-reply-all-line',
+                'badge_color' => 'warning',
+                'route'       => route('kempu.qc.scan', 'qc-retur'),
+                'count'       => $totalReturPending,
+                'count_label' => 'kempu retur siap periksa',
+            ],
             'qc-force' => [
                 'key'         => 'qc-force',
                 'title'       => 'Force Scan QC',
@@ -495,7 +552,7 @@ class KempuQcController extends Controller
             unset($cards['qc-force']);
         }
 
-        return view('kempu.qc.proses.index', compact('cards', 'totalPreCuciPending', 'totalAfterFillingPending'));
+        return view('kempu.qc.proses.index', compact('cards', 'totalPreCuciPending', 'totalAfterFillingPending', 'totalReturPending'));
     }
 
     /**
@@ -918,6 +975,11 @@ class KempuQcController extends Controller
                     'valid'   => false,
                     'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). QC After Filling hanya menerima kempu setelah proses Scan 1 Filling di Produksi.",
                 ];
+            } elseif ($qcType === 'qc-retur') {
+                return [
+                    'valid'   => false,
+                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Cek Retur' hanya untuk kempu retur dari PAS yang telah diterima di WFG (WFG_RETUR_FROM_PAS).",
+                ];
             } else {
                 return [
                     'valid'   => false,
@@ -1016,6 +1078,8 @@ class KempuQcController extends Controller
 
         if (str_contains($qcType, 'pm')) {
             $qcStageContext = 'qc_pm';
+        } elseif ($qcType === 'qc-retur') {
+            $qcStageContext = 'qc_retur';
         } else {
             $qcStageContext = $isAfterFilling ? 'after_filling' : 'pre_cuci';
         }
@@ -1081,8 +1145,8 @@ class KempuQcController extends Controller
                 'reused_count'     => (int)($kempu->main->reused_count ?? 0),
                 'condition'        => $kempu->condition ?? 'OK',
                 'qc_title'         => $card['title'],
-                'is_force_scan'    => in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force']),
-                'can_manual_reused' => !str_contains($qcType, 'pm') && self::canForceScan(),
+                'is_force_scan'    => in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force', 'qc-retur']),
+                'can_manual_reused' => !str_contains($qcType, 'pm') && $qcType !== 'qc-retur' && self::canForceScan(),
                 'next_auto_reused' => (int)($kempu->main->reused_count ?? 0),
                 'will_increment_reused' => false,
                 'is_in_wfg'        => $isAfterFilling,
@@ -1314,6 +1378,24 @@ class KempuQcController extends Controller
                 $condition    = 'NOT_OK';
                 $actionTitle  = 'After Filling Reject (Kirim Repair)';
                 $notes        = $notes ?: 'Reject Kempu After Filling - Langsung Kirim ke Workshop Engineering (Repair)';
+            }
+        } elseif ($qcType === 'qc-retur') {
+            $returDecision = strtoupper(trim($request->input('force_target', $decision)));
+            if ($returDecision === 'REPRO') {
+                $nextStatus   = MasterKempuModel::STATUS_PROD_REPRO_KEMPU;
+                $nextLocation = MasterKempuModel::LOC_PRODUKSI;
+                $actionResult = 'REPRO';
+                $condition    = 'NOT_OK';
+                $actionTitle  = 'QC Retur (Repro Produksi)';
+                $notes        = $notes ?: 'QC Cek Retur: Keputusan Repro - Kirim ke Produksi untuk Pengosongan Muatan';
+            } else {
+                // REJECT
+                $nextStatus   = MasterKempuModel::STATUS_ENG_REPAIR;
+                $nextLocation = MasterKempuModel::LOC_ENG;
+                $actionResult = 'NOT_OK';
+                $condition    = 'NOT_OK';
+                $actionTitle  = 'QC Retur (Reject Workshop)';
+                $notes        = $notes ?: 'QC Cek Retur: Keputusan Reject - Kirim ke Workshop Engineering';
             }
         } elseif (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
             $forceTarget = strtoupper(trim($request->input('force_target', $decision)));

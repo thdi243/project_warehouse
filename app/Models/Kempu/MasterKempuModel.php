@@ -68,6 +68,7 @@ class MasterKempuModel extends Model
     const STATUS_WFG_TRANSFER_IN_PROD     = 'WFG_TRANSFER_IN_FROM_PROD';
     const STATUS_WFG_TRANSFER_OUT_PAS     = 'WFG_TRANSFER_OUT_TO_PAS';
     const STATUS_WFG_REJECT_PROD          = 'WFG_REJECT_FROM_PROD';
+    const STATUS_WFG_RETUR_FROM_PAS       = 'WFG_RETUR_FROM_PAS';
 
     // 8. Warehouse PT PAS Cards
     const STATUS_PAS_TRANSFER_IN_BAS      = 'PAS_TRANSFER_IN_FROM_BAS';

@@ -38,6 +38,10 @@
                         <i class="ri-flask-line me-1"></i> Siap Cek After Filling:
                         <strong>{{ $totalAfterFillingPending }}</strong>
                     </span>
+                    <span class="badge bg-soft-warning text-warning px-3 py-2 fs-12 border border-warning-subtle">
+                        <i class="ri-reply-all-line me-1"></i> Siap Cek Retur:
+                        <strong>{{ $totalReturPending }}</strong>
+                    </span>
                 </div>
             </div>
 

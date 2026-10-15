@@ -53,13 +53,13 @@ class WfgKempuController extends Controller
             'retur-from-pas' => [
                 'key'          => 'retur-from-pas',
                 'title'        => 'Retur From PAS',
-                'status_name'  => MasterKempuModel::STATUS_PROD_REPRO_KEMPU,
+                'status_name'  => MasterKempuModel::STATUS_WFG_RETUR_FROM_PAS,
                 'queue_status' => 'PAS_RETUR_TO_WFG',
                 'location'     => MasterKempuModel::LOC_WFG,
                 'from_loc'     => MasterKempuModel::LOC_WFG,
-                'to_loc'       => MasterKempuModel::LOC_PRODUKSI,
+                'to_loc'       => MasterKempuModel::LOC_WFG,
                 'stage'        => 'WFG',
-                'description'  => 'Penerimaan kempu retur yang masih ada isinya dari Warehouse PAS dan pengiriman ke Produksi untuk proses Repro.',
+                'description'  => 'Penerimaan kempu retur yang masih ada isinya dari Warehouse PAS. Menunggu pemeriksaan QC (Cek Retur).',
                 'icon'         => 'ri-reply-all-line',
                 'badge_color'  => 'warning',
                 'bg_tint'      => '#fffbeb',
@@ -390,14 +390,13 @@ class WfgKempuController extends Controller
             case 'retur-from-pas':
                 // 1. Cek duplikat scan
                 if (
+                    strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_RETUR_FROM_PAS) === 0 ||
                     strcasecmp($currentStatus, 'WFG_RETUR_FROM_PAS') === 0 ||
-                    strcasecmp($currentStatus, 'Retur From PAS') === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_PROD_REPRO_KEMPU) === 0 ||
-                    strcasecmp($currentStatus, 'PROD_REPRO_KEMPU') === 0
+                    strcasecmp($currentStatus, 'Retur From PAS') === 0
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah diterima sebagai Retur dari PAS (duplikat scan). Kempu sedang dialirkan ke bagian Produksi untuk Repro.",
+                        'message' => "Kempu {$idKempu} sudah diterima sebagai Retur dari PAS di WFG (duplikat scan). Kempu sedang menunggu pemeriksaan QC (Cek Retur).",
                     ];
                 }
 
@@ -707,10 +706,10 @@ class WfgKempuController extends Controller
         $actionTitle    = $card['title'];
 
         if ($cardKey === 'retur-from-pas') {
-            $targetStatus   = MasterKempuModel::STATUS_PROD_REPRO_KEMPU;
-            $targetLocation = MasterKempuModel::LOC_PRODUKSI;
-            $toLocation     = MasterKempuModel::LOC_PRODUKSI;
-            $actionTitle    = 'Retur From PAS (Kirim ke Repro Produksi)';
+            $targetStatus   = MasterKempuModel::STATUS_WFG_RETUR_FROM_PAS;
+            $targetLocation = MasterKempuModel::LOC_WFG;
+            $toLocation     = MasterKempuModel::LOC_WFG;
+            $actionTitle    = 'Retur From PAS (Diterima di WFG)';
         }
 
         DB::beginTransaction();
@@ -780,7 +779,7 @@ class WfgKempuController extends Controller
             DB::commit();
 
             if ($cardKey === 'retur-from-pas') {
-                $successMsg = "Kempu {$kempu->id_kempu} berhasil diterima sebagai Retur dari PAS dan langsung diteruskan ke Produksi untuk proses Repro.";
+                $successMsg = "Kempu {$kempu->id_kempu} berhasil diterima sebagai Retur dari PAS di WFG dan siap untuk diperiksa oleh QC (Cek Retur).";
             } else {
                 $successMsg = "Kempu {$kempu->id_kempu} berhasil dikonfirmasi ke status '{$targetStatus}'";
                 if ($targetReused > $currentReused) {

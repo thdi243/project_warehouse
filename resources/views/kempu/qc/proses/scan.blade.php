@@ -172,19 +172,24 @@
                             <!-- Manual Input Box -->
                             <div class="mt-4 pt-2 border-top">
                                 @php
-                                    $canManualInput = $canManualInput ?? \App\Models\Kempu\MasterKempuModel::canManualInput();
+                                    $canManualInput =
+                                        $canManualInput ?? \App\Models\Kempu\MasterKempuModel::canManualInput();
                                 @endphp
                                 @if ($canManualInput)
-                                    <label class="form-label fs-13 fw-semibold text-body mb-2 d-flex align-items-center justify-content-between">
-                                        <span><i class="ri-keyboard-line text-muted me-1"></i> Masukkan ID Kempu Manual:</span>
-                                        <span class="badge bg-info-subtle text-info fs-11"><i class="ri-shield-user-line me-1"></i> Otoritas Khusus Aktif</span>
+                                    <label
+                                        class="form-label fs-13 fw-semibold text-body mb-2 d-flex align-items-center justify-content-between">
+                                        <span><i class="ri-keyboard-line text-muted me-1"></i> Masukkan ID Kempu
+                                            Manual:</span>
+                                        <span class="badge bg-info-subtle text-info fs-11"><i
+                                                class="ri-shield-user-line me-1"></i> Otoritas Khusus Aktif</span>
                                     </label>
                                     <div class="input-group input-group-lg">
                                         <span class="input-group-text bg-light text-muted"><i
                                                 class="ri-barcode-line"></i></span>
                                         <input type="text" id="inputManualId" class="form-control font-monospace"
                                             placeholder="Contoh: KMP-001 lalu tekan Enter..." autocomplete="off">
-                                        <button class="btn btn-primary px-4 fw-semibold" type="button" id="btnLookupManual">
+                                        <button class="btn btn-primary px-4 fw-semibold" type="button"
+                                            id="btnLookupManual">
                                             <i class="ri-search-line me-1"></i> Cari Kempu
                                         </button>
                                     </div>
@@ -192,7 +197,9 @@
                                     <div class="alert alert-warning d-flex align-items-center gap-2 mb-0 py-2 px-3">
                                         <i class="ri-lock-line fs-20 text-warning flex-shrink-0"></i>
                                         <div class="fs-12 text-muted">
-                                            <strong class="text-body">Pengetikan Manual Terkunci:</strong> Operator wajib memindai kempu via kamera / barcode scanner. Pengetikan ID manual hanya diperuntukkan bagi Foreman / Leader / Supervisor.
+                                            <strong class="text-body">Pengetikan Manual Terkunci:</strong> Operator wajib
+                                            memindai kempu via kamera / barcode scanner. Pengetikan ID manual hanya
+                                            diperuntukkan bagi Foreman / Leader / Supervisor.
                                         </div>
                                     </div>
                                 @endif
@@ -265,11 +272,14 @@
                     <!-- Alert Peringatan Batas Reused Kempu (Pre Cuci) -->
                     <div id="alertMaxReusedNotice" class="alert alert-danger d-none mb-3 py-2 px-3 fs-13 border-danger">
                         <i class="ri-error-warning-fill me-1 align-middle fs-16"></i>
-                        <strong>Batas Maksimal Penggunaan Tercapai (21x).</strong> Kempu ini telah mencapai batas pemakaian maksimal dan tidak dapat digunakan lagi. Silakan konfirmasi untuk melakukan <strong>Scrap Kempu</strong>.
+                        <strong>Batas Maksimal Penggunaan Tercapai (21x).</strong> Kempu ini telah mencapai batas pemakaian
+                        maksimal dan tidak dapat digunakan lagi. Silakan konfirmasi untuk melakukan <strong>Scrap
+                            Kempu</strong>.
                     </div>
 
                     @if ($card['key'] === 'qc-pre-cuci' || $card['key'] === 'qc-proses')
-                        <div id="alertPreCuciIncomingInfo" class="alert alert-info py-2 px-3 mb-3 fs-12 d-flex align-items-center gap-2">
+                        <div id="alertPreCuciIncomingInfo"
+                            class="alert alert-info py-2 px-3 mb-3 fs-12 d-flex align-items-center gap-2">
                             <i class="ri-information-line fs-16 flex-shrink-0 text-primary"></i>
                             <div><strong>Cek Incoming & Pre Cuci:</strong> Pemeriksaan fisik incoming kempu sekaligus
                                 verifikasi kelayakan pre-cuci. Keputusan <strong>OK (Lolos)</strong> secara normal akan
@@ -317,88 +327,127 @@
                                 Tentukan keputusan: <strong>OK (Lolos)</strong>, <strong>Hold (Tahan)</strong>,
                                 <strong>Repro (Produk Reject ke Produksi)</strong>, atau
                                 <strong>Tidak OK (Kempu Rusak ke Repair)</strong>.
-                            </div>
-                        </div>
-                    @elseif (in_array($card['key'], ['qc-force', 'qc-pm-force', 'qc-proses-force']))
-                        <div id="boxForceControls">
-                            <div
-                                class="alert alert-danger py-2 px-3 mb-3 fs-12 d-flex align-items-start gap-2 border-danger-subtle bg-danger-subtle text-danger">
-                                <i class="ri-alert-line fs-18 flex-shrink-0 mt-1"></i>
-                                <div>
-                                    <strong>Mode Force Scan (Otoritas Khusus):</strong><br>
-                                    Fitur ini mengizinkan Anda menentukan status keputusan QC kempu kapanpun &amp; dimanapun
-                                    secara manual tanpa terhalang urutan alur normal.
-                                </div>
-                            </div>
-
-                            <!-- Dropdown Pilihan Keputusan Force Scan -->
-                            <div class="mb-3">
-                                <label for="modalForceTarget" class="form-label fs-12 fw-bold text-danger mb-1">
-                                    <i class="ri-git-branch-line me-1"></i> Pilih Keputusan / Status Target:
-                                </label>
-                                <select class="form-select form-select-lg border-danger fw-semibold fs-14"
-                                    id="modalForceTarget">
-                                    @if ($card['key'] === 'qc-pm-force')
-                                        <option value="RELEASE">&#x1F7E2; Release (Lolos QC PM ke WPM)</option>
-                                        <option value="HOLD">&#x1F7E1; Hold (Ditahan di QC PM)</option>
-                                        <option value="REPRO" id="optForcePmRepro" class="d-none">&#x1F504; Repro (Produk
-                                            Reject ke Produksi)</option>
-                                        <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
-                                        <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
-                                    @elseif ($card['key'] === 'qc-proses-force')
-                                        <option value="RELEASE" id="optForceProsesRelease">&#x1F7E2; Release (Lolos)</option>
-                                        <option value="HOLD">&#x1F7E1; Hold (Ditahan)</option>
-                                        <option value="REPRO" id="optForceProsesRepro">&#x1F504; Repro (Produk Reject ke
-                                            Produksi)</option>
-                                        <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
-                                        <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
-                                    @else
-                                        <option value="RELEASE">&#x1F7E2; Release (Lolos)</option>
-                                        <option value="HOLD">&#x1F7E1; Hold (Ditahan)</option>
-                                        <option value="REPRO" id="optForceProsesRepro">&#x1F504; Repro (Produk Reject ke
-                                            Produksi)</option>
-                                        <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop Engineering)</option>
-                                        <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
-                                    @endif
-                                </select>
-                            </div>
-
-                            <!-- Panel Otoritas Koreksi Reused Manual di Force Scan (Muncul jika pilih RELEASE_PRE_CUCI di QC Proses) -->
-                            @if ($card['key'] !== 'qc-pm-force')
-                                <div class="card border border-warning-subtle bg-soft-warning p-3 mb-3 d-none"
-                                    id="wrapperManualReusedForce">
-                                    <div class="d-flex align-items-center justify-content-between">
+                            @elseif ($card['key'] === 'qc-retur')
+                                <div id="boxReturControls">
+                                    <div
+                                        class="alert alert-warning py-2 px-3 mb-3 fs-12 d-flex align-items-start gap-2 border-warning-subtle bg-soft-warning text-warning-emphasis">
+                                        <i class="ri-reply-all-line fs-18 flex-shrink-0 mt-1"></i>
                                         <div>
-                                            <span class="fw-bold text-dark fs-13">
-                                                <i class="ri-edit-2-line text-warning me-1"></i> Koreksi Manual Reused (Force
-                                                Pre-Cuci)
-                                            </span>
-                                            <div class="text-muted fs-11" id="labelReusedHelpForce">
-                                                Default: auto <span class="badge bg-primary"
-                                                    id="badgeAutoNextReusedForce">+1</span>. Centang untuk atur manual.
+                                            <strong>Pemeriksaan Retur PAS (Cek Retur):</strong><br>
+                                            Kempu retur dari PAS yang diterima di WFG. Tentukan keputusan: <b>Repro</b>
+                                            (Produk Reject dialirkan ke Produksi untuk dikosongkan) atau <b>Reject</b>
+                                            (Kempu rusak dikirim ke Workshop Engineering).
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="modalReturTarget" class="form-label fs-12 fw-bold text-dark mb-1">
+                                            <i class="ri-git-branch-line me-1"></i> Pilihan Keputusan QC Retur:
+                                        </label>
+                                        <select class="form-select form-select-lg border-warning fw-semibold fs-14"
+                                            id="modalReturTarget">
+                                            <option value="REPRO">&#x1F504; Repro (Produk Reject / Kirim ke Produksi)
+                                            </option>
+                                            <option value="REJECT">&#x1F534; Reject (Kempu Rusak / Kirim ke Workshop
+                                                Engineering)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            @elseif (in_array($card['key'], ['qc-force', 'qc-pm-force', 'qc-proses-force']))
+                                <div id="boxForceControls">
+                                    <div
+                                        class="alert alert-danger py-2 px-3 mb-3 fs-12 d-flex align-items-start gap-2 border-danger-subtle bg-danger-subtle text-danger">
+                                        <i class="ri-alert-line fs-18 flex-shrink-0 mt-1"></i>
+                                        <div>
+                                            <strong>Mode Force Scan (Otoritas Khusus):</strong><br>
+                                            Fitur ini mengizinkan Anda menentukan status keputusan QC kempu kapanpun &amp;
+                                            dimanapun
+                                            secara manual tanpa terhalang urutan alur normal.
+                                        </div>
+                                    </div>
+
+                                    <!-- Dropdown Pilihan Keputusan Force Scan -->
+                                    <div class="mb-3">
+                                        <label for="modalForceTarget" class="form-label fs-12 fw-bold text-danger mb-1">
+                                            <i class="ri-git-branch-line me-1"></i> Pilih Keputusan / Status Target:
+                                        </label>
+                                        <select class="form-select form-select-lg border-danger fw-semibold fs-14"
+                                            id="modalForceTarget">
+                                            @if ($card['key'] === 'qc-pm-force')
+                                                <option value="RELEASE">&#x1F7E2; Release (Lolos QC PM ke WPM)</option>
+                                                <option value="HOLD">&#x1F7E1; Hold (Ditahan di QC PM)</option>
+                                                <option value="REPRO" id="optForcePmRepro" class="d-none">&#x1F504;
+                                                    Repro (Produk
+                                                    Reject ke Produksi)</option>
+                                                <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop
+                                                    Engineering)</option>
+                                                <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
+                                            @elseif ($card['key'] === 'qc-proses-force')
+                                                <option value="RELEASE" id="optForceProsesRelease">&#x1F7E2; Release
+                                                    (Lolos)</option>
+                                                <option value="HOLD">&#x1F7E1; Hold (Ditahan)</option>
+                                                <option value="REPRO" id="optForceProsesRepro">&#x1F504; Repro (Produk
+                                                    Reject ke
+                                                    Produksi)</option>
+                                                <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop
+                                                    Engineering)</option>
+                                                <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
+                                            @else
+                                                <option value="RELEASE">&#x1F7E2; Release (Lolos)</option>
+                                                <option value="HOLD">&#x1F7E1; Hold (Ditahan)</option>
+                                                <option value="REPRO" id="optForceProsesRepro">&#x1F504; Repro (Produk
+                                                    Reject ke
+                                                    Produksi)</option>
+                                                <option value="REJECT_WORKSHOP">&#x1F534; Reject (Kirim Workshop
+                                                    Engineering)</option>
+                                                <option value="SCRAP">&#x26AB; Scrap (Rusak Permanen / Afkir)</option>
+                                            @endif
+                                        </select>
+                                    </div>
+
+                                    <!-- Panel Otoritas Koreksi Reused Manual di Force Scan (Muncul jika pilih RELEASE_PRE_CUCI di QC Proses) -->
+                                    @if ($card['key'] !== 'qc-pm-force')
+                                        <div class="card border border-warning-subtle bg-soft-warning p-3 mb-3 d-none"
+                                            id="wrapperManualReusedForce">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <div>
+                                                    <span class="fw-bold text-dark fs-13">
+                                                        <i class="ri-edit-2-line text-warning me-1"></i> Koreksi Manual
+                                                        Reused (Force
+                                                        Pre-Cuci)
+                                                    </span>
+                                                    <div class="text-muted fs-11" id="labelReusedHelpForce">
+                                                        Default: auto <span class="badge bg-primary"
+                                                            id="badgeAutoNextReusedForce">+1</span>. Centang untuk atur
+                                                        manual.
+                                                    </div>
+                                                </div>
+                                                <div class="form-check form-switch fs-16 mb-0">
+                                                    <input class="form-check-input" type="checkbox"
+                                                        id="checkManualReusedForce">
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-none" id="boxManualReusedInputForce">
+                                                <label for="inputManualReusedForce"
+                                                    class="form-label fs-12 fw-semibold text-dark mb-1">
+                                                    Set Nilai Siklus Reused Baru (0 - 21x):
+                                                </label>
+                                                <div class="input-group">
+                                                    <input type="number" class="form-control font-monospace fw-bold"
+                                                        id="inputManualReusedForce" min="0" max="21"
+                                                        placeholder="0 - 21">
+                                                    <span class="input-group-text fs-12 bg-white fw-semibold">/ 21
+                                                        kali</span>
+                                                </div>
+                                                <small class="text-muted fs-11 mt-1 d-block">
+                                                    <i class="ri-information-line text-warning"></i> Nilai ini akan
+                                                    menggantikan
+                                                    auto-increment +1 saat eksekusi Force Release Pre-Cuci.
+                                                </small>
                                             </div>
                                         </div>
-                                        <div class="form-check form-switch fs-16 mb-0">
-                                            <input class="form-check-input" type="checkbox" id="checkManualReusedForce">
-                                        </div>
-                                    </div>
-                                    <div class="mt-2 d-none" id="boxManualReusedInputForce">
-                                        <label for="inputManualReusedForce" class="form-label fs-12 fw-semibold text-dark mb-1">
-                                            Set Nilai Siklus Reused Baru (0 - 21x):
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control font-monospace fw-bold"
-                                                id="inputManualReusedForce" min="0" max="21" placeholder="0 - 21">
-                                            <span class="input-group-text fs-12 bg-white fw-semibold">/ 21 kali</span>
-                                        </div>
-                                        <small class="text-muted fs-11 mt-1 d-block">
-                                            <i class="ri-information-line text-warning"></i> Nilai ini akan menggantikan
-                                            auto-increment +1 saat eksekusi Force Release Pre-Cuci.
-                                        </small>
-                                    </div>
+                                    @endif
                                 </div>
-                            @endif
-                        </div>
                     @endif
 
                     <!-- Notes Input (Opsional) -->
@@ -418,6 +467,22 @@
                                 id="btnDecisionForce">
                                 <i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision
                             </button>
+                        </div>
+                    @elseif ($card['key'] === 'qc-retur')
+                        <div class="row g-2 pt-2 border-top" id="boxReturButtons">
+                            <div class="col-6">
+                                <button type="button"
+                                    class="btn btn-warning btn-lg w-100 py-3 fw-bold fs-14 shadow-sm text-dark"
+                                    id="btnDecisionReturRepro" title="Produk Reject - Kirim ke Produksi untuk Repro">
+                                    <i class="ri-recycle-line me-1"></i> Repro (Produksi)
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-danger btn-lg w-100 py-3 fw-bold fs-14 shadow-sm"
+                                    id="btnDecisionReturReject" title="Kempu Rusak - Kirim ke Workshop Engineering">
+                                    <i class="ri-close-circle-line me-1"></i> Reject (Workshop)
+                                </button>
+                            </div>
                         </div>
                     @elseif ($card['key'] === 'qc-after-filling')
                         <div class="row g-2 pt-2 border-top" id="boxNormalButtons">
@@ -486,694 +551,769 @@
 
     <script>
         $(document).ready(function() {
-            const QC_TYPE = "{{ $card['key'] }}";
-            let qrScanner = null;
-            let currentFacing = "environment";
-            let availableCameras = [];
-            let currentCameraIndex = 0;
-            let isScannerActive = false;
-            let currentKempu = null;
+                    const QC_TYPE = "{{ $card['key'] }}";
+                    let qrScanner = null;
+                    let currentFacing = "environment";
+                    let availableCameras = [];
+                    let currentCameraIndex = 0;
+                    let isScannerActive = false;
+                    let currentKempu = null;
 
-            const decisionModal = new bootstrap.Modal(document.getElementById('modalQcDecision'), {
-                backdrop: 'static',
-                keyboard: false
-            });
-
-            // Inisialisasi Audio Beep (Web Audio API)
-            let audioCtx = null;
-
-            function playBeep(type = 'beep') {
-                try {
-                    if (!audioCtx) {
-                        audioCtx = new(window.AudioContext || window.webkitAudioContext)();
-                    }
-                    if (audioCtx.state === 'suspended') {
-                        audioCtx.resume();
-                    }
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-
-                    if (type === 'success') {
-                        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-                        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.18);
-                    } else if (type === 'error') {
-                        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
-                        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.35);
-                    } else {
-                        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-                        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.1);
-                    }
-                } catch (e) {
-                    console.warn('AudioContext error:', e);
-                }
-            }
-
-            // Inisialisasi Scanner Kamera dengan Auto-Filter Kamera Fisik (Abaikan OBS Virtual Camera)
-            function startScanner() {
-                if (qrScanner) {
-                    qrScanner.stop().catch(() => {}).finally(() => {
-                        initScannerInstance();
+                    const decisionModal = new bootstrap.Modal(document.getElementById('modalQcDecision'), {
+                        backdrop: 'static',
+                        keyboard: false
                     });
-                } else {
-                    initScannerInstance();
-                }
-            }
 
-            function initScannerInstance() {
-                if (!qrScanner) {
-                    qrScanner = new Html5Qrcode("kempuReader");
-                }
-                const config = {
-                    fps: 15,
-                    qrbox: function(viewfinderWidth, viewfinderHeight) {
-                        const w = Math.min(Math.floor(viewfinderWidth * 0.88), 380);
-                        const h = Math.min(Math.floor(viewfinderHeight * 0.75), 280);
-                        return {
-                            width: Math.max(w, 220),
-                            height: Math.max(h, 180)
-                        };
-                    },
-                    aspectRatio: 1.333333,
-                };
+                    // Inisialisasi Audio Beep (Web Audio API)
+                    let audioCtx = null;
 
-                Html5Qrcode.getCameras().then(devices => {
-                    if (devices && devices.length > 0) {
-                        // Filter kamera virtual (OBS Virtual Camera, dsb) agar langsung memilih webcam fisik asli
-                        let realCameras = devices.filter(d => {
-                            const lbl = (d.label || '').toLowerCase();
-                            return !lbl.includes('obs') && !lbl.includes('virtual') && !lbl
-                                .includes('fake');
-                        });
+                    function playBeep(type = 'beep') {
+                        try {
+                            if (!audioCtx) {
+                                audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                            }
+                            if (audioCtx.state === 'suspended') {
+                                audioCtx.resume();
+                            }
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
 
-                        availableCameras = realCameras.length > 0 ? realCameras : devices;
-
-                        // Jika ada kamera belakang (misal di HP), utamakan kamera belakang
-                        let backCamIdx = availableCameras.findIndex(d => {
-                            const lbl = (d.label || '').toLowerCase();
-                            return lbl.includes('back') || lbl.includes('rear') || lbl.includes(
-                                'environment') || lbl.includes('belakang');
-                        });
-
-                        if (backCamIdx !== -1 && currentCameraIndex === 0) {
-                            currentCameraIndex = backCamIdx;
+                            if (type === 'success') {
+                                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+                                osc.start();
+                                osc.stop(audioCtx.currentTime + 0.18);
+                            } else if (type === 'error') {
+                                osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                                osc.start();
+                                osc.stop(audioCtx.currentTime + 0.35);
+                            } else {
+                                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                                osc.start();
+                                osc.stop(audioCtx.currentTime + 0.1);
+                            }
+                        } catch (e) {
+                            console.warn('AudioContext error:', e);
                         }
-
-                        if (currentCameraIndex >= availableCameras.length) {
-                            currentCameraIndex = 0;
-                        }
-
-                        const targetCameraId = availableCameras[currentCameraIndex].id;
-                        return qrScanner.start(
-                            targetCameraId,
-                            config,
-                            onScanSuccess,
-                            function(err) {} // silent on continuous frame
-                        );
-                    } else {
-                        // Fallback jika daftar device belum terenumerasi
-                        return qrScanner.start({
-                                facingMode: currentFacing
-                            },
-                            config,
-                            onScanSuccess,
-                            function(err) {}
-                        );
                     }
-                }).catch(err => {
-                    // Fallback ke facingMode
-                    return qrScanner.start({
-                            facingMode: currentFacing
-                        },
-                        config,
-                        onScanSuccess,
-                        function(err) {}
-                    );
-                }).then(() => {
-                    isScannerActive = true;
-                    $('#cameraPlaceholder').addClass('d-none');
-                    $('#scanTargetFrame').removeClass('d-none').removeClass('scanned');
-                }).catch(err => {
-                    console.warn("Kamera tidak dapat diakses:", err);
-                    $('#cameraPlaceholder').html(`
+
+                    // Inisialisasi Scanner Kamera dengan Auto-Filter Kamera Fisik (Abaikan OBS Virtual Camera)
+                    function startScanner() {
+                        if (qrScanner) {
+                            qrScanner.stop().catch(() => {}).finally(() => {
+                                initScannerInstance();
+                            });
+                        } else {
+                            initScannerInstance();
+                        }
+                    }
+
+                    function initScannerInstance() {
+                        if (!qrScanner) {
+                            qrScanner = new Html5Qrcode("kempuReader");
+                        }
+                        const config = {
+                            fps: 15,
+                            qrbox: function(viewfinderWidth, viewfinderHeight) {
+                                const w = Math.min(Math.floor(viewfinderWidth * 0.88), 380);
+                                const h = Math.min(Math.floor(viewfinderHeight * 0.75), 280);
+                                return {
+                                    width: Math.max(w, 220),
+                                    height: Math.max(h, 180)
+                                };
+                            },
+                            aspectRatio: 1.333333,
+                        };
+
+                        Html5Qrcode.getCameras().then(devices => {
+                            if (devices && devices.length > 0) {
+                                // Filter kamera virtual (OBS Virtual Camera, dsb) agar langsung memilih webcam fisik asli
+                                let realCameras = devices.filter(d => {
+                                    const lbl = (d.label || '').toLowerCase();
+                                    return !lbl.includes('obs') && !lbl.includes('virtual') && !lbl
+                                        .includes('fake');
+                                });
+
+                                availableCameras = realCameras.length > 0 ? realCameras : devices;
+
+                                // Jika ada kamera belakang (misal di HP), utamakan kamera belakang
+                                let backCamIdx = availableCameras.findIndex(d => {
+                                    const lbl = (d.label || '').toLowerCase();
+                                    return lbl.includes('back') || lbl.includes('rear') || lbl.includes(
+                                        'environment') || lbl.includes('belakang');
+                                });
+
+                                if (backCamIdx !== -1 && currentCameraIndex === 0) {
+                                    currentCameraIndex = backCamIdx;
+                                }
+
+                                if (currentCameraIndex >= availableCameras.length) {
+                                    currentCameraIndex = 0;
+                                }
+
+                                const targetCameraId = availableCameras[currentCameraIndex].id;
+                                return qrScanner.start(
+                                    targetCameraId,
+                                    config,
+                                    onScanSuccess,
+                                    function(err) {} // silent on continuous frame
+                                );
+                            } else {
+                                // Fallback jika daftar device belum terenumerasi
+                                return qrScanner.start({
+                                        facingMode: currentFacing
+                                    },
+                                    config,
+                                    onScanSuccess,
+                                    function(err) {}
+                                );
+                            }
+                        }).catch(err => {
+                            // Fallback ke facingMode
+                            return qrScanner.start({
+                                    facingMode: currentFacing
+                                },
+                                config,
+                                onScanSuccess,
+                                function(err) {}
+                            );
+                        }).then(() => {
+                            isScannerActive = true;
+                            $('#cameraPlaceholder').addClass('d-none');
+                            $('#scanTargetFrame').removeClass('d-none').removeClass('scanned');
+                        }).catch(err => {
+                            console.warn("Kamera tidak dapat diakses:", err);
+                            $('#cameraPlaceholder').html(`
                         <i class="ri-camera-off-line fs-32 text-warning mb-2 d-block"></i>
                         <div class="fs-13 text-light">Akses kamera tidak aktif atau diblokir.</div>
                         <div class="fs-12 text-muted mt-1">Anda dapat menggunakan input manual barcode di bawah.</div>
                         <button class="btn btn-xs btn-primary mt-2" onclick="location.reload()">Coba Lagi</button>
                     `);
-                });
-            }
+                        });
+                    }
 
-            // Callback Scan Kamera Berhasil
-            function onScanSuccess(decodedText, decodedResult) {
-                if (!decodedText) return;
+                    // Callback Scan Kamera Berhasil
+                    function onScanSuccess(decodedText, decodedResult) {
+                        if (!decodedText) return;
 
-                if (currentKempu && currentKempu.id_kempu === decodedText.trim().toUpperCase()) {
-                    return;
-                }
+                        if (currentKempu && currentKempu.id_kempu === decodedText.trim().toUpperCase()) {
+                            return;
+                        }
 
-                // playBeep('success');
-                $('#scanTargetFrame').addClass('scanned');
+                        // playBeep('success');
+                        $('#scanTargetFrame').addClass('scanned');
 
-                if (qrScanner && isScannerActive) {
-                    qrScanner.pause();
-                }
+                        if (qrScanner && isScannerActive) {
+                            qrScanner.pause();
+                        }
 
-                lookupKempu(decodedText.trim().toUpperCase());
-            }
+                        lookupKempu(decodedText.trim().toUpperCase());
+                    }
 
-            function pauseScanner() {
-                if (qrScanner && isScannerActive) {
-                    try {
-                        qrScanner.pause();
-                    } catch (e) {}
-                }
-            }
+                    function pauseScanner() {
+                        if (qrScanner && isScannerActive) {
+                            try {
+                                qrScanner.pause();
+                            } catch (e) {}
+                        }
+                    }
 
-            function resumeScanner() {
-                currentKempu = null;
-                $('#scanTargetFrame').removeClass('scanned');
-                $('#inputManualId').val('').focus();
-                if (qrScanner && isScannerActive) {
-                    try {
-                        qrScanner.resume();
-                    } catch (e) {
+                    function resumeScanner() {
+                        currentKempu = null;
+                        $('#scanTargetFrame').removeClass('scanned');
+                        $('#inputManualId').val('').focus();
+                        if (qrScanner && isScannerActive) {
+                            try {
+                                qrScanner.resume();
+                            } catch (e) {
+                                startScanner();
+                            }
+                        }
+                    }
+
+                    // Ganti Kamera
+                    $('#btnSwitchCamera').on('click', function() {
+                        if (availableCameras && availableCameras.length > 1) {
+                            currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+                            startScanner();
+                        } else {
+                            currentFacing = (currentFacing === "environment") ? "user" : "environment";
+                            startScanner();
+                        }
+                    });
+
+                    // Restart Kamera
+                    $('#btnRestartCamera').on('click', function() {
+                        resumeScanner();
                         startScanner();
+                    });
+
+                    // Callback ketika Barcode terdeteksi
+                    let lastScanTime = 0;
+
+                    function onBarcodeDetected(code) {
+                        const now = Date.now();
+                        if (now - lastScanTime < 2000) return; // Debounce 2 detik
+                        lastScanTime = now;
+
+                        $('#scanTargetFrame').addClass('scanned');
+                        // playBeep('beep');
+                        pauseScanner();
+                        lookupKempu(code);
                     }
-                }
-            }
 
-            // Ganti Kamera
-            $('#btnSwitchCamera').on('click', function() {
-                if (availableCameras && availableCameras.length > 1) {
-                    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-                    startScanner();
-                } else {
-                    currentFacing = (currentFacing === "environment") ? "user" : "environment";
-                    startScanner();
-                }
-            });
+                    // Manual Input
+                    $('#btnLookupManual').on('click', function() {
+                        const val = $('#inputManualId').val().trim();
+                        if (val) {
+                            pauseScanner();
+                            lookupKempu(val, true);
+                        } else {
+                            $('#inputManualId').focus();
+                        }
+                    });
 
-            // Restart Kamera
-            $('#btnRestartCamera').on('click', function() {
-                resumeScanner();
-                startScanner();
-            });
+                    $('#inputManualId').on('keypress', function(e) {
+                        if (e.which === 13) {
+                            e.preventDefault();
+                            $('#btnLookupManual').click();
+                        }
+                    });
 
-            // Callback ketika Barcode terdeteksi
-            let lastScanTime = 0;
+                    // Lookup Kempu ke Server
+                    function lookupKempu(code, isManual = false) {
+                        Swal.fire({
+                            title: 'Memeriksa Kempu...',
+                            text: 'ID: ' + code,
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
 
-            function onBarcodeDetected(code) {
-                const now = Date.now();
-                if (now - lastScanTime < 2000) return; // Debounce 2 detik
-                lastScanTime = now;
+                        $.ajax({
+                            url: "{{ route('kempu.qc.lookup') }}",
+                            method: "POST",
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                id_kempu: code,
+                                qc_type: QC_TYPE,
+                                is_manual: isManual ? 1 : 0
+                            },
+                            success: function(res) {
+                                Swal.close();
+                                if (res.status && res.data) {
+                                    const k = res.data;
+                                    currentKempu = res.data;
+                                    currentKempu.is_manual = isManual;
 
-                $('#scanTargetFrame').addClass('scanned');
-                // playBeep('beep');
-                pauseScanner();
-                lookupKempu(code);
-            }
+                                    // Cek Validasi Alur
+                                    if (k.is_flow_valid === false) {
+                                        // playBeep('error');
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Alur Status Tidak Sesuai',
+                                            html: k.flow_error,
+                                            confirmButtonText: 'Tutup & Scan Lain'
+                                        }).then(() => {
+                                            resumeScanner();
+                                        });
+                                        return;
+                                    }
 
-            // Manual Input
-            $('#btnLookupManual').on('click', function() {
-                const val = $('#inputManualId').val().trim();
-                if (val) {
-                    pauseScanner();
-                    lookupKempu(val, true);
-                } else {
-                    $('#inputManualId').focus();
-                }
-            });
-
-            $('#inputManualId').on('keypress', function(e) {
-                if (e.which === 13) {
-                    e.preventDefault();
-                    $('#btnLookupManual').click();
-                }
-            });
-
-            // Lookup Kempu ke Server
-            function lookupKempu(code, isManual = false) {
-                Swal.fire({
-                    title: 'Memeriksa Kempu...',
-                    text: 'ID: ' + code,
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                $.ajax({
-                    url: "{{ route('kempu.qc.lookup') }}",
-                    method: "POST",
-                    data: {
-                        _token: "{{ csrf_token() }}",
-                        id_kempu: code,
-                        qc_type: QC_TYPE,
-                        is_manual: isManual ? 1 : 0
-                    },
-                    success: function(res) {
-                        Swal.close();
-                        if (res.status && res.data) {
-                            const k = res.data;
-                            currentKempu = res.data;
-                            currentKempu.is_manual = isManual;
-
-                            // Cek Validasi Alur
-                            if (k.is_flow_valid === false) {
+                                    // Alur Valid -> Tampilkan Modal Keputusan
+                                    // playBeep('success');
+                                    currentKempu = k;
+                                    showDecisionModal(k);
+                                } else {
+                                    // playBeep('error');
+                                    Swal.fire('Gagal', res.message || 'Kempu tidak ditemukan.', 'error').then(
+                                        () => {
+                                            resumeScanner();
+                                        });
+                                }
+                            },
+                            error: function(xhr) {
+                                Swal.close();
                                 // playBeep('error');
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Alur Status Tidak Sesuai',
-                                    html: k.flow_error,
-                                    confirmButtonText: 'Tutup & Scan Lain'
-                                }).then(() => {
+                                let msg = 'Kempu tidak ditemukan atau terjadi kesalahan server.';
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    msg = xhr.responseJSON.message;
+                                }
+                                Swal.fire('Tidak Ditemukan', msg, 'error').then(() => {
                                     resumeScanner();
                                 });
+                            }
+                        });
+                    }
+
+                    // Tampilkan Modal Keputusan QC
+                    function showDecisionModal(k) {
+                        $('#modalKempuId').text(k.id_kempu);
+                        $('#modalKempuRfid').text(k.rfid || '-');
+                        $('#modalKempuLoc').text(k.current_location || '-');
+                        $('#modalKempuStatus').text(k.current_status || '-');
+                        $('#modalKempuReused').text((k.reused_count || 0) + 'x');
+                        $('#modalInputNotes').val('');
+
+                        const isAfter = (k.qc_stage_context === 'after_filling' || Boolean(k.is_in_wfg));
+                        const isPreCuciContext = !['qc-pm', 'qc-pm-force'].includes(QC_TYPE) && (k.qc_stage_context ===
+                            'pre_cuci' || !isAfter);
+                        const isMaxReusedPreCuci = ['qc-pre-cuci', 'qc-proses', 'qc-proses-force', 'qc-force'].includes(
+                            QC_TYPE) && isPreCuciContext && (k.is_max_reused || (k.reused_count || 0) >= 21);
+
+                        // Inisialisasi Otoritas Manual Reused (Pre Cuci)
+                        if ($('#checkManualReused').length) {
+                            $('#checkManualReused').prop('checked', false);
+                            $('#boxManualReusedInput').addClass('d-none');
+                            const nextReused = k.next_auto_reused !== undefined ? k.next_auto_reused : (k.reused_count ||
+                                0);
+                            $('#inputManualReused').val(nextReused);
+                            $('#badgeAutoNextReused').text(nextReused + '/21');
+
+                            // Tampilkan hanya jika memiliki wewenang otoritas dan belum mencapai batas maksimal
+                            if (k.can_manual_reused && !isMaxReusedPreCuci) {
+                                $('#wrapperManualReused').removeClass('d-none');
+                            } else {
+                                $('#wrapperManualReused').addClass('d-none');
+                            }
+                        }
+
+                        // Inisialisasi Force Scan Target & Reused Pre-Cuci
+                        if ($('#modalForceTarget').length) {
+                            if (QC_TYPE === 'qc-proses-force') {
+                                if (isAfter) {
+                                    $('#optForceProsesRepro').removeClass('d-none');
+                                    $('#optForceProsesRelease').text('Release (Lolos After Filling)');
+                                } else {
+                                    $('#optForceProsesRepro').addClass('d-none');
+                                    $('#optForceProsesRelease').text('Release (Lolos Pre-Cuci)');
+                                    if ($('#modalForceTarget').val() === 'REPRO') {
+                                        $('#modalForceTarget').val('RELEASE');
+                                    }
+                                }
+                            } else if (QC_TYPE === 'qc-pm-force') {
+                                // Khusus Force Scan QC PM: Opsi REPRO hanya muncul jika kempu posisinya di WFG
+                                if (k.is_in_wfg) {
+                                    $('#optForcePmRepro').removeClass('d-none');
+                                } else {
+                                    $('#optForcePmRepro').addClass('d-none');
+                                    if ($('#modalForceTarget').val() === 'REPRO') {
+                                        $('#modalForceTarget').val('RELEASE');
+                                    }
+                                }
+                            }
+
+                            if (QC_TYPE === 'qc-pm-force') {
+                                $('#wrapperManualReusedForce').addClass('d-none');
+                                $('#checkManualReusedForce').prop('checked', false);
+                                $('#boxManualReusedInputForce').addClass('d-none');
+                            } else {
+                                const nextReusedForce = k.next_auto_reused !== undefined ? k.next_auto_reused : (k
+                                    .reused_count || 0);
+                                $('#inputManualReusedForce').val(nextReusedForce);
+                                $('#badgeAutoNextReusedForce').text(nextReusedForce + '/21');
+                                $('#checkManualReusedForce').prop('checked', false);
+                                $('#boxManualReusedInputForce').addClass('d-none');
+                                checkForceTargetPreCuci();
+                            }
+                        }
+
+                        // Cek apakah mencapai batas maksimal reused di Pre Cuci (21x)
+                        if (isMaxReusedPreCuci) {
+                            $('#alertMaxReusedNotice').removeClass('d-none');
+                            $('#alertPreCuciIncomingInfo').addClass('d-none');
+                            if ($('#boxNormalButtons').length) $('#boxNormalButtons').addClass('d-none');
+                            if ($('#boxForceButtons').length) $('#boxForceButtons').addClass('d-none');
+                            if ($('#boxForceControls').length) $('#boxForceControls').addClass('d-none');
+                            $('#boxMaxReusedScrapButton').removeClass('d-none');
+                            $('#wrapperManualReused').addClass('d-none');
+                            $('#wrapperManualReusedForce').addClass('d-none');
+                            if ($('#modalForceTarget').length) $('#modalForceTarget').val('SCRAP');
+                        } else {
+                            $('#alertMaxReusedNotice').addClass('d-none');
+                            $('#alertPreCuciIncomingInfo').removeClass('d-none');
+                            if ($('#boxNormalButtons').length) $('#boxNormalButtons').removeClass('d-none');
+                            if ($('#boxForceButtons').length) $('#boxForceButtons').removeClass('d-none');
+                            if ($('#boxForceControls').length) $('#boxForceControls').removeClass('d-none');
+                            $('#boxMaxReusedScrapButton').addClass('d-none');
+                            if (QC_TYPE === 'qc-retur') {
+                                if ($('#btnDecisionReturRepro').length) {
+                                    $('#btnDecisionReturRepro').prop('disabled', false).html(
+                                        '<i class="ri-recycle-line me-1"></i> Repro (Produksi)');
+                                }
+                                if ($('#btnDecisionReturReject').length) {
+                                    $('#btnDecisionReturReject').prop('disabled', false).html(
+                                        '<i class="ri-close-circle-line me-1"></i> Reject (Workshop)');
+                                }
+                                if ($('#modalReturTarget').length) $('#modalReturTarget').val('REPRO');
+                            }
+
+                            $('#btnDecisionOk').prop('disabled', false).html(
+                                '<i class="ri-checkbox-circle-line me-1"></i> Release (OK)');
+                            if ($('#btnDecisionHold').length) {
+                                $('#btnDecisionHold').prop('disabled', false).html(
+                                    '<i class="ri-pause-circle-line me-1"></i> Hold');
+                            }
+                            if ($('#btnDecisionRepro').length) {
+                                $('#btnDecisionRepro').prop('disabled', false).html(
+                                    '<i class="ri-recycle-line me-1"></i> Repro');
+                            }
+                            $('#btnDecisionNotOk').prop('disabled', false).html(
+                                QC_TYPE === 'qc-after-filling' ? '<i class="ri-tools-line me-1"></i> Repair' :
+                                '<i class="ri-close-circle-line me-1"></i> Tidak OK');
+                            if ($('#btnDecisionForce').length) {
+                                $('#btnDecisionForce').prop('disabled', false).html(
+                                    '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
+                            }
+                            if ($('#btnDecisionScrapPreCuci').length) {
+                                $('#btnDecisionScrapPreCuci').prop('disabled', false).html(
+                                    '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)'
+                                );
+                            }
+
+                            decisionModal.show();
+                        }
+
+                        // Fungsi cek target Force Scan apakah Pre-Cuci
+                        function checkForceTargetPreCuci() {
+                            if (QC_TYPE === 'qc-pm-force' || QC_TYPE === 'qc-pm') {
+                                $('#wrapperManualReusedForce').addClass('d-none');
+                                $('#checkManualReusedForce').prop('checked', false);
+                                $('#boxManualReusedInputForce').addClass('d-none');
                                 return;
                             }
 
-                            // Alur Valid -> Tampilkan Modal Keputusan
-                            // playBeep('success');
-                            currentKempu = k;
-                            showDecisionModal(k);
-                        } else {
-                            // playBeep('error');
-                            Swal.fire('Gagal', res.message || 'Kempu tidak ditemukan.', 'error').then(
-                                () => {
-                                    resumeScanner();
-                                });
+                            const val = $('#modalForceTarget').val();
+                            const isRelease = (val === 'RELEASE' || val === 'RELEASE_PRE_CUCI');
+                            const isPreCuci = (currentKempu && currentKempu.qc_stage_context === 'pre_cuci');
+
+                            const isMax = (currentKempu && (currentKempu.is_max_reused || (currentKempu.reused_count ||
+                                0) >= 21));
+                            if (isMax) {
+                                $('#wrapperManualReusedForce').addClass('d-none');
+                                $('#checkManualReusedForce').prop('checked', false);
+                                $('#boxManualReusedInputForce').addClass('d-none');
+                                return;
+                            }
+
+                            if ($('#modalForceTarget').length && isRelease && isPreCuci && (currentKempu
+                                    .can_manual_reused !==
+                                    false)) {
+                                $('#wrapperManualReusedForce').removeClass('d-none');
+                            } else {
+                                $('#wrapperManualReusedForce').addClass('d-none');
+                                $('#checkManualReusedForce').prop('checked', false);
+                                $('#boxManualReusedInputForce').addClass('d-none');
+                            }
                         }
-                    },
-                    error: function(xhr) {
-                        Swal.close();
-                        // playBeep('error');
-                        let msg = 'Kempu tidak ditemukan atau terjadi kesalahan server.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
-                        }
-                        Swal.fire('Tidak Ditemukan', msg, 'error').then(() => {
-                            resumeScanner();
+
+                        $('#modalForceTarget').on('change', checkForceTargetPreCuci);
+
+                        // Toggle switch input manual reused di Force Scan
+                        $('#checkManualReusedForce').on('change', function() {
+                            if ($(this).is(':checked')) {
+                                $('#boxManualReusedInputForce').removeClass('d-none');
+                                $('#inputManualReusedForce').focus();
+                            } else {
+                                $('#boxManualReusedInputForce').addClass('d-none');
+                            }
                         });
-                    }
-                });
-            }
 
-            // Tampilkan Modal Keputusan QC
-            function showDecisionModal(k) {
-                $('#modalKempuId').text(k.id_kempu);
-                $('#modalKempuRfid').text(k.rfid || '-');
-                $('#modalKempuLoc').text(k.current_location || '-');
-                $('#modalKempuStatus').text(k.current_status || '-');
-                $('#modalKempuReused').text((k.reused_count || 0) + 'x');
-                $('#modalInputNotes').val('');
-
-                const isAfter = (k.qc_stage_context === 'after_filling' || Boolean(k.is_in_wfg));
-                const isPreCuciContext = !['qc-pm', 'qc-pm-force'].includes(QC_TYPE) && (k.qc_stage_context === 'pre_cuci' || !isAfter);
-                const isMaxReusedPreCuci = ['qc-pre-cuci', 'qc-proses', 'qc-proses-force', 'qc-force'].includes(QC_TYPE) && isPreCuciContext && (k.is_max_reused || (k.reused_count || 0) >= 21);
-
-                // Inisialisasi Otoritas Manual Reused (Pre Cuci)
-                if ($('#checkManualReused').length) {
-                    $('#checkManualReused').prop('checked', false);
-                    $('#boxManualReusedInput').addClass('d-none');
-                    const nextReused = k.next_auto_reused !== undefined ? k.next_auto_reused : (k.reused_count || 0);
-                    $('#inputManualReused').val(nextReused);
-                    $('#badgeAutoNextReused').text(nextReused + '/21');
-
-                    // Tampilkan hanya jika memiliki wewenang otoritas dan belum mencapai batas maksimal
-                    if (k.can_manual_reused && !isMaxReusedPreCuci) {
-                        $('#wrapperManualReused').removeClass('d-none');
-                    } else {
-                        $('#wrapperManualReused').addClass('d-none');
-                    }
-                }
-
-                // Inisialisasi Force Scan Target & Reused Pre-Cuci
-                if ($('#modalForceTarget').length) {
-                    if (QC_TYPE === 'qc-proses-force') {
-                        if (isAfter) {
-                            $('#optForceProsesRepro').removeClass('d-none');
-                            $('#optForceProsesRelease').text('Release (Lolos After Filling)');
-                        } else {
-                            $('#optForceProsesRepro').addClass('d-none');
-                            $('#optForceProsesRelease').text('Release (Lolos Pre-Cuci)');
-                            if ($('#modalForceTarget').val() === 'REPRO') {
-                                $('#modalForceTarget').val('RELEASE');
+                        // Toggle switch input manual reused (Alur Normal)
+                        $('#checkManualReused').on('change', function() {
+                            if ($(this).is(':checked')) {
+                                $('#boxManualReusedInput').removeClass('d-none');
+                                $('#inputManualReused').focus();
+                            } else {
+                                $('#boxManualReusedInput').addClass('d-none');
                             }
-                        }
-                    } else if (QC_TYPE === 'qc-pm-force') {
-                        // Khusus Force Scan QC PM: Opsi REPRO hanya muncul jika kempu posisinya di WFG
-                        if (k.is_in_wfg) {
-                            $('#optForcePmRepro').removeClass('d-none');
-                        } else {
-                            $('#optForcePmRepro').addClass('d-none');
-                            if ($('#modalForceTarget').val() === 'REPRO') {
-                                $('#modalForceTarget').val('RELEASE');
-                            }
-                        }
-                    }
+                        });
 
-                    if (QC_TYPE === 'qc-pm-force') {
-                        $('#wrapperManualReusedForce').addClass('d-none');
-                        $('#checkManualReusedForce').prop('checked', false);
-                        $('#boxManualReusedInputForce').addClass('d-none');
-                    } else {
-                        const nextReusedForce = k.next_auto_reused !== undefined ? k.next_auto_reused : (k.reused_count || 0);
-                        $('#inputManualReusedForce').val(nextReusedForce);
-                        $('#badgeAutoNextReusedForce').text(nextReusedForce + '/21');
-                        $('#checkManualReusedForce').prop('checked', false);
-                        $('#boxManualReusedInputForce').addClass('d-none');
-                        checkForceTargetPreCuci();
-                    }
-                }
+                        // Reset saat modal ditutup
+                        $('#modalQcDecision').on('hidden.bs.modal', function() {
+                            resumeScanner();
+                            $('#inputManualId').val('').focus();
+                        });
 
-                // Cek apakah mencapai batas maksimal reused di Pre Cuci (21x)
-                if (isMaxReusedPreCuci) {
-                    $('#alertMaxReusedNotice').removeClass('d-none');
-                    $('#alertPreCuciIncomingInfo').addClass('d-none');
-                    if ($('#boxNormalButtons').length) $('#boxNormalButtons').addClass('d-none');
-                    if ($('#boxForceButtons').length) $('#boxForceButtons').addClass('d-none');
-                    if ($('#boxForceControls').length) $('#boxForceControls').addClass('d-none');
-                    $('#boxMaxReusedScrapButton').removeClass('d-none');
-                    $('#wrapperManualReused').addClass('d-none');
-                    $('#wrapperManualReusedForce').addClass('d-none');
-                    if ($('#modalForceTarget').length) $('#modalForceTarget').val('SCRAP');
-                } else {
-                    $('#alertMaxReusedNotice').addClass('d-none');
-                    $('#alertPreCuciIncomingInfo').removeClass('d-none');
-                    if ($('#boxNormalButtons').length) $('#boxNormalButtons').removeClass('d-none');
-                    if ($('#boxForceButtons').length) $('#boxForceButtons').removeClass('d-none');
-                    if ($('#boxForceControls').length) $('#boxForceControls').removeClass('d-none');
-                    $('#boxMaxReusedScrapButton').addClass('d-none');
-                }
+                        // Eksekusi Keputusan QC
+                        function submitDecision(decision, forceTarget = null) {
+                            if (!currentKempu) return;
 
-                $('#btnDecisionOk').prop('disabled', false).html(
-                    '<i class="ri-checkbox-circle-line me-1"></i> Release (OK)');
-                if ($('#btnDecisionHold').length) {
-                    $('#btnDecisionHold').prop('disabled', false).html(
-                        '<i class="ri-pause-circle-line me-1"></i> Hold');
-                }
-                if ($('#btnDecisionRepro').length) {
-                    $('#btnDecisionRepro').prop('disabled', false).html(
-                        '<i class="ri-recycle-line me-1"></i> Repro');
-                }
-                $('#btnDecisionNotOk').prop('disabled', false).html(
-                    QC_TYPE === 'qc-after-filling' ? '<i class="ri-tools-line me-1"></i> Repair' :
-                    '<i class="ri-close-circle-line me-1"></i> Tidak OK');
-                if ($('#btnDecisionForce').length) {
-                    $('#btnDecisionForce').prop('disabled', false).html(
-                        '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
-                }
-                if ($('#btnDecisionScrapPreCuci').length) {
-                    $('#btnDecisionScrapPreCuci').prop('disabled', false).html(
-                        '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)');
-                }
+                            const btnOk = $('#btnDecisionOk');
+                            const btnHold = $('#btnDecisionHold');
+                            const btnRepro = $('#btnDecisionRepro');
+                            const btnNotOk = $('#btnDecisionNotOk');
+                            const btnForce = $('#btnDecisionForce');
+                            const btnScrapPreCuci = $('#btnDecisionScrapPreCuci');
+                            const btnReturRepro = $('#btnDecisionReturRepro');
+                            const btnReturReject = $('#btnDecisionReturReject');
 
-                decisionModal.show();
-            }
+                            btnOk.prop('disabled', true);
+                            if (btnHold.length) btnHold.prop('disabled', true);
+                            if (btnRepro.length) btnRepro.prop('disabled', true);
+                            btnNotOk.prop('disabled', true);
+                            if (btnForce.length) btnForce.prop('disabled', true);
+                            if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', true);
+                            if (btnReturRepro.length) btnReturRepro.prop('disabled', true);
+                            if (btnReturReject.length) btnReturReject.prop('disabled', true);
 
-            // Fungsi cek target Force Scan apakah Pre-Cuci
-            function checkForceTargetPreCuci() {
-                if (QC_TYPE === 'qc-pm-force' || QC_TYPE === 'qc-pm') {
-                    $('#wrapperManualReusedForce').addClass('d-none');
-                    $('#checkManualReusedForce').prop('checked', false);
-                    $('#boxManualReusedInputForce').addClass('d-none');
-                    return;
-                }
-
-                const val = $('#modalForceTarget').val();
-                const isRelease = (val === 'RELEASE' || val === 'RELEASE_PRE_CUCI');
-                const isPreCuci = (currentKempu && currentKempu.qc_stage_context === 'pre_cuci');
-
-                const isMax = (currentKempu && (currentKempu.is_max_reused || (currentKempu.reused_count || 0) >= 21));
-                if (isMax) {
-                    $('#wrapperManualReusedForce').addClass('d-none');
-                    $('#checkManualReusedForce').prop('checked', false);
-                    $('#boxManualReusedInputForce').addClass('d-none');
-                    return;
-                }
-
-                if ($('#modalForceTarget').length && isRelease && isPreCuci && (currentKempu.can_manual_reused !==
-                        false)) {
-                    $('#wrapperManualReusedForce').removeClass('d-none');
-                } else {
-                    $('#wrapperManualReusedForce').addClass('d-none');
-                    $('#checkManualReusedForce').prop('checked', false);
-                    $('#boxManualReusedInputForce').addClass('d-none');
-                }
-            }
-
-            $('#modalForceTarget').on('change', checkForceTargetPreCuci);
-
-            // Toggle switch input manual reused di Force Scan
-            $('#checkManualReusedForce').on('change', function() {
-                if ($(this).is(':checked')) {
-                    $('#boxManualReusedInputForce').removeClass('d-none');
-                    $('#inputManualReusedForce').focus();
-                } else {
-                    $('#boxManualReusedInputForce').addClass('d-none');
-                }
-            });
-
-            // Toggle switch input manual reused (Alur Normal)
-            $('#checkManualReused').on('change', function() {
-                if ($(this).is(':checked')) {
-                    $('#boxManualReusedInput').removeClass('d-none');
-                    $('#inputManualReused').focus();
-                } else {
-                    $('#boxManualReusedInput').addClass('d-none');
-                }
-            });
-
-            // Reset saat modal ditutup
-            $('#modalQcDecision').on('hidden.bs.modal', function() {
-                resumeScanner();
-                $('#inputManualId').val('').focus();
-            });
-
-            // Eksekusi Keputusan QC
-            function submitDecision(decision, forceTarget = null) {
-                if (!currentKempu) return;
-
-                const btnOk = $('#btnDecisionOk');
-                const btnHold = $('#btnDecisionHold');
-                const btnRepro = $('#btnDecisionRepro');
-                const btnNotOk = $('#btnDecisionNotOk');
-                const btnForce = $('#btnDecisionForce');
-                const btnScrapPreCuci = $('#btnDecisionScrapPreCuci');
-
-                btnOk.prop('disabled', true);
-                if (btnHold.length) btnHold.prop('disabled', true);
-                if (btnRepro.length) btnRepro.prop('disabled', true);
-                btnNotOk.prop('disabled', true);
-                if (btnForce.length) btnForce.prop('disabled', true);
-                if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', true);
-
-                if (decision === 'FORCE') {
-                    if (btnForce.length) btnForce.html(
-                        '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
-                } else if (decision === 'SCRAP') {
-                    if (btnScrapPreCuci.length) btnScrapPreCuci.html(
-                        '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan Scrap...');
-                } else if (decision === 'OK') {
-                    btnOk.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
-                } else if (decision === 'HOLD') {
-                    btnHold.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
-                } else if (decision === 'REPRO') {
-                    if (btnRepro.length) btnRepro.html(
-                        '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
-                } else {
-                    btnNotOk.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
-                }
-
-                let resolvedTarget = forceTarget;
-                if (!resolvedTarget && decision === 'SCRAP') {
-                    resolvedTarget = 'SCRAP';
-                }
-
-                const postData = {
-                    _token: "{{ csrf_token() }}",
-                    id_kempu: currentKempu.id_kempu,
-                    qc_type: QC_TYPE,
-                    decision: (['qc-force', 'qc-pm-force', 'qc-proses-force'].includes(QC_TYPE) ? (
-                        resolvedTarget || decision || 'OK') : decision),
-                    notes: $('#modalInputNotes').val().trim(),
-                    is_manual: (currentKempu && currentKempu.is_manual) ? 1 : 0
-                };
-
-                if (['qc-force', 'qc-pm-force', 'qc-proses-force'].includes(QC_TYPE)) {
-                    postData.force_target = resolvedTarget || decision || 'OK';
-                }
-
-                if ($('#checkManualReused').length && $('#checkManualReused').is(':checked')) {
-                    const manualVal = $('#inputManualReused').val();
-                    if (manualVal !== '' && !isNaN(manualVal)) {
-                        postData.manual_reused = parseInt(manualVal);
-                    }
-                } else if ($('#checkManualReusedForce').length && $('#checkManualReusedForce').is(':checked') && (
-                        forceTarget === 'RELEASE' || forceTarget === 'RELEASE_PRE_CUCI' || $('#modalForceTarget')
-                        .val() === 'RELEASE' || $('#modalForceTarget').val() === 'RELEASE_PRE_CUCI'
-                    )) {
-                    const manualVal = $('#inputManualReusedForce').val();
-                    if (manualVal !== '' && !isNaN(manualVal)) {
-                        postData.manual_reused = parseInt(manualVal);
-                    }
-                }
-
-                $.ajax({
-                    url: "{{ route('kempu.qc.decision') }}",
-                    method: "POST",
-                    data: postData,
-                    success: function(res) {
-                        btnOk.prop('disabled', false).html(
-                            '<i class="ri-checkbox-circle-line me-1"></i> Release (OK)');
-                        if (btnHold.length) btnHold.prop('disabled', false).html(
-                            '<i class="ri-pause-circle-line me-1"></i> Hold');
-                        if (btnRepro.length) btnRepro.prop('disabled', false).html(
-                            '<i class="ri-recycle-line me-1"></i> Repro');
-                        btnNotOk.prop('disabled', false).html(
-                            QC_TYPE === 'qc-after-filling' ?
-                            '<i class="ri-tools-line me-1"></i> Repair' :
-                            '<i class="ri-close-circle-line me-1"></i> Tidak OK');
-                        if (btnForce.length) btnForce.prop('disabled', false).html(
-                            '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
-                        if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', false).html(
-                            '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)');
-
-                        if (res.status) {
-                            decisionModal.hide();
-                            // playBeep('success');
-
-                            let badgeColor = 'success';
-                            let label = 'Release (OK)';
-                            let iconType = 'success';
-
-                            if (['qc-force', 'qc-pm-force', 'qc-proses-force'].includes(QC_TYPE)) {
-                                badgeColor = (res.data.new_status === 'SCRAPPED' ? 'dark' : 'primary');
-                                label = 'FORCE SCAN: ' + (res.data.new_status || 'Berhasil');
-                                iconType = (res.data.new_status === 'SCRAPPED' ? 'warning' : 'success');
+                            if (QC_TYPE === 'qc-retur') {
+                                if (decision === 'REPRO') {
+                                    if (btnReturRepro.length) btnReturRepro.html(
+                                        '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan Repro...');
+                                } else {
+                                    if (btnReturReject.length) btnReturReject.html(
+                                        '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan Reject...');
+                                }
+                            } else if (decision === 'FORCE') {
+                                if (btnForce.length) btnForce.html(
+                                    '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
                             } else if (decision === 'SCRAP') {
-                                badgeColor = 'dark';
-                                label = 'SCRAP (Batas Reused Maksimal)';
-                                iconType = 'warning';
+                                if (btnScrapPreCuci.length) btnScrapPreCuci.html(
+                                    '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan Scrap...');
+                            } else if (decision === 'OK') {
+                                btnOk.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
                             } else if (decision === 'HOLD') {
-                                badgeColor = 'warning text-dark';
-                                label = 'HOLD (Tahan)';
-                                iconType = 'warning';
+                                btnHold.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
                             } else if (decision === 'REPRO') {
-                                badgeColor = 'info text-white';
-                                label = 'REPRO (Kirim ke Produksi)';
-                                iconType = 'warning';
-                            } else if (decision === 'NOT_OK') {
-                                badgeColor = 'danger';
-                                label = QC_TYPE === 'qc-after-filling' ? 'REPAIR (Kirim ke Workshop)' :
-                                    'TIDAK OK (Reject)';
-                                iconType = 'error';
+                                if (btnRepro.length) btnRepro.html(
+                                    '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
+                            } else {
+                                btnNotOk.html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...');
                             }
 
-                            let infoReused = '';
-                            if (res.data && res.data.reused_count !== undefined && (QC_TYPE ===
-                                    'qc-pre-cuci' || QC_TYPE === 'qc-proses' || QC_TYPE === 'qc-force'
+                            let resolvedTarget = forceTarget;
+                            if (!resolvedTarget && decision === 'SCRAP') {
+                                resolvedTarget = 'SCRAP';
+                            }
+
+                            const postData = {
+                                _token: "{{ csrf_token() }}",
+                                id_kempu: currentKempu.id_kempu,
+                                qc_type: QC_TYPE,
+                                decision: (['qc-force', 'qc-pm-force', 'qc-proses-force', 'qc-retur'].includes(
+                                    QC_TYPE) ? (
+                                    resolvedTarget || decision || (QC_TYPE === 'qc-retur' ? $(
+                                        '#modalReturTarget').val() : 'OK')) : decision),
+                                notes: $('#modalInputNotes').val().trim(),
+                                is_manual: (currentKempu && currentKempu.is_manual) ? 1 : 0
+                            };
+
+                            if (['qc-force', 'qc-pm-force', 'qc-proses-force', 'qc-retur'].includes(QC_TYPE)) {
+                                postData.force_target = resolvedTarget || decision || (QC_TYPE === 'qc-retur' ? $(
+                                    '#modalReturTarget').val() : 'OK');
+                            }
+
+                            if ($('#checkManualReused').length && $('#checkManualReused').is(':checked')) {
+                                const manualVal = $('#inputManualReused').val();
+                                if (manualVal !== '' && !isNaN(manualVal)) {
+                                    postData.manual_reused = parseInt(manualVal);
+                                }
+                            } else if ($('#checkManualReusedForce').length && $('#checkManualReusedForce').is(':checked') &&
+                                (
+                                    forceTarget === 'RELEASE' || forceTarget === 'RELEASE_PRE_CUCI' || $(
+                                        '#modalForceTarget')
+                                    .val() === 'RELEASE' || $('#modalForceTarget').val() === 'RELEASE_PRE_CUCI'
                                 )) {
-                                infoReused =
-                                    `<br><span class="badge bg-primary fs-12 mt-2 px-3 py-1">Siklus Reused: ${res.data.reused_count}/21x</span>`;
+                                const manualVal = $('#inputManualReusedForce').val();
+                                if (manualVal !== '' && !isNaN(manualVal)) {
+                                    postData.manual_reused = parseInt(manualVal);
+                                }
                             }
 
-                            Swal.fire({
-                                icon: iconType,
-                                title: `Hasil QC: ${label}`,
-                                html: `Kempu <b>${currentKempu.id_kempu}</b> berhasil diperbarui ke status:<br><span class="badge bg-${badgeColor} fs-13 mt-2 px-3 py-2">${res.data.new_status}</span>${infoReused}`,
-                                timer: 2500,
-                                timerProgressBar: true,
-                                showConfirmButton: false
+                            $.ajax({
+                                url: "{{ route('kempu.qc.decision') }}",
+                                method: "POST",
+                                data: postData,
+                                success: function(res) {
+                                    btnOk.prop('disabled', false).html(
+                                        '<i class="ri-checkbox-circle-line me-1"></i> Release (OK)');
+                                    if (btnHold.length) btnHold.prop('disabled', false).html(
+                                        '<i class="ri-pause-circle-line me-1"></i> Hold');
+                                    if (btnRepro.length) btnRepro.prop('disabled', false).html(
+                                        '<i class="ri-recycle-line me-1"></i> Repro');
+                                    btnNotOk.prop('disabled', false).html(
+                                        QC_TYPE === 'qc-after-filling' ?
+                                        '<i class="ri-tools-line me-1"></i> Repair' :
+                                        '<i class="ri-close-circle-line me-1"></i> Tidak OK');
+                                    if (btnForce.length) btnForce.prop('disabled', false).html(
+                                        '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
+                                    if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', false).html(
+                                        '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)'
+                                    );
+                                    if (btnReturRepro.length) btnReturRepro.prop('disabled', false).html(
+                                        '<i class="ri-recycle-line me-1"></i> Repro (Produksi)');
+                                    if (btnReturReject.length) btnReturReject.prop('disabled', false).html(
+                                        '<i class="ri-close-circle-line me-1"></i> Reject (Workshop)');
+
+                                    if (res.status) {
+                                        decisionModal.hide();
+                                        // playBeep('success');
+
+                                        let badgeColor = 'success';
+                                        let label = 'Release (OK)';
+                                        let iconType = 'success';
+
+                                        if (QC_TYPE === 'qc-retur') {
+                                            if (decision === 'REPRO') {
+                                                badgeColor = 'warning text-dark';
+                                                label = 'REPRO (Kirim ke Produksi)';
+                                                iconType = 'warning';
+                                            } else {
+                                                badgeColor = 'danger';
+                                                label = 'REJECT (Kirim ke Workshop)';
+                                                iconType = 'error';
+                                            }
+                                        } else if (['qc-force', 'qc-pm-force', 'qc-proses-force'].includes(
+                                                QC_TYPE)) {
+                                            badgeColor = (res.data.new_status === 'SCRAPPED' ? 'dark' :
+                                                'primary');
+                                            label = 'FORCE SCAN: ' + (res.data.new_status || 'Berhasil');
+                                            iconType = (res.data.new_status === 'SCRAPPED' ? 'warning' :
+                                                'success');
+                                        } else if (decision === 'SCRAP') {
+                                            badgeColor = 'dark';
+                                            label = 'SCRAP (Batas Reused Maksimal)';
+                                            iconType = 'warning';
+                                        } else if (decision === 'HOLD') {
+                                            badgeColor = 'warning text-dark';
+                                            label = 'HOLD (Tahan)';
+                                            iconType = 'warning';
+                                        } else if (decision === 'REPRO') {
+                                            badgeColor = 'info text-white';
+                                            label = 'REPRO (Kirim ke Produksi)';
+                                            iconType = 'warning';
+                                        } else if (decision === 'NOT_OK') {
+                                            badgeColor = 'danger';
+                                            label = QC_TYPE === 'qc-after-filling' ?
+                                                'REPAIR (Kirim ke Workshop)' :
+                                                'TIDAK OK (Reject)';
+                                            iconType = 'error';
+                                        }
+
+                                        let infoReused = '';
+                                        if (res.data && res.data.reused_count !== undefined && (QC_TYPE ===
+                                                'qc-pre-cuci' || QC_TYPE === 'qc-proses' || QC_TYPE ===
+                                                'qc-force'
+                                            )) {
+                                            infoReused =
+                                                `<br><span class="badge bg-primary fs-12 mt-2 px-3 py-1">Siklus Reused: ${res.data.reused_count}/21x</span>`;
+                                        }
+
+                                        Swal.fire({
+                                            icon: iconType,
+                                            title: `Hasil QC: ${label}`,
+                                            html: `Kempu <b>${currentKempu.id_kempu}</b> berhasil diperbarui ke status:<br><span class="badge bg-${badgeColor} fs-13 mt-2 px-3 py-2">${res.data.new_status}</span>${infoReused}`,
+                                            timer: 2500,
+                                            timerProgressBar: true,
+                                            showConfirmButton: false
+                                        });
+                                    } else {
+                                        // playBeep('error');
+                                        Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
+                                    }
+                                },
+                                error: function(xhr) {
+                                    btnOk.prop('disabled', false).html(
+                                        '<i class="ri-checkbox-circle-line me-1"></i> Release (OK)');
+                                    if (btnHold.length) btnHold.prop('disabled', false).html(
+                                        '<i class="ri-pause-circle-line me-1"></i> Hold');
+                                    if (btnRepro.length) btnRepro.prop('disabled', false).html(
+                                        '<i class="ri-recycle-line me-1"></i> Repro');
+                                    btnNotOk.prop('disabled', false).html(
+                                        QC_TYPE === 'qc-after-filling' ?
+                                        '<i class="ri-tools-line me-1"></i> Repair' :
+                                        '<i class="ri-close-circle-line me-1"></i> Tidak OK');
+                                    if (btnForce.length) btnForce.prop('disabled', false).html(
+                                        '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
+                                    if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', false).html(
+                                        '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)'
+                                    );
+                                    // playBeep('error');
+
+                                    let msg = 'Terjadi kesalahan server saat menyimpan hasil QC.';
+                                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                                        msg = xhr.responseJSON.message;
+                                    }
+                                    Swal.fire('Gagal', msg, 'error');
+                                }
                             });
-                        } else {
-                            // playBeep('error');
-                            Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
                         }
-                    },
-                    error: function(xhr) {
-                        btnOk.prop('disabled', false).html(
-                            '<i class="ri-checkbox-circle-line me-1"></i> Release (OK)');
-                        if (btnHold.length) btnHold.prop('disabled', false).html(
-                            '<i class="ri-pause-circle-line me-1"></i> Hold');
-                        if (btnRepro.length) btnRepro.prop('disabled', false).html(
-                            '<i class="ri-recycle-line me-1"></i> Repro');
-                        btnNotOk.prop('disabled', false).html(
-                            QC_TYPE === 'qc-after-filling' ?
-                            '<i class="ri-tools-line me-1"></i> Repair' :
-                            '<i class="ri-close-circle-line me-1"></i> Tidak OK');
-                        if (btnForce.length) btnForce.prop('disabled', false).html(
-                            '<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
-                        if (btnScrapPreCuci.length) btnScrapPreCuci.prop('disabled', false).html(
-                            '<i class="ri-delete-bin-line me-1 text-danger"></i> Konfirmasi Scrap Kempu (Batas Maksimal 21x)');
-                        // playBeep('error');
 
-                        let msg = 'Terjadi kesalahan server saat menyimpan hasil QC.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
-                        }
-                        Swal.fire('Gagal', msg, 'error');
-                    }
-                });
-            }
+                        // Tombol Decision OK
+                        $('#btnDecisionOk').on('click', function() {
+                            submitDecision('OK');
+                        });
 
-            // Tombol Decision OK
-            $('#btnDecisionOk').on('click', function() {
-                submitDecision('OK');
-            });
+                        // Tombol Decision Hold
+                        $('#btnDecisionHold').on('click', function() {
+                            submitDecision('HOLD');
+                        });
 
-            // Tombol Decision Hold
-            $('#btnDecisionHold').on('click', function() {
-                submitDecision('HOLD');
-            });
+                        // Tombol Decision Repro
+                        $('#btnDecisionRepro').on('click', function() {
+                            submitDecision('REPRO');
+                        });
 
-            // Tombol Decision Repro
-            $('#btnDecisionRepro').on('click', function() {
-                submitDecision('REPRO');
-            });
+                        // Tombol Decision Tidak OK
+                        $('#btnDecisionNotOk').on('click', function() {
+                            submitDecision('NOT_OK');
+                        });
 
-            // Tombol Decision Tidak OK
-            $('#btnDecisionNotOk').on('click', function() {
-                submitDecision('NOT_OK');
-            });
+                        // Tombol Decision Force
+                        $('#btnDecisionForce').on('click', function() {
+                            const target = $('#modalForceTarget').val();
+                            submitDecision('FORCE', target);
+                        });
 
-            // Tombol Decision Force
-            $('#btnDecisionForce').on('click', function() {
-                const target = $('#modalForceTarget').val();
-                submitDecision('FORCE', target);
-            });
+                        // Tombol Decision Cek Retur Repro
+                        $('#btnDecisionReturRepro').on('click', function() {
+                            submitDecision('REPRO');
+                        });
 
-            // Tombol Decision Scrap (Batas Maksimal Reused Pre-Cuci)
-            $('#btnDecisionScrapPreCuci').on('click', function() {
-                Swal.fire({
-                    title: 'Konfirmasi Scrap Kempu?',
-                    html: `Kempu <b>${currentKempu.id_kempu}</b> telah mencapai batas maksimal pemakaian (21x).<br><br>Status kempu akan dialihkan menjadi <b>SCRAPPED</b>.`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#212529',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: '<i class="ri-delete-bin-line me-1"></i> Ya, Scrap Kempu',
-                    cancelButtonText: 'Batal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        submitDecision('SCRAP', 'SCRAP');
-                    }
-                });
-            });
+                        // Tombol Decision Cek Retur Reject
+                        $('#btnDecisionReturReject').on('click', function() {
+                            submitDecision('REJECT');
+                        });
 
-            // Inisialisasi awal
-            startScanner();
-        });
+                        // Sinkronisasi dropdown Cek Retur jika diganti
+                        $('#modalReturTarget').on('change', function() {
+                            const val = $(this).val();
+                            if (val === 'REPRO') {
+                                $('#btnDecisionReturRepro').focus();
+                            } else {
+                                $('#btnDecisionReturReject').focus();
+                            }
+                        });
+
+                        // Tombol Decision Scrap (Batas Maksimal Reused Pre-Cuci)
+                        $('#btnDecisionScrapPreCuci').on('click', function() {
+                            Swal.fire({
+                                title: 'Konfirmasi Scrap Kempu?',
+                                html: `Kempu <b>${currentKempu.id_kempu}</b> telah mencapai batas maksimal pemakaian (21x).<br><br>Status kempu akan dialihkan menjadi <b>SCRAPPED</b>.`,
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonColor: '#212529',
+                                cancelButtonColor: '#6c757d',
+                                confirmButtonText: '<i class="ri-delete-bin-line me-1"></i> Ya, Scrap Kempu',
+                                cancelButtonText: 'Batal'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    submitDecision('SCRAP', 'SCRAP');
+                                }
+                            });
+                        });
+
+                        // Inisialisasi awal
+                        startScanner();
+                    });
     </script>
 @endsection
