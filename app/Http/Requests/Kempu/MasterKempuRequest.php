@@ -34,18 +34,22 @@ class MasterKempuRequest extends FormRequest
             'gr_date'    => 'nullable|date',
             'no_spb'     => 'nullable|string|max:100',
             'rfid'       => 'nullable|string|max:100',
-            'status'     => 'nullable|string|in:active,in_use,maintenance,damaged,scrap',
-            'keterangan' => 'nullable|string|max:1000',
-            'is_bulk'    => 'nullable|boolean',
-            'qty'        => 'nullable|integer|min:1|max:200',
+            'status'       => 'nullable|string|in:active,in_use,maintenance,damaged,scrap',
+            'keterangan'   => 'nullable|string|max:1000',
+            'reused_count' => 'nullable|integer|min:0|max:21',
+            'is_bulk'      => 'nullable|boolean',
+            'qty'          => 'nullable|integer|min:1|max:200',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'id_kempu.unique' => 'ID Kempu sudah digunakan, gunakan ID lain.',
-            'gr_date.date'    => 'Format Tanggal GR tidak valid.',
+            'id_kempu.unique'      => 'ID Kempu sudah digunakan, gunakan ID lain.',
+            'gr_date.date'         => 'Format Tanggal GR tidak valid.',
+            'reused_count.integer' => 'Nilai Reused harus berupa bilangan bulat.',
+            'reused_count.min'     => 'Nilai Reused minimal 0x.',
+            'reused_count.max'     => 'Nilai Reused maksimal 21x.',
         ];
     }
 }

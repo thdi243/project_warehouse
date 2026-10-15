@@ -194,6 +194,9 @@
                                     <th class="sortable-th" data-sort="rfid">
                                         RFID <i class="ri-arrow-up-down-line"></i>
                                     </th>
+                                    <th class="sortable-th text-center" data-sort="reused_count">
+                                        Reused <i class="ri-arrow-up-down-line"></i>
+                                    </th>
                                     <th class="sortable-th text-center" data-sort="status">
                                         Status <i class="ri-arrow-up-down-line"></i>
                                     </th>
@@ -208,7 +211,7 @@
                             </thead>
                             <tbody id="tableBody">
                                 <tr>
-                                    <td colspan="10" class="text-center py-4">
+                                    <td colspan="11" class="text-center py-4">
                                         <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
                                         </div>
                                         <span>Memuat data...</span>
@@ -384,8 +387,29 @@
                                 </small>
                             </div>
 
+                            <!-- Siklus Reused (Pemakaian) -->
+                            <div class="col-md-6" id="colReusedField">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label for="reused_count" class="form-label fw-semibold mb-0">
+                                        Siklus Reused <span class="text-muted fw-normal">(0 - 21x)</span>
+                                    </label>
+                                    <span class="badge bg-light text-primary border fs-11" id="reusedLabelBadge">
+                                        Maks 21x
+                                    </span>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted"><i class="ri-recycle-line text-primary"></i></span>
+                                    <input type="number" class="form-control text-center fw-bold font-monospace" id="reused_count" name="reused_count"
+                                        min="0" max="21" value="0" placeholder="0">
+                                    <span class="input-group-text">/ 21 Reused</span>
+                                </div>
+                                <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                                    <i class="ri-information-line me-1"></i>Siklus pemakaian kempu (0 = baru, maksimal 21x).
+                                </small>
+                            </div>
+
                             <!-- Status Operasional (hidden default active) -->
-                            <div class="col-md-6 d-none">
+                            <div class="col-md-6 d-none" id="colStatusField">
                                 <label for="status" class="form-label fw-semibold">
                                     Status Operasional <span class="text-danger">*</span>
                                 </label>
@@ -580,6 +604,7 @@
                     $('#colBulkFields').slideDown(150);
                     $('#colSingleIdField').hide();
                     $('#colRfidField').hide();
+                    $('#colReusedField').hide();
                     $('#id_kempu').prop('required', false);
                     $('#bulk_qty').prop('required', true);
                     fetchAutoId();
@@ -588,6 +613,7 @@
                     $('#colBulkFields').slideUp(150);
                     $('#colSingleIdField').show();
                     $('#colRfidField').show();
+                    $('#colReusedField').show();
                     $('#id_kempu').prop('required', true);
                     $('#bulk_qty').prop('required', false);
                     if (!$('#kempu_id').val() && !$('#checkCustomId').is(':checked')) {
@@ -655,7 +681,7 @@
             function loadData() {
                 $('#tableBody').html(`
                     <tr>
-                        <td colspan="10" class="text-center py-4">
+                        <td colspan="11" class="text-center py-4">
                             <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                             <span>Memuat data...</span>
                         </td>
@@ -676,13 +702,13 @@
                             applyFilterAndRender();
                         } else {
                             $('#tableBody').html(
-                                `<tr><td colspan="10" class="text-center text-danger py-4">Gagal memuat data</td></tr>`
+                                `<tr><td colspan="11" class="text-center text-danger py-4">Gagal memuat data</td></tr>`
                             );
                         }
                     },
                     error: function() {
                         $('#tableBody').html(
-                            `<tr><td colspan="10" class="text-center text-danger py-4">Terjadi kesalahan koneksi server</td></tr>`
+                            `<tr><td colspan="11" class="text-center text-danger py-4">Terjadi kesalahan koneksi server</td></tr>`
                         );
                     }
                 });
@@ -705,6 +731,7 @@
                         const grDate = (item.gr_date || '').toLowerCase();
                         const status = (item.status || '').toLowerCase();
                         const ket = (item.keterangan || '').toLowerCase();
+                        const reused = ((item.reused_count ?? item.main?.reused_count ?? 0) + 'x').toLowerCase();
                         const isDeleted = (item.deleted_at || item.status === 'nonaktif') ? 'nonaktif deleted' : '';
 
                         return idKempu.includes(keyword) ||
@@ -713,17 +740,34 @@
                             grDate.includes(keyword) ||
                             status.includes(keyword) ||
                             isDeleted.includes(keyword) ||
+                            reused.includes(keyword) ||
                             ket.includes(keyword);
                     });
                 }
 
                 // 2. Sorting
                 filteredData.sort((a, b) => {
-                    let valA = a[sortField] ?? '';
-                    let valB = b[sortField] ?? '';
+                    let valA = a[sortField];
+                    let valB = b[sortField];
 
-                    valA = String(valA).toLowerCase();
-                    valB = String(valB).toLowerCase();
+                    if (sortField === 'reused_count') {
+                        valA = parseInt(a.reused_count ?? a.main?.reused_count ?? 0);
+                        valB = parseInt(b.reused_count ?? b.main?.reused_count ?? 0);
+                        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+                        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+                        return 0;
+                    }
+
+                    if (sortField === 'print_count') {
+                        valA = parseInt(a.print_count ?? 0);
+                        valB = parseInt(b.print_count ?? 0);
+                        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+                        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+                        return 0;
+                    }
+
+                    valA = String(valA ?? '').toLowerCase();
+                    valB = String(valB ?? '').toLowerCase();
 
                     if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
                     if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
@@ -756,7 +800,7 @@
                 if (rows.length === 0) {
                     $('#tableBody').html(`
                         <tr>
-                            <td colspan="10" class="text-center py-4 text-muted">
+                            <td colspan="11" class="text-center py-4 text-muted">
                                 <i class="ri-inbox-line fs-24 d-block mb-1"></i>
                                 Tidak ada data yang ditemukan
                             </td>
@@ -789,6 +833,35 @@
                         statusBadge = statusMap[row.status] ||
                             `<span class="badge bg-secondary">${row.status || '-'}</span>`;
                     }
+
+                    // Reused Badge & Quick Edit Button
+                    const reusedVal = (row.reused_count !== undefined && row.reused_count !== null) ? parseInt(row.reused_count) : (row.main?.reused_count ?? 0);
+                    const maxReused = row.max_reused || row.main?.max_reused || 21;
+
+                    let reusedBadgeClass = 'bg-light text-dark border';
+                    if (reusedVal >= 21) {
+                        reusedBadgeClass = 'bg-danger-subtle text-danger border border-danger-subtle';
+                    } else if (reusedVal >= 18) {
+                        reusedBadgeClass = 'bg-warning-subtle text-warning border border-warning-subtle';
+                    } else if (reusedVal > 0) {
+                        reusedBadgeClass = 'bg-primary-subtle text-primary border border-primary-subtle';
+                    }
+
+                    const reusedHtml = `
+                        <div class="d-inline-flex align-items-center justify-content-center gap-1">
+                            <span class="badge ${reusedBadgeClass} font-monospace py-1 px-2"
+                                  title="Siklus Reused: ${reusedVal} dari ${maxReused}x">
+                                ${reusedVal}/${maxReused}x
+                            </span>
+                            ${!isTrashed ? `
+                                <button type="button" class="btn btn-sm btn-ghost-primary btn-quick-reused p-0 d-inline-flex align-items-center justify-content-center"
+                                        data-id="${row.id}" data-id-kempu="${row.id_kempu}" data-reused="${reusedVal}"
+                                        title="Edit Nilai Reused" style="width: 20px; height: 20px; border-radius: 4px;">
+                                    <i class="ri-pencil-line fs-12"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
 
                     // Print Status Badge
                     let printBadge = '';
@@ -855,6 +928,7 @@
                             <td><span class="badge bg-light text-dark border font-monospace">${row.no_spb || '-'}</span></td>
                             <td><span class="text-dark">${grDateFormatted}</span></td>
                             <td>${row.rfid || '-'}</td>
+                            <td class="text-center">${reusedHtml}</td>
                             <td class="text-center">${statusBadge}</td>
                             <td class="text-center">${printBadge}</td>
                             <td><small class="text-muted text-truncate d-inline-block" style="max-width: 200px;">${row.keterangan || '-'}</small></td>
@@ -1075,7 +1149,6 @@
             });
 
             // Tombol Tambah
-            // Tombol Tambah
             $('#btnTambah').on('click', function() {
                 $('#formKempu')[0].reset();
                 $('#formKempu').removeClass('was-validated');
@@ -1083,6 +1156,7 @@
                 $('#no_spb').val('');
                 $('#gr_date').val('{{ date('Y-m-d') }}');
                 $('#status').val('active');
+                $('#reused_count').val(0);
                 $('#modalKempuLabel').text('Tambah Master Kempu');
 
                 // Reset RFID Field
@@ -1139,6 +1213,10 @@
                     $('#btnClearRfid').hide();
                 }
                 resetRfidBadge();
+
+                // Isi nilai Reused Count saat ini
+                const reusedVal = (rowData.reused_count !== undefined && rowData.reused_count !== null) ? rowData.reused_count : (rowData.main?.reused_count ?? 0);
+                $('#reused_count').val(reusedVal);
 
                 $('#status').val(rowData.status || 'active');
                 $('#keterangan').val(rowData.keterangan);
@@ -1344,6 +1422,7 @@
                 } else {
                     formData.id_kempu = $('#id_kempu').val().trim().toUpperCase();
                     formData.rfid = $('#rfid').val().trim().toUpperCase();
+                    formData.reused_count = parseInt($('#reused_count').val()) || 0;
                 }
 
                 $('#btnSave').prop('disabled', true).html(
@@ -1403,6 +1482,116 @@
                         const errorMsg = xhr.responseJSON?.message ||
                             'Terjadi kesalahan pada server.';
                         Swal.fire('Gagal', errorMsg, 'error');
+                    }
+                });
+            });
+
+            // Quick Edit Reused langsung dari tabel
+            $(document).on('click', '.btn-quick-reused', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const id = $(this).data('id');
+                const idKempu = $(this).data('id-kempu');
+                const currentReused = parseInt($(this).data('reused')) || 0;
+
+                Swal.fire({
+                    title: `Edit Reused Kempu`,
+                    html: `
+                        <div class="text-start mb-2">
+                            <div class="alert alert-info py-2 px-3 small mb-3">
+                                <i class="ri-information-line me-1"></i>ID Kempu: <strong>${idKempu}</strong>
+                            </div>
+                            <label for="swalReusedInput" class="form-label fw-bold small">
+                                Siklus Reused (0 - 21x):
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="ri-recycle-line text-primary"></i></span>
+                                <input type="number" id="swalReusedInput" class="form-control text-center fw-bold fs-16"
+                                    min="0" max="21" value="${currentReused}">
+                                <span class="input-group-text">/ 21 Reused</span>
+                            </div>
+                            <small class="text-muted d-block mt-2" style="font-size: 11px;">
+                                <i class="ri-information-line me-1"></i>Ubah siklus pemakaian kempu ini secara langsung. Riwayat koreksi akan dicatat di pelacakan tracking.
+                            </small>
+                        </div>
+                    `,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="ri-save-line me-1"></i> Simpan Reused',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#0ab39c',
+                    cancelButtonColor: '#6c757d',
+                    didOpen: () => {
+                        const input = document.getElementById('swalReusedInput');
+                        if (input) {
+                            input.focus();
+                            input.select();
+                            input.addEventListener('keydown', (ev) => {
+                                if (ev.key === 'Enter') {
+                                    ev.preventDefault();
+                                    Swal.getConfirmButton().click();
+                                }
+                            });
+                        }
+                    },
+                    preConfirm: () => {
+                        const inputVal = document.getElementById('swalReusedInput').value;
+                        const parsed = parseInt(inputVal);
+                        if (isNaN(parsed) || parsed < 0 || parsed > 21) {
+                            Swal.showValidationMessage('Nilai Reused harus berupa angka antara 0 dan 21x!');
+                            return false;
+                        }
+                        return parsed;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const newReused = result.value;
+
+                        Swal.fire({
+                            title: 'Menyimpan...',
+                            text: 'Memperbarui siklus reused...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        $.ajax({
+                            url: "{{ route('kempu.master.update_reused') }}",
+                            type: "POST",
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                id: id,
+                                id_kempu: idKempu,
+                                reused_count: newReused
+                            },
+                            success: function(res) {
+                                if (res.status) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Berhasil!',
+                                        text: res.message || `Nilai Reused ${idKempu} berhasil diubah ke ${newReused}x.`,
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+
+                                    // Update item di allData & filteredData lalu render ulang
+                                    const targetItem = allData.find(item => item.id == id);
+                                    if (targetItem) {
+                                        targetItem.reused_count = newReused;
+                                        if (targetItem.main) {
+                                            targetItem.main.reused_count = newReused;
+                                        }
+                                    }
+                                    applyFilterAndRender();
+                                } else {
+                                    Swal.fire('Gagal', res.message || 'Gagal memperbarui nilai reused.', 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                const msg = xhr.responseJSON?.message || 'Terjadi kesalahan pada server.';
+                                Swal.fire('Error', msg, 'error');
+                            }
+                        });
                     }
                 });
             });

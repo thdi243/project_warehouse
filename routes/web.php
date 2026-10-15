@@ -1000,6 +1000,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/data', [MasterKempuController::class, 'getData'])->name('data');
             Route::post('/store', [MasterKempuController::class, 'store'])->name('store');
             Route::put('/update/{id}', [MasterKempuController::class, 'update'])->name('update');
+            Route::post('/update-reused', [MasterKempuController::class, 'updateReused'])->name('update_reused');
             Route::delete('/delete/{id}', [MasterKempuController::class, 'destroy'])->name('delete');
             Route::post('/restore/{id}', [MasterKempuController::class, 'restore'])->name('restore');
             Route::delete('/force-delete/{id}', [MasterKempuController::class, 'forceDelete'])->name('force-delete');
