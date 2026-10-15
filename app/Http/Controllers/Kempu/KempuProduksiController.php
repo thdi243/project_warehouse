@@ -135,8 +135,11 @@ class KempuProduksiController extends Controller
                     'QC After Filling Repro',
                     'QC After Filling Repro (Produk Reject)',
                     'REPRO',
+                    MasterKempuModel::STATUS_WFG_RETUR_FROM_PAS,
+                    'WFG_RETUR_FROM_PAS',
+                    'Retur From PAS',
                 ],
-                'description'     => 'Pengosongan muatan produk reject (hasil QC After Filling atau Cek Retur QC). Setelah discan, kempu diteruskan ke QC Cek Pre Cuci.',
+                'description'     => 'Pengosongan muatan produk reject atau retur dari PAS (selagi WFG sudah scan Retur From PAS). Setelah discan, kempu diteruskan ke QC Cek Pre Cuci.',
             ],
             // 'transfer-in-from-wfg' => [
             //     'key'             => 'transfer-in-from-wfg',
@@ -665,20 +668,21 @@ class KempuProduksiController extends Controller
                 ];
             } elseif ($cardKey === 'repro-kempu') {
                 if (in_array(strtolower($currentStatus), [
-                    strtolower(MasterKempuModel::STATUS_WFG_RETUR_FROM_PAS),
-                    'wfg_retur_from_pas',
                     'pas_retur_to_wfg',
-                    'retur from pas'
+                    'transfer out to wfg (retur berisi)',
+                    'transfer out to bas (retur berisi ke wfg)',
+                    'pas_retur_to_bas_isi',
+                    'retur to wfg',
                 ])) {
                     return [
                         'valid'   => false,
-                        'message' => "Alur Belum Lengkap: Kempu {$idKempu} merupakan retur dari PAS (status: '{$currentStatus}'). Kempu wajib diperiksa di menu 'Cek Retur' oleh QC terlebih dahulu sebelum dapat diproses Repro di Produksi.",
+                        'message' => "Urutan Belum Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Kempu retur dari PAS wajib di-scan penerimaannya terlebih dahulu di menu 'Retur From PAS' oleh WFG sebelum dapat diproses Repro di Produksi.",
                     ];
                 }
 
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Repro Kempu' hanya untuk kempu berstatus Repro yang telah disetujui QC (PROD_REPRO_KEMPU atau QC After Filling Repro).",
+                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Repro Kempu' hanya untuk kempu berstatus Repro (PROD_REPRO_KEMPU, Reject QC After Filling, atau Retur PAS yang telah diterima WFG).",
                 ];
             }
 
