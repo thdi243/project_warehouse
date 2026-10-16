@@ -36,14 +36,25 @@ class VehicleAnalyticsController extends Controller
     }
 
     /**
-     * Aggregate data for the 6 Analytic Clusters.
+     * Helper duration formatter.
      */
-    public function data(Request $request)
+    private function formatDuration($minutes)
+    {
+        if ($minutes <= 0) return '0 mnt';
+        if ($minutes < 60) return round($minutes) . ' mnt';
+        $h = floor($minutes / 60);
+        $m = round($minutes % 60);
+        return $h . 'j ' . ($m > 0 ? $m . 'm' : '');
+    }
+
+    /**
+     * Parse date range from request.
+     */
+    private function parseDateRange(Request $request)
     {
         $period = $request->input('period', '30days');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
-        $slaThreshold = intval($request->input('sla_limit', 120)); // in minutes
 
         if ($startDate && $endDate) {
             $start = Carbon::parse($startDate)->startOfDay();
@@ -62,10 +73,6 @@ class VehicleAnalyticsController extends Controller
                     $start = Carbon::now()->startOfMonth();
                     $end = Carbon::now()->endOfDay();
                     break;
-                case 'all':
-                    $start = Carbon::create(2020, 1, 1);
-                    $end = Carbon::now()->endOfDay();
-                    break;
                 case '30days':
                 default:
                     $start = Carbon::now()->subDays(29)->startOfDay();
@@ -74,28 +81,57 @@ class VehicleAnalyticsController extends Controller
             }
         }
 
-        // Base Query
-        $query = VehicleTransaction::with([
-            'vehicle',
-            'item',
-            'targetLocation',
-            'currentLocation',
-            'creator',
-            'queueTakenBy',
-            'startSamplingBy',
-            'finishSamplingBy',
-            'startLoadingBy',
-            'finishLoadingBy',
-            'timbanganOutBy',
-            'checkOutBy',
-        ])->whereBetween('check_in_time', [$start, $end]);
+        return [$start, $end, $period];
+    }
+
+    /**
+     * Helper to unify SMU and WFG areas into a single entity.
+     */
+    private function getNormalizedAreaName($loc)
+    {
+        if (!$loc) return 'Gudang Utama / Dock';
+        $sLocUpper = strtoupper(trim($loc->s_loc ?? ''));
+        $nameUpper = strtoupper(trim($loc->name ?? ''));
+        if (in_array($loc->id, [4, 5]) || in_array($sLocUpper, ['A001', 'A002']) || str_contains($nameUpper, 'SMU') || str_contains($nameUpper, 'WFG')) {
+            return 'SMU & WFG Area';
+        }
+        return $loc->name . ' (' . $loc->s_loc . ')';
+    }
+
+    /**
+     * Build filtered base query.
+     */
+    private function buildBaseQuery(Request $request, Carbon $start, Carbon $end, array $with = [])
+    {
+        $query = VehicleTransaction::whereBetween('check_in_time', [$start, $end]);
+
+        if (!empty($with)) {
+            $query->with($with);
+        }
 
         if ($request->filled('location_id') && $request->location_id !== 'all') {
-            $query->where('target_location_id', $request->location_id);
+            $locId = strtolower($request->location_id);
+            if (in_array($locId, ['smu_wfg', '4,5', '4', '5'])) {
+                $smuWfgIds = Location::where(function ($q) {
+                    $q->whereIn('s_loc', ['A001', 'A002'])
+                        ->orWhere('name', 'LIKE', '%SMU%')
+                        ->orWhere('name', 'LIKE', '%WFG%')
+                        ->orWhereIn('id', [4, 5]);
+                })->pluck('id')->toArray();
+
+                $query->whereIn('target_location_id', !empty($smuWfgIds) ? $smuWfgIds : [4, 5]);
+            } else {
+                $query->where('target_location_id', $request->location_id);
+            }
         }
 
         if ($request->filled('jenis') && $request->jenis !== 'all') {
-            $query->where('jenis', $request->jenis);
+            $jFilter = strtolower($request->jenis);
+            if ($jFilter === 'muatan') {
+                $query->whereIn('jenis', ['curah', 'slipsheet', 'muatan']);
+            } else {
+                $query->where('jenis', $request->jenis);
+            }
         }
 
         if ($request->filled('vendor') && $request->vendor !== 'all') {
@@ -106,157 +142,271 @@ class VehicleAnalyticsController extends Controller
             $query->where('item_id', $request->item_id);
         }
 
-        $transactions = $query->orderBy('check_in_time', 'asc')->get();
+        return $query;
+    }
 
-        // Helper format duration
-        $formatDur = function ($minutes) {
-            if ($minutes <= 0) return '0 mnt';
-            if ($minutes < 60) return round($minutes) . ' mnt';
-            $h = floor($minutes / 60);
-            $m = round($minutes % 60);
-            return $h . 'j ' . ($m > 0 ? $m . 'm' : '');
-        };
+    /**
+     * Aggregate data for the 6 Analytic Clusters (Supports Async Section Loading).
+     */
+    public function data(Request $request)
+    {
+        [$start, $end, $period] = $this->parseDateRange($request);
+        $slaThreshold = intval($request->input('sla_limit', 450)); // default 450 minutes (7.5 jam)
+        $section = $request->input('section');
 
-        // =========================================================================
-        // 1. ANALISA WAKTU & BOTTLENECK (STAGE DURATIONS)
-        // =========================================================================
-        $stageDefs = [
-            'pos1_ke_timbangan' => [
-                'name' => 'POS 1 KE TIMBANGAN',
-                'desc' => 'Pos 1 Security ke Check-in Timbangan Masuk',
-                'durations' => []
-            ],
-            'antrian_dock' => [
-                'name' => 'ANTRIAN MENUJU DOCK',
-                'desc' => 'Check-in Timbangan ke Ambil Antrian / Menuju Dock',
-                'durations' => []
-            ],
-            'sampling_lab' => [
-                'name' => 'SAMPLING QC',
-                'desc' => 'Mulai Sampling hingga Selesai Pengujian Lab',
-                'durations' => []
-            ],
-            'bongkar_muat' => [
-                'name' => 'BONGKAR / MUAT',
-                'desc' => 'Mulai Bongkar/Muat hingga Selesai di Dock',
-                'durations' => []
-            ],
-            'checkout_timbangan' => [
-                'name' => 'CHECK-OUT TIMBANGAN',
-                'desc' => 'Timbangan Keluar ke Check-Out Timbangan',
-                'durations' => []
-            ],
-        ];
+        switch ($section) {
+            case 'kpi_trends':
+                return $this->getKpiTrends($request, $start, $end, $slaThreshold);
+            case 'operations':
+                return $this->getOperations($request, $start, $end, $slaThreshold);
+            case 'vendor_capacity':
+                return $this->getVendorCapacity($request, $start, $end, $slaThreshold);
+            case 'operators':
+                return $this->getOperators($request, $start, $end);
+            default:
+                return $this->getFullAnalyticsData($request, $start, $end, $slaThreshold, $period);
+        }
+    }
 
-        // Daily Check-ins Series & Average Line
-        $dailyBuckets = [];
+    /**
+     * 1. Section: Top KPIs & Daily Check-in Trends (Pos 1 & Timbangan)
+     */
+    private function getKpiTrends(Request $request, Carbon $start, Carbon $end, int $slaThreshold)
+    {
+        $transactions = $this->buildBaseQuery($request, $start, $end)
+            ->select([
+                'id', 'check_in_time', 'checkin_pos1', 'timbangan_out_time', 'check_out_time',
+                'start_sampling_time', 'finish_sampling_time', 'status', 'unloading_status', 'updated_at', 'qty_spb'
+            ])
+            ->orderBy('check_in_time', 'asc')
+            ->get();
+
+        $dailyBucketsPos1 = [];
+        $dailyBucketsTmb = [];
+        $dailyBucketsCancelled = [];
         $cursorDate = $start->copy()->startOfDay();
         $endDate = $end->copy()->startOfDay();
 
         while ($cursorDate->lte($endDate)) {
             $dateKey = $cursorDate->format('Y-m-d');
-            $dailyBuckets[$dateKey] = [
+            $bTemplate = [
                 'date' => $dateKey,
                 'label' => $cursorDate->format('d/m'),
                 'full_label' => $cursorDate->format('d M Y'),
                 'count' => 0,
             ];
+            $dailyBucketsPos1[$dateKey] = $bTemplate;
+            $dailyBucketsTmb[$dateKey] = $bTemplate;
+            $dailyBucketsCancelled[$dateKey] = [
+                'date' => $dateKey,
+                'label' => $cursorDate->format('d/m'),
+                'full_label' => $cursorDate->format('d M Y'),
+                'batal_bongkar' => 0,
+                'batal_muat' => 0,
+                'total' => 0,
+            ];
             $cursorDate->addDay();
         }
-
-        // Frequent Trucks Map
-        $truckVisits = [];
-
-        // Real Loading / Unloading Times (hanya yang memiliki data waktu bongkar muat lengkap)
-        $loadingBayTimes = [];
-        $allLoadingMinutes = [];
 
         $totalTATMinutes = 0;
         $tatCount = 0;
         $overSlaCount = 0;
+        $cancelledCount = 0;
+        $cancelledBongkarCount = 0;
+        $cancelledMuatCount = 0;
+        $totalTonAll = 0;
+
+        foreach ($transactions as $tx) {
+            $pos1 = $tx->checkin_pos1;
+            $tmbIn = $tx->check_in_time;
+            $tmbOut = $tx->timbangan_out_time;
+            $checkOut = $tx->check_out_time;
+
+            if ($pos1) {
+                $dKeyP1 = $pos1->format('Y-m-d');
+                if (isset($dailyBucketsPos1[$dKeyP1])) {
+                    $dailyBucketsPos1[$dKeyP1]['count']++;
+                }
+            }
+
+            if ($tmbIn) {
+                $dKeyTmb = $tmbIn->format('Y-m-d');
+                if (isset($dailyBucketsTmb[$dKeyTmb])) {
+                    $dailyBucketsTmb[$dKeyTmb]['count']++;
+                }
+            }
+
+            $inEffective = $pos1 ?: $tmbIn;
+            $outEffective = $tmbOut ?: ($checkOut ?: ($tx->status === 'completed' ? $tx->updated_at : null));
+            $samplingMin = ($tx->start_sampling_time && $tx->finish_sampling_time && $tx->finish_sampling_time->gte($tx->start_sampling_time))
+                ? $tx->start_sampling_time->diffInMinutes($tx->finish_sampling_time)
+                : 0;
+
+            $truckDuration = 0;
+            if ($inEffective && $outEffective && $outEffective->gte($inEffective)) {
+                $grossDwell = $inEffective->diffInMinutes($outEffective);
+                $truckDuration = max(1, $grossDwell - $samplingMin);
+            }
+
+            if ($truckDuration > 0) {
+                $totalTATMinutes += $truckDuration;
+                $tatCount++;
+                if ($truckDuration > $slaThreshold) {
+                    $overSlaCount++;
+                }
+            }
+
+            // Truk Batal Bongkar / Muat (unloading_status = cancelled or status = cancelled)
+            $isCancelled = (strtolower(trim($tx->unloading_status ?? '')) === 'cancelled' || strtolower(trim($tx->status ?? '')) === 'cancelled');
+            if ($isCancelled) {
+                $cancelledCount++;
+                $jenisLower = strtolower(trim($tx->jenis ?? ''));
+                $isBongkar = ($jenisLower === 'bongkaran');
+                if ($isBongkar) {
+                    $cancelledBongkarCount++;
+                } else {
+                    $cancelledMuatCount++;
+                }
+
+                $cancelDate = $tmbIn ?: ($pos1 ?: $tx->created_at);
+                if ($cancelDate) {
+                    $dKeyCancel = $cancelDate->format('Y-m-d');
+                    if (isset($dailyBucketsCancelled[$dKeyCancel])) {
+                        if ($isBongkar) {
+                            $dailyBucketsCancelled[$dKeyCancel]['batal_bongkar']++;
+                        } else {
+                            $dailyBucketsCancelled[$dKeyCancel]['batal_muat']++;
+                        }
+                        $dailyBucketsCancelled[$dKeyCancel]['total']++;
+                    }
+                }
+            }
+
+            $rawQty = floatval($tx->qty_spb);
+            $ton = ($rawQty >= 100 ? $rawQty / 1000 : $rawQty);
+            $totalTonAll += $ton;
+        }
+
+        $dailyListPos1 = array_values($dailyBucketsPos1);
+        $totalDailyDays = max(1, count($dailyListPos1));
+        $totalCheckinsPos1 = array_sum(array_column($dailyListPos1, 'count'));
+        $avgDailyCheckinPos1 = round($totalCheckinsPos1 / $totalDailyDays, 1);
+
+        $dailyListTmb = array_values($dailyBucketsTmb);
+        $totalCheckinsTmb = array_sum(array_column($dailyListTmb, 'count'));
+        $avgDailyCheckinTmb = round($totalCheckinsTmb / $totalDailyDays, 1);
+
+        $dailyListCancelled = array_values($dailyBucketsCancelled);
+
+        $totalVehicles = $transactions->count();
+        $avgTatMin = $tatCount > 0 ? round($totalTATMinutes / $tatCount) : 0;
+        $overSlaRate = $tatCount > 0 ? round(($overSlaCount / $tatCount) * 100, 1) : 0;
+        $cancelledRate = $totalVehicles > 0 ? round(($cancelledCount / $totalVehicles) * 100, 1) : 0;
+        $healthScore = max(0, min(100, round(100 - $overSlaRate)));
+
+        return response()->json([
+            'success' => true,
+            'section' => 'kpi_trends',
+            'kpi' => [
+                'total_vehicles' => $totalVehicles,
+                'avg_tat_min' => $avgTatMin,
+                'avg_tat_formatted' => $this->formatDuration($avgTatMin),
+                'over_sla_count' => $overSlaCount,
+                'over_sla_rate' => $overSlaRate,
+                'cancelled_count' => $cancelledCount,
+                'cancelled_bongkar_count' => $cancelledBongkarCount,
+                'cancelled_muat_count' => $cancelledMuatCount,
+                'cancelled_rate' => $cancelledRate,
+                'health_score' => $healthScore,
+                'total_tonnage' => round($totalTonAll, 2),
+                'avg_daily_checkin' => $avgDailyCheckinTmb,
+                'avg_daily_checkin_timbangan' => $avgDailyCheckinTmb,
+                'avg_daily_checkin_pos1' => $avgDailyCheckinPos1,
+                'total_checkins' => $totalCheckinsTmb,
+                'total_checkins_timbangan' => $totalCheckinsTmb,
+                'total_checkins_pos1' => $totalCheckinsPos1,
+            ],
+            'daily_checkin_pos1' => [
+                'series' => $dailyListPos1,
+                'avg_per_day' => $avgDailyCheckinPos1,
+                'total_days' => $totalDailyDays,
+                'total_checkins' => $totalCheckinsPos1,
+            ],
+            'daily_checkin_timbangan' => [
+                'series' => $dailyListTmb,
+                'avg_per_day' => $avgDailyCheckinTmb,
+                'total_days' => $totalDailyDays,
+                'total_checkins' => $totalCheckinsTmb,
+            ],
+            'daily_checkin' => [
+                'series' => $dailyListTmb,
+                'avg_per_day' => $avgDailyCheckinTmb,
+                'total_days' => $totalDailyDays,
+                'total_checkins' => $totalCheckinsTmb,
+            ],
+            'daily_cancelled' => [
+                'series' => $dailyListCancelled,
+                'total_cancelled' => $cancelledCount,
+                'total_batal_bongkar' => $cancelledBongkarCount,
+                'total_batal_muat' => $cancelledMuatCount,
+                'avg_per_day' => round($cancelledCount / $totalDailyDays, 1),
+                'total_days' => $totalDailyDays,
+            ],
+        ]);
+    }
+
+    /**
+     * 2. Section: Operations (Stage Durations, Real Loading Bay Time, Frequent Trucks)
+     */
+    private function getOperations(Request $request, Carbon $start, Carbon $end, int $slaThreshold)
+    {
+        $transactions = $this->buildBaseQuery($request, $start, $end, ['vehicle', 'targetLocation'])
+            ->orderBy('check_in_time', 'asc')
+            ->get();
+
+        $stageDefs = [
+            'pos1_ke_timbangan' => ['name' => 'POS 1 KE TIMBANGAN', 'desc' => 'Pos 1 Security ke Check-in Timbangan Masuk', 'durations' => []],
+            'antrian_dock' => ['name' => 'ANTRIAN MENUJU DOCK', 'desc' => 'Check-in Timbangan ke Ambil Antrian / Menuju Dock', 'durations' => []],
+            'bongkar_muat' => ['name' => 'BONGKAR / MUAT', 'desc' => 'Mulai Bongkar/Muat hingga Selesai di Dock', 'durations' => []],
+            'checkout_timbangan' => ['name' => 'CHECK-OUT TIMBANGAN', 'desc' => 'Timbangan Keluar ke Check-Out Timbangan', 'durations' => []],
+        ];
+
+        $truckVisits = [];
+        $loadingBayTimes = [];
+        $allLoadingMinutes = [];
 
         foreach ($transactions as $tx) {
             $pos1 = $tx->checkin_pos1;
             $tmbIn = $tx->check_in_time;
             $queueTime = $tx->queue_taken_time;
-            $startSamp = $tx->start_sampling_time;
-            $finishSamp = $tx->finish_sampling_time;
             $startLoad = $tx->start_loading_time;
             $finishLoad = $tx->finish_loading_time;
             $tmbOut = $tx->timbangan_out_time;
             $checkOut = $tx->check_out_time;
 
-            // 1. Pos 1 ke Timbangan Masuk: checkin_pos1 -> check_in_time
             if ($pos1 && $tmbIn && $tmbIn->gte($pos1)) {
                 $stageDefs['pos1_ke_timbangan']['durations'][] = $pos1->diffInMinutes($tmbIn);
             }
 
-            // 2. Antrian Menuju Dock: check_in_time -> queue_taken_time (fallback ke start_sampling / start_loading)
-            $nextAfterTmb = $queueTime ?: ($startSamp ?: $startLoad);
+            $nextAfterTmb = $queueTime ?: $startLoad;
             if ($tmbIn && $nextAfterTmb && $nextAfterTmb->gte($tmbIn)) {
                 $stageDefs['antrian_dock']['durations'][] = $tmbIn->diffInMinutes($nextAfterTmb);
             }
 
-            // 3. Sampling Lab QC: start_sampling_time -> finish_sampling_time
-            if ($startSamp && $finishSamp && $finishSamp->gte($startSamp)) {
-                $stageDefs['sampling_lab']['durations'][] = $startSamp->diffInMinutes($finishSamp);
-            }
-
-            // 4. Bongkar/Muat: start_loading_time -> finish_loading_time
             if ($startLoad && $finishLoad && $finishLoad->gte($startLoad)) {
                 $stageDefs['bongkar_muat']['durations'][] = $startLoad->diffInMinutes($finishLoad);
             }
 
-            // 5. Check-Out Timbangan: timbangan_out_time -> check_out_time
             if ($tmbOut && $checkOut && $checkOut->gte($tmbOut)) {
                 $stageDefs['checkout_timbangan']['durations'][] = $tmbOut->diffInMinutes($checkOut);
             }
 
-            // Daily Check-in aggregation
-            $inStamp = $tmbIn ?: $pos1;
-            if ($inStamp) {
-                $dKey = $inStamp->format('Y-m-d');
-                if (isset($dailyBuckets[$dKey])) {
-                    $dailyBuckets[$dKey]['count']++;
-                }
-            }
-
-            // Frequent Trucks aggregation
-            $noPol = $tx->vehicle ? strtoupper(trim($tx->vehicle->no_pol)) : null;
-            if (!$noPol || $noPol === '-') {
-                $noPol = $tx->nama_driver ? ('DRIVER: ' . strtoupper($tx->nama_driver)) : 'PLAT TIDAK TERCATAT';
-            }
-            $vVendor = strtoupper(trim($tx->vendor ?: 'LAIN-LAIN'));
-            $inEffective = $pos1 ?: $tmbIn;
-            $outEffective = $checkOut ?: ($tmbOut ?: ($tx->status === 'completed' ? $tx->updated_at : null));
-            $truckDwell = ($inEffective && $outEffective && $outEffective->gte($inEffective)) ? $inEffective->diffInMinutes($outEffective) : 0;
-            $rawQty = floatval($tx->qty_spb);
-            $tonnage = ($rawQty >= 100 ? $rawQty / 1000 : $rawQty);
-
-            if (!isset($truckVisits[$noPol])) {
-                $truckVisits[$noPol] = [
-                    'no_pol' => $noPol,
-                    'vendor' => $vVendor,
-                    'trips' => 0,
-                    'total_tat_min' => 0,
-                    'tat_samples' => 0,
-                    'total_tonnage' => 0,
-                ];
-            }
-            $truckVisits[$noPol]['trips']++;
-            $truckVisits[$noPol]['total_tonnage'] += $tonnage;
-            if ($truckDwell > 0) {
-                $truckVisits[$noPol]['total_tat_min'] += $truckDwell;
-                $truckVisits[$noPol]['tat_samples']++;
-            }
-
-            // Real Loading Time Calculation (hanya yang ada time loading lengkap)
+            // Real Loading Time
             if ($startLoad && $finishLoad && $finishLoad->gte($startLoad)) {
                 $loadMin = $startLoad->diffInMinutes($finishLoad);
                 $allLoadingMinutes[] = $loadMin;
 
-                $targetLoc = $tx->targetLocation;
-                $dockName = $targetLoc ? ($targetLoc->name . ' (' . $targetLoc->s_loc . ')') : 'Gudang Utama / Dock';
+                $dockName = $this->getNormalizedAreaName($tx->targetLocation);
 
                 if (!isset($loadingBayTimes[$dockName])) {
                     $loadingBayTimes[$dockName] = [
@@ -273,14 +423,737 @@ class VehicleAnalyticsController extends Controller
                 if ($loadMin > $loadingBayTimes[$dockName]['max_min']) $loadingBayTimes[$dockName]['max_min'] = $loadMin;
             }
 
-            // Turnaround Time
+            // Truck Duration for Frequent Trucks
+            $inEffective = $pos1 ?: $tmbIn;
+            $outEffective = $tmbOut ?: ($checkOut ?: ($tx->status === 'completed' ? $tx->updated_at : null));
+            $samplingMin = ($tx->start_sampling_time && $tx->finish_sampling_time && $tx->finish_sampling_time->gte($tx->start_sampling_time))
+                ? $tx->start_sampling_time->diffInMinutes($tx->finish_sampling_time)
+                : 0;
+
+            $truckDuration = 0;
+            if ($inEffective && $outEffective && $outEffective->gte($inEffective)) {
+                $grossDwell = $inEffective->diffInMinutes($outEffective);
+                $truckDuration = max(1, $grossDwell - $samplingMin);
+            }
+
+            $noPol = $tx->vehicle ? strtoupper(trim($tx->vehicle->no_pol)) : null;
+            if (!$noPol || $noPol === '-') {
+                $noPol = $tx->nama_driver ? ('DRIVER: ' . strtoupper($tx->nama_driver)) : 'PLAT TIDAK TERCATAT';
+            }
+            $vVendor = strtoupper(trim($tx->vendor ?: 'LAIN-LAIN / UNKNOWN'));
+            $rawQty = floatval($tx->qty_spb);
+            $tonnage = ($rawQty >= 100 ? $rawQty / 1000 : $rawQty);
+
+            if (!isset($truckVisits[$noPol])) {
+                $truckVisits[$noPol] = [
+                    'no_pol' => $noPol,
+                    'vendor' => $vVendor,
+                    'trips' => 0,
+                    'total_tat_min' => 0,
+                    'tat_samples' => 0,
+                    'total_tonnage' => 0,
+                ];
+            }
+            $truckVisits[$noPol]['trips']++;
+            $truckVisits[$noPol]['total_tonnage'] += $tonnage;
+            if ($truckDuration > 0) {
+                $truckVisits[$noPol]['total_tat_min'] += $truckDuration;
+                $truckVisits[$noPol]['tat_samples']++;
+            }
+        }
+
+        $stageResults = [];
+        $primaryBottleneckStage = null;
+        $maxStageAvg = 0;
+
+        foreach ($stageDefs as $k => $s) {
+            $vals = $s['durations'];
+            $cnt = count($vals);
+            $avg = $cnt > 0 ? round(array_sum($vals) / $cnt) : 0;
+            $min = $cnt > 0 ? min($vals) : 0;
+            $max = $cnt > 0 ? max($vals) : 0;
+
+            if ($avg > $maxStageAvg) {
+                $maxStageAvg = $avg;
+                $primaryBottleneckStage = $s['name'];
+            }
+
+            $stageResults[$k] = [
+                'name' => $s['name'],
+                'desc' => $s['desc'],
+                'avg_min' => $avg,
+                'min_min' => $min,
+                'max_min' => $max,
+                'avg_formatted' => $this->formatDuration($avg),
+                'sample_count' => $cnt,
+            ];
+        }
+
+        uasort($truckVisits, fn($a, $b) => $b['trips'] <=> $a['trips']);
+        $topFrequentTrucks = array_values(array_slice(array_map(function ($t) {
+            $avgTat = $t['tat_samples'] > 0 ? round($t['total_tat_min'] / $t['tat_samples']) : 0;
+            return [
+                'no_pol' => $t['no_pol'],
+                'vendor' => $t['vendor'],
+                'trips' => $t['trips'],
+                'avg_tat_min' => $avgTat,
+                'avg_tat_formatted' => $avgTat > 0 ? $this->formatDuration($avgTat) : '-',
+                'total_tonnage' => round($t['total_tonnage'], 2),
+            ];
+        }, $truckVisits), 0, 8));
+
+        uasort($loadingBayTimes, fn($a, $b) => $b['sample_count'] <=> $a['sample_count']);
+        $loadingBayList = array_values(array_map(function ($b) {
+            $avg = $b['sample_count'] > 0 ? round($b['total_min'] / $b['sample_count']) : 0;
+            return [
+                'dock_name' => $b['dock_name'],
+                'sample_count' => $b['sample_count'],
+                'avg_duration_min' => $avg,
+                'avg_duration_formatted' => $this->formatDuration($avg),
+                'min_formatted' => $this->formatDuration($b['min_min']),
+                'max_formatted' => $this->formatDuration($b['max_min']),
+            ];
+        }, $loadingBayTimes));
+
+        $totalLoadingSamples = count($allLoadingMinutes);
+        $overallAvgLoadingMin = $totalLoadingSamples > 0 ? round(array_sum($allLoadingMinutes) / $totalLoadingSamples) : 0;
+
+        return response()->json([
+            'success' => true,
+            'section' => 'operations',
+            'stages' => $stageResults,
+            'primary_bottleneck' => $primaryBottleneckStage ?: 'N/A',
+            'max_stage_avg_formatted' => $this->formatDuration($maxStageAvg),
+            'loading_time' => [
+                'bay_list' => $loadingBayList,
+                'total_samples' => $totalLoadingSamples,
+                'overall_avg_min' => $overallAvgLoadingMin,
+                'overall_avg_formatted' => $this->formatDuration($overallAvgLoadingMin),
+            ],
+            'frequent_trucks' => $topFrequentTrucks,
+            'cluster_1' => [
+                'stages' => $stageResults,
+                'primary_bottleneck' => $primaryBottleneckStage ?: 'N/A',
+                'max_stage_avg_formatted' => $this->formatDuration($maxStageAvg),
+            ],
+        ]);
+    }
+
+    /**
+     * 3. Section: Vendor & Yard Capacity (Bay Throughput, Fleet Types, Vendor Over Duration, Weekly Duration)
+     */
+    private function getVendorCapacity(Request $request, Carbon $start, Carbon $end, int $slaThreshold)
+    {
+        $transactions = $this->buildBaseQuery($request, $start, $end, ['targetLocation'])
+            ->orderBy('check_in_time', 'asc')
+            ->get();
+
+        $bayThroughput = [];
+        $totalTonAll = 0;
+        $totalLoadingHoursAll = 0;
+
+        $vendorOverDuration = [];
+        $fleetTypes = [
+            'Bongkaran' => ['jenis' => 'Bongkaran', 'count' => 0, 'total_min' => 0],
+            'Muatan' => ['jenis' => 'Muatan', 'count' => 0, 'total_min' => 0],
+            'Retur' => ['jenis' => 'Retur', 'count' => 0, 'total_min' => 0],
+        ];
+
+        $weeklyBuckets = [];
+        $weekCursor = $start->copy()->startOfWeek();
+        $weekEnd = $end->copy()->endOfWeek();
+
+        while ($weekCursor->lte($weekEnd)) {
+            $wKey = $weekCursor->format('Y-\WW');
+            $wStartLabel = $weekCursor->format('d/m');
+            $wEndLabel = $weekCursor->copy()->endOfWeek()->format('d/m');
+            $weeklyBuckets[$wKey] = [
+                'week_key' => $wKey,
+                'label' => 'Mgg ' . $weekCursor->format('W') . ' (' . $wStartLabel . '-' . $wEndLabel . ')',
+                'short_label' => 'M' . $weekCursor->format('W'),
+                'durations' => [],
+                'total_trucks' => 0,
+                'over_duration_count' => 0,
+            ];
+            $weekCursor->addWeek();
+        }
+
+        foreach ($transactions as $tx) {
+            $pos1 = $tx->checkin_pos1;
+            $tmbIn = $tx->check_in_time;
+            $tmbOut = $tx->timbangan_out_time;
+            $checkOut = $tx->check_out_time;
+
+            $inEffective = $pos1 ?: $tmbIn;
+            $outEffective = $tmbOut ?: ($checkOut ?: ($tx->status === 'completed' ? $tx->updated_at : null));
+            $samplingMin = ($tx->start_sampling_time && $tx->finish_sampling_time && $tx->finish_sampling_time->gte($tx->start_sampling_time))
+                ? $tx->start_sampling_time->diffInMinutes($tx->finish_sampling_time)
+                : 0;
+
+            $truckDuration = 0;
+            if ($inEffective && $outEffective && $outEffective->gte($inEffective)) {
+                $grossDwell = $inEffective->diffInMinutes($outEffective);
+                $truckDuration = max(1, $grossDwell - $samplingMin);
+            }
+
+            // Bay Throughput
+            $locKey = $this->getNormalizedAreaName($tx->targetLocation);
+
+            if (!isset($bayThroughput[$locKey])) {
+                $bayThroughput[$locKey] = [
+                    'location_name' => $locKey,
+                    'total_tonnage' => 0,
+                    'trucks_handled' => 0,
+                    'total_load_minutes' => 0,
+                    'load_samples' => 0,
+                ];
+            }
+
+            $rawQ = floatval($tx->qty_spb);
+            $ton = ($rawQ >= 100 ? $rawQ / 1000 : $rawQ);
+            $bayThroughput[$locKey]['total_tonnage'] += $ton;
+            $totalTonAll += $ton;
+
+            if ($tx->check_out_time || $tx->status === 'completed') {
+                $bayThroughput[$locKey]['trucks_handled']++;
+            }
+
+            if ($tx->start_loading_time && $tx->finish_loading_time && $tx->finish_loading_time->gte($tx->start_loading_time)) {
+                $loadMin = $tx->start_loading_time->diffInMinutes($tx->finish_loading_time);
+                $bayThroughput[$locKey]['total_load_minutes'] += $loadMin;
+                $bayThroughput[$locKey]['load_samples']++;
+                $totalLoadingHoursAll += ($loadMin / 60);
+            }
+
+            // Vendor Over Duration
+            $vVendor = strtoupper(trim($tx->vendor ?: 'LAIN-LAIN / UNKNOWN'));
+            if (!isset($vendorOverDuration[$vVendor])) {
+                $vendorOverDuration[$vVendor] = [
+                    'vendor' => $vVendor,
+                    'total_trips' => 0,
+                    'over_count' => 0,
+                    'total_duration_min' => 0,
+                    'total_over_duration_min' => 0,
+                ];
+            }
+            $vendorOverDuration[$vVendor]['total_trips']++;
+            $vendorOverDuration[$vVendor]['total_duration_min'] += $truckDuration;
+            if ($truckDuration > $slaThreshold) {
+                $vendorOverDuration[$vVendor]['over_count']++;
+                $vendorOverDuration[$vVendor]['total_over_duration_min'] += $truckDuration;
+            }
+
+            // Fleet Types
+            $rawJenis = strtolower(trim($tx->jenis ?: 'bongkaran'));
+            if (in_array($rawJenis, ['curah', 'slipsheet', 'muatan'])) {
+                $jKey = 'Muatan';
+            } elseif ($rawJenis === 'retur') {
+                $jKey = 'Retur';
+            } else {
+                $jKey = 'Bongkaran';
+            }
+            $fleetTypes[$jKey]['count']++;
+            $fleetTypes[$jKey]['total_min'] += $truckDuration;
+
+            // Weekly Duration
             if ($inEffective) {
-                $effectiveOut = $checkOut ?: ($tmbOut ?: ($tx->status === 'completed' ? $tx->updated_at : Carbon::now()));
-                $dwell = max(1, round($inEffective->diffInMinutes($effectiveOut)));
-                $totalTATMinutes += $dwell;
+                $wKey = $inEffective->format('Y-\WW');
+                if (isset($weeklyBuckets[$wKey])) {
+                    $weeklyBuckets[$wKey]['total_trucks']++;
+                    if ($truckDuration > 0) {
+                        $weeklyBuckets[$wKey]['durations'][] = $truckDuration;
+                    }
+                    if ($truckDuration > $slaThreshold) {
+                        $weeklyBuckets[$wKey]['over_duration_count']++;
+                    }
+                }
+            }
+        }
+
+        $overallProductivityTonPerHour = ($totalLoadingHoursAll > 0) ? round($totalTonAll / $totalLoadingHoursAll, 1) : 0;
+
+        uasort($bayThroughput, fn($a, $b) => $b['total_tonnage'] <=> $a['total_tonnage']);
+        $bayList = array_values(array_map(function ($b) {
+            $avgLoad = $b['load_samples'] > 0 ? round($b['total_load_minutes'] / $b['load_samples']) : 0;
+            return [
+                'location_name' => $b['location_name'],
+                'total_tonnage' => round($b['total_tonnage'], 2),
+                'trucks_handled' => $b['trucks_handled'],
+                'avg_load_formatted' => $this->formatDuration($avgLoad),
+            ];
+        }, $bayThroughput));
+
+        uasort($vendorOverDuration, function ($a, $b) {
+            if ($b['over_count'] !== $a['over_count']) {
+                return $b['over_count'] <=> $a['over_count'];
+            }
+            return $b['total_trips'] <=> $a['total_trips'];
+        });
+
+        $vendorOverDurationList = array_values(array_map(function ($v) {
+            $avgAll = $v['total_trips'] > 0 ? round($v['total_duration_min'] / $v['total_trips']) : 0;
+            $avgOver = $v['over_count'] > 0 ? round($v['total_over_duration_min'] / $v['over_count']) : 0;
+            $overRate = $v['total_trips'] > 0 ? round(($v['over_count'] / $v['total_trips']) * 100, 1) : 0;
+
+            $status = 'Aman (≤ 7.5j)';
+            if ($overRate >= 50) {
+                $status = 'Kritis (> 50%)';
+            } elseif ($v['over_count'] > 0) {
+                $status = 'Waspada';
+            }
+
+            return [
+                'vendor' => $v['vendor'],
+                'total_trips' => $v['total_trips'],
+                'over_count' => $v['over_count'],
+                'over_rate' => $overRate,
+                'avg_duration_formatted' => $this->formatDuration($avgAll),
+                'avg_over_duration_formatted' => $avgOver > 0 ? $this->formatDuration($avgOver) : '-',
+                'status' => $status,
+            ];
+        }, $vendorOverDuration));
+
+        $fleetDistribution = array_values(array_map(function ($f) {
+            $avg = $f['count'] > 0 ? round($f['total_min'] / $f['count']) : 0;
+            return [
+                'jenis' => $f['jenis'],
+                'count' => $f['count'],
+                'avg_duration_formatted' => $this->formatDuration($avg),
+            ];
+        }, $fleetTypes));
+
+        $weeklyDurationList = array_values(array_filter(array_map(function ($w) {
+            $cnt = count($w['durations']);
+            $avg = $cnt > 0 ? round(array_sum($w['durations']) / $cnt) : 0;
+            $overRate = $w['total_trucks'] > 0 ? round(($w['over_duration_count'] / $w['total_trucks']) * 100, 1) : 0;
+            return [
+                'week_key' => $w['week_key'],
+                'label' => $w['label'],
+                'short_label' => $w['short_label'],
+                'total_trucks' => $w['total_trucks'],
+                'avg_duration_min' => $avg,
+                'avg_duration_hours' => round($avg / 60, 1),
+                'avg_duration_formatted' => $this->formatDuration($avg),
+                'over_duration_count' => $w['over_duration_count'],
+                'over_duration_rate' => $overRate,
+            ];
+        }, $weeklyBuckets), fn($w) => $w['total_trucks'] > 0));
+
+        return response()->json([
+            'success' => true,
+            'section' => 'vendor_capacity',
+            'capacity_throughput' => [
+                'bay_throughput' => $bayList,
+                'productivity_ton_per_hour' => $overallProductivityTonPerHour,
+                'total_tonnage' => round($totalTonAll, 2),
+            ],
+            'vendor_over_duration' => $vendorOverDurationList,
+            'vendor_fleet' => [
+                'vendor_tat' => $vendorOverDurationList,
+                'fleet_distribution' => $fleetDistribution,
+            ],
+            'weekly_duration' => $weeklyDurationList,
+        ]);
+    }
+
+    /**
+     * 4. Section: Operators Productivity Audit
+     */
+    private function getOperators(Request $request, Carbon $start, Carbon $end)
+    {
+        $transactions = $this->buildBaseQuery($request, $start, $end, [
+            'queueTakenBy', 'startLoadingBy', 'finishLoadingBy', 'timbanganOutBy', 'checkOutBy'
+        ])->get();
+
+        $operatorWork = [];
+
+        $recordOperatorAction = function ($user, $pos, $durationMin = null) use (&$operatorWork) {
+            if (!$user) return;
+            $uId = $user->id;
+            $namaLengkap = trim($user->nama_lengkap ?? '');
+            $username = trim($user->username ?? '');
+            $displayName = $namaLengkap ?: ($username ?: ('Petugas #' . $uId));
+            $key = $uId . '_' . $pos;
+
+            if (!isset($operatorWork[$key])) {
+                $operatorWork[$key] = [
+                    'user_id' => $uId,
+                    'user_name' => $displayName,
+                    'nama_lengkap' => $namaLengkap,
+                    'username' => $username,
+                    'pos' => $pos,
+                    'total_tickets' => 0,
+                    'total_min' => 0,
+                    'sample_count' => 0,
+                ];
+            }
+
+            $operatorWork[$key]['total_tickets']++;
+            if ($durationMin !== null && $durationMin > 0) {
+                $operatorWork[$key]['total_min'] += $durationMin;
+                $operatorWork[$key]['sample_count']++;
+            }
+        };
+
+        foreach ($transactions as $tx) {
+            if ($tx->queueTakenBy) {
+                $recordOperatorAction($tx->queueTakenBy, 'Pos Antrian');
+            }
+            if ($tx->finishLoadingBy || $tx->startLoadingBy) {
+                $dur = ($tx->start_loading_time && $tx->finish_loading_time) ? $tx->start_loading_time->diffInMinutes($tx->finish_loading_time) : null;
+                $recordOperatorAction($tx->finishLoadingBy ?: $tx->startLoadingBy, 'Loading Bay / Gudang', $dur);
+            }
+            if ($tx->timbanganOutBy) {
+                $recordOperatorAction($tx->timbanganOutBy, 'Petugas Timbangan');
+            }
+            if ($tx->checkOutBy) {
+                $recordOperatorAction($tx->checkOutBy, 'Pos Security Keluar');
+            }
+        }
+
+        $trackingLogs = VehicleTracking::with(['creator', 'location'])
+            ->whereHas('transaction', function ($q) use ($start, $end) {
+                $q->whereBetween('check_in_time', [$start, $end]);
+            })
+            ->whereNotNull('created_by')
+            ->get();
+
+        foreach ($trackingLogs as $log) {
+            if ($log->creator) {
+                $pos = $log->location ? $log->location->name : 'Operasional Lapangan';
+                if (stripos($pos, 'qc') !== false || stripos($pos, 'sample') !== false || stripos($pos, 'sampling') !== false) {
+                    continue;
+                }
+                $durMin = $log->duration_seconds ? round(abs($log->duration_seconds) / 60) : null;
+                $recordOperatorAction($log->creator, $pos, $durMin);
+            }
+        }
+
+        uasort($operatorWork, fn($a, $b) => $b['total_tickets'] <=> $a['total_tickets']);
+
+        $operatorList = array_values(array_slice(array_map(function ($op) {
+            $avg = $op['sample_count'] > 0 ? round($op['total_min'] / $op['sample_count']) : 0;
+            return [
+                'user_name' => $op['user_name'],
+                'nama_lengkap' => $op['nama_lengkap'],
+                'username' => $op['username'],
+                'pos' => $op['pos'],
+                'total_tickets' => $op['total_tickets'],
+                'avg_duration_formatted' => $avg > 0 ? $this->formatDuration($avg) : 'Instant / Log',
+            ];
+        }, $operatorWork), 0, 15));
+
+        return response()->json([
+            'success' => true,
+            'section' => 'operators',
+            'operators' => [
+                'operator_list' => $operatorList,
+            ],
+            'cluster_6' => [
+                'operators' => $operatorList,
+            ],
+        ]);
+    }
+
+    /**
+     * Fallback full dataset generator (Backward compatibility).
+     */
+    private function getFullAnalyticsData(Request $request, Carbon $start, Carbon $end, int $slaThreshold, string $period)
+    {
+        $transactions = $this->buildBaseQuery($request, $start, $end, [
+            'vehicle',
+            'item',
+            'targetLocation',
+            'currentLocation',
+            'creator',
+            'queueTakenBy',
+            'startLoadingBy',
+            'finishLoadingBy',
+            'timbanganOutBy',
+            'checkOutBy',
+        ])->orderBy('check_in_time', 'asc')->get();
+
+        $formatDur = fn($min) => $this->formatDuration($min);
+
+        // =========================================================================
+        // 1. ANALISA WAKTU & BOTTLENECK (STAGE DURATIONS - TANPA SAMPLING QC)
+        // =========================================================================
+        $stageDefs = [
+            'pos1_ke_timbangan' => [
+                'name' => 'POS 1 KE TIMBANGAN',
+                'desc' => 'Pos 1 Security ke Check-in Timbangan Masuk',
+                'durations' => []
+            ],
+            'antrian_dock' => [
+                'name' => 'ANTRIAN MENUJU DOCK',
+                'desc' => 'Check-in Timbangan ke Ambil Antrian / Menuju Dock',
+                'durations' => []
+            ],
+            'bongkar_muat' => [
+                'name' => 'BONGKAR / MUAT',
+                'desc' => 'Mulai Bongkar/Muat hingga Selesai di Dock',
+                'durations' => []
+            ],
+            'checkout_timbangan' => [
+                'name' => 'CHECK-OUT TIMBANGAN',
+                'desc' => 'Timbangan Keluar ke Check-Out Timbangan',
+                'durations' => []
+            ],
+        ];
+
+        // Daily Check-ins Series for POS 1 and TIMBANGAN
+        $dailyBucketsPos1 = [];
+        $dailyBucketsTmb = [];
+        $dailyBucketsCancelled = [];
+        $cursorDate = $start->copy()->startOfDay();
+        $endDate = $end->copy()->startOfDay();
+
+        while ($cursorDate->lte($endDate)) {
+            $dateKey = $cursorDate->format('Y-m-d');
+            $bTemplate = [
+                'date' => $dateKey,
+                'label' => $cursorDate->format('d/m'),
+                'full_label' => $cursorDate->format('d M Y'),
+                'count' => 0,
+            ];
+            $dailyBucketsPos1[$dateKey] = $bTemplate;
+            $dailyBucketsTmb[$dateKey] = $bTemplate;
+            $dailyBucketsCancelled[$dateKey] = [
+                'date' => $dateKey,
+                'label' => $cursorDate->format('d/m'),
+                'full_label' => $cursorDate->format('d M Y'),
+                'batal_bongkar' => 0,
+                'batal_muat' => 0,
+                'total' => 0,
+            ];
+            $cursorDate->addDay();
+        }
+
+        // Frequent Trucks Map
+        $truckVisits = [];
+
+        // Real Loading / Unloading Times
+        $loadingBayTimes = [];
+        $allLoadingMinutes = [];
+
+        // Vendor Over Duration (> 7.5 jam) Map
+        $vendorOverDuration = [];
+
+        // Fleet Types Distribution (Bongkaran, Muatan, Retur)
+        $fleetTypes = [
+            'Bongkaran' => ['jenis' => 'Bongkaran', 'count' => 0, 'total_min' => 0],
+            'Muatan' => ['jenis' => 'Muatan', 'count' => 0, 'total_min' => 0],
+            'Retur' => ['jenis' => 'Retur', 'count' => 0, 'total_min' => 0],
+        ];
+
+        // Weekly Truck Duration Buckets
+        $weeklyBuckets = [];
+        $weekCursor = $start->copy()->startOfWeek();
+        $weekEnd = $end->copy()->endOfWeek();
+
+        while ($weekCursor->lte($weekEnd)) {
+            $wKey = $weekCursor->format('Y-\WW');
+            $wStartLabel = $weekCursor->format('d/m');
+            $wEndLabel = $weekCursor->copy()->endOfWeek()->format('d/m');
+            $weeklyBuckets[$wKey] = [
+                'week_key' => $wKey,
+                'label' => 'Mgg ' . $weekCursor->format('W') . ' (' . $wStartLabel . '-' . $wEndLabel . ')',
+                'short_label' => 'M' . $weekCursor->format('W'),
+                'durations' => [],
+                'total_trucks' => 0,
+                'over_duration_count' => 0,
+            ];
+            $weekCursor->addWeek();
+        }
+
+        $totalTATMinutes = 0;
+        $tatCount = 0;
+        $overSlaCount = 0;
+        $cancelledCount = 0;
+        $cancelledBongkarCount = 0;
+        $cancelledMuatCount = 0;
+
+        foreach ($transactions as $tx) {
+            $pos1 = $tx->checkin_pos1;
+            $tmbIn = $tx->check_in_time;
+            $queueTime = $tx->queue_taken_time;
+            $startLoad = $tx->start_loading_time;
+            $finishLoad = $tx->finish_loading_time;
+            $tmbOut = $tx->timbangan_out_time;
+            $checkOut = $tx->check_out_time;
+
+            // 1. Pos 1 ke Timbangan Masuk: checkin_pos1 -> check_in_time
+            if ($pos1 && $tmbIn && $tmbIn->gte($pos1)) {
+                $stageDefs['pos1_ke_timbangan']['durations'][] = $pos1->diffInMinutes($tmbIn);
+            }
+
+            // 2. Antrian Menuju Dock: check_in_time -> queue_taken_time (fallback ke start_loading, tanpa sampling)
+            $nextAfterTmb = $queueTime ?: $startLoad;
+            if ($tmbIn && $nextAfterTmb && $nextAfterTmb->gte($tmbIn)) {
+                $stageDefs['antrian_dock']['durations'][] = $tmbIn->diffInMinutes($nextAfterTmb);
+            }
+
+            // 3. Bongkar/Muat: start_loading_time -> finish_loading_time
+            if ($startLoad && $finishLoad && $finishLoad->gte($startLoad)) {
+                $stageDefs['bongkar_muat']['durations'][] = $startLoad->diffInMinutes($finishLoad);
+            }
+
+            // 4. Check-Out Timbangan: timbangan_out_time -> check_out_time
+            if ($tmbOut && $checkOut && $checkOut->gte($tmbOut)) {
+                $stageDefs['checkout_timbangan']['durations'][] = $tmbOut->diffInMinutes($checkOut);
+            }
+
+            // Daily Check-in aggregation for Pos 1
+            if ($pos1) {
+                $dKeyP1 = $pos1->format('Y-m-d');
+                if (isset($dailyBucketsPos1[$dKeyP1])) {
+                    $dailyBucketsPos1[$dKeyP1]['count']++;
+                }
+            }
+
+            // Daily Check-in aggregation for Timbangan
+            if ($tmbIn) {
+                $dKeyTmb = $tmbIn->format('Y-m-d');
+                if (isset($dailyBucketsTmb[$dKeyTmb])) {
+                    $dailyBucketsTmb[$dKeyTmb]['count']++;
+                }
+            }
+
+            // Truck Duration: checkin pos1 sampai timbangan out, tanpa waktu sampling
+            $inEffective = $pos1 ?: $tmbIn;
+            $outEffective = $tmbOut ?: ($checkOut ?: ($tx->status === 'completed' ? $tx->updated_at : null));
+            $samplingMin = ($tx->start_sampling_time && $tx->finish_sampling_time && $tx->finish_sampling_time->gte($tx->start_sampling_time))
+                ? $tx->start_sampling_time->diffInMinutes($tx->finish_sampling_time)
+                : 0;
+
+            $truckDuration = 0;
+            if ($inEffective && $outEffective && $outEffective->gte($inEffective)) {
+                $grossDwell = $inEffective->diffInMinutes($outEffective);
+                $truckDuration = max(1, $grossDwell - $samplingMin);
+            }
+
+            if ($truckDuration > 0) {
+                $totalTATMinutes += $truckDuration;
                 $tatCount++;
-                if ($dwell > $slaThreshold) {
+                if ($truckDuration > $slaThreshold) {
                     $overSlaCount++;
+                }
+            }
+
+            // Truk Batal Bongkar / Muat (unloading_status = cancelled or status = cancelled)
+            $isCancelled = (strtolower(trim($tx->unloading_status ?? '')) === 'cancelled' || strtolower(trim($tx->status ?? '')) === 'cancelled');
+            if ($isCancelled) {
+                $cancelledCount++;
+                $jenisLower = strtolower(trim($tx->jenis ?? ''));
+                $isBongkar = ($jenisLower === 'bongkaran');
+                if ($isBongkar) {
+                    $cancelledBongkarCount++;
+                } else {
+                    $cancelledMuatCount++;
+                }
+
+                $cancelDate = $tmbIn ?: ($pos1 ?: $tx->created_at);
+                if ($cancelDate) {
+                    $dKeyCancel = $cancelDate->format('Y-m-d');
+                    if (isset($dailyBucketsCancelled[$dKeyCancel])) {
+                        if ($isBongkar) {
+                            $dailyBucketsCancelled[$dKeyCancel]['batal_bongkar']++;
+                        } else {
+                            $dailyBucketsCancelled[$dKeyCancel]['batal_muat']++;
+                        }
+                        $dailyBucketsCancelled[$dKeyCancel]['total']++;
+                    }
+                }
+            }
+
+            // Frequent Trucks aggregation
+            $noPol = $tx->vehicle ? strtoupper(trim($tx->vehicle->no_pol)) : null;
+            if (!$noPol || $noPol === '-') {
+                $noPol = $tx->nama_driver ? ('DRIVER: ' . strtoupper($tx->nama_driver)) : 'PLAT TIDAK TERCATAT';
+            }
+            $vVendor = strtoupper(trim($tx->vendor ?: 'LAIN-LAIN / UNKNOWN'));
+            $rawQty = floatval($tx->qty_spb);
+            $tonnage = ($rawQty >= 100 ? $rawQty / 1000 : $rawQty);
+
+            if (!isset($truckVisits[$noPol])) {
+                $truckVisits[$noPol] = [
+                    'no_pol' => $noPol,
+                    'vendor' => $vVendor,
+                    'trips' => 0,
+                    'total_tat_min' => 0,
+                    'tat_samples' => 0,
+                    'total_tonnage' => 0,
+                ];
+            }
+            $truckVisits[$noPol]['trips']++;
+            $truckVisits[$noPol]['total_tonnage'] += $tonnage;
+            if ($truckDuration > 0) {
+                $truckVisits[$noPol]['total_tat_min'] += $truckDuration;
+                $truckVisits[$noPol]['tat_samples']++;
+            }
+
+            // Real Loading Time Calculation
+            if ($startLoad && $finishLoad && $finishLoad->gte($startLoad)) {
+                $loadMin = $startLoad->diffInMinutes($finishLoad);
+                $allLoadingMinutes[] = $loadMin;
+
+                $dockName = $this->getNormalizedAreaName($tx->targetLocation);
+
+                if (!isset($loadingBayTimes[$dockName])) {
+                    $loadingBayTimes[$dockName] = [
+                        'dock_name' => $dockName,
+                        'total_min' => 0,
+                        'sample_count' => 0,
+                        'min_min' => $loadMin,
+                        'max_min' => $loadMin,
+                    ];
+                }
+                $loadingBayTimes[$dockName]['total_min'] += $loadMin;
+                $loadingBayTimes[$dockName]['sample_count']++;
+                if ($loadMin < $loadingBayTimes[$dockName]['min_min']) $loadingBayTimes[$dockName]['min_min'] = $loadMin;
+                if ($loadMin > $loadingBayTimes[$dockName]['max_min']) $loadingBayTimes[$dockName]['max_min'] = $loadMin;
+            }
+
+            // Vendor Over Duration Aggregation (> 7.5 jam)
+            if (!isset($vendorOverDuration[$vVendor])) {
+                $vendorOverDuration[$vVendor] = [
+                    'vendor' => $vVendor,
+                    'total_trips' => 0,
+                    'over_count' => 0,
+                    'total_duration_min' => 0,
+                    'total_over_duration_min' => 0,
+                ];
+            }
+            $vendorOverDuration[$vVendor]['total_trips']++;
+            $vendorOverDuration[$vVendor]['total_duration_min'] += $truckDuration;
+            if ($truckDuration > $slaThreshold) {
+                $vendorOverDuration[$vVendor]['over_count']++;
+                $vendorOverDuration[$vVendor]['total_over_duration_min'] += $truckDuration;
+            }
+
+            // Fleet Types Distribution (Curah & Slipsheet disatukan jadi 'Muatan')
+            $rawJenis = strtolower(trim($tx->jenis ?: 'bongkaran'));
+            if (in_array($rawJenis, ['curah', 'slipsheet', 'muatan'])) {
+                $jKey = 'Muatan';
+            } elseif ($rawJenis === 'retur') {
+                $jKey = 'Retur';
+            } else {
+                $jKey = 'Bongkaran';
+            }
+            $fleetTypes[$jKey]['count']++;
+            $fleetTypes[$jKey]['total_min'] += $truckDuration;
+
+            // Weekly Duration Buckets
+            if ($inEffective) {
+                $wKey = $inEffective->format('Y-\WW');
+                if (isset($weeklyBuckets[$wKey])) {
+                    $weeklyBuckets[$wKey]['total_trucks']++;
+                    if ($truckDuration > 0) {
+                        $weeklyBuckets[$wKey]['durations'][] = $truckDuration;
+                    }
+                    if ($truckDuration > $slaThreshold) {
+                        $weeklyBuckets[$wKey]['over_duration_count']++;
+                    }
                 }
             }
         }
@@ -313,11 +1186,19 @@ class VehicleAnalyticsController extends Controller
             ];
         }
 
-        // Daily Check-ins Aggregates
-        $dailyList = array_values($dailyBuckets);
-        $totalDailyDays = max(1, count($dailyList));
-        $totalCheckins = array_sum(array_column($dailyList, 'count'));
-        $avgDailyCheckin = round($totalCheckins / $totalDailyDays, 1);
+        // Daily Check-ins Aggregates for Pos 1
+        $dailyListPos1 = array_values($dailyBucketsPos1);
+        $totalDailyDays = max(1, count($dailyListPos1));
+        $totalCheckinsPos1 = array_sum(array_column($dailyListPos1, 'count'));
+        $avgDailyCheckinPos1 = round($totalCheckinsPos1 / $totalDailyDays, 1);
+
+        // Daily Check-ins Aggregates for Timbangan
+        $dailyListTmb = array_values($dailyBucketsTmb);
+        $totalCheckinsTmb = array_sum(array_column($dailyListTmb, 'count'));
+        $avgDailyCheckinTmb = round($totalCheckinsTmb / $totalDailyDays, 1);
+
+        // Daily Cancellation Aggregates
+        $dailyListCancelled = array_values($dailyBucketsCancelled);
 
         // Frequent Trucks Top 8
         uasort($truckVisits, fn($a, $b) => $b['trips'] <=> $a['trips']);
@@ -350,122 +1231,13 @@ class VehicleAnalyticsController extends Controller
         $totalLoadingSamples = count($allLoadingMinutes);
         $overallAvgLoadingMin = $totalLoadingSamples > 0 ? round(array_sum($allLoadingMinutes) / $totalLoadingSamples) : 0;
 
-        // =========================================================================
-        // 2. ANALISA MUTU & KUALITAS MATERIAL (QC & COMPLIANCE - NO HOLD)
-        // =========================================================================
-        $qcCounts = [
-            'PASS' => 0,
-            'REJECT' => 0,
-            'WAITING' => 0,
-            'NOT_REQUIRED' => 0,
-        ];
-
-        $vendorRejections = [];
-        $materialDurations = [];
-
-        foreach ($transactions as $tx) {
-            $qc = strtolower(trim($tx->qc_status ?? ''));
-            $isReject = false;
-
-            if (in_array($qc, ['released', 'pass', 'passed', 'completed'])) {
-                $qcCounts['PASS']++;
-            } elseif (in_array($qc, ['rejected', 'reject'])) {
-                $qcCounts['REJECT']++;
-                $isReject = true;
-            } elseif (in_array($qc, ['not_required', 'none'])) {
-                $qcCounts['NOT_REQUIRED']++;
-            } else {
-                // pending, on_check, waiting_dokumen, or null/empty
-                $qcCounts['WAITING']++;
-            }
-
-            // Vendor Rejection Aggregation
-            $vName = strtoupper(trim($tx->vendor ?: 'LAIN-LAIN / UNKNOWN'));
-            if (!isset($vendorRejections[$vName])) {
-                $vendorRejections[$vName] = [
-                    'vendor' => $vName,
-                    'total_trips' => 0,
-                    'reject_count' => 0,
-                    'reject_qty' => 0,
-                    'reasons' => [],
-                ];
-            }
-            $vendorRejections[$vName]['total_trips']++;
-            if ($isReject) {
-                $vendorRejections[$vName]['reject_count']++;
-                $rawQ = floatval($tx->qty_spb);
-                $vendorRejections[$vName]['reject_qty'] += ($rawQ >= 100 ? $rawQ / 1000 : $rawQ);
-                if ($tx->follow_up_notes) {
-                    $vendorRejections[$vName]['reasons'][] = $tx->follow_up_notes;
-                }
-            }
-
-            // Material Lab Duration
-            if ($tx->start_sampling_time && $tx->finish_sampling_time && $tx->finish_sampling_time->gte($tx->start_sampling_time)) {
-                $iName = $tx->item ? $tx->item->name : 'Item #' . ($tx->item_id ?? 'N/A');
-                $sampMin = $tx->start_sampling_time->diffInMinutes($tx->finish_sampling_time);
-                if (!isset($materialDurations[$iName])) {
-                    $materialDurations[$iName] = [
-                        'item_name' => $iName,
-                        'total_min' => 0,
-                        'sample_count' => 0,
-                    ];
-                }
-                $materialDurations[$iName]['total_min'] += $sampMin;
-                $materialDurations[$iName]['sample_count']++;
-            }
-        }
-
-        // Top 5 Vendors by Rejection Rate
-        uasort($vendorRejections, function ($a, $b) {
-            $rateA = $a['total_trips'] > 0 ? ($a['reject_count'] / $a['total_trips']) : 0;
-            $rateB = $b['total_trips'] > 0 ? ($b['reject_count'] / $b['total_trips']) : 0;
-            if ($rateB == $rateA) {
-                return $b['reject_count'] <=> $a['reject_count'];
-            }
-            return $rateB <=> $rateA;
-        });
-
-        $top5RejectVendors = array_values(array_slice(array_map(function ($v) {
-            $rate = $v['total_trips'] > 0 ? round(($v['reject_count'] / $v['total_trips']) * 100, 1) : 0;
-            $reasons = count($v['reasons']) > 0 ? implode('; ', array_unique($v['reasons'])) : ($v['reject_count'] > 0 ? 'Kualitas Tidak Sesuai Spek Lab' : '-');
-            return [
-                'vendor' => $v['vendor'],
-                'total_trips' => $v['total_trips'],
-                'reject_count' => $v['reject_count'],
-                'reject_qty_ton' => round($v['reject_qty'], 2),
-                'reject_rate' => $rate,
-                'common_reason' => $reasons,
-            ];
-        }, $vendorRejections), 0, 5));
-
-        // Material Lab Testing Durations
-        uasort($materialDurations, function ($a, $b) {
-            $avgA = $a['sample_count'] > 0 ? $a['total_min'] / $a['sample_count'] : 0;
-            $avgB = $b['sample_count'] > 0 ? $b['total_min'] / $b['sample_count'] : 0;
-            return $avgB <=> $avgA;
-        });
-
-        $materialList = array_values(array_map(function ($m) use ($formatDur) {
-            $avg = $m['sample_count'] > 0 ? round($m['total_min'] / $m['sample_count']) : 0;
-            return [
-                'item_name' => $m['item_name'],
-                'sample_count' => $m['sample_count'],
-                'avg_duration_min' => $avg,
-                'avg_duration_formatted' => $formatDur($avg),
-            ];
-        }, $materialDurations));
-
-        // =========================================================================
-        // KLUSTER 3: ANALISA KAPASITAS & BONGKAR MUAT (YARD & LOADING BAY)
-        // =========================================================================
+        // Yard & Loading Bay Throughput
         $bayThroughput = [];
         $totalTonAll = 0;
         $totalLoadingHoursAll = 0;
 
         foreach ($transactions as $tx) {
-            $loc = $tx->targetLocation;
-            $locKey = $loc ? ($loc->name . ' (' . $loc->s_loc . ')') : 'Gudang Utama / Dock';
+            $locKey = $this->getNormalizedAreaName($tx->targetLocation);
 
             if (!isset($bayThroughput[$locKey])) {
                 $bayThroughput[$locKey] = [
@@ -494,10 +1266,8 @@ class VehicleAnalyticsController extends Controller
             }
         }
 
-        // Productivity Gauge: Ton per Hour
         $overallProductivityTonPerHour = ($totalLoadingHoursAll > 0) ? round($totalTonAll / $totalLoadingHoursAll, 1) : 0;
 
-        // Sort Bay Throughput by tonnage
         uasort($bayThroughput, fn($a, $b) => $b['total_tonnage'] <=> $a['total_tonnage']);
         $bayList = array_values(array_map(function ($b) use ($formatDur) {
             $avgLoad = $b['load_samples'] > 0 ? round($b['total_load_minutes'] / $b['load_samples']) : 0;
@@ -509,68 +1279,36 @@ class VehicleAnalyticsController extends Controller
             ];
         }, $bayThroughput));
 
-        // =========================================================================
-        // KLUSTER 4: ANALISA VENDOR & ARMADA (VENDOR & FLEET PERFORMANCE)
-        // =========================================================================
-        $vendorFleet = [];
-        $fleetTypes = [];
-
-        foreach ($transactions as $tx) {
-            $vName = strtoupper(trim($tx->vendor ?: 'LAIN-LAIN / UNKNOWN'));
-            $inTime = $tx->checkin_pos1 ?: $tx->check_in_time;
-            $outTime = $tx->check_out_time ?: ($tx->timbangan_out_time ?: ($tx->status === 'completed' ? $tx->updated_at : Carbon::now()));
-            $dwell = ($inTime && $outTime) ? max(1, round($inTime->diffInMinutes($outTime))) : 0;
-
-            if (!isset($vendorFleet[$vName])) {
-                $vendorFleet[$vName] = [
-                    'vendor' => $vName,
-                    'trips' => 0,
-                    'total_tat_min' => 0,
-                    'on_time_count' => 0,
-                ];
+        // Detail data Vendor dari total truck yang melebihi Truck Duration (7.5 jam / $slaThreshold)
+        uasort($vendorOverDuration, function ($a, $b) {
+            if ($b['over_count'] !== $a['over_count']) {
+                return $b['over_count'] <=> $a['over_count'];
             }
-            $vendorFleet[$vName]['trips']++;
-            $vendorFleet[$vName]['total_tat_min'] += $dwell;
-            if ($dwell <= $slaThreshold) {
-                $vendorFleet[$vName]['on_time_count']++;
-            }
-
-            // Fleet Type (jenis: Bongkaran, Curah, Slipsheet, Retur)
-            $j = ucfirst(strtolower($tx->jenis ?: 'bongkaran'));
-            if (!isset($fleetTypes[$j])) {
-                $fleetTypes[$j] = [
-                    'jenis' => $j,
-                    'count' => 0,
-                    'total_min' => 0,
-                ];
-            }
-            $fleetTypes[$j]['count']++;
-            $fleetTypes[$j]['total_min'] += $dwell;
-        }
-
-        // Vendor Table Ranking by Turnaround Time
-        uasort($vendorFleet, function ($a, $b) {
-            $avgA = $a['trips'] > 0 ? $a['total_tat_min'] / $a['trips'] : 0;
-            $avgB = $b['trips'] > 0 ? $b['total_tat_min'] / $b['trips'] : 0;
-            return $avgA <=> $avgB; // faster TAT first
+            return $b['total_trips'] <=> $a['total_trips'];
         });
 
-        $vendorTatList = array_values(array_map(function ($v) use ($formatDur) {
-            $avg = $v['trips'] > 0 ? round($v['total_tat_min'] / $v['trips']) : 0;
-            $onTimeRate = $v['trips'] > 0 ? round(($v['on_time_count'] / $v['trips']) * 100, 1) : 0;
-            $status = 'Tepat Waktu';
-            if ($onTimeRate < 50) $status = 'Sering Terlambat';
-            elseif ($onTimeRate < 80) $status = 'Waspada';
+        $vendorOverDurationList = array_values(array_map(function ($v) use ($formatDur) {
+            $avgAll = $v['total_trips'] > 0 ? round($v['total_duration_min'] / $v['total_trips']) : 0;
+            $avgOver = $v['over_count'] > 0 ? round($v['total_over_duration_min'] / $v['over_count']) : 0;
+            $overRate = $v['total_trips'] > 0 ? round(($v['over_count'] / $v['total_trips']) * 100, 1) : 0;
+
+            $status = 'Aman (≤ 7.5j)';
+            if ($overRate >= 50) {
+                $status = 'Kritis (> 50%)';
+            } elseif ($v['over_count'] > 0) {
+                $status = 'Waspada';
+            }
 
             return [
                 'vendor' => $v['vendor'],
-                'trips' => $v['trips'],
-                'avg_tat_min' => $avg,
-                'avg_tat_formatted' => $formatDur($avg),
-                'on_time_rate' => $onTimeRate,
+                'total_trips' => $v['total_trips'],
+                'over_count' => $v['over_count'],
+                'over_rate' => $overRate,
+                'avg_duration_formatted' => $formatDur($avgAll),
+                'avg_over_duration_formatted' => $avgOver > 0 ? $formatDur($avgOver) : '-',
                 'status' => $status,
             ];
-        }, $vendorFleet));
+        }, $vendorOverDuration));
 
         // Fleet Types Distribution
         $fleetDistribution = array_values(array_map(function ($f) use ($formatDur) {
@@ -582,53 +1320,43 @@ class VehicleAnalyticsController extends Controller
             ];
         }, $fleetTypes));
 
-        // =========================================================================
-        // KLUSTER 5: KENDALA & LOG FOLLOW-UP (INCIDENT & EXCEPTIONS)
-        // =========================================================================
-        $incidentsQuery = VehicleTransaction::with(['vehicle', 'targetLocation'])
-            ->where(function ($q) {
-                $q->whereNotNull('follow_up_time')
-                    ->orWhereNotNull('follow_up_notes')
-                    ->orWhereNotNull('follow_up_target');
-            })
-            ->whereBetween('check_in_time', [$start, $end]);
-
-        $incidents = $incidentsQuery->orderBy('follow_up_time', 'desc')->get();
-        $totalIncidents = $incidents->count();
-
-        $activePendingIssues = $incidents->filter(function ($tx) {
-            return is_null($tx->check_out_time) && $tx->status !== 'completed';
-        })->count();
-
-        $resolvedIncidents = $totalIncidents - $activePendingIssues;
-
-        $incidentList = $incidents->take(15)->map(function ($tx) {
+        // Weekly Truck Duration List
+        $weeklyDurationList = array_values(array_filter(array_map(function ($w) use ($formatDur) {
+            $cnt = count($w['durations']);
+            $avg = $cnt > 0 ? round(array_sum($w['durations']) / $cnt) : 0;
+            $overRate = $w['total_trucks'] > 0 ? round(($w['over_duration_count'] / $w['total_trucks']) * 100, 1) : 0;
             return [
-                'no_antrian' => $tx->no_antrian ?: $tx->no_transaction,
-                'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
-                'vendor' => $tx->vendor ?: '-',
-                'target_unit' => $tx->follow_up_target ?: 'PIC Area',
-                'notes' => $tx->follow_up_notes ?: 'Pemeriksaan Lanjutan / Tindak Lanjut',
-                'incident_time' => $tx->follow_up_time ? $tx->follow_up_time->format('d/m/Y H:i') : ($tx->updated_at ? $tx->updated_at->format('d/m/Y H:i') : '-'),
-                'status' => strtoupper($tx->status ?: 'PENDING'),
+                'week_key' => $w['week_key'],
+                'label' => $w['label'],
+                'short_label' => $w['short_label'],
+                'total_trucks' => $w['total_trucks'],
+                'avg_duration_min' => $avg,
+                'avg_duration_hours' => round($avg / 60, 1),
+                'avg_duration_formatted' => $formatDur($avg),
+                'over_duration_count' => $w['over_duration_count'],
+                'over_duration_rate' => $overRate,
             ];
-        })->values();
+        }, $weeklyBuckets), fn($w) => $w['total_trucks'] > 0));
 
         // =========================================================================
-        // KLUSTER 6: AUDIT KINERJA OPERATOR (PIC PRODUCTIVITY)
+        // AUDIT KINERJA OPERATOR (Nama Lengkap / Username)
         // =========================================================================
         $operatorWork = [];
 
         $recordOperatorAction = function ($user, $pos, $durationMin = null) use (&$operatorWork) {
             if (!$user) return;
             $uId = $user->id;
-            $uName = $user->name ?: ('User #' . $uId);
+            $namaLengkap = trim($user->nama_lengkap ?? '');
+            $username = trim($user->username ?? '');
+            $displayName = $namaLengkap ?: ($username ?: ('Petugas #' . $uId));
             $key = $uId . '_' . $pos;
 
             if (!isset($operatorWork[$key])) {
                 $operatorWork[$key] = [
                     'user_id' => $uId,
-                    'user_name' => $uName,
+                    'user_name' => $displayName,
+                    'nama_lengkap' => $namaLengkap,
+                    'username' => $username,
                     'pos' => $pos,
                     'total_tickets' => 0,
                     'total_min' => 0,
@@ -647,11 +1375,6 @@ class VehicleAnalyticsController extends Controller
             // Pos Antrian
             if ($tx->queueTakenBy) {
                 $recordOperatorAction($tx->queueTakenBy, 'Pos Antrian');
-            }
-            // Sampling QC
-            if ($tx->finishSamplingBy || $tx->startSamplingBy) {
-                $dur = ($tx->start_sampling_time && $tx->finish_sampling_time) ? $tx->start_sampling_time->diffInMinutes($tx->finish_sampling_time) : null;
-                $recordOperatorAction($tx->finishSamplingBy ?: $tx->startSamplingBy, 'QC Lab Sampling', $dur);
             }
             // Loading Bay Operator
             if ($tx->finishLoadingBy || $tx->startLoadingBy) {
@@ -679,6 +1402,9 @@ class VehicleAnalyticsController extends Controller
         foreach ($trackingLogs as $log) {
             if ($log->creator) {
                 $pos = $log->location ? $log->location->name : 'Operasional Lapangan';
+                if (stripos($pos, 'qc') !== false || stripos($pos, 'sample') !== false || stripos($pos, 'sampling') !== false) {
+                    continue;
+                }
                 $durMin = $log->duration_seconds ? round(abs($log->duration_seconds) / 60) : null;
                 $recordOperatorAction($log->creator, $pos, $durMin);
             }
@@ -690,6 +1416,8 @@ class VehicleAnalyticsController extends Controller
             $avg = $op['sample_count'] > 0 ? round($op['total_min'] / $op['sample_count']) : 0;
             return [
                 'user_name' => $op['user_name'],
+                'nama_lengkap' => $op['nama_lengkap'],
+                'username' => $op['username'],
                 'pos' => $op['pos'],
                 'total_tickets' => $op['total_tickets'],
                 'avg_duration_formatted' => $avg > 0 ? $formatDur($avg) : 'Instant / Log',
@@ -700,6 +1428,7 @@ class VehicleAnalyticsController extends Controller
         $totalVehicles = $transactions->count();
         $avgTatMin = $tatCount > 0 ? round($totalTATMinutes / $tatCount) : 0;
         $overSlaRate = $tatCount > 0 ? round(($overSlaCount / $tatCount) * 100, 1) : 0;
+        $cancelledRate = $totalVehicles > 0 ? round(($cancelledCount / $totalVehicles) * 100, 1) : 0;
         $healthScore = max(0, min(100, round(100 - $overSlaRate)));
 
         return response()->json([
@@ -716,12 +1445,20 @@ class VehicleAnalyticsController extends Controller
                 'avg_tat_formatted' => $formatDur($avgTatMin),
                 'over_sla_count' => $overSlaCount,
                 'over_sla_rate' => $overSlaRate,
+                'cancelled_count' => $cancelledCount,
+                'cancelled_bongkar_count' => $cancelledBongkarCount,
+                'cancelled_muat_count' => $cancelledMuatCount,
+                'cancelled_rate' => $cancelledRate,
                 'health_score' => $healthScore,
                 'total_tonnage' => round($totalTonAll, 2),
                 'primary_bottleneck_stage' => $primaryBottleneckStage ?: 'N/A',
                 'overall_productivity' => $overallProductivityTonPerHour,
-                'avg_daily_checkin' => $avgDailyCheckin,
-                'total_checkins' => $totalCheckins,
+                'avg_daily_checkin' => $avgDailyCheckinTmb,
+                'avg_daily_checkin_timbangan' => $avgDailyCheckinTmb,
+                'avg_daily_checkin_pos1' => $avgDailyCheckinPos1,
+                'total_checkins' => $totalCheckinsTmb,
+                'total_checkins_timbangan' => $totalCheckinsTmb,
+                'total_checkins_pos1' => $totalCheckinsPos1,
                 'total_loading_samples' => $totalLoadingSamples,
                 'overall_avg_loading_formatted' => $formatDur($overallAvgLoadingMin),
             ],
@@ -730,15 +1467,35 @@ class VehicleAnalyticsController extends Controller
             'primary_bottleneck' => $primaryBottleneckStage ?: 'N/A',
             'max_stage_avg_formatted' => $formatDur($maxStageAvg),
 
-            // 2. Daily Check-in & Rata-rata
-            'daily_checkin' => [
-                'series' => $dailyList,
-                'avg_per_day' => $avgDailyCheckin,
+            // 2. Daily Check-in POS 1, TIMBANGAN & PEMBATALAN
+            'daily_checkin_pos1' => [
+                'series' => $dailyListPos1,
+                'avg_per_day' => $avgDailyCheckinPos1,
                 'total_days' => $totalDailyDays,
-                'total_checkins' => $totalCheckins,
+                'total_checkins' => $totalCheckinsPos1,
+            ],
+            'daily_checkin_timbangan' => [
+                'series' => $dailyListTmb,
+                'avg_per_day' => $avgDailyCheckinTmb,
+                'total_days' => $totalDailyDays,
+                'total_checkins' => $totalCheckinsTmb,
+            ],
+            'daily_checkin' => [
+                'series' => $dailyListTmb,
+                'avg_per_day' => $avgDailyCheckinTmb,
+                'total_days' => $totalDailyDays,
+                'total_checkins' => $totalCheckinsTmb,
+            ],
+            'daily_cancelled' => [
+                'series' => $dailyListCancelled,
+                'total_cancelled' => $cancelledCount,
+                'total_batal_bongkar' => $cancelledBongkarCount,
+                'total_batal_muat' => $cancelledMuatCount,
+                'avg_per_day' => round($cancelledCount / $totalDailyDays, 1),
+                'total_days' => $totalDailyDays,
             ],
 
-            // 3. Durasi Bongkar / Muat Riil (hanya data dengan timestamp start & finish loading)
+            // 3. Durasi Bongkar / Muat Riil
             'loading_time' => [
                 'bay_list' => $loadingBayList,
                 'total_samples' => $totalLoadingSamples,
@@ -746,38 +1503,27 @@ class VehicleAnalyticsController extends Controller
                 'overall_avg_formatted' => $formatDur($overallAvgLoadingMin),
             ],
 
-            // 4. Frequent Trucks (Armada Paling Sering Berkunjung)
+            // 4. Frequent Trucks
             'frequent_trucks' => $topFrequentTrucks,
 
-            // 5. Analisa Mutu & QC (No HOLD)
-            'qc_compliance' => [
-                'qc_distribution' => $qcCounts,
-                'top_rejections' => $top5RejectVendors,
-                'material_durations' => $materialList,
-            ],
-
-            // 6. Yard & Loading Bay Throughput
+            // 5. Yard & Loading Bay Throughput
             'capacity_throughput' => [
                 'bay_throughput' => $bayList,
                 'productivity_ton_per_hour' => $overallProductivityTonPerHour,
                 'total_tonnage' => round($totalTonAll, 2),
             ],
 
-            // 7. Vendor TAT & Armada
+            // 6. Vendor Detail Data Over Duration (> 7.5 jam) & Armada
+            'vendor_over_duration' => $vendorOverDurationList,
             'vendor_fleet' => [
-                'vendor_tat' => array_slice($vendorTatList, 0, 15),
+                'vendor_tat' => $vendorOverDurationList,
                 'fleet_distribution' => $fleetDistribution,
             ],
 
-            // 8. Kendala & Insiden
-            'incidents' => [
-                'pending_issues_count' => $activePendingIssues,
-                'total_incidents' => $totalIncidents,
-                'resolved_incidents' => $resolvedIncidents,
-                'incident_list' => $incidentList,
-            ],
+            // 7. Weekly Truck Duration
+            'weekly_duration' => $weeklyDurationList,
 
-            // 9. Kinerja Operator
+            // 8. Kinerja Operator
             'operators' => [
                 'operator_list' => $operatorList,
             ],
@@ -788,14 +1534,9 @@ class VehicleAnalyticsController extends Controller
                 'primary_bottleneck' => $primaryBottleneckStage ?: 'N/A',
                 'max_stage_avg_formatted' => $formatDur($maxStageAvg),
                 'daily_checkin' => [
-                    'series' => $dailyList,
-                    'avg_per_day' => $avgDailyCheckin,
+                    'series' => $dailyListTmb,
+                    'avg_per_day' => $avgDailyCheckinTmb,
                 ],
-            ],
-            'cluster_2' => [
-                'qc_distribution' => $qcCounts,
-                'top_rejections' => $top5RejectVendors,
-                'material_durations' => $materialList,
             ],
             'cluster_3' => [
                 'bay_throughput' => $bayList,
@@ -804,15 +1545,9 @@ class VehicleAnalyticsController extends Controller
                 'total_tonnage' => round($totalTonAll, 2),
             ],
             'cluster_4' => [
-                'vendor_tat' => array_slice($vendorTatList, 0, 15),
+                'vendor_tat' => $vendorOverDurationList,
                 'fleet_distribution' => $fleetDistribution,
                 'frequent_trucks' => $topFrequentTrucks,
-            ],
-            'cluster_5' => [
-                'pending_issues_count' => $activePendingIssues,
-                'total_incidents' => $totalIncidents,
-                'resolved_incidents' => $resolvedIncidents,
-                'incident_list' => $incidentList,
             ],
             'cluster_6' => [
                 'operators' => $operatorList,
