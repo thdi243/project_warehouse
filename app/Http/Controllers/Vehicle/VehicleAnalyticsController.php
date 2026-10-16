@@ -762,7 +762,7 @@ class VehicleAnalyticsController extends Controller
     private function getOperators(Request $request, Carbon $start, Carbon $end)
     {
         $transactions = $this->buildBaseQuery($request, $start, $end, [
-            'queueTakenBy', 'startLoadingBy', 'finishLoadingBy', 'timbanganOutBy', 'checkOutBy'
+            'creator', 'queueTakenBy', 'startLoadingBy', 'finishLoadingBy', 'timbanganOutBy', 'checkOutBy'
         ])->get();
 
         $operatorWork = [];
@@ -796,6 +796,9 @@ class VehicleAnalyticsController extends Controller
         };
 
         foreach ($transactions as $tx) {
+            if ($tx->creator) {
+                $recordOperatorAction($tx->creator, 'Check-in Timbangan');
+            }
             if ($tx->queueTakenBy) {
                 $recordOperatorAction($tx->queueTakenBy, 'Pos Antrian');
             }
@@ -811,12 +814,13 @@ class VehicleAnalyticsController extends Controller
             }
         }
 
-        $trackingLogs = VehicleTracking::with(['creator', 'location'])
-            ->whereHas('transaction', function ($q) use ($start, $end) {
-                $q->whereBetween('check_in_time', [$start, $end]);
-            })
-            ->whereNotNull('created_by')
-            ->get();
+        $txIds = $transactions->pluck('id')->toArray();
+        $trackingLogs = !empty($txIds)
+            ? VehicleTracking::with(['creator', 'location'])
+                ->whereIn('vehicle_transaction_id', $txIds)
+                ->whereNotNull('created_by')
+                ->get()
+            : collect();
 
         foreach ($trackingLogs as $log) {
             if ($log->creator) {
@@ -849,6 +853,7 @@ class VehicleAnalyticsController extends Controller
             'operators' => [
                 'operator_list' => $operatorList,
             ],
+            'operator_list' => $operatorList,
             'cluster_6' => [
                 'operators' => $operatorList,
             ],
@@ -1372,6 +1377,10 @@ class VehicleAnalyticsController extends Controller
         };
 
         foreach ($transactions as $tx) {
+            // Check-in Timbangan
+            if ($tx->creator) {
+                $recordOperatorAction($tx->creator, 'Check-in Timbangan');
+            }
             // Pos Antrian
             if ($tx->queueTakenBy) {
                 $recordOperatorAction($tx->queueTakenBy, 'Pos Antrian');
@@ -1391,13 +1400,13 @@ class VehicleAnalyticsController extends Controller
             }
         }
 
-        // Tracking logs fallback for operators if direct stamps are sparse
-        $trackingLogs = VehicleTracking::with(['creator', 'location'])
-            ->whereHas('transaction', function ($q) use ($start, $end) {
-                $q->whereBetween('check_in_time', [$start, $end]);
-            })
-            ->whereNotNull('created_by')
-            ->get();
+        $txIds = $transactions->pluck('id')->toArray();
+        $trackingLogs = !empty($txIds)
+            ? VehicleTracking::with(['creator', 'location'])
+                ->whereIn('vehicle_transaction_id', $txIds)
+                ->whereNotNull('created_by')
+                ->get()
+            : collect();
 
         foreach ($trackingLogs as $log) {
             if ($log->creator) {
@@ -1527,6 +1536,7 @@ class VehicleAnalyticsController extends Controller
             'operators' => [
                 'operator_list' => $operatorList,
             ],
+            'operator_list' => $operatorList,
 
             // Backward Compatibility Aliases
             'cluster_1' => [

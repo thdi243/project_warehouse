@@ -1095,6 +1095,7 @@
                     $('#kpiCancelledBongkar').text('0');
                     $('#kpiCancelledMuat').text('0');
                     $('#kpiTotalTonnage').html(spinnerHtml);
+                    $('#kpiPrimaryBottleneck').html(spinnerHtml);
 
                     $('#totalCancelledBadge').text('TOTAL: 0 TRUK');
                     $('#totalBatalBongkarBadge').text('0');
@@ -1197,8 +1198,18 @@
                         dataType: 'json',
                         success: function(res) {
                             if (res.success) {
-                                renderOperatorSection(res.operators || res.cluster_6);
+                                const list = res.operator_list ||
+                                    (res.operators && res.operators.operator_list) ||
+                                    (res.operators && res.operators.operators) ||
+                                    (res.cluster_6 && res.cluster_6.operators) ||
+                                    (Array.isArray(res.operators) ? res.operators : []);
+                                renderOperatorSection(list);
                             }
+                        },
+                        error: function() {
+                            $('#operatorTableBody').html(
+                                '<tr><td colspan="4" class="text-center text-muted py-4 fs-11">GAGAL MEMUAT DATA PETUGAS</td></tr>'
+                            );
                         }
                     });
                 }
@@ -1234,8 +1245,9 @@
                         minimumFractionDigits: 1,
                         maximumFractionDigits: 2
                     }) + ' TON');
-                    $('#kpiPrimaryBottleneck').text(kpi.primary_bottleneck_stage ? kpi.primary_bottleneck_stage
-                        .toUpperCase() : 'N/A');
+                    if (kpi.primary_bottleneck_stage) {
+                        $('#kpiPrimaryBottleneck').text(kpi.primary_bottleneck_stage.toUpperCase());
+                    }
                 }
 
                 // 1.1 Stage Dwell Time Breakdown (Operasional murni tanpa QC)
@@ -1334,9 +1346,11 @@
                     chartStage = new ApexCharts(document.querySelector("#chartStageBreakdown"), optionsStage);
                     chartStage.render();
 
+                    const bottleneck = (c1.primary_bottleneck && c1.primary_bottleneck !== 'N/A') ? c1.primary_bottleneck : 'N/A';
                     $('#stageInsightText').html(
-                        `<span>BOTTLENECK UTAMA: <strong class="text-warning">${c1.primary_bottleneck ? c1.primary_bottleneck.toUpperCase() : 'N/A'}</strong> (${c1.max_stage_avg_formatted || '--'})</span>`
+                        `<span>BOTTLENECK UTAMA: <strong class="text-warning">${bottleneck.toUpperCase()}</strong> (${c1.max_stage_avg_formatted || '--'})</span>`
                     );
+                    $('#kpiPrimaryBottleneck').text(bottleneck.toUpperCase());
                 }
 
                 // 1.2 Tren Check-in Pos 1 Harian & Rata-rata
@@ -1425,6 +1439,7 @@
                         tooltip: {
                             theme: 'dark',
                             shared: true,
+                            intersect: false,
                             y: {
                                 formatter: (val, opt) => {
                                     if (opt.seriesIndex === 0) return `${val} Kendaraan`;
@@ -1531,6 +1546,7 @@
                         tooltip: {
                             theme: 'dark',
                             shared: true,
+                            intersect: false,
                             y: {
                                 formatter: (val, opt) => {
                                     if (opt.seriesIndex === 0) return `${val} Kendaraan`;
@@ -1637,6 +1653,7 @@
                         tooltip: {
                             theme: 'dark',
                             shared: true,
+                            intersect: false,
                             y: {
                                 formatter: val => `${val} Truk`
                             }
@@ -1882,7 +1899,8 @@
                         ],
                         tooltip: {
                             theme: 'dark',
-                            shared: true
+                            shared: true,
+                            intersect: false
                         },
                         legend: {
                             position: 'top',
@@ -2096,6 +2114,7 @@
                         tooltip: {
                             theme: 'dark',
                             shared: true,
+                            intersect: false,
                             y: {
                                 formatter: (val, opt) => {
                                     if (opt.seriesIndex === 0) return `${val} Jam`;
@@ -2129,8 +2148,16 @@
                     const tbodyOp = $('#operatorTableBody');
                     tbodyOp.empty();
 
-                    const list = Array.isArray(operators) ? operators : (operators && operators.operators ? operators
-                        .operators : []);
+                    let list = [];
+                    if (Array.isArray(operators)) {
+                        list = operators;
+                    } else if (operators && Array.isArray(operators.operator_list)) {
+                        list = operators.operator_list;
+                    } else if (operators && Array.isArray(operators.operators)) {
+                        list = operators.operators;
+                    } else if (operators && typeof operators === 'object') {
+                        list = Object.values(operators).find(v => Array.isArray(v)) || [];
+                    }
 
                     if (!list || list.length === 0) {
                         tbodyOp.append(
