@@ -717,13 +717,12 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon cyan"><i class="ri-shield-user-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">TREN CHECK-IN POS 1 HARIAN &amp; RATA-RATA</div>
-                                    <div class="card-subtitle-text">VOLUME KEDATANGAN POS 1 SECURITY VS RERATA</div>
+                                    <div class="card-title-text">DISTRIBUSI JAM CHECK-IN POS 1</div>
+                                    <div class="card-subtitle-text">JAM KEDATANGAN TRUK (JAM 1 - 24)</div>
                                 </div>
                             </div>
                             <div>
-                                <span class="status-pill cyan mono" id="avgDailyCheckinPos1Badge">RERATA: 0 /
-                                    HARI</span>
+                                <span class="status-pill cyan mono" id="avgDailyCheckinPos1Badge">RERATA: JAM --</span>
                             </div>
                         </div>
                         <div class="wwtp-card-body">
@@ -732,7 +731,7 @@
                                 class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
                                 <span>Total Pos 1: <strong class="text-white mono"
                                         id="totalCheckinsPos1Badge">0</strong> Truk</span>
-                                <span class="mono text-muted fs-10" id="periodDaysLabelPos1"></span>
+                                <span class="mono text-muted fs-10" id="periodDaysLabelPos1">Peak: Jam --</span>
                             </div>
                         </div>
                     </div>
@@ -1353,31 +1352,32 @@
                     $('#kpiPrimaryBottleneck').text(bottleneck.toUpperCase());
                 }
 
-                // 1.2 Tren Check-in Pos 1 Harian & Rata-rata
-                function renderDailyCheckinPos1(dailyData) {
-                    if (!dailyData || !dailyData.series || dailyData.series.length === 0) {
+                // 1.2 Distribusi Jam Check-in Pos 1 (Jam 1 s/d 24 & Rata-rata Jam)
+                function renderDailyCheckinPos1(pos1Data) {
+                    if (!pos1Data || !pos1Data.series || pos1Data.series.length === 0) {
                         $('#chartDailyCheckinPos1').html(
                             '<div class="text-center text-muted py-5 fs-11">TIDAK ADA DATA KEDATANGAN POS 1</div>');
                         return;
                     }
 
-                    const labels = dailyData.series.map(d => d.label);
-                    const counts = dailyData.series.map(d => d.count);
-                    const avgVal = dailyData.avg_per_day || 0;
-                    const avgLines = dailyData.series.map(() => avgVal);
+                    const labels = pos1Data.series.map(d => d.label);
+                    const counts = pos1Data.series.map(d => d.count);
+                    const avgPerHour = pos1Data.avg_per_hour || 0;
+                    const avgLines = pos1Data.series.map(() => avgPerHour);
 
-                    $('#avgDailyCheckinPos1Badge').text(`RERATA: ${avgVal} / HARI`);
-                    $('#totalCheckinsPos1Badge').text((dailyData.total_checkins || 0).toLocaleString('id-ID'));
-                    $('#periodDaysLabelPos1').text(`${dailyData.total_days || 0} Hari Terakhir`);
+                    $('#avgDailyCheckinPos1Badge').text(`RERATA: ${pos1Data.avg_hour || '--'}`);
+                    $('#totalCheckinsPos1Badge').text((pos1Data.total_checkins || 0).toLocaleString('id-ID'));
+                    $('#periodDaysLabelPos1').text(pos1Data.peak_hour && pos1Data.peak_hour !== '-' ?
+                        `Peak: ${pos1Data.peak_hour} (${pos1Data.peak_count || 0} Truk)` : 'Jam 1 - 24');
 
                     const optionsPos1 = {
                         series: [{
-                                name: 'CHECK-IN POS 1',
+                                name: 'KEDATANGAN POS 1',
                                 type: 'column',
                                 data: counts
                             },
                             {
-                                name: 'RERATA HARIAN',
+                                name: 'RERATA PER JAM',
                                 type: 'line',
                                 data: avgLines
                             }
@@ -1399,7 +1399,7 @@
                         plotOptions: {
                             bar: {
                                 borderRadius: 3,
-                                columnWidth: '50%'
+                                columnWidth: '55%'
                             }
                         },
                         labels: labels,
@@ -1408,7 +1408,7 @@
                             labels: {
                                 style: {
                                     colors: '#64748b',
-                                    fontSize: '9px',
+                                    fontSize: '8.5px',
                                     fontFamily: 'JetBrains Mono'
                                 },
                                 rotate: -45
@@ -1443,7 +1443,7 @@
                             y: {
                                 formatter: (val, opt) => {
                                     if (opt.seriesIndex === 0) return `${val} Kendaraan`;
-                                    return `${val} Kendaraan / Hari`;
+                                    return `${val} Truk / Jam`;
                                 }
                             }
                         },

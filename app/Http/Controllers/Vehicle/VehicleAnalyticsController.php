@@ -181,7 +181,16 @@ class VehicleAnalyticsController extends Controller
             ->orderBy('check_in_time', 'asc')
             ->get();
 
-        $dailyBucketsPos1 = [];
+        $hourlyBucketsPos1 = [];
+        for ($h = 1; $h <= 24; $h++) {
+            $hourlyBucketsPos1[$h] = [
+                'hour' => $h,
+                'label' => 'Jam ' . $h,
+                'short_label' => sprintf('%02d:00', $h === 24 ? 0 : $h),
+                'count' => 0,
+            ];
+        }
+
         $dailyBucketsTmb = [];
         $dailyBucketsCancelled = [];
         $cursorDate = $start->copy()->startOfDay();
@@ -189,14 +198,12 @@ class VehicleAnalyticsController extends Controller
 
         while ($cursorDate->lte($endDate)) {
             $dateKey = $cursorDate->format('Y-m-d');
-            $bTemplate = [
+            $dailyBucketsTmb[$dateKey] = [
                 'date' => $dateKey,
                 'label' => $cursorDate->format('d/m'),
                 'full_label' => $cursorDate->format('d M Y'),
                 'count' => 0,
             ];
-            $dailyBucketsPos1[$dateKey] = $bTemplate;
-            $dailyBucketsTmb[$dateKey] = $bTemplate;
             $dailyBucketsCancelled[$dateKey] = [
                 'date' => $dateKey,
                 'label' => $cursorDate->format('d/m'),
@@ -222,11 +229,18 @@ class VehicleAnalyticsController extends Controller
             $tmbOut = $tx->timbangan_out_time;
             $checkOut = $tx->check_out_time;
 
-            if ($pos1) {
-                $dKeyP1 = $pos1->format('Y-m-d');
-                if (isset($dailyBucketsPos1[$dKeyP1])) {
-                    $dailyBucketsPos1[$dKeyP1]['count']++;
+            // Check-in Pos 1 jam tepat (Jam 1 s/d 24) dengan pembulatan terdekat
+            $pos1Time = $pos1 ?: $tmbIn;
+            if ($pos1Time) {
+                $hRaw = (int) $pos1Time->format('G');
+                $mRaw = (int) $pos1Time->format('i');
+                $roundedH = ($mRaw >= 30) ? $hRaw + 1 : $hRaw;
+                if ($roundedH === 0) {
+                    $roundedH = 24;
+                } elseif ($roundedH > 24) {
+                    $roundedH = 24;
                 }
+                $hourlyBucketsPos1[$roundedH]['count']++;
             }
 
             if ($tmbIn) {
@@ -287,12 +301,26 @@ class VehicleAnalyticsController extends Controller
             $totalTonAll += $ton;
         }
 
-        $dailyListPos1 = array_values($dailyBucketsPos1);
-        $totalDailyDays = max(1, count($dailyListPos1));
-        $totalCheckinsPos1 = array_sum(array_column($dailyListPos1, 'count'));
-        $avgDailyCheckinPos1 = round($totalCheckinsPos1 / $totalDailyDays, 1);
+        $hourlyListPos1 = array_values($hourlyBucketsPos1);
+        $totalCheckinsPos1 = array_sum(array_column($hourlyListPos1, 'count'));
+        $weightedHourSum = 0;
+        $maxPos1Count = 0;
+        $peakHourPos1 = null;
+
+        foreach ($hourlyListPos1 as $hb) {
+            $weightedHourSum += ($hb['hour'] * $hb['count']);
+            if ($hb['count'] > $maxPos1Count) {
+                $maxPos1Count = $hb['count'];
+                $peakHourPos1 = $hb['hour'];
+            }
+        }
+
+        $avgHourPos1Decimal = $totalCheckinsPos1 > 0 ? round($weightedHourSum / $totalCheckinsPos1, 1) : 0;
+        $avgHourPos1Rounded = round($avgHourPos1Decimal);
+        $avgPerHourPos1 = round($totalCheckinsPos1 / 24, 1);
 
         $dailyListTmb = array_values($dailyBucketsTmb);
+        $totalDailyDays = max(1, count($dailyListTmb));
         $totalCheckinsTmb = array_sum(array_column($dailyListTmb, 'count'));
         $avgDailyCheckinTmb = round($totalCheckinsTmb / $totalDailyDays, 1);
 
@@ -321,16 +349,24 @@ class VehicleAnalyticsController extends Controller
                 'total_tonnage' => round($totalTonAll, 2),
                 'avg_daily_checkin' => $avgDailyCheckinTmb,
                 'avg_daily_checkin_timbangan' => $avgDailyCheckinTmb,
-                'avg_daily_checkin_pos1' => $avgDailyCheckinPos1,
+                'avg_daily_checkin_pos1' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
+                'avg_hour_pos1' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
+                'peak_hour_pos1' => $peakHourPos1 ? "Jam $peakHourPos1" : '-',
                 'total_checkins' => $totalCheckinsTmb,
                 'total_checkins_timbangan' => $totalCheckinsTmb,
                 'total_checkins_pos1' => $totalCheckinsPos1,
             ],
             'daily_checkin_pos1' => [
-                'series' => $dailyListPos1,
-                'avg_per_day' => $avgDailyCheckinPos1,
-                'total_days' => $totalDailyDays,
+                'mode' => 'hourly',
+                'series' => $hourlyListPos1,
                 'total_checkins' => $totalCheckinsPos1,
+                'avg_hour' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
+                'avg_hour_decimal' => $avgHourPos1Decimal,
+                'peak_hour' => $peakHourPos1 ? "Jam $peakHourPos1" : '-',
+                'peak_count' => $maxPos1Count,
+                'avg_per_hour' => $avgPerHourPos1,
+                'avg_per_day' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
+                'total_days' => 24,
             ],
             'daily_checkin_timbangan' => [
                 'series' => $dailyListTmb,
@@ -906,8 +942,17 @@ class VehicleAnalyticsController extends Controller
             ],
         ];
 
-        // Daily Check-ins Series for POS 1 and TIMBANGAN
-        $dailyBucketsPos1 = [];
+        // Hourly Check-ins Series for POS 1 (Jam 1 s/d 24)
+        $hourlyBucketsPos1 = [];
+        for ($h = 1; $h <= 24; $h++) {
+            $hourlyBucketsPos1[$h] = [
+                'hour' => $h,
+                'label' => 'Jam ' . $h,
+                'short_label' => sprintf('%02d:00', $h === 24 ? 0 : $h),
+                'count' => 0,
+            ];
+        }
+
         $dailyBucketsTmb = [];
         $dailyBucketsCancelled = [];
         $cursorDate = $start->copy()->startOfDay();
@@ -1008,12 +1053,18 @@ class VehicleAnalyticsController extends Controller
                 $stageDefs['checkout_timbangan']['durations'][] = $tmbOut->diffInMinutes($checkOut);
             }
 
-            // Daily Check-in aggregation for Pos 1
-            if ($pos1) {
-                $dKeyP1 = $pos1->format('Y-m-d');
-                if (isset($dailyBucketsPos1[$dKeyP1])) {
-                    $dailyBucketsPos1[$dKeyP1]['count']++;
+            // Check-in Pos 1 jam tepat (Jam 1 s/d 24) dengan pembulatan terdekat
+            $pos1Time = $pos1 ?: $tmbIn;
+            if ($pos1Time) {
+                $hRaw = (int) $pos1Time->format('G');
+                $mRaw = (int) $pos1Time->format('i');
+                $roundedH = ($mRaw >= 30) ? $hRaw + 1 : $hRaw;
+                if ($roundedH === 0) {
+                    $roundedH = 24;
+                } elseif ($roundedH > 24) {
+                    $roundedH = 24;
                 }
+                $hourlyBucketsPos1[$roundedH]['count']++;
             }
 
             // Daily Check-in aggregation for Timbangan
@@ -1191,11 +1242,24 @@ class VehicleAnalyticsController extends Controller
             ];
         }
 
-        // Daily Check-ins Aggregates for Pos 1
-        $dailyListPos1 = array_values($dailyBucketsPos1);
-        $totalDailyDays = max(1, count($dailyListPos1));
-        $totalCheckinsPos1 = array_sum(array_column($dailyListPos1, 'count'));
-        $avgDailyCheckinPos1 = round($totalCheckinsPos1 / $totalDailyDays, 1);
+        // Hourly Check-ins Aggregates for Pos 1 (Jam 1 s/d 24)
+        $hourlyListPos1 = array_values($hourlyBucketsPos1);
+        $totalCheckinsPos1 = array_sum(array_column($hourlyListPos1, 'count'));
+        $weightedHourSum = 0;
+        $maxPos1Count = 0;
+        $peakHourPos1 = null;
+
+        foreach ($hourlyListPos1 as $hb) {
+            $weightedHourSum += ($hb['hour'] * $hb['count']);
+            if ($hb['count'] > $maxPos1Count) {
+                $maxPos1Count = $hb['count'];
+                $peakHourPos1 = $hb['hour'];
+            }
+        }
+
+        $avgHourPos1Decimal = $totalCheckinsPos1 > 0 ? round($weightedHourSum / $totalCheckinsPos1, 1) : 0;
+        $avgHourPos1Rounded = round($avgHourPos1Decimal);
+        $avgPerHourPos1 = round($totalCheckinsPos1 / 24, 1);
 
         // Daily Check-ins Aggregates for Timbangan
         $dailyListTmb = array_values($dailyBucketsTmb);
@@ -1464,7 +1528,9 @@ class VehicleAnalyticsController extends Controller
                 'overall_productivity' => $overallProductivityTonPerHour,
                 'avg_daily_checkin' => $avgDailyCheckinTmb,
                 'avg_daily_checkin_timbangan' => $avgDailyCheckinTmb,
-                'avg_daily_checkin_pos1' => $avgDailyCheckinPos1,
+                'avg_daily_checkin_pos1' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
+                'avg_hour_pos1' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
+                'peak_hour_pos1' => $peakHourPos1 ? "Jam $peakHourPos1" : '-',
                 'total_checkins' => $totalCheckinsTmb,
                 'total_checkins_timbangan' => $totalCheckinsTmb,
                 'total_checkins_pos1' => $totalCheckinsPos1,
@@ -1478,10 +1544,16 @@ class VehicleAnalyticsController extends Controller
 
             // 2. Daily Check-in POS 1, TIMBANGAN & PEMBATALAN
             'daily_checkin_pos1' => [
-                'series' => $dailyListPos1,
-                'avg_per_day' => $avgDailyCheckinPos1,
-                'total_days' => $totalDailyDays,
+                'mode' => 'hourly',
+                'series' => $hourlyListPos1,
                 'total_checkins' => $totalCheckinsPos1,
+                'avg_hour' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
+                'avg_hour_decimal' => $avgHourPos1Decimal,
+                'peak_hour' => $peakHourPos1 ? "Jam $peakHourPos1" : '-',
+                'peak_count' => $maxPos1Count,
+                'avg_per_hour' => $avgPerHourPos1,
+                'avg_per_day' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
+                'total_days' => 24,
             ],
             'daily_checkin_timbangan' => [
                 'series' => $dailyListTmb,
