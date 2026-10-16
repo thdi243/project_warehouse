@@ -778,6 +778,46 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Find supplier data by vehicle plate number from external API.
+     */
+    private function findSupplierByNopol(string $noPol): ?array
+    {
+        try {
+            $cleanNoPol = strtoupper(str_replace(' ', '', $noPol));
+            if (empty($cleanNoPol)) {
+                return null;
+            }
+
+            $apiUrl = env('MYBAS_API_URL');
+            if (!$apiUrl) {
+                return null;
+            }
+
+            $response = Http::connectTimeout(5)
+                ->timeout(10)
+                ->get($apiUrl . '/api/supplier-data');
+
+            if ($response->successful()) {
+                $payload = $response->json();
+                if (isset($payload['data']) && is_array($payload['data'])) {
+                    foreach ($payload['data'] as $item) {
+                        if (isset($item['nopol'])) {
+                            $itemNopol = strtoupper(str_replace(' ', '', $item['nopol']));
+                            if ($itemNopol === $cleanNoPol) {
+                                return $item;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to find supplier data by nopol from API: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
      * Store Vehicle Check-In at scales.
      */
     public function timbanganCheckIn(Request $request)
@@ -796,10 +836,43 @@ class VehicleTrackingController extends Controller
             'target_location_id' => 'required|exists:locations,id',
         ]);
 
+        $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
+        $namaDriver = $request->nama_driver;
+        $noHpDriver = $request->no_hp_driver;
+        $checkinPos1 = $request->checkin_pos1;
+        $trnvisitorid = $request->trnvisitorid;
+        $vendor = $request->vendor;
+
+        // Cek API supplier jika nama driver atau no hp driver belum terisi
+        if (empty($namaDriver) || empty($noHpDriver)) {
+            $matchedSupplier = $this->findSupplierByNopol($noPol);
+            if ($matchedSupplier) {
+                if (empty($namaDriver) && !empty($matchedSupplier['nama_driver'])) {
+                    $namaDriver = $matchedSupplier['nama_driver'];
+                }
+                if (empty($noHpDriver) && !empty($matchedSupplier['no_hp_driver'])) {
+                    $noHpDriver = $matchedSupplier['no_hp_driver'];
+                }
+                if (empty($trnvisitorid) && !empty($matchedSupplier['trnvisitorid'])) {
+                    $trnvisitorid = $matchedSupplier['trnvisitorid'];
+                }
+                if (empty($checkinPos1) && !empty($matchedSupplier['checkin_pos1'])) {
+                    $checkinPos1 = $matchedSupplier['checkin_pos1'];
+                }
+                if (empty($vendor) && !empty($matchedSupplier['nama_perusahaan'])) {
+                    $cleanedVendor = trim($matchedSupplier['nama_perusahaan']);
+                    if (str_starts_with($cleanedVendor, '- ')) {
+                        $cleanedVendor = trim(substr($cleanedVendor, 2));
+                    } elseif (str_starts_with($cleanedVendor, '-')) {
+                        $cleanedVendor = trim(substr($cleanedVendor, 1));
+                    }
+                    $vendor = $cleanedVendor;
+                }
+            }
+        }
+
         try {
             DB::beginTransaction();
-
-            $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
 
             // Validasi truk tidak boleh duplikasi jika masih ada transaksi aktif
             // $activeTransaction = VehicleTransaction::whereHas('vehicle', function ($q) use ($noPol) {
@@ -831,7 +904,7 @@ class VehicleTrackingController extends Controller
                 }
             }
 
-            $vendorName = trim($request->vendor);
+            $vendorName = trim($vendor ?? '');
             if ($vendorName) {
                 VehicleVendor::firstOrCreate(['name' => $vendorName]);
             }
@@ -840,7 +913,7 @@ class VehicleTrackingController extends Controller
             $vehicle = Vehicle::updateOrCreate(
                 ['no_pol' => $noPol],
                 [
-                    'vendor' => $request->vendor
+                    'vendor' => $vendorName ?: $vendor
                 ]
             );
 
@@ -869,13 +942,13 @@ class VehicleTrackingController extends Controller
             // 1. Create Transaction at TIMBANGAN
             $transaction = VehicleTransaction::create([
                 'no_transaction' => $noTransaction,
-                'trnvisitorid' => $request->trnvisitorid,
+                'trnvisitorid' => $trnvisitorid,
                 'vehicle_id' => $vehicle->id,
                 'jenis' => $request->jenis,
-                'vendor' => $request->vendor ?? $vehicle->vendor,
-                'nama_driver' => $request->nama_driver,
-                'no_hp_driver' => $request->no_hp_driver,
-                'checkin_pos1' => $request->checkin_pos1,
+                'vendor' => $vendorName ?: ($vendor ?? $vehicle->vendor),
+                'nama_driver' => $namaDriver,
+                'no_hp_driver' => $noHpDriver,
+                'checkin_pos1' => $checkinPos1,
                 'item_id' => $request->item_id,
                 'no_spb' => $request->no_spb,
                 'qty_spb' => $request->qty_spb,
@@ -2882,12 +2955,35 @@ class VehicleTrackingController extends Controller
             'target_location_id' => 'required|exists:locations,id',
         ]);
 
+        $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
+        $namaDriver = $request->nama_driver;
+        $noHpDriver = $request->no_hp_driver;
+        $checkinPos1 = $request->checkin_pos1;
+        $trnvisitorid = $request->trnvisitorid;
+
+        // Cek API supplier jika nama driver atau no hp driver belum terisi
+        if (empty($namaDriver) || empty($noHpDriver)) {
+            $matchedSupplier = $this->findSupplierByNopol($noPol);
+            if ($matchedSupplier) {
+                if (empty($namaDriver) && !empty($matchedSupplier['nama_driver'])) {
+                    $namaDriver = $matchedSupplier['nama_driver'];
+                }
+                if (empty($noHpDriver) && !empty($matchedSupplier['no_hp_driver'])) {
+                    $noHpDriver = $matchedSupplier['no_hp_driver'];
+                }
+                if (empty($trnvisitorid) && !empty($matchedSupplier['trnvisitorid'])) {
+                    $trnvisitorid = $matchedSupplier['trnvisitorid'];
+                }
+                if (empty($checkinPos1) && !empty($matchedSupplier['checkin_pos1'])) {
+                    $checkinPos1 = $matchedSupplier['checkin_pos1'];
+                }
+            }
+        }
+
         try {
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
-
-            $noPol = strtoupper(str_replace(' ', '', $request->no_pol));
 
             // Validate target area based on jenis
             $targetLoc = Location::findOrFail($request->target_location_id);
@@ -2923,8 +3019,8 @@ class VehicleTrackingController extends Controller
                 'vehicle_id' => $vehicle->id,
                 'jenis' => $request->jenis,
                 'vendor' => $request->vendor ?? $vehicle->vendor,
-                'nama_driver' => $request->nama_driver,
-                'no_hp_driver' => $request->no_hp_driver,
+                'nama_driver' => $namaDriver,
+                'no_hp_driver' => $noHpDriver,
                 'item_id' => $request->item_id,
                 'no_spb' => $request->no_spb,
                 'qty_spb' => $request->qty_spb,
@@ -2936,10 +3032,15 @@ class VehicleTrackingController extends Controller
                 $updateData['qc_status'] = 'not_required';
             }
 
-            if ($request->filled('checkin_pos1')) {
+            if (!empty($checkinPos1)) {
+                $updateData['checkin_pos1'] = $checkinPos1;
+            } elseif ($request->filled('checkin_pos1')) {
                 $updateData['checkin_pos1'] = $request->checkin_pos1;
             }
-            if ($request->filled('trnvisitorid')) {
+
+            if (!empty($trnvisitorid)) {
+                $updateData['trnvisitorid'] = $trnvisitorid;
+            } elseif ($request->filled('trnvisitorid')) {
                 $updateData['trnvisitorid'] = $request->trnvisitorid;
             }
 
