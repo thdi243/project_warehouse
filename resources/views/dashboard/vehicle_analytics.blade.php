@@ -810,6 +810,34 @@
                     </div>
                 </div>
 
+                <!-- 2.4 Tren Jenis Truk Harian (Bongkaran, Muatan, Retur) -->
+                <div class="col-12 col-xl-4">
+                    <div class="wwtp-card h-100">
+                        <div class="wwtp-card-header">
+                            <div class="d-flex align-items-center">
+                                <div class="card-header-icon blue"><i class="ri-line-chart-line"></i></div>
+                                <div>
+                                    <div class="card-title-text">TREN JENIS TRUK HARIAN</div>
+                                    <div class="card-subtitle-text">BONGKARAN, MUATAN &amp; RETUR</div>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="status-pill blue mono" id="totalFleetTrendBadge">TOTAL: 0 TRUK</span>
+                            </div>
+                        </div>
+                        <div class="wwtp-card-body">
+                            <div id="chartFleetTrend" style="min-height: 220px;"></div>
+                            <div
+                                class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
+                                <span>Bongkar: <strong class="text-info mono" id="trendBongkarBadge">0</strong>
+                                    | Muat: <strong class="text-success mono" id="trendMuatBadge">0</strong>
+                                    | Retur: <strong class="text-warning mono" id="trendReturBadge">0</strong></span>
+                                <span class="mono text-muted fs-10" id="periodDaysLabelFleetTrend"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 3.1 Distribusi Jenis Truk (Bongkaran, Muatan, Retur) -->
                 <div class="col-12 col-md-5 col-xl-3">
                     <div class="wwtp-card h-100">
@@ -1007,6 +1035,7 @@
                 let chartLoadingBay = null;
                 let chartBay = null;
                 let chartFleet = null;
+                let chartFleetTrend = null;
                 let chartWeekly = null;
 
                 // Period Selection
@@ -1103,6 +1132,14 @@
                         '<div class="text-center text-muted py-5 fs-11"><i class="ri-loader-4-line spin-loader align-middle me-1"></i> MEMUAT TREN PEMBATALAN...</div>'
                     );
 
+                    $('#totalFleetTrendBadge').text('TOTAL: 0 TRUK');
+                    $('#trendBongkarBadge').text('0');
+                    $('#trendMuatBadge').text('0');
+                    $('#trendReturBadge').text('0');
+                    $('#chartFleetTrend').html(
+                        '<div class="text-center text-muted py-5 fs-11"><i class="ri-loader-4-line spin-loader align-middle me-1"></i> MEMUAT TREN JENIS TRUK...</div>'
+                    );
+
                     $('#frequentTrucksTableBody').html(
                         '<tr><td colspan="4" class="text-center text-muted py-4 fs-11"><i class="ri-loader-4-line spin-loader align-middle me-1"></i> MEMUAT DATA KUNJUNGAN TRUK...</td></tr>'
                     );
@@ -1178,6 +1215,7 @@
                             if (res.success) {
                                 renderCapacitySection(res.capacity_throughput);
                                 renderFleetSection(res.vendor_fleet || res);
+                                renderFleetTrendChart(res.fleet_trend || (res.vendor_fleet && res.vendor_fleet.fleet_trend));
                                 renderVendorOverDurationTable(res.vendor_over_duration);
                                 renderWeeklyDurationChart(res.weekly_duration);
                             }
@@ -1975,6 +2013,118 @@
                     }
                 }
 
+                // 3.1b Tren Jenis Truk Harian (Bongkaran, Muatan, Retur)
+                function renderFleetTrendChart(trendData) {
+                    if (!trendData || !trendData.series || trendData.series.length === 0) {
+                        $('#chartFleetTrend').html(
+                            '<div class="text-center text-muted py-5 fs-11">TIDAK ADA DATA TREN JENIS TRUK</div>'
+                        );
+                        return;
+                    }
+
+                    const labels = trendData.series.map(d => d.label);
+                    const bongkarCounts = trendData.series.map(d => d.bongkaran || 0);
+                    const muatCounts = trendData.series.map(d => d.muatan || 0);
+                    const returCounts = trendData.series.map(d => d.retur || 0);
+
+                    $('#totalFleetTrendBadge').text(
+                        `TOTAL: ${(trendData.total_all || 0).toLocaleString('id-ID')} TRUK`);
+                    $('#trendBongkarBadge').text((trendData.total_bongkaran || 0).toLocaleString('id-ID'));
+                    $('#trendMuatBadge').text((trendData.total_muatan || 0).toLocaleString('id-ID'));
+                    $('#trendReturBadge').text((trendData.total_retur || 0).toLocaleString('id-ID'));
+                    $('#periodDaysLabelFleetTrend').text(`${trendData.total_days || 0} Hari Terakhir`);
+
+                    const optionsTrend = {
+                        series: [{
+                                name: 'BONGKARAN',
+                                type: 'column',
+                                data: bongkarCounts
+                            },
+                            {
+                                name: 'MUATAN',
+                                type: 'column',
+                                data: muatCounts
+                            },
+                            {
+                                name: 'RETUR',
+                                type: 'column',
+                                data: returCounts
+                            }
+                        ],
+                        chart: {
+                            height: 220,
+                            type: 'bar',
+                            stacked: true,
+                            toolbar: {
+                                show: false
+                            },
+                            background: 'transparent'
+                        },
+                        colors: ['#3b82f6', '#10b981', '#f59e0b'],
+                        stroke: {
+                            width: 1,
+                            colors: ['#0b1426']
+                        },
+                        plotOptions: {
+                            bar: {
+                                borderRadius: 3,
+                                columnWidth: '55%'
+                            }
+                        },
+                        labels: labels,
+                        xaxis: {
+                            categories: labels,
+                            labels: {
+                                style: {
+                                    colors: '#64748b',
+                                    fontSize: '9px',
+                                    fontFamily: 'JetBrains Mono'
+                                },
+                                rotate: -45
+                            },
+                            axisBorder: {
+                                color: 'rgba(255,255,255,0.06)'
+                            }
+                        },
+                        yaxis: {
+                            labels: {
+                                style: {
+                                    colors: '#cbd5e1',
+                                    fontSize: '9.5px',
+                                    fontFamily: 'JetBrains Mono'
+                                },
+                                formatter: val => Math.round(val)
+                            }
+                        },
+                        legend: {
+                            position: 'top',
+                            horizontalAlign: 'right',
+                            labels: {
+                                colors: '#94a3b8'
+                            },
+                            fontSize: '9.5px',
+                            fontFamily: 'JetBrains Mono'
+                        },
+                        tooltip: {
+                            theme: 'dark',
+                            shared: true,
+                            intersect: false,
+                            y: {
+                                formatter: val => `${val} Truk`
+                            }
+                        },
+                        grid: {
+                            borderColor: 'rgba(255,255,255,0.05)',
+                            strokeDashArray: 3
+                        }
+                    };
+
+                    if (chartFleetTrend) chartFleetTrend.destroy();
+                    $('#chartFleetTrend').empty();
+                    chartFleetTrend = new ApexCharts(document.querySelector("#chartFleetTrend"), optionsTrend);
+                    chartFleetTrend.render();
+                }
+
                 // 3.2 Detail Data Vendor Melebihi Truck Duration (> 7.5 Jam)
                 function renderVendorOverDurationTable(vendorList) {
                     const tbody = $('#vendorOverDurationTableBody');
@@ -2025,9 +2175,9 @@
                         return;
                     }
 
-                    const labels = weeklyData.map(w => w.week_label || `Minggu ${w.week}`);
+                    const labels = weeklyData.map(w => w.label || w.week_label || w.short_label || 'Mgg');
                     const avgHours = weeklyData.map(w => w.avg_duration_hours || 0);
-                    const overCounts = weeklyData.map(w => w.over_sla_count || 0);
+                    const overCounts = weeklyData.map(w => w.over_duration_count !== undefined ? w.over_duration_count : (w.over_sla_count || 0));
 
                     const optionsWeekly = {
                         series: [{
@@ -2117,8 +2267,11 @@
                             intersect: false,
                             y: {
                                 formatter: (val, opt) => {
-                                    if (opt.seriesIndex === 0) return `${val} Jam`;
-                                    return `${val} Truk melebihi 7.5 Jam`;
+                                    const w = weeklyData[opt.dataPointIndex];
+                                    if (opt.seriesIndex === 0) {
+                                        return `${val} Jam (${w ? w.avg_duration_formatted : val + 'j'})`;
+                                    }
+                                    return `${val} Truk melebihi 7.5 Jam (${w ? w.over_duration_rate : 0}%)`;
                                 }
                             }
                         },

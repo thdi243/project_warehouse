@@ -596,18 +596,50 @@ class VehicleAnalyticsController extends Controller
             'Retur' => ['jenis' => 'Retur', 'count' => 0, 'total_min' => 0],
         ];
 
+        $dailyFleetBuckets = [];
+        $cursorDate = $start->copy()->startOfDay();
+        $endDate = $end->copy()->startOfDay();
+
+        while ($cursorDate->lte($endDate)) {
+            $dateKey = $cursorDate->format('Y-m-d');
+            $dailyFleetBuckets[$dateKey] = [
+                'date' => $dateKey,
+                'label' => $cursorDate->format('d/m'),
+                'full_label' => $cursorDate->format('d M Y'),
+                'bongkaran' => 0,
+                'muatan' => 0,
+                'retur' => 0,
+                'total' => 0,
+            ];
+            $cursorDate->addDay();
+        }
+
         $weeklyBuckets = [];
         $weekCursor = $start->copy()->startOfWeek();
         $weekEnd = $end->copy()->endOfWeek();
+        $indMonths = [1 => 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
         while ($weekCursor->lte($weekEnd)) {
             $wKey = $weekCursor->format('Y-\WW');
-            $wStartLabel = $weekCursor->format('d/m');
-            $wEndLabel = $weekCursor->copy()->endOfWeek()->format('d/m');
+            $wStart = $weekCursor->copy();
+            $wEndDay = $weekCursor->copy()->endOfWeek();
+
+            $sM = $indMonths[$wStart->month] ?? $wStart->format('M');
+            $eM = $indMonths[$wEndDay->month] ?? $wEndDay->format('M');
+            $sYr = $wStart->format('y');
+            $eYr = $wEndDay->format('y');
+
+            if ($wStart->month === $wEndDay->month) {
+                $weekLabel = $wStart->format('j') . '-' . $wEndDay->format('j') . ' ' . $sM . ' ' . $sYr;
+            } else {
+                $weekLabel = $wStart->format('j') . ' ' . $sM . ' - ' . $wEndDay->format('j') . ' ' . $eM . ' ' . $eYr;
+            }
+
             $weeklyBuckets[$wKey] = [
                 'week_key' => $wKey,
-                'label' => 'Mgg ' . $weekCursor->format('W') . ' (' . $wStartLabel . '-' . $wEndLabel . ')',
-                'short_label' => 'M' . $weekCursor->format('W'),
+                'label' => $weekLabel,
+                'week_label' => $weekLabel,
+                'short_label' => $wStart->format('j') . '-' . $wEndDay->format('j') . '/' . $wEndDay->format('m'),
                 'durations' => [],
                 'total_trucks' => 0,
                 'over_duration_count' => 0,
@@ -680,17 +712,29 @@ class VehicleAnalyticsController extends Controller
                 $vendorOverDuration[$vVendor]['total_over_duration_min'] += $truckDuration;
             }
 
-            // Fleet Types
+            // Fleet Types & Daily Trend
             $rawJenis = strtolower(trim($tx->jenis ?: 'bongkaran'));
             if (in_array($rawJenis, ['curah', 'slipsheet', 'muatan'])) {
                 $jKey = 'Muatan';
+                $trendKey = 'muatan';
             } elseif ($rawJenis === 'retur') {
                 $jKey = 'Retur';
+                $trendKey = 'retur';
             } else {
                 $jKey = 'Bongkaran';
+                $trendKey = 'bongkaran';
             }
             $fleetTypes[$jKey]['count']++;
             $fleetTypes[$jKey]['total_min'] += $truckDuration;
+
+            $fleetDate = $pos1 ?: ($tmbIn ?: $tx->created_at);
+            if ($fleetDate) {
+                $dKeyFleet = $fleetDate->format('Y-m-d');
+                if (isset($dailyFleetBuckets[$dKeyFleet])) {
+                    $dailyFleetBuckets[$dKeyFleet][$trendKey]++;
+                    $dailyFleetBuckets[$dKeyFleet]['total']++;
+                }
+            }
 
             // Weekly Duration
             if ($inEffective) {
@@ -759,6 +803,23 @@ class VehicleAnalyticsController extends Controller
             ];
         }, $fleetTypes));
 
+        $dailyFleetList = array_values($dailyFleetBuckets);
+        $totalDaysFleet = max(1, count($dailyFleetList));
+        $totalBongkaran = array_sum(array_column($dailyFleetList, 'bongkaran'));
+        $totalMuatan = array_sum(array_column($dailyFleetList, 'muatan'));
+        $totalRetur = array_sum(array_column($dailyFleetList, 'retur'));
+        $totalFleetAll = array_sum(array_column($dailyFleetList, 'total'));
+
+        $fleetTrend = [
+            'series' => $dailyFleetList,
+            'total_bongkaran' => $totalBongkaran,
+            'total_muatan' => $totalMuatan,
+            'total_retur' => $totalRetur,
+            'total_all' => $totalFleetAll,
+            'avg_per_day' => round($totalFleetAll / $totalDaysFleet, 1),
+            'total_days' => $totalDaysFleet,
+        ];
+
         $weeklyDurationList = array_values(array_filter(array_map(function ($w) {
             $cnt = count($w['durations']);
             $avg = $cnt > 0 ? round(array_sum($w['durations']) / $cnt) : 0;
@@ -766,13 +827,16 @@ class VehicleAnalyticsController extends Controller
             return [
                 'week_key' => $w['week_key'],
                 'label' => $w['label'],
+                'week_label' => $w['label'],
                 'short_label' => $w['short_label'],
                 'total_trucks' => $w['total_trucks'],
                 'avg_duration_min' => $avg,
                 'avg_duration_hours' => round($avg / 60, 1),
                 'avg_duration_formatted' => $this->formatDuration($avg),
                 'over_duration_count' => $w['over_duration_count'],
+                'over_sla_count' => $w['over_duration_count'],
                 'over_duration_rate' => $overRate,
+                'over_sla_rate' => $overRate,
             ];
         }, $weeklyBuckets), fn($w) => $w['total_trucks'] > 0));
 
@@ -788,7 +852,9 @@ class VehicleAnalyticsController extends Controller
             'vendor_fleet' => [
                 'vendor_tat' => $vendorOverDurationList,
                 'fleet_distribution' => $fleetDistribution,
+                'fleet_trend' => $fleetTrend,
             ],
+            'fleet_trend' => $fleetTrend,
             'weekly_duration' => $weeklyDurationList,
         ]);
     }
@@ -997,19 +1063,51 @@ class VehicleAnalyticsController extends Controller
             'Retur' => ['jenis' => 'Retur', 'count' => 0, 'total_min' => 0],
         ];
 
+        $dailyFleetBuckets = [];
+        $cursorDate = $start->copy()->startOfDay();
+        $endDate = $end->copy()->startOfDay();
+
+        while ($cursorDate->lte($endDate)) {
+            $dateKey = $cursorDate->format('Y-m-d');
+            $dailyFleetBuckets[$dateKey] = [
+                'date' => $dateKey,
+                'label' => $cursorDate->format('d/m'),
+                'full_label' => $cursorDate->format('d M Y'),
+                'bongkaran' => 0,
+                'muatan' => 0,
+                'retur' => 0,
+                'total' => 0,
+            ];
+            $cursorDate->addDay();
+        }
+
         // Weekly Truck Duration Buckets
         $weeklyBuckets = [];
         $weekCursor = $start->copy()->startOfWeek();
         $weekEnd = $end->copy()->endOfWeek();
+        $indMonths = [1 => 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
         while ($weekCursor->lte($weekEnd)) {
             $wKey = $weekCursor->format('Y-\WW');
-            $wStartLabel = $weekCursor->format('d/m');
-            $wEndLabel = $weekCursor->copy()->endOfWeek()->format('d/m');
+            $wStart = $weekCursor->copy();
+            $wEndDay = $weekCursor->copy()->endOfWeek();
+
+            $sM = $indMonths[$wStart->month] ?? $wStart->format('M');
+            $eM = $indMonths[$wEndDay->month] ?? $wEndDay->format('M');
+            $sYr = $wStart->format('y');
+            $eYr = $wEndDay->format('y');
+
+            if ($wStart->month === $wEndDay->month) {
+                $weekLabel = $wStart->format('j') . '-' . $wEndDay->format('j') . ' ' . $sM . ' ' . $sYr;
+            } else {
+                $weekLabel = $wStart->format('j') . ' ' . $sM . ' - ' . $wEndDay->format('j') . ' ' . $eM . ' ' . $eYr;
+            }
+
             $weeklyBuckets[$wKey] = [
                 'week_key' => $wKey,
-                'label' => 'Mgg ' . $weekCursor->format('W') . ' (' . $wStartLabel . '-' . $wEndLabel . ')',
-                'short_label' => 'M' . $weekCursor->format('W'),
+                'label' => $weekLabel,
+                'week_label' => $weekLabel,
+                'short_label' => $wStart->format('j') . '-' . $wEndDay->format('j') . '/' . $wEndDay->format('m'),
                 'durations' => [],
                 'total_trucks' => 0,
                 'over_duration_count' => 0,
@@ -1192,13 +1290,25 @@ class VehicleAnalyticsController extends Controller
             $rawJenis = strtolower(trim($tx->jenis ?: 'bongkaran'));
             if (in_array($rawJenis, ['curah', 'slipsheet', 'muatan'])) {
                 $jKey = 'Muatan';
+                $trendKey = 'muatan';
             } elseif ($rawJenis === 'retur') {
                 $jKey = 'Retur';
+                $trendKey = 'retur';
             } else {
                 $jKey = 'Bongkaran';
+                $trendKey = 'bongkaran';
             }
             $fleetTypes[$jKey]['count']++;
             $fleetTypes[$jKey]['total_min'] += $truckDuration;
+
+            $fleetDate = $pos1 ?: ($tmbIn ?: $tx->created_at);
+            if ($fleetDate) {
+                $dKeyFleet = $fleetDate->format('Y-m-d');
+                if (isset($dailyFleetBuckets[$dKeyFleet])) {
+                    $dailyFleetBuckets[$dKeyFleet][$trendKey]++;
+                    $dailyFleetBuckets[$dKeyFleet]['total']++;
+                }
+            }
 
             // Weekly Duration Buckets
             if ($inEffective) {
@@ -1391,6 +1501,23 @@ class VehicleAnalyticsController extends Controller
             ];
         }, $fleetTypes));
 
+        $dailyFleetList = array_values($dailyFleetBuckets);
+        $totalDaysFleet = max(1, count($dailyFleetList));
+        $totalBongkaran = array_sum(array_column($dailyFleetList, 'bongkaran'));
+        $totalMuatan = array_sum(array_column($dailyFleetList, 'muatan'));
+        $totalRetur = array_sum(array_column($dailyFleetList, 'retur'));
+        $totalFleetAll = array_sum(array_column($dailyFleetList, 'total'));
+
+        $fleetTrend = [
+            'series' => $dailyFleetList,
+            'total_bongkaran' => $totalBongkaran,
+            'total_muatan' => $totalMuatan,
+            'total_retur' => $totalRetur,
+            'total_all' => $totalFleetAll,
+            'avg_per_day' => round($totalFleetAll / $totalDaysFleet, 1),
+            'total_days' => $totalDaysFleet,
+        ];
+
         // Weekly Truck Duration List
         $weeklyDurationList = array_values(array_filter(array_map(function ($w) use ($formatDur) {
             $cnt = count($w['durations']);
@@ -1399,13 +1526,16 @@ class VehicleAnalyticsController extends Controller
             return [
                 'week_key' => $w['week_key'],
                 'label' => $w['label'],
+                'week_label' => $w['label'],
                 'short_label' => $w['short_label'],
                 'total_trucks' => $w['total_trucks'],
                 'avg_duration_min' => $avg,
                 'avg_duration_hours' => round($avg / 60, 1),
                 'avg_duration_formatted' => $formatDur($avg),
                 'over_duration_count' => $w['over_duration_count'],
+                'over_sla_count' => $w['over_duration_count'],
                 'over_duration_rate' => $overRate,
+                'over_sla_rate' => $overRate,
             ];
         }, $weeklyBuckets), fn($w) => $w['total_trucks'] > 0));
 
@@ -1601,7 +1731,9 @@ class VehicleAnalyticsController extends Controller
             'vendor_fleet' => [
                 'vendor_tat' => $vendorOverDurationList,
                 'fleet_distribution' => $fleetDistribution,
+                'fleet_trend' => $fleetTrend,
             ],
+            'fleet_trend' => $fleetTrend,
 
             // 7. Weekly Truck Duration
             'weekly_duration' => $weeklyDurationList,
