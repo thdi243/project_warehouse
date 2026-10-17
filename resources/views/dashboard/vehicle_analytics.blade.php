@@ -722,7 +722,8 @@
                                 </div>
                             </div>
                             <div>
-                                <span class="status-pill cyan mono" id="avgDailyCheckinPos1Badge">RERATA: JAM --</span>
+                                <span class="status-pill cyan mono" id="avgDailyCheckinPos1Badge">RERATA: JAM
+                                    --</span>
                             </div>
                         </div>
                         <div class="wwtp-card-body">
@@ -915,7 +916,7 @@
                 </div>
 
                 <!-- 4.1 Truk Paling Sering Berkunjung -->
-                <div class="col-12 col-xl-5">
+                <div class="col-12 col-xl-4">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
@@ -948,7 +949,7 @@
                 </div>
 
                 <!-- 4.2 Produktivitas Petugas (Nama Lengkap / Username) -->
-                <div class="col-12 col-xl-7">
+                <div class="col-12 col-xl-4">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
@@ -1215,7 +1216,8 @@
                             if (res.success) {
                                 renderCapacitySection(res.capacity_throughput);
                                 renderFleetSection(res.vendor_fleet || res);
-                                renderFleetTrendChart(res.fleet_trend || (res.vendor_fleet && res.vendor_fleet.fleet_trend));
+                                renderFleetTrendChart(res.fleet_trend || (res.vendor_fleet && res
+                                    .vendor_fleet.fleet_trend));
                                 renderVendorOverDurationTable(res.vendor_over_duration);
                                 renderWeeklyDurationChart(res.weekly_duration);
                             }
@@ -1383,7 +1385,8 @@
                     chartStage = new ApexCharts(document.querySelector("#chartStageBreakdown"), optionsStage);
                     chartStage.render();
 
-                    const bottleneck = (c1.primary_bottleneck && c1.primary_bottleneck !== 'N/A') ? c1.primary_bottleneck : 'N/A';
+                    const bottleneck = (c1.primary_bottleneck && c1.primary_bottleneck !== 'N/A') ? c1
+                        .primary_bottleneck : 'N/A';
                     $('#stageInsightText').html(
                         `<span>BOTTLENECK UTAMA: <strong class="text-warning">${bottleneck.toUpperCase()}</strong> (${c1.max_stage_avg_formatted || '--'})</span>`
                     );
@@ -2177,7 +2180,8 @@
 
                     const labels = weeklyData.map(w => w.label || w.week_label || w.short_label || 'Mgg');
                     const avgHours = weeklyData.map(w => w.avg_duration_hours || 0);
-                    const overCounts = weeklyData.map(w => w.over_duration_count !== undefined ? w.over_duration_count : (w.over_sla_count || 0));
+                    const overCounts = weeklyData.map(w => w.over_duration_count !== undefined ? w.over_duration_count :
+                        (w.over_sla_count || 0));
 
                     const optionsWeekly = {
                         series: [{
