@@ -176,7 +176,8 @@ class VehicleAnalyticsController extends Controller
         $transactions = $this->buildBaseQuery($request, $start, $end)
             ->select([
                 'id', 'check_in_time', 'checkin_pos1', 'timbangan_out_time', 'check_out_time',
-                'start_sampling_time', 'finish_sampling_time', 'status', 'unloading_status', 'updated_at', 'qty_spb'
+                'start_sampling_time', 'finish_sampling_time', 'status', 'unloading_status', 'updated_at', 'qty_spb',
+                'jenis', 'created_at'
             ])
             ->orderBy('check_in_time', 'asc')
             ->get();
@@ -275,7 +276,7 @@ class VehicleAnalyticsController extends Controller
             if ($isCancelled) {
                 $cancelledCount++;
                 $jenisLower = strtolower(trim($tx->jenis ?? ''));
-                $isBongkar = ($jenisLower === 'bongkaran');
+                $isBongkar = ($jenisLower === 'bongkaran' || str_contains($jenisLower, 'bongkar') || !in_array($jenisLower, ['curah', 'slipsheet', 'muatan']));
                 if ($isBongkar) {
                     $cancelledBongkarCount++;
                 } else {
@@ -1101,7 +1102,7 @@ class VehicleAnalyticsController extends Controller
             if ($isCancelled) {
                 $cancelledCount++;
                 $jenisLower = strtolower(trim($tx->jenis ?? ''));
-                $isBongkar = ($jenisLower === 'bongkaran');
+                $isBongkar = ($jenisLower === 'bongkaran' || str_contains($jenisLower, 'bongkar') || !in_array($jenisLower, ['curah', 'slipsheet', 'muatan']));
                 if ($isBongkar) {
                     $cancelledBongkarCount++;
                 } else {
