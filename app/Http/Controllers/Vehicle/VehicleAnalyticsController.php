@@ -1263,6 +1263,7 @@ class VehicleAnalyticsController extends Controller
 
         // Daily Check-ins Aggregates for Timbangan
         $dailyListTmb = array_values($dailyBucketsTmb);
+        $totalDailyDays = max(1, count($dailyListTmb));
         $totalCheckinsTmb = array_sum(array_column($dailyListTmb, 'count'));
         $avgDailyCheckinTmb = round($totalCheckinsTmb / $totalDailyDays, 1);
 
