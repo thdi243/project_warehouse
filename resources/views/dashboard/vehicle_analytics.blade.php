@@ -1449,11 +1449,39 @@
                         plotOptions: {
                             bar: {
                                 borderRadius: 2,
-                                columnWidth: '55%'
+                                columnWidth: '55%',
+                                dataLabels: {
+                                    total: {
+                                        enabled: true,
+                                        style: {
+                                            fontSize: '8px',
+                                            fontFamily: 'JetBrains Mono',
+                                            fontWeight: 700,
+                                            color: '#e2e8f0'
+                                        },
+                                        formatter: val => (val > 0 ? val : ''),
+                                        offsetY: -4
+                                    }
+                                }
                             }
                         },
                         dataLabels: {
-                            enabled: false
+                            enabled: true,
+                            formatter: val => (val > 0 ? val : ''),
+                            style: {
+                                fontSize: '7.5px',
+                                fontFamily: 'JetBrains Mono',
+                                fontWeight: 600,
+                                colors: ['#ffffff']
+                            },
+                            dropShadow: {
+                                enabled: true,
+                                top: 1,
+                                left: 1,
+                                blur: 1,
+                                color: '#000',
+                                opacity: 0.9
+                            }
                         },
                         stroke: {
                             width: 1,
@@ -1474,6 +1502,7 @@
                             }
                         },
                         yaxis: {
+                            max: max => (max > 0 ? Math.ceil(max * 1.15) : undefined),
                             labels: {
                                 style: {
                                     colors: '#cbd5e1',
@@ -1559,7 +1588,25 @@
                         plotOptions: {
                             bar: {
                                 borderRadius: 3,
-                                columnWidth: '50%'
+                                columnWidth: '50%',
+                                dataLabels: {
+                                    position: 'top'
+                                }
+                            }
+                        },
+                        dataLabels: {
+                            enabled: true,
+                            enabledOnSeries: [0],
+                            formatter: val => (val > 0 ? val : ''),
+                            offsetY: -6,
+                            style: {
+                                fontSize: '8px',
+                                fontFamily: 'JetBrains Mono',
+                                fontWeight: 600,
+                                colors: ['#38bdf8']
+                            },
+                            background: {
+                                enabled: false
                             }
                         },
                         labels: labels,
@@ -1578,6 +1625,7 @@
                             }
                         },
                         yaxis: {
+                            max: max => (max > 0 ? Math.ceil(max * 1.15) : undefined),
                             labels: {
                                 style: {
                                     colors: '#cbd5e1',
@@ -1899,7 +1947,31 @@
                         plotOptions: {
                             bar: {
                                 borderRadius: 4,
-                                columnWidth: '40%'
+                                columnWidth: '40%',
+                                dataLabels: {
+                                    position: 'top'
+                                }
+                            }
+                        },
+                        dataLabels: {
+                            enabled: true,
+                            enabledOnSeries: [0, 1],
+                            formatter: (val, opt) => {
+                                if (val === undefined || val === null) return '';
+                                if (opt.seriesIndex === 0) {
+                                    return val > 0 ? Math.round(val).toLocaleString('id-ID') + ' T' : '';
+                                }
+                                return val > 0 ? Math.round(val) + ' Truk' : '';
+                            },
+                            offsetY: -5,
+                            style: {
+                                fontSize: '9px',
+                                fontFamily: 'JetBrains Mono',
+                                fontWeight: 700,
+                                colors: ['#60a5fa', '#34d399']
+                            },
+                            background: {
+                                enabled: false
                             }
                         },
                         labels: bayNames,
@@ -1917,6 +1989,7 @@
                             }
                         },
                         yaxis: [{
+                                max: max => (max > 0 ? Math.ceil(max * 1.15) : undefined),
                                 title: {
                                     text: 'TONASE',
                                     style: {
@@ -1934,6 +2007,7 @@
                             },
                             {
                                 opposite: true,
+                                max: max => (max > 0 ? Math.ceil(max * 1.15) : undefined),
                                 title: {
                                     text: 'TRUK',
                                     style: {
@@ -2223,7 +2297,31 @@
                         plotOptions: {
                             bar: {
                                 borderRadius: 3,
-                                columnWidth: '45%'
+                                columnWidth: '45%',
+                                dataLabels: {
+                                    position: 'top'
+                                }
+                            }
+                        },
+                        dataLabels: {
+                            enabled: true,
+                            enabledOnSeries: [0, 1],
+                            formatter: (val, opt) => {
+                                if (val === undefined || val === null) return '';
+                                if (opt.seriesIndex === 0) {
+                                    return val > 0 ? `${val}j` : '';
+                                }
+                                return val > 0 ? `${val}` : '';
+                            },
+                            offsetY: -5,
+                            style: {
+                                fontSize: '9px',
+                                fontFamily: 'JetBrains Mono',
+                                fontWeight: 700,
+                                colors: ['#38bdf8', '#ef4444']
+                            },
+                            background: {
+                                enabled: false
                             }
                         },
                         labels: labels,
@@ -2242,6 +2340,7 @@
                             }
                         },
                         yaxis: [{
+                                max: max => (max > 0 ? Math.ceil(max * 1.15) : undefined),
                                 title: {
                                     text: 'DURASI (JAM)',
                                     style: {
@@ -2260,6 +2359,7 @@
                             },
                             {
                                 opposite: true,
+                                max: max => (max > 0 ? Math.ceil(max * 1.15) : undefined),
                                 title: {
                                     text: 'TRUK OVER',
                                     style: {
