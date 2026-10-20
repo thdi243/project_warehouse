@@ -188,6 +188,9 @@ class VehicleAnalyticsController extends Controller
                 'hour' => $h,
                 'label' => 'Jam ' . $h,
                 'short_label' => sprintf('%02d:00', $h === 24 ? 0 : $h),
+                'bongkaran' => 0,
+                'muatan' => 0,
+                'retur' => 0,
                 'count' => 0,
             ];
         }
@@ -241,6 +244,17 @@ class VehicleAnalyticsController extends Controller
                 } elseif ($roundedH > 24) {
                     $roundedH = 24;
                 }
+
+                $rawJenis = strtolower(trim($tx->jenis ?: 'bongkaran'));
+                if (in_array($rawJenis, ['curah', 'slipsheet', 'muatan'])) {
+                    $typeKey = 'muatan';
+                } elseif ($rawJenis === 'retur') {
+                    $typeKey = 'retur';
+                } else {
+                    $typeKey = 'bongkaran';
+                }
+
+                $hourlyBucketsPos1[$roundedH][$typeKey]++;
                 $hourlyBucketsPos1[$roundedH]['count']++;
             }
 
@@ -304,21 +318,29 @@ class VehicleAnalyticsController extends Controller
 
         $hourlyListPos1 = array_values($hourlyBucketsPos1);
         $totalCheckinsPos1 = array_sum(array_column($hourlyListPos1, 'count'));
+        $totalBongkaranPos1 = array_sum(array_column($hourlyListPos1, 'bongkaran'));
+        $totalMuatanPos1 = array_sum(array_column($hourlyListPos1, 'muatan'));
+        $totalReturPos1 = array_sum(array_column($hourlyListPos1, 'retur'));
         $weightedHourSum = 0;
         $maxPos1Count = 0;
         $peakHourPos1 = null;
+        $peakHourPos1Obj = null;
 
         foreach ($hourlyListPos1 as $hb) {
             $weightedHourSum += ($hb['hour'] * $hb['count']);
             if ($hb['count'] > $maxPos1Count) {
                 $maxPos1Count = $hb['count'];
                 $peakHourPos1 = $hb['hour'];
+                $peakHourPos1Obj = $hb;
             }
         }
 
         $avgHourPos1Decimal = $totalCheckinsPos1 > 0 ? round($weightedHourSum / $totalCheckinsPos1, 1) : 0;
         $avgHourPos1Rounded = round($avgHourPos1Decimal);
         $avgPerHourPos1 = round($totalCheckinsPos1 / 24, 1);
+        $peakHourPos1Str = ($peakHourPos1 && $maxPos1Count > 0)
+            ? sprintf('Jam %02d:00', $peakHourPos1 === 24 ? 0 : $peakHourPos1)
+            : '-';
 
         $dailyListTmb = array_values($dailyBucketsTmb);
         $totalDailyDays = max(1, count($dailyListTmb));
@@ -352,7 +374,8 @@ class VehicleAnalyticsController extends Controller
                 'avg_daily_checkin_timbangan' => $avgDailyCheckinTmb,
                 'avg_daily_checkin_pos1' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
                 'avg_hour_pos1' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
-                'peak_hour_pos1' => $peakHourPos1 ? "Jam $peakHourPos1" : '-',
+                'peak_hour_pos1' => $peakHourPos1Str,
+                'peak_count_pos1' => $maxPos1Count,
                 'total_checkins' => $totalCheckinsTmb,
                 'total_checkins_timbangan' => $totalCheckinsTmb,
                 'total_checkins_pos1' => $totalCheckinsPos1,
@@ -361,10 +384,17 @@ class VehicleAnalyticsController extends Controller
                 'mode' => 'hourly',
                 'series' => $hourlyListPos1,
                 'total_checkins' => $totalCheckinsPos1,
+                'total_bongkaran' => $totalBongkaranPos1,
+                'total_muatan' => $totalMuatanPos1,
+                'total_retur' => $totalReturPos1,
                 'avg_hour' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
                 'avg_hour_decimal' => $avgHourPos1Decimal,
-                'peak_hour' => $peakHourPos1 ? "Jam $peakHourPos1" : '-',
+                'peak_hour' => $peakHourPos1Str,
+                'peak_hour_raw' => $peakHourPos1,
                 'peak_count' => $maxPos1Count,
+                'peak_bongkaran' => $peakHourPos1Obj['bongkaran'] ?? 0,
+                'peak_muatan' => $peakHourPos1Obj['muatan'] ?? 0,
+                'peak_retur' => $peakHourPos1Obj['retur'] ?? 0,
                 'avg_per_hour' => $avgPerHourPos1,
                 'avg_per_day' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
                 'total_days' => 24,
@@ -1016,6 +1046,9 @@ class VehicleAnalyticsController extends Controller
                 'hour' => $h,
                 'label' => 'Jam ' . $h,
                 'short_label' => sprintf('%02d:00', $h === 24 ? 0 : $h),
+                'bongkaran' => 0,
+                'muatan' => 0,
+                'retur' => 0,
                 'count' => 0,
             ];
         }
@@ -1163,6 +1196,17 @@ class VehicleAnalyticsController extends Controller
                 } elseif ($roundedH > 24) {
                     $roundedH = 24;
                 }
+
+                $rawJenis = strtolower(trim($tx->jenis ?: 'bongkaran'));
+                if (in_array($rawJenis, ['curah', 'slipsheet', 'muatan'])) {
+                    $typeKey = 'muatan';
+                } elseif ($rawJenis === 'retur') {
+                    $typeKey = 'retur';
+                } else {
+                    $typeKey = 'bongkaran';
+                }
+
+                $hourlyBucketsPos1[$roundedH][$typeKey]++;
                 $hourlyBucketsPos1[$roundedH]['count']++;
             }
 
@@ -1356,21 +1400,29 @@ class VehicleAnalyticsController extends Controller
         // Hourly Check-ins Aggregates for Pos 1 (Jam 1 s/d 24)
         $hourlyListPos1 = array_values($hourlyBucketsPos1);
         $totalCheckinsPos1 = array_sum(array_column($hourlyListPos1, 'count'));
+        $totalBongkaranPos1 = array_sum(array_column($hourlyListPos1, 'bongkaran'));
+        $totalMuatanPos1 = array_sum(array_column($hourlyListPos1, 'muatan'));
+        $totalReturPos1 = array_sum(array_column($hourlyListPos1, 'retur'));
         $weightedHourSum = 0;
         $maxPos1Count = 0;
         $peakHourPos1 = null;
+        $peakHourPos1Obj = null;
 
         foreach ($hourlyListPos1 as $hb) {
             $weightedHourSum += ($hb['hour'] * $hb['count']);
             if ($hb['count'] > $maxPos1Count) {
                 $maxPos1Count = $hb['count'];
                 $peakHourPos1 = $hb['hour'];
+                $peakHourPos1Obj = $hb;
             }
         }
 
         $avgHourPos1Decimal = $totalCheckinsPos1 > 0 ? round($weightedHourSum / $totalCheckinsPos1, 1) : 0;
         $avgHourPos1Rounded = round($avgHourPos1Decimal);
         $avgPerHourPos1 = round($totalCheckinsPos1 / 24, 1);
+        $peakHourPos1Str = ($peakHourPos1 && $maxPos1Count > 0)
+            ? sprintf('Jam %02d:00', $peakHourPos1 === 24 ? 0 : $peakHourPos1)
+            : '-';
 
         // Daily Check-ins Aggregates for Timbangan
         $dailyListTmb = array_values($dailyBucketsTmb);
@@ -1662,7 +1714,8 @@ class VehicleAnalyticsController extends Controller
                 'avg_daily_checkin_timbangan' => $avgDailyCheckinTmb,
                 'avg_daily_checkin_pos1' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
                 'avg_hour_pos1' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
-                'peak_hour_pos1' => $peakHourPos1 ? "Jam $peakHourPos1" : '-',
+                'peak_hour_pos1' => $peakHourPos1Str,
+                'peak_count_pos1' => $maxPos1Count,
                 'total_checkins' => $totalCheckinsTmb,
                 'total_checkins_timbangan' => $totalCheckinsTmb,
                 'total_checkins_pos1' => $totalCheckinsPos1,
@@ -1679,10 +1732,17 @@ class VehicleAnalyticsController extends Controller
                 'mode' => 'hourly',
                 'series' => $hourlyListPos1,
                 'total_checkins' => $totalCheckinsPos1,
+                'total_bongkaran' => $totalBongkaranPos1,
+                'total_muatan' => $totalMuatanPos1,
+                'total_retur' => $totalReturPos1,
                 'avg_hour' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
                 'avg_hour_decimal' => $avgHourPos1Decimal,
-                'peak_hour' => $peakHourPos1 ? "Jam $peakHourPos1" : '-',
+                'peak_hour' => $peakHourPos1Str,
+                'peak_hour_raw' => $peakHourPos1,
                 'peak_count' => $maxPos1Count,
+                'peak_bongkaran' => $peakHourPos1Obj['bongkaran'] ?? 0,
+                'peak_muatan' => $peakHourPos1Obj['muatan'] ?? 0,
+                'peak_retur' => $peakHourPos1Obj['retur'] ?? 0,
                 'avg_per_hour' => $avgPerHourPos1,
                 'avg_per_day' => $avgHourPos1Rounded > 0 ? "Jam $avgHourPos1Rounded" : '-',
                 'total_days' => 24,

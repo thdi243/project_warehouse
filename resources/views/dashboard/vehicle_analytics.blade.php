@@ -718,11 +718,11 @@
                                 <div class="card-header-icon cyan"><i class="ri-shield-user-line"></i></div>
                                 <div>
                                     <div class="card-title-text">DISTRIBUSI JAM CHECK-IN POS 1</div>
-                                    <div class="card-subtitle-text">JAM KEDATANGAN TRUK (JAM 1 - 24)</div>
+                                    <div class="card-subtitle-text">KLASIFIKASI KEDATANGAN TRUK (JAM 1 - 24)</div>
                                 </div>
                             </div>
                             <div>
-                                <span class="status-pill cyan mono" id="avgDailyCheckinPos1Badge">RERATA: JAM
+                                <span class="status-pill cyan mono" id="avgDailyCheckinPos1Badge">TERBANYAK: JAM
                                     --</span>
                             </div>
                         </div>
@@ -765,30 +765,20 @@
                     </div>
                 </div>
 
-                <!-- 1.3 Tren Pembatalan Truk Harian (Batal Bongkar & Batal Muat) -->
+                <!-- 3.3 Truck Duration Mingguan -->
                 <div class="col-12 col-xl-4">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
-                                <div class="card-header-icon red"><i class="ri-close-circle-line"></i></div>
+                                <div class="card-header-icon green"><i class="ri-calendar-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">TREN PEMBATALAN TRUK</div>
-                                    <div class="card-subtitle-text">BATAL BONGKAR VS BATAL MUAT</div>
+                                    <div class="card-title-text">TRUCK DURATION MINGGUAN</div>
+                                    <div class="card-subtitle-text">TREN RERATA DURASI TRUK VS TARGET 7.5 JAM</div>
                                 </div>
-                            </div>
-                            <div>
-                                <span class="status-pill red mono" id="totalCancelledBadge">TOTAL: 0 TRUK</span>
                             </div>
                         </div>
                         <div class="wwtp-card-body">
-                            <div id="chartDailyCancelled" style="min-height: 250px;"></div>
-                            <div
-                                class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
-                                <span>Bongkar: <strong class="text-danger mono" id="totalBatalBongkarBadge">0</strong>
-                                    | Muat: <strong class="text-warning mono"
-                                        id="totalBatalMuatBadge">0</strong></span>
-                                <span class="mono text-muted fs-10" id="periodDaysLabelCancelled"></span>
-                            </div>
+                            <div id="chartWeeklyDuration" style="min-height: 240px;"></div>
                         </div>
                     </div>
                 </div>
@@ -840,7 +830,7 @@
                 </div>
 
                 <!-- 3.1 Distribusi Jenis Truk (Bongkaran, Muatan, Retur) -->
-                <div class="col-12 col-md-5 col-xl-3">
+                <div class="col-12 col-xl-4">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
@@ -857,8 +847,36 @@
                     </div>
                 </div>
 
+                <!-- 1.3 Tren Pembatalan Truk Harian (Batal Bongkar & Batal Muat) -->
+                <div class="col-12 col-xl-4">
+                    <div class="wwtp-card h-100">
+                        <div class="wwtp-card-header">
+                            <div class="d-flex align-items-center">
+                                <div class="card-header-icon red"><i class="ri-close-circle-line"></i></div>
+                                <div>
+                                    <div class="card-title-text">TREN PEMBATALAN TRUK</div>
+                                    <div class="card-subtitle-text">BATAL BONGKAR VS BATAL MUAT</div>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="status-pill red mono" id="totalCancelledBadge">TOTAL: 0 TRUK</span>
+                            </div>
+                        </div>
+                        <div class="wwtp-card-body">
+                            <div id="chartDailyCancelled" style="min-height: 250px;"></div>
+                            <div
+                                class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
+                                <span>Bongkar: <strong class="text-danger mono" id="totalBatalBongkarBadge">0</strong>
+                                    | Muat: <strong class="text-warning mono"
+                                        id="totalBatalMuatBadge">0</strong></span>
+                                <span class="mono text-muted fs-10" id="periodDaysLabelCancelled"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 3.2 Detail Data Vendor Melebihi Truck Duration (> 7.5 Jam) -->
-                <div class="col-12 col-md-7 col-xl-5">
+                <div class="col-12 col-xl-4">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
@@ -893,24 +911,6 @@
                                     </tr>
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3.3 Truck Duration Mingguan -->
-                <div class="col-12 col-xl-4">
-                    <div class="wwtp-card h-100">
-                        <div class="wwtp-card-header">
-                            <div class="d-flex align-items-center">
-                                <div class="card-header-icon green"><i class="ri-calendar-line"></i></div>
-                                <div>
-                                    <div class="card-title-text">TRUCK DURATION MINGGUAN</div>
-                                    <div class="card-subtitle-text">TREN RERATA DURASI TRUK VS TARGET 7.5 JAM</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="wwtp-card-body">
-                            <div id="chartWeeklyDuration" style="min-height: 240px;"></div>
                         </div>
                     </div>
                 </div>
@@ -1393,7 +1393,7 @@
                     $('#kpiPrimaryBottleneck').text(bottleneck.toUpperCase());
                 }
 
-                // 1.2 Distribusi Jam Check-in Pos 1 (Jam 1 s/d 24 & Rata-rata Jam)
+                // 1.2 Distribusi Jam Check-in Pos 1 (Klasifikasi Bongkaran, Muatan, Retur & Jam Puncak)
                 function renderDailyCheckinPos1(pos1Data) {
                     if (!pos1Data || !pos1Data.series || pos1Data.series.length === 0) {
                         $('#chartDailyCheckinPos1').html(
@@ -1401,49 +1401,64 @@
                         return;
                     }
 
-                    const labels = pos1Data.series.map(d => d.label);
-                    const counts = pos1Data.series.map(d => d.count);
-                    const avgPerHour = pos1Data.avg_per_hour || 0;
-                    const avgLines = pos1Data.series.map(() => avgPerHour);
+                    const labels = pos1Data.series.map(d => d.short_label || d.label);
+                    const bongkarCounts = pos1Data.series.map(d => d.bongkaran || 0);
+                    const muatCounts = pos1Data.series.map(d => d.muatan || 0);
+                    const returCounts = pos1Data.series.map(d => d.retur || 0);
 
-                    $('#avgDailyCheckinPos1Badge').text(`RERATA: ${pos1Data.avg_hour || '--'}`);
+                    // Kebanyakan truk di jam berapa (Jam Puncak / Peak Hour)
+                    const peakText = (pos1Data.peak_hour && pos1Data.peak_hour !== '-' && (pos1Data.peak_count || 0) > 0)
+                        ? `TERBANYAK: ${pos1Data.peak_hour.toUpperCase()} (${pos1Data.peak_count} TRUK)`
+                        : 'TERBANYAK: JAM --';
+                    $('#avgDailyCheckinPos1Badge').text(peakText);
                     $('#totalCheckinsPos1Badge').text((pos1Data.total_checkins || 0).toLocaleString('id-ID'));
-                    $('#periodDaysLabelPos1').text(pos1Data.peak_hour && pos1Data.peak_hour !== '-' ?
-                        `Peak: ${pos1Data.peak_hour} (${pos1Data.peak_count || 0} Truk)` : 'Jam 1 - 24');
+
+                    const bCount = (pos1Data.total_bongkaran || 0).toLocaleString('id-ID');
+                    const mCount = (pos1Data.total_muatan || 0).toLocaleString('id-ID');
+                    const rCount = (pos1Data.total_retur || 0).toLocaleString('id-ID');
+                    $('#periodDaysLabelPos1').html(
+                        `<span style="color:#06b6d4;" class="fw-semibold" title="Bongkaran">Bongkar: ${bCount}</span> &bull; ` +
+                        `<span style="color:#10b981;" class="fw-semibold" title="Muatan">Muat: ${mCount}</span> &bull; ` +
+                        `<span style="color:#f59e0b;" class="fw-semibold" title="Retur">Retur: ${rCount}</span>`
+                    );
 
                     const optionsPos1 = {
                         series: [{
-                                name: 'KEDATANGAN POS 1',
-                                type: 'column',
-                                data: counts
+                                name: 'BONGKARAN',
+                                data: bongkarCounts
                             },
                             {
-                                name: 'RERATA PER JAM',
-                                type: 'line',
-                                data: avgLines
+                                name: 'MUATAN',
+                                data: muatCounts
+                            },
+                            {
+                                name: 'RETUR',
+                                data: returCounts
                             }
                         ],
                         chart: {
                             height: 250,
-                            type: 'line',
+                            type: 'bar',
+                            stacked: true,
                             toolbar: {
                                 show: false
                             },
                             background: 'transparent'
                         },
-                        colors: ['#06b6d4', '#f59e0b'],
-                        stroke: {
-                            width: [0, 2],
-                            curve: 'smooth',
-                            dashArray: [0, 4]
-                        },
+                        colors: ['#06b6d4', '#10b981', '#f59e0b'],
                         plotOptions: {
                             bar: {
-                                borderRadius: 3,
+                                borderRadius: 2,
                                 columnWidth: '55%'
                             }
                         },
-                        labels: labels,
+                        dataLabels: {
+                            enabled: false
+                        },
+                        stroke: {
+                            width: 1,
+                            colors: ['#0b1426']
+                        },
                         xaxis: {
                             categories: labels,
                             labels: {
@@ -1482,10 +1497,7 @@
                             shared: true,
                             intersect: false,
                             y: {
-                                formatter: (val, opt) => {
-                                    if (opt.seriesIndex === 0) return `${val} Kendaraan`;
-                                    return `${val} Truk / Jam`;
-                                }
+                                formatter: val => `${val || 0} Truk`
                             }
                         },
                         grid: {
