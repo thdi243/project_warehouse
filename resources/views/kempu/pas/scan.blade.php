@@ -513,9 +513,21 @@
                         if (res.status && res.data) {
                             currentKempu = res.data;
                             currentKempu.is_manual = isManual;
+
+                            // Cek Validasi Alur
                             if (res.data.is_flow_valid === false) {
                                 // playBeep('error');
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Flow Salah!',
+                                    html: res.data.flow_error,
+                                    confirmButtonText: 'Tutup & Scan Lain'
+                                }).then(() => {
+                                    resumeScanner();
+                                });
+                                return;
                             }
+
                             openConfirmModal(res.data);
                         } else {
                             handleLookupNotFound(res.message || 'Data kempu tidak ditemukan.');

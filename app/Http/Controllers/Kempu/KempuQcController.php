@@ -853,7 +853,7 @@ class KempuQcController extends Controller
         ) {
             return [
                 'valid'   => false,
-                'message' => "Kempu {$idKempu} berstatus SCRAP / Non-aktif dan tidak dapat diproses di QC.",
+                'message' => "Flow Salah! Kempu {$idKempu} berstatus SCRAP / Non-aktif dan tidak dapat diproses di QC.",
             ];
         }
 
@@ -873,7 +873,7 @@ class KempuQcController extends Controller
             ) {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Wajib: Kempu {$idKempu} saat ini berstatus REPAIR di Workshop Engineering (Reject Incoming / QC). Kempu wajib diperbaiki oleh Engineering, lalu diverifikasi di QC PM dan ditransfer oleh WPM ke Produksi terlebih dahulu. Status reject di incoming tidak boleh di-force scan di QC Proses.",
+                    'message' => "Flow Salah! Kempu belum scan Repair oleh Tim Engineering.",
                 ];
             }
 
@@ -917,7 +917,7 @@ class KempuQcController extends Controller
                 if ($isWpmOrTransit || in_array(strtoupper($currentLocation), [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])) {
                     return [
                         'valid'   => false,
-                        'message' => "Alur Wajib: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Kempu reject incoming / dari WPM wajib menyelesaikan verifikasi QC PM, Transfer Out WPM, dan di-Transfer In oleh bagian Produksi terlebih dahulu sebelum dapat di-QC Pre Cuci. Status tidak boleh di-force scan di QC Proses.",
+                        'message' => "Flow Salah! Kempu belum scan Transfer In from WPM oleh Tim Produksi.",
                     ];
                 }
             }
@@ -933,7 +933,7 @@ class KempuQcController extends Controller
             if ($reused > 21) {
                 return [
                     'valid'   => false,
-                    'message' => "Batas Maksimal Terlampaui: Kempu {$idKempu} telah melebihi batas maksimal 21x reused (saat ini: {$reused}x). Siklus ke-22 tidak diperbolehkan dan kempu harus dialihkan ke SCRAP / Engineering.",
+                    'message' => "Flow Salah! Kempu {$idKempu} telah melebihi batas maksimal 21x reused (saat ini: {$reused}x). Kempu harus dialihkan ke SCRAP.",
                 ];
             }
         }
@@ -963,27 +963,27 @@ class KempuQcController extends Controller
             if ($qcType === 'qc-pm') {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). QC PM hanya menerima kempu baru hasil GR, kempu dari 'Transfer In From PAS' di WPM, atau kempu hasil repair dari Engineering.",
+                    'message' => "Flow Salah! Kempu belum scan Goods Receipt / Transfer In PAS oleh Tim WPM.",
                 ];
             } elseif ($qcType === 'qc-pre-cuci' || $qcType === 'qc-proses') {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Cek Incoming & Pre Cuci hanya dapat diproses setelah kempu di-Transfer In dari WPM atau selesai proses Repro Kempu oleh bagian Produksi.",
+                    'message' => "Flow Salah! Kempu belum scan Transfer In from WPM oleh Tim Produksi.",
                 ];
             } elseif ($qcType === 'qc-after-filling') {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). QC After Filling hanya menerima kempu setelah proses Scan 1 Filling di Produksi.",
+                    'message' => "Flow Salah! Kempu belum scan Filling Kempu oleh Tim Produksi.",
                 ];
             } elseif ($qcType === 'qc-retur') {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu 'Cek Retur' hanya untuk kempu retur dari PAS yang telah diterima di WFG (WFG_RETUR_FROM_PAS).",
+                    'message' => "Flow Salah! Kempu belum scan Penerimaan Retur dari PAS oleh Tim WFG.",
                 ];
             } else {
                 return [
                     'valid'   => false,
-                    'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Status tidak memenuhi syarat untuk {$card['title']}.",
+                    'message' => "Flow Salah! Kempu belum scan {$card['title']} oleh Tim terkait.",
                 ];
             }
         }

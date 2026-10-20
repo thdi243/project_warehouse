@@ -85,7 +85,7 @@ class KempuEngController extends Controller
         if (!$isMatch) {
             return [
                 'valid'   => false,
-                'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Lokasi: {$currentLocation}). Menu Engineering Repair hanya menerima kempu yang berstatus 'ENG_REPAIR' (reject dari QC PM atau QC Proses).",
+                'message' => "Flow Salah! Kempu belum dinyatakan Reject oleh Tim QC.",
             ];
         }
 

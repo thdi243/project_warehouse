@@ -517,10 +517,10 @@
                             if (!res.data.is_flow_valid) {
                                 // playBeep('error');
                                 Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Alur Tidak Sesuai',
+                                    icon: 'error',
+                                    title: 'Flow Salah!',
                                     html: res.data.flow_error,
-                                    confirmButtonText: 'Tutup'
+                                    confirmButtonText: 'Tutup & Scan Lain'
                                 }).then(() => {
                                     resumeScanner();
                                 });

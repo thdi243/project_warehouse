@@ -254,7 +254,7 @@ class WfgKempuController extends Controller
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
             return [
                 'valid'   => false,
-                'message' => "Kempu {$idKempu} berstatus SCRAP / Afkir dan tidak dapat diproses.",
+                'message' => "Flow Salah! Kempu berstatus SCRAP / Afkir dan tidak dapat diproses.",
             ];
         }
 
@@ -262,7 +262,7 @@ class WfgKempuController extends Controller
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 || strcasecmp($currentStatus, 'ENG_REPAIR') === 0) {
             return [
                 'valid'   => false,
-                'message' => "Alur Tidak Sesuai: Kempu {$idKempu} sedang berstatus REPAIR di Workshop Engineering dan tidak dapat diproses di WFG.",
+                'message' => "Flow Salah! Kempu sedang berstatus REPAIR di Workshop Engineering.",
             ];
         }
 
@@ -275,7 +275,7 @@ class WfgKempuController extends Controller
         ) {
             return [
                 'valid'   => false,
-                'message' => "Alur Tidak Sesuai: Kempu {$idKempu} saat ini berstatus '{$currentStatus}' (Produk Reject / Repro). Kempu harus diproses kembali oleh Produksi untuk pengosongan muatan dan tidak boleh di-scan di WFG.",
+                'message' => "Flow Salah! Kempu sedang berstatus REPRO di Produksi.",
             ];
         }
 
@@ -288,7 +288,7 @@ class WfgKempuController extends Controller
         ) {
             return [
                 'valid'   => false,
-                'message' => "Alur Tidak Sesuai: Kempu {$idKempu} sedang berstatus Ditahan / HOLD oleh QC ('{$currentStatus}'). Kempu belum dinyatakan Lolos (Release) sehingga tidak dapat diproses di WFG.",
+                'message' => "Flow Salah! Kempu sedang ditahan (HOLD) oleh Tim QC.",
             ];
         }
 
@@ -302,7 +302,7 @@ class WfgKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah berstatus 'Transfer in From Produksi' (duplikat scan). Silakan lanjutkan ke tahap 'Transfer Out to PAS'.",
+                        'message' => "Flow Salah! Kempu sudah scan Transfer in From Produksi.",
                     ];
                 }
 
@@ -314,7 +314,7 @@ class WfgKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} saat ini sudah berstatus 'Transfer Out to PAS'. Kempu harus menyelesaikan pengiriman ke PAS dan kembali ke WPM terlebih dahulu.",
+                        'message' => "Flow Salah! Kempu sudah scan Transfer Out to PAS.",
                     ];
                 }
 
@@ -325,7 +325,7 @@ class WfgKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} masih berada di WPM (status: 'Transfer In From PAS'). Kempu harus melalui 'Transfer Out To Produksi' terlebih dahulu sebelum tiba di WFG.",
+                        'message' => "Flow Salah! Kempu belum scan Transfer Out to Produksi oleh Tim WPM.",
                     ];
                 }
 
@@ -354,7 +354,7 @@ class WfgKempuController extends Controller
                     if (in_array(strtolower($currentStatus), $initialStatuses) || !$hasTransferOutHistory) {
                         return [
                             'valid'   => false,
-                            'message' => "Urutan salah: Kempu baru {$idKempu} (siklus Reused masih 0x) belum melalui proses 'Transfer Out To Produksi' dari WPM (status saat ini: '{$currentStatus}'). Harap lakukan proses 'Transfer Out To Produksi' di WPM terlebih dahulu sebelum tiba di WFG.",
+                            'message' => "Flow Salah! Kempu belum scan Transfer Out to Produksi oleh Tim WPM.",
                         ];
                     }
                 }
@@ -369,7 +369,7 @@ class WfgKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah berstatus 'Transfer Out to PAS' (duplikat scan).",
+                        'message' => "Flow Salah! Kempu sudah scan Transfer Out to PAS.",
                     ];
                 }
 
@@ -382,7 +382,7 @@ class WfgKempuController extends Controller
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} belum melalui tahap 'Transfer in From Produksi' (status saat ini: '{$currentStatus}'). Harap lakukan 'Transfer in From Produksi' terlebih dahulu sebelum Transfer Out to PAS.",
+                        'message' => "Flow Salah! Kempu belum scan Transfer in From Produksi oleh Tim WFG.",
                     ];
                 }
                 break;
@@ -396,7 +396,7 @@ class WfgKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah diterima sebagai Retur dari PAS di WFG (duplikat scan). Kempu sedang menunggu pemeriksaan QC (Cek Retur).",
+                        'message' => "Flow Salah! Kempu sudah scan Retur From PAS oleh Tim WFG.",
                     ];
                 }
 
@@ -411,7 +411,7 @@ class WfgKempuController extends Controller
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Untuk menerima Retur dari PAS, kempu harus berstatus 'PAS_RETUR_TO_WFG' (dikirim dari PAS dengan kondisi Berisi).",
+                        'message' => "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.",
                     ];
                 }
                 break;

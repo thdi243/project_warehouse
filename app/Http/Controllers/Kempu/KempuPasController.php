@@ -157,7 +157,7 @@ class KempuPasController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini masih berada di WPM BAS (status: 'Transfer In From PAS'). Kempu harus menyelesaikan siklus Produksi dan WFG terlebih dahulu.",
+                        'message' => "Flow Salah! Kempu masih berada di WPM BAS.",
                     ];
                 }
 
@@ -169,7 +169,7 @@ class KempuPasController extends Controller
                 ])) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} masih berada di WFG BAS (status: '{$currentStatus}'). Harap lakukan 'Transfer Out to PAS' di WFG terlebih dahulu sebelum diterima di PAS.",
+                        'message' => "Flow Salah! Kempu belum scan Transfer Out to PAS oleh Tim WFG.",
                     ];
                 }
 
@@ -183,7 +183,7 @@ class KempuPasController extends Controller
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} belum diproses 'Transfer Out to PAS' dari WFG (status saat ini: '{$currentStatus}'). Kempu harus berstatus 'Transfer Out to PAS' terlebih dahulu.",
+                        'message' => "Flow Salah! Kempu belum scan Transfer Out to PAS oleh Tim WFG.",
                     ];
                 }
                 break;
@@ -196,7 +196,7 @@ class KempuPasController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah berstatus 'Transfer Out to BAS' (duplikat scan). Kempu siap dikirim kembali ke WPM BAS.",
+                        'message' => "Flow Salah! Kempu sudah scan Transfer Out to BAS.",
                     ];
                 }
 
@@ -215,13 +215,13 @@ class KempuPasController extends Controller
                     ) {
                         return [
                             'valid'   => false,
-                            'message' => "Urutan salah: Kempu {$idKempu} belum di-scan 'Transfer in From BAS' (status saat ini: 'Transfer Out to PAS'). Harap lakukan 'Transfer in From BAS' terlebih dahulu.",
+                            'message' => "Flow Salah! Kempu belum scan Transfer in From BAS oleh Tim PAS.",
                         ];
                     }
 
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} belum berada di Warehouse PAS (status saat ini: '{$currentStatus}'). Kempu harus melalui 'Transfer in From BAS' terlebih dahulu.",
+                        'message' => "Flow Salah! Kempu belum scan Transfer in From BAS oleh Tim PAS.",
                     ];
                 }
                 break;
