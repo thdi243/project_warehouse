@@ -134,11 +134,28 @@
                                 <option value="trashed">Nonaktif (Deleted)</option>
                             </select>
 
-                            <!-- Bulk Print Button -->
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnBulkPrint" disabled>
-                                <i class="ri-printer-line align-bottom me-1"></i> Cetak Terpilih (<span
-                                    id="selectedCount">0</span>)
-                            </button>
+                            <!-- Bulk Actions Group -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <!-- Bulk Print Button -->
+                                <button type="button" class="btn btn-outline-secondary" id="btnBulkPrint" disabled title="Cetak QR kempu yang dipilih">
+                                    <i class="ri-printer-line align-bottom me-1"></i> Cetak (<span class="selectedCountText">0</span>)
+                                </button>
+
+                                <!-- Bulk Deactivate Button (Nonaktifkan) -->
+                                <button type="button" class="btn btn-outline-warning" id="btnBulkDeactivate" disabled title="Nonaktifkan kempu yang dipilih">
+                                    <i class="ri-forbid-line align-bottom me-1"></i> Nonaktifkan (<span class="selectedCountText">0</span>)
+                                </button>
+
+                                <!-- Bulk Force Delete Button (Hapus Permanen) -->
+                                <button type="button" class="btn btn-outline-danger" id="btnBulkForceDelete" disabled title="Hapus permanen kempu yang dipilih">
+                                    <i class="ri-delete-bin-fill align-bottom me-1"></i> Hapus Permanen (<span class="selectedCountText">0</span>)
+                                </button>
+
+                                <!-- Bulk Restore Button (Pulihkan) -->
+                                <button type="button" class="btn btn-outline-success" id="btnBulkRestore" style="display: none;" disabled title="Pulihkan kempu yang dipilih">
+                                    <i class="ri-refresh-line align-bottom me-1"></i> Pulihkan (<span class="selectedCountText">0</span>)
+                                </button>
+                            </div>
 
                             <!-- Print All Button -->
                             <button type="button" class="btn btn-sm btn-outline-info" id="btnPrintAll">
@@ -793,6 +810,7 @@
                 renderPagination(totalRows, totalPages, startIndex, endIndex);
 
                 // 6. Reset / Update Checkboxes
+                $('#checkAll').prop('checked', false);
                 updateSelectedCount();
             }
 
@@ -1049,6 +1067,14 @@
 
             // Status Filter Change
             $('#statusFilter').on('change', function() {
+                const status = $(this).val();
+                if (status === 'trashed') {
+                    $('#btnBulkRestore').show();
+                    $('#btnBulkDeactivate').hide();
+                } else {
+                    $('#btnBulkRestore').hide();
+                    $('#btnBulkDeactivate').show();
+                }
                 currentPage = 1;
                 loadData();
             });
@@ -1069,8 +1095,8 @@
 
             function updateSelectedCount() {
                 const checked = $('.row-checkbox:checked').length;
-                $('#selectedCount').text(checked);
-                $('#btnBulkPrint').prop('disabled', checked === 0);
+                $('#selectedCount, .selectedCountText').text(checked);
+                $('#btnBulkPrint, #btnBulkDeactivate, #btnBulkForceDelete, #btnBulkRestore').prop('disabled', checked === 0);
             }
 
             // Tombol Upload Modal
@@ -1791,6 +1817,171 @@
 
                 const printUrl = `{{ route('kempu.master.print-qr') }}?ids=${selectedIds.join(',')}`;
                 window.open(printUrl, '_blank');
+            });
+
+            // Bulk Deactivate (Nonaktifkan Terpilih)
+            $('#btnBulkDeactivate').on('click', function() {
+                const selectedIds = [];
+                $('.row-checkbox:checked').each(function() {
+                    selectedIds.push($(this).val());
+                });
+
+                if (selectedIds.length === 0) {
+                    Swal.fire('Perhatian', 'Pilih minimal satu kempu untuk dinonaktifkan.', 'warning');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Nonaktifkan Kempu Terpilih?',
+                    html: `Apakah Anda yakin ingin menonaktifkan <b>${selectedIds.length} data kempu</b> terpilih?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ffc107',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Nonaktifkan',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Memproses...',
+                            text: 'Sedang menonaktifkan kempu terpilih',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        $.ajax({
+                            url: "{{ route('kempu.master.bulk-delete') }}",
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                ids: selectedIds
+                            },
+                            success: function(res) {
+                                if (res.status) {
+                                    Swal.fire('Berhasil', res.message, 'success');
+                                    $('#checkAll').prop('checked', false);
+                                    updateSelectedCount();
+                                    loadData();
+                                } else {
+                                    Swal.fire('Gagal', res.message, 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal', xhr.responseJSON?.message || 'Gagal menonaktifkan data kempu.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Bulk Force Delete (Hapus Permanen Terpilih)
+            $('#btnBulkForceDelete').on('click', function() {
+                const selectedIds = [];
+                $('.row-checkbox:checked').each(function() {
+                    selectedIds.push($(this).val());
+                });
+
+                if (selectedIds.length === 0) {
+                    Swal.fire('Perhatian', 'Pilih minimal satu kempu untuk dihapus permanen.', 'warning');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Hapus Permanen Terpilih?',
+                    html: `Anda akan menghapus permanen <b>${selectedIds.length} data kempu</b>.<br><small class="text-danger fw-bold">Peringatan: Data yang dihapus permanen TIDAK DAPAT dipulihkan kembali!</small>`,
+                    icon: 'error',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Hapus Selamanya',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Menghapus Permanen...',
+                            text: 'Sedang menghapus data kempu secara permanen',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        $.ajax({
+                            url: "{{ route('kempu.master.bulk-force-delete') }}",
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                ids: selectedIds
+                            },
+                            success: function(res) {
+                                if (res.status) {
+                                    Swal.fire('Berhasil', res.message, 'success');
+                                    $('#checkAll').prop('checked', false);
+                                    updateSelectedCount();
+                                    loadData();
+                                } else {
+                                    Swal.fire('Gagal', res.message, 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal', xhr.responseJSON?.message || 'Gagal menghapus data kempu secara permanen.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Bulk Restore (Pulihkan Terpilih)
+            $('#btnBulkRestore').on('click', function() {
+                const selectedIds = [];
+                $('.row-checkbox:checked').each(function() {
+                    selectedIds.push($(this).val());
+                });
+
+                if (selectedIds.length === 0) {
+                    Swal.fire('Perhatian', 'Pilih minimal satu kempu untuk dipulihkan.', 'warning');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Pulihkan Data Terpilih?',
+                    html: `Kempu terpilih (<b>${selectedIds.length} data</b>) akan kembali aktif di sistem.`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Pulihkan Semua',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Memulihkan...',
+                            text: 'Sedang memulihkan data kempu',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        $.ajax({
+                            url: "{{ route('kempu.master.bulk-restore') }}",
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                ids: selectedIds
+                            },
+                            success: function(res) {
+                                if (res.status) {
+                                    Swal.fire('Berhasil', res.message, 'success');
+                                    $('#checkAll').prop('checked', false);
+                                    updateSelectedCount();
+                                    loadData();
+                                } else {
+                                    Swal.fire('Gagal', res.message, 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal', xhr.responseJSON?.message || 'Gagal memulihkan data kempu.', 'error');
+                            }
+                        });
+                    }
+                });
             });
 
             // Print All

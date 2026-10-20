@@ -588,6 +588,157 @@ class MasterKempuController extends Controller
         }
     }
 
+    /**
+     * Nonaktifkan (Soft Delete) banyak kempu sekaligus
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Pilih minimal satu kempu untuk dinonaktifkan.',
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+            $kempus = MasterKempuModel::whereIn('id', $ids)->get();
+            $count = 0;
+
+            foreach ($kempus as $kempu) {
+                $kempu->update(['status' => 'nonaktif']);
+                $kempu->delete();
+
+                KempuTrackingHistoryModel::create([
+                    'kempu_master_id' => $kempu->id,
+                    'id_kempu'        => $kempu->id_kempu,
+                    'stage'           => 'MASTER_REGISTRATION',
+                    'action'          => 'Penonaktifan Master Kempu (Massal)',
+                    'action_result'   => 'DEACTIVATED',
+                    'from_location'   => $kempu->main?->current_location ?? MasterKempuModel::LOC_WPM,
+                    'to_location'     => MasterKempuModel::LOC_SCRAP,
+                    'notes'           => 'Master kempu dinonaktifkan secara massal.',
+                    'created_by'      => Auth::id(),
+                ]);
+                $count++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => "Berhasil menonaktifkan {$count} Master Kempu.",
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal menonaktifkan data kempu: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Pulihkan banyak kempu sekaligus
+     */
+    public function bulkRestore(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Pilih minimal satu kempu untuk dipulihkan.',
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+            $kempus = MasterKempuModel::withTrashed()->whereIn('id', $ids)->get();
+            $count = 0;
+
+            foreach ($kempus as $kempu) {
+                if ($kempu->trashed()) {
+                    $kempu->restore();
+                }
+                $kempu->update(['status' => 'active']);
+
+                if ($kempu->main && $kempu->main->current_status === MasterKempuModel::STATUS_SCRAPPED) {
+                    $kempu->main->update([
+                        'current_status'   => MasterKempuModel::STATUS_QC_PM_PENDING,
+                        'current_location' => MasterKempuModel::LOC_WPM,
+                        'condition'        => 'OK',
+                        'last_action'      => 'Dipulihkan dari Nonaktif (Massal)',
+                    ]);
+                }
+
+                KempuTrackingHistoryModel::create([
+                    'kempu_master_id' => $kempu->id,
+                    'id_kempu'        => $kempu->id_kempu,
+                    'stage'           => 'MASTER_REGISTRATION',
+                    'action'          => 'Pemulihan Master Kempu (Massal)',
+                    'action_result'   => 'RESTORED',
+                    'from_location'   => MasterKempuModel::LOC_SCRAP,
+                    'to_location'     => MasterKempuModel::LOC_WPM,
+                    'notes'           => 'Master kempu dipulihkan ke status aktif secara massal.',
+                    'created_by'      => Auth::id(),
+                ]);
+                $count++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => "Berhasil memulihkan {$count} Master Kempu.",
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal memulihkan data kempu: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Hapus permanen banyak kempu sekaligus
+     */
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Pilih minimal satu kempu untuk dihapus permanen.',
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+            $kempus = MasterKempuModel::withTrashed()->whereIn('id', $ids)->get();
+            $count = $kempus->count();
+
+            foreach ($kempus as $kempu) {
+                $kempu->main()?->delete();
+                $kempu->forceDelete();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => "Berhasil menghapus permanen {$count} Master Kempu.",
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal menghapus data kempu secara permanen: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function printQr(Request $request)
     {
         $ids = $request->input('ids');
