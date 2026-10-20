@@ -801,25 +801,24 @@ class VehicleAnalyticsController extends Controller
             return $b['total_trips'] <=> $a['total_trips'];
         });
 
-        $vendorOverDurationList = array_values(array_map(function ($v) {
+        $vendorOverDurationList = array_values(array_map(function ($v) use ($slaThreshold) {
             $avgAll = $v['total_trips'] > 0 ? round($v['total_duration_min'] / $v['total_trips']) : 0;
             $avgOver = $v['over_count'] > 0 ? round($v['total_over_duration_min'] / $v['over_count']) : 0;
             $overRate = $v['total_trips'] > 0 ? round(($v['over_count'] / $v['total_trips']) * 100, 1) : 0;
 
-            $status = 'Aman (≤ 7.5j)';
-            if ($overRate >= 50) {
-                $status = 'Kritis (> 50%)';
-            } elseif ($v['over_count'] > 0) {
-                $status = 'Waspada';
-            }
+            $isOver = $avgAll > $slaThreshold;
+            $status = $isOver ? 'OVER' : 'NORMAL';
 
             return [
                 'vendor' => $v['vendor'],
                 'total_trips' => $v['total_trips'],
                 'over_count' => $v['over_count'],
                 'over_rate' => $overRate,
+                'avg_duration_min' => $avgAll,
+                'avg_duration_hours' => round($avgAll / 60, 1),
                 'avg_duration_formatted' => $this->formatDuration($avgAll),
                 'avg_over_duration_formatted' => $avgOver > 0 ? $this->formatDuration($avgOver) : '-',
+                'is_over' => $isOver,
                 'status' => $status,
             ];
         }, $vendorOverDuration));
@@ -1520,25 +1519,24 @@ class VehicleAnalyticsController extends Controller
             return $b['total_trips'] <=> $a['total_trips'];
         });
 
-        $vendorOverDurationList = array_values(array_map(function ($v) use ($formatDur) {
+        $vendorOverDurationList = array_values(array_map(function ($v) use ($formatDur, $slaThreshold) {
             $avgAll = $v['total_trips'] > 0 ? round($v['total_duration_min'] / $v['total_trips']) : 0;
             $avgOver = $v['over_count'] > 0 ? round($v['total_over_duration_min'] / $v['over_count']) : 0;
             $overRate = $v['total_trips'] > 0 ? round(($v['over_count'] / $v['total_trips']) * 100, 1) : 0;
 
-            $status = 'Aman (≤ 7.5j)';
-            if ($overRate >= 50) {
-                $status = 'Kritis (> 50%)';
-            } elseif ($v['over_count'] > 0) {
-                $status = 'Waspada';
-            }
+            $isOver = $avgAll > $slaThreshold;
+            $status = $isOver ? 'OVER' : 'NORMAL';
 
             return [
                 'vendor' => $v['vendor'],
                 'total_trips' => $v['total_trips'],
                 'over_count' => $v['over_count'],
                 'over_rate' => $overRate,
+                'avg_duration_min' => $avgAll,
+                'avg_duration_hours' => round($avgAll / 60, 1),
                 'avg_duration_formatted' => $formatDur($avgAll),
                 'avg_over_duration_formatted' => $avgOver > 0 ? $formatDur($avgOver) : '-',
+                'is_over' => $isOver,
                 'status' => $status,
             ];
         }, $vendorOverDuration));

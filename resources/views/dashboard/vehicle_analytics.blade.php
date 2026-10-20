@@ -2227,13 +2227,29 @@
                     }
 
                     vendorList.forEach(v => {
-                        let statusBadge = '<span class="status-pill green">SESUAI</span>';
-                        if (v.status === 'Kritis' || (v.over_sla_count && v.over_sla_count > 0 && v
-                                .over_sla_rate >= 50)) {
-                            statusBadge = '<span class="status-pill red">KRITIS</span>';
-                        } else if (v.status === 'Waspada' || (v.over_sla_count && v.over_sla_count > 0)) {
-                            statusBadge = '<span class="status-pill amber">WASPADA</span>';
+                        // Logika status: jika rerata durasi > 7.5 jam (450 mnt) maka OVER, jika <= 7.5 jam maka NORMAL
+                        let isOver = false;
+                        if (v.is_over !== undefined) {
+                            isOver = !!v.is_over;
+                        } else if (v.avg_duration_min !== undefined) {
+                            isOver = v.avg_duration_min > 450;
+                        } else if (v.avg_duration_hours !== undefined) {
+                            isOver = v.avg_duration_hours > 7.5;
+                        } else if (v.status && (v.status.toUpperCase().includes('OVER') || v.status.toUpperCase().includes('NORMAL'))) {
+                            isOver = v.status.toUpperCase().includes('OVER');
+                        } else {
+                            // Fallback parse dari string durasi format "Xj Ym"
+                            const str = (v.avg_duration_formatted || v.avg_tat_formatted || '').trim();
+                            const hMatch = str.match(/(\d+)\s*j/);
+                            const mMatch = str.match(/(\d+)\s*m/);
+                            const h = hMatch ? parseInt(hMatch[1], 10) : 0;
+                            const m = mMatch ? parseInt(mMatch[1], 10) : 0;
+                            isOver = ((h * 60) + m) > 450;
                         }
+
+                        const statusBadge = isOver
+                            ? '<span class="status-pill red">OVER</span>'
+                            : '<span class="status-pill green">NORMAL</span>';
 
                         const overCount = v.over_sla_count !== undefined ? v.over_sla_count : (v.over_count ||
                             0);
