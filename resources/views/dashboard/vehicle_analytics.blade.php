@@ -2219,13 +2219,13 @@
                             enabled: true,
                             enabledOnSeries: [0, 1],
                             formatter: (val, opt) => {
-                                if (val === undefined || val === null) return '';
+                                if (val === undefined || val === null || val <= 0) return '';
                                 if (opt.seriesIndex === 0) {
-                                    return val > 0 ? `${val}j` : '';
+                                    return (Number.isInteger(val) ? val : Number(val.toFixed(1))) + 'j';
                                 }
-                                return val > 0 ? `${val}` : '';
+                                return `${Math.round(val)}`;
                             },
-                            offsetY: -5,
+                            offsetY: -6,
                             style: {
                                 fontSize: '9px',
                                 fontFamily: 'JetBrains Mono',
@@ -2245,14 +2245,19 @@
                                     fontSize: '9px',
                                     fontFamily: 'JetBrains Mono'
                                 },
-                                rotate: -30
+                                rotate: -35,
+                                rotateAlways: true,
+                                hideOverlappingLabels: true
                             },
                             axisBorder: {
                                 color: 'rgba(255,255,255,0.06)'
                             }
                         },
                         yaxis: [{
-                                max: max => (max > 0 ? Math.ceil(max * 1.15) : undefined),
+                                min: 0,
+                                forceNiceScale: true,
+                                tickAmount: 5,
+                                decimalsInFloat: 1,
                                 title: {
                                     text: 'DURASI (JAM)',
                                     style: {
@@ -2266,12 +2271,18 @@
                                         fontSize: '9.5px',
                                         fontFamily: 'JetBrains Mono'
                                     },
-                                    formatter: val => val + 'j'
+                                    formatter: val => {
+                                        if (val === undefined || val === null || Math.abs(val) < 0.05) return '0j';
+                                        return (Number.isInteger(val) ? val : Number(val.toFixed(1))) + 'j';
+                                    }
                                 }
                             },
                             {
                                 opposite: true,
-                                max: max => (max > 0 ? Math.ceil(max * 1.15) : undefined),
+                                min: 0,
+                                forceNiceScale: true,
+                                tickAmount: 5,
+                                decimalsInFloat: 0,
                                 title: {
                                     text: 'TRUK OVER',
                                     style: {
@@ -2285,7 +2296,10 @@
                                         fontSize: '9.5px',
                                         fontFamily: 'JetBrains Mono'
                                     },
-                                    formatter: val => Math.round(val)
+                                    formatter: val => {
+                                        if (val === undefined || val === null || Math.abs(val) < 0.05) return '0';
+                                        return Math.round(val);
+                                    }
                                 }
                             }
                         ],
