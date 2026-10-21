@@ -506,7 +506,7 @@ class WspPurchaseRequesitionController extends Controller
                     'qty'          => $item['qty'],
                     'alasan'       => isset($item['alasan']) && !empty($item['alasan']) ? strtoupper(trim($item['alasan'])) : null,
                     'keterangan'   => isset($item['keterangan']) && !empty($item['keterangan']) ? strtoupper(trim($item['keterangan'])) : null,
-                    'desc'         => $item['desc'] ?? null,
+                    'desc'         => isset($item['desc']) && !empty($item['desc']) ? strtoupper(trim($item['desc'])) : null,
                 ]);
 
                 $createdItems[] = $prItem;

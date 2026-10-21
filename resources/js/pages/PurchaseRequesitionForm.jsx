@@ -678,7 +678,7 @@ export default function PurchaseRequisitionForm() {
                         mid: item.mid || null,
                         qty: item.qty,
                         keterangan: item.keterangan ? item.keterangan.toUpperCase() : "",
-                        desc: item.desc || null,
+                        desc: item.desc ? item.desc.toUpperCase() : null,
                         reservation_id: item.reservation_id,
                         jenis: item.jenis,
                         alasan: item.alasan ? item.alasan.toUpperCase() : null,
@@ -943,9 +943,10 @@ export default function PurchaseRequisitionForm() {
                                         onChange={(e) =>
                                             setCurrentItem({
                                                 ...currentItem,
-                                                desc: e.target.value,
+                                                desc: e.target.value.toUpperCase(),
                                             })
                                         }
+                                        className="uppercase"
                                         placeholder="Deskripsi jasa"
                                     />
                                 </Field>

@@ -36,6 +36,8 @@ export function useBookingManager() {
                 ...prev,
                 {
                     ...currentItem,
+                    desc: currentItem.desc ? currentItem.desc.toUpperCase() : "",
+                    keterangan: currentItem.keterangan ? currentItem.keterangan.toUpperCase() : "",
                     reservation_id: null,
                 },
             ]);
