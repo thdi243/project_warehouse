@@ -206,6 +206,9 @@ class VehicleAnalyticsController extends Controller
                 'date' => $dateKey,
                 'label' => $cursorDate->format('d/m'),
                 'full_label' => $cursorDate->format('d M Y'),
+                'bongkaran' => 0,
+                'muatan' => 0,
+                'retur' => 0,
                 'count' => 0,
             ];
             $dailyBucketsCancelled[$dateKey] = [
@@ -261,6 +264,16 @@ class VehicleAnalyticsController extends Controller
             if ($tmbIn) {
                 $dKeyTmb = $tmbIn->format('Y-m-d');
                 if (isset($dailyBucketsTmb[$dKeyTmb])) {
+                    $rawJenis = strtolower(trim($tx->jenis ?: 'bongkaran'));
+                    if (in_array($rawJenis, ['curah', 'slipsheet', 'muatan'])) {
+                        $typeKey = 'muatan';
+                    } elseif ($rawJenis === 'retur') {
+                        $typeKey = 'retur';
+                    } else {
+                        $typeKey = 'bongkaran';
+                    }
+
+                    $dailyBucketsTmb[$dKeyTmb][$typeKey]++;
                     $dailyBucketsTmb[$dKeyTmb]['count']++;
                 }
             }
@@ -345,6 +358,9 @@ class VehicleAnalyticsController extends Controller
         $dailyListTmb = array_values($dailyBucketsTmb);
         $totalDailyDays = max(1, count($dailyListTmb));
         $totalCheckinsTmb = array_sum(array_column($dailyListTmb, 'count'));
+        $totalBongkaranTmb = array_sum(array_column($dailyListTmb, 'bongkaran'));
+        $totalMuatanTmb = array_sum(array_column($dailyListTmb, 'muatan'));
+        $totalReturTmb = array_sum(array_column($dailyListTmb, 'retur'));
         $avgDailyCheckinTmb = round($totalCheckinsTmb / $totalDailyDays, 1);
 
         $dailyListCancelled = array_values($dailyBucketsCancelled);
@@ -404,12 +420,18 @@ class VehicleAnalyticsController extends Controller
                 'avg_per_day' => $avgDailyCheckinTmb,
                 'total_days' => $totalDailyDays,
                 'total_checkins' => $totalCheckinsTmb,
+                'total_bongkaran' => $totalBongkaranTmb,
+                'total_muatan' => $totalMuatanTmb,
+                'total_retur' => $totalReturTmb,
             ],
             'daily_checkin' => [
                 'series' => $dailyListTmb,
                 'avg_per_day' => $avgDailyCheckinTmb,
                 'total_days' => $totalDailyDays,
                 'total_checkins' => $totalCheckinsTmb,
+                'total_bongkaran' => $totalBongkaranTmb,
+                'total_muatan' => $totalMuatanTmb,
+                'total_retur' => $totalReturTmb,
             ],
             'daily_cancelled' => [
                 'series' => $dailyListCancelled,
@@ -1063,6 +1085,9 @@ class VehicleAnalyticsController extends Controller
                 'date' => $dateKey,
                 'label' => $cursorDate->format('d/m'),
                 'full_label' => $cursorDate->format('d M Y'),
+                'bongkaran' => 0,
+                'muatan' => 0,
+                'retur' => 0,
                 'count' => 0,
             ];
             $dailyBucketsPos1[$dateKey] = $bTemplate;
@@ -1213,6 +1238,16 @@ class VehicleAnalyticsController extends Controller
             if ($tmbIn) {
                 $dKeyTmb = $tmbIn->format('Y-m-d');
                 if (isset($dailyBucketsTmb[$dKeyTmb])) {
+                    $rawJenis = strtolower(trim($tx->jenis ?: 'bongkaran'));
+                    if (in_array($rawJenis, ['curah', 'slipsheet', 'muatan'])) {
+                        $typeKey = 'muatan';
+                    } elseif ($rawJenis === 'retur') {
+                        $typeKey = 'retur';
+                    } else {
+                        $typeKey = 'bongkaran';
+                    }
+
+                    $dailyBucketsTmb[$dKeyTmb][$typeKey]++;
                     $dailyBucketsTmb[$dKeyTmb]['count']++;
                 }
             }
@@ -1427,6 +1462,9 @@ class VehicleAnalyticsController extends Controller
         $dailyListTmb = array_values($dailyBucketsTmb);
         $totalDailyDays = max(1, count($dailyListTmb));
         $totalCheckinsTmb = array_sum(array_column($dailyListTmb, 'count'));
+        $totalBongkaranTmb = array_sum(array_column($dailyListTmb, 'bongkaran'));
+        $totalMuatanTmb = array_sum(array_column($dailyListTmb, 'muatan'));
+        $totalReturTmb = array_sum(array_column($dailyListTmb, 'retur'));
         $avgDailyCheckinTmb = round($totalCheckinsTmb / $totalDailyDays, 1);
 
         // Daily Cancellation Aggregates
@@ -1750,12 +1788,18 @@ class VehicleAnalyticsController extends Controller
                 'avg_per_day' => $avgDailyCheckinTmb,
                 'total_days' => $totalDailyDays,
                 'total_checkins' => $totalCheckinsTmb,
+                'total_bongkaran' => $totalBongkaranTmb,
+                'total_muatan' => $totalMuatanTmb,
+                'total_retur' => $totalReturTmb,
             ],
             'daily_checkin' => [
                 'series' => $dailyListTmb,
                 'avg_per_day' => $avgDailyCheckinTmb,
                 'total_days' => $totalDailyDays,
                 'total_checkins' => $totalCheckinsTmb,
+                'total_bongkaran' => $totalBongkaranTmb,
+                'total_muatan' => $totalMuatanTmb,
+                'total_retur' => $totalReturTmb,
             ],
             'daily_cancelled' => [
                 'series' => $dailyListCancelled,

@@ -547,14 +547,35 @@
                     </div>
                 </div>
 
-                <!-- 2. Avg Duration Truck -->
+                <!-- 2. Avg Daily Check-in -->
+                <div class="col">
+                    <div class="wwtp-card h-100">
+                        <div class="wwtp-card-header py-2">
+                            <div class="d-flex align-items-center">
+                                <div class="card-header-icon"><i class="ri-calendar-check-line"></i></div>
+                                <div>
+                                    <div class="card-title-text">AVG. KEDATANGAN</div>
+                                    <div class="card-subtitle-text">KENDARAAN / HARI</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="wwtp-card-body py-2">
+                            <div class="kpi-main-number text-white" id="kpiAvgDailyCheckin">0</div>
+                            <div class="kpi-target-tag cyan">
+                                <i class="ri-pulse-line"></i> KENDARAAN / HARI
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Avg Duration Truck -->
                 <div class="col">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header py-2">
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon green"><i class="ri-time-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">AVG. DURATION TRUCK</div>
+                                    <div class="card-title-text">AVG. DURASI TRUK</div>
                                     <div class="card-subtitle-text">POS 1 &rarr; TIMBANGAN OUT</div>
                                 </div>
                             </div>
@@ -569,27 +590,6 @@
                     </div>
                 </div>
 
-                <!-- 3. Avg Daily Check-in -->
-                <div class="col">
-                    <div class="wwtp-card h-100">
-                        <div class="wwtp-card-header py-2">
-                            <div class="d-flex align-items-center">
-                                <div class="card-header-icon"><i class="ri-calendar-check-line"></i></div>
-                                <div>
-                                    <div class="card-title-text">AVG. CHECK-IN</div>
-                                    <div class="card-subtitle-text">KENDARAAN / HARI</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="wwtp-card-body py-2">
-                            <div class="kpi-main-number text-white" id="kpiAvgDailyCheckin">0</div>
-                            <div class="kpi-target-tag cyan">
-                                <i class="ri-pulse-line"></i> KENDARAAN / HARI
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- 4. Duration Truck (> 7.5 Jam) -->
                 <div class="col">
                     <div class="wwtp-card h-100">
@@ -597,7 +597,7 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon red"><i class="ri-alarm-warning-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">DURATION TRUCK</div>
+                                    <div class="card-title-text">DURASI TRUK</div>
                                     <div class="card-subtitle-text">&gt; 7.5 JAM (450 MNT)</div>
                                 </div>
                             </div>
@@ -690,8 +690,10 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon"><i class="ri-scales-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">TREN CHECK-IN TIMBANGAN HARIAN &amp; RATA-RATA</div>
-                                    <div class="card-subtitle-text">VOLUME CHECK-IN TIMBANGAN MASUK VS RERATA</div>
+                                    <div class="card-title-text">TREN KEDATANGAN TRUK DI TIMBANGAN &amp; RATA-RATA
+                                    </div>
+                                    <div class="card-subtitle-text">KEDATANGAN TRUK DI TIMBANGAN (BONGKARAN, MUATAN,
+                                        RETUR)</div>
                                 </div>
                             </div>
                             <div>
@@ -717,7 +719,7 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon cyan"><i class="ri-shield-user-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">DISTRIBUSI JAM CHECK-IN POS 1</div>
+                                    <div class="card-title-text">JAM KEDATANGAN TRUK DI POS 1</div>
                                     <div class="card-subtitle-text">KLASIFIKASI KEDATANGAN TRUK (JAM 1 - 24)</div>
                                 </div>
                             </div>
@@ -772,8 +774,8 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon green"><i class="ri-calendar-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">TRUCK DURATION MINGGUAN</div>
-                                    <div class="card-subtitle-text">TREN RERATA DURASI TRUK VS TARGET 7.5 JAM</div>
+                                    <div class="card-title-text">TREN DURASI TRUK MINGGUAN</div>
+                                    <div class="card-subtitle-text">RATA-RATA DURASI TRUK VS TARGET 7.5 JAM</div>
                                 </div>
                             </div>
                         </div>
@@ -797,34 +799,6 @@
                         </div>
                         <div class="wwtp-card-body">
                             <div id="chartBayThroughput" style="min-height: 220px;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2.4 Tren Jenis Truk Harian (Bongkaran, Muatan, Retur) -->
-                <div class="col-12 col-xl-4">
-                    <div class="wwtp-card h-100">
-                        <div class="wwtp-card-header">
-                            <div class="d-flex align-items-center">
-                                <div class="card-header-icon blue"><i class="ri-line-chart-line"></i></div>
-                                <div>
-                                    <div class="card-title-text">TREN JENIS TRUK HARIAN</div>
-                                    <div class="card-subtitle-text">BONGKARAN, MUATAN &amp; RETUR</div>
-                                </div>
-                            </div>
-                            <div>
-                                <span class="status-pill blue mono" id="totalFleetTrendBadge">TOTAL: 0 TRUK</span>
-                            </div>
-                        </div>
-                        <div class="wwtp-card-body">
-                            <div id="chartFleetTrend" style="min-height: 220px;"></div>
-                            <div
-                                class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle fs-11 text-muted">
-                                <span>Bongkar: <strong class="text-info mono" id="trendBongkarBadge">0</strong>
-                                    | Muat: <strong class="text-success mono" id="trendMuatBadge">0</strong>
-                                    | Retur: <strong class="text-warning mono" id="trendReturBadge">0</strong></span>
-                                <span class="mono text-muted fs-10" id="periodDaysLabelFleetTrend"></span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -882,8 +856,8 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon red"><i class="ri-error-warning-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">DETAIL VENDOR - DURATION TRUCK &gt; 7.5 JAM</div>
-                                    <div class="card-subtitle-text">TOTAL TRUK MELEBIHI TRUCK DURATION (450 MNT)</div>
+                                    <div class="card-title-text">DETAIL VENDOR - DURASI > 7.5 JAM</div>
+                                    <div class="card-subtitle-text">TOTAL DURASI MELEBIHI (450 MNT)</div>
                                 </div>
                             </div>
                             <div>
@@ -916,7 +890,7 @@
                 </div>
 
                 <!-- 4.1 Truk Paling Sering Berkunjung -->
-                <div class="col-12 col-xl-4">
+                <div class="col-12 col-xl-6">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
@@ -949,7 +923,7 @@
                 </div>
 
                 <!-- 4.2 Produktivitas Petugas (Nama Lengkap / Username) -->
-                <div class="col-12 col-xl-4">
+                <div class="col-12 col-xl-6">
                     <div class="wwtp-card h-100">
                         <div class="wwtp-card-header">
                             <div class="d-flex align-items-center">
@@ -1036,7 +1010,6 @@
                 let chartLoadingBay = null;
                 let chartBay = null;
                 let chartFleet = null;
-                let chartFleetTrend = null;
                 let chartWeekly = null;
 
                 // Period Selection
@@ -1133,13 +1106,7 @@
                         '<div class="text-center text-muted py-5 fs-11"><i class="ri-loader-4-line spin-loader align-middle me-1"></i> MEMUAT TREN PEMBATALAN...</div>'
                     );
 
-                    $('#totalFleetTrendBadge').text('TOTAL: 0 TRUK');
-                    $('#trendBongkarBadge').text('0');
-                    $('#trendMuatBadge').text('0');
-                    $('#trendReturBadge').text('0');
-                    $('#chartFleetTrend').html(
-                        '<div class="text-center text-muted py-5 fs-11"><i class="ri-loader-4-line spin-loader align-middle me-1"></i> MEMUAT TREN JENIS TRUK...</div>'
-                    );
+
 
                     $('#frequentTrucksTableBody').html(
                         '<tr><td colspan="4" class="text-center text-muted py-4 fs-11"><i class="ri-loader-4-line spin-loader align-middle me-1"></i> MEMUAT DATA KUNJUNGAN TRUK...</td></tr>'
@@ -1216,8 +1183,6 @@
                             if (res.success) {
                                 renderCapacitySection(res.capacity_throughput);
                                 renderFleetSection(res.vendor_fleet || res);
-                                renderFleetTrendChart(res.fleet_trend || (res.vendor_fleet && res
-                                    .vendor_fleet.fleet_trend));
                                 renderVendorOverDurationTable(res.vendor_over_duration);
                                 renderWeeklyDurationChart(res.weekly_duration);
                             }
@@ -1407,9 +1372,10 @@
                     const returCounts = pos1Data.series.map(d => d.retur || 0);
 
                     // Kebanyakan truk di jam berapa (Jam Puncak / Peak Hour)
-                    const peakText = (pos1Data.peak_hour && pos1Data.peak_hour !== '-' && (pos1Data.peak_count || 0) > 0)
-                        ? `TERBANYAK: ${pos1Data.peak_hour.toUpperCase()} (${pos1Data.peak_count} TRUK)`
-                        : 'TERBANYAK: JAM --';
+                    const peakText = (pos1Data.peak_hour && pos1Data.peak_hour !== '-' && (pos1Data.peak_count || 0) >
+                            0) ?
+                        `TERBANYAK: ${pos1Data.peak_hour.toUpperCase()} (${pos1Data.peak_count} TRUK)` :
+                        'TERBANYAK: JAM --';
                     $('#avgDailyCheckinPos1Badge').text(peakText);
                     $('#totalCheckinsPos1Badge').text((pos1Data.total_checkins || 0).toLocaleString('id-ID'));
 
@@ -1541,7 +1507,7 @@
                     chartDailyPos1.render();
                 }
 
-                // 1.3 Tren Check-in Timbangan Harian & Rata-rata
+                // 1.3 Tren Check-in Timbangan Harian & Rata-rata (Klasifikasi Bongkaran, Muatan, Retur)
                 function renderDailyCheckinTimbangan(dailyData) {
                     if (!dailyData || !dailyData.series || dailyData.series.length === 0) {
                         $('#chartDailyCheckin').html(
@@ -1551,71 +1517,113 @@
                     }
 
                     const labels = dailyData.series.map(d => d.label);
-                    const counts = dailyData.series.map(d => d.count);
+                    const bongkarCounts = dailyData.series.map(d => d.bongkaran || 0);
+                    const muatCounts = dailyData.series.map(d => d.muatan || 0);
+                    const returCounts = dailyData.series.map(d => d.retur || 0);
                     const avgVal = dailyData.avg_per_day || 0;
-                    const avgLines = dailyData.series.map(() => avgVal);
 
                     $('#avgDailyCheckinBadge').text(`RERATA: ${avgVal} / HARI`);
                     $('#totalCheckinsBadge').text((dailyData.total_checkins || 0).toLocaleString('id-ID'));
-                    $('#periodDaysLabel').text(`${dailyData.total_days || 0} Hari Terakhir`);
+
+                    const bCount = (dailyData.total_bongkaran || 0).toLocaleString('id-ID');
+                    const mCount = (dailyData.total_muatan || 0).toLocaleString('id-ID');
+                    const rCount = (dailyData.total_retur || 0).toLocaleString('id-ID');
+                    $('#periodDaysLabel').html(
+                        `<span style="color:#06b6d4;" class="fw-semibold" title="Bongkaran">Bongkar: ${bCount}</span> &bull; ` +
+                        `<span style="color:#10b981;" class="fw-semibold" title="Muatan">Muat: ${mCount}</span> &bull; ` +
+                        `<span style="color:#f59e0b;" class="fw-semibold" title="Retur">Retur: ${rCount}</span>`
+                    );
 
                     const optionsDaily = {
                         series: [{
-                                name: 'CHECK-IN TIMBANGAN',
-                                type: 'column',
-                                data: counts
+                                name: 'BONGKARAN',
+                                data: bongkarCounts
                             },
                             {
-                                name: 'RERATA HARIAN',
-                                type: 'line',
-                                data: avgLines
+                                name: 'MUATAN',
+                                data: muatCounts
+                            },
+                            {
+                                name: 'RETUR',
+                                data: returCounts
                             }
                         ],
                         chart: {
                             height: 250,
-                            type: 'line',
+                            type: 'bar',
+                            stacked: true,
                             toolbar: {
                                 show: false
                             },
                             background: 'transparent'
                         },
-                        colors: ['#0284c7', '#f59e0b'],
-                        stroke: {
-                            width: [0, 2],
-                            curve: 'smooth',
-                            dashArray: [0, 4]
-                        },
+                        colors: ['#06b6d4', '#10b981', '#f59e0b'],
                         plotOptions: {
                             bar: {
-                                borderRadius: 3,
-                                columnWidth: '50%',
+                                borderRadius: 2,
+                                columnWidth: '55%',
                                 dataLabels: {
-                                    position: 'top'
+                                    total: {
+                                        enabled: true,
+                                        style: {
+                                            fontSize: '8px',
+                                            fontFamily: 'JetBrains Mono',
+                                            fontWeight: 700,
+                                            color: '#e2e8f0'
+                                        },
+                                        formatter: val => (val > 0 ? val : ''),
+                                        offsetY: -4
+                                    }
                                 }
                             }
                         },
                         dataLabels: {
                             enabled: true,
-                            enabledOnSeries: [0],
                             formatter: val => (val > 0 ? val : ''),
-                            offsetY: -6,
                             style: {
-                                fontSize: '8px',
+                                fontSize: '7.5px',
                                 fontFamily: 'JetBrains Mono',
                                 fontWeight: 600,
-                                colors: ['#38bdf8']
+                                colors: ['#ffffff']
                             },
-                            background: {
-                                enabled: false
+                            dropShadow: {
+                                enabled: true,
+                                top: 1,
+                                left: 1,
+                                blur: 1,
+                                color: '#000',
+                                opacity: 0.9
                             }
                         },
-                        labels: labels,
+                        stroke: {
+                            width: 1,
+                            colors: ['#0b1426']
+                        },
+                        annotations: {
+                            yaxis: (avgVal > 0) ? [{
+                                y: avgVal,
+                                borderColor: '#e2e8f0',
+                                strokeDashArray: 4,
+                                borderWidth: 1.5,
+                                label: {
+                                    borderColor: '#e2e8f0',
+                                    style: {
+                                        color: '#0f172a',
+                                        background: '#e2e8f0',
+                                        fontSize: '8.5px',
+                                        fontFamily: 'JetBrains Mono',
+                                        fontWeight: 700
+                                    },
+                                    text: `RERATA: ${avgVal}/HARI`
+                                }
+                            }] : []
+                        },
                         xaxis: {
                             categories: labels,
                             labels: {
                                 style: {
                                     colors: '#64748b',
-                                    fontSize: '9px',
+                                    fontSize: '8.5px',
                                     fontFamily: 'JetBrains Mono'
                                 },
                                 rotate: -45
@@ -1649,10 +1657,7 @@
                             shared: true,
                             intersect: false,
                             y: {
-                                formatter: (val, opt) => {
-                                    if (opt.seriesIndex === 0) return `${val} Kendaraan`;
-                                    return `${val} Kendaraan / Hari`;
-                                }
+                                formatter: val => `${val || 0} Truk`
                             }
                         },
                         grid: {
@@ -2102,117 +2107,7 @@
                     }
                 }
 
-                // 3.1b Tren Jenis Truk Harian (Bongkaran, Muatan, Retur)
-                function renderFleetTrendChart(trendData) {
-                    if (!trendData || !trendData.series || trendData.series.length === 0) {
-                        $('#chartFleetTrend').html(
-                            '<div class="text-center text-muted py-5 fs-11">TIDAK ADA DATA TREN JENIS TRUK</div>'
-                        );
-                        return;
-                    }
 
-                    const labels = trendData.series.map(d => d.label);
-                    const bongkarCounts = trendData.series.map(d => d.bongkaran || 0);
-                    const muatCounts = trendData.series.map(d => d.muatan || 0);
-                    const returCounts = trendData.series.map(d => d.retur || 0);
-
-                    $('#totalFleetTrendBadge').text(
-                        `TOTAL: ${(trendData.total_all || 0).toLocaleString('id-ID')} TRUK`);
-                    $('#trendBongkarBadge').text((trendData.total_bongkaran || 0).toLocaleString('id-ID'));
-                    $('#trendMuatBadge').text((trendData.total_muatan || 0).toLocaleString('id-ID'));
-                    $('#trendReturBadge').text((trendData.total_retur || 0).toLocaleString('id-ID'));
-                    $('#periodDaysLabelFleetTrend').text(`${trendData.total_days || 0} Hari Terakhir`);
-
-                    const optionsTrend = {
-                        series: [{
-                                name: 'BONGKARAN',
-                                type: 'column',
-                                data: bongkarCounts
-                            },
-                            {
-                                name: 'MUATAN',
-                                type: 'column',
-                                data: muatCounts
-                            },
-                            {
-                                name: 'RETUR',
-                                type: 'column',
-                                data: returCounts
-                            }
-                        ],
-                        chart: {
-                            height: 220,
-                            type: 'bar',
-                            stacked: true,
-                            toolbar: {
-                                show: false
-                            },
-                            background: 'transparent'
-                        },
-                        colors: ['#3b82f6', '#10b981', '#f59e0b'],
-                        stroke: {
-                            width: 1,
-                            colors: ['#0b1426']
-                        },
-                        plotOptions: {
-                            bar: {
-                                borderRadius: 3,
-                                columnWidth: '55%'
-                            }
-                        },
-                        labels: labels,
-                        xaxis: {
-                            categories: labels,
-                            labels: {
-                                style: {
-                                    colors: '#64748b',
-                                    fontSize: '9px',
-                                    fontFamily: 'JetBrains Mono'
-                                },
-                                rotate: -45
-                            },
-                            axisBorder: {
-                                color: 'rgba(255,255,255,0.06)'
-                            }
-                        },
-                        yaxis: {
-                            labels: {
-                                style: {
-                                    colors: '#cbd5e1',
-                                    fontSize: '9.5px',
-                                    fontFamily: 'JetBrains Mono'
-                                },
-                                formatter: val => Math.round(val)
-                            }
-                        },
-                        legend: {
-                            position: 'top',
-                            horizontalAlign: 'right',
-                            labels: {
-                                colors: '#94a3b8'
-                            },
-                            fontSize: '9.5px',
-                            fontFamily: 'JetBrains Mono'
-                        },
-                        tooltip: {
-                            theme: 'dark',
-                            shared: true,
-                            intersect: false,
-                            y: {
-                                formatter: val => `${val} Truk`
-                            }
-                        },
-                        grid: {
-                            borderColor: 'rgba(255,255,255,0.05)',
-                            strokeDashArray: 3
-                        }
-                    };
-
-                    if (chartFleetTrend) chartFleetTrend.destroy();
-                    $('#chartFleetTrend').empty();
-                    chartFleetTrend = new ApexCharts(document.querySelector("#chartFleetTrend"), optionsTrend);
-                    chartFleetTrend.render();
-                }
 
                 // 3.2 Detail Data Vendor Melebihi Truck Duration (> 7.5 Jam)
                 function renderVendorOverDurationTable(vendorList) {
@@ -2235,7 +2130,8 @@
                             isOver = v.avg_duration_min > 450;
                         } else if (v.avg_duration_hours !== undefined) {
                             isOver = v.avg_duration_hours > 7.5;
-                        } else if (v.status && (v.status.toUpperCase().includes('OVER') || v.status.toUpperCase().includes('NORMAL'))) {
+                        } else if (v.status && (v.status.toUpperCase().includes('OVER') || v.status
+                                .toUpperCase().includes('NORMAL'))) {
                             isOver = v.status.toUpperCase().includes('OVER');
                         } else {
                             // Fallback parse dari string durasi format "Xj Ym"
@@ -2247,9 +2143,9 @@
                             isOver = ((h * 60) + m) > 450;
                         }
 
-                        const statusBadge = isOver
-                            ? '<span class="status-pill red">OVER</span>'
-                            : '<span class="status-pill green">NORMAL</span>';
+                        const statusBadge = isOver ?
+                            '<span class="status-pill red">OVER</span>' :
+                            '<span class="status-pill green">NORMAL</span>';
 
                         const overCount = v.over_sla_count !== undefined ? v.over_sla_count : (v.over_count ||
                             0);
