@@ -817,13 +817,25 @@
                                     // Cek Validasi Alur
                                     if (k.is_flow_valid === false) {
                                         // playBeep('error');
-                                        Swal.fire({
+                                        let swalConfig = {
                                             icon: 'error',
                                             title: 'Flow Salah!',
                                             html: k.flow_error,
                                             confirmButtonText: 'Tutup & Scan Lain'
-                                        }).then(() => {
-                                            resumeScanner();
+                                        };
+
+                                        if (QC_TYPE === 'qc-pm' && (k.can_force_scan || {{ \App\Http\Controllers\Kempu\KempuQcController::canForceScan() ? 'true' : 'false' }})) {
+                                            swalConfig.showCancelButton = true;
+                                            swalConfig.cancelButtonText = '<i class="ri-shield-flash-line me-1"></i> Buka Force Scan QC PM';
+                                            swalConfig.cancelButtonColor = '#dc3545';
+                                        }
+
+                                        Swal.fire(swalConfig).then((result) => {
+                                            if (result.dismiss === Swal.DismissReason.cancel) {
+                                                window.location.href = "{{ route('kempu.qc.scan', 'qc-pm-force') }}";
+                                            } else {
+                                                resumeScanner();
+                                            }
                                         });
                                         return;
                                     }

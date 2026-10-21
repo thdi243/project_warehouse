@@ -863,7 +863,7 @@ class KempuQcController extends Controller
         // Di QC Proses (baik Cek Pre Cuci biasa maupun Force Scan QC Proses), reject di incoming GABOLEH di-force:
         // a. Masih berstatus ENG_REPAIR (sedang di Engineering)
         // b. Masih berstatus di alur WPM / QC PM / In Transit (belum di-Transfer In oleh Produksi)
-        $isQcProsesContext = in_array($qcType, ['qc-pre-cuci', 'qc-proses', 'qc-proses-force', 'qc-force']);
+        $isQcProsesContext = in_array($qcType, ['qc-pre-cuci', 'qc-proses', 'qc-proses-force']);
         if ($isQcProsesContext) {
             // a. Jika kempu berstatus REPAIR di Workshop Engineering (Reject Incoming / QC)
             if (
@@ -1155,6 +1155,7 @@ class KempuQcController extends Controller
                 'condition'        => $kempu->condition ?? 'OK',
                 'qc_title'         => $card['title'],
                 'is_force_scan'    => in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force', 'qc-retur']),
+                'can_force_scan'   => self::canForceScan(),
                 'can_manual_reused' => !str_contains($qcType, 'pm') && $qcType !== 'qc-retur' && self::canForceScan(),
                 'next_auto_reused' => (int)($kempu->main->reused_count ?? 0),
                 'will_increment_reused' => false,
@@ -1415,7 +1416,17 @@ class KempuQcController extends Controller
                 case 'RELEASE_PM':
                 case 'RELEASE_PRE_CUCI':
                 case 'RELEASE_AFTER_FILLING':
-                    if ($qcType === 'qc-pm-force' || $forceTarget === 'RELEASE_PM') {
+                    $isPmRelease = (
+                        $qcType === 'qc-pm-force' ||
+                        $forceTarget === 'RELEASE_PM' ||
+                        ($qcType === 'qc-force' && (
+                            strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+                            strcasecmp($currentStatus, 'ENG_REPAIR') === 0 ||
+                            strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0 ||
+                            in_array($fromLocation, [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])
+                        ))
+                    );
+                    if ($isPmRelease) {
                         $nextStatus   = MasterKempuModel::STATUS_QC_PM_RELEASE;
                         $nextLocation = MasterKempuModel::LOC_WPM;
                         $actionResult = 'OK';
@@ -1485,7 +1496,17 @@ class KempuQcController extends Controller
                 case 'HOLD_PM':
                 case 'HOLD_PRE_CUCI':
                 case 'HOLD_AFTER_FILLING':
-                    if ($qcType === 'qc-pm-force' || $forceTarget === 'HOLD_PM') {
+                    $isPmHold = (
+                        $qcType === 'qc-pm-force' ||
+                        $forceTarget === 'HOLD_PM' ||
+                        ($qcType === 'qc-force' && (
+                            strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+                            strcasecmp($currentStatus, 'ENG_REPAIR') === 0 ||
+                            strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0 ||
+                            in_array($fromLocation, [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])
+                        ))
+                    );
+                    if ($isPmHold) {
                         $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
                         $nextLocation = MasterKempuModel::LOC_WPM;
                         $actionResult = 'HOLD';
@@ -1541,7 +1562,12 @@ class KempuQcController extends Controller
 
                 default:
                     if ($decision === 'OK') {
-                        if ($qcType === 'qc-pm-force') {
+                        if ($qcType === 'qc-pm-force' || ($qcType === 'qc-force' && (
+                            strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+                            strcasecmp($currentStatus, 'ENG_REPAIR') === 0 ||
+                            strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0 ||
+                            in_array($fromLocation, [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])
+                        ))) {
                             $nextStatus   = MasterKempuModel::STATUS_QC_PM_RELEASE;
                             $nextLocation = MasterKempuModel::LOC_WPM;
                         } elseif ($isAfterFilling) {
@@ -1556,7 +1582,12 @@ class KempuQcController extends Controller
                         $actionTitle  = '[FORCE SCAN] QC Lolos (Release)';
                         $notes        = $notes ?: 'Force Decision: Lolos QC';
                     } elseif ($decision === 'HOLD') {
-                        if ($qcType === 'qc-pm-force') {
+                        if ($qcType === 'qc-pm-force' || ($qcType === 'qc-force' && (
+                            strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 ||
+                            strcasecmp($currentStatus, 'ENG_REPAIR') === 0 ||
+                            strcasecmp($fromLocation, MasterKempuModel::LOC_ENG) === 0 ||
+                            in_array($fromLocation, [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])
+                        ))) {
                             $nextStatus   = MasterKempuModel::STATUS_QC_PM_HOLD;
                             $nextLocation = MasterKempuModel::LOC_WPM;
                         } elseif ($isAfterFilling) {
