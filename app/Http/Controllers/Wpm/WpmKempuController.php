@@ -355,9 +355,10 @@ class WpmKempuController extends Controller
                 $isSupervisiAllowed = ($isPasReceived && self::canSupervisi($user));
 
                 if (!$isFromPas && !$isOldKempuInitialAllowed && !$isSupervisiAllowed) {
+                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.",
+                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.",
                     ];
                 }
 
@@ -486,9 +487,10 @@ class WpmKempuController extends Controller
                 }
 
                 if (!$isQcPmReleased) {
+                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan QC PM oleh Tim QC.",
+                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan QC PM oleh Tim QC.",
                     ];
                 }
                 break;

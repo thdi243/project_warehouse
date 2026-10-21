@@ -915,9 +915,10 @@ class KempuQcController extends Controller
             // Di QC Proses (baik pre-cuci biasa maupun qc-proses-force), kempu yang belum di-transfer in oleh produksi dilarang keras diproses
             if ($qcType === 'qc-proses-force' || $qcType === 'qc-pre-cuci' || $qcType === 'qc-proses') {
                 if ($isWpmOrTransit || in_array(strtoupper($currentLocation), [MasterKempuModel::LOC_WPM, MasterKempuModel::LOC_QC_PM])) {
+                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus, $currentLocation);
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan Transfer In from WPM oleh Tim Produksi.",
+                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer In from WPM oleh Tim Produksi.",
                     ];
                 }
             }
@@ -960,6 +961,14 @@ class KempuQcController extends Controller
         }
 
         if (!$isMatch) {
+            $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus, $currentLocation);
+            if ($flowMsg) {
+                return [
+                    'valid'   => false,
+                    'message' => $flowMsg,
+                ];
+            }
+
             if ($qcType === 'qc-pm') {
                 return [
                     'valid'   => false,

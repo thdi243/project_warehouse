@@ -181,9 +181,10 @@ class KempuPasController extends Controller
                 ];
 
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
+                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan Transfer Out to PAS oleh Tim WFG.",
+                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer Out to PAS oleh Tim WFG.",
                     ];
                 }
                 break;
@@ -208,20 +209,10 @@ class KempuPasController extends Controller
                 ];
 
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
-                    if (
-                        strcasecmp($currentStatus, 'Transfer Out to PAS') === 0 ||
-                        strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS) === 0 ||
-                        strcasecmp($currentStatus, MasterKempuModel::STATUS_IN_TRANSIT_PAS) === 0
-                    ) {
-                        return [
-                            'valid'   => false,
-                            'message' => "Flow Salah! Kempu belum scan Transfer in From BAS oleh Tim PAS.",
-                        ];
-                    }
-
+                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan Transfer in From BAS oleh Tim PAS.",
+                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer in From BAS oleh Tim PAS.",
                     ];
                 }
                 break;

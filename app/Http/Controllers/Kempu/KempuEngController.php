@@ -83,9 +83,10 @@ class KempuEngController extends Controller
         }
 
         if (!$isMatch) {
+            $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus, $currentLocation);
             return [
                 'valid'   => false,
-                'message' => "Flow Salah! Kempu belum dinyatakan Reject oleh Tim QC.",
+                'message' => $flowMsg ?? "Flow Salah! Kempu belum dinyatakan Reject oleh Tim QC.",
             ];
         }
 

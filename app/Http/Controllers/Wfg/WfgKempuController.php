@@ -306,57 +306,18 @@ class WfgKempuController extends Controller
                     ];
                 }
 
-                // 2. Cek jika sudah melangkah lebih jauh (Transfer Out to PAS)
-                if (
-                    strcasecmp($currentStatus, 'Transfer Out to PAS') === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS) === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_IN_TRANSIT_PAS) === 0
-                ) {
+                // 2. Wajib berasal dari Transfer Out to WFG oleh Produksi
+                $allowedPrev = [
+                    'transfer out to wfg',
+                    strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG),
+                    strtolower(MasterKempuModel::STATUS_IN_TRANSIT_WFG),
+                ];
+                if (!in_array(strtolower($currentStatus), $allowedPrev)) {
+                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu sudah scan Transfer Out to PAS.",
+                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer Out to WFG oleh Tim Produksi.",
                     ];
-                }
-
-                // 3. Cek jika masih di WPM belum transfer out ke produksi
-                if (
-                    strcasecmp($currentStatus, 'Transfer In From PAS') === 0 ||
-                    strcasecmp($currentStatus, MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS) === 0
-                ) {
-                    return [
-                        'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan Transfer Out to Produksi oleh Tim WPM.",
-                    ];
-                }
-
-                // 4. Khusus KEMPU BARU (Format YYMMDD####) dengan Reused = 0: Wajib melewati proses 'Transfer Out To Produksi' dari WPM terlebih dahulu
-                $isOldKempu  = MasterKempuModel::isOldKempu($idKempu);
-                $reusedCount = (int)($kempu->main?->reused_count ?? $kempu->reused_count ?? 0);
-
-                if (!$isOldKempu && $reusedCount <= 0) {
-                    $initialStatuses = [
-                        'registered',
-                        strtolower(MasterKempuModel::STATUS_REGISTERED),
-                        strtolower(MasterKempuModel::STATUS_QC_PM_PENDING),
-                        strtolower(MasterKempuModel::STATUS_QC_PM_RELEASE),
-                        strtolower(MasterKempuModel::STATUS_QC_PM_PASSED),
-                        strtolower(MasterKempuModel::STATUS_GR_COMPLETED),
-                    ];
-
-                    $hasTransferOutHistory = $kempu->trackingHistories()
-                        ->where(function ($q) {
-                            $q->where('action', 'Transfer Out To Produksi')
-                                ->orWhere('action', 'LIKE', '%Transfer Out To Produksi%')
-                                ->orWhere('action', 'LIKE', '%WPM_TRANSFER_OUT%');
-                        })
-                        ->exists();
-
-                    if (in_array(strtolower($currentStatus), $initialStatuses) || !$hasTransferOutHistory) {
-                        return [
-                            'valid'   => false,
-                            'message' => "Flow Salah! Kempu belum scan Transfer Out to Produksi oleh Tim WPM.",
-                        ];
-                    }
                 }
                 break;
 
@@ -380,9 +341,10 @@ class WfgKempuController extends Controller
                     strtolower(MasterKempuModel::STATUS_WFG_RECEIVED),
                 ];
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
+                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan Transfer in From Produksi oleh Tim WFG.",
+                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer in From Produksi oleh Tim WFG.",
                     ];
                 }
                 break;
@@ -409,9 +371,10 @@ class WfgKempuController extends Controller
                     'retur to wfg',
                 ];
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
+                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.",
+                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.",
                     ];
                 }
                 break;

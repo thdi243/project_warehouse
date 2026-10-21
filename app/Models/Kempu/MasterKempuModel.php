@@ -525,4 +525,195 @@ class MasterKempuModel extends Model
 
         return true;
     }
+
+    /**
+     * Dapatkan pesan petunjuk alur berikutnya berdasarkan status kempu saat ini.
+     * Mengikuti rantai urutan siklus operasional kempu secara utuh dan presisi.
+     */
+    public static function getNextRequiredStepMessage(?string $currentStatus, ?string $currentLocation = null): ?string
+    {
+        $status = trim($currentStatus ?? '');
+        $location = strtoupper(trim($currentLocation ?? ''));
+
+        if (empty($status)) {
+            return null;
+        }
+
+        $clean = strtoupper(preg_replace('/[^a-zA-Z0-9]/', '_', $status));
+
+        // 1. Scrap / Afkir / Nonaktif
+        if (
+            in_array($clean, ['SCRAPPED', 'SCRAP', 'NONAKTIF', 'AFKIR', 'DAMAGED']) ||
+            str_contains($clean, 'SCRAP') ||
+            str_contains($clean, 'NONAKTIF') ||
+            $location === strtoupper(self::LOC_SCRAP)
+        ) {
+            return "Flow Salah! Kempu sudah berstatus SCRAP / Nonaktif dan tidak dapat diproses lagi.";
+        }
+
+        // 2. Engineering Workshop / Perbaikan / Reject
+        if (
+            in_array($clean, ['ENG_REPAIR', 'ENG_SCRAP_PRODUKSI', 'REPAIR', 'MAINTENANCE', 'QC_PM_REJECT', 'QC_PROSES_REJECT', 'NOT_OK']) ||
+            str_contains($clean, 'REPAIR') ||
+            str_contains($clean, 'MAINTENANCE') ||
+            $location === strtoupper(self::LOC_ENG) ||
+            $location === 'ENG'
+        ) {
+            return "Flow Salah! Kempu belum scan Repair oleh Tim Engineering.";
+        }
+
+        // 3. Status Hold oleh QC
+        if (str_contains($clean, 'PM_HOLD')) {
+            return "Flow Salah! Kempu masih ditahan (HOLD) oleh Tim QC PM.";
+        }
+        if (str_contains($clean, 'HOLD')) {
+            return "Flow Salah! Kempu masih ditahan (HOLD) oleh Tim QC.";
+        }
+
+        // 4. Status Reject QC After Filling
+        if (str_contains($clean, 'AFTER_FILLING') && str_contains($clean, 'REJECT')) {
+            return "Flow Salah! Kempu berstatus REJECT oleh Tim QC.";
+        }
+
+        // 5. Repro Flow
+        if (str_contains($clean, 'AFTER_FILLING') && str_contains($clean, 'REPRO')) {
+            return "Flow Salah! Kempu belum scan Repro Kempu oleh Tim Produksi.";
+        }
+        if (str_contains($clean, 'REPRO')) {
+            return "Flow Salah! Kempu belum scan QC Pre Cuci oleh Tim QC.";
+        }
+
+        // 6. Retur Flow dari PAS
+        if (
+            in_array($clean, ['PAS_RETUR_TO_WFG', 'RETUR_TO_WFG', 'PAS_RETUR_TO_BAS_ISI']) ||
+            (str_contains($clean, 'RETUR') && str_contains($clean, 'BERISI'))
+        ) {
+            return "Flow Salah! Kempu belum scan Penerimaan Retur dari PAS oleh Tim WFG.";
+        }
+        if (
+            in_array($clean, ['WFG_RETUR_FROM_PAS', 'RETUR_FROM_PAS']) ||
+            (str_contains($clean, 'RETUR') && str_contains($clean, 'WFG'))
+        ) {
+            return "Flow Salah! Kempu belum scan QC Retur oleh Tim QC.";
+        }
+
+        // 7. Pendaftaran Awal / GR di WPM (Belum lolos QC PM)
+        if (
+            in_array($clean, ['REGISTERED', 'GR_COMPLETED', 'QC_PM_PENDING']) ||
+            str_contains($clean, 'REGISTER') ||
+            str_contains($clean, 'GR_COMPLETED') ||
+            str_contains($clean, 'PM_PENDING')
+        ) {
+            return "Flow Salah! Kempu belum scan QC PM oleh Tim QC.";
+        }
+
+        // 8. Lolos QC PM (Di WPM, siap dikirim ke Produksi)
+        if (
+            in_array($clean, ['QC_PM_RELEASE', 'QC_PM_PASSED', 'RELEASE_QC_PM']) ||
+            (str_contains($clean, 'QC_PM') && (str_contains($clean, 'RELEASE') || str_contains($clean, 'PASSED') || str_contains($clean, 'LOLOS')))
+        ) {
+            return "Flow Salah! Kempu belum scan Transfer Out to Produksi oleh Tim WPM.";
+        }
+
+        // 9. Transfer Out to Produksi (In Transit dari WPM ke Produksi)
+        if (
+            in_array($clean, ['WPM_TRANSFER_OUT_TO_PROD', 'WPM_TRANSFER_OUT_FROM_PROD', 'IN_TRANSIT_PRODUKSI', 'TRANSFER_OUT_TO_PRODUKSI']) ||
+            (str_contains($clean, 'TRANSFER_OUT') && (str_contains($clean, 'PROD') || str_contains($clean, 'PRODUKSI')))
+        ) {
+            return "Flow Salah! Kempu belum scan Transfer In from WPM oleh Tim Produksi.";
+        }
+
+        // 10. Transfer In from WPM (Sudah diterima di Produksi, belum Pre Cuci)
+        if (
+            in_array($clean, ['PROD_TRANSFER_IN_FROM_WPM', 'PROD_TRANSFER_IN_WPM', 'PROD_RECEIVED', 'TRANSFER_IN_FROM_WPM', 'QC_PRE_CUCI_PENDING']) ||
+            (str_contains($clean, 'TRANSFER_IN') && str_contains($clean, 'WPM')) ||
+            str_contains($clean, 'PRE_CUCI_PENDING')
+        ) {
+            return "Flow Salah! Kempu belum scan QC Pre Cuci oleh Tim QC.";
+        }
+
+        // 11. Lolos QC Pre Cuci (Siap dicuci oleh Produksi)
+        if (
+            in_array($clean, ['QC_PRE_CUCI_RELEASE', 'QC_PRE_CUCI_PASSED', 'QC_PROD_PASSED', 'RELEASE_QC_PRE_CUCI']) ||
+            (str_contains($clean, 'PRE_CUCI') && (str_contains($clean, 'RELEASE') || str_contains($clean, 'PASSED') || str_contains($clean, 'LOLOS')))
+        ) {
+            return "Flow Salah! Kempu belum scan Cuci Kempu oleh Tim Produksi.";
+        }
+
+        // 12. Selesai Cuci (Cuci Kempu selesai, siap diisi / filling)
+        if (
+            in_array($clean, ['PROD_CUCI_KEMPU', 'CUCI_KEMPU_COMPLETED', 'CUCI_KEMPU', 'CUCI_KEMPU_SELESAI']) ||
+            (str_contains($clean, 'CUCI') && !str_contains($clean, 'PRE'))
+        ) {
+            return "Flow Salah! Kempu belum scan Filling Kempu oleh Tim Produksi.";
+        }
+
+        // 13. Selesai Filling (Scan 1 Filling selesai, belum di-QC After Filling)
+        if (
+            in_array($clean, ['PROD_FILLING_KEMPU', 'SCAN1_FILLED', 'SCAN_1_FILLED', 'SCAN_1_FILLING_KEMPU', 'QC_AFTER_FILLING_PENDING']) ||
+            str_contains($clean, 'FILLING') ||
+            str_contains($clean, 'SCAN1') ||
+            str_contains($clean, 'SCAN_1')
+        ) {
+            return "Flow Salah! Kempu belum scan QC After Filling oleh Tim QC.";
+        }
+
+        // 14. Lolos QC After Filling (Siap dikirim ke WFG)
+        if (
+            in_array($clean, ['QC_AFTER_FILLING_RELEASE', 'QC_AFTER_FILLING_PASSED', 'RELEASE_QC_AFTER_FILLING']) ||
+            (str_contains($clean, 'AFTER_FILLING') && (str_contains($clean, 'RELEASE') || str_contains($clean, 'PASSED') || str_contains($clean, 'LOLOS')))
+        ) {
+            return "Flow Salah! Kempu belum scan Transfer Out to WFG oleh Tim Produksi.";
+        }
+
+        // 15. Transfer Out to WFG (In Transit dari Produksi ke WFG)
+        if (
+            in_array($clean, ['PROD_TRANSFER_OUT_TO_WFG', 'PROD_TRANSFER_OUT_FROM_WFG', 'IN_TRANSIT_WFG', 'TRANSFER_OUT_TO_WFG']) ||
+            (str_contains($clean, 'TRANSFER_OUT') && str_contains($clean, 'WFG'))
+        ) {
+            return "Flow Salah! Kempu belum scan Transfer In from Produksi oleh Tim WFG.";
+        }
+
+        // 16. Transfer In from Produksi (Diterima di WFG, siap dikirim ke PAS)
+        if (
+            in_array($clean, ['WFG_TRANSFER_IN_FROM_PROD', 'WFG_RECEIVED', 'TRANSFER_IN_FROM_PRODUKSI', 'PICKING_FG']) ||
+            (str_contains($clean, 'TRANSFER_IN') && (str_contains($clean, 'PROD') || str_contains($clean, 'PRODUKSI')) && !str_contains($clean, 'WPM'))
+        ) {
+            return "Flow Salah! Kempu belum scan Transfer Out to PAS oleh Tim WFG.";
+        }
+
+        // 17. Transfer Out to PAS (In Transit dari WFG ke Warehouse PAS)
+        if (
+            in_array($clean, ['WFG_TRANSFER_OUT_TO_PAS', 'IN_TRANSIT_PAS', 'TRANSFER_OUT_TO_PAS']) ||
+            (str_contains($clean, 'TRANSFER_OUT') && str_contains($clean, 'PAS'))
+        ) {
+            return "Flow Salah! Kempu belum scan Transfer in From BAS oleh Tim PAS.";
+        }
+
+        // 18. Transfer In from BAS (Diterima di Warehouse PAS, siap kirim balik ke BAS kosong)
+        if (
+            in_array($clean, ['PAS_TRANSFER_IN_FROM_BAS', 'PAS_RECEIVED', 'TRANSFER_IN_FROM_BAS']) ||
+            (str_contains($clean, 'PAS') && str_contains($clean, 'TRANSFER_IN'))
+        ) {
+            return "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.";
+        }
+
+        // 19. Transfer Out to BAS (In Transit kempu kosong dari PAS kembali ke BAS WPM)
+        if (
+            in_array($clean, ['PAS_TRANSFER_OUT_TO_BAS', 'IN_TRANSIT_WPM', 'TRANSFER_OUT_TO_BAS']) ||
+            (str_contains($clean, 'PAS') && str_contains($clean, 'TRANSFER_OUT'))
+        ) {
+            return "Flow Salah! Kempu belum scan Transfer In From PAS oleh Tim WPM.";
+        }
+
+        // 20. Transfer In from PAS (Telah diterima kembali di WPM, menunggu QC PM)
+        if (
+            in_array($clean, ['WPM_TRANSFER_IN_FROM_PAS', 'WPM_TRANSFER_IN_PAS', 'TRANSFER_IN_FROM_PAS']) ||
+            (str_contains($clean, 'WPM') && str_contains($clean, 'PAS'))
+        ) {
+            return "Flow Salah! Kempu belum scan QC PM oleh Tim QC.";
+        }
+
+        return null;
+    }
 }
