@@ -196,21 +196,13 @@ class WfgKempuController extends Controller
             MasterKempuModel::STATUS_QC_AFTER_FILLING_PENDING,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE,
             MasterKempuModel::STATUS_QC_AFTER_FILLING_PASSED,
-            MasterKempuModel::STATUS_QC_AFTER_FILLING_HOLD,
-            MasterKempuModel::STATUS_QC_AFTER_FILLING_REPRO,
-            MasterKempuModel::STATUS_PROD_REPRO_KEMPU,
             'QC_AFTER_FILLING_PENDING',
             'QC_AFTER_FILLING_RELEASE',
             'QC_AFTER_FILLING_PASSED',
-            'QC_AFTER_FILLING_HOLD',
-            'QC_AFTER_FILLING_REPRO',
-            'PROD_REPRO_KEMPU',
             'QC AFTER FILLING RELEASE',
             'QC AFTER FILLING PASSED',
             'QC AFTER FILLING LOLOS (OK)',
             'QC_AFTER_FILLING_LOLOS_(OK)',
-            'QC AFTER FILLING REPRO',
-            'REPRO',
 
             // 5. Produksi Transfer Out to WFG
             MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG,
@@ -221,7 +213,7 @@ class WfgKempuController extends Controller
             'PRODUKSI TRANSFER OUT TO WFG',
             'PRODUKSI_TRANSFER_OUT_TO_WFG',
 
-            // 6. QC PM & Registrasi Awal / Repair
+            // 6. QC PM & Registrasi Awal di WPM
             MasterKempuModel::STATUS_QC_PM_PENDING,
             MasterKempuModel::STATUS_QC_PM_RELEASE,
             MasterKempuModel::STATUS_QC_PM_PASSED,
@@ -234,8 +226,13 @@ class WfgKempuController extends Controller
             'REGISTERED',
             MasterKempuModel::STATUS_GR_COMPLETED,
             'GR_COMPLETED',
-            MasterKempuModel::STATUS_ENG_REPAIR,
-            'ENG_REPAIR',
+
+            // 7. WPM Penerimaan Kempu dari PAS
+            MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
+            'WPM_TRANSFER_IN_FROM_PAS',
+            'WPM_TRANSFER_IN_PAS',
+            'TRANSFER_IN_FROM_PAS',
+            'TRANSFER IN FROM PAS',
         ];
 
         return in_array($statusUpper, $allowedStatuses, true) ||
@@ -306,13 +303,13 @@ class WfgKempuController extends Controller
                     ];
                 }
 
-                // 2. Wajib berasal dari Transfer Out to WFG oleh Produksi
+                // 2. Wajib berasal dari Transfer Out to WFG oleh Produksi atau Alur Bypass (Pre-Produksi / WPM)
                 $allowedPrev = [
                     'transfer out to wfg',
                     strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG),
                     strtolower(MasterKempuModel::STATUS_IN_TRANSIT_WFG),
                 ];
-                if (!in_array(strtolower($currentStatus), $allowedPrev)) {
+                if (!in_array(strtolower($currentStatus), $allowedPrev) && !self::isPreScan1Status($currentStatus)) {
                     $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
                         'valid'   => false,
@@ -663,6 +660,17 @@ class WfgKempuController extends Controller
             $finalNotes .= ' [Input Manual]';
         }
 
+        $isBypass = ($cardKey === 'transfer-in-from-produksi') &&
+            self::isPreScan1Status($currentStatus) &&
+            !in_array(strtolower($currentStatus), [
+                'transfer out to wfg',
+                strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG),
+                strtolower(MasterKempuModel::STATUS_IN_TRANSIT_WFG),
+            ]);
+        if ($isBypass) {
+            $finalNotes .= ' [Bypass Alur Produksi]';
+        }
+
         $targetStatus   = $card['status_name'];
         $targetLocation = $card['location'];
         $toLocation     = $card['to_loc'];
@@ -735,6 +743,7 @@ class WfgKempuController extends Controller
                     'has_nti'      => $hasNti,
                     'input_method' => $isManual ? 'MANUAL' : 'SCANNER',
                     'is_manual'    => $isManual,
+                    'is_bypass'    => $isBypass,
                 ],
                 'created_by'      => Auth::id(),
             ]);
