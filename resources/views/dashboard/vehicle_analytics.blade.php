@@ -690,7 +690,7 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon"><i class="ri-scales-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">TREN KEDATANGAN TRUK DI TIMBANGAN &amp; RATA-RATA
+                                    <div class="card-title-text">TOTAL KEDATANGAN TRUK & RATA RATA
                                     </div>
                                     <div class="card-subtitle-text">KEDATANGAN TRUK DI TIMBANGAN (BONGKARAN, MUATAN,
                                         RETUR)</div>
@@ -719,7 +719,7 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon cyan"><i class="ri-shield-user-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">JAM KEDATANGAN TRUK DI POS 1</div>
+                                    <div class="card-title-text">TREND KEDATANGAN TRUCK IN HOURS</div>
                                     <div class="card-subtitle-text">KLASIFIKASI KEDATANGAN TRUK (JAM 1 - 24)</div>
                                 </div>
                             </div>
@@ -774,7 +774,7 @@
                             <div class="d-flex align-items-center">
                                 <div class="card-header-icon green"><i class="ri-calendar-line"></i></div>
                                 <div>
-                                    <div class="card-title-text">TREN DURASI TRUK MINGGUAN</div>
+                                    <div class="card-title-text">TREND TRUCK FACTORY DURATION WEEKLY</div>
                                     <div class="card-subtitle-text">RATA-RATA DURASI TRUK VS TARGET 7.5 JAM</div>
                                 </div>
                             </div>
