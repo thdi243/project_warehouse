@@ -1064,4 +1064,234 @@ class MasterKempuController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Download Template Excel untuk Update Nilai Reused
+     */
+    public function downloadTemplateReused()
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Template Update Reused');
+
+        // Header
+        $headers = [
+            'A1' => 'ID Kempu (Wajib)',
+            'B1' => 'Nilai Reused (0 - 21)',
+            'C1' => 'Catatan / Alasan Koreksi (Opsional)',
+        ];
+
+        foreach ($headers as $cell => $value) {
+            $sheet->setCellValue($cell, $value);
+        }
+
+        // Style Header
+        $sheet->getStyle('A1:C1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:C1')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FFD1E7DD');
+
+        $sheet->getStyle('A1:C1')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+        // Contoh Data
+        $sheet->setCellValueExplicit('A2', '2609220001', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('B2', 5);
+        $sheet->setCellValue('C2', 'Penyesuaian stok opname fisik kempu');
+
+        $sheet->setCellValueExplicit('A3', '2609220002', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('B3', 12);
+        $sheet->setCellValue('C3', 'Koreksi siklus pemakaian');
+
+        $sheet->setCellValueExplicit('A4', '10599', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('B4', 18);
+        $sheet->setCellValue('C4', 'Kempu lama sinkronisasi fisik');
+
+        // Auto size columns
+        foreach (range('A', 'C') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($writer) {
+            $writer->save('php://output');
+        }, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="template_update_reused_kempu.xlsx"',
+            'Cache-Control'       => 'max-age=0',
+        ]);
+    }
+
+    /**
+     * Upload File Excel / CSV untuk Memperbarui Nilai Reused dengan mencocokkan ID Kempu
+     */
+    public function uploadReused(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xls,xlsx,csv|max:5120',
+        ], [
+            'file.required' => 'File Excel / CSV wajib diunggah.',
+            'file.mimes'    => 'Format file harus berupa Excel (.xls / .xlsx) atau CSV (.csv).',
+            'file.max'      => 'Ukuran file maksimal 5MB.',
+        ]);
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($request->file('file'));
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray();
+
+            // Hapus baris header
+            unset($rows[0]);
+
+            $errors = [];
+            $kodesInExcel = [];
+            $cleanRows = [];
+
+            foreach ($rows as $i => $row) {
+                $line = $i + 1;
+                $idKempuRaw   = strtoupper(trim((string)($row[0] ?? '')));
+                $reusedRaw    = trim((string)($row[1] ?? ''));
+                $keterangan   = trim((string)($row[2] ?? ''));
+
+                // Lewati jika seluruh baris kosong
+                if ($idKempuRaw === '' && $reusedRaw === '' && $keterangan === '') {
+                    continue;
+                }
+
+                if ($idKempuRaw === '') {
+                    $errors[] = "Baris {$line}: Kolom ID Kempu tidak boleh kosong.";
+                    continue;
+                }
+
+                if ($reusedRaw === '' || !is_numeric($reusedRaw)) {
+                    $errors[] = "Baris {$line}: Nilai Reused untuk kempu '{$idKempuRaw}' harus berupa bilangan bulat antara 0 dan 21x.";
+                    continue;
+                }
+
+                $reusedInt = (int) $reusedRaw;
+                if ($reusedInt < 0 || $reusedInt > 21) {
+                    $errors[] = "Baris {$line}: Nilai Reused ({$reusedRaw}x) pada kempu '{$idKempuRaw}' tidak valid (harus 0 - 21x).";
+                    continue;
+                }
+
+                if (in_array($idKempuRaw, $kodesInExcel)) {
+                    $errors[] = "Baris {$line}: ID Kempu '{$idKempuRaw}' terduplikasi di dalam file.";
+                    continue;
+                }
+                $kodesInExcel[] = $idKempuRaw;
+
+                $cleanRows[] = [
+                    'line'       => $line,
+                    'id_kempu'   => $idKempuRaw,
+                    'reused'     => $reusedInt,
+                    'keterangan' => $keterangan,
+                ];
+            }
+
+            if (empty($cleanRows) && empty($errors)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'File Excel / CSV kosong atau tidak memiliki data yang valid.',
+                ], 422);
+            }
+
+            if (!empty($errors)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Ditemukan kesalahan pada file. Silakan periksa data berikut:',
+                    'errors'  => $errors,
+                ], 422);
+            }
+
+            // Ambil data kempu yang cocok dari database
+            $ids = array_column($cleanRows, 'id_kempu');
+            $kempuList = MasterKempuModel::withTrashed()
+                ->with('main')
+                ->whereIn('id_kempu', $ids)
+                ->get()
+                ->keyBy(fn($k) => strtoupper(trim($k->id_kempu)));
+
+            // Validasi apakah setiap ID Kempu ada di database
+            foreach ($cleanRows as $item) {
+                if (!$kempuList->has($item['id_kempu'])) {
+                    $errors[] = "Baris {$item['line']}: ID Kempu '{$item['id_kempu']}' tidak ditemukan di sistem master.";
+                }
+            }
+
+            if (!empty($errors)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Beberapa ID Kempu tidak ditemukan di sistem master. Pastikan ID Kempu sudah terdaftar.',
+                    'errors'  => $errors,
+                ], 422);
+            }
+
+            // Eksekusi update dalam transaksi database
+            $userName = Auth::user()->nama_lengkap ?? Auth::user()->username ?? 'User';
+            $successCount = 0;
+
+            DB::transaction(function () use ($cleanRows, $kempuList, $userName, &$successCount) {
+                foreach ($cleanRows as $item) {
+                    $kempu = $kempuList->get($item['id_kempu']);
+                    $newReused = $item['reused'];
+                    $oldReused = $kempu->main?->reused_count ?? 0;
+
+                    $cycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)
+                        ->where('reused_count', $newReused)
+                        ->first();
+
+                    $mainData = [
+                        'reused_count' => $newReused,
+                        'has_barcode'  => (bool) ($cycleFilling?->has_barcode ?? true),
+                        'has_rfid'     => (bool) ($cycleFilling?->has_rfid ?? true),
+                        'has_nti'      => (bool) ($cycleFilling?->has_nti ?? true),
+                        'no_po'        => $cycleFilling?->no_po ?? null,
+                        'foto_1'       => $cycleFilling?->foto_1 ?? null,
+                        'foto_2'       => $cycleFilling?->foto_2 ?? null,
+                        'foto_3'       => $cycleFilling?->foto_3 ?? null,
+                        'foto_4'       => $cycleFilling?->foto_4 ?? null,
+                        'last_action'  => 'Upload Massal Reused oleh ' . $userName,
+                    ];
+
+                    if (!$kempu->main) {
+                        $mainData['id_kempu']         = $kempu->id_kempu;
+                        $mainData['current_location'] = MasterKempuModel::LOC_WPM;
+                        $mainData['current_status']   = MasterKempuModel::STATUS_QC_PM_PENDING;
+                        $mainData['max_reused']       = 21;
+                        $mainData['condition']        = 'OK';
+                        $kempu->main()->create($mainData);
+                    } else {
+                        $kempu->main->update($mainData);
+                    }
+
+                    if ($oldReused !== $newReused) {
+                        $notesDesc = !empty($item['keterangan']) ? " ({$item['keterangan']})" : "";
+                        $kempu->recordTracking(
+                            stage: 'MASTER_KEMPU',
+                            action: 'Koreksi Reused via Upload Excel',
+                            actionResult: 'UPDATED',
+                            fromLocation: $kempu->main?->current_location ?? MasterKempuModel::LOC_WPM,
+                            toLocation: $kempu->main?->current_location ?? MasterKempuModel::LOC_WPM,
+                            condition: $kempu->main?->condition ?? 'OK',
+                            notes: "Siklus Reused disesuaikan dari {$oldReused}x menjadi {$newReused}x via Upload Massal Excel{$notesDesc}",
+                            userId: Auth::id()
+                        );
+                    }
+
+                    $successCount++;
+                }
+            });
+
+            return response()->json([
+                'status'  => true,
+                'message' => "Upload berhasil! Sebanyak {$successCount} data kempu berhasil diperbarui nilai reused-nya.",
+                'total'   => $successCount,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal memproses file: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

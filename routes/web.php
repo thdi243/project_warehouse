@@ -1009,7 +1009,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/bulk-force-delete', [MasterKempuController::class, 'bulkForceDelete'])->name('bulk-force-delete');
             Route::get('/generate-id', [MasterKempuController::class, 'generateId'])->name('generate-id');
             Route::get('/template', [MasterKempuController::class, 'downloadTemplate'])->name('template');
+            Route::get('/template-reused', [MasterKempuController::class, 'downloadTemplateReused'])->name('template-reused');
             Route::post('/upload', [MasterKempuController::class, 'upload'])->name('upload');
+            Route::post('/upload-reused', [MasterKempuController::class, 'uploadReused'])->name('upload-reused');
             Route::get('/print-qr', [MasterKempuController::class, 'printQr'])->name('print-qr');
             Route::post('/record-print', [MasterKempuController::class, 'recordPrint'])->name('record-print');
         });

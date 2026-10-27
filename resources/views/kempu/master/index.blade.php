@@ -109,10 +109,37 @@
                             <i class="mdi mdi-cube-scan me-1"></i> Dashboard Monitoring
                         </a>
 
-                        <!-- Upload Button -->
-                        <button type="button" class="btn btn-outline-success btn-sm" id="btnUpload">
-                            <i class="ri-upload-cloud-2-line align-bottom me-1"></i> Upload Data
-                        </button>
+                        <!-- Upload Button Dropdown -->
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="btnUploadDropdown">
+                                <i class="ri-upload-cloud-2-line align-bottom me-1"></i> Upload Data
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 260px;">
+                                <li>
+                                    <a class="dropdown-item py-2" href="javascript:void(0)" id="btnUploadNew">
+                                        <div class="d-flex align-items-center">
+                                            <i class="ri-file-add-line text-success fs-18 me-2"></i>
+                                            <div>
+                                                <div class="fw-semibold">Pendaftaran Kempu Baru (GR)</div>
+                                                <small class="text-muted">Import data kempu baru via Excel</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item py-2" href="javascript:void(0)" id="btnUploadReused">
+                                        <div class="d-flex align-items-center">
+                                            <i class="ri-recycle-line text-primary fs-18 me-2"></i>
+                                            <div>
+                                                <div class="fw-semibold">Update Massal Nilai Reused</div>
+                                                <small class="text-muted">Upload Excel pencocokan ID Kempu</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
 
                         <!-- Add Button -->
                         <button type="button" class="btn btn-primary btn-sm" id="btnTambah">
@@ -457,49 +484,111 @@
         </div>
     </div>
 
-    <!-- MODAL UPLOAD EXCEL -->
+    <!-- MODAL UPLOAD EXCEL (GR & BULK UPDATE REUSED) -->
     <div class="modal fade" id="modalUpload" tabindex="-1" aria-labelledby="modalUploadLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <form id="formUpload" enctype="multipart/form-data">
-                <div class="modal-content border-0 shadow">
-                    <div class="modal-header bg-light">
-                        <h5 class="modal-title fw-bold" id="modalUploadLabel">
-                            <i class="ri-upload-cloud-2-line text-success me-1"></i> Upload Master Kempu
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light pb-2">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalUploadLabel">
+                            <i class="ri-upload-cloud-2-line text-success me-1"></i> Upload & Import Data Kempu
                         </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <p class="text-muted small mb-0">Pilih jenis data yang ingin diunggah via file Excel / CSV</p>
                     </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
 
-                    <div class="modal-body p-4">
-                        <div class="alert alert-info d-flex align-items-center justify-content-between p-2 mb-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="ri-file-excel-2-line fs-20 text-success"></i>
-                                <span class="small me-2">Gunakan template Excel resmi agar format sesuai</span>
-                            </div>
-                            <a href="{{ route('kempu.master.template') }}" class="btn btn-sm btn-success text-nowrap">
-                                <i class="ri-download-2-line me-1"></i> Template
-                            </a>
+                <div class="modal-body p-4">
+                    <!-- Nav Tabs -->
+                    <ul class="nav nav-pills nav-justified mb-4 p-1 bg-light rounded" id="uploadTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-semibold" id="tabUploadGr-tab" data-bs-toggle="pill"
+                                data-bs-target="#tabUploadGr" type="button" role="tab" aria-controls="tabUploadGr" aria-selected="true">
+                                <i class="ri-file-add-line me-1"></i> 1. Pendaftaran Baru (GR)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold" id="tabUploadReused-tab" data-bs-toggle="pill"
+                                data-bs-target="#tabUploadReused" type="button" role="tab" aria-controls="tabUploadReused" aria-selected="false">
+                                <i class="ri-recycle-line me-1"></i> 2. Update Massal Nilai Reused
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="uploadTabsContent">
+                        <!-- TAB 1: UPLOAD PENDAFTARAN GR BARU -->
+                        <div class="tab-pane fade show active" id="tabUploadGr" role="tabpanel" aria-labelledby="tabUploadGr-tab">
+                            <form id="formUpload" enctype="multipart/form-data">
+                                <div class="alert alert-info d-flex align-items-center justify-content-between p-2 mb-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="ri-file-excel-2-line fs-20 text-success"></i>
+                                        <span class="small me-2">Gunakan template Excel resmi untuk mendaftarkan kempu baru</span>
+                                    </div>
+                                    <a href="{{ route('kempu.master.template') }}" class="btn btn-sm btn-success text-nowrap">
+                                        <i class="ri-download-2-line me-1"></i> Unduh Template GR
+                                    </a>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="fileExcel" class="form-label fw-semibold">
+                                        Pilih File Excel (.xlsx / .xls) <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="file" class="form-control" id="fileExcel" name="file"
+                                        accept=".xlsx, .xls" required>
+                                    <small class="text-muted">Maksimal ukuran file: 5 MB</small>
+                                </div>
+
+                                <div id="uploadErrorAlert" class="alert alert-danger p-2 small mt-2"
+                                    style="display: none; max-height: 180px; overflow-y: auto;"></div>
+
+                                <div class="d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-success btn-sm" id="btnSubmitUpload">
+                                        <i class="ri-upload-2-line me-1"></i> Mulai Upload GR
+                                    </button>
+                                </div>
+                            </form>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="fileExcel" class="form-label fw-semibold">Pilih File Excel (.xlsx / .xls) <span
-                                    class="text-danger">*</span></label>
-                            <input type="file" class="form-control" id="fileExcel" name="file"
-                                accept=".xlsx, .xls" required>
-                            <small class="text-muted">Maksimal ukuran file: 5 MB</small>
+                        <!-- TAB 2: UPLOAD BULK UPDATE REUSED -->
+                        <div class="tab-pane fade" id="tabUploadReused" role="tabpanel" aria-labelledby="tabUploadReused-tab">
+                            <form id="formUploadReused" enctype="multipart/form-data">
+                                <div class="alert alert-primary d-flex align-items-center justify-content-between p-2 mb-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="ri-recycle-line fs-20 text-primary"></i>
+                                        <div>
+                                            <div class="small fw-bold">Update Nilai Reused dengan Cocokkan ID Kempu</div>
+                                            <div class="text-muted" style="font-size: 11px;">Upload Excel berisi ID Kempu & Reused baru (0-21x). Sistem akan otomatis memperbarui nilai reused.</div>
+                                        </div>
+                                    </div>
+                                    <a href="{{ route('kempu.master.template-reused') }}" class="btn btn-sm btn-primary text-nowrap ms-2">
+                                        <i class="ri-download-2-line me-1"></i> Unduh Template Reused
+                                    </a>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="fileExcelReused" class="form-label fw-semibold">
+                                        Pilih File Excel / CSV (.xlsx, .xls, .csv) <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="file" class="form-control" id="fileExcelReused" name="file"
+                                        accept=".xlsx, .xls, .csv" required>
+                                    <small class="text-muted">Maksimal ukuran file: 5 MB. Kolom: ID Kempu, Nilai Reused, Catatan (Opsional).</small>
+                                </div>
+
+                                <div id="uploadReusedErrorAlert" class="alert alert-danger p-2 small mt-2"
+                                    style="display: none; max-height: 180px; overflow-y: auto;"></div>
+
+                                <div class="d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary btn-sm" id="btnSubmitUploadReused">
+                                        <i class="ri-upload-cloud-2-line me-1"></i> Mulai Update Reused
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-
-                        <div id="uploadErrorAlert" class="alert alert-danger p-2 small mt-2"
-                            style="display: none; max-height: 180px; overflow-y: auto;"></div>
-                    </div>
-
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success" id="btnSubmitUpload">
-                            <i class="ri-upload-2-line me-1"></i> Mulai Upload
-                        </button>
                     </div>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -1099,14 +1188,25 @@
                 $('#btnBulkPrint, #btnBulkDeactivate, #btnBulkForceDelete, #btnBulkRestore').prop('disabled', checked === 0);
             }
 
-            // Tombol Upload Modal
-            $('#btnUpload').on('click', function() {
+            // Tombol Upload Modal - Tab Pendaftaran Baru (GR)
+            $('#btnUpload, #btnUploadNew').on('click', function() {
                 $('#formUpload')[0].reset();
                 $('#uploadErrorAlert').hide().empty();
+                const tabTrigger = new bootstrap.Tab(document.getElementById('tabUploadGr-tab'));
+                tabTrigger.show();
                 $('#modalUpload').modal('show');
             });
 
-            // Submit Form Upload Excel
+            // Tombol Upload Modal - Tab Update Massal Reused
+            $('#btnUploadReused').on('click', function() {
+                $('#formUploadReused')[0].reset();
+                $('#uploadReusedErrorAlert').hide().empty();
+                const tabTrigger = new bootstrap.Tab(document.getElementById('tabUploadReused-tab'));
+                tabTrigger.show();
+                $('#modalUpload').modal('show');
+            });
+
+            // Submit Form Upload Excel Pendaftaran Baru (GR)
             $('#formUpload').on('submit', function(e) {
                 e.preventDefault();
 
@@ -1131,7 +1231,7 @@
                     contentType: false,
                     success: function(res) {
                         $('#btnSubmitUpload').prop('disabled', false).html(
-                            '<i class="ri-upload-2-line me-1"></i> Mulai Upload');
+                            '<i class="ri-upload-2-line me-1"></i> Mulai Upload GR');
                         if (res.status) {
                             $('#modalUpload').modal('hide');
                             Swal.fire({
@@ -1147,7 +1247,7 @@
                     },
                     error: function(xhr) {
                         $('#btnSubmitUpload').prop('disabled', false).html(
-                            '<i class="ri-upload-2-line me-1"></i> Mulai Upload');
+                            '<i class="ri-upload-2-line me-1"></i> Mulai Upload GR');
                         const response = xhr.responseJSON;
                         const errorMsg = response?.message || 'Gagal memproses file Excel.';
 
@@ -1169,6 +1269,73 @@
                                 `<strong>${errorMsg}</strong>${errorList}`).show();
                         } else {
                             $('#uploadErrorAlert').html(`<strong>${errorMsg}</strong>`).show();
+                        }
+                    }
+                });
+            });
+
+            // Submit Form Upload Excel Update Massal Reused
+            $('#formUploadReused').on('submit', function(e) {
+                e.preventDefault();
+
+                const fileInput = $('#fileExcelReused')[0];
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    Swal.fire('Perhatian', 'Pilih file Excel / CSV terlebih dahulu.', 'warning');
+                    return;
+                }
+
+                const formData = new FormData(this);
+                formData.append('_token', "{{ csrf_token() }}");
+
+                $('#btnSubmitUploadReused').prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm me-1"></span> Mengunggah & Memproses...');
+                $('#uploadReusedErrorAlert').hide().empty();
+
+                $.ajax({
+                    url: "{{ route('kempu.master.upload-reused') }}",
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        $('#btnSubmitUploadReused').prop('disabled', false).html(
+                            '<i class="ri-upload-cloud-2-line me-1"></i> Mulai Update Reused');
+                        if (res.status) {
+                            $('#modalUpload').modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: res.message,
+                            });
+                            loadData();
+                        } else {
+                            Swal.fire('Gagal', res.message || 'Terjadi kesalahan saat upload.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#btnSubmitUploadReused').prop('disabled', false).html(
+                            '<i class="ri-upload-cloud-2-line me-1"></i> Mulai Update Reused');
+                        const response = xhr.responseJSON;
+                        const errorMsg = response?.message || 'Gagal memproses file Excel / CSV.';
+
+                        if (response?.errors && Array.isArray(response.errors)) {
+                            let errorList = '<ul class="mb-0 ps-3 mt-1">';
+                            response.errors.forEach(err => {
+                                errorList += `<li>${err}</li>`;
+                            });
+                            errorList += '</ul>';
+                            $('#uploadReusedErrorAlert').html(
+                                `<strong>${errorMsg}</strong>${errorList}`).show();
+                        } else if (response?.errors && typeof response.errors === 'object') {
+                            let errorList = '<ul class="mb-0 ps-3 mt-1">';
+                            Object.values(response.errors).forEach(err => {
+                                errorList += `<li>${err}</li>`;
+                            });
+                            errorList += '</ul>';
+                            $('#uploadReusedErrorAlert').html(
+                                `<strong>${errorMsg}</strong>${errorList}`).show();
+                        } else {
+                            $('#uploadReusedErrorAlert').html(`<strong>${errorMsg}</strong>`).show();
                         }
                     }
                 });
