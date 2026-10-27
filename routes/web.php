@@ -1012,6 +1012,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/template-reused', [MasterKempuController::class, 'downloadTemplateReused'])->name('template-reused');
             Route::post('/upload', [MasterKempuController::class, 'upload'])->name('upload');
             Route::post('/upload-reused', [MasterKempuController::class, 'uploadReused'])->name('upload-reused');
+            Route::get('/export', [MasterKempuController::class, 'export'])->name('export');
             Route::get('/print-qr', [MasterKempuController::class, 'printQr'])->name('print-qr');
             Route::post('/record-print', [MasterKempuController::class, 'recordPrint'])->name('record-print');
         });

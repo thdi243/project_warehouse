@@ -141,6 +141,11 @@
                             </ul>
                         </div>
 
+                        <!-- Export Button -->
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="btnExport" title="Export data kempu ke Excel">
+                            <i class="ri-file-excel-2-line align-bottom me-1"></i> Export Data
+                        </button>
+
                         <!-- Add Button -->
                         <button type="button" class="btn btn-primary btn-sm" id="btnTambah">
                             <i class="ri-add-line align-bottom me-1"></i> Tambah Kempu
@@ -2155,6 +2160,23 @@
             $('#btnPrintAll').on('click', function() {
                 const printUrl = `{{ route('kempu.master.print-qr') }}?all=1`;
                 window.open(printUrl, '_blank');
+            });
+
+            // Export Data ke Excel (.xlsx)
+            $('#btnExport').on('click', function() {
+                const selectedIds = [];
+                $('.row-checkbox:checked').each(function() {
+                    selectedIds.push($(this).val());
+                });
+
+                const currentStatus = $('#statusFilter').val() || 'all';
+
+                let exportUrl = `{{ route('kempu.master.export') }}?status=${encodeURIComponent(currentStatus)}`;
+                if (selectedIds.length > 0) {
+                    exportUrl += `&ids=${encodeURIComponent(selectedIds.join(','))}`;
+                }
+
+                window.location.href = exportUrl;
             });
 
             // Initial load

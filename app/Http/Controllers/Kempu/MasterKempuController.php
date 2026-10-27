@@ -1294,4 +1294,120 @@ class MasterKempuController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Export Data Master Kempu ke Excel (.xlsx)
+     * Kolom: ID Kempu, No SPB, Tanggal GR, RFID, Reused, Status
+     */
+    public function export(Request $request)
+    {
+        $status = $request->input('status', 'all');
+        $ids    = $request->input('ids');
+
+        $query = MasterKempuModel::with('main');
+
+        if (!empty($ids)) {
+            $idArray = is_array($ids) ? $ids : explode(',', $ids);
+            $query->withTrashed()->whereIn('id', $idArray);
+        } else {
+            if ($status === 'trashed') {
+                $query->withTrashed()->where(function ($q) {
+                    $q->whereNotNull('kempu_master.deleted_at')
+                        ->orWhere('kempu_master.status', 'nonaktif');
+                });
+            } elseif ($status === 'scrap') {
+                $query->where(function ($q) {
+                    $q->where('status', 'scrap')
+                        ->orWhere('status', 'damaged')
+                        ->orWhere('status', 'nonaktif')
+                        ->orWhereHas('main', function ($mq) {
+                            $mq->where('current_status', MasterKempuModel::STATUS_SCRAPPED);
+                        });
+                });
+            } elseif ($status === 'active') {
+                $query->where('status', 'active')
+                    ->where('status', '!=', 'nonaktif')
+                    ->whereDoesntHave('main', function ($mq) {
+                        $mq->where('current_status', MasterKempuModel::STATUS_SCRAPPED);
+                    });
+            } elseif ($status === 'all') {
+                $query->withTrashed();
+            }
+        }
+
+        $records = $query->orderBy('id_kempu')->get();
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Master Kempu');
+
+        // Headers: id kempu, spb, tgl gr, rfid, reused, status
+        $headers = [
+            'A1' => 'ID Kempu',
+            'B1' => 'No SPB',
+            'C1' => 'Tanggal GR',
+            'D1' => 'RFID',
+            'E1' => 'Reused',
+            'F1' => 'Status',
+        ];
+
+        foreach ($headers as $cell => $text) {
+            $sheet->setCellValue($cell, $text);
+        }
+
+        // Header Style
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFFFFF'));
+        $sheet->getStyle('A1:F1')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF1E3A8A'); // Primary Dark Blue
+        $sheet->getStyle('A1:F1')->getAlignment()
+            ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
+            ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $sheet->getRowDimension(1)->setRowHeight(24);
+
+        $rowIdx = 2;
+        foreach ($records as $item) {
+            $isTrashed = $item->trashed() || $item->status === 'nonaktif';
+            $statusLabel = $isTrashed ? 'Nonaktif' : ucfirst($item->status ?: 'Active');
+            if (!$isTrashed && ($item->status === 'scrap' || $item->main?->current_status === MasterKempuModel::STATUS_SCRAPPED)) {
+                $statusLabel = 'Scrap';
+            }
+
+            $grDate = $item->gr_date ? Carbon::parse($item->gr_date)->format('Y-m-d') : '-';
+            $reused = (int) ($item->main?->reused_count ?? $item->reused_count ?? 0);
+
+            $sheet->setCellValueExplicit('A' . $rowIdx, (string) $item->id_kempu, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('B' . $rowIdx, (string) ($item->no_spb ?: '-'), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValue('C' . $rowIdx, $grDate);
+            $sheet->setCellValueExplicit('D' . $rowIdx, (string) ($item->rfid ?: '-'), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValue('E' . $rowIdx, $reused);
+            $sheet->setCellValue('F' . $rowIdx, $statusLabel);
+
+            // Alignment
+            $sheet->getStyle("A{$rowIdx}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+            $sheet->getStyle("B{$rowIdx}:F{$rowIdx}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+            $rowIdx++;
+        }
+
+        $lastRow = max(2, $rowIdx - 1);
+        $sheet->getStyle("A1:F{$lastRow}")->getBorders()->getAllBorders()
+            ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
+            ->getColor()->setARGB('FFCBD5E1');
+
+        foreach (range('A', 'F') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'export_master_kempu_' . date('Ymd_His') . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($writer) {
+            $writer->save('php://output');
+        }, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control'       => 'max-age=0',
+        ]);
+    }
 }
