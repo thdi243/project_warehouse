@@ -234,7 +234,8 @@
                                     <th style="width: 48px;" class="text-center" id="colHeaderCheck">
                                         <span id="headerColNo">NO</span>
                                         <div class="form-check d-none" id="headerColCheckWrapper">
-                                            <input class="form-check-input" type="checkbox" id="checkAllTable" title="Pilih Semua">
+                                            <input class="form-check-input" type="checkbox" id="checkAllTable"
+                                                title="Pilih Semua">
                                         </div>
                                     </th>
                                     <th>PR Date</th>
@@ -278,36 +279,20 @@
 
                     <div class="alert alert-info d-none mt-3" id="level5AlertInfo">
                         <i class="mdi mdi-information-outline me-2"></i>
-                        Jika item di-checklist, maka data terkonfirmasi naik PR. Jika tidak di-checklist, maka item tersebut
-                        dicancel/tidak naik PR.
+                        Pilih item PR yang akan dinaikkan untuk No PR saat ini. Item yang <b>tidak dicentang akan tetap
+                            berstatus Outstanding</b> dan dapat dilanjutkan pada proses konfirmasi berikutnya.
                     </div>
 
                     <div class="mt-4">
-                        <h6 class="fw-bold mb-3"><i class="mdi mdi-format-list-bulleted me-2"></i>Daftar Item</h6>
-                        <div class="table-responsive" style="min-height: auto;">
-                            <table class="table table-sm table-bordered">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="item-check-col" style="width: 48px;">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="checkAllItems">
-                                            </div>
-                                        </th>
-                                        <th>MID</th>
-                                        <th>Nama Barang / Deskripsi</th>
-                                        <th>Qty</th>
-                                        <th>UoM</th>
-                                        <th>Keterangan</th>
-                                        <th>Status</th>
-                                        <th class="level5-only-col">Jenis</th>
-                                        <th class="level5-only-col">Alasan</th>
-                                        <th class="edit-item-col" style="width: 120px;">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="detailItemsBody">
-                                    <!-- Dynamic Items -->
-                                </tbody>
-                            </table>
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <h6 class="fw-bold mb-0"><i class="mdi mdi-format-list-bulleted me-2"></i>Daftar Item</h6>
+                                <span class="badge bg-secondary font-size-12" id="detailTotalItemBadge">0 Item</span>
+                            </div>
+                            <div id="batchControlButtons" class="d-flex flex-wrap align-items-center gap-2"></div>
+                        </div>
+                        <div id="detailItemsContainer">
+                            <!-- Container chunk per 10 item (bisa di-collapse & bisa dicentang satu-satu) -->
                         </div>
                     </div>
                 </div>
@@ -526,7 +511,8 @@
                 }).length;
 
                 const count5 = data.filter(pr => {
-                    const myApp = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level == 5)) && a.status === 'pending');
+                    const myApp = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a
+                        .level == 5)) && a.status === 'pending');
                     return myApp && myApp.level == 5;
                 }).length;
 
@@ -557,8 +543,19 @@
 
                 const userId = {{ Auth::id() }};
                 const filteredByLevel = data.filter(pr => {
-                    const myApp = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level == 5)) && a.status === 'pending');
+                    const myApp = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a
+                        .level == 5)) && a.status === 'pending');
                     return myApp && myApp.level == currentFilterLevel;
+                });
+
+                // Prioritaskan dokumen berstatus 'partial' agar selalu muncul di paling atas
+                filteredByLevel.sort((a, b) => {
+                    const aIsPartial = a.status === 'partial' ? 1 : 0;
+                    const bIsPartial = b.status === 'partial' ? 1 : 0;
+                    if (aIsPartial !== bIsPartial) {
+                        return bIsPartial - aIsPartial;
+                    }
+                    return (b.id || 0) - (a.id || 0);
                 });
 
                 if (filteredByLevel.length === 0) {
@@ -569,13 +566,15 @@
                 }
 
                 filteredByLevel.forEach((pr, idx) => {
-                    const myApproval = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level == 5)) && a.status === 'pending');
+                    const myApproval = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a
+                        .level == 5)) && a.status === 'pending');
                     const roleName = myApproval ? myApproval.role : '-';
                     const isLevel5 = currentFilterLevel == 5;
+                    const isPartial = pr.status === 'partial';
                     const approveText = isLevel5 ? 'Confirm' : 'Approve';
-                    const jenisBadge = pr.jenis === 'Jasa'
-                        ? '<span class="badge badge-soft-warning">Jasa</span>'
-                        : '<span class="badge badge-soft-primary">Barang</span>';
+                    const jenisBadge = pr.jenis === 'Jasa' ?
+                        '<span class="badge badge-soft-warning">Jasa</span>' :
+                        '<span class="badge badge-soft-primary">Barang</span>';
 
                     let checkboxOrIndex = `
                         <div class="form-check">
@@ -586,11 +585,41 @@
                         checkboxOrIndex = idx + 1;
                     }
 
+                    let partialBadge = '';
+                    if (isLevel5 && pr.items && pr.items.length > 0) {
+                        const prItems = pr.items.filter(i => i.jenis === 'pr');
+                        const doneCount = prItems.filter(i => i.status === true || i.status === 1).length;
+                        const pendingCount = prItems.filter(i => i.status === null || i.status ===
+                            undefined).length;
+                        if (pr.status === 'partial' || doneCount > 0) {
+                            partialBadge = `
+                                <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                                    <span class="badge badge-soft-warning font-size-11">
+                                        <i class="mdi mdi-progress-clock me-1"></i>Partial
+                                    </span>
+                                    <span class="badge badge-soft-success font-size-11">${doneCount} Naik PR</span>
+                                    <span class="badge badge-soft-danger font-size-11">${pendingCount} Outstanding</span>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    const rejectBtn = !isLevel5 ? `
+                            <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
+                                <i class="mdi mdi-close me-1"></i> Reject
+                            </button>
+                        ` : '';
+
+                    const rowBgStyle = isPartial ? 'style="background-color: rgba(255, 193, 7, 0.06);"' : '';
+
                     tbody.append(`
-                        <tr>
+                        <tr ${rowBgStyle}>
                             <td class="text-center">${checkboxOrIndex}</td>
                             <td>${pr.pr_date}</td>
-                            <td><span class="fw-bold text-primary">${pr.no_doc}</span></td>
+                            <td>
+                                <span class="fw-bold text-primary">${pr.no_doc}</span>
+                                ${partialBadge}
+                            </td>
                             <td>${pr.requested_by}</td>
                             <td><span class="badge badge-soft-info">${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</span></td>
                             <td>${jenisBadge}</td>
@@ -603,14 +632,10 @@
                                 <button class="btn btn-sm btn-success btn-action-row" data-id="${pr.id}" data-action="approved">
                                     <i class="mdi mdi-check me-1"></i> ${approveText}
                                 </button>
-                                ${!isLevel5 ? `
-                                                    <button class="btn btn-sm btn-danger btn-action-row" data-id="${pr.id}" data-action="rejected">
-                                                        <i class="mdi mdi-close me-1"></i> Reject
-                                                    </button>
-                                                    ` : ''}
+                                ${rejectBtn}
                             </div>
                         </td>
-                    </tr>
+                    </tr>   
                 `);
                 });
             }
@@ -690,6 +715,68 @@
                 filterAndRender(val);
             });
 
+            // Helper Salin Format SAP
+            function copyFormattedRowsToClipboard(items, deptCode, pr) {
+                let rows = [];
+                items.forEach(item => {
+                    const mid = item.barang?.mid_barang ?? '';
+                    const qty = item.qty ?? '';
+                    const sLoc = item.barang?.rak?.s_loc ?? item.barang?.active_stock_location?.rak
+                        ?.s_loc ?? 'G001';
+                    const plant = item.barang?.rak?.plant ?? item.barang?.active_stock_location?.rak
+                        ?.plant ?? '1006';
+                    const noIo = pr.no_io ?? '';
+
+                    const isJasa = pr.jenis == 'Jasa' || pr.jenis?.toLowerCase() === 'jasa';
+                    let colA = isJasa ? (noIo ? 'F' : 'K') : '';
+                    let colB = isJasa ? 'D' : '';
+                    let colD = isJasa ? (item.desc || '') : '';
+                    let colL = isJasa ? 113 : '';
+
+                    const row = [
+                        colA,
+                        colB,
+                        mid,
+                        colD,
+                        qty,
+                        '',
+                        '',
+                        '',
+                        '',
+                        plant,
+                        sLoc,
+                        colL,
+                        deptCode,
+                        '',
+                        noIo,
+                    ].join('\t');
+
+                    rows.push(row);
+                });
+
+                const textToCopy = rows.join('\n');
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textToCopy)
+                        .then(() => {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: `${items.length} item berhasil disalin ke format SAP`,
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            fallbackCopyText(textToCopy);
+                        });
+                } else {
+                    fallbackCopyText(textToCopy);
+                }
+            }
+
             // Handle Detail Button Click
             $(document).on('click', '.btn-detail-row', function() {
                 const id = $(this).data('id');
@@ -710,11 +797,49 @@
             function openDetailModal(pr, action) {
                 currentAction = action || 'approved';
 
-                const jenisBadge = pr.jenis === 'Jasa'
-                    ? '<span class="badge badge-soft-warning">Jasa</span>'
-                    : '<span class="badge badge-soft-primary">Barang</span>';
+                const userId = {{ Auth::id() }};
+                const myApproval = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level ==
+                    5)) && a.status === 'pending');
+                const isLevel3Or5 = myApproval && (
+                    myApproval.level == 3 ||
+                    myApproval.level == 5 ||
+                    myApproval.role === 'Manager User' ||
+                    myApproval.role === 'Foreman Wsp'
+                );
+                const isLevel5 = myApproval && (myApproval.level == 5 || myApproval.role === 'Foreman Wsp');
+                const isLevel4 = myApproval && (myApproval.level == 4 || myApproval.role ===
+                    'Manager Warehouse');
+                const isLevel2Or3 = myApproval && (
+                    myApproval.level == 2 ||
+                    myApproval.level == 3 ||
+                    myApproval.role === 'Supervisor User' ||
+                    myApproval.role === 'Manager User'
+                );
+
+                const jenisBadge = pr.jenis === 'Jasa' ?
+                    '<span class="badge badge-soft-warning">Jasa</span>' :
+                    '<span class="badge badge-soft-primary">Barang</span>';
+
+                let partialBanner = '';
+                if (isLevel5 && pr.items && pr.items.length > 0) {
+                    const prItems = pr.items.filter(i => i.jenis === 'pr');
+                    const doneCount = prItems.filter(i => i.status === true || i.status === 1).length;
+                    const pendingCount = prItems.filter(i => i.status === null || i.status === undefined).length;
+                    if (pr.status === 'partial' || doneCount > 0) {
+                        partialBanner = `
+                            <div class="alert alert-warning py-2 px-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div>
+                                    <i class="mdi mdi-alert-circle-outline me-2 fs-5"></i>
+                                    <b>Status Dokumen: Parsial</b> &mdash; Sebanyak <b>${doneCount}</b> item sudah naik No PR, <b>${pendingCount}</b> item masih <b>Outstanding</b>.
+                                </div>
+                                <span class="badge bg-warning text-dark font-size-12">${pendingCount} Item Belum Naik PR</span>
+                            </div>
+                        `;
+                    }
+                }
 
                 $('#detailContent').html(`
+                    ${partialBanner}
                     <div class="row g-3">
                         <div class="col-md-6">
                             <table class="table table-sm table-borderless mb-0">
@@ -763,28 +888,287 @@
                     </div>
                 `);
 
-                const userId = {{ Auth::id() }};
-                const myApproval = pr.approval.find(a => (a.approver_id == userId || (isLevel5Role && a.level == 5)) && a.status === 'pending');
-                const isLevel3Or5 = myApproval && (
-                    myApproval.level == 3 ||
-                    myApproval.level == 5 ||
-                    myApproval.role === 'Manager User' ||
-                    myApproval.role === 'Foreman Wsp'
-                );
-                const isLevel5 = myApproval && (myApproval.level == 5 || myApproval.role === 'Foreman Wsp');
-                const isLevel4 = myApproval && (myApproval.level == 4 || myApproval.role ===
-                    'Manager Warehouse');
-                const isLevel2Or3 = myApproval && (
-                    myApproval.level == 2 ||
-                    myApproval.level == 3 ||
-                    myApproval.role === 'Supervisor User' ||
-                    myApproval.role === 'Manager User'
-                );
+                const deptMap = {
+                    engineering: 'BAS-ENG',
+                    warehouse: 'BAS-WRH',
+                    ite: 'BAS-ENG',
+                    it: 'BAS-ENG',
+                    produksi: 'BAS-PRD',
+                    quality_control: 'BAS-QC',
+                    hrga: 'BAS-HRGA',
+                    expedisi: 'BAS-EXP',
+                    timbangan: 'BAS-EXP',
+                    hse: 'BAS-HSE'
+                };
+                const deptCode = deptMap[pr.department] ?? 'BAS-Dept User';
 
-                if (isLevel3Or5) {
-                    $('.item-check-col').show();
+                // Render Item Chunks per 10 items (Accordion / Collapsible)
+                const chunkSize = 10;
+                const totalItems = pr.items ? pr.items.length : 0;
+                $('#detailTotalItemBadge').text(`${totalItems} Item`);
+
+                const container = $('#detailItemsContainer');
+                container.empty();
+
+                const controlButtons = $('#batchControlButtons');
+                controlButtons.empty();
+
+                if (totalItems === 0) {
+                    container.html(
+                        '<div class="alert alert-secondary text-center py-4">Tidak ada item pada PR ini.</div>');
+                    $('#detailActionButtons').html(
+                        '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>'
+                        );
+                    $('#modalDetail').modal('show');
+                    return;
+                }
+
+                const chunks = [];
+                for (let i = 0; i < totalItems; i += chunkSize) {
+                    chunks.push({
+                        start: i,
+                        end: Math.min(i + chunkSize, totalItems),
+                        items: pr.items.slice(i, i + chunkSize),
+                        batchIdx: Math.floor(i / chunkSize)
+                    });
+                }
+
+                // Top batch control buttons
+                if (chunks.length > 1) {
+                    controlButtons.html(`
+                        <span class="badge bg-soft-primary text-primary px-2 py-1 font-size-12 me-1" id="counterSelectedItems">0 item dipilih</span>
+                        ${isLevel3Or5 ? `
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnSelectAllBatches">
+                                    <i class="mdi mdi-checkbox-multiple-marked-outline me-1"></i>Pilih Semua
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnUnselectAllBatches">
+                                    <i class="mdi mdi-checkbox-blank-outline me-1"></i>Batal Pilih
+                                </button>
+                            ` : ''}
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnExpandAllBatches" title="Buka semua batch">
+                            <i class="mdi mdi-unfold-more-horizontal me-1"></i>Buka Semua
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCollapseAllBatches" title="Tutup semua batch">
+                            <i class="mdi mdi-unfold-less-horizontal me-1"></i>Tutup Semua
+                        </button>
+                    `);
+                } else if (isLevel3Or5) {
+                    controlButtons.html(`
+                        <span class="badge bg-soft-primary text-primary px-2 py-1 font-size-12 me-1" id="counterSelectedItems">0 item dipilih</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnSelectAllBatches">
+                            <i class="mdi mdi-checkbox-multiple-marked-outline me-1"></i>Pilih Semua
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnUnselectAllBatches">
+                            <i class="mdi mdi-checkbox-blank-outline me-1"></i>Batal Pilih
+                        </button>
+                    `);
+                }
+
+                let accordionHtml = '<div class="accordion" id="accordionPrBatches">';
+
+                chunks.forEach((chunk, bIdx) => {
+                    const batchItems = chunk.items;
+                    const chunkPrItems = batchItems.filter(i => i.jenis === 'pr');
+                    const doneCount = chunkPrItems.filter(i => i.status === true || i.status === 1).length;
+                    const pendingCount = chunkPrItems.filter(i => i.status === null || i.status ===
+                        undefined).length;
+                    const reservasiCount = batchItems.filter(i => i.jenis === 'blocked').length;
+
+                    let batchBadgeHtml = '';
+                    if (isLevel5) {
+                        if (doneCount > 0) {
+                            batchBadgeHtml +=
+                                `<span class="badge badge-soft-success font-size-11 me-1">${doneCount} Naik PR</span>`;
+                        }
+                        if (pendingCount > 0) {
+                            batchBadgeHtml +=
+                                `<span class="badge badge-soft-warning font-size-11 me-1">${pendingCount} Outstanding</span>`;
+                        }
+                        if (reservasiCount > 0) {
+                            batchBadgeHtml +=
+                                `<span class="badge badge-soft-primary font-size-11">${reservasiCount} Reservasi</span>`;
+                        }
+                    }
+
+                    // Batch yang masih punya item outstanding default show; batch yang 100% selesai default collapse jika lebih dari 1 batch
+                    const isAllDone = isLevel5 && chunkPrItems.length > 0 && pendingCount === 0;
+                    const collapseClass = (chunks.length > 1 && isAllDone) ? 'collapse' : 'collapse show';
+
+                    let rowsHtml = '';
+                    batchItems.forEach((item, itemIdx) => {
+                        const globalIndex = chunk.start + itemIdx + 1;
+                        let checkHtml = '';
+                        let statusHtml = '';
+
+                        if (isLevel3Or5) {
+                            if (item.jenis === 'pr') {
+                                if (isLevel5) {
+                                    if (item.status === true || item.status === 1) {
+                                        checkHtml = `
+                                            <td class="item-check-col text-center" style="width: 48px;">
+                                                <i class="mdi mdi-check-circle text-success fs-5" title="Sudah dinaikkan"></i>
+                                            </td>
+                                        `;
+                                        statusHtml =
+                                            `<span class="badge badge-soft-success fw-bold d-block mb-1"><i class="mdi mdi-check me-1"></i>Naik PR: ${item.pr_number || pr.pr_number || '-'}</span>`;
+                                    } else if (item.status === false || item.status === 0) {
+                                        checkHtml = `
+                                            <td class="item-check-col text-center" style="width: 48px;">
+                                                <i class="mdi mdi-close-circle text-danger fs-5" title="Ditolak"></i>
+                                            </td>
+                                        `;
+                                        statusHtml =
+                                            `<span class="badge badge-soft-danger fw-bold d-block mb-1">Ditolak</span>`;
+                                    } else {
+                                        checkHtml = `
+                                            <td class="item-check-col text-center" style="width: 48px;">
+                                                <div class="form-check d-flex justify-content-center">
+                                                    <input class="form-check-input check-sub-item check-sub-item-batch-${bIdx}" type="checkbox" value="${item.id}" data-batch="${bIdx}" checked>
+                                                </div>
+                                            </td>
+                                        `;
+                                        statusHtml =
+                                            `<span class="badge badge-soft-warning fw-bold d-block mb-1">Outstanding</span>`;
+                                    }
+                                } else {
+                                    checkHtml = `
+                                        <td class="item-check-col text-center" style="width: 48px;">
+                                            <div class="form-check d-flex justify-content-center">
+                                                <input class="form-check-input check-sub-item check-sub-item-batch-${bIdx}" type="checkbox" value="${item.id}" data-batch="${bIdx}" checked>
+                                            </div>
+                                        </td>
+                                    `;
+                                }
+                            } else {
+                                checkHtml = `
+                                    <td class="item-check-col text-center" style="width: 48px;">
+                                        <span class="text-muted"><i class="mdi mdi-lock-outline" title="Reservasi"></i></span>
+                                    </td>
+                                `;
+                                if (isLevel5) {
+                                    statusHtml =
+                                        `<span class="badge badge-soft-primary fw-bold d-block mb-1">Reservasi</span>`;
+                                }
+                            }
+                        }
+
+                        if (!isLevel5 && item.approval && item.approval.length > 0) {
+                            item.approval.forEach(app => {
+                                const badge = app.status === 'approved' ? 'success' : (app
+                                    .status === 'rejected' ? 'danger' : 'warning');
+                                statusHtml +=
+                                    `<span class="badge badge-soft-${badge} d-block mb-1">${app.status}</span>`;
+                            });
+                        }
+
+                        let editBtnHtml = '';
+                        if (isLevel2Or3) {
+                            editBtnHtml = `
+                                <td class="edit-item-col text-center" style="width: 100px;">
+                                    <button class="btn btn-sm btn-soft-primary btn-edit-item" data-item-id="${item.id}" data-pr-id="${pr.id}">
+                                        <i class="mdi mdi-pencil"></i> Edit
+                                    </button>
+                                </td>
+                            `;
+                        } else {
+                            editBtnHtml = `<td class="edit-item-col d-none"></td>`;
+                        }
+
+                        const isJasa = pr.jenis === 'Jasa';
+                        const itemDesc = isJasa ? (item.desc || '-') : (item.barang?.nama_barang ||
+                            item.desc || '-');
+                        const midBarang = item.barang?.mid_barang || '-';
+                        const uom = item.barang?.uom || '-';
+
+                        rowsHtml += `
+                            <tr data-item-id="${item.id}">
+                                ${checkHtml}
+                                <td class="text-muted small text-center" style="width: 38px;">${globalIndex}</td>
+                                <td>${midBarang}</td>
+                                <td>${itemDesc}</td>
+                                <td class="col-qty" data-val="${item.qty}">${item.qty}</td>
+                                <td>${uom}</td>
+                                <td class="col-keterangan" data-val="${escapeHtmlAttribute(item.keterangan || '')}">
+                                    ${item.keterangan ? `
+                                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                                <span class="text-keterangan">${item.keterangan}</span>
+                                                <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
+                                                        style="flex-shrink: 0;"
+                                                        data-text="${escapeHtmlAttribute(item.keterangan)}"
+                                                        title="Copy Keterangan">
+                                                    <i class="mdi mdi-content-copy"></i>
+                                                </button>
+                                            </div>
+                                        ` : '-'}
+                                </td>
+                                <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
+                                <td class="level5-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>
+                                <td class="level5-only-col">${item.alasan || '-'}</td>
+                                ${editBtnHtml}
+                            </tr>
+                        `;
+                    });
+
+                    accordionHtml += `
+                        <div class="card border shadow-sm mb-3 overflow-hidden">
+                            <div class="card-header bg-light d-flex flex-wrap align-items-center justify-content-between py-2 px-3 gap-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseBatch${bIdx}">
+                                <div class="d-flex align-items-center gap-2">
+                                    ${isLevel3Or5 ? `
+                                            <div class="form-check m-0" onclick="event.stopPropagation();">
+                                                <input class="form-check-input check-batch" type="checkbox" data-batch="${bIdx}" id="checkBatch${bIdx}" checked title="Centang/Batal semua item dalam batch ini">
+                                            </div>
+                                        ` : ''}
+                                    <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                                        <i class="mdi mdi-chevron-down fs-5" id="iconBatch${bIdx}"></i>
+                                        <span>Batch ${bIdx + 1} <span class="fw-normal text-muted">(Item ${chunk.start + 1} - ${chunk.end})</span></span>
+                                        <span class="badge bg-secondary font-size-11">${batchItems.length} item</span>
+                                    </div>
+                                    <div class="ms-2">
+                                        ${batchBadgeHtml}
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="collapseBatch${bIdx}" class="${collapseClass}">
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    ${isLevel3Or5 ? `
+                                                            <th class="item-check-col text-center" style="width: 48px;">
+                                                                <span class="text-muted small">Pilih</span>
+                                                            </th>
+                                                        ` : ''}
+                                                    <th class="text-center" style="width: 38px;">#</th>
+                                                    <th>MID</th>
+                                                    <th>Nama Barang / Deskripsi</th>
+                                                    <th style="width: 70px;">Qty</th>
+                                                    <th style="width: 70px;">UoM</th>
+                                                    <th>Keterangan</th>
+                                                    <th style="width: 140px;">Status</th>
+                                                    <th class="level5-only-col" style="width: 90px;">Jenis</th>
+                                                    <th class="level5-only-col">Alasan</th>
+                                                    <th class="edit-item-col" style="width: 100px;">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${rowsHtml}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                accordionHtml += '</div>';
+                container.html(accordionHtml);
+
+                if (isLevel5) {
+                    $('.level5-only-col').show();
                 } else {
-                    $('.item-check-col').hide();
+                    $('.level5-only-col').hide();
                 }
 
                 if (isLevel2Or3) {
@@ -793,108 +1177,77 @@
                     $('.edit-item-col').hide();
                 }
 
-                const itemsBody = $('#detailItemsBody');
-                itemsBody.empty();
-                pr.items.forEach(item => {
-                    let checkHtml = '';
-                    if (isLevel3Or5) {
-                        if (item.jenis === 'pr') {
-                            checkHtml = `
-                            <td class="item-check-col text-center">
-                                <div class="form-check">
-                                    <input class="form-check-input check-sub-item" type="checkbox" value="${item.id}" checked>
-                                </div>
-                            </td>
-                            `;
-                        } else {
-                            checkHtml = `
-                            <td class="item-check-col text-center">
-                                <span class="text-muted">-</span>
-                            </td>
-                            `;
-                        }
-                    }
-                    let statusHtml = '';
-                    if (item.approval && item.approval.length > 0) {
-                        item.approval.forEach(app => {
-                            const badge = app.status === 'approved' ? 'success' : (app
-                                .status === 'rejected' ? 'danger' : 'warning');
-                            statusHtml +=
-                                `<span class="badge badge-soft-${badge} d-block mb-1">${app.status}</span>`;
-                        });
-                    }
+                // Update status check/counter
+                function updateSelectionCounter() {
+                    const totalSelected = $('.check-sub-item:checked').length;
+                    $('#counterSelectedItems').text(`${totalSelected} item dipilih`);
 
-                    let editBtnHtml = '';
-                    if (isLevel2Or3) {
-                        editBtnHtml = `
-                        <td class="edit-item-col text-center">
-                            <button class="btn btn-sm btn-soft-primary btn-edit-item" data-item-id="${item.id}" data-pr-id="${pr.id}">
-                                <i class="mdi mdi-pencil"></i> Edit
-                            </button>
-                        </td>
-                        `;
-                    } else {
-                        editBtnHtml = `<td class="edit-item-col d-none"></td>`;
-                    }
-
-                    const isJasa = pr.jenis === 'Jasa';
-                    const itemDesc = isJasa ? (item.desc || '-') : (item.barang?.nama_barang || item.desc || '-');
-                    const midBarang = item.barang?.mid_barang || '-';
-                    const uom = item.barang?.uom || '-';
-
-                    itemsBody.append(`
-                    <tr data-item-id="${item.id}">
-                        ${checkHtml}
-                        <td>${midBarang}</td>
-                        <td>${itemDesc}</td>
-                        <td class="col-qty" data-val="${item.qty}">${item.qty}</td>
-                        <td>${uom}</td>
-                        <td class="col-keterangan" data-val="${escapeHtmlAttribute(item.keterangan || '')}">
-                            ${item.keterangan ? `
-                                                <div class="d-flex align-items-center justify-content-between gap-2">
-                                                    <span class="text-keterangan">${item.keterangan}</span>
-                                                    <button class="btn btn-sm btn-link p-0 text-secondary border-0 btn-copy-keterangan" 
-                                                            style="flex-shrink: 0;"
-                                                            data-text="${escapeHtmlAttribute(item.keterangan)}"
-                                                            title="Copy Keterangan">
-                                                        <i class="mdi mdi-content-copy"></i>
-                                                    </button>
-                                                </div>
-                                            ` : '-'}
-                        </td>
-                        <td>${statusHtml || '<span class="badge badge-soft-warning">pending</span>'}</td>
-                        <td class="level5-only-col">${item.jenis == 'blocked' ? '<span class="badge badge-soft-primary">Reservasi</span>' : '<span class="badge badge-soft-success">PR</span>'}</td>
-                        <td class="level5-only-col">${item.alasan || '-'}</td>
-                        ${editBtnHtml}
-                    </tr>
-                `);
-                });
-
-                if (isLevel5) {
-                    $('.level5-only-col').show();
-                    $('#level5AlertInfo').removeClass('d-none');
-                } else {
-                    $('.level5-only-col').hide();
-                    $('#level5AlertInfo').addClass('d-none');
+                    chunks.forEach((chunk, bIdx) => {
+                        const totalInBatch = $(`.check-sub-item-batch-${bIdx}`).length;
+                        const checkedInBatch = $(`.check-sub-item-batch-${bIdx}:checked`).length;
+                        const allChecked = totalInBatch > 0 && totalInBatch === checkedInBatch;
+                        $(`.check-batch[data-batch="${bIdx}"]`).prop('checked', allChecked);
+                    });
                 }
 
-                const totalCheckboxes = $('.check-sub-item').length;
-                const allChecked = totalCheckboxes > 0 && $('.check-sub-item:not(:checked)').length === 0;
-                $('#checkAllItems').prop('checked', allChecked).prop('disabled', totalCheckboxes === 0);
+                updateSelectionCounter();
 
-                $('#checkAllItems').off('change').on('change', function() {
-                    $('.check-sub-item').prop('checked', $(this).is(':checked'));
-                });
-
+                // Event listener individual item checkbox (bisa dicentang satu per satu)
                 $(document).off('change', '.check-sub-item').on('change', '.check-sub-item', function() {
-                    const total = $('.check-sub-item').length;
-                    const checked = $('.check-sub-item:checked').length;
-                    $('#checkAllItems').prop('checked', total > 0 && total === checked);
+                    updateSelectionCounter();
                 });
 
+                // Event listener batch checkbox (centang semua item dalam 1 batch 10 item)
+                $(document).off('change', '.check-batch').on('change', '.check-batch', function() {
+                    const bIdx = $(this).data('batch');
+                    const isChecked = $(this).is(':checked');
+                    $(`.check-sub-item-batch-${bIdx}`).prop('checked', isChecked);
+                    updateSelectionCounter();
+                });
+
+                // Tombol Buka / Tutup Semua Batch
+                $('#btnExpandAllBatches').off('click').on('click', function() {
+                    $('#accordionPrBatches .collapse').collapse('show');
+                });
+                $('#btnCollapseAllBatches').off('click').on('click', function() {
+                    $('#accordionPrBatches .collapse').collapse('hide');
+                });
+
+                // Tombol Pilih / Batal Semua Batch
+                $('#btnSelectAllBatches').off('click').on('click', function() {
+                    $('.check-sub-item').prop('checked', true);
+                    $('.check-batch').prop('checked', true);
+                    updateSelectionCounter();
+                });
+                $('#btnUnselectAllBatches').off('click').on('click', function() {
+                    $('.check-sub-item').prop('checked', false);
+                    $('.check-batch').prop('checked', false);
+                    updateSelectionCounter();
+                });
+
+                // Tombol Salin SAP per Batch
+                $(document).off('click', '.btn-copy-sap-batch').on('click', '.btn-copy-sap-batch', function(e) {
+                    e.stopPropagation();
+                    const bIdx = parseInt($(this).data('batch'));
+                    const chunk = chunks[bIdx];
+                    if (!chunk) return;
+                    const prItems = chunk.items.filter(i => i.jenis === 'pr');
+                    if (prItems.length === 0) {
+                        Swal.fire('Info', 'Tidak ada item jenis PR pada batch ini.', 'info');
+                        return;
+                    }
+                    copyFormattedRowsToClipboard(prItems, deptCode, pr);
+                });
+
+                const totalActiveCheckboxes = $('.check-sub-item').length;
                 const approveText = isLevel4 ? 'Confirm' : (isLevel5 ? 'Confirm' : 'Approve');
 
-                if (action) {
+                if (isLevel5 && totalActiveCheckboxes === 0) {
+                    $('#detailActionButtons').html(`
+                        <span class="text-success fw-bold me-2"><i class="mdi mdi-check-all me-1"></i>Seluruh item PR telah dinaikkan</span>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    `);
+                } else if (action) {
                     const actionLabel = action === 'approved' ? approveText : 'Reject';
                     $('#detailActionButtons').html(`
                         <button type="button" class="btn btn-${action === 'approved' ? 'success' : 'danger'} btn-lanjut-action" data-action="${action}">Lanjut ${actionLabel}</button>
@@ -917,8 +1270,9 @@
                             selectedItems.push($(this).val());
                         });
 
-                        if (!isLevel5 && chosenAction === 'approved' && selectedItems.length === 0) {
-                            Swal.fire('Peringatan', 'Harap pilih minimal satu item untuk diproses.',
+                        if (chosenAction === 'approved' && selectedItems.length === 0) {
+                            Swal.fire('Peringatan',
+                                'Harap pilih minimal satu item outstanding untuk dinaikkan.',
                                 'warning');
                             return;
                         }
@@ -996,7 +1350,8 @@
 
                 // Summary Info di dalam Modal Action
                 const countDocs = selectedIds.length;
-                const selectedPRs = allPending.filter(p => selectedIds.includes(p.id) || selectedIds.includes(String(p.id)));
+                const selectedPRs = allPending.filter(p => selectedIds.includes(p.id) || selectedIds.includes(
+                    String(p.id)));
                 const docNumbers = selectedPRs.map(p => p.no_doc).filter(Boolean);
                 const actionLabel = isApproved ? (isLevel5 ? 'Confirm' : 'Approve') : 'Reject';
 
@@ -1016,9 +1371,11 @@
                     const noDoc = pr ? pr.no_doc : (docNumbers[0] || '-');
                     let itemsDetail = '';
                     if (window.currentSelectedItems && window.currentSelectedItems.length > 0) {
-                        itemsDetail = `<span class="badge bg-primary ms-1">${window.currentSelectedItems.length} item dipilih</span>`;
+                        itemsDetail =
+                            `<span class="badge bg-primary ms-1">${window.currentSelectedItems.length} item dipilih</span>`;
                     } else if (pr && pr.items && pr.items.length > 0) {
-                        itemsDetail = `<span class="badge bg-secondary ms-1">Semua (${pr.items.length}) item</span>`;
+                        itemsDetail =
+                            `<span class="badge bg-secondary ms-1">Semua (${pr.items.length}) item</span>`;
                     }
                     summaryHtml = `
                         <div class="d-flex align-items-center gap-2">
@@ -1092,11 +1449,14 @@
                 };
 
                 const countDocs = selectedIds.length;
-                const selectedPRs = allPending.filter(p => selectedIds.includes(p.id) || selectedIds.includes(String(p.id)));
+                const selectedPRs = allPending.filter(p => selectedIds.includes(p.id) || selectedIds
+                    .includes(String(p.id)));
                 const docNumbers = selectedPRs.map(p => p.no_doc).filter(Boolean);
                 const isApprove = currentAction === 'approved';
-                const actionVerb = isApprove ? (isLevel5 ? 'konfirmasi (confirm)' : 'menyetujui') : 'menolak';
-                const actionTitle = isApprove ? (isLevel5 ? 'Konfirmasi PR (Confirm)' : 'Konfirmasi Approval PR') : 'Konfirmasi Penolakan PR';
+                const actionVerb = isApprove ? (isLevel5 ? 'konfirmasi (confirm)' : 'menyetujui') :
+                    'menolak';
+                const actionTitle = isApprove ? (isLevel5 ? 'Konfirmasi PR (Confirm)' :
+                    'Konfirmasi Approval PR') : 'Konfirmasi Penolakan PR';
 
                 let confirmHtml = '';
                 if (countDocs > 1) {
@@ -1114,9 +1474,11 @@
                     const noDoc = pr ? pr.no_doc : (docNumbers[0] || '-');
                     let itemInfoHtml = '';
                     if (window.currentSelectedItems && window.currentSelectedItems.length > 0) {
-                        itemInfoHtml = `<div class="mt-2 small text-muted"><i class="mdi mdi-checkbox-marked-circle-outline text-success me-1"></i>Jumlah item terpilih: <b class="text-dark">${window.currentSelectedItems.length} item</b></div>`;
+                        itemInfoHtml =
+                            `<div class="mt-2 small text-muted"><i class="mdi mdi-checkbox-marked-circle-outline text-success me-1"></i>Jumlah item terpilih: <b class="text-dark">${window.currentSelectedItems.length} item</b></div>`;
                     } else if (pr && pr.items && pr.items.length > 0) {
-                        itemInfoHtml = `<div class="mt-2 small text-muted"><i class="mdi mdi-format-list-bulleted me-1"></i>Total item: <b class="text-dark">${pr.items.length} item</b></div>`;
+                        itemInfoHtml =
+                            `<div class="mt-2 small text-muted"><i class="mdi mdi-format-list-bulleted me-1"></i>Total item: <b class="text-dark">${pr.items.length} item</b></div>`;
                     }
 
                     confirmHtml = `
@@ -1138,9 +1500,9 @@
                     html: confirmHtml,
                     icon: isApprove ? 'question' : 'warning',
                     showCancelButton: true,
-                    confirmButtonText: isApprove 
-                        ? `<i class="mdi mdi-check me-1"></i> Ya, ${isLevel5 ? 'Confirm' : 'Approve'}` 
-                        : `<i class="mdi mdi-close me-1"></i> Ya, Tolak`,
+                    confirmButtonText: isApprove ?
+                        `<i class="mdi mdi-check me-1"></i> Ya, ${isLevel5 ? 'Confirm' : 'Approve'}` :
+                        `<i class="mdi mdi-close me-1"></i> Ya, Tolak`,
                     cancelButtonText: 'Batal',
                     confirmButtonColor: isApprove ? '#198754' : '#dc3545',
                     cancelButtonColor: '#6c757d',

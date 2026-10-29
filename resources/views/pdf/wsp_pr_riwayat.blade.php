@@ -152,7 +152,11 @@
                     <strong>PR No</strong>
                 </td>
                 <td style="width: 35%; padding-top: 10px;">
-                    : {{ $pr->pr_number ?? '-' }}
+                    @php
+                        $itemPrNumbers = $pr->items ? $pr->items->pluck('pr_number')->filter()->unique()->values() : collect();
+                        $displayPrNumber = $itemPrNumbers->isNotEmpty() ? $itemPrNumbers->implode(', ') : ($pr->pr_number ?? '-');
+                    @endphp
+                    : {{ $displayPrNumber }}
                 </td>
                 <td style="width: 15%; padding-left: 30px; padding-top: 10px;">
                     <strong>Jenis PR</strong>

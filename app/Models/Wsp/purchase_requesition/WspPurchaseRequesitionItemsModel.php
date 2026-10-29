@@ -18,6 +18,7 @@ class WspPurchaseRequesitionItemsModel extends Model
         'keterangan',
         'alasan',
         'status',
+        'pr_number',
         'desc',
     ];
 

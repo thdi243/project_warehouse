@@ -170,6 +170,7 @@
                                 <option value="3">Level 3</option>
                                 <option value="4">Level 4</option>
                                 <option value="5">Level 5</option>
+                                <option value="partial">Partial</option>
                                 <option value="rejected">Rejected</option>
                             </select>
                         </div>
@@ -384,6 +385,10 @@
                                     <th>Status</th>
                                     <td id="d_status">-</td>
                                 </tr>
+                                <tr>
+                                    <th>No PR (SAP)</th>
+                                    <td id="d_pr_number">-</td>
+                                </tr>
                             </table>
                         </div>
                     </div>
@@ -401,6 +406,7 @@
                                     <th>UOM</th>
                                     <th>Keterangan</th>
                                     <th>Jenis</th>
+                                    <th>No PR (SAP)</th>
                                     <th>Alasan</th>
                                     <th class="text-center">Status Manager User</th>
                                     <th class="text-center">Status Manager WRH</th>
@@ -408,7 +414,7 @@
                             </thead>
                             <tbody id="detailItems">
                                 <tr>
-                                    <td colspan="9" class="text-center">Loading...</td>
+                                    <td colspan="11" class="text-center">Loading...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -594,6 +600,7 @@
                     'pending': 'warning',
                     'approved': 'success',
                     'finished': 'info',
+                    'partial': 'warning',
                     'rejected': 'danger',
                 };
 
@@ -609,6 +616,9 @@
                     } else if (pr.status === 'finished') {
                         statusText = 'FINISHED';
                         badgeClass = 'success';
+                    } else if (pr.status === 'partial') {
+                        statusText = 'PARTIAL';
+                        badgeClass = 'warning';
                     } else {
                         let maxApprovedLevel = 1;
                         if (pr.approval && pr.approval.length > 0) {
@@ -635,6 +645,30 @@
                             badgeClass = 'warning';
                             statusText = `LEVEL ${maxApprovedLevel}`;
                         }
+                    }
+
+                    // Ambil seluruh nomor PR unik dari item maupun header
+                    const itemPrNumbers = [];
+                    if (pr.items && pr.items.length > 0) {
+                        pr.items.forEach(item => {
+                            if (item.pr_number && !itemPrNumbers.includes(item.pr_number)) {
+                                itemPrNumbers.push(item.pr_number);
+                            }
+                        });
+                    }
+                    if (itemPrNumbers.length === 0 && pr.pr_number) {
+                        itemPrNumbers.push(pr.pr_number);
+                    }
+
+                    let prNumberHtml = '-';
+                    if (itemPrNumbers.length === 1) {
+                        prNumberHtml = `<span class="fw-semibold text-dark">${itemPrNumbers[0]}</span>`;
+                    } else if (itemPrNumbers.length > 1) {
+                        prNumberHtml = `
+                            <div class="d-flex flex-wrap gap-1 align-items-center">
+                                ${itemPrNumbers.map(no => `<span class="badge badge-soft-primary font-size-11" title="No PR SAP"><i class="mdi mdi-pound me-0.5"></i>${no}</span>`).join('')}
+                            </div>
+                        `;
                     }
 
                     const hasCancelledItems = pr.items && pr.items.some(item =>
@@ -672,7 +706,7 @@
                             <td class="text-center">${startIndex + index + 1}</td>
                             <td>${pr.pr_date}</td>
                             <td>${pr.no_doc}</td>
-                            <td>${pr.pr_number ?? '-'}</td>
+                            <td>${prNumberHtml}</td>
                             <td>${pr.requested_by}</td>
                             <td>${(pr.department ?? '').replace(/_/g, ' ').toUpperCase()}</td>
                             <td>
@@ -927,24 +961,49 @@
                 $('#d_jenis').text(pr.jenis ?? '-');
                 $('#d_detail_jenis').text(pr.detail_jenis ?? '-');
                 $('#d_no_io').text(pr.no_io ?? '-');
-                $('#d_status').html(
-                    `<span class="badge bg-warning text-dark">${pr.status}</span>`
-                );
 
+                let statusBadge = `<span class="badge bg-warning text-dark text-uppercase">${pr.status}</span>`;
+                if (pr.status === 'finished') {
+                    statusBadge = `<span class="badge bg-success text-uppercase">FINISHED</span>`;
+                } else if (pr.status === 'rejected') {
+                    statusBadge = `<span class="badge bg-danger text-uppercase">REJECTED</span>`;
+                } else if (pr.status === 'partial') {
+                    statusBadge = `<span class="badge bg-warning text-dark text-uppercase">PARTIAL</span>`;
+                }
+                $('#d_status').html(statusBadge);
 
-                renderDetailItems(pr.items, pr.jenis);
+                // Kumpulkan No PR unik (bisa multi jika parsial)
+                const itemPrNumbers = [];
+                if (pr.items && pr.items.length > 0) {
+                    pr.items.forEach(item => {
+                        if (item.pr_number && !itemPrNumbers.includes(item.pr_number)) {
+                            itemPrNumbers.push(item.pr_number);
+                        }
+                    });
+                }
+                if (itemPrNumbers.length === 0 && pr.pr_number) {
+                    itemPrNumbers.push(pr.pr_number);
+                }
+
+                let detailPrNumberHtml = '-';
+                if (itemPrNumbers.length > 0) {
+                    detailPrNumberHtml = itemPrNumbers.map(no => `<span class="badge badge-soft-primary font-size-12 me-1"><i class="mdi mdi-pound me-0.5"></i>${no}</span>`).join(' ');
+                }
+                $('#d_pr_number').html(detailPrNumberHtml);
+
+                renderDetailItems(pr.items, pr.jenis, pr.pr_number);
 
                 $('#modalDetailPR').modal('show');
             };
 
-            function renderDetailItems(items, prJenis = '') {
+            function renderDetailItems(items, prJenis = '', parentPrNumber = null) {
                 const tbody = $('#detailItems');
                 tbody.empty();
 
                 if (!items || items.length === 0) {
                     tbody.html(`
                         <tr>
-                            <td colspan="9" class="text-center text-muted">
+                            <td colspan="11" class="text-center text-muted">
                                 Tidak ada item
                             </td>
                         </tr>
@@ -987,6 +1046,19 @@
                         const desc = prJenis === 'Jasa' ? (item.desc || '-') : (item.barang?.nama_barang ||
                             item.desc || '-');
 
+                        let itemPrDisplay = '-';
+                        if (item.pr_number) {
+                            itemPrDisplay = `<span class="badge badge-soft-primary font-size-11 fw-bold"><i class="mdi mdi-pound me-0.5"></i>${item.pr_number}</span>`;
+                        } else if (item.jenis === 'blocked') {
+                            itemPrDisplay = `<span class="badge badge-soft-danger font-size-11">Reservasi</span>`;
+                        } else if (item.status === true && parentPrNumber) {
+                            itemPrDisplay = `<span class="badge badge-soft-primary font-size-11 fw-bold"><i class="mdi mdi-pound me-0.5"></i>${parentPrNumber}</span>`;
+                        } else if (item.status === false || item.status === 0 || item.status === '0') {
+                            itemPrDisplay = `<span class="badge badge-soft-secondary font-size-11">Dibatalkan</span>`;
+                        } else {
+                            itemPrDisplay = `<span class="badge badge-soft-warning font-size-11">Outstanding</span>`;
+                        }
+
                         tbody.append(`
                             <tr>
                                 <td>${i + 1}</td>
@@ -996,6 +1068,7 @@
                                 <td>${item.barang?.uom ?? '-'}</td>
                                 <td>${keteranganHtml}</td>
                                 <td><span class="badge ${badgeClass}">${jenisText}</span></td>
+                                <td>${itemPrDisplay}</td>
                                 <td>${item.alasan ?? '-'}</td>
                                 <td class="text-center">${formatBadge(statusUser)}</td>
                                 <td class="text-center">${formatBadge(statusWrh)}</td>

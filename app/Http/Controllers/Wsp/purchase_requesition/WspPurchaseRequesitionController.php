@@ -604,7 +604,7 @@ class WspPurchaseRequesitionController extends Controller
     {
         $query = WspPurchaseRequesitionModel::with(
             'user',
-            'items:id,pr_id,barang_id,jenis,qty,alasan,keterangan,desc',
+            'items:id,pr_id,barang_id,jenis,qty,alasan,keterangan,desc,status,pr_number',
             'items.barang:id,mid_barang,nama_barang,uom',
             'items.approval.approval',
             'approval.approver',
@@ -636,6 +636,7 @@ class WspPurchaseRequesitionController extends Controller
                     ->orWhereHas('items', function ($itemQuery) use ($search) {
                         $itemQuery->where('desc', 'like', "%{$search}%")
                             ->orWhere('keterangan', 'like', "%{$search}%")
+                            ->orWhere('pr_number', 'like', "%{$search}%")
                             ->orWhereHas('barang', function ($barangQuery) use ($search) {
                                 $barangQuery->where('mid_barang', 'like', "%{$search}%")
                                     ->orWhere('nama_barang', 'like', "%{$search}%");
@@ -1079,6 +1080,7 @@ class WspPurchaseRequesitionController extends Controller
                     ->orWhereHas('items', function ($itemQuery) use ($search) {
                         $itemQuery->where('desc', 'like', "%{$search}%")
                             ->orWhere('keterangan', 'like', "%{$search}%")
+                            ->orWhere('pr_number', 'like', "%{$search}%")
                             ->orWhereHas('barang', function ($barangQuery) use ($search) {
                                 $barangQuery->where('mid_barang', 'like', "%{$search}%")
                                     ->orWhere('nama_barang', 'like', "%{$search}%");
@@ -1643,7 +1645,8 @@ class WspPurchaseRequesitionController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Aksi berhasil diproses'
+                'message' => $res['message'] ?? 'Aksi berhasil diproses',
+                'is_partial' => $res['is_partial'] ?? false
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1776,96 +1779,185 @@ class WspPurchaseRequesitionController extends Controller
         }
 
         $approvalUpdateData = [
-            'status'    => $status,
             'catatan'   => $comment,
             'action_at' => now(),
             'action_by' => $userId,
         ];
 
-        if ($approval->level == 5) {
+        if ($currentLevel == 5) {
             $approvalUpdateData['approver_id'] = $userId;
-        }
 
-        $approval->update($approvalUpdateData);
-
-        if ($noPr) {
-            $pr->update(['pr_number' => $noPr]);
-        }
-
-        // Refresh status PR
-        if ($status === 'rejected') {
-            $pr->update(['status' => 'rejected']);
-            if ($currentLevel == 5) {
-                $pr->items()->update(['status' => false]);
-            }
-
-            // Send notification and email to the creator of the PR
-            $this->sendRejectionNotification($pr, $approval);
-        } else if ($status === 'approved') {
-            if ($currentLevel == 3) {
-                // Auto-approve level 4 (Manager Warehouse)
-                $level4Approval = $pr->approval()
-                    ->where('level', 4)
-                    ->where('status', 'pending')
-                    ->first();
-
-                if ($level4Approval) {
-                    $level4Approval->update([
-                        'status'    => 'approved',
-                        'action_at' => now(),
-                        'action_by' => $userId,
-                        'catatan'   => 'Auto Approved'
-                    ]);
-
-                    // Copy item approval status/catatan from level 3 to level 4
-                    $level3ItemApprovals = WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)->get();
-                    if ($level3ItemApprovals->isNotEmpty()) {
-                        foreach ($level3ItemApprovals as $l3ItemApproval) {
-                            WspPurchaseRequesitionItemApprovalModel::where('approval_id', $level4Approval->id)
-                                ->where('pr_item_id', $l3ItemApproval->pr_item_id)
-                                ->update([
-                                    'status'  => $l3ItemApproval->status,
-                                    'catatan' => $l3ItemApproval->catatan ?: 'Auto Approved'
-                                ]);
-                        }
-                    } else {
-                        WspPurchaseRequesitionItemApprovalModel::where('approval_id', $level4Approval->id)
-                            ->update([
-                                'status'  => 'approved',
-                                'catatan' => 'Auto Approved'
-                            ]);
-                    }
-                }
-            }
-
-            if ($currentLevel == 4) {
-                $pr->update(['status' => 'approved']);
-            } else if ($currentLevel == 5) {
-                $pr->update(['status' => 'finished']);
-
-                // Set all 'blocked' (reservasi) items to true because they are confirmed automatically
+            if ($status === 'approved') {
+                // Konfirmasi otomatis semua item reservasi (blocked)
                 $pr->items()->where('jenis', 'blocked')->update(['status' => true]);
 
+                // Update item 'pr' yang dipilih / dicentang
+                $selectedPrItemsQuery = $pr->items()->where('jenis', 'pr');
                 if (!empty($itemIds)) {
-                    $pr->items()->where('jenis', 'pr')->whereIn('id', $itemIds)->update(['status' => true]);
-                    $pr->items()->where('jenis', 'pr')->whereNotIn('id', $itemIds)->update(['status' => false]);
+                    $selectedPrItemsQuery->whereIn('id', $itemIds);
                 } else {
-                    $pr->items()->where('jenis', 'pr')->update(['status' => false]);
+                    $selectedPrItemsQuery->whereNull('status');
+                }
+
+                $selectedPrItemsQuery->update([
+                    'status'    => true,
+                    'pr_number' => $noPr,
+                ]);
+
+                // Hitung sisa item jenis 'pr' yang masih outstanding (status IS NULL)
+                $remainingPendingCount = $pr->items()->where('jenis', 'pr')->whereNull('status')->count();
+                $processedCount = !empty($itemIds) ? count($itemIds) : $pr->items()->where('jenis', 'pr')->where('status', true)->count();
+
+                if ($remainingPendingCount > 0) {
+                    // Masih ada item PR yang belum dinaikkan (Partial Confirmation)
+                    $pr->update(['status' => 'partial']);
+                    if (empty($pr->pr_number) && $noPr) {
+                        $pr->update(['pr_number' => $noPr]);
+                    }
+
+                    // Approval Level 5 TETAP berstatus 'pending' agar PR tetap muncul di tab Level 5 Admin WSP
+                    $approvalUpdateData['status'] = 'pending';
+                    $approval->update($approvalUpdateData);
+
+                    return [
+                        'status'     => true,
+                        'is_partial' => true,
+                        'message'    => "Sebanyak {$processedCount} item PR berhasil dinaikkan dengan No PR {$noPr}. Masih ada {$remainingPendingCount} item outstanding yang dapat dilanjut nanti.",
+                    ];
+                } else {
+                    // Semua item PR sudah selesai dinaikkan
+                    $pr->update(['status' => 'finished']);
+                    if (empty($pr->pr_number) && $noPr) {
+                        $pr->update(['pr_number' => $noPr]);
+                    }
+
+                    $approvalUpdateData['status'] = 'approved';
+                    $approval->update($approvalUpdateData);
+
+                    return [
+                        'status'     => true,
+                        'is_partial' => false,
+                        'message'    => "Semua item PR berhasil disetujui dengan No PR {$noPr}. Dokumen PR selesai (Finished).",
+                    ];
+                }
+            } else if ($status === 'rejected') {
+                if (!empty($itemIds)) {
+                    // Reject item terpilih saja
+                    $pr->items()->whereIn('id', $itemIds)->update([
+                        'status'  => false,
+                        'alasan'  => $comment,
+                    ]);
+
+                    $remainingPendingCount = $pr->items()->where('jenis', 'pr')->whereNull('status')->count();
+
+                    if ($remainingPendingCount > 0) {
+                        $pr->update(['status' => 'partial']);
+                        $approvalUpdateData['status'] = 'pending';
+                        $approval->update($approvalUpdateData);
+
+                        return [
+                            'status'     => true,
+                            'is_partial' => true,
+                            'message'    => "Item yang dipilih berhasil ditolak. Masih ada {$remainingPendingCount} item outstanding.",
+                        ];
+                    } else {
+                        $hasApproved = $pr->items()->where('status', true)->exists();
+                        $pr->update(['status' => $hasApproved ? 'finished' : 'rejected']);
+                        $approvalUpdateData['status'] = $hasApproved ? 'approved' : 'rejected';
+                        $approval->update($approvalUpdateData);
+
+                        if (!$hasApproved) {
+                            $this->sendRejectionNotification($pr, $approval);
+                        }
+
+                        return [
+                            'status'     => true,
+                            'is_partial' => false,
+                            'message'    => "Item yang dipilih ditolak. Seluruh item PR telah selesai diproses.",
+                        ];
+                    }
+                } else {
+                    // Reject seluruh dokumen PR
+                    $pr->update(['status' => 'rejected']);
+                    $pr->items()->whereNull('status')->update(['status' => false]);
+                    $approvalUpdateData['status'] = 'rejected';
+                    $approval->update($approvalUpdateData);
+
+                    $this->sendRejectionNotification($pr, $approval);
+
+                    return [
+                        'status'  => true,
+                        'message' => 'Dokumen PR berhasil ditolak.'
+                    ];
+                }
+            }
+        } else {
+            // Flow untuk Level 1 s.d. Level 4
+            $approvalUpdateData['status'] = $status;
+            $approval->update($approvalUpdateData);
+
+            if ($noPr) {
+                $pr->update(['pr_number' => $noPr]);
+            }
+
+            // Refresh status PR
+            if ($status === 'rejected') {
+                $pr->update(['status' => 'rejected']);
+                $this->sendRejectionNotification($pr, $approval);
+            } else if ($status === 'approved') {
+                if ($currentLevel == 3) {
+                    // Auto-approve level 4 (Manager Warehouse)
+                    $level4Approval = $pr->approval()
+                        ->where('level', 4)
+                        ->where('status', 'pending')
+                        ->first();
+
+                    if ($level4Approval) {
+                        $level4Approval->update([
+                            'status'    => 'approved',
+                            'action_at' => now(),
+                            'action_by' => $userId,
+                            'catatan'   => 'Auto Approved'
+                        ]);
+
+                        // Copy item approval status/catatan from level 3 to level 4
+                        $level3ItemApprovals = WspPurchaseRequesitionItemApprovalModel::where('approval_id', $approval->id)->get();
+                        if ($level3ItemApprovals->isNotEmpty()) {
+                            foreach ($level3ItemApprovals as $l3ItemApproval) {
+                                WspPurchaseRequesitionItemApprovalModel::where('approval_id', $level4Approval->id)
+                                    ->where('pr_item_id', $l3ItemApproval->pr_item_id)
+                                    ->update([
+                                        'status'  => $l3ItemApproval->status,
+                                        'catatan' => $l3ItemApproval->catatan ?: 'Auto Approved'
+                                    ]);
+                            }
+                        } else {
+                            WspPurchaseRequesitionItemApprovalModel::where('approval_id', $level4Approval->id)
+                                ->update([
+                                    'status'  => 'approved',
+                                    'catatan' => 'Auto Approved'
+                                ]);
+                        }
+                    }
+                }
+
+                if ($currentLevel == 4) {
+                    $pr->update(['status' => 'approved']);
+                }
+
+                // Notify next level (find next pending level dynamically)
+                $nextApproval = $pr->approval()
+                    ->where('status', 'pending')
+                    ->orderBy('level', 'asc')
+                    ->first();
+
+                if ($nextApproval) {
+                    $this->sendNotification($pr, $nextApproval);
                 }
             }
 
-            // Notify next level (find next pending level dynamically)
-            $nextApproval = $pr->approval()
-                ->where('status', 'pending')
-                ->orderBy('level', 'asc')
-                ->first();
-
-            if ($nextApproval) {
-                $this->sendNotification($pr, $nextApproval);
-            }
+            return ['status' => true];
         }
-
-        return ['status' => true];
     }
 
     public function getPendingApprovals()
@@ -1875,6 +1967,7 @@ class WspPurchaseRequesitionController extends Controller
         $isLevel5Role = $user->hasRole('level_5_pr') || ($user->jabatan === 'foreman' && $user->bagian === 'warehouse_sparepart');
 
         // Ambil PR yang user terlibat sebagai approver pending, atau jika user punya role level 5, sertakan juga level 5 pending
+        // Prioritaskan dokumen berstatus 'partial' agar muncul di paling atas
         $prs = WspPurchaseRequesitionModel::whereHas('approval', function ($q) use ($userId, $isLevel5Role) {
             $q->where(function ($sub) use ($userId, $isLevel5Role) {
                 $sub->where('approver_id', $userId);
@@ -1884,6 +1977,7 @@ class WspPurchaseRequesitionController extends Controller
             })->where('status', 'pending');
         })
             ->with(['approval', 'items.barang', 'user'])
+            ->orderByRaw("CASE WHEN wsp_purchase_requesition.status = 'partial' THEN 0 ELSE 1 END")
             ->latest()
             ->get();
 
@@ -1924,6 +2018,7 @@ class WspPurchaseRequesitionController extends Controller
         $userId = Auth::id();
         $successCount = 0;
         $errors = [];
+        $lastSuccessMessage = null;
 
         foreach ($request->ids as $id) {
             try {
@@ -1942,6 +2037,9 @@ class WspPurchaseRequesitionController extends Controller
                 if ($res['status']) {
                     DB::commit();
                     $successCount++;
+                    if (!empty($res['message'])) {
+                        $lastSuccessMessage = $res['message'];
+                    }
                 } else {
                     DB::rollBack();
                     $errors[] = "PR ID $id: " . $res['message'];
@@ -1952,9 +2050,13 @@ class WspPurchaseRequesitionController extends Controller
             }
         }
 
+        $responseMessage = ($successCount === 1 && $lastSuccessMessage)
+            ? $lastSuccessMessage
+            : ("Berhasil memproses $successCount data." . (count($errors) > 0 ? " Terjadi " . count($errors) . " kesalahan." : ""));
+
         return response()->json([
             'success' => true,
-            'message' => "Berhasil memproses $successCount data." . (count($errors) > 0 ? " Terjadi " . count($errors) . " kesalahan." : ""),
+            'message' => $responseMessage,
             'errors' => $errors
         ]);
     }
@@ -2603,7 +2705,7 @@ class WspPurchaseRequesitionController extends Controller
                 'pr_date' => $pr ? ($pr->pr_date ? Carbon::parse($pr->pr_date)->format('d/m/Y') : '-') : '-',
                 'pr_date_raw' => $pr ? $pr->pr_date : null,
                 'no_doc' => $pr->no_doc ?? '-',
-                'pr_number' => $pr->pr_number ?? '-',
+                'pr_number' => $item->pr_number ?? $pr->pr_number ?? '-',
                 'department' => $pr ? strtoupper(str_replace('_', ' ', $pr->department ?? '')) : '-',
                 'requested_by' => $pr->requested_by ?? '-',
                 'kategori_pr' => $pr->jenis ?? 'Barang',
