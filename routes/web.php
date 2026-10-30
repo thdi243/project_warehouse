@@ -1085,6 +1085,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/confirm', [KempuPasController::class, 'confirm'])->name('confirm');
             Route::post('/update-reused', [KempuPasController::class, 'updateReused'])->name('update_reused');
             Route::get('/recent-scans', [KempuPasController::class, 'recentScans'])->name('recent_scans');
+            Route::get('/report', [KempuPasController::class, 'report'])->name('report');
+            Route::get('/report/data', [KempuPasController::class, 'reportData'])->name('report_data');
+            Route::get('/report/export', [KempuPasController::class, 'exportReport'])->name('report_export');
         });
     });
 });

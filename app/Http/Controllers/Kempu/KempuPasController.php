@@ -610,4 +610,244 @@ class KempuPasController extends Controller
             'data'   => $list,
         ]);
     }
+
+    /**
+     * Halaman Report / Laporan Scan Kempu Warehouse PAS
+     */
+    public function report(Request $request)
+    {
+        $cards = self::getCards();
+
+        $totalCurrentPas = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_location', MasterKempuModel::LOC_PAS);
+        })->count();
+
+        $totalTransferInToday = KempuTrackingHistoryModel::where('stage', 'PAS')
+            ->where('action', 'like', '%Transfer in%')
+            ->whereDate('created_at', today())
+            ->count();
+
+        $totalTransferInAll = KempuTrackingHistoryModel::where('stage', 'PAS')
+            ->where('action', 'like', '%Transfer in%')
+            ->count();
+
+        $totalTransferOutToday = KempuTrackingHistoryModel::where('stage', 'PAS')
+            ->where('action', 'like', '%Transfer Out%')
+            ->whereDate('created_at', today())
+            ->count();
+
+        $totalTransferOutAll = KempuTrackingHistoryModel::where('stage', 'PAS')
+            ->where('action', 'like', '%Transfer Out%')
+            ->count();
+
+        $totalWarning = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_location', MasterKempuModel::LOC_PAS)
+                ->where('reused_count', '>=', 18);
+        })->count();
+
+        return view('kempu.pas.report', compact(
+            'cards',
+            'totalCurrentPas',
+            'totalTransferInToday',
+            'totalTransferInAll',
+            'totalTransferOutToday',
+            'totalTransferOutAll',
+            'totalWarning'
+        ));
+    }
+
+    /**
+     * AJAX Endpoint untuk Data Report Kempu PAS (Server-side Pagination & Filtering)
+     */
+    public function reportData(Request $request)
+    {
+        $viewMode = $request->input('view_mode', 'history'); // 'history' | 'current'
+        $perPage  = min(100, max(5, (int) $request->input('per_page', 20)));
+
+        if ($viewMode === 'current') {
+            // Data kempu yang saat ini berada di lokasi PAS
+            $query = MasterKempuModel::whereHas('main', function ($q) {
+                $q->where('current_location', MasterKempuModel::LOC_PAS);
+            })->with(['main', 'createdBy:id,username,nama_lengkap']);
+
+            if ($request->filled('search')) {
+                $s = trim($request->search);
+                $query->where(function ($q) use ($s) {
+                    $q->where('id_kempu', 'like', "%{$s}%")
+                        ->orWhere('rfid', 'like', "%{$s}%")
+                        ->orWhere('no_spb', 'like', "%{$s}%")
+                        ->orWhere('keterangan', 'like', "%{$s}%");
+                });
+            }
+
+            if ($request->filled('reused_status')) {
+                $query->whereHas('main', function ($q) use ($request) {
+                    if ($request->reused_status === 'warning') {
+                        $q->whereBetween('reused_count', [18, 20]);
+                    } elseif ($request->reused_status === 'max') {
+                        $q->where('reused_count', '>=', 21);
+                    } elseif ($request->reused_status === 'normal') {
+                        $q->where('reused_count', '<', 18);
+                    }
+                });
+            }
+
+            $paginated = $query->latest('updated_at')->paginate($perPage);
+
+            return response()->json([
+                'status'     => true,
+                'view_mode'  => 'current',
+                'data'       => $paginated->items(),
+                'pagination' => [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page'    => $paginated->lastPage(),
+                    'total'        => $paginated->total(),
+                    'per_page'     => $paginated->perPage(),
+                ],
+            ]);
+        }
+
+        // Default: Log Riwayat Scan PAS
+        $query = KempuTrackingHistoryModel::where(function ($q) {
+            $q->where('stage', 'PAS')
+              ->orWhere('from_location', MasterKempuModel::LOC_PAS)
+              ->orWhere('to_location', MasterKempuModel::LOC_PAS);
+        })->with([
+            'createdBy:id,username,nama_lengkap',
+            'masterKempu:id,id_kempu,rfid,no_spb,status',
+        ]);
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        if ($request->filled('action') && $request->action !== 'all') {
+            $query->where('action', $request->action);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('id_kempu', 'like', "%{$s}%")
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                        $mq->where('rfid', 'like', "%{$s}%")
+                           ->orWhere('no_spb', 'like', "%{$s}%");
+                    })
+                    ->orWhereHas('createdBy', function ($uq) use ($s) {
+                        $uq->where('username', 'like', "%{$s}%")
+                           ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                    });
+            });
+        }
+
+        $paginated = $query->latest('id')->paginate($perPage);
+
+        return response()->json([
+            'status'     => true,
+            'view_mode'  => 'history',
+            'data'       => $paginated->items(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'total'        => $paginated->total(),
+                'per_page'     => $paginated->perPage(),
+            ],
+        ]);
+    }
+
+    /**
+     * Export Report CSV untuk Scan Kempu PAS
+     */
+    public function exportReport(Request $request)
+    {
+        $query = KempuTrackingHistoryModel::where(function ($q) {
+            $q->where('stage', 'PAS')
+              ->orWhere('from_location', MasterKempuModel::LOC_PAS)
+              ->orWhere('to_location', MasterKempuModel::LOC_PAS);
+        })->with([
+            'createdBy:id,username,nama_lengkap',
+            'masterKempu:id,id_kempu,rfid,no_spb,status',
+        ]);
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        if ($request->filled('action') && $request->action !== 'all') {
+            $query->where('action', $request->action);
+        }
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('id_kempu', 'like', "%{$s}%")
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhereHas('masterKempu', function ($mq) use ($s) {
+                        $mq->where('rfid', 'like', "%{$s}%")
+                           ->orWhere('no_spb', 'like', "%{$s}%");
+                    })
+                    ->orWhereHas('createdBy', function ($uq) use ($s) {
+                        $uq->where('username', 'like', "%{$s}%")
+                           ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                    });
+            });
+        }
+
+        $records = $query->latest('id')->get();
+        $filename = 'Report_Scan_Kempu_PAS_' . now()->format('Ymd_His') . '.csv';
+
+        $callback = function () use ($records) {
+            $file = fopen('php://output', 'w');
+            // Write UTF-8 BOM
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            // CSV Header
+            fputcsv($file, [
+                'No',
+                'Tanggal & Waktu',
+                'ID Kempu',
+                'RFID',
+                'Aksi / Status Flow',
+                'Dari Lokasi',
+                'Menuju Lokasi',
+                'Siklus Reused',
+                'Kondisi',
+                'Catatan / Surat Jalan',
+                'Petugas Scan',
+            ]);
+
+            $no = 1;
+            foreach ($records as $row) {
+                fputcsv($file, [
+                    $no++,
+                    $row->created_at ? $row->created_at->format('d/m/Y H:i:s') : '-',
+                    $row->id_kempu,
+                    $row->masterKempu->rfid ?? '-',
+                    $row->action,
+                    $row->from_location ?? '-',
+                    $row->to_location ?? '-',
+                    ($row->reused_count ?? 0) . ' / 21x',
+                    $row->condition ?? 'OK',
+                    $row->notes ?? '-',
+                    $row->createdBy->nama_lengkap ?? $row->createdBy->username ?? '-',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
 }
