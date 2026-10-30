@@ -811,12 +811,14 @@ class KempuProduksiController extends Controller
 
                 case 'PROD_CUCI_KEMPU':
                 case 'CUCI-KEMPU':
+                    // Reused siklus bertambah +1 di Force Scan Cuci Kempu (sama seperti scan Cuci Kempu normal)
+                    $currentReused = min(21, $currentReused + 1);
                     $nextStatus    = MasterKempuModel::STATUS_PROD_CUCI_KEMPU;
                     $toLocation    = MasterKempuModel::LOC_PRODUKSI;
                     $condition     = 'OK';
                     $actionResult  = 'OK';
                     $actionTitle   = '[FORCE SCAN] Cuci Kempu Selesai';
-                    $resultMessage = "Force Scan: Pencucian kempu {$idKempu} berhasil dipaksa selesai (Siap Filling).";
+                    $resultMessage = "Force Scan: Pencucian kempu {$idKempu} berhasil dipaksa selesai (Siklus Reused bertambah: {$currentReused}/21x, Siap Filling).";
                     $notes         = $notes ?: 'Force Decision: Paksa Selesai Cuci Kempu';
                     break;
 
@@ -1024,7 +1026,7 @@ class KempuProduksiController extends Controller
                         'created_by'  => $creatorId ?? Auth::id(),
                     ]
                 );
-            } elseif ($cardKey === 'cuci-kempu') {
+            } elseif ($cardKey === 'cuci-kempu' || ($cardKey === 'prod-force' && in_array($forceTarget, ['PROD_CUCI_KEMPU', 'CUCI-KEMPU']))) {
                 // Saat masuk ke siklus pencucian baru, nomor PO & foto dari siklus sebelumnya tetap tersimpan
                 // sampai operator resmi melakukan proses Scan 1 Filling Kempu yang baru.
                 $nextCycleFilling = KempuCycleFillingModel::where('kempu_master_id', $kempu->id)

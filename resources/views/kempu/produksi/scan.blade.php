@@ -854,12 +854,36 @@
 
                 if (CARD_KEY === 'prod-force') {
                     $('#btnModalConfirm').html('<i class="ri-shield-flash-line me-1"></i> Eksekusi Force Decision');
+                    updateForceReusedNotice();
                 } else {
                     $('#btnModalConfirm').html(
                         `<i class="ri-checkbox-circle-line me-1"></i> Konfirmasi ${CARD_TITLE}`);
                 }
                 confirmModal.show();
             }
+
+            function updateForceReusedNotice() {
+                if (CARD_KEY !== 'prod-force' || !currentKempu) return;
+                const target = $('#modalForceTarget').val();
+                if (target === 'PROD_CUCI_KEMPU') {
+                    const currentVal = parseInt(currentKempu.reused_count || 0);
+                    const targetVal = Math.min(21, currentVal + 1);
+                    $('#modalKempuReused').html(`<span class="text-muted text-decoration-line-through">${currentVal}</span> <span class="text-info fw-bold">&rarr; ${targetVal}</span> / ${currentKempu.max_reused || 21}x`);
+                    $('#alertReusedNotice').html(`
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="ri-water-flash-line fs-20 text-info"></i>
+                            <div><strong>Force Scan Cuci Kempu:</strong> Pada keputusan ini, <strong>Siklus Reused otomatis bertambah (+1)</strong> menjadi <strong>${targetVal}/21x</strong> (sama seperti scan Cuci Kempu standar).</div>
+                        </div>
+                    `).removeClass('alert-danger alert-warning alert-success').addClass('alert-info').show();
+                } else {
+                    $('#modalKempuReused').text(`${currentKempu.reused_count} / ${currentKempu.max_reused || 21}x`);
+                    $('#alertReusedNotice').hide().empty();
+                }
+            }
+
+            $('#modalForceTarget').on('change', function() {
+                updateForceReusedNotice();
+            });
 
             // Photo Upload Interaction Handlers
             $(document).on('click', '.photo-upload-box', function(e) {
