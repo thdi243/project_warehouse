@@ -509,17 +509,9 @@ class MasterKempuModel extends Model
         }
 
         // Cek atribut string role
-        $role = strtolower(trim($user->role ?? ''));
-        if ($role && $role !== 'operator') {
-            return true;
-        }
-
-        if ($role === 'operator') {
-            return false;
-        }
 
         $jabatan = strtolower(trim($user->jabatan ?? ''));
-        if ($jabatan && str_contains($jabatan, 'operator') && !str_contains($jabatan, 'leader') && !str_contains($jabatan, 'foreman') && !str_contains($jabatan, 'spv')) {
+        if ($jabatan && str_contains($jabatan, 'operator')) {
             return false;
         }
 

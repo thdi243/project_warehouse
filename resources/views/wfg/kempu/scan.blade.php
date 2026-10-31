@@ -205,9 +205,6 @@
                     </div>
                 </div>
             </div>
-
-
-
         </div>
     </div>
 
@@ -310,7 +307,8 @@
                         <i class="ri-arrow-right-circle-line fs-24 text-info flex-shrink-0"></i>
                         <div>
                             <div class="fs-11 text-muted text-uppercase fw-semibold">Status Baru yang Akan Disimpan:</div>
-                            <div class="fs-15 fw-bold text-info" id="modalTargetStatusText">{{ $card['status_name'] }}</div>
+                            <div class="fs-15 fw-bold text-info" id="modalTargetStatusText">{{ $card['status_name'] }}
+                            </div>
                         </div>
                     </div>
 
