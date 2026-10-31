@@ -477,8 +477,8 @@ class MasterKempuModel extends Model
     }
 
     /**
-     * Cek apakah user berhak mengetik ID kempu secara manual (Bukan operator biasa / memiliki wewenang)
-     * Otoritas: role != 'operator' ATAU memiliki permission 'kempu-manual-input' / 'super-admin'
+     * Cek apakah user berhak mengetik ID kempu secara manual.
+     * Hanya mengecek user->jabatan: jika user->jabatan adalah operator maka false, selain itu true (tanpa pengecekan role).
      */
     public static function canManualInput($user = null): bool
     {
@@ -487,31 +487,8 @@ class MasterKempuModel extends Model
             return false;
         }
 
-        if (method_exists($user, 'hasRole') && $user->hasRole('super-admin')) {
-            return true;
-        }
-
-        if (method_exists($user, 'hasAnyPermission') && $user->hasAnyPermission(['kempu-manual-input', 'super-admin'])) {
-            return true;
-        }
-
-        // Cek roles relasi tabel
-        if (method_exists($user, 'roles') && $user->roles()->exists()) {
-            $roles = $user->roles()->pluck('name')->map(fn($r) => strtolower(trim($r)))->toArray();
-            foreach ($roles as $r) {
-                if ($r !== 'operator') {
-                    return true;
-                }
-            }
-            if (in_array('operator', $roles)) {
-                return false;
-            }
-        }
-
-        // Cek atribut string role
-
         $jabatan = strtolower(trim($user->jabatan ?? ''));
-        if ($jabatan && str_contains($jabatan, 'operator')) {
+        if ($jabatan === 'operator' || str_contains($jabatan, 'operator')) {
             return false;
         }
 

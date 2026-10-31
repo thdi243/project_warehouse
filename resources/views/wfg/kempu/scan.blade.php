@@ -169,8 +169,7 @@
                             <!-- Manual Input Box -->
                             <div class="mt-4 pt-2 border-top">
                                 @php
-                                    $canManualInput =
-                                        $canManualInput ?? \App\Models\Kempu\MasterKempuModel::canManualInput();
+                                    $canManualInput = \App\Models\Kempu\MasterKempuModel::canManualInput();
                                 @endphp
                                 @if ($canManualInput)
                                     <label
