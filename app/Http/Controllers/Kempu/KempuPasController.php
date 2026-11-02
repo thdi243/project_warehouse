@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Kempu;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kempu\KempuCycleFillingModel;
+use App\Models\Kempu\KempuMainModel;
 use App\Models\Kempu\KempuTrackingHistoryModel;
 use App\Models\Kempu\MasterKempuModel;
 use Illuminate\Http\Request;
@@ -696,7 +697,13 @@ class KempuPasController extends Controller
                 });
             }
 
-            $paginated = $query->latest('updated_at')->paginate($perPage);
+            $paginated = $query->orderBy(
+                KempuMainModel::selectRaw('COALESCE(last_scanned_at, updated_at)')
+                    ->whereColumn('kempu_main.kempu_master_id', 'kempu_master.id')
+                    ->latest('id')
+                    ->limit(1),
+                'desc'
+            )->orderByDesc('id')->paginate($perPage);
 
             return response()->json([
                 'status'     => true,
