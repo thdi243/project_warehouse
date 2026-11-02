@@ -840,7 +840,7 @@ class KempuProduksiController extends Controller
                     $toLocation    = MasterKempuModel::LOC_WFG;
                     $actionResult  = 'TRANSFERRED';
                     $actionTitle   = '[FORCE SCAN] Transfer Out to WFG';
-                    $resultMessage = "Force Scan: Kempu {$idKempu} berhasil dipaksa Transfer Out ke Gudang Jadi (WFG).";
+                    $resultMessage = "Force Scan: Kempu {$idKempu} berhasil dipaksa Transfer Out menuju WFG (Status: Dalam Perjalanan / In Transit).";
                     $notes         = $notes ?: 'Force Decision: Paksa Transfer Out ke WFG';
                     break;
 
@@ -974,7 +974,7 @@ class KempuProduksiController extends Controller
             $nextStatus    = MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG;
             $toLocation    = MasterKempuModel::LOC_WFG;
             $actionResult  = 'TRANSFERRED';
-            $resultMessage = "Kempu berhasil di-Transfer Out dari Produksi menuju WFG.";
+            $resultMessage = "Kempu berhasil di-Transfer Out dari Produksi menuju WFG (Status: Dalam Perjalanan / In Transit).";
         } elseif ($cardKey === 'repro-kempu') {
             $nextStatus    = MasterKempuModel::STATUS_QC_PRE_CUCI_PENDING;
             $toLocation    = MasterKempuModel::LOC_QC_PROSES;
@@ -1005,9 +1005,15 @@ class KempuProduksiController extends Controller
             // created_by HANYA diisi jika user terverifikasi ada di tabel users Warehouse (via Auth::check() atau email match).
             $creatorId = $warehouseUser?->id ?? (Auth::check() ? Auth::id() : null);
 
+            // Jika prosesnya Transfer Out to WFG (baik scan normal maupun force scan),
+            // lokasi kempu wajib diset ke IN_TRANSIT (belum masuk stok fisik WFG sampai di-Transfer In oleh WFG)
+            $isTransferOutToWfg = ($cardKey === 'transfer-out-to-wfg') ||
+                ($cardKey === 'prod-force' && in_array($forceTarget ?? '', ['PROD_TRANSFER_OUT_WFG', 'TRANSFER-OUT-TO-WFG']));
+            $targetLocation = $isTransferOutToWfg ? MasterKempuModel::LOC_IN_TRANSIT : $toLocation;
+
             $mainPayload = [
                 'current_status'   => $nextStatus,
-                'current_location' => ($cardKey === 'transfer-out-to-wfg' ? MasterKempuModel::LOC_IN_TRANSIT : $toLocation),
+                'current_location' => $targetLocation,
                 'reused_count'     => $currentReused,
                 'condition'        => $condition,
                 'last_scanned_at'  => now(),
@@ -1133,7 +1139,7 @@ class KempuProduksiController extends Controller
                 'data'    => [
                     'id_kempu'      => $kempu->id_kempu,
                     'new_status'    => $nextStatus,
-                    'new_location'  => $toLocation,
+                    'new_location'  => $targetLocation,
                     'reused_count'  => $currentReused,
                     'new_condition' => $condition,
                 ],
