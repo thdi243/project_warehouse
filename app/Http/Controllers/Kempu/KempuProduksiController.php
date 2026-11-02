@@ -1246,9 +1246,10 @@ class KempuProduksiController extends Controller
         $perPage  = min(100, max(5, (int) $request->input('per_page', 20)));
 
         if ($viewMode === 'current') {
-            // Data kempu yang saat ini berada di lokasi PRODUKSI
+            // Data kempu yang saat ini berada di lokasi PRODUKSI (kecuali scrapped)
             $query = MasterKempuModel::whereHas('main', function ($q) {
-                $q->where('current_location', MasterKempuModel::LOC_PRODUKSI);
+                $q->where('current_location', MasterKempuModel::LOC_PRODUKSI)
+                    ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
             })->with(['main', 'createdBy:id,username,nama_lengkap']);
 
             if ($request->filled('search')) {

@@ -86,7 +86,8 @@ class WfgKempuController extends Controller
         }
 
         $totalWfg = MasterKempuModel::whereHas('main', function ($q) {
-            $q->where('current_location', MasterKempuModel::LOC_WFG);
+            $q->where('current_location', MasterKempuModel::LOC_WFG)
+              ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         return view('wfg.kempu.index', compact('cards', 'totalWfg'));
@@ -898,7 +899,8 @@ class WfgKempuController extends Controller
         $cards = self::getCards();
 
         $totalCurrentWfg = MasterKempuModel::whereHas('main', function ($q) {
-            $q->where('current_location', MasterKempuModel::LOC_WFG);
+            $q->where('current_location', MasterKempuModel::LOC_WFG)
+              ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         $totalTransferInToday = KempuTrackingHistoryModel::where('stage', 'WFG')
@@ -946,7 +948,8 @@ class WfgKempuController extends Controller
         if ($viewMode === 'current') {
             // Data kempu yang saat ini berada di lokasi WFG
             $query = MasterKempuModel::whereHas('main', function ($q) {
-                $q->where('current_location', MasterKempuModel::LOC_WFG);
+                $q->where('current_location', MasterKempuModel::LOC_WFG)
+                  ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
             })->with(['main', 'createdBy:id,username,nama_lengkap']);
 
             if ($request->filled('search')) {
@@ -986,11 +989,10 @@ class WfgKempuController extends Controller
             ]);
         }
 
-        // Default: Log Riwayat Scan WFG
+        // Default: Log Riwayat Scan WFG (Hanya scan yang berasal dari stasiun WFG)
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'WFG')
-              ->orWhere('from_location', MasterKempuModel::LOC_WFG)
-              ->orWhere('to_location', MasterKempuModel::LOC_WFG);
+              ->orWhere('stage', 'like', 'WFG%');
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',
@@ -1046,8 +1048,7 @@ class WfgKempuController extends Controller
     {
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'WFG')
-              ->orWhere('from_location', MasterKempuModel::LOC_WFG)
-              ->orWhere('to_location', MasterKempuModel::LOC_WFG);
+              ->orWhere('stage', 'like', 'WFG%');
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',

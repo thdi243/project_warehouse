@@ -68,7 +68,8 @@ class WpmKempuController extends Controller
         }
 
         $totalWpm = MasterKempuModel::whereHas('main', function ($q) {
-            $q->where('current_location', MasterKempuModel::LOC_WPM);
+            $q->where('current_location', MasterKempuModel::LOC_WPM)
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         return view('wpm.kempu.index', compact('cards', 'totalWpm'));
@@ -948,7 +949,8 @@ class WpmKempuController extends Controller
         $cards = self::getCards();
 
         $totalCurrentWpm = MasterKempuModel::whereHas('main', function ($q) {
-            $q->where('current_location', MasterKempuModel::LOC_WPM);
+            $q->where('current_location', MasterKempuModel::LOC_WPM)
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         $totalTransferInToday = KempuTrackingHistoryModel::where('stage', 'WPM')
@@ -971,6 +973,7 @@ class WpmKempuController extends Controller
 
         $totalWarning = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_WPM)
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED)
                 ->where('reused_count', '>=', 18);
         })->count();
 
@@ -994,9 +997,10 @@ class WpmKempuController extends Controller
         $perPage  = min(100, max(5, (int) $request->input('per_page', 20)));
 
         if ($viewMode === 'current') {
-            // Data kempu yang saat ini berada di lokasi WPM
+            // Data kempu yang saat ini berada di lokasi WPM (kecuali kempu scrap)
             $query = MasterKempuModel::whereHas('main', function ($q) {
-                $q->where('current_location', MasterKempuModel::LOC_WPM);
+                $q->where('current_location', MasterKempuModel::LOC_WPM)
+                    ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
             })->with(['main', 'createdBy:id,username,nama_lengkap']);
 
             if ($request->filled('search')) {
@@ -1036,11 +1040,10 @@ class WpmKempuController extends Controller
             ]);
         }
 
-        // Default: Log Riwayat Scan WPM
+        // Default: Log Riwayat Scan WPM murni (hanya aktivitas scan yang dilakukan di stasiun WPM)
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'WPM')
-                ->orWhere('from_location', MasterKempuModel::LOC_WPM)
-                ->orWhere('to_location', MasterKempuModel::LOC_WPM);
+                ->orWhere('stage', 'like', 'WPM%');
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',
@@ -1096,8 +1099,7 @@ class WpmKempuController extends Controller
     {
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'WPM')
-                ->orWhere('from_location', MasterKempuModel::LOC_WPM)
-                ->orWhere('to_location', MasterKempuModel::LOC_WPM);
+                ->orWhere('stage', 'like', 'WPM%');
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',

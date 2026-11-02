@@ -68,7 +68,8 @@ class KempuPasController extends Controller
         }
 
         $totalPas = MasterKempuModel::whereHas('main', function ($q) {
-            $q->where('current_location', MasterKempuModel::LOC_PAS);
+            $q->where('current_location', MasterKempuModel::LOC_PAS)
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         return view('kempu.pas.index', compact('cards', 'totalPas'));
@@ -619,7 +620,8 @@ class KempuPasController extends Controller
         $cards = self::getCards();
 
         $totalCurrentPas = MasterKempuModel::whereHas('main', function ($q) {
-            $q->where('current_location', MasterKempuModel::LOC_PAS);
+            $q->where('current_location', MasterKempuModel::LOC_PAS)
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         $totalTransferInToday = KempuTrackingHistoryModel::where('stage', 'PAS')
@@ -642,6 +644,7 @@ class KempuPasController extends Controller
 
         $totalWarning = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_PAS)
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED)
                 ->where('reused_count', '>=', 18);
         })->count();
 
@@ -665,9 +668,10 @@ class KempuPasController extends Controller
         $perPage  = min(100, max(5, (int) $request->input('per_page', 20)));
 
         if ($viewMode === 'current') {
-            // Data kempu yang saat ini berada di lokasi PAS
+            // Data kempu yang saat ini berada di lokasi PAS (kecuali kempu scrap)
             $query = MasterKempuModel::whereHas('main', function ($q) {
-                $q->where('current_location', MasterKempuModel::LOC_PAS);
+                $q->where('current_location', MasterKempuModel::LOC_PAS)
+                    ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
             })->with(['main', 'createdBy:id,username,nama_lengkap']);
 
             if ($request->filled('search')) {
@@ -707,11 +711,10 @@ class KempuPasController extends Controller
             ]);
         }
 
-        // Default: Log Riwayat Scan PAS
+        // Default: Log Riwayat Scan PAS murni (hanya aktivitas scan yang dilakukan di stasiun PAS)
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'PAS')
-              ->orWhere('from_location', MasterKempuModel::LOC_PAS)
-              ->orWhere('to_location', MasterKempuModel::LOC_PAS);
+                ->orWhere('stage', 'like', 'PAS%');
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',
@@ -767,8 +770,7 @@ class KempuPasController extends Controller
     {
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'PAS')
-              ->orWhere('from_location', MasterKempuModel::LOC_PAS)
-              ->orWhere('to_location', MasterKempuModel::LOC_PAS);
+                ->orWhere('stage', 'like', 'PAS%');
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',
