@@ -975,13 +975,38 @@ class WfgKempuController extends Controller
                 });
             }
 
-            $paginated = $query->orderBy(
-                KempuMainModel::selectRaw('COALESCE(last_scanned_at, updated_at)')
-                    ->whereColumn('kempu_main.kempu_master_id', 'kempu_master.id')
-                    ->latest('id')
-                    ->limit(1),
-                'desc'
-            )->orderByDesc('id')->paginate($perPage);
+            $sortBy    = $request->input('sort_by');
+            $sortOrder = strtolower($request->input('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+            if ($sortBy === 'id_kempu') {
+                $query->orderBy('kempu_master.id_kempu', $sortOrder);
+            } elseif (in_array($sortBy, ['reused_count', 'reused', 'siklus_reused'])) {
+                $query->orderBy(
+                    KempuMainModel::select('reused_count')
+                        ->whereColumn('kempu_main.kempu_master_id', 'kempu_master.id')
+                        ->latest('id')
+                        ->limit(1),
+                    $sortOrder
+                );
+            } elseif (in_array($sortBy, ['last_scanned_at', 'terakhir_di_scan', 'waktu_scan'])) {
+                $query->orderBy(
+                    KempuMainModel::selectRaw('COALESCE(last_scanned_at, updated_at)')
+                        ->whereColumn('kempu_main.kempu_master_id', 'kempu_master.id')
+                        ->latest('id')
+                        ->limit(1),
+                    $sortOrder
+                );
+            } else {
+                $query->orderBy(
+                    KempuMainModel::selectRaw('COALESCE(last_scanned_at, updated_at)')
+                        ->whereColumn('kempu_main.kempu_master_id', 'kempu_master.id')
+                        ->latest('id')
+                        ->limit(1),
+                    'desc'
+                );
+            }
+
+            $paginated = $query->orderByDesc('id')->paginate($perPage);
 
             return response()->json([
                 'status'     => true,
@@ -1031,6 +1056,17 @@ class WfgKempuController extends Controller
                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
                     });
             });
+        }
+
+        $sortBy    = $request->input('sort_by');
+        $sortOrder = strtolower($request->input('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if ($sortBy === 'id_kempu') {
+            $query->orderBy('id_kempu', $sortOrder);
+        } elseif (in_array($sortBy, ['reused_count', 'reused', 'siklus_reused'])) {
+            $query->orderBy('reused_count', $sortOrder);
+        } elseif (in_array($sortBy, ['created_at', 'waktu_scan', 'terakhir_di_scan'])) {
+            $query->orderBy('created_at', $sortOrder);
         }
 
         $paginated = $query->latest('id')->paginate($perPage);
@@ -1087,6 +1123,17 @@ class WfgKempuController extends Controller
                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
                     });
             });
+        }
+
+        $sortBy    = $request->input('sort_by');
+        $sortOrder = strtolower($request->input('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if ($sortBy === 'id_kempu') {
+            $query->orderBy('id_kempu', $sortOrder);
+        } elseif (in_array($sortBy, ['reused_count', 'reused', 'siklus_reused'])) {
+            $query->orderBy('reused_count', $sortOrder);
+        } elseif (in_array($sortBy, ['created_at', 'waktu_scan', 'terakhir_di_scan'])) {
+            $query->orderBy('created_at', $sortOrder);
         }
 
         $records = $query->latest('id')->get();

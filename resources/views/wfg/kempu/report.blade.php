@@ -92,6 +92,40 @@
             font-weight: 600;
         }
 
+        .sortable-th {
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+            white-space: nowrap;
+        }
+
+        .sortable-th:hover {
+            color: #0d9488 !important;
+            background-color: rgba(13, 148, 136, 0.05);
+        }
+
+        .sortable-th i.sort-icon {
+            font-size: 13px;
+            vertical-align: middle;
+            margin-left: 4px;
+            opacity: 0.35;
+            transition: all 0.2s ease;
+        }
+
+        .sortable-th:hover i.sort-icon {
+            opacity: 0.8;
+        }
+
+        .sortable-th.active-sort {
+            color: #0d9488 !important;
+            font-weight: 700;
+        }
+
+        .sortable-th.active-sort i.sort-icon {
+            opacity: 1;
+            color: #0d9488;
+        }
+
         .timeline-container {
             position: relative;
             padding-left: 28px;
@@ -382,12 +416,18 @@
                                     <thead class="table-light fs-12 text-uppercase text-muted">
                                         <tr>
                                             <th style="width: 50px;">No</th>
-                                            <th>Waktu Scan</th>
-                                            <th>ID Kempu</th>
+                                            <th class="sortable-th" data-table="history" data-sort="created_at" title="Klik untuk mengurutkan Waktu Scan">
+                                                Waktu Scan <i class="ri-arrow-up-down-line sort-icon"></i>
+                                            </th>
+                                            <th class="sortable-th" data-table="history" data-sort="id_kempu" title="Klik untuk mengurutkan ID Kempu">
+                                                ID Kempu <i class="ri-arrow-up-down-line sort-icon"></i>
+                                            </th>
                                             <th>RFID</th>
                                             <th>Aksi / Status Flow</th>
                                             <th>Asal &rarr; Tujuan</th>
-                                            <th>Reused</th>
+                                            <th class="sortable-th" data-table="history" data-sort="reused_count" title="Klik untuk mengurutkan Siklus Reused">
+                                                Reused <i class="ri-arrow-up-down-line sort-icon"></i>
+                                            </th>
                                             <th>Kondisi & Kelengkapan</th>
                                             <th>Catatan / Info</th>
                                             <th>Petugas</th>
@@ -421,12 +461,18 @@
                                     <thead class="table-light fs-12 text-uppercase text-muted">
                                         <tr>
                                             <th style="width: 50px;">No</th>
-                                            <th>ID Kempu</th>
+                                            <th class="sortable-th" data-table="current" data-sort="id_kempu" title="Klik untuk mengurutkan ID Kempu">
+                                                ID Kempu <i class="ri-arrow-up-down-line sort-icon"></i>
+                                            </th>
                                             <th>RFID</th>
                                             <th>No SPB</th>
                                             <th>Status Siklus Saat Ini</th>
-                                            <th>Terakhir Di-Scan</th>
-                                            <th>Siklus Reused</th>
+                                            <th class="sortable-th" data-table="current" data-sort="last_scanned_at" title="Klik untuk mengurutkan Terakhir Di-Scan">
+                                                Terakhir Di-Scan <i class="ri-arrow-up-down-line sort-icon"></i>
+                                            </th>
+                                            <th class="sortable-th" data-table="current" data-sort="reused_count" title="Klik untuk mengurutkan Siklus Reused">
+                                                Siklus Reused <i class="ri-arrow-up-down-line sort-icon"></i>
+                                            </th>
                                             <th>Aksi Terakhir</th>
                                             <th class="text-center" style="width: 100px;">Aksi</th>
                                         </tr>
@@ -526,6 +572,57 @@
             let historyPage = 1;
             let currentPage = 1;
             let searchTimeout = null;
+
+            // State Sorting
+            let historySortBy = 'created_at';
+            let historySortOrder = 'desc';
+            let currentSortBy = 'last_scanned_at';
+            let currentSortOrder = 'desc';
+
+            // Update icon sorting di header tabel
+            function updateSortIcons(tableType, sortBy, sortOrder) {
+                $(`.sortable-th[data-table="${tableType}"]`).each(function() {
+                    const field = $(this).data('sort');
+                    const icon = $(this).find('i.sort-icon');
+                    if (field === sortBy) {
+                        $(this).addClass('active-sort');
+                        if (sortOrder === 'asc') {
+                            icon.attr('class', 'ri-arrow-up-line sort-icon');
+                        } else {
+                            icon.attr('class', 'ri-arrow-down-line sort-icon');
+                        }
+                    } else {
+                        $(this).removeClass('active-sort');
+                        icon.attr('class', 'ri-arrow-up-down-line sort-icon');
+                    }
+                });
+            }
+
+            // Click handler untuk sortable header
+            $(document).on('click', '.sortable-th', function() {
+                const tableType = $(this).data('table');
+                const field = $(this).data('sort');
+
+                if (tableType === 'history') {
+                    if (historySortBy === field) {
+                        historySortOrder = (historySortOrder === 'asc') ? 'desc' : 'asc';
+                    } else {
+                        historySortBy = field;
+                        historySortOrder = (field === 'created_at') ? 'desc' : 'asc';
+                    }
+                    updateSortIcons('history', historySortBy, historySortOrder);
+                    loadHistory(1);
+                } else if (tableType === 'current') {
+                    if (currentSortBy === field) {
+                        currentSortOrder = (currentSortOrder === 'asc') ? 'desc' : 'asc';
+                    } else {
+                        currentSortBy = field;
+                        currentSortOrder = (field === 'last_scanned_at') ? 'desc' : 'asc';
+                    }
+                    updateSortIcons('current', currentSortBy, currentSortOrder);
+                    loadCurrent(1);
+                }
+            });
 
             // Helper format date d-m-Y H:i
             function formatDateTime(dStr) {
@@ -629,6 +726,12 @@
                 $('#filterEndDate').val('');
                 $('#filterReusedStatus').val('');
                 $('.date-chip').removeClass('active');
+                historySortBy = 'created_at';
+                historySortOrder = 'desc';
+                currentSortBy = 'last_scanned_at';
+                currentSortOrder = 'desc';
+                updateSortIcons('history', historySortBy, historySortOrder);
+                updateSortIcons('current', currentSortBy, currentSortOrder);
 
                 if (activeTab === 'history') {
                     loadHistory(1);
@@ -643,7 +746,9 @@
                     start_date: $('#filterStartDate').val() || '',
                     end_date: $('#filterEndDate').val() || '',
                     action: $('#filterAction').val() || 'all',
-                    search: $('#filterSearch').val() || ''
+                    search: $('#filterSearch').val() || '',
+                    sort_by: historySortBy,
+                    sort_order: historySortOrder
                 });
                 window.location.href = "{{ route('wfg.kempu.report_export') }}?" + params.toString();
             });
@@ -666,7 +771,9 @@
                         start_date: $('#filterStartDate').val(),
                         end_date: $('#filterEndDate').val(),
                         action: $('#filterAction').val(),
-                        search: $('#filterSearch').val()
+                        search: $('#filterSearch').val(),
+                        sort_by: historySortBy,
+                        sort_order: historySortOrder
                     },
                     success: function(res) {
                         if (!res.status || !res.data || res.data.length === 0) {
@@ -787,7 +894,9 @@
                         page: page,
                         per_page: 20,
                         reused_status: $('#filterReusedStatus').val(),
-                        search: $('#filterSearch').val()
+                        search: $('#filterSearch').val(),
+                        sort_by: currentSortBy,
+                        sort_order: currentSortOrder
                     },
                     success: function(res) {
                         if (!res.status || !res.data || res.data.length === 0) {
@@ -1022,6 +1131,8 @@
             });
 
             // Initial load
+            updateSortIcons('history', historySortBy, historySortOrder);
+            updateSortIcons('current', currentSortBy, currentSortOrder);
             loadHistory(1);
         });
     </script>
