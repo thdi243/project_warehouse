@@ -638,8 +638,8 @@ class KempuQcController extends Controller
                 'is_passed'      => $isRelease,
                 'is_reject'      => $isReject,
                 'is_scrapped'    => $isScrapped,
-                // Default checked: true kecuali jika memang berstatus reject/scrapped
-                'default_checked' => !$isReject && !$isScrapped,
+                // Default checked: true jika kempu belum release, belum reject, dan belum scrap
+                'default_checked' => !$isRelease && !$isReject && !$isScrapped,
             ];
         });
 
@@ -717,6 +717,17 @@ class KempuQcController extends Controller
         try {
             foreach ($kempuList as $kempu) {
                 $isOk = isset($checkedLookup[$kempu->id_kempu]);
+                $currentStatus = strtoupper(trim($kempu->main?->current_status ?? $kempu->current_status ?? ''));
+
+                // Cegah duplikat scan: jika kempu sudah berstatus QC_PM_RELEASE dan keputusannya tetap OK, lewati
+                $isAlreadyRelease = in_array($cleanStatus = preg_replace('/[^A-Z0-9]/', '_', $currentStatus), [
+                    'QC_PM_RELEASE', 'QC_PM_PASSED', 'RELEASE_QC_PM',
+                ]) || (str_contains($cleanStatus, 'QC_PM') && (str_contains($cleanStatus, 'RELEASE') || str_contains($cleanStatus, 'PASSED')));
+
+                if ($isOk && $isAlreadyRelease) {
+                    continue;
+                }
+
                 $currentReused = (int)($kempu->main?->reused_count ?? $kempu->reused_count ?? 0);
                 $fromLocation  = $kempu->current_location ?? MasterKempuModel::LOC_WPM;
 
@@ -943,6 +954,123 @@ class KempuQcController extends Controller
         // 4. Force Scan membebaskan validasi urutan flow selain kondisi alur wajib di atas
         if (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
             return ['valid' => true, 'message' => null];
+        }
+
+        // 5. Cek Duplikat Scan & Alur Khusus per Tipe QC
+        $cleanStatus = strtoupper(preg_replace('/[^a-zA-Z0-9]/', '_', $currentStatus));
+        $cleanLoc    = strtoupper(trim($currentLocation));
+
+        // a. Cek Duplikat di QC Pre Cuci (Cek Incoming & Pre Cuci)
+        if (in_array($qcType, ['qc-pre-cuci', 'qc-proses'])) {
+            $isPreCuciDone = (
+                in_array($cleanStatus, [
+                    'QC_PRE_CUCI_RELEASE', 'QC_PRE_CUCI_PASSED', 'RELEASE_QC_PRE_CUCI', 'QC_PROD_PASSED',
+                    'CEK_INCOMING_PRE_CUCI_LOLOS_RELEASE', 'CEK_PRE_CUCI_LOLOS_RELEASE',
+                ]) ||
+                (str_contains($cleanStatus, 'PRE_CUCI') && (str_contains($cleanStatus, 'RELEASE') || str_contains($cleanStatus, 'PASSED') || str_contains($cleanStatus, 'LOLOS')))
+            );
+            if ($isPreCuciDone) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah scan Cek Incoming & Pre Cuci (Lolos/Release). Silakan lanjutkan ke tahap Cuci Kempu di Produksi.",
+                ];
+            }
+
+            if (
+                in_array($cleanStatus, ['PROD_CUCI_KEMPU', 'CUCI_KEMPU_COMPLETED', 'CUCI_KEMPU', 'CUCI_KEMPU_SELESAI', 'PROD_FILLING_KEMPU', 'SCAN1_FILLED', 'SCAN_1_FILLED']) ||
+                str_contains($cleanStatus, 'FILLING') ||
+                str_contains($cleanStatus, 'WFG') ||
+                $cleanLoc === strtoupper(MasterKempuModel::LOC_WFG)
+            ) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah melewati tahap Cek Incoming & Pre Cuci (Status saat ini: '{$currentStatus}').",
+                ];
+            }
+        }
+
+        // b. Cek Duplikat di QC After Filling
+        if ($qcType === 'qc-after-filling') {
+            $isAfterFillingDone = (
+                in_array($cleanStatus, [
+                    'QC_AFTER_FILLING_RELEASE', 'QC_AFTER_FILLING_PASSED', 'RELEASE_QC_AFTER_FILLING',
+                    'AFTER_FILLING_LOLOS_RELEASE',
+                ]) ||
+                (str_contains($cleanStatus, 'AFTER_FILLING') && (str_contains($cleanStatus, 'RELEASE') || str_contains($cleanStatus, 'PASSED') || str_contains($cleanStatus, 'LOLOS')))
+            );
+            if ($isAfterFillingDone) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah scan QC After Filling (Lolos/Release). Silakan lanjutkan ke tahap Transfer Out to WFG di Produksi.",
+                ];
+            }
+
+            if (in_array($cleanStatus, ['QC_AFTER_FILLING_REPRO', 'AFTER_FILLING_REPRO', 'AFTER_FILLING_REPRO_PRODUK_REJECT'])) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah berstatus Repro di After Filling. Silakan proses Repro Kempu di bagian Produksi.",
+                ];
+            }
+
+            if (
+                in_array($cleanStatus, [
+                    'PROD_TRANSFER_OUT_TO_WFG', 'IN_TRANSIT_WFG', 'TRANSFER_OUT_TO_WFG',
+                    'WFG_TRANSFER_IN_FROM_PROD', 'WFG_TRANSFER_IN_PROD', 'WFG_RECEIVED',
+                ]) ||
+                str_contains($cleanStatus, 'WFG') ||
+                $cleanLoc === strtoupper(MasterKempuModel::LOC_WFG)
+            ) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah melewati tahap QC After Filling (Status saat ini: '{$currentStatus}').",
+                ];
+            }
+        }
+
+        // c. Cek Duplikat di QC PM
+        if ($qcType === 'qc-pm') {
+            $isPmDone = (
+                in_array($cleanStatus, [
+                    'QC_PM_RELEASE', 'QC_PM_PASSED', 'RELEASE_QC_PM', 'QC_PM_LOLOS_RELEASE', 'QC_PM_INCOMING_BULK_LOLOS_RELEASE',
+                ]) ||
+                (str_contains($cleanStatus, 'QC_PM') && (str_contains($cleanStatus, 'RELEASE') || str_contains($cleanStatus, 'PASSED') || str_contains($cleanStatus, 'LOLOS')))
+            );
+            if ($isPmDone) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah scan QC PM (Lolos/Release). Silakan lanjutkan ke tahap Transfer Out To Produksi di WPM.",
+                ];
+            }
+
+            if (
+                in_array($cleanStatus, [
+                    'WPM_TRANSFER_OUT_TO_PROD', 'IN_TRANSIT_PRODUKSI',
+                    'PROD_TRANSFER_IN_FROM_WPM', 'PROD_TRANSFER_IN_WPM', 'QC_PRE_CUCI_PENDING',
+                ]) ||
+                $cleanLoc === strtoupper(MasterKempuModel::LOC_PRODUKSI)
+            ) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah melewati tahap QC PM (Status saat ini: '{$currentStatus}').",
+                ];
+            }
+        }
+
+        // d. Cek Duplikat di QC Retur
+        if ($qcType === 'qc-retur') {
+            if (in_array($cleanStatus, ['PROD_REPRO_KEMPU', 'REPRO', 'QC_RETUR_REPRO_PRODUKSI'])) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah scan QC Retur (Keputusan: Repro). Silakan lanjutkan proses Repro Kempu di Produksi.",
+                ];
+            }
+
+            if (in_array($cleanStatus, ['ENG_REPAIR', 'REPAIR', 'QC_RETUR_REJECT_WORKSHOP'])) {
+                return [
+                    'valid'   => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} sudah scan QC Retur (Keputusan: Reject Workshop). Menunggu perbaikan Tim Engineering.",
+                ];
+            }
         }
 
         $configs = self::getQcConfig();
@@ -1244,6 +1372,15 @@ class KempuQcController extends Controller
         $fromLocation  = strtoupper(trim($kempu->main?->current_location ?? $kempu->current_location ?? MasterKempuModel::LOC_WPM));
         $currentStatus = strtoupper(trim($kempu->main?->current_status ?? $kempu->current_status ?? MasterKempuModel::STATUS_REGISTERED));
         $currentReused = (int)($kempu->main?->reused_count ?? 0);
+
+        // Validasi Alur QC & Proteksi Duplikat Scan pada State yang Sama
+        $flowValidation = self::validateQcFlow($kempu, $qcType);
+        if (!$flowValidation['valid']) {
+            return response()->json([
+                'status'  => false,
+                'message' => $flowValidation['message'],
+            ], 422);
+        }
 
         // Tentukan Status dan Lokasi Tujuan Berdasarkan Tipe QC & Keputusan
         // Konteks After Filling: diantara cuci, filling, out to wfg, atau sedang di WFG
@@ -1611,6 +1748,53 @@ class KempuQcController extends Controller
                         $notes        = $notes ?: 'Force Decision: Reject QC - Kirim Workshop Engineering';
                     }
                     break;
+            }
+        }
+
+        // Proteksi Duplikat Force Scan QC:
+        // Jika kempu saat ini sudah berstatus sama dengan target force scan atau
+        // riwayat force scan terakhir sudah menghasilkan aksi/status yang sama, tolak sebagai duplikat.
+        if (in_array($qcType, ['qc-force', 'qc-pm-force', 'qc-proses-force'])) {
+            $cleanCurrent = strtoupper(preg_replace('/[^A-Z0-9]/', '_', $currentStatus));
+            $cleanNext    = strtoupper(preg_replace('/[^A-Z0-9]/', '_', $nextStatus));
+
+            $isSameStatus = ($cleanCurrent === $cleanNext);
+
+            if ($nextStatus === MasterKempuModel::STATUS_QC_PM_RELEASE && in_array($cleanCurrent, ['QC_PM_RELEASE', 'QC_PM_PASSED', 'RELEASE_QC_PM'])) {
+                $isSameStatus = true;
+            }
+            if ($nextStatus === MasterKempuModel::STATUS_QC_PRE_CUCI_RELEASE && in_array($cleanCurrent, ['QC_PRE_CUCI_RELEASE', 'QC_PRE_CUCI_PASSED', 'RELEASE_QC_PRE_CUCI', 'QC_PROD_PASSED'])) {
+                $isSameStatus = true;
+            }
+            if ($nextStatus === MasterKempuModel::STATUS_QC_AFTER_FILLING_RELEASE && in_array($cleanCurrent, ['QC_AFTER_FILLING_RELEASE', 'QC_AFTER_FILLING_PASSED', 'RELEASE_QC_AFTER_FILLING'])) {
+                $isSameStatus = true;
+            }
+            if ($actionResult === 'HOLD' && str_contains($cleanCurrent, 'HOLD') && $fromLocation === $nextLocation) {
+                $isSameStatus = true;
+            }
+            if ($actionResult === 'REPRO' && in_array($cleanCurrent, ['QC_AFTER_FILLING_REPRO', 'PROD_REPRO_KEMPU', 'REPRO'])) {
+                $isSameStatus = true;
+            }
+            if ($actionResult === 'SCRAPPED' && in_array($cleanCurrent, ['SCRAPPED', 'SCRAP', 'NONAKTIF'])) {
+                $isSameStatus = true;
+            }
+            if ($nextStatus === MasterKempuModel::STATUS_ENG_REPAIR && in_array($cleanCurrent, ['ENG_REPAIR', 'REPAIR', 'MAINTENANCE'])) {
+                $isSameStatus = true;
+            }
+
+            $lastTracking = KempuTrackingHistoryModel::where('kempu_master_id', $kempu->id)->latest('id')->first();
+            $isLastSameForce = $lastTracking && (
+                str_contains($lastTracking->stage, 'FORCE') && (
+                    $lastTracking->action === $actionTitle ||
+                    ($lastTracking->action_result === $actionResult && $lastTracking->to_location === $nextLocation)
+                )
+            );
+
+            if ($isSameStatus || $isLastSameForce) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} saat ini sudah berstatus '{$currentStatus}' ({$actionTitle}). Force Scan dengan status yang sama ditolak (duplikat).",
+                ], 422);
             }
         }
 

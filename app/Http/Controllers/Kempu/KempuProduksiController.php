@@ -883,6 +883,36 @@ class KempuProduksiController extends Controller
                         'message' => 'Pilihan target keputusan Force Scan Produksi tidak valid.',
                     ], 400);
             }
+
+            // Proteksi Duplikat Force Scan Produksi:
+            // Jika kempu saat ini sudah berstatus sama dengan target force scan atau
+            // riwayat force scan terakhir sudah menghasilkan aksi/status yang sama, tolak sebagai duplikat.
+            $currentStatus = strtoupper(trim($kempu->main?->current_status ?? $kempu->current_status ?? ''));
+            $cleanCurrent  = strtoupper(preg_replace('/[^A-Z0-9]/', '_', $currentStatus));
+            $cleanNext     = strtoupper(preg_replace('/[^A-Z0-9]/', '_', $nextStatus));
+
+            $isSameTransferIn = in_array($forceTarget, ['PROD_TRANSFER_IN_WPM', 'TRANSFER-IN-FROM-WPM']) && in_array($cleanCurrent, ['QC_PRE_CUCI_PENDING', 'PROD_TRANSFER_IN_FROM_WPM', 'PROD_TRANSFER_IN_WPM', 'TRANSFER_IN_FROM_WPM']);
+            $isSameCuci       = in_array($forceTarget, ['PROD_CUCI_KEMPU', 'CUCI-KEMPU']) && in_array($cleanCurrent, ['PROD_CUCI_KEMPU', 'CUCI_KEMPU_COMPLETED', 'CUCI_KEMPU', 'CUCI_KEMPU_SELESAI']);
+            $isSameFilling    = in_array($forceTarget, ['PROD_FILLING_KEMPU', 'SCAN-1-FILLING-KEMPU']) && in_array($cleanCurrent, ['PROD_FILLING_KEMPU', 'SCAN1_FILLED', 'SCAN_1_FILLED', 'SCAN_1_FILLING_KEMPU']);
+            $isSameOutWfg     = in_array($forceTarget, ['PROD_TRANSFER_OUT_WFG', 'TRANSFER-OUT-TO-WFG']) && in_array($cleanCurrent, ['PROD_TRANSFER_OUT_WFG', 'IN_TRANSIT_WFG', 'TRANSFER_OUT_TO_WFG']);
+            $isSameInWfg      = in_array($forceTarget, ['PROD_TRANSFER_IN_WFG', 'TRANSFER-IN-FROM-WFG']) && in_array($cleanCurrent, ['PROD_TRANSFER_IN_FROM_WFG', 'PROD_TRANSFER_IN_WFG', 'TRANSFER_IN_FROM_WFG']);
+            $isSameScrap      = in_array($forceTarget, ['SCRAPPED', 'CREATE-BA-SCRAP']) && in_array($cleanCurrent, ['SCRAPPED', 'SCRAP', 'NONAKTIF']);
+            $isSameRepro      = in_array($forceTarget, ['PROD_REPRO_KEMPU', 'REPRO-KEMPU', 'REPRO']) && in_array($cleanCurrent, ['PROD_REPRO_KEMPU', 'REPRO']);
+
+            $lastTracking = KempuTrackingHistoryModel::where('kempu_master_id', $kempu->id)->latest('id')->first();
+            $isLastSameForce = $lastTracking && (
+                $lastTracking->stage === 'PRODUKSI_FORCE' && (
+                    $lastTracking->action === $actionTitle ||
+                    ($lastTracking->to_location === $toLocation && $lastTracking->action_result === $actionResult)
+                )
+            );
+
+            if ($cleanCurrent === $cleanNext || $isSameTransferIn || $isSameCuci || $isSameFilling || $isSameOutWfg || $isSameInWfg || $isSameScrap || $isSameRepro || $isLastSameForce) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => "Flow Salah! Kempu {$idKempu} saat ini sudah berstatus '{$currentStatus}' ({$actionTitle}). Force Scan dengan status yang sama ditolak (duplikat).",
+                ], 422);
+            }
         } elseif ($cardKey === 'scan-1-filling-kempu') {
             $noPo = trim($request->input('no_po', ''));
             if (!$noPo) {
