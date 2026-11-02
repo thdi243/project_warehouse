@@ -537,7 +537,7 @@ Route::middleware('auth')->group(function () {
             });
 
             // Kempu WFG
-            Route::prefix('kempu')->name('wfg.kempu.')->group(function () {
+            Route::prefix('kempu')->middleware(['permission:wfg-kempu'])->name('wfg.kempu.')->group(function () {
                 Route::get('/', [WfgKempuController::class, 'index'])->name('index');
                 Route::get('/scan/{card}', [WfgKempuController::class, 'scan'])->name('scan');
                 Route::post('/lookup', [WfgKempuController::class, 'lookup'])->name('lookup');
@@ -594,7 +594,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // Kempu WPM
-        Route::prefix('kempu')->name('kempu.')->group(function () {
+        Route::prefix('kempu')->middleware(['permission:wpm-kempu'])->name('kempu.')->group(function () {
             Route::get('/', [WpmKempuController::class, 'index'])->name('index');
             Route::get('/scan/{card}', [WpmKempuController::class, 'scan'])->name('scan');
             Route::post('/lookup', [WpmKempuController::class, 'lookup'])->name('lookup');
@@ -996,7 +996,7 @@ Route::middleware('auth')->group(function () {
     // Traceability Scan Kempu
     Route::prefix('kempu')->name('kempu.')->group(function () {
         Route::prefix('master')->name('master.')->group(function () {
-            Route::get('/', [MasterKempuController::class, 'index'])->name('index');
+            Route::get('/', [MasterKempuController::class, 'index'])->name('index')->middleware(['permission:master-kempu']);
             Route::get('/data', [MasterKempuController::class, 'getData'])->name('data');
             Route::post('/store', [MasterKempuController::class, 'store'])->name('store');
             Route::put('/update/{id}', [MasterKempuController::class, 'update'])->name('update');
