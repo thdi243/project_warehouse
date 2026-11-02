@@ -1020,7 +1020,7 @@
                             enabled: true
                         }
                     },
-                    colors: ['#4361ee', '#f59e0b', '#06b6d4', '#10b981', '#14b8a6', '#8b5cf6', '#64748b', '#ef4444'],
+                    colors: ['#4361ee', '#f59e0b', '#06b6d4', '#10b981', '#14b8a6', '#8b5cf6', '#64748b'],
                     dataLabels: {
                         enabled: false
                     },

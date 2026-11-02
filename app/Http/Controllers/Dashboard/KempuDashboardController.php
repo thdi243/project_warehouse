@@ -113,16 +113,37 @@ class KempuDashboardController extends Controller
                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.is_force_scan')) = 'true'");
             })->count();
 
-            // Scan per Stage Hari Ini
+            // Scan per Stage Hari Ini (Force scan otomatis terakumulasi ke stasiun masing-masing)
             $stageScansToday = [
-                'WPM'        => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'WPM')->count(),
-                'QC_PM'      => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'QC_PM')->count(),
-                'PRODUKSI'   => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'PRODUKSI')->count(),
-                'QC_PROSES'  => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'QC_PROSES')->count(),
-                'WFG'        => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'WFG')->count(),
-                'PAS'        => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'PAS')->count(),
-                'ENG'        => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'ENG')->count(),
-                'FORCE_SCAN' => $todayForceScans,
+                'WPM'       => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'WPM')->count(),
+                'QC_PM'     => KempuTrackingHistoryModel::whereDate('created_at', $today)
+                    ->where(function ($q) {
+                        $q->where('stage', 'QC_PM')
+                          ->orWhere(function ($sub) {
+                              $sub->where('stage', 'QC_FORCE')
+                                  ->where(function ($act) {
+                                      $act->where('action', 'LIKE', '%QC PM%')
+                                          ->orWhere('action', 'LIKE', '%QC_PM%');
+                                  });
+                          });
+                    })->count(),
+                'PRODUKSI'  => KempuTrackingHistoryModel::whereDate('created_at', $today)
+                    ->where(function ($q) {
+                        $q->whereIn('stage', ['PRODUKSI', 'PRODUKSI_FORCE'])
+                          ->orWhere('stage', 'LIKE', 'PROD%');
+                    })->count(),
+                'QC_PROSES' => KempuTrackingHistoryModel::whereDate('created_at', $today)
+                    ->where(function ($q) {
+                        $q->where('stage', 'QC_PROSES')
+                          ->orWhere(function ($sub) {
+                              $sub->where('stage', 'QC_FORCE')
+                                  ->where('action', 'NOT LIKE', '%QC PM%')
+                                  ->where('action', 'NOT LIKE', '%QC_PM%');
+                          });
+                    })->count(),
+                'WFG'       => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'WFG')->count(),
+                'PAS'       => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'PAS')->count(),
+                'ENG'       => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'ENG')->count(),
             ];
 
             // Inflow & Outflow Hari Ini
@@ -226,18 +247,28 @@ class KempuDashboardController extends Controller
                 MasterKempuModel::whereHas('main', fn($q) => $q->where('reused_count', '>=', 21)->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED))->count(),
             ];
 
-            // 3. Tren Scan Aktivitas N Hari Terakhir per Departemen (Termasuk Force Scan)
+            // 3. Tren Scan Aktivitas N Hari Terakhir per Departemen (Force scan dilebur ke scan departemen masing-masing)
             $startDate = Carbon::today()->subDays($days - 1);
             $trendDates = [];
             for ($i = 0; $i < $days; $i++) {
                 $trendDates[] = $startDate->copy()->addDays($i)->format('Y-m-d');
             }
 
-            $stageSql = "CASE 
-                WHEN stage IN ('PRODUKSI_FORCE', 'QC_FORCE') 
-                     OR action LIKE '%[FORCE SCAN]%' 
-                     OR JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.is_force_scan')) = 'true'
-                THEN 'FORCE_SCAN'
+            $stageSql = "CASE
+                WHEN stage IN ('PRODUKSI', 'PRODUKSI_FORCE') THEN 'PRODUKSI'
+                WHEN stage = 'QC_FORCE' THEN
+                    CASE 
+                        WHEN action LIKE '%QC PM%' OR action LIKE '%QC_PM%' THEN 'QC_PM'
+                        ELSE 'QC_PROSES'
+                    END
+                WHEN stage = 'QC_PM' THEN 'QC_PM'
+                WHEN stage = 'QC_PROSES' THEN 'QC_PROSES'
+                WHEN stage = 'WPM' THEN 'WPM'
+                WHEN stage = 'WFG' THEN 'WFG'
+                WHEN stage = 'PAS' THEN 'PAS'
+                WHEN stage = 'ENG' THEN 'ENG'
+                WHEN stage LIKE 'PROD%' THEN 'PRODUKSI'
+                WHEN stage LIKE 'QC%' THEN 'QC_PROSES'
                 ELSE stage
             END";
 
@@ -251,14 +282,13 @@ class KempuDashboardController extends Controller
                 ->get();
 
             $stages = [
-                'WPM'        => 'WPM',
-                'QC_PM'      => 'QC PM',
-                'PRODUKSI'   => 'Produksi',
-                'QC_PROSES'  => 'QC Proses',
-                'WFG'        => 'WFG',
-                'PAS'        => 'Whs PAS',
-                'ENG'        => 'Workshop ENG',
-                'FORCE_SCAN' => 'Force Scan',
+                'WPM'       => 'WPM',
+                'QC_PM'     => 'QC PM',
+                'PRODUKSI'  => 'Produksi',
+                'QC_PROSES' => 'QC Proses',
+                'WFG'       => 'WFG',
+                'PAS'       => 'Whs PAS',
+                'ENG'       => 'Workshop ENG',
             ];
 
             $trendSeries = [];
