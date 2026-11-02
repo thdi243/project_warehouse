@@ -32,6 +32,7 @@ class KempuDashboardController extends Controller
             MasterKempuModel::LOC_WFG          => 'WFG (Finished Goods)',
             MasterKempuModel::LOC_PAS          => 'Warehouse PT PAS',
             MasterKempuModel::LOC_ENG          => 'Engineering Workshop',
+            MasterKempuModel::LOC_IN_TRANSIT   => 'Dalam Perjalanan (In Transit)',
             MasterKempuModel::LOC_SCRAP        => 'Scrap / Afkir',
         ];
 
@@ -56,14 +57,15 @@ class KempuDashboardController extends Controller
 
             // Per Lokasi
             $locCounts = [
-                'wpm'       => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_WPM))->count(),
-                'qc_pm'     => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_QC_PM))->count(),
-                'produksi'  => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_PRODUKSI))->count(),
-                'qc_proses' => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_QC_PROSES))->count(),
-                'wfg'       => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_WFG))->count(),
-                'pas'       => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_PAS))->count(),
-                'eng'       => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_ENG))->count(),
-                'scrap'     => $totalScrap,
+                'wpm'        => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_WPM))->count(),
+                'qc_pm'      => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_QC_PM))->count(),
+                'produksi'   => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_PRODUKSI))->count(),
+                'qc_proses'  => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_QC_PROSES))->count(),
+                'wfg'        => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_WFG))->count(),
+                'pas'        => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_PAS))->count(),
+                'eng'        => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_ENG))->count(),
+                'in_transit' => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_IN_TRANSIT))->count(),
+                'scrap'      => $totalScrap,
             ];
 
             // Reused Lifespan Metrics
@@ -78,7 +80,8 @@ class KempuDashboardController extends Controller
             })->count();
 
             $reusedMax = MasterKempuModel::whereHas('main', function ($q) {
-                $q->where('reused_count', '>=', 21);
+                $q->where('reused_count', '>=', 21)
+                  ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
             })->count();
 
             // Avg Reused (Hanya kempu aktif)
@@ -96,15 +99,30 @@ class KempuDashboardController extends Controller
             $today = Carbon::today();
             $todayScans = KempuTrackingHistoryModel::whereDate('created_at', $today)->count();
 
+            // Force Scan Hari Ini & Total Akumulasi
+            $todayForceScans = KempuTrackingHistoryModel::whereDate('created_at', $today)
+                ->where(function ($q) {
+                    $q->whereIn('stage', ['PRODUKSI_FORCE', 'QC_FORCE'])
+                      ->orWhere('action', 'LIKE', '%[FORCE SCAN]%')
+                      ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.is_force_scan')) = 'true'");
+                })->count();
+
+            $totalForceScansAll = KempuTrackingHistoryModel::where(function ($q) {
+                $q->whereIn('stage', ['PRODUKSI_FORCE', 'QC_FORCE'])
+                  ->orWhere('action', 'LIKE', '%[FORCE SCAN]%')
+                  ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.is_force_scan')) = 'true'");
+            })->count();
+
             // Scan per Stage Hari Ini
             $stageScansToday = [
-                'WPM'       => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'WPM')->count(),
-                'QC_PM'     => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'QC_PM')->count(),
-                'PRODUKSI'  => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'PRODUKSI')->count(),
-                'QC_PROSES' => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'QC_PROSES')->count(),
-                'WFG'       => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'WFG')->count(),
-                'PAS'       => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'PAS')->count(),
-                'ENG'       => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'ENG')->count(),
+                'WPM'        => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'WPM')->count(),
+                'QC_PM'      => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'QC_PM')->count(),
+                'PRODUKSI'   => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'PRODUKSI')->count(),
+                'QC_PROSES'  => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'QC_PROSES')->count(),
+                'WFG'        => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'WFG')->count(),
+                'PAS'        => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'PAS')->count(),
+                'ENG'        => KempuTrackingHistoryModel::whereDate('created_at', $today)->where('stage', 'ENG')->count(),
+                'FORCE_SCAN' => $todayForceScans,
             ];
 
             // Inflow & Outflow Hari Ini
@@ -126,28 +144,30 @@ class KempuDashboardController extends Controller
             return response()->json([
                 'status' => true,
                 'data'   => [
-                    'total_kempu'     => $totalKempu,
-                    'total_active'    => $totalActive,
-                    'total_scrap'     => $totalScrap,
-                    'locations'       => $locCounts,
-                    'reused'          => [
+                    'total_kempu'       => $totalKempu,
+                    'total_active'      => $totalActive,
+                    'total_scrap'       => $totalScrap,
+                    'locations'         => $locCounts,
+                    'reused'            => [
                         'normal'  => $reusedNormal,
                         'warning' => $reusedWarning,
                         'max'     => $reusedMax,
                         'average' => $avgReused,
                     ],
-                    'health'          => [
+                    'health'            => [
                         'not_ok'          => $conditionNotOk,
                         'missing_barcode' => $missingBarcode,
                         'missing_rfid'    => $missingRfid,
                         'missing_nti'     => $missingNti,
                     ],
-                    'today'           => [
+                    'today'             => [
                         'scans'        => $todayScans,
+                        'force_scans'  => $todayForceScans,
                         'stages'       => $stageScansToday,
                         'inflow'       => $inflowToday,
                         'outflow'      => $outflowToday,
                     ],
+                    'force_scans_total' => $totalForceScansAll,
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -170,7 +190,7 @@ class KempuDashboardController extends Controller
             }
 
             // 1. Distribusi Lokasi
-            $locationLabels = ['WPM', 'QC PM', 'Produksi', 'QC Proses', 'WFG', 'PT PAS', 'Workshop ENG', 'Scrap'];
+            $locationLabels = ['WPM', 'QC PM', 'Produksi', 'QC Proses', 'WFG', 'Whs PAS', 'Workshop ENG', 'In Transit', 'Scrap'];
             $locationKeys   = [
                 MasterKempuModel::LOC_WPM,
                 MasterKempuModel::LOC_QC_PM,
@@ -179,6 +199,7 @@ class KempuDashboardController extends Controller
                 MasterKempuModel::LOC_WFG,
                 MasterKempuModel::LOC_PAS,
                 MasterKempuModel::LOC_ENG,
+                MasterKempuModel::LOC_IN_TRANSIT,
                 MasterKempuModel::LOC_SCRAP,
             ];
 
@@ -202,31 +223,53 @@ class KempuDashboardController extends Controller
                 MasterKempuModel::whereHas('main', fn($q) => $q->whereBetween('reused_count', [6, 12])->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED))->count(),
                 MasterKempuModel::whereHas('main', fn($q) => $q->whereBetween('reused_count', [13, 17])->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED))->count(),
                 MasterKempuModel::whereHas('main', fn($q) => $q->whereBetween('reused_count', [18, 20])->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED))->count(),
-                MasterKempuModel::whereHas('main', fn($q) => $q->where('reused_count', '>=', 21))->count(),
+                MasterKempuModel::whereHas('main', fn($q) => $q->where('reused_count', '>=', 21)->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED))->count(),
             ];
 
-            // 3. Tren Scan Aktivitas N Hari Terakhir per Departemen
+            // 3. Tren Scan Aktivitas N Hari Terakhir per Departemen (Termasuk Force Scan)
             $startDate = Carbon::today()->subDays($days - 1);
             $trendDates = [];
             for ($i = 0; $i < $days; $i++) {
                 $trendDates[] = $startDate->copy()->addDays($i)->format('Y-m-d');
             }
 
+            $stageSql = "CASE 
+                WHEN stage IN ('PRODUKSI_FORCE', 'QC_FORCE') 
+                     OR action LIKE '%[FORCE SCAN]%' 
+                     OR JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.is_force_scan')) = 'true'
+                THEN 'FORCE_SCAN'
+                ELSE stage
+            END";
+
             $trendRaw = KempuTrackingHistoryModel::whereDate('created_at', '>=', $startDate)
-                ->select(DB::raw('DATE(created_at) as scan_date'), 'stage', DB::raw('COUNT(*) as total'))
-                ->groupBy('scan_date', 'stage')
+                ->select(
+                    DB::raw('DATE(created_at) as scan_date'),
+                    DB::raw("{$stageSql} as norm_stage"),
+                    DB::raw('COUNT(*) as total')
+                )
+                ->groupBy('scan_date', 'norm_stage')
                 ->get();
 
-            $stages = ['WPM', 'QC_PM', 'PRODUKSI', 'QC_PROSES', 'WFG', 'PAS', 'ENG'];
+            $stages = [
+                'WPM'        => 'WPM',
+                'QC_PM'      => 'QC PM',
+                'PRODUKSI'   => 'Produksi',
+                'QC_PROSES'  => 'QC Proses',
+                'WFG'        => 'WFG',
+                'PAS'        => 'Whs PAS',
+                'ENG'        => 'Workshop ENG',
+                'FORCE_SCAN' => 'Force Scan',
+            ];
+
             $trendSeries = [];
-            foreach ($stages as $stage) {
+            foreach ($stages as $stageKey => $stageLabel) {
                 $seriesData = [];
                 foreach ($trendDates as $dt) {
-                    $match = $trendRaw->first(fn($item) => $item->scan_date === $dt && $item->stage === $stage);
+                    $match = $trendRaw->first(fn($item) => $item->scan_date === $dt && $item->norm_stage === $stageKey);
                     $seriesData[] = $match ? (int)$match->total : 0;
                 }
                 $trendSeries[] = [
-                    'name' => str_replace('_', ' ', $stage),
+                    'name' => $stageLabel,
                     'data' => $seriesData,
                 ];
             }
@@ -434,6 +477,13 @@ class KempuDashboardController extends Controller
                     'condition'     => $item->condition ?: 'OK',
                     'operator'      => $item->operator_display_name,
                     'notes'         => $item->notes ?: '',
+                    'is_force'      => (
+                        $item->stage === 'PRODUKSI_FORCE' ||
+                        $item->stage === 'QC_FORCE' ||
+                        str_contains($item->action, '[FORCE SCAN]') ||
+                        (is_array($item->metadata) && ($item->metadata['is_force_scan'] ?? false)) ||
+                        (is_string($item->metadata) && str_contains($item->metadata, '"is_force_scan":true'))
+                    ),
                     'scanned_at'    => $item->created_at ? $item->created_at->format('d/m/Y H:i:s') : '-',
                     'time_ago'      => $item->created_at ? $item->created_at->diffForHumans() : '-',
                 ];

@@ -105,6 +105,18 @@
             color: #4361ee;
         }
 
+        .flow-node-pill {
+            transition: all 0.2s ease;
+        }
+
+        .flow-node-pill:hover,
+        .flow-node-pill.active-filter {
+            background-color: #4361ee !important;
+            color: #ffffff !important;
+            border-color: #4361ee !important;
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+        }
+
         .flow-arrow {
             display: flex;
             align-items: center;
@@ -329,12 +341,15 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
-                                    <p class="text-uppercase fw-semibold text-muted fs-11 mb-1">Scan Operasional Hari Ini
-                                    </p>
-                                    <h3 class="fw-bold mb-1 text-success" id="kpiTodayScans">0</h3>
+                                    <p class="text-uppercase fw-semibold text-muted fs-11 mb-1">Scan Operasional Hari Ini</p>
+                                    <div class="d-flex align-items-baseline gap-2 mb-1">
+                                        <h3 class="fw-bold mb-0 text-success" id="kpiTodayScans">0</h3>
+                                        <span class="badge bg-danger-subtle text-danger fs-11" id="kpiTodayForceBadge" title="Total Force Scan Hari Ini (Override / Bypass)">
+                                            <i class="ri-shield-flash-line me-1"></i>Force: <span id="kpiTodayForceCount">0</span>
+                                        </span>
+                                    </div>
                                     <p class="text-muted fs-12 mb-0">
-                                        <i class="ri-check-double-line text-success me-1"></i>Aktivitas scan lintas area
-                                        stasiun
+                                        <i class="ri-check-double-line text-success me-1"></i>Aktivitas scan lintas area stasiun
                                     </p>
                                 </div>
                                 <div class="kpi-icon-box bg-success-subtle text-success">
@@ -407,15 +422,22 @@
             <div class="row mb-3">
                 <div class="col-12">
                     <div class="pipeline-card shadow-sm">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
                             <span class="fs-13 fw-bold text-uppercase text-muted">
                                 <i class="ri-flow-chart text-primary me-1"></i> Live Stasiun & Rantai Pasok Kempu (Klik
                                 stasiun untuk filter tabel)
                             </span>
-                            <button type="button" id="btnResetStationFilter"
-                                class="btn btn-xs btn-outline-secondary py-0 px-2 fs-11 d-none">
-                                <i class="ri-close-line"></i> Reset Filter Stasiun
-                            </button>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-11 flow-node-pill"
+                                    data-location="IN_TRANSIT" style="cursor: pointer;"
+                                    title="Klik untuk filter kempu Dalam Perjalanan (In Transit)">
+                                    <i class="ri-truck-line me-1"></i>In Transit: <strong id="flowCountInTransit">0</strong>
+                                </span>
+                                <button type="button" id="btnResetStationFilter"
+                                    class="btn btn-xs btn-outline-secondary py-0 px-2 fs-11 d-none">
+                                    <i class="ri-close-line"></i> Reset Filter Stasiun
+                                </button>
+                            </div>
                         </div>
 
                         <div class="row g-2 align-items-center text-center">
@@ -664,6 +686,7 @@
                                 <option value="WFG">Gudang WFG</option>
                                 <option value="WAREHOUSE_PAS">Whs PT PAS</option>
                                 <option value="ENGINEERING_WORKSHOP">Workshop ENG</option>
+                                <option value="IN_TRANSIT">Dalam Perjalanan (In Transit)</option>
                                 <option value="SCRAP">Scrap / Afkir</option>
                             </select>
                         </div>
@@ -870,8 +893,14 @@
                 'QC_PROSES': 'QC Proses',
                 'WFG': 'Gudang WFG',
                 'WAREHOUSE_PAS': 'Whs PT PAS',
+                'PAS': 'Whs PT PAS',
                 'ENGINEERING_WORKSHOP': 'Workshop ENG',
-                'SCRAP': 'Scrap / Afkir'
+                'ENG': 'Workshop ENG',
+                'IN_TRANSIT': 'In Transit (Perjalanan)',
+                'SCRAP': 'Scrap / Afkir',
+                'FORCE_SCAN': 'Force Scan (Override)',
+                'PRODUKSI_FORCE': 'Produksi (Force)',
+                'QC_FORCE': 'QC (Force)',
             };
 
             const LOCATION_BADGES = {
@@ -881,8 +910,14 @@
                 'QC_PROSES': 'bg-warning-subtle text-warning',
                 'WFG': 'bg-success-subtle text-success',
                 'WAREHOUSE_PAS': 'bg-purple-subtle text-purple',
+                'PAS': 'bg-purple-subtle text-purple',
                 'ENGINEERING_WORKSHOP': 'bg-secondary-subtle text-secondary',
-                'SCRAP': 'bg-danger-subtle text-danger'
+                'ENG': 'bg-secondary-subtle text-secondary',
+                'IN_TRANSIT': 'bg-info-subtle text-primary border border-primary',
+                'SCRAP': 'bg-danger-subtle text-danger',
+                'FORCE_SCAN': 'bg-danger text-white',
+                'PRODUKSI_FORCE': 'bg-danger text-white',
+                'QC_FORCE': 'bg-danger text-white',
             };
 
             // ---- 1. Load KPI Metrics ----
@@ -901,6 +936,13 @@
                             $('#kpiTotalScrap').text(Number(d.total_scrap || 0).toLocaleString());
 
                             $('#kpiTodayScans').text(Number(d.today?.scans || 0).toLocaleString());
+                            const forceScans = Number(d.today?.force_scans || 0);
+                            $('#kpiTodayForceCount').text(forceScans.toLocaleString());
+                            if (forceScans > 0) {
+                                $('#kpiTodayForceBadge').removeClass('bg-danger-subtle text-danger').addClass('bg-danger text-white');
+                            } else {
+                                $('#kpiTodayForceBadge').removeClass('bg-danger text-white').addClass('bg-danger-subtle text-danger');
+                            }
 
                             $('#kpiReusedWarning').text(Number(d.reused?.warning || 0)
                                 .toLocaleString());
@@ -926,6 +968,7 @@
                             $('#flowCountWfg').text(Number(loc.wfg || 0).toLocaleString());
                             $('#flowCountPas').text(Number(loc.pas || 0).toLocaleString());
                             $('#flowCountEng').text(Number(loc.eng || 0).toLocaleString());
+                            $('#flowCountInTransit').text(Number(loc.in_transit || 0).toLocaleString());
                             $('#flowCountScrap').text(Number(d.total_scrap || 0).toLocaleString());
 
                             $('#lastUpdatedText').text('Update: ' + moment().format('HH:mm:ss'));
@@ -977,7 +1020,7 @@
                             enabled: true
                         }
                     },
-                    colors: ['#4361ee', '#f59e0b', '#06b6d4', '#10b981', '#14b8a6', '#8b5cf6', '#64748b'],
+                    colors: ['#4361ee', '#f59e0b', '#06b6d4', '#10b981', '#14b8a6', '#8b5cf6', '#64748b', '#ef4444'],
                     dataLabels: {
                         enabled: false
                     },
@@ -1047,7 +1090,7 @@
                         type: 'donut',
                         height: 290
                     },
-                    colors: ['#4361ee', '#f59e0b', '#06b6d4', '#eab308', '#10b981', '#8b5cf6', '#64748b',
+                    colors: ['#4361ee', '#f59e0b', '#06b6d4', '#eab308', '#10b981', '#8b5cf6', '#64748b', '#6366f1',
                         '#ef4444'
                     ],
                     legend: {
@@ -1192,21 +1235,24 @@
                     const resultBadge = item.action_result === 'OK' || item.action_result === 'RELEASE' ?
                         'text-success' :
                         (item.action_result === 'HOLD' ? 'text-warning' : 'text-danger');
+                    const forceBadge = item.is_force ?
+                        '<span class="badge bg-danger text-white fs-10" title="Bypass / Force Scan"><i class="ri-shield-flash-line me-1"></i>Force Scan</span>' : '';
 
                     html += `
                         <div class="feed-item d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center gap-2">
                                 <div class="avatar-xs flex-shrink-0">
-                                    <span class="avatar-title rounded-circle ${stageBadge} fs-12 fw-bold">
-                                        ${item.stage ? item.stage.substring(0, 2) : 'ST'}
+                                    <span class="avatar-title rounded-circle ${item.is_force ? 'bg-danger text-white' : stageBadge} fs-12 fw-bold">
+                                        ${item.is_force ? '<i class="ri-shield-flash-line"></i>' : (item.stage ? item.stage.substring(0, 2) : 'ST')}
                                     </span>
                                 </div>
                                 <div>
-                                    <div class="d-flex align-items-center gap-2">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
                                         <a href="javascript:void(0);" class="fw-bold text-dark fs-12 btn-show-history" data-id="${item.id_kempu}">
                                             ${item.id_kempu}
                                         </a>
                                         <span class="badge ${stageBadge} fs-10">${item.stage}</span>
+                                        ${forceBadge}
                                         <span class="badge bg-light text-muted border fs-10">${item.action}</span>
                                     </div>
                                     <div class="text-muted fs-11 mt-1">
@@ -1624,15 +1670,15 @@
                 $('#filterReusedStatus').val('all');
                 $('#filterCondition').val('all');
                 $('#filterTagIssue').val('all');
-                $('.flow-node').removeClass('active-filter');
+                $('.flow-node, .flow-node-pill').removeClass('active-filter');
                 $('#btnResetStationFilter').addClass('d-none');
                 loadTable(1);
             });
 
-            // Flow Node Click (Filter by Station)
-            $('.flow-node').on('click', function() {
+            // Flow Node & Flow Node Pill Click (Filter by Station)
+            $('.flow-node, .flow-node-pill').on('click', function() {
                 const loc = $(this).data('location');
-                $('.flow-node').removeClass('active-filter');
+                $('.flow-node, .flow-node-pill').removeClass('active-filter');
                 $(this).addClass('active-filter');
                 $('#filterLocation').val(loc);
                 $('#btnResetStationFilter').removeClass('d-none');
@@ -1640,7 +1686,7 @@
             });
 
             $('#btnResetStationFilter').on('click', function() {
-                $('.flow-node').removeClass('active-filter');
+                $('.flow-node, .flow-node-pill').removeClass('active-filter');
                 $(this).addClass('d-none');
                 $('#filterLocation').val('all');
                 loadTable(1);
