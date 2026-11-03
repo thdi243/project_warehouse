@@ -40,8 +40,17 @@ class KempuProduksiController extends Controller
                     'IN_TRANSIT_PRODUKSI',
                     'Transfer Out To Produksi',
                     'Transfer Out to Produksi',
+                    // Izinkan juga penerimaan langsung dari hasil QC PM Released
+                    MasterKempuModel::STATUS_QC_PM_RELEASE,
+                    MasterKempuModel::STATUS_QC_PM_PASSED,
+                    'QC_PM_RELEASE',
+                    'QC_PM_PASSED',
+                    'QC PM Release',
+                    'QC PM Passed',
+                    'QC PM Lolos',
+                    'QC PM Lolos (Release)',
                 ],
-                'description'     => 'Penerimaan kempu dari WPM menuju Produksi. Status selanjutnya diteruskan ke pengecekan QC Pre Cuci.',
+                'description'     => 'Penerimaan kempu dari WPM menuju Produksi (dapat menerima dari Transfer Out WPM maupun langsung dari hasil QC PM Released). Status selanjutnya diteruskan ke pengecekan QC Pre Cuci.',
             ],
             'cuci-kempu' => [
                 'key'             => 'cuci-kempu',

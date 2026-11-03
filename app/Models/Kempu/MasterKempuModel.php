@@ -581,7 +581,7 @@ class MasterKempuModel extends Model
             in_array($clean, ['QC_PM_RELEASE', 'QC_PM_PASSED', 'RELEASE_QC_PM']) ||
             (str_contains($clean, 'QC_PM') && (str_contains($clean, 'RELEASE') || str_contains($clean, 'PASSED') || str_contains($clean, 'LOLOS')))
         ) {
-            return "Flow Salah! Kempu belum scan Transfer Out to Produksi oleh Tim WPM.";
+            return "Flow Salah! Kempu belum scan Transfer Out to Produksi oleh Tim WPM atau Transfer In di Produksi.";
         }
 
         // 9. Transfer Out to Produksi (In Transit dari WPM ke Produksi)
