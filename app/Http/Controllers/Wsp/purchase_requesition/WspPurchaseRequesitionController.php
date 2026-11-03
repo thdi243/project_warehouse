@@ -1566,7 +1566,7 @@ class WspPurchaseRequesitionController extends Controller
 
     public function getDataApproval($id)
     {
-        $pr = WspPurchaseRequesitionModel::with(['items.barang.stock', 'approval.approver'])
+        $pr = WspPurchaseRequesitionModel::with(['user', 'items.barang.stock', 'approval.approver'])
             ->findOrFail($id);
 
         $currentUser = Auth::user();

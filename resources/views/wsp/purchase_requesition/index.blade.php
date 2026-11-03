@@ -987,7 +987,9 @@
 
                 let detailPrNumberHtml = '-';
                 if (itemPrNumbers.length > 0) {
-                    detailPrNumberHtml = itemPrNumbers.map(no => `<span class="badge badge-soft-primary font-size-12 me-1"><i class="mdi mdi-pound me-0.5"></i>${no}</span>`).join(' ');
+                    detailPrNumberHtml = itemPrNumbers.map(no =>
+                        `<span class="badge badge-soft-primary font-size-12 me-1"><i class="mdi mdi-pound me-0.5"></i>${no}</span>`
+                    ).join(' ');
                 }
                 $('#d_pr_number').html(detailPrNumberHtml);
 
@@ -1048,15 +1050,20 @@
 
                         let itemPrDisplay = '-';
                         if (item.pr_number) {
-                            itemPrDisplay = `<span class="badge badge-soft-primary font-size-11 fw-bold"><i class="mdi mdi-pound me-0.5"></i>${item.pr_number}</span>`;
+                            itemPrDisplay =
+                                `<span class="badge badge-soft-primary font-size-11 fw-bold"><i class="mdi mdi-pound me-0.5"></i>${item.pr_number}</span>`;
                         } else if (item.jenis === 'blocked') {
-                            itemPrDisplay = `<span class="badge badge-soft-danger font-size-11">Reservasi</span>`;
+                            itemPrDisplay =
+                                `<span class="badge badge-soft-danger font-size-11">Reservasi</span>`;
                         } else if (item.status === true && parentPrNumber) {
-                            itemPrDisplay = `<span class="badge badge-soft-primary font-size-11 fw-bold"><i class="mdi mdi-pound me-0.5"></i>${parentPrNumber}</span>`;
+                            itemPrDisplay =
+                                `<span class="badge badge-soft-primary font-size-11 fw-bold"><i class="mdi mdi-pound me-0.5"></i>${parentPrNumber}</span>`;
                         } else if (item.status === false || item.status === 0 || item.status === '0') {
-                            itemPrDisplay = `<span class="badge badge-soft-secondary font-size-11">Dibatalkan</span>`;
+                            itemPrDisplay =
+                                `<span class="badge badge-soft-secondary font-size-11">Dibatalkan</span>`;
                         } else {
-                            itemPrDisplay = `<span class="badge badge-soft-warning font-size-11">Outstanding</span>`;
+                            itemPrDisplay =
+                                `<span class="badge badge-soft-warning font-size-11">Outstanding</span>`;
                         }
 
                         tbody.append(`
@@ -1331,13 +1338,21 @@
                     ite: 'BAS-ENG',
                     produksi: 'BAS-PRD',
                     quality_control: 'BAS-QC',
-                    hrga: 'BAS-HRGA',
+                    hrga: 'BAS-HRG',
                     expedisi: 'BAS-EXP',
                     timbangan: 'BAS-EXP',
                     hse: 'BAS-HSE'
                 };
 
-                const deptCode = deptMap[pr.department] ?? 'BAS-Dept User';
+                let deptCode = deptMap[pr.department] ?? 'BAS-Dept User';
+
+                // Khusus departemen engineering jika bagiannya engineering production diarahkan ke BAS-PRD
+                const dept = (pr.department || '').toLowerCase().trim();
+                const userBagian = (pr.user?.bagian || pr.bagian || '').toLowerCase().replace(/[\s_-]+/g, '');
+                if (dept === 'engineering' && (userBagian === 'engineering_production' || userBagian.includes(
+                        'production') || userBagian.includes('produksi'))) {
+                    deptCode = 'BAS-PRD';
+                }
 
                 const approvedItems = pr.items.filter(item =>
                     item.jenis === 'pr'

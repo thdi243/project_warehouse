@@ -900,7 +900,14 @@
                     timbangan: 'BAS-EXP',
                     hse: 'BAS-HSE'
                 };
-                const deptCode = deptMap[pr.department] ?? 'BAS-Dept User';
+                let deptCode = deptMap[pr.department] ?? 'BAS-Dept User';
+
+                // Khusus departemen engineering jika bagiannya engineering production diarahkan ke BAS-PRD
+                const dept = (pr.department || '').toLowerCase().trim();
+                const userBagian = (pr.user?.bagian || pr.bagian || '').toLowerCase().replace(/[\s_-]+/g, '');
+                if (dept === 'engineering' && (userBagian === 'engineeringproduction' || userBagian.includes('production') || userBagian.includes('produksi'))) {
+                    deptCode = 'BAS-PRD';
+                }
 
                 // Render Item Chunks per 10 items (Accordion / Collapsible)
                 const chunkSize = 10;
