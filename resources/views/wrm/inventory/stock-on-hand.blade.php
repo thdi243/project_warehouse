@@ -565,6 +565,10 @@
                                         </li>
                                         <li><a class="dropdown-item" href="#" id="bulkGroup"><i
                                                     class="mdi mdi-folder-outline text-primary me-2"></i>Change Group</a></li>
+                                        <li><a class="dropdown-item" href="#" id="bulkCatatan"><i
+                                                    class="mdi mdi-note-edit-outline text-warning me-2"></i>Update Catatan</a></li>
+                                        <li><a class="dropdown-item" href="#" id="bulkExpiredDate"><i
+                                                    class="mdi mdi-calendar-clock text-info me-2"></i>Update Expired Date</a></li>
                                         <li><a class="dropdown-item text-danger" href="#" id="bulkDelete"><i
                                                     class="mdi mdi-delete-outline me-2"></i>Delete Selected</a></li>
                                     </ul>
@@ -949,6 +953,8 @@
             let currentSortDir = 'desc';
             let selectAllTotal = false;
             let totalRecords = 0;
+            let currentPage = 1;
+            let selectedIds = new Set();
 
             loadData();
             loadFilter();
@@ -997,6 +1003,7 @@
             }
 
             function loadData(page = 1) {
+                currentPage = page;
                 let params = getQueryParams();
                 params.page = page;
 
@@ -1044,11 +1051,13 @@
                                 `<span class="badge badge-soft-danger">${d.status}</span>` :
                                 `<span class="badge badge-soft-warning">${d.status}</span>`;
 
+                            const isChecked = selectAllTotal || selectedIds.has(String(d.id));
+
                             html += `
                                 <tr>
                                     @can('permission', 'wrm-inventory-soh-plus')
                                     <td class="text-center align-middle">
-                                        <input type="checkbox" class="form-check-input checkItem checkbox-xl" value="${d.id}">
+                                        <input type="checkbox" class="form-check-input checkItem checkbox-xl" value="${d.id}" ${isChecked ? 'checked' : ''}>
                                     </td>
                                     @endcan
                                     <td class="text-center">${startNo + index}</td>
@@ -1098,7 +1107,9 @@
                         $('.checkItem').prop('checked', true);
                         $('#checkAll').prop('checked', true);
                     } else {
-                        $('#checkAll').prop('checked', false);
+                        const totalOnPage = $('.checkItem').length;
+                        const checkedOnPage = $('.checkItem:checked').length;
+                        $('#checkAll').prop('checked', totalOnPage > 0 && checkedOnPage === totalOnPage);
                     }
 
                     toggleBulkButton();
@@ -1111,29 +1122,42 @@
 
             // --- Bulk Action Logic ---
             $(document).on('change', '#checkAll', function() {
-                if (!$(this).prop('checked')) {
+                const isChecked = $(this).prop('checked');
+                if (!isChecked) {
                     selectAllTotal = false;
                 }
-                $('.checkItem').prop('checked', $(this).prop('checked'));
+                $('.checkItem').each(function() {
+                    $(this).prop('checked', isChecked);
+                    const id = String($(this).val());
+                    if (isChecked) {
+                        selectedIds.add(id);
+                    } else {
+                        selectedIds.delete(id);
+                    }
+                });
                 toggleBulkButton();
             });
 
             $(document).on('change', '.checkItem', function() {
-                if (!$(this).prop('checked')) {
+                const id = String($(this).val());
+                if ($(this).prop('checked')) {
+                    selectedIds.add(id);
+                } else {
+                    selectedIds.delete(id);
                     selectAllTotal = false;
                 }
 
-                if ($('.checkItem:checked').length === $('.checkItem').length) {
-                    $('#checkAll').prop('checked', true);
-                } else {
-                    $('#checkAll').prop('checked', false);
-                }
+                const totalOnPage = $('.checkItem').length;
+                const checkedOnPage = $('.checkItem:checked').length;
+                $('#checkAll').prop('checked', totalOnPage > 0 && checkedOnPage === totalOnPage);
+
                 toggleBulkButton();
             });
 
             function toggleBulkButton() {
                 const checkedCount = $('.checkItem:checked').length;
                 const totalOnPage = $('.checkItem').length;
+                const totalSelectedCount = selectAllTotal ? totalRecords : selectedIds.size;
 
                 if (selectAllTotal) {
                     $('#selectedCount').text(numberFormat(totalRecords));
@@ -1145,17 +1169,26 @@
                     $('#allSelectedBanner').show();
                     $('#totalCountText2').text(numberFormat(totalRecords));
                 } else {
-                    $('#selectedCount').text(checkedCount);
+                    $('#selectedCount').text(numberFormat(totalSelectedCount));
                     $('#selectionText').text('Choose an action to apply to all selected records');
                     $('#allSelectedBanner').hide();
 
-                    if (checkedCount > 0) {
+                    if (totalSelectedCount > 0) {
                         $('#bulkToolbar').show();
 
-                        if (checkedCount === totalOnPage && totalRecords > totalOnPage) {
+                        if (totalRecords > totalSelectedCount) {
                             $('#selectAllBanner').show();
-                            $('#pageCountText').text(checkedCount);
-                            $('#totalCountText').text(numberFormat(totalRecords));
+                            if (checkedCount === totalOnPage && totalOnPage > 0 && totalSelectedCount === totalOnPage) {
+                                $('#selectAllBanner').html(`
+                                    All <span class="fw-bold" id="pageCountText">${checkedCount}</span> items on this page are selected.
+                                    <a href="javascript:void(0)" class="ms-2 fw-bold" id="btnSelectAllTotal">Select all <span id="totalCountText">${numberFormat(totalRecords)}</span> items in stock</a>
+                                `);
+                            } else {
+                                $('#selectAllBanner').html(`
+                                    <span class="fw-bold" id="pageCountText">${numberFormat(totalSelectedCount)}</span> items are selected.
+                                    <a href="javascript:void(0)" class="ms-2 fw-bold" id="btnSelectAllTotal">Select all <span id="totalCountText">${numberFormat(totalRecords)}</span> items in stock</a>
+                                `);
+                            }
                         } else {
                             $('#selectAllBanner').hide();
                         }
@@ -1177,7 +1210,7 @@
 
             function checkBulkSelection() {
                 if (selectAllTotal) return true;
-                if ($('.checkItem:checked').length > 0) return true;
+                if (selectedIds.size > 0) return true;
 
                 Swal.fire({
                     icon: 'warning',
@@ -1187,20 +1220,23 @@
                 return false;
             }
 
+            function getBulkFilterParams() {
+                let params = getQueryParams();
+                delete params.per_page;
+                delete params.page;
+                delete params.sort_dir;
+                return params;
+            }
+
             $(document).on('click', '#btnSelectAllTotal', function() {
                 selectAllTotal = true;
                 $('.checkItem, #checkAll').prop('checked', true);
                 toggleBulkButton();
             });
 
-            $(document).on('click', '#btnClearTotalSelection', function() {
+            $(document).on('click', '#btnClearTotalSelection, #clearSelection', function() {
                 selectAllTotal = false;
-                $('.checkItem, #checkAll').prop('checked', false);
-                toggleBulkButton();
-            });
-
-            $(document).on('click', '#clearSelection', function() {
-                selectAllTotal = false;
+                selectedIds.clear();
                 $('.checkItem, #checkAll').prop('checked', false);
                 toggleBulkButton();
             });
@@ -1211,15 +1247,8 @@
                 if (!checkBulkSelection()) return;
 
                 const status = $(this).data('status');
-                const selectedIds = [];
-
-                if (!selectAllTotal) {
-                    $('.checkItem:checked').each(function() {
-                        selectedIds.push($(this).val());
-                    });
-                }
-
-                const countText = selectAllTotal ? totalRecords : selectedIds.length;
+                const selectedIdsArray = Array.from(selectedIds);
+                const countText = selectAllTotal ? totalRecords : selectedIdsArray.length;
 
                 Swal.fire({
                     title: 'Konfirmasi Massal',
@@ -1245,16 +1274,9 @@
                         };
 
                         if (selectAllTotal) {
-                            ajaxData.group = $('#filterGroup').val();
-                            ajaxData.mid = $('#filterMid').val();
-                            ajaxData.start_date = $('#filterStartDate').val();
-                            ajaxData.end_date = $('#filterEndDate').val();
-                            ajaxData.supplier = $('#filterSupplier').val();
-                            ajaxData.no_spb = $('#filterNoSpb').val();
-                            ajaxData.location = $('#filterLocation').val();
-                            ajaxData.catatan = $('#filterCatatan').val();
+                            Object.assign(ajaxData, getBulkFilterParams());
                         } else {
-                            ajaxData.ids = selectedIds;
+                            ajaxData.ids = selectedIdsArray;
                         }
 
                         $.ajax({
@@ -1264,7 +1286,8 @@
                             success: function(res) {
                                 Swal.fire('Berhasil', res.message, 'success');
                                 selectAllTotal = false;
-                                loadData();
+                                selectedIds.clear();
+                                loadData(currentPage);
                             },
                             error: function(xhr) {
                                 Swal.fire('Gagal', xhr.responseJSON?.message ??
@@ -1280,15 +1303,8 @@
 
                 if (!checkBulkSelection()) return;
 
-                const selectedIds = [];
-
-                if (!selectAllTotal) {
-                    $('.checkItem:checked').each(function() {
-                        selectedIds.push($(this).val());
-                    });
-                }
-
-                const countText = selectAllTotal ? totalRecords : selectedIds.length;
+                const selectedIdsArray = Array.from(selectedIds);
+                const countText = selectAllTotal ? totalRecords : selectedIdsArray.length;
 
                 Swal.fire({
                     title: 'Update Group Massal',
@@ -1321,17 +1337,14 @@
                         };
 
                         if (selectAllTotal) {
-                            ajaxData.group_filter = $('#filterGroup')
-                                .val(); // avoid conflict with group to update
-                            ajaxData.mid = $('#filterMid').val();
-                            ajaxData.start_date = $('#filterStartDate').val();
-                            ajaxData.end_date = $('#filterEndDate').val();
-                            ajaxData.supplier = $('#filterSupplier').val();
-                            ajaxData.no_spb = $('#filterNoSpb').val();
-                            ajaxData.location = $('#filterLocation').val();
-                            ajaxData.catatan = $('#filterCatatan').val();
+                            const filterParams = getBulkFilterParams();
+                            if (filterParams.group) {
+                                ajaxData.group_filter = filterParams.group;
+                                delete filterParams.group;
+                            }
+                            Object.assign(ajaxData, filterParams);
                         } else {
-                            ajaxData.ids = selectedIds;
+                            ajaxData.ids = selectedIdsArray;
                         }
 
                         $.ajax({
@@ -1341,7 +1354,139 @@
                             success: function(res) {
                                 Swal.fire('Berhasil', res.message, 'success');
                                 selectAllTotal = false;
-                                loadData();
+                                selectedIds.clear();
+                                loadData(currentPage);
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal', xhr.responseJSON?.message ??
+                                    'Terjadi kesalahan', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            $(document).on('click', '#bulkCatatan', function(e) {
+                e.preventDefault();
+
+                if (!checkBulkSelection()) return;
+
+                const selectedIdsArray = Array.from(selectedIds);
+                const countText = selectAllTotal ? totalRecords : selectedIdsArray.length;
+
+                Swal.fire({
+                    title: 'Update Catatan Massal',
+                    text: `Masukkan catatan baru untuk ${countText} item terpilih:`,
+                    input: 'textarea',
+                    inputPlaceholder: 'Tulis catatan di sini...',
+                    showCancelButton: true,
+                    confirmButtonText: 'Update Catatan',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const newCatatan = result.value ?? '';
+                        Swal.fire({
+                            title: 'Memproses...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        let ajaxData = {
+                            _token: "{{ csrf_token() }}",
+                            catatan: newCatatan,
+                            select_all: selectAllTotal ? 1 : 0
+                        };
+
+                        if (selectAllTotal) {
+                            Object.assign(ajaxData, getBulkFilterParams());
+                        } else {
+                            ajaxData.ids = selectedIdsArray;
+                        }
+
+                        $.ajax({
+                            url: "{{ route('wrm.inventory.mass-update-catatan') }}",
+                            method: 'POST',
+                            data: ajaxData,
+                            success: function(res) {
+                                Swal.fire('Berhasil', res.message, 'success');
+                                selectAllTotal = false;
+                                selectedIds.clear();
+                                loadData(currentPage);
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Gagal', xhr.responseJSON?.message ??
+                                    'Terjadi kesalahan', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            $(document).on('click', '#bulkExpiredDate', function(e) {
+                e.preventDefault();
+
+                if (!checkBulkSelection()) return;
+
+                const selectedIdsArray = Array.from(selectedIds);
+                const countText = selectAllTotal ? totalRecords : selectedIdsArray.length;
+
+                Swal.fire({
+                    title: 'Update Expired Date Massal',
+                    html: `
+                        <div class="text-start mt-2">
+                            <p class="text-muted mb-2">Pilih tanggal expired baru untuk <strong>${countText}</strong> item terpilih:</p>
+                            <input type="date" id="swalBulkExpiredDate" class="form-control form-control-lg">
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Update Expired Date',
+                    cancelButtonText: 'Batal',
+                    focusConfirm: false,
+                    didOpen: () => {
+                        $('#swalBulkExpiredDate').focus();
+                    },
+                    preConfirm: () => {
+                        const val = $('#swalBulkExpiredDate').val();
+                        if (!val) {
+                            Swal.showValidationMessage('Tanggal expired wajib dipilih!');
+                            return false;
+                        }
+                        return val;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const newExpiredDate = result.value;
+                        Swal.fire({
+                            title: 'Memproses...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        let ajaxData = {
+                            _token: "{{ csrf_token() }}",
+                            expired_date: newExpiredDate,
+                            select_all: selectAllTotal ? 1 : 0
+                        };
+
+                        if (selectAllTotal) {
+                            Object.assign(ajaxData, getBulkFilterParams());
+                        } else {
+                            ajaxData.ids = selectedIdsArray;
+                        }
+
+                        $.ajax({
+                            url: "{{ route('wrm.inventory.mass-update-expired-date') }}",
+                            method: 'POST',
+                            data: ajaxData,
+                            success: function(res) {
+                                Swal.fire('Berhasil', res.message, 'success');
+                                selectAllTotal = false;
+                                selectedIds.clear();
+                                loadData(currentPage);
                             },
                             error: function(xhr) {
                                 Swal.fire('Gagal', xhr.responseJSON?.message ??
@@ -1357,15 +1502,8 @@
 
                 if (!checkBulkSelection()) return;
 
-                const selectedIds = [];
-
-                if (!selectAllTotal) {
-                    $('.checkItem:checked').each(function() {
-                        selectedIds.push($(this).val());
-                    });
-                }
-
-                const countText = selectAllTotal ? totalRecords : selectedIds.length;
+                const selectedIdsArray = Array.from(selectedIds);
+                const countText = selectAllTotal ? totalRecords : selectedIdsArray.length;
 
                 Swal.fire({
                     title: 'Hapus Massal',
@@ -1392,16 +1530,9 @@
                         };
 
                         if (selectAllTotal) {
-                            ajaxData.group = $('#filterGroup').val();
-                            ajaxData.mid = $('#filterMid').val();
-                            ajaxData.start_date = $('#filterStartDate').val();
-                            ajaxData.end_date = $('#filterEndDate').val();
-                            ajaxData.supplier = $('#filterSupplier').val();
-                            ajaxData.no_spb = $('#filterNoSpb').val();
-                            ajaxData.location = $('#filterLocation').val();
-                            ajaxData.catatan = $('#filterCatatan').val();
+                            Object.assign(ajaxData, getBulkFilterParams());
                         } else {
-                            ajaxData.ids = selectedIds;
+                            ajaxData.ids = selectedIdsArray;
                         }
 
                         $.ajax({
@@ -1411,7 +1542,8 @@
                             success: function(res) {
                                 Swal.fire('Berhasil', res.message, 'success');
                                 selectAllTotal = false;
-                                loadData();
+                                selectedIds.clear();
+                                loadData(currentPage);
                             },
                             error: function(xhr) {
                                 Swal.fire('Gagal', xhr.responseJSON?.message ??
@@ -1789,6 +1921,7 @@
                 $('#filterCatatan').val('');
 
                 selectAllTotal = false;
+                selectedIds.clear();
 
                 setTimeout(() => {
                     $('body').removeClass('is-resetting');

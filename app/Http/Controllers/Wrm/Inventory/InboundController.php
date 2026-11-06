@@ -541,8 +541,12 @@ class InboundController extends Controller
         $query = StockOnHand::query();
 
         // Mapping filters
-        $query->when($request->filled('group'), function ($q) use ($request) {
-            $q->whereIn('wrm_stock_on_hand.group', (array)$request->group);
+        $groupFilter = $request->input('group_filter');
+        if (!$request->filled('group_filter') && !$request->routeIs('wrm.inventory.mass-update-group')) {
+            $groupFilter = $request->input('group');
+        }
+        $query->when($groupFilter, function ($q) use ($groupFilter) {
+            $q->whereIn('wrm_stock_on_hand.group', (array)$groupFilter);
         });
 
         $query->when($request->filled('status'), function ($q) use ($request) {
@@ -997,6 +1001,80 @@ class InboundController extends Controller
             return response()->json([
                 'status'  => true,
                 'message' => 'Group berhasil diperbarui secara massal'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function massUpdateCatatan(Request $request)
+    {
+        $request->validate([
+            'ids'     => 'required_without:select_all|array',
+            'catatan' => 'nullable|string'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            if ($request->select_all) {
+                $query = $this->applyFilters($request);
+            } else {
+                $query = StockOnHand::whereIn('id', $request->ids);
+            }
+
+            // Update only if not ISSUED, RESERVED or BA WAITING
+            $query->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+                ->update([
+                    'catatan'    => $request->catatan,
+                    'updated_by' => Auth::id()
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Catatan berhasil diperbarui secara massal'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function massUpdateExpiredDate(Request $request)
+    {
+        $request->validate([
+            'ids'          => 'required_without:select_all|array',
+            'expired_date' => 'required|date'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            if ($request->select_all) {
+                $query = $this->applyFilters($request);
+            } else {
+                $query = StockOnHand::whereIn('id', $request->ids);
+            }
+
+            // Update only if not ISSUED, RESERVED or BA WAITING
+            $query->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
+                ->update([
+                    'expired_date' => $request->expired_date,
+                    'updated_by'   => Auth::id()
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Expired date berhasil diperbarui secara massal'
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
