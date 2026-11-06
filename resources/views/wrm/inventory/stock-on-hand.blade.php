@@ -694,6 +694,11 @@
                         </div>
 
                         <div class="mb-2">
+                            <label>Expired Date</label>
+                            <input type="date" class="form-control" name="expired_date" id="expiredDateEdit">
+                        </div>
+
+                        <div class="mb-2">
                             <label>Status</label>
                             <select class="form-select" name="status" id="statusEdit">
                                 <option value="UNREST">UNREST</option>
@@ -1437,7 +1442,13 @@
                     html: `
                         <div class="text-start mt-2">
                             <p class="text-muted mb-2">Pilih tanggal expired baru untuk <strong>${countText}</strong> item terpilih:</p>
-                            <input type="date" id="swalBulkExpiredDate" class="form-control form-control-lg">
+                            <input type="date" id="swalBulkExpiredDate" class="form-control form-control-lg mb-2">
+                            <div class="form-check mt-3 pt-2 border-top">
+                                <input class="form-check-input" type="checkbox" id="swalClearExpiredDate">
+                                <label class="form-check-label text-danger fw-semibold" for="swalClearExpiredDate" style="cursor: pointer;">
+                                    <i class="bx bx-trash me-1"></i> Kosongkan Expired Date (Hapus / Clear Tanggal)
+                                </label>
+                            </div>
                         </div>
                     `,
                     showCancelButton: true,
@@ -1445,12 +1456,25 @@
                     cancelButtonText: 'Batal',
                     focusConfirm: false,
                     didOpen: () => {
-                        $('#swalBulkExpiredDate').focus();
+                        const dateInput = $('#swalBulkExpiredDate');
+                        const clearCb = $('#swalClearExpiredDate');
+                        clearCb.on('change', function() {
+                            if ($(this).is(':checked')) {
+                                dateInput.val('').prop('disabled', true);
+                            } else {
+                                dateInput.prop('disabled', false).focus();
+                            }
+                        });
+                        dateInput.focus();
                     },
                     preConfirm: () => {
+                        const isClear = $('#swalClearExpiredDate').is(':checked');
+                        if (isClear) {
+                            return null;
+                        }
                         const val = $('#swalBulkExpiredDate').val();
                         if (!val) {
-                            Swal.showValidationMessage('Tanggal expired wajib dipilih!');
+                            Swal.showValidationMessage('Pilih tanggal expired atau centang opsi kosongkan expired date!');
                             return false;
                         }
                         return val;
@@ -1468,7 +1492,7 @@
 
                         let ajaxData = {
                             _token: "{{ csrf_token() }}",
-                            expired_date: newExpiredDate,
+                            expired_date: newExpiredDate !== null ? newExpiredDate : '',
                             select_all: selectAllTotal ? 1 : 0
                         };
 
@@ -1606,6 +1630,12 @@
                     $('#incomingEdit').val('');
                 }
 
+                if (detail.expired_date) {
+                    $('#expiredDateEdit').val(detail.expired_date.substring(0, 10));
+                } else {
+                    $('#expiredDateEdit').val('');
+                }
+
                 $('#barangIdEdit').val(detail.barang.id);
                 $('#midEdit').val(`${detail.barang.mid} - ${detail.barang.nama_barang}`);
                 $('#qtyEdit').val(parseFloat(detail.qty));
@@ -1648,6 +1678,7 @@
                 $('#formStockEdit')[0].reset();
                 $('#zakEdit').val('');
                 $('#uomZakEdit').text('Zak');
+                $('#expiredDateEdit').val('');
             });
 
             $('#formStockEdit').on('submit', function(e) {

@@ -32,7 +32,8 @@ class StockGulaRequest extends FormRequest
             'status'    => 'required|string|max:50',
             'loc_id'    => 'required|exists:wrm_master_bin,id',
             'catatan'   => 'nullable|string',
-            'incoming_date' => 'nullable|date'
+            'incoming_date' => 'nullable|date',
+            'expired_date'  => 'nullable|date'
         ];
     }
 }

@@ -877,14 +877,15 @@ class InboundController extends Controller
             $incomingDateWithTime = ($request->incoming_date ?? date('Y-m-d')) . ' ' . date('H:i:s');
 
             $detail->update([
-                'pallet_id' => $request->pallet_id,
-                'group'     => $request->group,
-                'qty'       => $request->qty,
-                'zak'       => ($request->zak !== null && $request->zak !== '') ? $request->zak : null,
-                'status'    => $request->status,
-                'loc_id'    => $request->loc_id,
-                'catatan'   => $request->catatan,
-                'updated_by' => Auth::id(),
+                'pallet_id'    => $request->pallet_id,
+                'group'        => $request->group,
+                'qty'          => $request->qty,
+                'zak'          => ($request->zak !== null && $request->zak !== '') ? $request->zak : null,
+                'status'       => $request->status,
+                'loc_id'       => $request->loc_id,
+                'catatan'      => $request->catatan,
+                'expired_date' => $request->expired_date ?: null,
+                'updated_by'   => Auth::id(),
             ]);
 
             // Update Header data (Incoming Date and Supplier)
@@ -1052,7 +1053,7 @@ class InboundController extends Controller
     {
         $request->validate([
             'ids'          => 'required_without:select_all|array',
-            'expired_date' => 'required|date'
+            'expired_date' => 'nullable|date'
         ]);
 
         DB::beginTransaction();
@@ -1066,7 +1067,7 @@ class InboundController extends Controller
             // Update only if not ISSUED, RESERVED or BA WAITING
             $query->whereNotIn('status', ['ISSUED', 'RESERVED', 'BA WAITING'])
                 ->update([
-                    'expired_date' => $request->expired_date,
+                    'expired_date' => $request->expired_date ?: null,
                     'updated_by'   => Auth::id()
                 ]);
 
@@ -1074,7 +1075,7 @@ class InboundController extends Controller
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Expired date berhasil diperbarui secara massal'
+                'message' => empty($request->expired_date) ? 'Expired date berhasil dikosongkan secara massal' : 'Expired date berhasil diperbarui secara massal'
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
