@@ -1535,29 +1535,102 @@
                 $.ajax({
                     url: "{{ url('api/purchase-requesition/bulk-action') }}",
                     type: "POST",
-                    data: data,
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    data: Object.assign({}, data, {
+                        _token: "{{ csrf_token() }}"
+                    }),
                     success: function(res) {
                         Swal.close();
                         if (res.success) {
-                            Swal.fire('Berhasil!', res.message, 'success').then(() => {
-                                loadData();
-                                $('#modalAction').modal('hide');
-                            });
+                            if (res.errors && res.errors.length > 0) {
+                                const errorListHtml = res.errors.map(err => `<li>${window.escapeHtmlAttribute(err)}</li>`).join('');
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Selesai Sebagian',
+                                    html: `
+                                        <p class="mb-2 fw-semibold">${res.message}</p>
+                                        <div class="text-start alert alert-warning small mb-0" style="max-height: 200px; overflow-y: auto;">
+                                            <ul class="mb-0 ps-3">${errorListHtml}</ul>
+                                        </div>
+                                    `
+                                }).then(() => {
+                                    loadData();
+                                    $('#modalAction').modal('hide');
+                                });
+                            } else {
+                                Swal.fire('Berhasil!', res.message, 'success').then(() => {
+                                    loadData();
+                                    $('#modalAction').modal('hide');
+                                });
+                            }
                         } else {
-                            Swal.fire('Terjadi Kesalahan', res.message, 'error');
+                            let errorListHtml = '';
+                            if (res.errors && res.errors.length > 0) {
+                                errorListHtml = `
+                                    <div class="text-start alert alert-danger small mt-2 mb-0" style="max-height: 200px; overflow-y: auto;">
+                                        <ul class="mb-0 ps-3">
+                                            ${res.errors.map(err => `<li>${window.escapeHtmlAttribute(err)}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                `;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal Memproses',
+                                html: `<p class="mb-1">${res.message || 'Terjadi kesalahan saat memproses data.'}</p>${errorListHtml}`
+                            });
                         }
                     },
                     error: function(xhr) {
                         Swal.close();
-                        const msg = xhr.responseJSON?.message || 'Gagal memproses permintaan.';
-                        Swal.fire('Error', msg, 'error');
+                        let errorMsg = 'Gagal memproses permintaan.';
+                        let detailedErrors = '';
+
+                        if (xhr.responseJSON) {
+                            if (xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            }
+                            if (xhr.responseJSON.errors) {
+                                if (Array.isArray(xhr.responseJSON.errors)) {
+                                    detailedErrors = xhr.responseJSON.errors.map(e => `<li>${window.escapeHtmlAttribute(e)}</li>`).join('');
+                                } else if (typeof xhr.responseJSON.errors === 'object') {
+                                    detailedErrors = Object.values(xhr.responseJSON.errors).flat().map(e => `<li>${window.escapeHtmlAttribute(e)}</li>`).join('');
+                                }
+                            } else if (xhr.responseJSON.error) {
+                                detailedErrors = `<li>${window.escapeHtmlAttribute(xhr.responseJSON.error)}</li>`;
+                            }
+                        } else if (xhr.responseText) {
+                            try {
+                                const parsed = JSON.parse(xhr.responseText);
+                                if (parsed.message) errorMsg = parsed.message;
+                            } catch (e) {
+                                errorMsg = `Terjadi kesalahan server (${xhr.status}: ${xhr.statusText || 'Server Error'}). Silakan cek log aplikasi.`;
+                            }
+                        }
+
+                        let htmlContent = `<p class="mb-2 fw-semibold">${errorMsg}</p>`;
+                        if (detailedErrors) {
+                            htmlContent += `
+                                <div class="text-start alert alert-danger small mb-0" style="max-height: 200px; overflow-y: auto;">
+                                    <ul class="mb-0 ps-3">${detailedErrors}</ul>
+                                </div>
+                            `;
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: `Error (${xhr.status || 'Gagal'})`,
+                            html: htmlContent
+                        });
                     }
                 });
             }
 
             window.escapeHtmlAttribute = function(str) {
                 if (!str) return '';
-                return str
+                return String(str)
                     .replace(/&/g, '&amp;')
                     .replace(/"/g, '&quot;')
                     .replace(/'/g, '&#39;')

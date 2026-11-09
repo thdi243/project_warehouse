@@ -1638,6 +1638,13 @@ class WspPurchaseRequesitionController extends Controller
 
             if (!$res['status']) {
                 DB::rollBack();
+                Log::warning("WSP PR Single Action Gagal untuk PR ID $id", [
+                    'pr_id'     => $id,
+                    'user_id'   => Auth::id(),
+                    'user_name' => Auth::user()?->nama_lengkap ?? Auth::user()?->username,
+                    'status'    => $request->status,
+                    'message'   => $res['message'] ?? 'Unknown error'
+                ]);
                 return response()->json($res, 422);
             }
 
@@ -1648,8 +1655,18 @@ class WspPurchaseRequesitionController extends Controller
                 'message' => $res['message'] ?? 'Aksi berhasil diproses',
                 'is_partial' => $res['is_partial'] ?? false
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error("WSP PR Single Action Exception untuk PR ID $id: " . $e->getMessage(), [
+                'pr_id'             => $id,
+                'user_id'           => Auth::id(),
+                'user_name'         => Auth::user()?->nama_lengkap ?? Auth::user()?->username,
+                'status'            => $request->status,
+                'exception_message' => $e->getMessage(),
+                'file'              => $e->getFile(),
+                'line'              => $e->getLine(),
+                'trace'             => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage()
@@ -2005,60 +2022,139 @@ class WspPurchaseRequesitionController extends Controller
 
     public function bulkAction(Request $request)
     {
+        $userId = Auth::id();
+        $userName = Auth::user()?->nama_lengkap ?? Auth::user()?->username ?? 'Unknown';
+
         $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'exists:wsp_purchase_requesition,id',
-            'status' => 'required|in:approved,rejected',
-            'comment' => $request->status === 'rejected' ? 'required|string|max:500' : 'nullable|string|max:500',
-            'ttd' => 'nullable|string', // bulk approval might share one signature
-            'no_pr' => 'nullable|string',
+            'ids'              => 'required|array|min:1',
+            'ids.*'            => 'exists:wsp_purchase_requesition,id',
+            'status'           => 'required|in:approved,rejected',
+            'comment'          => $request->status === 'rejected' ? 'required|string|max:500' : 'nullable|string|max:500',
+            'ttd'              => 'nullable|string', // bulk approval might share one signature
+            'no_pr'            => 'nullable|string',
             'update_signature' => 'nullable'
         ]);
 
-        $userId = Auth::id();
-        $successCount = 0;
-        $errors = [];
-        $lastSuccessMessage = null;
 
-        foreach ($request->ids as $id) {
-            try {
-                DB::beginTransaction();
-                $res = $this->processApproval(
-                    $id,
-                    $userId,
-                    $request->status,
-                    $request->comment,
-                    $request->ttd,
-                    $request->no_pr,
-                    $request->items ?? [],
-                    $request->boolean('use_stored_signature'),
-                    $request->boolean('update_signature')
-                );
-                if ($res['status']) {
-                    DB::commit();
-                    $successCount++;
-                    if (!empty($res['message'])) {
-                        $lastSuccessMessage = $res['message'];
+        try {
+            $successCount = 0;
+            $errors = [];
+            $lastSuccessMessage = null;
+
+            foreach ($request->ids as $id) {
+                try {
+                    DB::beginTransaction();
+                    $res = $this->processApproval(
+                        $id,
+                        $userId,
+                        $request->status,
+                        $request->comment,
+                        $request->ttd,
+                        $request->no_pr,
+                        $request->items ?? [],
+                        $request->boolean('use_stored_signature'),
+                        $request->boolean('update_signature')
+                    );
+
+                    if (!empty($res['status'])) {
+                        DB::commit();
+                        $successCount++;
+                        if (!empty($res['message'])) {
+                            $lastSuccessMessage = $res['message'];
+                        }
+                    } else {
+                        DB::rollBack();
+                        $errMsg = $res['message'] ?? 'Gagal memproses approval.';
+                        $errors[] = "PR ID $id: " . $errMsg;
+                        Log::warning("WSP PR Bulk Action: Approval Gagal untuk PR ID $id", [
+                            'pr_id'     => $id,
+                            'user_id'   => $userId,
+                            'user_name' => $userName,
+                            'status'    => $request->status,
+                            'reason'    => $errMsg
+                        ]);
                     }
-                } else {
+                } catch (\Throwable $e) {
                     DB::rollBack();
-                    $errors[] = "PR ID $id: " . $res['message'];
+                    $errors[] = "PR ID $id: " . $e->getMessage();
+                    Log::error("WSP PR Bulk Action: Exception saat memproses PR ID $id", [
+                        'pr_id'             => $id,
+                        'user_id'           => $userId,
+                        'user_name'         => $userName,
+                        'status'            => $request->status,
+                        'exception_message' => $e->getMessage(),
+                        'file'              => $e->getFile(),
+                        'line'              => $e->getLine(),
+                        'trace'             => $e->getTraceAsString()
+                    ]);
                 }
-            } catch (\Exception $e) {
-                DB::rollBack();
-                $errors[] = "PR ID $id: " . $e->getMessage();
             }
+
+            if ($successCount === 0 && count($errors) > 0) {
+                Log::error("WSP PR Bulk Action: Seluruh dokumen gagal diproses", [
+                    'user_id'      => $userId,
+                    'user_name'    => $userName,
+                    'status'       => $request->status,
+                    'total_failed' => count($errors),
+                    'errors'       => $errors
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memproses seluruh dokumen (' . count($errors) . ' gagal).',
+                    'errors'  => $errors
+                ], 422);
+            }
+
+            if (count($errors) > 0) {
+                Log::warning("WSP PR Bulk Action: Berhasil sebagian dengan catatan", [
+                    'user_id'       => $userId,
+                    'user_name'     => $userName,
+                    'status'        => $request->status,
+                    'success_count' => $successCount,
+                    'total_failed'  => count($errors),
+                    'errors'        => $errors
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'partial' => true,
+                    'message' => "Berhasil memproses $successCount data. Terjadi " . count($errors) . " kesalahan.",
+                    'errors'  => $errors
+                ]);
+            }
+
+            Log::info("WSP PR Bulk Action: Berhasil seluruhnya", [
+                'user_id'       => $userId,
+                'user_name'     => $userName,
+                'status'        => $request->status,
+                'success_count' => $successCount
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => ($successCount === 1 && $lastSuccessMessage)
+                    ? $lastSuccessMessage
+                    : "Berhasil memproses $successCount data.",
+                'errors'  => []
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("WSP PR Bulk Action: Fatal Error", [
+                'user_id'           => $userId,
+                'user_name'         => $userName,
+                'payload'           => $request->except(['ttd']),
+                'exception_message' => $e->getMessage(),
+                'file'              => $e->getFile(),
+                'line'              => $e->getLine(),
+                'trace'             => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem saat memproses bulk action: ' . $e->getMessage(),
+                'errors'  => [$e->getMessage()]
+            ], 500);
         }
-
-        $responseMessage = ($successCount === 1 && $lastSuccessMessage)
-            ? $lastSuccessMessage
-            : ("Berhasil memproses $successCount data." . (count($errors) > 0 ? " Terjadi " . count($errors) . " kesalahan." : ""));
-
-        return response()->json([
-            'success' => true,
-            'message' => $responseMessage,
-            'errors' => $errors
-        ]);
     }
 
     public function updateItem(Request $request, $itemId)
