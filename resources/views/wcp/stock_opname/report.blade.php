@@ -113,7 +113,7 @@
                             <div class="col-lg-3 col-md-6">
                                 <div class="d-flex flex-wrap gap-2">
 
-                                    <button type="button" class="btn btn-outline-danger d-none" id="btnExportPdf">
+                                    <button type="button" class="btn btn-outline-danger" id="btnExportPdf">
                                         <i class="mdi mdi-file-pdf-box me-1"></i>
                                         PDF
                                     </button>
@@ -394,7 +394,7 @@
                         dateInput.val(`${today.getFullYear()}-${month}`);
                     }
                     approvalTab.removeClass('d-none');
-                    btnExportPdf.removeClass('d-none');
+                    // btnExportPdf.removeClass('d-none');
                 } else {
                     dateInput.attr('type', 'date');
                     const today = new Date();
@@ -407,7 +407,7 @@
                         dateInput.val(todayStr);
                     }
                     approvalTab.addClass('d-none');
-                    btnExportPdf.addClass('d-none');
+                    // btnExportPdf.addClass('d-none');
 
                     // If the active tab was approval tab, switch back to data tab
                     if ($('#approval-tab').hasClass('active')) {
