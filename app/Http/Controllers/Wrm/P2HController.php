@@ -255,28 +255,28 @@ class P2HController extends Controller
             ], 422);
         }
 
-        if ($lastRecord) {
-            $tglSekarang = Carbon::parse($request->tanggal)->startOfDay();
-            $tglSebelumnya = Carbon::parse($lastRecord->tanggal)->startOfDay();
-            $selisihHari = $tglSebelumnya->diffInDays($tglSekarang, false);
-
-            if ($selisihHari >= 0) {
-                $selisihShift = ($selisihHari * 3) + ((int) $request->shift - (int) $lastRecord->shift);
-                $maxJamMungkin = max(24, $selisihShift * 8);
-                $selisihJam = $jamSekarang - (float) $lastRecord->jam_operasional;
-
-                if ($selisihJam > $maxJamMungkin) {
-                    $infoHari = $selisihHari === 0
-                        ? "di hari yang sama"
-                        : ($selisihHari === 1 ? "dari hari sebelumnya (H+1)" : "dalam rentang {$selisihHari} hari");
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Hours Meter unit ini ({$jamSekarang}) tidak boleh bertambah {$selisihJam} jam {$infoHari} (maksimal wajar {$maxJamMungkin} jam). Data sebelumnya {$lastRecord->tanggal} Shift {$lastRecord->shift}: {$lastRecord->jam_operasional}. Cek kembali!"
-                    ], 422);
-                }
-            }
-        }
+        // if ($lastRecord) {
+        //     $tglSekarang = Carbon::parse($request->tanggal)->startOfDay();
+        //     $tglSebelumnya = Carbon::parse($lastRecord->tanggal)->startOfDay();
+        //     $selisihHari = $tglSebelumnya->diffInDays($tglSekarang, false);
+        //
+        //     if ($selisihHari >= 0) {
+        //         $selisihShift = ($selisihHari * 3) + ((int) $request->shift - (int) $lastRecord->shift);
+        //         $maxJamMungkin = max(24, $selisihShift * 8);
+        //         $selisihJam = $jamSekarang - (float) $lastRecord->jam_operasional;
+        //
+        //         if ($selisihJam > $maxJamMungkin) {
+        //             $infoHari = $selisihHari === 0
+        //                 ? "di hari yang sama"
+        //                 : ($selisihHari === 1 ? "dari hari sebelumnya (H+1)" : "dalam rentang {$selisihHari} hari");
+        //
+        //             return response()->json([
+        //                 'success' => false,
+        //                 'message' => "Hours Meter unit ini ({$jamSekarang}) tidak boleh bertambah {$selisihJam} jam {$infoHari} (maksimal wajar {$maxJamMungkin} jam). Data sebelumnya {$lastRecord->tanggal} Shift {$lastRecord->shift}: {$lastRecord->jam_operasional}. Cek kembali!"
+        //             ], 422);
+        //         }
+        //     }
+        // }
 
         // Cari record SESUDAHNYA untuk unit ini
         $nextRecord = P2HForklfitModel::where('nomor_unit', $request->nomor_unit)
@@ -299,28 +299,28 @@ class P2HController extends Controller
             ], 422);
         }
 
-        if ($nextRecord) {
-            $tglSekarang = Carbon::parse($request->tanggal)->startOfDay();
-            $tglBerikutnya = Carbon::parse($nextRecord->tanggal)->startOfDay();
-            $selisihHariNext = $tglSekarang->diffInDays($tglBerikutnya, false);
-
-            if ($selisihHariNext >= 0) {
-                $selisihShiftNext = ($selisihHariNext * 3) + ((int) $nextRecord->shift - (int) $request->shift);
-                $maxJamMungkinNext = max(24, $selisihShiftNext * 8);
-                $selisihJamNext = (float) $nextRecord->jam_operasional - $jamSekarang;
-
-                if ($selisihJamNext > $maxJamMungkinNext) {
-                    $infoHariNext = $selisihHariNext === 0
-                        ? "di hari yang sama"
-                        : ($selisihHariNext === 1 ? "ke hari berikutnya (H-1)" : "dalam rentang {$selisihHariNext} hari");
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Hours Meter unit ini ({$jamSekarang}) tidak boleh berselisih {$selisihJamNext} jam {$infoHariNext} dengan data berikutnya (maksimal wajar {$maxJamMungkinNext} jam). Data berikutnya {$nextRecord->tanggal} Shift {$nextRecord->shift}: {$nextRecord->jam_operasional}. Cek kembali!"
-                    ], 422);
-                }
-            }
-        }
+        // if ($nextRecord) {
+        //     $tglSekarang = Carbon::parse($request->tanggal)->startOfDay();
+        //     $tglBerikutnya = Carbon::parse($nextRecord->tanggal)->startOfDay();
+        //     $selisihHariNext = $tglSekarang->diffInDays($tglBerikutnya, false);
+        //
+        //     if ($selisihHariNext >= 0) {
+        //         $selisihShiftNext = ($selisihHariNext * 3) + ((int) $nextRecord->shift - (int) $request->shift);
+        //         $maxJamMungkinNext = max(24, $selisihShiftNext * 8);
+        //         $selisihJamNext = (float) $nextRecord->jam_operasional - $jamSekarang;
+        //
+        //         if ($selisihJamNext > $maxJamMungkinNext) {
+        //             $infoHariNext = $selisihHariNext === 0
+        //                 ? "di hari yang sama"
+        //                 : ($selisihHariNext === 1 ? "ke hari berikutnya (H-1)" : "dalam rentang {$selisihHariNext} hari");
+        //
+        //             return response()->json([
+        //                 'success' => false,
+        //                 'message' => "Hours Meter unit ini ({$jamSekarang}) tidak boleh berselisih {$selisihJamNext} jam {$infoHariNext} dengan data berikutnya (maksimal wajar {$maxJamMungkinNext} jam). Data berikutnya {$nextRecord->tanggal} Shift {$nextRecord->shift}: {$nextRecord->jam_operasional}. Cek kembali!"
+        //             ], 422);
+        //         }
+        //     }
+        // }
 
         // Vs shift sebelumnya hari ini
         // $prevShift = $request->shift - 1;
@@ -1294,28 +1294,28 @@ class P2HController extends Controller
                         ], 422);
                     }
 
-                    if ($lastRecord) {
-                        $tglCur = Carbon::parse($tanggal)->startOfDay();
-                        $tglLast = Carbon::parse($lastRecord->tanggal)->startOfDay();
-                        $selisihHari = $tglLast->diffInDays($tglCur, false);
-
-                        if ($selisihHari >= 0) {
-                            $selisihShift = ($selisihHari * 3) + ((int) $shift - (int) $lastRecord->shift);
-                            $maxJamMungkin = max(24, $selisihShift * 8);
-                            $selisihJam = $jamSekarang - (float) $lastRecord->jam_operasional;
-
-                            if ($selisihJam > $maxJamMungkin) {
-                                $infoHari = $selisihHari === 0
-                                    ? "di tanggal yang sama"
-                                    : ($selisihHari === 1 ? "dari tanggal sebelumnya (H+1)" : "dalam rentang {$selisihHari} hari");
-                                DB::rollBack();
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => "Shift {$shift} ({$tanggal}): Hours Meter ({$jamSekarang}) tidak boleh bertambah {$selisihJam} jam {$infoHari} (maksimal wajar {$maxJamMungkin} jam). Data sebelumnya {$lastRecord->tanggal} Shift {$lastRecord->shift}: {$lastRecord->jam_operasional}. Cek kembali!"
-                                ], 422);
-                            }
-                        }
-                    }
+                    // if ($lastRecord) {
+                    //     $tglCur = Carbon::parse($tanggal)->startOfDay();
+                    //     $tglLast = Carbon::parse($lastRecord->tanggal)->startOfDay();
+                    //     $selisihHari = $tglLast->diffInDays($tglCur, false);
+                    //
+                    //     if ($selisihHari >= 0) {
+                    //         $selisihShift = ($selisihHari * 3) + ((int) $shift - (int) $lastRecord->shift);
+                    //         $maxJamMungkin = max(24, $selisihShift * 8);
+                    //         $selisihJam = $jamSekarang - (float) $lastRecord->jam_operasional;
+                    //
+                    //         if ($selisihJam > $maxJamMungkin) {
+                    //             $infoHari = $selisihHari === 0
+                    //                 ? "di tanggal yang sama"
+                    //                 : ($selisihHari === 1 ? "dari tanggal sebelumnya (H+1)" : "dalam rentang {$selisihHari} hari");
+                    //             DB::rollBack();
+                    //             return response()->json([
+                    //                 'success' => false,
+                    //                 'message' => "Shift {$shift} ({$tanggal}): Hours Meter ({$jamSekarang}) tidak boleh bertambah {$selisihJam} jam {$infoHari} (maksimal wajar {$maxJamMungkin} jam). Data sebelumnya {$lastRecord->tanggal} Shift {$lastRecord->shift}: {$lastRecord->jam_operasional}. Cek kembali!"
+                    //             ], 422);
+                    //         }
+                    //     }
+                    // }
 
                     // 3. Cari record SESUDAHNYA di database untuk unit ini (kecuali record yang ada di form request ini)
                     $nextRecord = P2HForklfitModel::where('nomor_unit', $nomorUnit)
@@ -1341,28 +1341,28 @@ class P2HController extends Controller
                         ], 422);
                     }
 
-                    if ($nextRecord) {
-                        $tglCur = Carbon::parse($tanggal)->startOfDay();
-                        $tglNext = Carbon::parse($nextRecord->tanggal)->startOfDay();
-                        $selisihHariNext = $tglCur->diffInDays($tglNext, false);
-
-                        if ($selisihHariNext >= 0) {
-                            $selisihShiftNext = ($selisihHariNext * 3) + ((int) $nextRecord->shift - (int) $shift);
-                            $maxJamMungkinNext = max(24, $selisihShiftNext * 8);
-                            $selisihJamNext = (float) $nextRecord->jam_operasional - $jamSekarang;
-
-                            if ($selisihJamNext > $maxJamMungkinNext) {
-                                $infoHariNext = $selisihHariNext === 0
-                                    ? "di tanggal yang sama"
-                                    : ($selisihHariNext === 1 ? "ke tanggal berikutnya (H-1)" : "dalam rentang {$selisihHariNext} hari");
-                                DB::rollBack();
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => "Shift {$shift} ({$tanggal}): Hours Meter ({$jamSekarang}) tidak boleh berselisih {$selisihJamNext} jam {$infoHariNext} dengan data berikutnya (maksimal wajar {$maxJamMungkinNext} jam). Data berikutnya ({$nextRecord->tanggal} Shift {$nextRecord->shift}: {$nextRecord->jam_operasional}). Cek kembali!"
-                                ], 422);
-                            }
-                        }
-                    }
+                    // if ($nextRecord) {
+                    //     $tglCur = Carbon::parse($tanggal)->startOfDay();
+                    //     $tglNext = Carbon::parse($nextRecord->tanggal)->startOfDay();
+                    //     $selisihHariNext = $tglCur->diffInDays($tglNext, false);
+                    //
+                    //     if ($selisihHariNext >= 0) {
+                    //         $selisihShiftNext = ($selisihHariNext * 3) + ((int) $nextRecord->shift - (int) $shift);
+                    //         $maxJamMungkinNext = max(24, $selisihShiftNext * 8);
+                    //         $selisihJamNext = (float) $nextRecord->jam_operasional - $jamSekarang;
+                    //
+                    //         if ($selisihJamNext > $maxJamMungkinNext) {
+                    //             $infoHariNext = $selisihHariNext === 0
+                    //                 ? "di tanggal yang sama"
+                    //                 : ($selisihHariNext === 1 ? "ke tanggal berikutnya (H-1)" : "dalam rentang {$selisihHariNext} hari");
+                    //             DB::rollBack();
+                    //             return response()->json([
+                    //                 'success' => false,
+                    //                 'message' => "Shift {$shift} ({$tanggal}): Hours Meter ({$jamSekarang}) tidak boleh berselisih {$selisihJamNext} jam {$infoHariNext} dengan data berikutnya (maksimal wajar {$maxJamMungkinNext} jam). Data berikutnya ({$nextRecord->tanggal} Shift {$nextRecord->shift}: {$nextRecord->jam_operasional}). Cek kembali!"
+                    //             ], 422);
+                    //         }
+                    //     }
+                    // }
                 }
 
                 // Hitung persentase (sama seperti sebelumnya)
