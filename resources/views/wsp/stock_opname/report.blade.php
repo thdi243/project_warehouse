@@ -403,7 +403,7 @@
                         dateInput.val(`${today.getFullYear()}-${month}`);
                     }
                     approvalTab.removeClass('d-none');
-                    btnExportPdf.removeClass('d-none');
+                    // btnExportPdf.removeClass('d-none');
                 } else {
                     dateInput.attr('type', 'date');
                     const today = new Date();
@@ -416,7 +416,7 @@
                         dateInput.val(todayStr);
                     }
                     approvalTab.addClass('d-none');
-                    btnExportPdf.addClass('d-none');
+                    // btnExportPdf.addClass('d-none');
 
                     // If the active tab was approval tab, switch back to data tab
                     if ($('#approval-tab').hasClass('active')) {
@@ -556,7 +556,11 @@
                             const note = item.keterangan ? item.keterangan : '-';
 
                             const hasLocation = item.detail_loc || (item.location && item.location.rak);
-                            const locStr = item.detail_loc ? `${item.plant || ''} - ${item.s_loc || ''} - ${item.detail_loc}` : (item.location && item.location.rak ? `${item.location.rak.plant} - ${item.location.rak.s_loc} - ${item.location.rak.detail_loc}` : '');
+                            const locStr = item.detail_loc ?
+                                `${item.plant || ''} - ${item.s_loc || ''} - ${item.detail_loc}` : (item
+                                    .location && item.location.rak ?
+                                    `${item.location.rak.plant} - ${item.location.rak.s_loc} - ${item.location.rak.detail_loc}` :
+                                    '');
                             const lokasiHtml = hasLocation ?
                                 `<span class="badge bg-soft-info text-info border">${locStr}</span>` :
                                 `<span class="badge bg-soft-warning text-warning border">Not yet</span>`;
@@ -739,7 +743,10 @@
 
                         const hasLocation = sum.detail_loc || (sum.location && sum.location.rak);
                         const locationText = hasLocation ?
-                            (sum.detail_loc ? `${sum.plant || ''} - ${sum.s_loc || ''} - ${sum.detail_loc}` : `${sum.location.rak.plant} - ${sum.location.rak.s_loc} - ${sum.location.rak.detail_loc}`) :
+                            (sum.detail_loc ?
+                                `${sum.plant || ''} - ${sum.s_loc || ''} - ${sum.detail_loc}` :
+                                `${sum.location.rak.plant} - ${sum.location.rak.s_loc} - ${sum.location.rak.detail_loc}`
+                                ) :
                             'Not yet';
                         $('#detailLokasiRak').text(locationText);
 
