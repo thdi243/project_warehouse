@@ -4096,17 +4096,11 @@ class VehicleTrackingController extends Controller
 
         if (in_array($areaUpper, ['WFG', 'SMU'])) {
             $foremanQuery->where(function ($q) {
-                $q->where('bagian', 'like', '%finish%')
-                    ->orWhere('bagian', 'like', '%wfg%')
-                    ->orWhere('bagian', 'warehouse');
+                $q->where('bagian', 'warehouse_finish_goods');
             });
         } elseif (in_array($areaUpper, ['WRM', 'WPM'])) {
             $foremanQuery->where(function ($q) {
-                $q->where('bagian', 'like', '%raw%')
-                    ->orWhere('bagian', 'like', '%wrm%')
-                    ->orWhere('bagian', 'like', '%packaging%')
-                    ->orWhere('bagian', 'like', '%material%')
-                    ->orWhere('bagian', 'warehouse');
+                $q->where('bagian', 'warehouse_raw_material');
             });
         }
 
