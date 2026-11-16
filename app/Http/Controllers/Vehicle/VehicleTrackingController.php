@@ -1270,11 +1270,9 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
-            // 2. Notifikasi ke supir bahwa proses bongkar/muat selesai
-            $this->notifyDriverCompleted($transaction, 'WPM');
-
-            // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
-            $this->notifyNextDriverToEnterDock($transaction, 'WPM');
+            // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
+            // $this->notifyDriverCompleted($transaction, 'WPM');
+            // $this->notifyNextDriverToEnterDock($transaction, 'WPM');
 
             return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di WPM. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
@@ -1880,11 +1878,9 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
-            // 2. Notifikasi ke supir bahwa proses bongkar/muat selesai
-            $this->notifyDriverCompleted($transaction, 'WRM');
-
-            // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
-            $this->notifyNextDriverToEnterDock($transaction, 'WRM');
+            // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
+            // $this->notifyDriverCompleted($transaction, 'WRM');
+            // $this->notifyNextDriverToEnterDock($transaction, 'WRM');
 
             return response()->json(['success' => true, 'message' => "Status {$actionName} truk {$noPol} diperbarui ke Selesai. Diarahkan kembali ke Timbangan untuk Check-Out."]);
         } catch (\Exception $e) {
@@ -2122,11 +2118,9 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
-            // 2. Notifikasi ke supir bahwa proses muat/bongkar selesai
-            $this->notifyDriverCompleted($transaction, 'WFG');
-
-            // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
-            $this->notifyNextDriverToEnterDock($transaction, 'WFG');
+            // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
+            // $this->notifyDriverCompleted($transaction, 'WFG');
+            // $this->notifyNextDriverToEnterDock($transaction, 'WFG');
 
             return response()->json(['success' => true, 'message' => 'Proses Bongkar/Muat di WFG selesai. Truk diarahkan ke Timbangan.']);
         } catch (\Exception $e) {
@@ -2396,11 +2390,9 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
-            // 2. Notifikasi ke supir bahwa proses muat/bongkar selesai
-            $this->notifyDriverCompleted($transaction, 'SMU');
-
-            // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
-            $this->notifyNextDriverToEnterDock($transaction, 'SMU');
+            // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
+            // $this->notifyDriverCompleted($transaction, 'SMU');
+            // $this->notifyNextDriverToEnterDock($transaction, 'SMU');
 
             return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di SMU. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
@@ -3837,38 +3829,62 @@ class VehicleTrackingController extends Controller
      */
     public function notifyNextDriverToEnterDock(VehicleTransaction $completedTx, string $area = 'WFG'): array
     {
+        // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
+        return ['status' => false, 'message' => 'Notifikasi otomatis supir dinonaktifkan sementara.'];
+
         try {
+            $areaUpper = strtoupper($area);
             $status = strtolower($area);
-            $nextQuery = VehicleTransaction::with(['vehicle', 'item'])
-                ->where(function ($q) use ($status, $area) {
-                    $q->where('status', $status);
-                    if ($area === 'WRM') {
-                        $q->orWhere('status', 'wrm_bongkar');
-                    }
-                })
+
+            $nextQuery = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])
                 ->where('id', '!=', $completedTx->id)
                 ->where(function ($q) {
                     $q->whereNull('unloading_status')
                         ->orWhereNotIn('unloading_status', ['process', 'completed', 'complete']);
                 });
 
-            if ($status === 'wfg' && !empty($completedTx->jenis)) {
-                $nextQuery->where('jenis', $completedTx->jenis);
+            $nextAntrian = '';
+
+            if (in_array($areaUpper, ['WFG', 'SMU'])) {
+                // Di WFG & SMU: Antrian resmi terikat nomor antrian dock (#01, #02, dst)
+                $nextQuery->where('status', $status)
+                    ->whereNotNull('no_antrian');
+
+                if ($areaUpper === 'WFG' && !empty($completedTx->jenis)) {
+                    $nextQuery->where('jenis', $completedTx->jenis);
+                }
+
+                $nextTx = $nextQuery->orderByRaw('CAST(no_antrian AS UNSIGNED) ASC')->first();
+
+                if ($nextTx && !empty($nextTx->no_antrian)) {
+                    $nextAntrian = " (Antrian *#{$nextTx->no_antrian}*)";
+                }
+            } else {
+                // Di WRM & WPM: TIDAK ADA nomor antrian dock!
+                // Pengambilan antrian murni mengikuti urutan tabel monitoring (check_in_time kedatangan paling awal)
+                $nextQuery->where(function ($q) use ($status, $areaUpper) {
+                    $q->where('status', $status);
+                    if ($areaUpper === 'WRM') {
+                        $q->orWhere('status', 'wrm_bongkar')
+                            ->orWhereHas('targetLocation', function ($tl) {
+                                $tl->where('s_loc', 'B006');
+                            });
+                    } elseif ($areaUpper === 'WPM') {
+                        $q->orWhereHas('targetLocation', function ($tl) {
+                            $tl->where('s_loc', 'C001');
+                        });
+                    }
+                })
+                ->whereNotIn('status', ['completed', 'timbangan_out'])
+                ->orderBy('check_in_time', 'asc');
+
+                $nextTx = $nextQuery->first();
+                // WRM & WPM tidak mencantumkan nomor antrian
+                $nextAntrian = '';
             }
 
-            // Jika ada antrian nomor, utamakan yang memiliki nomor antrian terkecil
-            $nextTx = (clone $nextQuery)
-                ->whereNotNull('no_antrian')
-                ->orderByRaw('CAST(no_antrian AS UNSIGNED) ASC')
-                ->first();
-
-            // Jika tidak ada nomor antrian (misal di WRM/WPM), ambil yang check_in_time paling awal
             if (!$nextTx) {
-                $nextTx = $nextQuery->orderBy('check_in_time', 'asc')->first();
-            }
-
-            if (!$nextTx) {
-                Log::info("[VehicleTracking] Tidak ada truk antrian berikutnya di {$area} untuk dipanggil masuk dock.");
+                Log::info("[VehicleTracking] Tidak ada truk antrian berikutnya di {$areaUpper} untuk dipanggil masuk dock.");
                 return ['status' => false, 'message' => 'Tidak ada antrian berikutnya.'];
             }
 
@@ -3883,13 +3899,12 @@ class VehicleTrackingController extends Controller
             }
 
             $nextDriver = $this->resolveDriverInfo($nextTx->nama_driver, $nextTx->no_hp_driver);
-            $nextAntrian = $nextTx->no_antrian ? " (Antrian *#{$nextTx->no_antrian}*)" : '';
 
             // Format pesan pribadi ke HP supir (tanpa tag @)
-            $message = "📢 *PANGGILAN MASUK DOCK {$area}*\n"
+            $message = "📢 *PANGGILAN MASUK DOCK {$areaUpper}*\n"
                 . "Halo *{$nextDriver['name']}*, truk sebelumnya (*{$prevNoPol}*) telah selesai.\n\n"
                 . "Truk : *{$nextNoPol}*{$nextAntrian}\n"
-                . "Silakan *SEGERA MASUK* ke Loading Dock {$area} sekarang. Terima kasih! 🙏";
+                . "Silakan *SEGERA MASUK* ke Loading Dock {$areaUpper} sekarang. Terima kasih! 🙏";
 
             if (empty($nextDriver['phone'])) {
                 Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$nextNoPol}");
@@ -3917,6 +3932,9 @@ class VehicleTrackingController extends Controller
      */
     public function notifyDriverCompleted(VehicleTransaction $transaction, string $area = 'WFG'): array
     {
+        // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
+        return ['status' => false, 'message' => 'Notifikasi otomatis supir dinonaktifkan sementara.'];
+
         try {
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 

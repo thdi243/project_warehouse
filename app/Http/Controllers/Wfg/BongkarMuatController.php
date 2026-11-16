@@ -1570,12 +1570,10 @@ class BongkarMuatController extends Controller
 
                 DB::commit();
 
-                // 2. Notifikasi WhatsApp ke supir bahwa proses muat telah SELESAI
-                $trackingController = app(VehicleTrackingController::class);
-                $trackingController->notifyDriverCompleted($transaction, $areaName);
-
-                // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
-                $trackingController->notifyNextDriverToEnterDock($transaction, $areaName);
+                // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
+                // $trackingController = app(VehicleTrackingController::class);
+                // $trackingController->notifyDriverCompleted($transaction, $areaName);
+                // $trackingController->notifyNextDriverToEnterDock($transaction, $areaName);
             }
         } catch (\Exception $e) {
             DB::rollBack();
