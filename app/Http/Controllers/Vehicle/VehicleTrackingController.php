@@ -4266,31 +4266,33 @@ class VehicleTrackingController extends Controller
                 $area = 'WFG';
             }
 
-            // 3. Alert Proses Bongkar/Muat > 2 Jam (120 Menit)
+            $today = $now->format('Y-m-d');
+
+            // 3. Alert Proses Bongkar/Muat > 2 Jam (120 Menit) - Dibatasi maksimal 1x sehari
             if ($tx->unloading_status === 'process' && !empty($tx->start_loading_time)) {
                 $startTime = Carbon::parse($tx->start_loading_time);
                 $diffMinutes = $startTime->diffInMinutes($now);
 
                 if ($diffMinutes >= 120) {
-                    $cacheKey = "alert_overdue_loading_2h_{$tx->id}";
+                    $cacheKey = "alert_overdue_loading_2h_{$tx->id}_{$today}";
                     if (!Cache::has($cacheKey)) {
                         $this->sendOverdueLoadingAlert($tx, $area, $diffMinutes, $startTime);
-                        Cache::put($cacheKey, $now->toDateTimeString(), now()->addHours(8));
+                        Cache::put($cacheKey, $now->toDateTimeString(), now()->endOfDay());
                         $alertsSent++;
                     }
                 }
             }
 
-            // 4. Alert Total Truck Duration > 7.5 Jam (450 Menit)
+            // 4. Alert Total Truck Duration > 7.5 Jam (450 Menit) - Dibatasi maksimal 1x sehari
             $checkIn = $tx->checkin_pos1 ? Carbon::parse($tx->checkin_pos1) : ($tx->check_in_time ? Carbon::parse($tx->check_in_time) : null);
             if ($checkIn) {
                 $totalMinutes = $checkIn->diffInMinutes($now);
 
                 if ($totalMinutes >= 450) {
-                    $cacheKey = "alert_overdue_duration_7h5_{$tx->id}";
+                    $cacheKey = "alert_overdue_duration_7h5_{$tx->id}_{$today}";
                     if (!Cache::has($cacheKey)) {
                         $this->sendOverdueDurationAlert($tx, $area, $totalMinutes, $checkIn);
-                        Cache::put($cacheKey, $now->toDateTimeString(), now()->addHours(8));
+                        Cache::put($cacheKey, $now->toDateTimeString(), now()->endOfDay());
                         $alertsSent++;
                     }
                 }
