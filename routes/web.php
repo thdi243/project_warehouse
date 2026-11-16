@@ -48,6 +48,8 @@ use App\Http\Controllers\Wrm\P2HController;
 use App\Http\Controllers\Wcp\StockOpname\WcpStockOnHandController;
 use App\Http\Controllers\Wcp\StockOpname\WcpStockOpnameController;
 use App\Http\Controllers\Wsp\purchase_requesition\WspPurchaseRequesitionController;
+use App\Http\Controllers\Wsp\mrp\WspMrpController;
+use App\Http\Controllers\Admin\MasterOrganizationController;
 use App\Http\Controllers\Wsp\stock_move\WspIncomingController;
 use App\Http\Controllers\Wsp\stock_move\WspOutgoingController;
 use App\Http\Controllers\Wsp\stock\StockLocationController;
@@ -289,6 +291,52 @@ Route::middleware('auth')->group(function () {
         Route::get('/pr-app', function () {
             return redirect('/purchase-requesition/approval');
         })->name('stock.pr.alias-app');
+
+        // MRP Sparepart WSP
+        Route::prefix('mrp')->group(function () {
+            // Master MRP (Monitoring & Comparing)
+            Route::get('/master', [WspMrpController::class, 'masterIndex'])->name('stock.mrp.master');
+            Route::get('/master/data', [WspMrpController::class, 'getMasterData'])->name('stock.mrp.master.data');
+            Route::get('/master/detail', [WspMrpController::class, 'getMidDetail'])->name('stock.mrp.master.detail');
+            Route::get('/master/logs', [WspMrpController::class, 'getLogs'])->name('stock.mrp.master.logs');
+
+            // Pengajuan MRP Request
+            Route::get('/request', [WspMrpController::class, 'requestIndex'])->name('stock.mrp.request');
+            Route::get('/history', [WspMrpController::class, 'historyIndex'])->name('stock.mrp.request.history');
+            Route::get('/request/data', [WspMrpController::class, 'getRequestData'])->name('stock.mrp.request.data');
+            Route::get('/request/search-barang', [WspMrpController::class, 'searchBarang'])->name('stock.mrp.request.search-barang');
+            Route::get('/request/check-mid', [WspMrpController::class, 'checkMidAsIs'])->name('stock.mrp.request.check-mid');
+            Route::post('/request/store', [WspMrpController::class, 'storeRequest'])->name('stock.mrp.request.store');
+            Route::delete('/request/delete/{id}', [WspMrpController::class, 'deleteRequest'])->name('stock.mrp.request.delete');
+
+            // Approval MRP
+            Route::get('/approval', [WspMrpController::class, 'approvalIndex'])->name('stock.mrp.approval');
+            Route::get('/approval/data', [WspMrpController::class, 'getPendingApprovals'])->name('stock.mrp.approval.data');
+            Route::post('/approval/action/{id}', [WspMrpController::class, 'actionApproval'])->name('stock.mrp.approval.action');
+            Route::post('/approval/mass-action', [WspMrpController::class, 'massActionApproval'])->name('stock.mrp.approval.mass-action');
+
+            // WSP SAP Execution
+            Route::get('/wsp-execution', [WspMrpController::class, 'wspExecutionIndex'])->name('stock.mrp.wsp-execution');
+            Route::get('/wsp-execution/copy-sap/{id}', [WspMrpController::class, 'copySapData'])->name('stock.mrp.wsp.copy-sap');
+            Route::post('/wsp-execution/mark-completed/{id}', [WspMrpController::class, 'markItemSapCompleted'])->name('stock.mrp.wsp.mark-completed');
+            Route::post('/wsp-execution/mark-all-completed/{requestId}', [WspMrpController::class, 'markAllSapCompleted'])->name('stock.mrp.wsp.mark-all-completed');
+
+            // PR Bulanan & Reservasi 3 Bulan
+            Route::get('/monthly', [WspMrpController::class, 'monthlyIndex'])->name('stock.mrp.monthly');
+            Route::get('/monthly/data', [WspMrpController::class, 'getMonthlyData'])->name('stock.mrp.monthly.data');
+            Route::post('/monthly/store', [WspMrpController::class, 'storeMonthlyRecord'])->name('stock.mrp.monthly.store');
+            Route::post('/monthly/send-email', [WspMrpController::class, 'sendNeedReviewEmail'])->name('stock.mrp.monthly.send-email');
+
+            // Dynamic Approval Configuration
+            Route::get('/config', [WspMrpController::class, 'configIndex'])->name('stock.mrp.config');
+            Route::get('/config/data', [WspMrpController::class, 'getConfigData'])->name('stock.mrp.config.data');
+            Route::post('/config/store', [WspMrpController::class, 'storeConfig'])->name('stock.mrp.config.store');
+            Route::delete('/config/delete/{id}', [WspMrpController::class, 'deleteConfig'])->name('stock.mrp.config.delete');
+        });
+
+        // Alias compatibility untuk request & config delete
+        Route::delete('stock/mrp/request/delete/{id}', [WspMrpController::class, 'deleteRequest']);
+        Route::delete('stock/mrp/config/delete/{id}', [WspMrpController::class, 'deleteConfig']);
     });
 
     // Warehouse Raw Material
@@ -859,6 +907,30 @@ Route::middleware('auth')->group(function () {
                 Route::put('/update/{id}', [UserController::class, 'update'])->name('user.update');
                 Route::patch('/toggle-status/{id}', [UserController::class, 'toggleStatus'])->name('user.toggle-status');
             });
+
+            // Master Organisasi (Departemen, Bagian, Jabatan)
+            Route::prefix('organization')->name('master.organization.')->middleware(['permission:manage-users'])->group(function () {
+                Route::get('/', [MasterOrganizationController::class, 'index'])->name('index');
+                Route::get('/data', [MasterOrganizationController::class, 'getData'])->name('data');
+
+                // Departemen
+                Route::post('/departemen/store', [MasterOrganizationController::class, 'storeDepartemen'])->name('departemen.store');
+                Route::put('/departemen/update/{id}', [MasterOrganizationController::class, 'updateDepartemen'])->name('departemen.update');
+                Route::delete('/departemen/delete/{id}', [MasterOrganizationController::class, 'deleteDepartemen'])->name('departemen.delete');
+
+                // Bagian
+                Route::post('/bagian/store', [MasterOrganizationController::class, 'storeBagian'])->name('bagian.store');
+                Route::put('/bagian/update/{id}', [MasterOrganizationController::class, 'updateBagian'])->name('bagian.update');
+                Route::delete('/bagian/delete/{id}', [MasterOrganizationController::class, 'deleteBagian'])->name('bagian.delete');
+
+                // Jabatan
+                Route::post('/jabatan/store', [MasterOrganizationController::class, 'storeJabatan'])->name('jabatan.store');
+                Route::put('/jabatan/update/{id}', [MasterOrganizationController::class, 'updateJabatan'])->name('jabatan.update');
+                Route::delete('/jabatan/delete/{id}', [MasterOrganizationController::class, 'deleteJabatan'])->name('jabatan.delete');
+
+                // API Helper
+                Route::get('/api/bagians', [MasterOrganizationController::class, 'getBagiansByDept'])->name('api.bagians');
+            });
         });
     });
 
@@ -943,6 +1015,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/wpm/start-loading/{id}', [VehicleTrackingController::class, 'wpmStartLoading'])->name('wpm.start_loading');
             Route::post('/wpm/cancel-loading/{id}', [VehicleTrackingController::class, 'wpmCancelLoading'])->name('wpm.cancel_loading');
             Route::post('/wpm/complete/{id}', [VehicleTrackingController::class, 'wpmComplete'])->name('wpm.complete');
+            Route::post('/wpm/notify-driver/{id}', [VehicleTrackingController::class, 'notifyDriverManual'])->name('wpm.notify_driver');
         });
 
         // WRM (Unloading Area)
@@ -952,6 +1025,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/wrm/start-loading/{id}', [VehicleTrackingController::class, 'wrmStartLoading'])->name('wrm.start_loading');
             Route::post('/wrm/cancel-loading/{id}', [VehicleTrackingController::class, 'wrmCancelLoading'])->name('wrm.cancel_loading');
             Route::post('/wrm/update-unloading/{id}', [VehicleTrackingController::class, 'wrmUpdateUnloading'])->name('wrm.update_unloading');
+            Route::post('/wrm/notify-driver/{id}', [VehicleTrackingController::class, 'notifyDriverManual'])->name('wrm.notify_driver');
         });
 
         // WFG (Bongkar Muat Finished Goods Area)
@@ -961,6 +1035,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/wfg/start-loading/{id}', [VehicleTrackingController::class, 'wfgStartLoading'])->name('wfg.start_loading');
             Route::post('/wfg/cancel-loading/{id}', [VehicleTrackingController::class, 'wfgCancelLoading'])->name('wfg.cancel_loading');
             Route::post('/wfg/update-loading/{id}', [VehicleTrackingController::class, 'wfgUpdateLoading'])->name('wfg.update_loading');
+            Route::post('/wfg/notify-driver/{id}', [VehicleTrackingController::class, 'notifyDriverManual'])->name('wfg.notify_driver');
         });
 
         // SMU Area
@@ -970,7 +1045,12 @@ Route::middleware('auth')->group(function () {
             Route::post('/smu/start-loading/{id}', [VehicleTrackingController::class, 'smuStartLoading'])->name('smu.start_loading');
             Route::post('/smu/cancel-loading/{id}', [VehicleTrackingController::class, 'smuCancelLoading'])->name('smu.cancel_loading');
             Route::post('/smu/complete/{id}', [VehicleTrackingController::class, 'smuComplete'])->name('smu.complete');
+            Route::post('/smu/notify-driver/{id}', [VehicleTrackingController::class, 'notifyDriverManual'])->name('smu.notify_driver');
         });
+
+        // Generic notify driver route
+        Route::post('/notify-driver/{id}', [VehicleTrackingController::class, 'notifyDriverManual'])->name('notify_driver');
+        Route::post('/vehicle/notify-driver/{id}', [VehicleTrackingController::class, 'notifyDriverManual']);
 
         // Master Items CRUD (SKUs)
         Route::middleware(['permission:vehicle-monitoring-master'])->group(function () {

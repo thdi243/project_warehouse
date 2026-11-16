@@ -176,11 +176,22 @@
 
                         let actionBtn = '';
                         const canOperateSmu = canPengawasSmu || canAdminSmu;
+                        const waBtn = `<button type="button" class="btn btn-sm btn-push-wa text-white" 
+                            style="background-color: #25D366; border-color: #21ba5b;"
+                            data-id="${tx.id}" 
+                            data-nopol="${tx.no_pol}"
+                            data-driver="${tx.nama_driver || ''}"
+                            data-phone="${tx.no_hp_driver || ''}"
+                            data-area="SMU"
+                            title="Kirim Notifikasi Panggilan WhatsApp ke Nomor Pribadi Supir">
+                            <i class="ri-whatsapp-line align-middle"></i>
+                        </button>`;
 
                         if (!tx.no_antrian) {
                             // Belum ambil antrian: Pengawas / Admin SMU dapat langsung Mulai atau Batal jika gajadi
                             if (canOperateSmu) {
                                 actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                    ${waBtn}
                                     <button type="button" class="btn btn-sm btn-primary btn-start-smu" 
                                         data-id="${tx.id}" 
                                         data-nopol="${tx.no_pol}"
@@ -212,6 +223,7 @@
 
                             if (canOperateSmu) {
                                 actionBtn = `<div class="d-flex gap-1 justify-content-center">
+                                    ${waBtn}
                                     <button type="button" class="btn btn-sm btn-primary btn-start-smu" 
                                         data-id="${tx.id}" 
                                         data-nopol="${tx.no_pol}"
@@ -561,6 +573,71 @@
                             error: function(xhr) {
                                 Swal.fire('Error!', xhr.responseJSON?.message ||
                                     'Gagal memproses permintaan.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Push WA ke Supir Click Handler
+            $(document).on('click', '.btn-push-wa', function() {
+                const id = $(this).data('id');
+                const nopol = $(this).data('nopol');
+                const driver = $(this).data('driver') || 'Supir';
+                const phone = $(this).data('phone') || '-';
+                const area = $(this).data('area') || 'SMU';
+
+                Swal.fire({
+                    title: 'Panggil Supir via WhatsApp?',
+                    html: `Kirim notifikasi panggilan ke <b>Nomor WhatsApp Pribadi Supir</b> untuk truk <strong>${nopol}</strong>?<br><br>
+                           <div class="text-start bg-light p-3 rounded border small">
+                               <div class="mb-1"><strong>👤 Supir:</strong> ${driver}</div>
+                               <div class="mb-1"><strong>📱 No. HP:</strong> ${phone}</div>
+                               <div><strong>📍 Area:</strong> Dock ${area}</div>
+                           </div>`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#25D366',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="ri-whatsapp-line me-1"></i> Ya, Kirim Notifikasi!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Mengirim notifikasi...',
+                            text: 'Mohon tunggu sebentar',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        $.ajax({
+                            url: `{{ url('vehicle-monitoring/smu/notify-driver') }}/${id}`,
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                area: area
+                            },
+                            success: function(res) {
+                                if (res.success) {
+                                    Swal.fire({
+                                        title: 'Terkirim!',
+                                        text: res.message,
+                                        icon: 'success',
+                                        timer: 3500,
+                                        showConfirmButton: true
+                                    });
+                                } else {
+                                    Swal.fire('Gagal', res.message || 'Gagal mengirim pesan WhatsApp.', 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                const isCooldown = xhr.status === 429 || xhr.responseJSON?.is_cooldown;
+                                const title = isCooldown ? 'Perhatian (Anti-Spam)' : 'Error';
+                                const icon = isCooldown ? 'warning' : 'error';
+                                const msg = xhr.responseJSON?.message || 'Terjadi kesalahan sistem saat mengirim WhatsApp.';
+                                Swal.fire(title, msg, icon);
                             }
                         });
                     }

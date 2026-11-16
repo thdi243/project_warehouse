@@ -35,3 +35,8 @@ Schedule::command('wrm:sync-stock-by-date')->dailyAt('23:59');
 // Auto update status kempu dari WFG_TRANSFER_OUT_TO_PAS ke PAS_TRANSFER_IN_FROM_BAS setelah H+1 (24 jam)
 Schedule::command('kempu:auto-transfer-in-pas')->hourly();
 
+// Monitoring SLA Kendaraan: Overdue proses bongkar/muat > 2 jam & Dwell time > 7.5 jam
+Schedule::call(function () {
+    app(\App\Http\Controllers\Vehicle\VehicleTrackingController::class)->checkOverdueVehicles();
+})->everyFiveMinutes()->name('vehicle-monitor-sla');
+

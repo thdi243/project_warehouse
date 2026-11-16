@@ -10,7 +10,9 @@ use App\Models\Vehicle\VehicleItem;
 use App\Models\Vehicle\VehicleTracking;
 use App\Models\Vehicle\VehicleTransaction;
 use App\Models\Vehicle\VehicleVendor;
+use App\Models\User;
 use App\Models\Wrm\MasterSupplierModel;
+use App\Services\FonnteService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -50,6 +52,9 @@ class VehicleTrackingController extends Controller
      */
     public function dashboardData()
     {
+        // Cek SLA Overdue (> 2 jam bongkar/muat & > 7.5 jam truck duration)
+        $this->checkOverdueVehicles();
+
         $locations = Location::all();
 
         // Get raw collection of active transactions
@@ -1264,6 +1269,13 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
+            // 2. Notifikasi ke supir bahwa proses bongkar/muat selesai
+            $this->notifyDriverCompleted($transaction, 'WPM');
+
+            // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
+            $this->notifyNextDriverToEnterDock($transaction, 'WPM');
+
             return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di WPM. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1867,6 +1879,13 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
+            // 2. Notifikasi ke supir bahwa proses bongkar/muat selesai
+            $this->notifyDriverCompleted($transaction, 'WRM');
+
+            // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
+            $this->notifyNextDriverToEnterDock($transaction, 'WRM');
+
             return response()->json(['success' => true, 'message' => "Status {$actionName} truk {$noPol} diperbarui ke Selesai. Diarahkan kembali ke Timbangan untuk Check-Out."]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1990,6 +2009,7 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
             return response()->json(['success' => true, 'message' => 'Proses bongkar/muat berhasil dimulai.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2101,6 +2121,13 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
+            // 2. Notifikasi ke supir bahwa proses muat/bongkar selesai
+            $this->notifyDriverCompleted($transaction, 'WFG');
+
+            // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
+            $this->notifyNextDriverToEnterDock($transaction, 'WFG');
+
             return response()->json(['success' => true, 'message' => 'Proses Bongkar/Muat di WFG selesai. Truk diarahkan ke Timbangan.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2273,6 +2300,7 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => "Proses {$actionName} untuk truk {$noPol} (Antrian #{$formattedAntrian}) berhasil dimulai."
@@ -2367,6 +2395,13 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
+            // 2. Notifikasi ke supir bahwa proses muat/bongkar selesai
+            $this->notifyDriverCompleted($transaction, 'SMU');
+
+            // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
+            $this->notifyNextDriverToEnterDock($transaction, 'SMU');
+
             return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di SMU. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -3739,5 +3774,521 @@ class VehicleTrackingController extends Controller
         });
 
         return response()->json($paginated);
+    }
+
+    /**
+     * Format driver's phone number into WhatsApp mention/tag format (@628xxxxxxxx).
+     */
+    protected function formatDriverWaTag(?string $phone): string
+    {
+        if (empty($phone)) {
+            return '';
+        }
+
+        $clean = preg_replace('/[^0-9]/', '', $phone);
+        if (empty($clean) || strlen($clean) < 7) {
+            return '';
+        }
+
+        if (str_starts_with($clean, '0')) {
+            $clean = '62' . substr($clean, 1);
+        } elseif (str_starts_with($clean, '8')) {
+            $clean = '62' . $clean;
+        }
+
+        return '@' . $clean;
+    }
+
+    /**
+     * Resolve driver name & phone safely (auto-detects if phone & name were swapped in inputs/database).
+     */
+    public function resolveDriverInfo(?string $namaDriver, ?string $noHpDriver): array
+    {
+        $name = trim($namaDriver ?? '');
+        $phone = trim($noHpDriver ?? '');
+
+        $nameDigitsOnly = preg_replace('/[^0-9]/', '', $name);
+
+        // Jika "nama_driver" berisi angka no HP (>= 8 digit) dan "no_hp_driver" berisi huruf (nama), maka tertukar!
+        if (strlen($nameDigitsOnly) >= 8 && preg_match('/^[0-9+ \-]+$/', $name) && preg_match('/[a-zA-Z]/', $phone)) {
+            $temp = $name;
+            $name = $phone;
+            $phone = $temp;
+        } elseif (empty($phone) && strlen($nameDigitsOnly) >= 8 && preg_match('/^[0-9+ \-]+$/', $name)) {
+            $phone = $name;
+            $name = 'Supir';
+        }
+
+        $tag = $this->formatDriverWaTag($phone);
+        $name = $name ?: 'Supir';
+        $display = !empty($phone) ? "{$name} ({$phone})" : $name;
+
+        return [
+            'name' => $name,
+            'phone' => $phone,
+            'tag' => $tag,
+            'display' => $display,
+        ];
+    }
+
+    /**
+     * 1. Panggil Supir untuk MASUK loading DOCK.
+     * Terkirim setelah truk sebelumnya SELESAI Muat/Bongkar.
+     */
+    public function notifyNextDriverToEnterDock(VehicleTransaction $completedTx, string $area = 'WFG'): array
+    {
+        try {
+            $status = strtolower($area);
+            $nextQuery = VehicleTransaction::with(['vehicle', 'item'])
+                ->where(function ($q) use ($status, $area) {
+                    $q->where('status', $status);
+                    if ($area === 'WRM') {
+                        $q->orWhere('status', 'wrm_bongkar');
+                    }
+                })
+                ->where('id', '!=', $completedTx->id)
+                ->where(function ($q) {
+                    $q->whereNull('unloading_status')
+                        ->orWhereNotIn('unloading_status', ['process', 'completed', 'complete']);
+                });
+
+            if ($status === 'wfg' && !empty($completedTx->jenis)) {
+                $nextQuery->where('jenis', $completedTx->jenis);
+            }
+
+            // Jika ada antrian nomor, utamakan yang memiliki nomor antrian terkecil
+            $nextTx = (clone $nextQuery)
+                ->whereNotNull('no_antrian')
+                ->orderByRaw('CAST(no_antrian AS UNSIGNED) ASC')
+                ->first();
+
+            // Jika tidak ada nomor antrian (misal di WRM/WPM), ambil yang check_in_time paling awal
+            if (!$nextTx) {
+                $nextTx = $nextQuery->orderBy('check_in_time', 'asc')->first();
+            }
+
+            if (!$nextTx) {
+                Log::info("[VehicleTracking] Tidak ada truk antrian berikutnya di {$area} untuk dipanggil masuk dock.");
+                return ['status' => false, 'message' => 'Tidak ada antrian berikutnya.'];
+            }
+
+            $prevNoPol = $completedTx->vehicle ? $completedTx->vehicle->no_pol : 'N/A';
+            $nextNoPol = $nextTx->vehicle ? $nextTx->vehicle->no_pol : 'N/A';
+
+            // Anti-spam / Duplicate Lock: jangan panggil truk yang sama berkali-kali dalam 15 menit
+            $lockKey = "wa_lock_dock_call_{$nextTx->id}";
+            if (Cache::has($lockKey)) {
+                Log::info("[VehicleTracking] Panggilan masuk dock untuk truk {$nextNoPol} sudah dikirim baru-baru ini. Skip duplicate WA.");
+                return ['status' => false, 'message' => "Panggilan masuk dock untuk truk {$nextNoPol} sudah dikirim sebelumnya."];
+            }
+
+            $nextDriver = $this->resolveDriverInfo($nextTx->nama_driver, $nextTx->no_hp_driver);
+            $nextAntrian = $nextTx->no_antrian ? " (Antrian *#{$nextTx->no_antrian}*)" : '';
+
+            // Format pesan pribadi ke HP supir (tanpa tag @)
+            $message = "📢 *PANGGILAN MASUK DOCK {$area}*\n"
+                . "Halo *{$nextDriver['name']}*, truk sebelumnya (*{$prevNoPol}*) telah selesai.\n\n"
+                . "Truk : *{$nextNoPol}*{$nextAntrian}\n"
+                . "Silakan *SEGERA MASUK* ke Loading Dock {$area} sekarang. Terima kasih! 🙏";
+
+            if (empty($nextDriver['phone'])) {
+                Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$nextNoPol}");
+                return ['status' => false, 'message' => "Nomor HP supir untuk truk {$nextNoPol} belum terdaftar."];
+            }
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $nextDriver['phone']);
+            $fonnte = app(FonnteService::class);
+            $res = $fonnte->sendMessage($cleanPhone, $message);
+
+            if (!empty($res['status'])) {
+                Cache::put($lockKey, now()->toDateTimeString(), now()->addMinutes(15));
+            }
+
+            return $res;
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA panggilan masuk dock ({$area}): " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * 2. Panggil Supir untuk SELESAI Proses Muat/Bongkar.
+     * Terkirim langsung ke nomor pribadi supir setelah pengawas End (Selesai) proses Muat/Bongkar.
+     */
+    public function notifyDriverCompleted(VehicleTransaction $transaction, string $area = 'WFG'): array
+    {
+        try {
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+
+            // Anti-spam / Duplicate Lock: jangan kirim notif selesai dua kali untuk truk yang sama
+            $lockKey = "wa_lock_completed_{$transaction->id}";
+            if (Cache::has($lockKey)) {
+                Log::info("[VehicleTracking] Notifikasi selesai muat/bongkar untuk truk {$noPol} sudah dikirim sebelumnya. Skip duplicate WA.");
+                return ['status' => false, 'message' => "Notifikasi selesai untuk truk {$noPol} sudah pernah dikirim."];
+            }
+
+            $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
+            $actionLabel = $transaction->jenis === 'slipsheet' ? 'Muat' : ($transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat/Bongkar');
+
+            // Format pesan pribadi ke HP supir (tanpa tag @)
+            $message = "✅ *PROSES SELESAI - DOCK {$area}*\n"
+                . "Halo *{$driver['name']}*, proses {$actionLabel} untuk truk *{$noPol}* telah *SELESAI*.\n\n"
+                . "Silakan mengurus dokumen dan melanjutkan ke Timbangan Out. Terima kasih! 🙏";
+
+            if (empty($driver['phone'])) {
+                Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$noPol}");
+                return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
+            }
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
+            $fonnte = app(FonnteService::class);
+            $res = $fonnte->sendMessage($cleanPhone, $message);
+
+            if (!empty($res['status'])) {
+                Cache::put($lockKey, now()->toDateTimeString(), now()->addHours(24));
+            }
+
+            return $res;
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA selesai proses: " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Send manual WhatsApp notification directly to driver's personal phone.
+     * Dilengkapi anti-spam / cooldown lock 5 menit per transaksi truk.
+     */
+    public function sendDriverManualNotification(VehicleTransaction $transaction, string $area = 'WRM'): array
+    {
+        try {
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+
+            // 1. Anti-spam / Cooldown Lock (5 menit per transaksi truk)
+            $cooldownKey = "wa_cooldown_manual_{$transaction->id}";
+            if (Cache::has($cooldownKey)) {
+                $cooldownData = Cache::get($cooldownKey);
+                $sentBy = is_array($cooldownData) ? ($cooldownData['user_name'] ?? 'User lain') : 'Pengawas';
+                $sentTime = is_array($cooldownData) ? ($cooldownData['time'] ?? 'baru saja') : 'baru saja';
+                $sentTimestamp = is_array($cooldownData) ? ($cooldownData['timestamp'] ?? time()) : time();
+                $remainingSeconds = max(0, 300 - (time() - $sentTimestamp));
+                $remainingMinutes = ceil($remainingSeconds / 60);
+
+                Log::warning("[VehicleTracking] Anti-Spam: {$noPol} baru saja di-push WA oleh {$sentBy} pada {$sentTime}. Cooldown sisa {$remainingMinutes} menit.");
+
+                return [
+                    'status' => false,
+                    'is_cooldown' => true,
+                    'sent_by' => $sentBy,
+                    'sent_time' => $sentTime,
+                    'remaining_minutes' => $remainingMinutes,
+                    'message' => "Panggilan WhatsApp untuk Truk {$noPol} baru saja dikirim oleh {$sentBy} pada pukul {$sentTime}. Harap tunggu {$remainingMinutes} menit lagi sebelum mengirim ulang."
+                ];
+            }
+
+            $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
+            $actionLabel = $transaction->jenis === 'bongkaran' ? 'Bongkar' : ($transaction->jenis === 'slipsheet' ? 'Muat' : ucfirst($transaction->jenis ?? 'Bongkar/Muat'));
+
+            // Format pesan pribadi ke HP supir (tanpa tag @)
+            $message = "📢 *PANGGILAN DOCK {$area}*\n"
+                . "Halo *{$driver['name']}*, kendaraan *{$noPol}* dipersilakan *SEGERA MERAPAT* ke area Dock {$area} untuk proses {$actionLabel}. Terima kasih! 🙏";
+
+            if (empty($driver['phone'])) {
+                return [
+                    'status' => false,
+                    'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar di sistem."
+                ];
+            }
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
+            $fonnte = app(FonnteService::class);
+            $res = $fonnte->sendMessage($cleanPhone, $message);
+
+            if (!empty($res['status'])) {
+                $currentUser = Auth::user();
+                $userName = $currentUser ? ($currentUser->nama_lengkap ?: $currentUser->username) : 'Pengawas';
+                Cache::put($cooldownKey, [
+                    'user_name' => $userName,
+                    'time' => Carbon::now()->format('H:i'),
+                    'timestamp' => time()
+                ], now()->addMinutes(5));
+            }
+
+            return $res;
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA manual ({$area}): " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * AJAX Endpoint to trigger manual push notification to driver personal phone.
+     */
+    public function notifyDriverManual(Request $request, $id)
+    {
+        try {
+            $transaction = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])->findOrFail($id);
+
+            $area = strtoupper($request->input('area', ''));
+            if (empty($area)) {
+                if (str_contains($transaction->status, 'wrm') || ($transaction->targetLocation && $transaction->targetLocation->s_loc === 'B006')) {
+                    $area = 'WRM';
+                } elseif (str_contains($transaction->status, 'wpm') || ($transaction->targetLocation && $transaction->targetLocation->s_loc === 'C001')) {
+                    $area = 'WPM';
+                } elseif (str_contains($transaction->status, 'wfg') || ($transaction->targetLocation && $transaction->targetLocation->s_loc === 'A001')) {
+                    $area = 'WFG';
+                } elseif (str_contains($transaction->status, 'smu')) {
+                    $area = 'SMU';
+                } else {
+                    $area = 'DOCK';
+                }
+            }
+
+            $result = $this->sendDriverManualNotification($transaction, $area);
+
+            if (!empty($result['status'])) {
+                $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+                return response()->json([
+                    'success' => true,
+                    'message' => "Notifikasi WhatsApp panggilan untuk Truk {$noPol} berhasil dikirim ke nomor pribadi supir.",
+                    'data' => $result
+                ]);
+            }
+
+            $statusCode = !empty($result['is_cooldown']) ? 429 : 400;
+
+            return response()->json([
+                'success' => false,
+                'is_cooldown' => !empty($result['is_cooldown']),
+                'message' => $result['message'] ?? 'Gagal mengirim pesan WhatsApp.'
+            ], $statusCode);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get management recipients: Dept Head WH, Supervisor WH, and Foreman according to bagian.
+     */
+    public function getWarehouseManagementRecipients(string $area): array
+    {
+        $areaUpper = strtoupper($area);
+
+        // 1. Dept Head Warehouse
+        $deptHeads = User::where('departemen', 'warehouse')
+            ->where('jabatan', 'dept_head')
+            ->where('is_active', true)
+            ->get();
+
+        // 2. Supervisor Warehouse
+        $supervisors = User::where('departemen', 'warehouse')
+            ->where('jabatan', 'supervisor')
+            ->where('is_active', true)
+            ->get();
+
+        // 3. Foreman Warehouse disesuaikan dengan bagian
+        $foremanQuery = User::where('departemen', 'warehouse')
+            ->where('jabatan', 'foreman')
+            ->where('is_active', true);
+
+        if (in_array($areaUpper, ['WFG', 'SMU'])) {
+            $foremanQuery->where(function ($q) {
+                $q->where('bagian', 'like', '%finish%')
+                    ->orWhere('bagian', 'like', '%wfg%')
+                    ->orWhere('bagian', 'warehouse');
+            });
+        } elseif (in_array($areaUpper, ['WRM', 'WPM'])) {
+            $foremanQuery->where(function ($q) {
+                $q->where('bagian', 'like', '%raw%')
+                    ->orWhere('bagian', 'like', '%wrm%')
+                    ->orWhere('bagian', 'like', '%packaging%')
+                    ->orWhere('bagian', 'like', '%material%')
+                    ->orWhere('bagian', 'warehouse');
+            });
+        }
+
+        $foremen = $foremanQuery->get();
+
+        return [
+            'dept_heads' => $deptHeads,
+            'supervisors' => $supervisors,
+            'foremen' => $foremen,
+            'all' => $deptHeads->concat($supervisors)->concat($foremen)->unique('id'),
+        ];
+    }
+
+    /**
+     * 3. Notifikasi ke Dept Head, Supervisor dan Foreman untuk proses bongkar/muat melebihi 2 jam.
+     */
+    public function sendOverdueLoadingAlert(VehicleTransaction $tx, string $area, int $diffMinutes, Carbon $startTime): array
+    {
+        try {
+            $noPol = $tx->vehicle ? $tx->vehicle->no_pol : 'N/A';
+            $driver = $this->resolveDriverInfo($tx->nama_driver, $tx->no_hp_driver);
+            $vendor = $tx->vendor ?: '-';
+            $action = $tx->jenis === 'slipsheet' ? 'Muat' : ($tx->jenis === 'bongkaran' ? 'Bongkar' : 'Bongkar/Muat');
+
+            $hours = floor($diffMinutes / 60);
+            $mins = $diffMinutes % 60;
+            $durationStr = "{$hours} Jam {$mins} Menit";
+
+            $recipients = $this->getWarehouseManagementRecipients($area);
+            $foremenNames = $recipients['foremen']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['foremen']->pluck('username')->implode(', ') ?: 'Foreman WH');
+            $spvNames = $recipients['supervisors']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['supervisors']->pluck('username')->implode(', ') ?: 'SPV WH');
+            $deptHeadNames = $recipients['dept_heads']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['dept_heads']->pluck('username')->implode(', ') ?: 'Dept Head WH');
+
+            $message = "⚠️ *ALERT: PROSES BONGKAR/MUAT MELEBIHI 2 JAM*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Area Dock   : *Dock {$area}*\n"
+                . "No. Polisi  : *{$noPol}*\n"
+                . "Aktivitas   : {$action}\n"
+                . "Supir       : {$driver['display']}\n"
+                . "Vendor      : {$vendor}\n"
+                . "Mulai Proses: " . $startTime->format('d/m/Y H:i') . "\n"
+                . "⏱️ Durasi    : *{$durationStr}* (Melebihi batas 2 Jam)\n\n"
+                . "Mohon atensi Bapak/Ibu:\n"
+                . "• Foreman {$area}: {$foremenNames}\n"
+                . "• Supervisor WH  : {$spvNames}\n"
+                . "• Dept Head WH   : {$deptHeadNames}\n\n"
+                . "Untuk pengecekan kendala operasional di lapangan. Terima kasih. 🙏";
+
+            $fonnte = app(FonnteService::class);
+
+            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp
+            $sentCount = 0;
+            foreach ($recipients['all'] as $u) {
+                if (!empty($u->no_hp)) {
+                    $fonnte->sendMessage($u->no_hp, $message);
+                    $sentCount++;
+                }
+            }
+
+            Log::warning("[VehicleTracking] Alert Overdue Loading (>2h) dikirim ke {$sentCount} PIC management untuk {$noPol} ({$durationStr})");
+            return ['status' => true, 'sent_count' => $sentCount];
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim alert overdue loading: " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * 4. Notifikasi ke Dept Head, Supervisor dan Foreman untuk truck duration lebih dari 7.5 jam.
+     */
+    public function sendOverdueDurationAlert(VehicleTransaction $tx, string $area, int $totalMinutes, Carbon $checkIn): array
+    {
+        try {
+            $noPol = $tx->vehicle ? $tx->vehicle->no_pol : 'N/A';
+            $driver = $this->resolveDriverInfo($tx->nama_driver, $tx->no_hp_driver);
+            $vendor = $tx->vendor ?: '-';
+            $loc = $tx->currentLocation ? $tx->currentLocation->name : strtoupper($tx->status);
+
+            $hours = floor($totalMinutes / 60);
+            $mins = $totalMinutes % 60;
+            $durationStr = "{$hours} Jam {$mins} Menit";
+
+            $recipients = $this->getWarehouseManagementRecipients($area);
+            $foremenNames = $recipients['foremen']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['foremen']->pluck('username')->implode(', ') ?: 'Foreman WH');
+            $spvNames = $recipients['supervisors']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['supervisors']->pluck('username')->implode(', ') ?: 'SPV WH');
+            $deptHeadNames = $recipients['dept_heads']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['dept_heads']->pluck('username')->implode(', ') ?: 'Dept Head WH');
+
+            $message = "🚨 *ALERT: TRUCK DURATION MELEBIHI 7.5 JAM*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "No. Polisi   : *{$noPol}*\n"
+                . "Lokasi/Status: *{$loc}*\n"
+                . "Supir        : {$driver['display']}\n"
+                . "Vendor       : {$vendor}\n"
+                . "Waktu Masuk  : " . $checkIn->format('d/m/Y H:i') . "\n"
+                . "⏱️ Total Waktu: *{$durationStr}* (Melebihi batas 7.5 Jam)\n\n"
+                . "Mohon atensi percepatan penanganan oleh:\n"
+                . "• Foreman {$area}: {$foremenNames}\n"
+                . "• Supervisor WH  : {$spvNames}\n"
+                . "• Dept Head WH   : {$deptHeadNames}\n\n"
+                . "Terima kasih. 🙏";
+
+            $fonnte = app(FonnteService::class);
+
+            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp
+            $sentCount = 0;
+            foreach ($recipients['all'] as $u) {
+                if (!empty($u->no_hp)) {
+                    $fonnte->sendMessage($u->no_hp, $message);
+                    $sentCount++;
+                }
+            }
+
+            Log::warning("[VehicleTracking] Alert Overdue Duration (>7.5h) dikirim ke {$sentCount} PIC management untuk {$noPol} ({$durationStr})");
+            return ['status' => true, 'sent_count' => $sentCount];
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim alert overdue duration: " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Check and trigger SLA Overdue Alerts:
+     * 3. Loading/unloading exceeding 2 hours (120 mins).
+     * 4. Total truck dwell duration exceeding 7.5 hours (450 mins).
+     */
+    public function checkOverdueVehicles(): array
+    {
+        $now = Carbon::now();
+        $alertsSent = 0;
+
+        $activeTxs = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'currentLocation'])
+            ->whereNotIn('status', ['completed'])
+            ->whereNull('check_out_time')
+            ->get();
+
+        foreach ($activeTxs as $tx) {
+            $area = 'WFG';
+            if (str_contains($tx->status, 'wrm') || ($tx->targetLocation && $tx->targetLocation->s_loc === 'B006')) {
+                $area = 'WRM';
+            } elseif (str_contains($tx->status, 'wpm') || ($tx->targetLocation && $tx->targetLocation->s_loc === 'C001')) {
+                $area = 'WPM';
+            } elseif (str_contains($tx->status, 'smu')) {
+                $area = 'SMU';
+            } elseif (str_contains($tx->status, 'wfg')) {
+                $area = 'WFG';
+            }
+
+            // 3. Alert Proses Bongkar/Muat > 2 Jam (120 Menit)
+            if ($tx->unloading_status === 'process' && !empty($tx->start_loading_time)) {
+                $startTime = Carbon::parse($tx->start_loading_time);
+                $diffMinutes = $startTime->diffInMinutes($now);
+
+                if ($diffMinutes >= 120) {
+                    $cacheKey = "alert_overdue_loading_2h_{$tx->id}";
+                    if (!Cache::has($cacheKey)) {
+                        $this->sendOverdueLoadingAlert($tx, $area, $diffMinutes, $startTime);
+                        Cache::put($cacheKey, $now->toDateTimeString(), now()->addHours(8));
+                        $alertsSent++;
+                    }
+                }
+            }
+
+            // 4. Alert Total Truck Duration > 7.5 Jam (450 Menit)
+            $checkIn = $tx->checkin_pos1 ? Carbon::parse($tx->checkin_pos1) : ($tx->check_in_time ? Carbon::parse($tx->check_in_time) : null);
+            if ($checkIn) {
+                $totalMinutes = $checkIn->diffInMinutes($now);
+
+                if ($totalMinutes >= 450) {
+                    $cacheKey = "alert_overdue_duration_7h5_{$tx->id}";
+                    if (!Cache::has($cacheKey)) {
+                        $this->sendOverdueDurationAlert($tx, $area, $totalMinutes, $checkIn);
+                        Cache::put($cacheKey, $now->toDateTimeString(), now()->addHours(8));
+                        $alertsSent++;
+                    }
+                }
+            }
+        }
+
+        return [
+            'status' => true,
+            'alerts_sent' => $alertsSent,
+            'checked_at' => $now->toDateTimeString()
+        ];
     }
 }

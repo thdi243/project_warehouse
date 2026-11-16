@@ -15,6 +15,7 @@ use App\Models\Wrm\Inventory\StockOnHand;
 use App\Models\Vehicle\Location;
 use App\Models\Vehicle\VehicleTracking;
 use App\Models\Vehicle\VehicleTransaction;
+use App\Http\Controllers\Vehicle\VehicleTrackingController;
 use App\Events\VehicleStatusUpdated;
 use Barryvdh\DomPDF\Facade\Pdf;
 // use Barryvdh\DomPDF\PDF;
@@ -1432,7 +1433,8 @@ class BongkarMuatController extends Controller
             $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $noMobil));
 
             // Cari transaksi aktif kendaraan WFG atau SMU dengan jenis slipsheet / curah
-            $transaction = VehicleTransaction::whereIn('status', ['wfg', 'smu'])
+            $transaction = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])
+                ->whereIn('status', ['wfg', 'smu'])
                 ->whereIn('jenis', ['bongkaran', 'slipsheet', 'curah'])
                 ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
                     $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_pol, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanNoMobil]);
@@ -1442,7 +1444,8 @@ class BongkarMuatController extends Controller
                 ->first();
 
             if (!$transaction) {
-                $transaction = VehicleTransaction::whereNotIn('status', ['completed', 'timbangan_out'])
+                $transaction = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])
+                    ->whereNotIn('status', ['completed', 'timbangan_out'])
                     ->whereIn('jenis', ['bongkaran', 'slipsheet', 'curah'])
                     ->whereHas('targetLocation', function ($tl) {
                         $tl->whereIn('s_loc', ['A001', 'SMU', 'A002']);
@@ -1566,6 +1569,13 @@ class BongkarMuatController extends Controller
                 }
 
                 DB::commit();
+
+                // 2. Notifikasi WhatsApp ke supir bahwa proses muat telah SELESAI
+                $trackingController = app(VehicleTrackingController::class);
+                $trackingController->notifyDriverCompleted($transaction, $areaName);
+
+                // 1. Panggil supir antrian berikutnya untuk segera MASUK loading dock
+                $trackingController->notifyNextDriverToEnterDock($transaction, $areaName);
             }
         } catch (\Exception $e) {
             DB::rollBack();

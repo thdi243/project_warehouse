@@ -38,6 +38,7 @@ return [
     'fonnte' => [
         'token' => env('FONNTE_TOKEN'),
         'url' => env('FONNTE_URL', 'https://api.fonnte.com/send'),
+        'driver_group' => env('FONNTE_DRIVER_GROUP', '120363412725093520@g.us'),
     ],
 
 ];
