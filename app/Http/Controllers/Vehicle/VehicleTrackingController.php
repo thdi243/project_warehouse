@@ -2660,9 +2660,12 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
+            // Kirim notifikasi WhatsApp ke Foreman Area terkait (SMU/WFG -> Foreman WFG, WRM/WPM -> Foreman WRM)
+            $this->sendFollowUpForemanAlert($transaction, $targetArea, $notes);
+
             return response()->json([
                 'success' => true,
-                'message' => "Notifikasi follow up berhasil dikirim ke area {$targetArea} untuk Truk {$noPol}."
+                'message' => "Notifikasi follow up berhasil dikirim ke area {$targetArea} dan WhatsApp Foreman untuk Truk {$noPol}."
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -3875,8 +3878,8 @@ class VehicleTrackingController extends Controller
                         });
                     }
                 })
-                ->whereNotIn('status', ['completed', 'timbangan_out'])
-                ->orderBy('check_in_time', 'asc');
+                    ->whereNotIn('status', ['completed', 'timbangan_out'])
+                    ->orderBy('check_in_time', 'asc');
 
                 $nextTx = $nextQuery->first();
                 // WRM & WPM tidak mencantumkan nomor antrian
@@ -4240,6 +4243,94 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Kirim notifikasi WhatsApp Follow Up dari Timbangan ke Foreman Area terkait.
+     * WFG / SMU -> Foreman Warehouse Finish Goods
+     * WRM / WPM -> Foreman Warehouse Raw Material
+     * Tindakan: Segera close sistem.
+     */
+    public function sendFollowUpForemanAlert(VehicleTransaction $transaction, string $targetArea, ?string $notes = null): array
+    {
+        try {
+            $areaUpper = strtoupper(trim($targetArea));
+
+            // Jika 'ALL', tentukan area berdasarkan target lokasi atau status transaksi
+            if ($areaUpper === 'ALL' || empty($areaUpper)) {
+                $sloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : '';
+                if (in_array($sloc, ['A001', 'SMU', 'A002']) || str_contains($transaction->status, 'wfg') || str_contains($transaction->status, 'smu')) {
+                    $areaUpper = 'WFG';
+                } elseif (in_array($sloc, ['B006', 'C001']) || str_contains($transaction->status, 'wrm') || str_contains($transaction->status, 'wpm')) {
+                    $areaUpper = 'WRM';
+                } else {
+                    $areaUpper = 'WFG';
+                }
+            }
+
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+            $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
+            $vendor = $transaction->vendor ?: '-';
+            $operator = Auth::user();
+            $operatorName = $operator ? ($operator->nama_lengkap ?: ($operator->name ?: $operator->username)) : 'Operator Timbangan';
+            $now = Carbon::now();
+
+            // Tentukan foreman tujuan berdasarkan area
+            $isFinishGoods = in_array($areaUpper, ['WFG', 'SMU']);
+            $targetBagianName = $isFinishGoods ? 'Warehouse Finish Goods' : 'Warehouse Raw Material';
+
+            $foremanQuery = User::where('departemen', 'warehouse')
+                ->where('jabatan', 'foreman')
+                ->where('is_active', true);
+
+            if ($isFinishGoods) {
+                $foremanQuery->where(function ($q) {
+                    $q->where('bagian', 'warehouse_finish_goods');
+                });
+            } else {
+                $foremanQuery->where(function ($q) {
+                    $q->where('bagian', 'warehouse_raw_material');
+                });
+            }
+
+            $foremen = $foremanQuery->get();
+
+            if ($foremen->isEmpty()) {
+                Log::warning("[VehicleTracking] Tidak ditemukan Foreman aktif untuk bagian {$targetBagianName}");
+                return ['status' => false, 'message' => "Tidak ada Foreman aktif untuk {$targetBagianName}."];
+            }
+
+            $notesText = !empty($notes) ? "\nCatatan      : {$notes}" : "";
+
+            $message = "⚠️ *FOLLOW UP DARI TIMBANGAN*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "No. Polisi   : *{$noPol}*\n"
+                . "Vendor       : {$vendor}\n"
+                . "Supir        : {$driver['display']}\n"
+                . "Area Tujuan  : *{$areaUpper}* ({$targetBagianName})\n"
+                . "Waktu        : " . $now->format('d/m/Y H:i') . "\n"
+                . "Pengirim     : {$operatorName}{$notesText}\n\n"
+                . "👉 *TINDAKAN DIPERLUKAN:*\n"
+                . "*SEGERA CLOSE SISTEM* untuk truk di atas agar proses Timbang Keluar dapat dilanjutkan.\n\n"
+                . "Terima kasih. 🙏";
+
+            $fonnte = app(FonnteService::class);
+            $sentCount = 0;
+
+            foreach ($foremen as $f) {
+                if (!empty($f->no_hp)) {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $f->no_hp);
+                    $fonnte->sendMessage($cleanPhone, $message);
+                    $sentCount++;
+                }
+            }
+
+            Log::info("[VehicleTracking] Follow up dari Timbangan untuk {$noPol} berhasil dikirim ke {$sentCount} Foreman ({$targetBagianName})");
+            return ['status' => true, 'sent_count' => $sentCount];
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA follow up ke foreman: " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Check and trigger SLA Overdue Alerts:
      * 3. Loading/unloading exceeding 2 hours (120 mins).
      * 4. Total truck dwell duration exceeding 7.5 hours (450 mins).
@@ -4247,6 +4338,18 @@ class VehicleTrackingController extends Controller
     public function checkOverdueVehicles(): array
     {
         $now = Carbon::now();
+
+        // Hanya berjalan pada jam operasional shift (07:00 - 23:59). Jam 00:00 - 06:59 dijeda.
+        $currentHour = (int) $now->format('H');
+        if ($currentHour < 7) {
+            return [
+                'status' => false,
+                'alerts_sent' => 0,
+                'message' => 'Di luar jam operasional shift (00:00 - 06:59). Monitoring SLA dijeda.',
+                'checked_at' => $now->toDateTimeString()
+            ];
+        }
+
         $alertsSent = 0;
 
         $activeTxs = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'currentLocation'])
@@ -4268,31 +4371,47 @@ class VehicleTrackingController extends Controller
 
             $today = $now->format('Y-m-d');
 
-            // 3. Alert Proses Bongkar/Muat > 2 Jam (120 Menit) - Dibatasi maksimal 1x sehari
+            // 3. Alert Proses Bongkar/Muat > 2 Jam (120 Menit) - Dibatasi maksimal 1x sehari (Database & Cache Persisted)
             if ($tx->unloading_status === 'process' && !empty($tx->start_loading_time)) {
                 $startTime = Carbon::parse($tx->start_loading_time);
                 $diffMinutes = $startTime->diffInMinutes($now);
 
                 if ($diffMinutes >= 120) {
                     $cacheKey = "alert_overdue_loading_2h_{$tx->id}_{$today}";
-                    if (!Cache::has($cacheKey)) {
+                    $alreadySentToday = Cache::has($cacheKey) ||
+                        (!empty($tx->last_loading_alert_at) && Carbon::parse($tx->last_loading_alert_at)->isToday());
+
+                    if (!$alreadySentToday) {
                         $this->sendOverdueLoadingAlert($tx, $area, $diffMinutes, $startTime);
                         Cache::put($cacheKey, $now->toDateTimeString(), now()->endOfDay());
+                        try {
+                            $tx->update(['last_loading_alert_at' => $now]);
+                        } catch (\Throwable $th) {
+                            // fallback aman jika database remote belum menjalankan php artisan migrate
+                        }
                         $alertsSent++;
                     }
                 }
             }
 
-            // 4. Alert Total Truck Duration > 7.5 Jam (450 Menit) - Dibatasi maksimal 1x sehari
-            $checkIn = $tx->checkin_pos1 ? Carbon::parse($tx->checkin_pos1) : ($tx->check_in_time ? Carbon::parse($tx->check_in_time) : null);
+            // 4. Alert Total Truck Duration > 7.5 Jam (450 Menit) - Dihitung dari Check-In Timbangan (check_in_time)
+            $checkIn = $tx->check_in_time ? Carbon::parse($tx->check_in_time) : null;
             if ($checkIn) {
                 $totalMinutes = $checkIn->diffInMinutes($now);
 
                 if ($totalMinutes >= 450) {
                     $cacheKey = "alert_overdue_duration_7h5_{$tx->id}_{$today}";
-                    if (!Cache::has($cacheKey)) {
+                    $alreadySentToday = Cache::has($cacheKey) ||
+                        (!empty($tx->last_duration_alert_at) && Carbon::parse($tx->last_duration_alert_at)->isToday());
+
+                    if (!$alreadySentToday) {
                         $this->sendOverdueDurationAlert($tx, $area, $totalMinutes, $checkIn);
                         Cache::put($cacheKey, $now->toDateTimeString(), now()->endOfDay());
+                        try {
+                            $tx->update(['last_duration_alert_at' => $now]);
+                        } catch (\Throwable $th) {
+                            // fallback aman jika database remote belum menjalankan php artisan migrate
+                        }
                         $alertsSent++;
                     }
                 }

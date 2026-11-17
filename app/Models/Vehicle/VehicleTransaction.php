@@ -46,6 +46,8 @@ class VehicleTransaction extends Model
         'follow_up_target',
         'follow_up_notes',
         'follow_up_by',
+        'last_loading_alert_at',
+        'last_duration_alert_at',
         'check_in_time',
         'check_out_time',
         'check_out_by',
@@ -64,6 +66,8 @@ class VehicleTransaction extends Model
         'finish_loading_time' => 'datetime',
         'timbangan_out_time' => 'datetime',
         'follow_up_time' => 'datetime',
+        'last_loading_alert_at' => 'datetime',
+        'last_duration_alert_at' => 'datetime',
         'qty_spb' => 'decimal:2',
     ];
 
