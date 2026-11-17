@@ -52,8 +52,8 @@ class VehicleTrackingController extends Controller
      */
     public function dashboardData()
     {
-        // Cek SLA Overdue (> 2 jam bongkar/muat & > 7.5 jam truck duration)
-        $this->checkOverdueVehicles();
+        // Catatan: Pengecekan SLA Overdue ditangani secara terpusat oleh Scheduler (routes/console.php)
+        // agar tidak memicu notifikasi ganda akibat polling/refresh dashboard web.
 
         $locations = Location::all();
 
@@ -4353,8 +4353,9 @@ class VehicleTrackingController extends Controller
         $alertsSent = 0;
 
         $activeTxs = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'currentLocation'])
-            ->whereNotIn('status', ['completed'])
+            ->whereNotIn('status', ['completed', 'timbangan_out'])
             ->whereNull('check_out_time')
+            ->whereNull('timbangan_out_time')
             ->get();
 
         foreach ($activeTxs as $tx) {
@@ -4382,19 +4383,35 @@ class VehicleTrackingController extends Controller
                         (!empty($tx->last_loading_alert_at) && Carbon::parse($tx->last_loading_alert_at)->isToday());
 
                     if (!$alreadySentToday) {
-                        $this->sendOverdueLoadingAlert($tx, $area, $diffMinutes, $startTime);
+                        // Kunci status alert di Cache & DB sebelum kirim pesan untuk mencegah race condition
                         Cache::put($cacheKey, $now->toDateTimeString(), now()->endOfDay());
                         try {
                             $tx->update(['last_loading_alert_at' => $now]);
                         } catch (\Throwable $th) {
-                            // fallback aman jika database remote belum menjalankan php artisan migrate
+                            Log::warning("[VehicleTracking] Kolom last_loading_alert_at belum ada di DB. Harap jalankan migrasi: " . $th->getMessage());
                         }
+
+                        $this->sendOverdueLoadingAlert($tx, $area, $diffMinutes, $startTime);
                         $alertsSent++;
                     }
                 }
             }
 
             // 4. Alert Total Truck Duration > 7.5 Jam (450 Menit) - Dihitung dari Check-In Timbangan (check_in_time)
+            // Abaikan jika truk berada di timbangan atau dalam kondisi mau checkout (bongkar/muat selesai atau menuju timbangan keluar)
+            $isAtTimbangan = ($tx->currentLocation && (strtoupper($tx->currentLocation->s_loc ?? '') === 'TMB' || str_contains(strtolower($tx->currentLocation->name ?? ''), 'timbangan')))
+                || str_contains(strtolower($tx->status ?? ''), 'timbangan');
+
+            $isMauCheckout = in_array($tx->status, ['timbangan_out', 'completed'])
+                || !empty($tx->timbangan_out_time)
+                || !empty($tx->check_out_time)
+                || $tx->unloading_status === 'completed'
+                || !empty($tx->finish_loading_time);
+
+            if ($isAtTimbangan || $isMauCheckout) {
+                continue;
+            }
+
             $checkIn = $tx->check_in_time ? Carbon::parse($tx->check_in_time) : null;
             if ($checkIn) {
                 $totalMinutes = $checkIn->diffInMinutes($now);
@@ -4405,13 +4422,15 @@ class VehicleTrackingController extends Controller
                         (!empty($tx->last_duration_alert_at) && Carbon::parse($tx->last_duration_alert_at)->isToday());
 
                     if (!$alreadySentToday) {
-                        $this->sendOverdueDurationAlert($tx, $area, $totalMinutes, $checkIn);
+                        // Kunci status alert di Cache & DB sebelum kirim pesan untuk mencegah race condition
                         Cache::put($cacheKey, $now->toDateTimeString(), now()->endOfDay());
                         try {
                             $tx->update(['last_duration_alert_at' => $now]);
                         } catch (\Throwable $th) {
-                            // fallback aman jika database remote belum menjalankan php artisan migrate
+                            Log::warning("[VehicleTracking] Kolom last_duration_alert_at belum ada di DB. Harap jalankan migrasi: " . $th->getMessage());
                         }
+
+                        $this->sendOverdueDurationAlert($tx, $area, $totalMinutes, $checkIn);
                         $alertsSent++;
                     }
                 }

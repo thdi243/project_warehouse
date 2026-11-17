@@ -39,7 +39,8 @@ Schedule::command('kempu:auto-transfer-in-pas')->hourly();
 // Berjalan setiap 5 menit pada jam operasional shift (07:00 - 23:59), jeda pada jam 00:00 - 06:59
 Schedule::call(function () {
     app(\App\Http\Controllers\Vehicle\VehicleTrackingController::class)->checkOverdueVehicles();
-})->everyFiveMinutes()
+})->name('vehicle-monitor-sla')
+  ->everyFiveMinutes()
   ->between('07:00', '23:59')
-  ->name('vehicle-monitor-sla');
+  ->withoutOverlapping();
 
