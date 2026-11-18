@@ -1047,6 +1047,13 @@ class VehicleTrackingController extends Controller
             }
 
             DB::commit();
+
+            // Auto Notif Poin 1: Jika perlu sampling QC (tujuan WRM atau WPM dan bukan retur), kirim notif ke supir untuk serahkan dokumen ke Lab QC
+            if ($jenis !== 'retur' && in_array($targetLoc->s_loc, ['B006', 'C001'])) {
+                $targetArea = ($targetLoc->s_loc === 'C001') ? 'WPM' : 'WRM';
+                $this->notifyDriverQcDocument($transaction, $targetArea);
+            }
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
@@ -1456,6 +1463,10 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
+            // Poin 4: Notifikasi untuk barang pengecualian ('Packaging', 'Import') langsung ke area dock terkait
+            $this->notifyDriverDirectToDockIfException($transaction);
+
             return response()->json(['success' => true, 'message' => "No Antrian {$formattedAntrian} berhasil diset otomatis. Kendaraan masuk antrian sampling."]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1666,6 +1677,12 @@ class VehicleTrackingController extends Controller
             $msg = 'Status QC Truk ' . $noPol . ' diperbarui ke ' . $msgLabel . '.';
 
             DB::commit();
+
+            // Poin 2 & 3: Notifikasi Supir jika QC Released (tidak berjalan jika Packaging/Import atau sudah mulai bongkar/checkout)
+            if ($request->qc_status === 'released') {
+                $this->notifyDriverQcReleased($transaction);
+            }
+
             return response()->json(['success' => true, 'message' => $msg]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -3139,6 +3156,13 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
+            // Auto Notif Poin 1: Jika destinasi diubah ke WRM / WPM dan perlu sampling QC
+            if (isset($targetLoc) && $oldTargetId != $request->target_location_id && $jenis !== 'retur' && in_array($targetLoc->s_loc, ['B006', 'C001'])) {
+                $targetArea = ($targetLoc->s_loc === 'C001') ? 'WPM' : 'WRM';
+                $this->notifyDriverQcDocument($transaction, $targetArea);
+            }
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
@@ -3855,10 +3879,9 @@ class VehicleTrackingController extends Controller
                 return ['status' => false, 'message' => 'Nomor antrian belum tersedia.'];
             }
 
-            // Anti-spam / Duplicate Lock (24 jam per transaksi & nomor antrian)
-            $lockKey = "wa_lock_queue_taken_{$transaction->id}_{$antrian}";
-            if (Cache::has($lockKey)) {
-                Log::info("[VehicleTracking] Info antrian untuk truk {$noPol} (#{$antrian}) sudah pernah dikirim. Skip duplicate WA.");
+            // Anti-spam / Duplicate Lock via Database (kebal deploy / cache:clear)
+            if (!empty($transaction->notif_queue_taken_at)) {
+                Log::info("[VehicleTracking] Info antrian untuk truk {$noPol} (#{$antrian}) sudah pernah tercatat pada {$transaction->notif_queue_taken_at}. Skip duplicate WA.");
                 return ['status' => false, 'message' => 'Info nomor antrian sudah pernah dikirim.'];
             }
 
@@ -3888,7 +3911,7 @@ class VehicleTrackingController extends Controller
             $res = $fonnte->sendMessage($cleanPhone, $message);
 
             if (!empty($res['status'])) {
-                Cache::put($lockKey, now()->toDateTimeString(), now()->addHours(24));
+                $transaction->update(['notif_queue_taken_at' => Carbon::now()]);
                 Log::info("[VehicleTracking] Info antrian #{$antrian} berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
             }
 
@@ -3963,10 +3986,9 @@ class VehicleTrackingController extends Controller
             $currentNoPol = $currentTx->vehicle ? $currentTx->vehicle->no_pol : 'N/A';
             $nextNoPol = $nextTx->vehicle ? $nextTx->vehicle->no_pol : 'N/A';
 
-            // Anti-spam / Duplicate Lock: jangan panggil supir yang sama berkali-kali dalam 15 menit
-            $lockKey = "wa_lock_driver_prepare_{$nextTx->id}";
-            if (Cache::has($lockKey)) {
-                Log::info("[VehicleTracking] Notif siap-siap untuk truk {$nextNoPol} sudah pernah dikirim baru-baru ini. Skip duplicate WA.");
+            // Anti-spam / Duplicate Lock via Database: jangan panggil supir yang sama jika sudah dinotif dalam 30 menit
+            if (!empty($nextTx->notif_prepare_at) && $nextTx->notif_prepare_at->gt(now()->subMinutes(30))) {
+                Log::info("[VehicleTracking] Notif siap-siap untuk truk {$nextNoPol} sudah pernah tercatat pada {$nextTx->notif_prepare_at}. Skip duplicate WA.");
                 return ['status' => false, 'message' => "Notif siap-siap untuk truk {$nextNoPol} sudah dikirim sebelumnya."];
             }
 
@@ -3993,7 +4015,7 @@ class VehicleTrackingController extends Controller
             $res = $fonnte->sendMessage($cleanPhone, $message);
 
             if (!empty($res['status'])) {
-                Cache::put($lockKey, now()->toDateTimeString(), now()->addMinutes(15));
+                $nextTx->update(['notif_prepare_at' => Carbon::now()]);
                 Log::info("[VehicleTracking] Notif siap-siap berhasil dikirim ke supir berikutnya {$nextNoPol} ({$cleanPhone}) untuk antrian {$areaUpper}{$jenisLabel}");
             }
 
@@ -4027,10 +4049,9 @@ class VehicleTrackingController extends Controller
 
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
-            // Anti-spam / Duplicate Lock: jangan kirim notif selesai dua kali untuk truk yang sama
-            $lockKey = "wa_lock_completed_{$transaction->id}";
-            if (Cache::has($lockKey)) {
-                Log::info("[VehicleTracking] Notifikasi selesai muat/bongkar untuk truk {$noPol} sudah dikirim sebelumnya. Skip duplicate WA.");
+            // Anti-spam / Duplicate Lock via Database (kebal deploy / cache:clear)
+            if (!empty($transaction->notif_completed_at)) {
+                Log::info("[VehicleTracking] Notifikasi selesai muat/bongkar untuk truk {$noPol} sudah pernah tercatat pada {$transaction->notif_completed_at}. Skip duplicate WA.");
                 return ['status' => false, 'message' => "Notifikasi selesai untuk truk {$noPol} sudah pernah dikirim."];
             }
 
@@ -4058,7 +4079,7 @@ class VehicleTrackingController extends Controller
             $res = $fonnte->sendMessage($cleanPhone, $message);
 
             if (!empty($res['status'])) {
-                Cache::put($lockKey, now()->toDateTimeString(), now()->addHours(24));
+                $transaction->update(['notif_completed_at' => Carbon::now()]);
                 Log::info("[VehicleTracking] Notif selesai proses berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
             }
 
@@ -4075,6 +4096,251 @@ class VehicleTrackingController extends Controller
     public function notifyNextDriverToEnterDock(VehicleTransaction $completedTx, string $area = 'WFG'): array
     {
         return ['status' => false, 'message' => 'Dialihkan ke notifikasi persiapan saat mulai muat.'];
+    }
+
+    /**
+     * Helper to detect QC Target Area (WRM or WPM).
+     */
+    protected function getQcTargetArea(VehicleTransaction $transaction): string
+    {
+        $transaction->loadMissing('targetLocation');
+        if ($transaction->targetLocation) {
+            if ($transaction->targetLocation->s_loc === 'C001') return 'WPM';
+            if ($transaction->targetLocation->s_loc === 'B006') return 'WRM';
+            if ($transaction->targetLocation->s_loc === 'A001') return 'WFG';
+            if ($transaction->targetLocation->s_loc === 'A002') return 'SMU';
+        }
+        if (str_contains($transaction->status ?? '', 'wpm')) return 'WPM';
+        if (str_contains($transaction->status ?? '', 'wrm')) return 'WRM';
+        if (str_contains($transaction->status ?? '', 'wfg')) return 'WFG';
+        if (str_contains($transaction->status ?? '', 'smu')) return 'SMU';
+        return 'WRM';
+    }
+
+    /**
+     * Helper to check if item is an exception item ('Packaging', 'Import') that doesn't need to wait for QC release.
+     */
+    protected function isQcExceptionItem(VehicleTransaction $transaction): bool
+    {
+        $transaction->loadMissing('item');
+        if (!$transaction->item) {
+            return false;
+        }
+        $itemName = strtoupper(trim($transaction->item->name ?? ''));
+        return str_contains($itemName, 'PACKAGING') || str_contains($itemName, 'IMPORT');
+    }
+
+    /**
+     * Poin 1: Notifikasi Serahkan Dokumen ke Lab QC untuk Sampling.
+     * Dikirim saat truk check-in di timbangan dan memerlukan sampling QC (WRM & WPM).
+     */
+    public function notifyDriverQcDocument(VehicleTransaction $transaction, string $area = 'WRM'): array
+    {
+        try {
+            $transaction->loadMissing(['vehicle', 'item', 'targetLocation']);
+            $areaUpper = strtoupper($area);
+
+            // Hanya aktif untuk WRM dan WPM
+            if (!in_array($areaUpper, ['WRM', 'WPM'])) {
+                return ['status' => false, 'message' => 'Notifikasi serahkan dokumen QC hanya aktif untuk WRM dan WPM.'];
+            }
+
+            // Jika retur atau QC tidak diperlukan
+            if ($transaction->jenis === 'retur' || $transaction->qc_status === 'not_required') {
+                return ['status' => false, 'message' => 'Tidak memerlukan sampling QC.'];
+            }
+
+            // Tidak berjalan jika ada follow-up dari timbangan
+            if (!empty($transaction->follow_up_time)) {
+                Log::info("[VehicleTracking] Skip notif dokumen QC: Truk {$transaction->id} dalam status follow up dari timbangan.");
+                return ['status' => false, 'message' => 'Truk dalam status follow up dari timbangan.'];
+            }
+
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+
+            // Anti-spam / Duplicate Lock via Database (kebal deploy / cache:clear)
+            if (!empty($transaction->notif_qc_doc_at)) {
+                Log::info("[VehicleTracking] Notif dokumen QC untuk truk {$noPol} sudah pernah tercatat pada {$transaction->notif_qc_doc_at}. Skip duplicate WA.");
+                return ['status' => false, 'message' => 'Notifikasi serahkan dokumen QC sudah pernah dikirim.'];
+            }
+
+            $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
+            if (empty($driver['phone'])) {
+                Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$noPol}");
+                return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
+            }
+
+            $message = "📄 *INFORMASI TIMBANG MASUK & SAMPLING QC*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo *{$driver['name']}*, kendaraan *{$noPol}* tujuan area *{$areaUpper}* telah selesai proses timbang masuk.\n\n"
+                . "Silakan segera menuju ke *Lab QC* untuk menyerahkan dokumen guna proses antrian sampling QC.\n\n"
+                . "Terima kasih. 🙏";
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
+            $fonnte = app(FonnteService::class);
+            $res = $fonnte->sendMessage($cleanPhone, $message);
+
+            if (!empty($res['status'])) {
+                $transaction->update(['notif_qc_doc_at' => Carbon::now()]);
+                Log::info("[VehicleTracking] Notif serahkan dokumen QC berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+            }
+
+            return $res;
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA serahkan dokumen QC: " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Poin 4: Notifikasi untuk Barang Pengecualian ('Packaging', 'Import').
+     * Setelah supir menyerahkan dokumen & admin QC menerbitkan nomor antrian sampling,
+     * supir langsung diarahkan ke area terkait (WRM / WPM) tanpa perlu menunggu hasil sampling QC.
+     */
+    public function notifyDriverDirectToDockIfException(VehicleTransaction $transaction): array
+    {
+        try {
+            $transaction->loadMissing(['vehicle', 'item', 'targetLocation']);
+            $area = $this->getQcTargetArea($transaction);
+
+            // Hanya aktif untuk WRM dan WPM
+            if (!in_array($area, ['WRM', 'WPM'])) {
+                return ['status' => false, 'message' => 'Hanya aktif untuk WRM dan WPM.'];
+            }
+
+            // Cek apakah item adalah pengecualian ('Packaging' atau 'Import')
+            if (!$this->isQcExceptionItem($transaction)) {
+                return ['status' => false, 'message' => 'Bukan item pengecualian Packaging/Import.'];
+            }
+
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+            $antrian = $transaction->no_antrian ?? '-';
+
+            // Pengecekan apakah sudah mulai bongkar atau selesai
+            if (!empty($transaction->start_loading_time) || in_array($transaction->unloading_status, ['process', 'completed'])) {
+                return ['status' => false, 'message' => 'Truk sudah melakukan proses bongkar/muat.'];
+            }
+
+            // Tidak berjalan jika ada follow-up dari timbangan
+            if (!empty($transaction->follow_up_time)) {
+                Log::info("[VehicleTracking] Skip notif langsung ke dock: Truk {$noPol} dalam status follow up dari timbangan.");
+                return ['status' => false, 'message' => 'Truk dalam status follow up dari timbangan.'];
+            }
+
+            // Anti-spam / Duplicate Lock via Database (kebal deploy / cache:clear)
+            if (!empty($transaction->notif_qc_dock_at)) {
+                Log::info("[VehicleTracking] Notif langsung ke dock untuk truk {$noPol} sudah pernah tercatat pada {$transaction->notif_qc_dock_at}. Skip duplicate WA.");
+                return ['status' => false, 'message' => 'Notifikasi langsung ke dock sudah pernah dikirim.'];
+            }
+
+            $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
+            if (empty($driver['phone'])) {
+                Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$noPol}");
+                return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
+            }
+
+            $itemName = $transaction->item ? $transaction->item->name : 'Packaging / Import';
+
+            $message = "📢 *PANGGILAN MENUJU AREA {$area}*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo *{$driver['name']}*, dokumen kendaraan *{$noPol}* telah diterima di QC (No. Antrian QC: *#{$antrian}*).\n\n"
+                . "Untuk muatan *{$itemName}*, Anda dipersilakan *LANGSUNG MENUJU AREA {$area}* untuk persiapan proses bongkar/muat tanpa perlu menunggu hasil sampling QC.\n\n"
+                . "Terima kasih. 🙏";
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
+            $fonnte = app(FonnteService::class);
+            $res = $fonnte->sendMessage($cleanPhone, $message);
+
+            if (!empty($res['status'])) {
+                $transaction->update(['notif_qc_dock_at' => Carbon::now()]);
+                Log::info("[VehicleTracking] Notif langsung ke dock {$area} berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+            }
+
+            return $res;
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA langsung ke dock: " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Poin 2 & Poin 3: Notifikasi QC Sampling SELESAI (RELEASED).
+     * Dikirim ketika QC menyatakan status 'released'.
+     * Pengecualian: Tidak berjalan jika truk sudah melakukan bongkar, sudah checkout timbangan,
+     * atau muatan merupakan pengecualian ('Packaging'/'Import') yang sudah langsung ke dock.
+     */
+    public function notifyDriverQcReleased(VehicleTransaction $transaction): array
+    {
+        try {
+            $transaction->loadMissing(['vehicle', 'item', 'targetLocation']);
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+            $area = $this->getQcTargetArea($transaction);
+
+            // Hanya aktif untuk WRM dan WPM
+            if (!in_array($area, ['WRM', 'WPM'])) {
+                return ['status' => false, 'message' => 'Notifikasi release QC hanya aktif untuk WRM dan WPM.'];
+            }
+
+            // Poin 4 & 3: Barang pengecualian ('Packaging', 'Import') tidak perlu notif release karena sudah diarahkan langsung ke dock
+            if ($this->isQcExceptionItem($transaction)) {
+                $itemName = $transaction->item ? $transaction->item->name : 'Packaging/Import';
+                Log::info("[VehicleTracking] Skip notif QC released: Truk {$noPol} bermuatan {$itemName} (Pengecualian tidak perlu tunggu QC).");
+                return ['status' => false, 'message' => 'Muatan Packaging/Import tidak memerlukan notif QC release.'];
+            }
+
+            // Poin 3: Tidak berjalan jika truk sudah melakukan bongkar atau bahkan sudah checkout timbangan
+            $alreadyUnloadedOrOut = (
+                !empty($transaction->start_loading_time) ||
+                !empty($transaction->finish_loading_time) ||
+                !empty($transaction->timbangan_out_time) ||
+                !empty($transaction->check_out_time) ||
+                in_array($transaction->unloading_status, ['process', 'completed']) ||
+                in_array($transaction->status, ['completed', 'checkout', 'timbangan_out'])
+            );
+
+            if ($alreadyUnloadedOrOut) {
+                Log::info("[VehicleTracking] Skip notif QC released: Truk {$noPol} sudah melakukan proses bongkar atau checkout timbangan.");
+                return ['status' => false, 'message' => 'Truk sudah melakukan proses bongkar atau checkout timbangan.'];
+            }
+
+            // Tidak berjalan jika ada follow-up dari timbangan
+            if (!empty($transaction->follow_up_time)) {
+                Log::info("[VehicleTracking] Skip notif QC released: Truk {$noPol} dalam status follow up dari timbangan.");
+                return ['status' => false, 'message' => 'Truk dalam status follow up dari timbangan.'];
+            }
+
+            // Anti-spam / Duplicate Lock via Database (kebal deploy / cache:clear)
+            if (!empty($transaction->notif_qc_release_at)) {
+                Log::info("[VehicleTracking] Notif QC released untuk truk {$noPol} sudah pernah tercatat pada {$transaction->notif_qc_release_at}. Skip duplicate WA.");
+                return ['status' => false, 'message' => 'Notifikasi QC released sudah pernah dikirim.'];
+            }
+
+            $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
+            if (empty($driver['phone'])) {
+                Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$noPol}");
+                return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
+            }
+
+            $message = "✅ *HASIL SAMPLING QC: RELEASED*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo *{$driver['name']}*, hasil sampling QC untuk kendaraan *{$noPol}* telah selesai dan dinyatakan *RELEASED (Lolos)*.\n\n"
+                . "Silakan segera merapat dan menuju ke area *{$area}* untuk proses bongkar/muat.\n\n"
+                . "Terima kasih. 🙏";
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
+            $fonnte = app(FonnteService::class);
+            $res = $fonnte->sendMessage($cleanPhone, $message);
+
+            if (!empty($res['status'])) {
+                $transaction->update(['notif_qc_release_at' => Carbon::now()]);
+                Log::info("[VehicleTracking] Notif QC released berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+            }
+
+            return $res;
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA QC released: " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
     }
 
     /**
