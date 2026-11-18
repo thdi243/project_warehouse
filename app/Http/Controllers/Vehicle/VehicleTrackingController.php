@@ -2006,6 +2006,9 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
+            // 3. Notifikasi ke supir antrian berikutnya untuk bersiap-siap (WFG - per jenis)
+            $this->notifyNextDriverToPrepare($transaction, 'WFG');
+
             return response()->json(['success' => true, 'message' => 'Proses bongkar/muat berhasil dimulai.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2118,9 +2121,8 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
-            // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
-            // $this->notifyDriverCompleted($transaction, 'WFG');
-            // $this->notifyNextDriverToEnterDock($transaction, 'WFG');
+            // 4. Notifikasi ke supir bahwa proses muat/bongkar telah selesai (WFG)
+            $this->notifyDriverCompleted($transaction, 'WFG');
 
             return response()->json(['success' => true, 'message' => 'Proses Bongkar/Muat di WFG selesai. Truk diarahkan ke Timbangan.']);
         } catch (\Exception $e) {
@@ -2295,6 +2297,9 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
+            // 3. Notifikasi ke supir antrian berikutnya untuk bersiap-siap (SMU)
+            $this->notifyNextDriverToPrepare($transaction, 'SMU');
+
             return response()->json([
                 'success' => true,
                 'message' => "Proses {$actionName} untuk truk {$noPol} (Antrian #{$formattedAntrian}) berhasil dimulai."
@@ -2390,9 +2395,8 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
-            // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
-            // $this->notifyDriverCompleted($transaction, 'SMU');
-            // $this->notifyNextDriverToEnterDock($transaction, 'SMU');
+            // 4. Notifikasi ke supir bahwa proses muat/bongkar telah selesai (SMU)
+            $this->notifyDriverCompleted($transaction, 'SMU');
 
             return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di SMU. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
@@ -2848,6 +2852,13 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
+
+            // 5. Notifikasi info nomor antrian ke supir (hanya di WFG dan SMU)
+            $areaUpper = strtoupper($transaction->status);
+            if (in_array($areaUpper, ['WFG', 'SMU'])) {
+                $this->notifyDriverQueueTaken($transaction, $areaUpper);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => "Nomor antrian Truk {$noPol}{$jenisLabel} berhasil diset ke {$formattedAntrian}."
@@ -3827,92 +3838,155 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * 1. Panggil Supir untuk MASUK loading DOCK.
-     * Terkirim setelah truk sebelumnya SELESAI Muat/Bongkar.
+     * 1. Notifikasi Info Nomor Antrian Mobil ke Supir.
+     * Dikirim saat admin mengambil nomor antrian (WFG & SMU).
      */
-    public function notifyNextDriverToEnterDock(VehicleTransaction $completedTx, string $area = 'WFG'): array
+    public function notifyDriverQueueTaken(VehicleTransaction $transaction, string $area = 'WFG'): array
     {
-        // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
-        return ['status' => false, 'message' => 'Notifikasi otomatis supir dinonaktifkan sementara.'];
-
         try {
             $areaUpper = strtoupper($area);
-            $status = strtolower($area);
+            if (!in_array($areaUpper, ['WFG', 'SMU'])) {
+                return ['status' => false, 'message' => 'Notifikasi info antrian hanya aktif untuk WFG dan SMU.'];
+            }
+
+            $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
+            $antrian = $transaction->no_antrian;
+            if (empty($antrian)) {
+                return ['status' => false, 'message' => 'Nomor antrian belum tersedia.'];
+            }
+
+            // Anti-spam / Duplicate Lock (24 jam per transaksi & nomor antrian)
+            $lockKey = "wa_lock_queue_taken_{$transaction->id}_{$antrian}";
+            if (Cache::has($lockKey)) {
+                Log::info("[VehicleTracking] Info antrian untuk truk {$noPol} (#{$antrian}) sudah pernah dikirim. Skip duplicate WA.");
+                return ['status' => false, 'message' => 'Info nomor antrian sudah pernah dikirim.'];
+            }
+
+            $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
+            if (empty($driver['phone'])) {
+                Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$noPol}");
+                return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
+            }
+
+            $jenis = strtolower(trim($transaction->jenis ?? ''));
+            $jenisLabel = ($areaUpper === 'WFG' && !empty($jenis)) ? ' (' . ucfirst($jenis) . ')' : '';
+            $actionLabel = ($jenis === 'bongkaran') ? 'Bongkar' : 'Muat';
+            $now = Carbon::now()->format('d/m/Y H:i');
+
+            $message = "📋 *INFO NOMOR ANTRIAN DOCK {$areaUpper}*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo *{$driver['name']}*, nomor antrian untuk truk Anda telah berhasil diterbitkan:\n\n"
+                . "• No. Polisi  : *{$noPol}*\n"
+                . "• Area Tujuan : *{$areaUpper}*{$jenisLabel}\n"
+                . "• No. Antrian : *#{$antrian}*\n"
+                . "• Waktu Ambil : {$now}\n\n"
+                . "Silakan standby di kantong parkir. Sistem akan mengirimkan pesan WhatsApp saat proses truk sebelum Anda mulai agar Anda dapat bersiap-siap.\n\n"
+                . "Terima kasih. 🙏";
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
+            $fonnte = app(FonnteService::class);
+            $res = $fonnte->sendMessage($cleanPhone, $message);
+
+            if (!empty($res['status'])) {
+                Cache::put($lockKey, now()->toDateTimeString(), now()->addHours(24));
+                Log::info("[VehicleTracking] Info antrian #{$antrian} berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+            }
+
+            return $res;
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA info antrian ({$area}): " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * 2. Notifikasi Supir Antrian Berikutnya untuk BERSIAP-SIAP.
+     * Dikirim ketika truk saat ini MULAI MUAT / BONGKAR (atau checker isi form draft bongkar muat).
+     * Di WFG, antrian dipisahkan berdasarkan jenis (Bongkaran, Slipsheet, Curah). Di SMU tanpa jenis.
+     * Tidak berjalan jika truk saat ini atau truk berikutnya ada followup dari timbangan.
+     */
+    public function notifyNextDriverToPrepare(VehicleTransaction $currentTx, string $area = 'WFG'): array
+    {
+        try {
+            $areaUpper = strtoupper($area);
+
+            // 1. Hanya di WFG dan SMU dulu (Point 1)
+            if (!in_array($areaUpper, ['WFG', 'SMU'])) {
+                return ['status' => false, 'message' => 'Notifikasi siap-siap supir hanya aktif untuk WFG dan SMU.'];
+            }
+
+            // 6. Tidak berjalan ketika ada followup dari timbangan (Point 6)
+            if (!empty($currentTx->follow_up_time)) {
+                Log::info("[VehicleTracking] Skip notif siap-siap: Truk {$currentTx->id} dalam status follow up dari timbangan.");
+                return ['status' => false, 'message' => 'Dilewati: Truk saat ini memiliki status follow up dari timbangan.'];
+            }
+
+            $currentJenis = strtolower(trim($currentTx->jenis ?? ''));
+            $status = strtolower($areaUpper);
 
             $nextQuery = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])
-                ->where('id', '!=', $completedTx->id)
+                ->where('id', '!=', $currentTx->id)
+                ->where('status', $status)
+                ->whereNotNull('no_antrian')
                 ->where(function ($q) {
                     $q->whereNull('unloading_status')
                         ->orWhereNotIn('unloading_status', ['process', 'completed', 'complete']);
-                });
-
-            $nextAntrian = '';
-
-            if (in_array($areaUpper, ['WFG', 'SMU'])) {
-                // Di WFG & SMU: Antrian resmi terikat nomor antrian dock (#01, #02, dst)
-                $nextQuery->where('status', $status)
-                    ->whereNotNull('no_antrian');
-
-                if ($areaUpper === 'WFG' && !empty($completedTx->jenis)) {
-                    $nextQuery->where('jenis', $completedTx->jenis);
-                }
-
-                $nextTx = $nextQuery->orderByRaw('CAST(no_antrian AS UNSIGNED) ASC')->first();
-
-                if ($nextTx && !empty($nextTx->no_antrian)) {
-                    $nextAntrian = " (Antrian *#{$nextTx->no_antrian}*)";
-                }
-            } else {
-                // Di WRM & WPM: TIDAK ADA nomor antrian dock!
-                // Pengambilan antrian murni mengikuti urutan tabel monitoring (check_in_time kedatangan paling awal)
-                $nextQuery->where(function ($q) use ($status, $areaUpper) {
-                    $q->where('status', $status);
-                    if ($areaUpper === 'WRM') {
-                        $q->orWhere('status', 'wrm_bongkar')
-                            ->orWhereHas('targetLocation', function ($tl) {
-                                $tl->where('s_loc', 'B006');
-                            });
-                    } elseif ($areaUpper === 'WPM') {
-                        $q->orWhereHas('targetLocation', function ($tl) {
-                            $tl->where('s_loc', 'C001');
-                        });
-                    }
                 })
-                    ->whereNotIn('status', ['completed', 'timbangan_out'])
-                    ->orderBy('check_in_time', 'asc');
+                ->whereNull('check_out_time')
+                ->whereNull('timbangan_out_time')
+                ->whereNull('follow_up_time'); // Point 6: Lewati jika truk berikutnya ada follow up timbangan
 
-                $nextTx = $nextQuery->first();
-                // WRM & WPM tidak mencantumkan nomor antrian
-                $nextAntrian = '';
+            // 2. Di WFG, antrian dipisahkan berdasarkan jenis (bongkaran, slipsheet, curah), SMU tidak (Point 2)
+            if ($areaUpper === 'WFG' && !empty($currentJenis)) {
+                $nextQuery->where('jenis', $currentJenis);
+            }
+
+            // Utamakan antrian dengan nomor antrian lebih besar dari antrian saat ini
+            $currentAntrianNum = (int)$currentTx->no_antrian;
+            $nextTx = null;
+            if ($currentAntrianNum > 0) {
+                $nextTx = (clone $nextQuery)
+                    ->whereRaw('CAST(no_antrian AS UNSIGNED) > ?', [$currentAntrianNum])
+                    ->orderByRaw('CAST(no_antrian AS UNSIGNED) ASC')
+                    ->first();
             }
 
             if (!$nextTx) {
-                Log::info("[VehicleTracking] Tidak ada truk antrian berikutnya di {$areaUpper} untuk dipanggil masuk dock.");
+                $nextTx = $nextQuery->orderByRaw('CAST(no_antrian AS UNSIGNED) ASC')->first();
+            }
+
+            if (!$nextTx) {
+                Log::info("[VehicleTracking] Tidak ada truk antrian berikutnya di {$areaUpper}" . ($areaUpper === 'WFG' && $currentJenis ? " ({$currentJenis})" : '') . " yang perlu dipersiapkan.");
                 return ['status' => false, 'message' => 'Tidak ada antrian berikutnya.'];
             }
 
-            $prevNoPol = $completedTx->vehicle ? $completedTx->vehicle->no_pol : 'N/A';
+            $currentNoPol = $currentTx->vehicle ? $currentTx->vehicle->no_pol : 'N/A';
             $nextNoPol = $nextTx->vehicle ? $nextTx->vehicle->no_pol : 'N/A';
 
-            // Anti-spam / Duplicate Lock: jangan panggil truk yang sama berkali-kali dalam 15 menit
-            $lockKey = "wa_lock_dock_call_{$nextTx->id}";
+            // Anti-spam / Duplicate Lock: jangan panggil supir yang sama berkali-kali dalam 15 menit
+            $lockKey = "wa_lock_driver_prepare_{$nextTx->id}";
             if (Cache::has($lockKey)) {
-                Log::info("[VehicleTracking] Panggilan masuk dock untuk truk {$nextNoPol} sudah dikirim baru-baru ini. Skip duplicate WA.");
-                return ['status' => false, 'message' => "Panggilan masuk dock untuk truk {$nextNoPol} sudah dikirim sebelumnya."];
+                Log::info("[VehicleTracking] Notif siap-siap untuk truk {$nextNoPol} sudah pernah dikirim baru-baru ini. Skip duplicate WA.");
+                return ['status' => false, 'message' => "Notif siap-siap untuk truk {$nextNoPol} sudah dikirim sebelumnya."];
             }
 
             $nextDriver = $this->resolveDriverInfo($nextTx->nama_driver, $nextTx->no_hp_driver);
-
-            // Format pesan pribadi ke HP supir (tanpa tag @)
-            $message = "📢 *PANGGILAN MASUK DOCK {$areaUpper}*\n"
-                . "Halo *{$nextDriver['name']}*, truk sebelumnya (*{$prevNoPol}*) telah selesai.\n\n"
-                . "Truk : *{$nextNoPol}*{$nextAntrian}\n"
-                . "Silakan *SEGERA MASUK* ke Loading Dock {$areaUpper} sekarang. Terima kasih! 🙏";
-
             if (empty($nextDriver['phone'])) {
                 Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$nextNoPol}");
                 return ['status' => false, 'message' => "Nomor HP supir untuk truk {$nextNoPol} belum terdaftar."];
             }
+
+            $jenisLabel = ($areaUpper === 'WFG' && !empty($nextTx->jenis)) ? ' (' . ucfirst($nextTx->jenis) . ')' : '';
+            $actionLabel = ($nextTx->jenis === 'bongkaran') ? 'Bongkar' : 'Muat';
+
+            $message = "⏳ *INFO PERSIAPAN MASUK DOCK {$areaUpper}*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo *{$nextDriver['name']}*, truk antrian sebelum Anda (*{$currentNoPol}*) saat ini sudah *MULAI PROSES {$actionLabel}* di Loading Dock {$areaUpper}.\n\n"
+                . "• Truk Anda   : *{$nextNoPol}*\n"
+                . "• Area Tujuan : *{$areaUpper}*{$jenisLabel}\n"
+                . "• No. Antrian : *#{$nextTx->no_antrian}*\n\n"
+                . "👉 Mohon *BERSIAP-SIAP* dan merapat ke dekat area Loading Dock. Anda akan segera dipanggil masuk setelah proses truk saat ini selesai.\n\n"
+                . "Terima kasih! 🙏";
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $nextDriver['phone']);
             $fonnte = app(FonnteService::class);
@@ -3920,25 +3994,37 @@ class VehicleTrackingController extends Controller
 
             if (!empty($res['status'])) {
                 Cache::put($lockKey, now()->toDateTimeString(), now()->addMinutes(15));
+                Log::info("[VehicleTracking] Notif siap-siap berhasil dikirim ke supir berikutnya {$nextNoPol} ({$cleanPhone}) untuk antrian {$areaUpper}{$jenisLabel}");
             }
 
             return $res;
         } catch (\Exception $e) {
-            Log::error("[VehicleTracking] Gagal kirim WA panggilan masuk dock ({$area}): " . $e->getMessage());
+            Log::error("[VehicleTracking] Gagal kirim WA siap-siap supir ({$area}): " . $e->getMessage());
             return ['status' => false, 'message' => $e->getMessage()];
         }
     }
 
     /**
-     * 2. Panggil Supir untuk SELESAI Proses Muat/Bongkar.
-     * Terkirim langsung ke nomor pribadi supir setelah pengawas End (Selesai) proses Muat/Bongkar.
+     * 3. Notifikasi Supir SELESAI Proses Muat/Bongkar.
+     * Dikirim saat checker submit form atau admin klik Selesai Bongkar/Muat (WFG & SMU).
+     * Tidak berjalan jika truk ada followup dari timbangan.
      */
     public function notifyDriverCompleted(VehicleTransaction $transaction, string $area = 'WFG'): array
     {
-        // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
-        return ['status' => false, 'message' => 'Notifikasi otomatis supir dinonaktifkan sementara.'];
-
         try {
+            $areaUpper = strtoupper($area);
+
+            // 1. Hanya di WFG dan SMU dulu (Point 1)
+            if (!in_array($areaUpper, ['WFG', 'SMU'])) {
+                return ['status' => false, 'message' => 'Notifikasi selesai hanya aktif untuk WFG dan SMU.'];
+            }
+
+            // 6. Tidak berjalan ketika ada followup dari timbangan (Point 6)
+            if (!empty($transaction->follow_up_time)) {
+                Log::info("[VehicleTracking] Skip notif selesai supir: Truk {$transaction->id} memiliki follow up dari timbangan.");
+                return ['status' => false, 'message' => 'Dilewati: Truk dalam status follow up dari timbangan.'];
+            }
+
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
             // Anti-spam / Duplicate Lock: jangan kirim notif selesai dua kali untuk truk yang sama
@@ -3949,17 +4035,23 @@ class VehicleTrackingController extends Controller
             }
 
             $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
-            $actionLabel = $transaction->jenis === 'slipsheet' ? 'Muat' : ($transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat/Bongkar');
-
-            // Format pesan pribadi ke HP supir (tanpa tag @)
-            $message = "✅ *PROSES SELESAI - DOCK {$area}*\n"
-                . "Halo *{$driver['name']}*, proses {$actionLabel} untuk truk *{$noPol}* telah *SELESAI*.\n\n"
-                . "Silakan mengurus dokumen dan melanjutkan ke Timbangan Out. Terima kasih! 🙏";
-
             if (empty($driver['phone'])) {
                 Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$noPol}");
                 return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
             }
+
+            $jenisLabel = ($areaUpper === 'WFG' && !empty($transaction->jenis)) ? ' (' . ucfirst($transaction->jenis) . ')' : '';
+            $actionLabel = ($transaction->jenis === 'bongkaran') ? 'Bongkar' : 'Muat';
+            $now = Carbon::now()->format('d/m/Y H:i');
+
+            $message = "✅ *PROSES SELESAI - DOCK {$areaUpper}*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo *{$driver['name']}*, proses {$actionLabel} untuk truk Anda telah *SELESAI*:\n\n"
+                . "• No. Polisi    : *{$noPol}*\n"
+                . "• Area          : *{$areaUpper}*{$jenisLabel}\n"
+                . "• Waktu Selesai : {$now}\n\n"
+                . "Silakan mengurus kelengkapan dokumen dan segera melanjutkan kendaraan ke *Timbangan Out* (Timbang Keluar).\n\n"
+                . "Terima kasih atas kerja samanya! 🙏";
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -3967,13 +4059,22 @@ class VehicleTrackingController extends Controller
 
             if (!empty($res['status'])) {
                 Cache::put($lockKey, now()->toDateTimeString(), now()->addHours(24));
+                Log::info("[VehicleTracking] Notif selesai proses berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
             }
 
             return $res;
         } catch (\Exception $e) {
-            Log::error("[VehicleTracking] Gagal kirim WA selesai proses: " . $e->getMessage());
+            Log::error("[VehicleTracking] Gagal kirim WA selesai proses ({$area}): " . $e->getMessage());
             return ['status' => false, 'message' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Deprecated helper fallback untuk pemanggilan masuk dock saat selesai (dialihkan ke notifyNextDriverToPrepare).
+     */
+    public function notifyNextDriverToEnterDock(VehicleTransaction $completedTx, string $area = 'WFG'): array
+    {
+        return ['status' => false, 'message' => 'Dialihkan ke notifikasi persiapan saat mulai muat.'];
     }
 
     /**

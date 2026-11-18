@@ -1414,6 +1414,11 @@ class BongkarMuatController extends Controller
                 ]));
 
                 DB::commit();
+
+                // 3. Notifikasi ke supir antrian berikutnya untuk bersiap-siap saat form draft mulai diisi (WFG & SMU)
+                if (in_array($areaName, ['WFG', 'SMU'])) {
+                    app(VehicleTrackingController::class)->notifyNextDriverToPrepare($transaction, $areaName);
+                }
             }
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1570,10 +1575,10 @@ class BongkarMuatController extends Controller
 
                 DB::commit();
 
-                // Notifikasi otomatis ke supir dinonaktifkan sementara (khusus manual via tombol Push WA)
-                // $trackingController = app(VehicleTrackingController::class);
-                // $trackingController->notifyDriverCompleted($transaction, $areaName);
-                // $trackingController->notifyNextDriverToEnterDock($transaction, $areaName);
+                // 4. Notifikasi ke supir bahwa proses muat/bongkar selesai saat form disubmit (WFG & SMU)
+                if (in_array($areaName, ['WFG', 'SMU'])) {
+                    app(VehicleTrackingController::class)->notifyDriverCompleted($transaction, $areaName);
+                }
             }
         } catch (\Exception $e) {
             DB::rollBack();
