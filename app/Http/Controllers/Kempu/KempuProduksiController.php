@@ -1425,17 +1425,17 @@ class KempuProduksiController extends Controller
                             $mq->where('no_po', 'like', "%{$s}%")
                                 ->orWhere('current_location', 'like', "%{$s}%")
                                 ->orWhere('current_status', 'like', "%{$s}%");
+                        })
+                        ->orWhereHas('cycleFillings', function ($cq) use ($s) {
+                            $cq->where('no_po', 'like', "%{$s}%");
                         });
+                    if (is_numeric($s)) {
+                        $q->orWhere('id', (int)$s);
+                    }
                 });
             }
 
-            $paginated = $query->orderBy(
-                KempuMainModel::selectRaw('COALESCE(last_scanned_at, updated_at)')
-                    ->whereColumn('kempu_main.kempu_master_id', 'kempu_master.id')
-                    ->latest('id')
-                    ->limit(1),
-                'desc'
-            )->orderByDesc('id')->paginate($perPage);
+            $paginated = $query->latest('updated_at')->paginate($perPage);
 
             return response()->json([
                 'status'     => true,
@@ -1469,7 +1469,13 @@ class KempuProduksiController extends Controller
                         ->orWhere('keterangan', 'like', "%{$s}%")
                         ->orWhereHas('main', function ($mq) use ($s) {
                             $mq->where('no_po', 'like', "%{$s}%");
+                        })
+                        ->orWhereHas('cycleFillings', function ($cq) use ($s) {
+                            $cq->where('no_po', 'like', "%{$s}%");
                         });
+                    if (is_numeric($s)) {
+                        $q->orWhere('id', (int)$s);
+                    }
                 });
             }
 
