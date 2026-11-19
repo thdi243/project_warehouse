@@ -74,6 +74,10 @@ Route::get('/temp-login', function () {
     return redirect('/wrm/inventory/draft-outbound/15/assign-driver');
 });
 
+// Tampilan Antrian Kendaraan & Loading Dock (Publik untuk Supir & TV Monitor Pos / Gudang)
+Route::get('/antrian', [VehicleTrackingController::class, 'queueDisplayIndex'])->name('vehicle.queue_display');
+Route::get('/antrian/data', [VehicleTrackingController::class, 'queueDisplayData'])->name('vehicle.queue_display.data');
+
 // Auth
 Route::middleware('web')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -299,6 +303,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/master/data', [WspMrpController::class, 'getMasterData'])->name('stock.mrp.master.data');
             Route::get('/master/detail', [WspMrpController::class, 'getMidDetail'])->name('stock.mrp.master.detail');
             Route::get('/master/logs', [WspMrpController::class, 'getLogs'])->name('stock.mrp.master.logs');
+            Route::post('/master/upload', [WspMrpController::class, 'uploadMaster'])->name('stock.mrp.master.upload');
+            Route::get('/master/template', [WspMrpController::class, 'downloadMasterTemplate'])->name('stock.mrp.master.template');
+            Route::get('/master/export', [WspMrpController::class, 'exportMaster'])->name('stock.mrp.master.export');
 
             // Pengajuan MRP Request
             Route::get('/request', [WspMrpController::class, 'requestIndex'])->name('stock.mrp.request');
@@ -326,6 +333,18 @@ Route::middleware('auth')->group(function () {
             Route::get('/monthly/data', [WspMrpController::class, 'getMonthlyData'])->name('stock.mrp.monthly.data');
             Route::post('/monthly/store', [WspMrpController::class, 'storeMonthlyRecord'])->name('stock.mrp.monthly.store');
             Route::post('/monthly/send-email', [WspMrpController::class, 'sendNeedReviewEmail'])->name('stock.mrp.monthly.send-email');
+
+            // Reservasi 3 Bulan (Gambar 2)
+            Route::get('/reservations/data', [WspMrpController::class, 'getReservationData'])->name('stock.mrp.reservation.data');
+            Route::post('/reservations/upload', [WspMrpController::class, 'uploadReservation'])->name('stock.mrp.reservation.upload');
+            Route::get('/reservations/template', [WspMrpController::class, 'downloadReservationTemplate'])->name('stock.mrp.reservation.template');
+            Route::delete('/reservations/clear', [WspMrpController::class, 'clearReservations'])->name('stock.mrp.reservation.clear');
+
+            // PR MRP (Gambar 3)
+            Route::get('/pr/data', [WspMrpController::class, 'getPrData'])->name('stock.mrp.pr.data');
+            Route::post('/pr/upload', [WspMrpController::class, 'uploadPr'])->name('stock.mrp.pr.upload');
+            Route::get('/pr/template', [WspMrpController::class, 'downloadPrTemplate'])->name('stock.mrp.pr.template');
+            Route::delete('/pr/clear', [WspMrpController::class, 'clearPrs'])->name('stock.mrp.pr.clear');
 
             // Dynamic Approval Configuration
             Route::get('/config', [WspMrpController::class, 'configIndex'])->name('stock.mrp.config');
@@ -976,6 +995,9 @@ Route::middleware('auth')->group(function () {
 
     // Vehicle Monitoring & Tracking
     Route::prefix('vehicle-monitoring')->name('vehicle.monitoring.')->middleware(['auth', 'permission:vehicle-monitoring-menu'])->group(function () {
+        // Display Antrian Layar TV & Supir
+        Route::get('/antrian-display', [VehicleTrackingController::class, 'queueDisplayIndex'])->name('queue_display');
+
         // Laporan History Page
         Route::get('/history', [VehicleTrackingController::class, 'historyIndex'])->name('history');
 

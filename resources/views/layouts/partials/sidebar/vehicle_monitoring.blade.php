@@ -15,6 +15,12 @@
                         <i class="ri-history-line fs-12"></i>Report
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="{{ route('vehicle.queue_display') }}" target="_blank"
+                        class="nav-link menu-link">
+                        <i class="ri-tv-line fs-12 text-warning"></i> <span class="text-warning fw-semibold">Display Antrian (TV)</span>
+                    </a>
+                </li>
                 @can('permission', 'vehicle-monitoring-timbangan')
                     <li class="nav-item">
                         <a href="{{ route('vehicle.monitoring.timbangan') }}"

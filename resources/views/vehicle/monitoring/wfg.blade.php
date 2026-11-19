@@ -285,10 +285,11 @@
 
                         let antrianBadge = '';
                         if (tx.no_antrian) {
+                            const overnightTag = tx.is_overnight ? '<span class="badge bg-danger ms-1" title="Truk antrian dari hari sebelumnya (Prioritas)"><i class="ri-history-line me-1"></i>Kemarin</span>' : '';
                             antrianBadge =
                                 `<span class="badge bg-soft-success text-success fs-13 px-3 py-2 fw-semibold">
                                     <i class="ri-hashtag me-1"></i>${tx.no_antrian}
-                                </span>`;
+                                </span>${overnightTag}`;
                         } else {
                             if (canAdminWfg) {
                                 antrianBadge = `<button type="button" class="btn btn-sm btn-outline-warning btn-get-queue" data-id="${tx.id}" data-nopol="${tx.no_pol}" data-jenis="${tx.jenis || currentJenisTab}">
