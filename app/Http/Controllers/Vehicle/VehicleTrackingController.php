@@ -5131,59 +5131,160 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * 4. Notifikasi ke Supervisor dan Foreman untuk truck duration lebih dari 7.5 jam.
+     * 4. Daily Report: Overdue Truck Duration (> 7.5 Jam) untuk Dept Head Warehouse.
+     * Dijalankan setiap jam 07:00 pagi untuk merekap kendaraan hari sebelumnya (atau yang masih Open).
      */
-    public function sendOverdueDurationAlert(VehicleTransaction $tx, string $area, int $totalMinutes, Carbon $checkIn): array
+    public function sendDailyOverdueDurationReport(?string $date = null): array
     {
-        try {
-            $noPol = $tx->vehicle ? $tx->vehicle->no_pol : 'N/A';
-            $driver = $this->resolveDriverInfo($tx->nama_driver, $tx->no_hp_driver);
-            $vendor = $tx->vendor ?: '-';
-            $loc = $tx->currentLocation ? $tx->currentLocation->name : strtoupper($tx->status);
+        $now = Carbon::now();
+        $targetDate = $date ? Carbon::parse($date) : Carbon::yesterday();
+        $targetDateStr = $targetDate->toDateString();
+        $formattedDate = $targetDate->translatedFormat('d F Y');
 
-            $hours = floor($totalMinutes / 60);
-            $mins = $totalMinutes % 60;
-            $durationStr = "{$hours} Jam {$mins} Menit";
+        Log::info("[VehicleTracking] Memulai Daily Report Truck Duration (>7.5h) untuk periode: {$targetDateStr}");
 
-            $recipients = $this->getWarehouseManagementRecipients($area);
-            $foremenNames = $recipients['foremen']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['foremen']->pluck('username')->implode(', ') ?: 'Foreman WH');
-            $spvNames = $recipients['supervisors']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['supervisors']->pluck('username')->implode(', ') ?: 'SPV WH');
+        // Ambil transaksi yang beroperasi pada targetDate ATAU yang saat ini masih Open
+        $txs = VehicleTransaction::with(['vehicle', 'targetLocation', 'currentLocation'])
+            ->where(function ($q) use ($targetDateStr) {
+                $q->whereDate('check_in_time', $targetDateStr)
+                  ->orWhereDate('timbangan_out_time', $targetDateStr)
+                  ->orWhereDate('check_out_time', $targetDateStr)
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('check_out_time')
+                          ->whereNull('timbangan_out_time')
+                          ->whereNotIn('status', ['completed', 'timbangan_out']);
+                  });
+            })
+            ->get();
 
-            $message = "🚨 *ALERT: TRUCK DURATION MELEBIHI 7.5 JAM*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "No. Polisi   : *{$noPol}*\n"
-                . "Lokasi/Status: *{$loc}*\n"
-                . "Supir        : {$driver['display']}\n"
-                . "Vendor       : {$vendor}\n"
-                . "Waktu Masuk  : " . $checkIn->format('d/m/Y H:i') . "\n"
-                . "⏱️ Total Waktu: *{$durationStr}* (Melebihi batas 7.5 Jam)\n\n"
-                . "Mohon atensi percepatan penanganan oleh:\n"
-                . "• Foreman {$area}: {$foremenNames}\n"
-                . "• Supervisor WH  : {$spvNames}\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* di kontak HP Anda dan *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "sebagai tanda atensi operasional.\n\n"
-                . "Terima kasih. 🙏";
+        $overdueList = [];
+        $closedCount = 0;
+        $openCount = 0;
 
-            $fonnte = app(FonnteService::class);
-
-            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp dengan delay agar aman dari deteksi spam
-            $sentCount = 0;
-            foreach ($recipients['all'] as $u) {
-                if (!empty($u->no_hp)) {
-                    $cleanPhone = preg_replace('/[^0-9]/', '', $u->no_hp);
-                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => 5]);
-                    $sentCount++;
-                    sleep(5); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
-                }
+        foreach ($txs as $tx) {
+            if (!$tx->check_in_time) {
+                continue;
             }
 
-            Log::warning("[VehicleTracking] Alert Overdue Duration (>7.5h) dikirim ke {$sentCount} PIC management untuk {$noPol} ({$durationStr})");
-            return ['status' => true, 'sent_count' => $sentCount];
-        } catch (\Exception $e) {
-            Log::error("[VehicleTracking] Gagal kirim alert overdue duration: " . $e->getMessage());
-            return ['status' => false, 'message' => $e->getMessage()];
+            $checkIn = Carbon::parse($tx->check_in_time);
+            $isClosed = in_array($tx->status, ['completed', 'timbangan_out'])
+                || !empty($tx->timbangan_out_time)
+                || !empty($tx->check_out_time);
+
+            if ($isClosed) {
+                $endTime = $tx->timbangan_out_time
+                    ? Carbon::parse($tx->timbangan_out_time)
+                    : ($tx->check_out_time ? Carbon::parse($tx->check_out_time) : Carbon::parse($tx->updated_at));
+
+                $durationMinutes = $checkIn->diffInMinutes($endTime);
+                $statusLabel = 'Closed';
+            } else {
+                $durationMinutes = $checkIn->diffInMinutes($now);
+                $statusLabel = 'Open';
+            }
+
+            if ($durationMinutes >= 450) { // >= 7.5 jam
+                $hours = floor($durationMinutes / 60);
+                $mins = (int) $durationMinutes % 60;
+
+                // Tentukan area
+                $area = 'WFG';
+                if (str_contains($tx->status, 'wrm') || ($tx->targetLocation && $tx->targetLocation->s_loc === 'B006')) {
+                    $area = 'WRM';
+                } elseif (str_contains($tx->status, 'wpm') || ($tx->targetLocation && $tx->targetLocation->s_loc === 'C001')) {
+                    $area = 'WPM';
+                } elseif (str_contains($tx->status, 'smu')) {
+                    $area = 'SMU';
+                }
+
+                $nopol = $tx->vehicle ? $tx->vehicle->no_pol : 'N/A';
+
+                $overdueList[] = [
+                    'nopol' => $nopol,
+                    'status' => $statusLabel,
+                    'duration_str' => "{$hours}j {$mins}m",
+                    'duration_mins' => $durationMinutes,
+                    'check_in' => $checkIn->format('d/m H:i'),
+                    'area' => $area,
+                ];
+
+                if ($statusLabel === 'Closed') {
+                    $closedCount++;
+                } else {
+                    $openCount++;
+                }
+            }
         }
+
+        // Ambil Dept Head Warehouse yang aktif
+        $deptHeads = User::where('departemen', 'warehouse')
+            ->where('jabatan', 'dept_head')
+            ->where('is_active', true)
+            ->get();
+
+        if ($deptHeads->isEmpty()) {
+            Log::warning("[VehicleTracking] Daily Report Duration: Tidak ditemukan Dept Head Warehouse yang aktif.");
+            return [
+                'status' => false,
+                'message' => 'Dept Head Warehouse tidak ditemukan',
+                'overdue_count' => count($overdueList)
+            ];
+        }
+
+        // Susun pesan WhatsApp
+        $message = "📊 *DAILY REPORT: OVERDUE TRUCK DURATION (> 7.5 JAM)*\n"
+            . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            . "📅 *Periode*   : {$formattedDate}\n"
+            . "⏰ *Jam Lapor* : 07:00 WIB\n"
+            . "🎯 *Ditujukan* : Dept Head Warehouse\n\n";
+
+        if (empty($overdueList)) {
+            $message .= "✅ *NIHIL / AMAN*\n"
+                . "Tidak ada kendaraan dengan durasi melebihi batas 7.5 Jam pada periode ini. Semua aktivitas operasional berjalan lancar sesuai SLA.\n\n";
+        } else {
+            $message .= "Berikut daftar kendaraan dengan durasi melebihi batas 7.5 Jam:\n\n"
+                . "```\n"
+                . str_pad("TRUCK", 13) . str_pad("STATUS", 9) . str_pad("DURASI", 10) . "AREA\n"
+                . str_repeat("-", 38) . "\n";
+
+            foreach ($overdueList as $item) {
+                $line = str_pad($item['nopol'], 13)
+                    . str_pad($item['status'], 9)
+                    . str_pad($item['duration_str'], 10)
+                    . $item['area'];
+                $message .= $line . "\n";
+            }
+
+            $message .= "```\n\n"
+                . "*Keterangan:*\n"
+                . "• *Closed* : Truk sudah keluar / proses selesai.\n"
+                . "• *Open*   : Truk masih aktif di area pabrik.\n\n"
+                . "📈 *Total Overdue*: " . count($overdueList) . " Truk ({$closedCount} Closed, {$openCount} Masih Open)\n\n";
+        }
+
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            . "Sistem Monitoring Logistik & Warehouse PT BAS";
+
+        $fonnte = app(FonnteService::class);
+        $sentCount = 0;
+
+        foreach ($deptHeads as $dh) {
+            if (!empty($dh->no_hp)) {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $dh->no_hp);
+                $fonnte->sendMessage($cleanPhone, $message, ['delay' => 5]);
+                $sentCount++;
+                sleep(5);
+            }
+        }
+
+        Log::info("[VehicleTracking] Daily Report Overdue Duration berhasil dikirim ke {$sentCount} Dept Head. Total overdue: " . count($overdueList));
+
+        return [
+            'status' => true,
+            'sent_count' => $sentCount,
+            'overdue_count' => count($overdueList),
+            'target_date' => $targetDateStr
+        ];
     }
 
     /**
@@ -5280,8 +5381,8 @@ class VehicleTrackingController extends Controller
 
     /**
      * Check and trigger SLA Overdue Alerts:
-     * 3. Loading/unloading exceeding 2 hours (120 mins).
-     * 4. Total truck dwell duration exceeding 7.5 hours (450 mins).
+     * Loading/unloading exceeding 2 hours (120 mins).
+     * (Catatan: Truck duration > 7.5 jam dilaporkan via daily report setiap 07:00 pagi ke Dept Head).
      */
     public function checkOverdueVehicles(): array
     {
@@ -5320,7 +5421,7 @@ class VehicleTrackingController extends Controller
 
             $today = $now->format('Y-m-d');
 
-            // 3. Alert Proses Bongkar/Muat > 2 Jam (120 Menit) - Dibatasi maksimal 1x sehari (Database & Cache Persisted)
+            // Alert Proses Bongkar/Muat > 2 Jam (120 Menit) - Dibatasi maksimal 1x sehari (Database & Cache Persisted)
             if ($tx->unloading_status === 'process' && !empty($tx->start_loading_time)) {
                 $startTime = Carbon::parse($tx->start_loading_time);
                 $diffMinutes = $startTime->diffInMinutes($now);
@@ -5340,45 +5441,6 @@ class VehicleTrackingController extends Controller
                         }
 
                         $this->sendOverdueLoadingAlert($tx, $area, $diffMinutes, $startTime);
-                        $alertsSent++;
-                    }
-                }
-            }
-
-            // 4. Alert Total Truck Duration > 7.5 Jam (450 Menit) - Dihitung dari Check-In Timbangan (check_in_time)
-            // Abaikan jika truk berada di timbangan atau dalam kondisi mau checkout (bongkar/muat selesai atau menuju timbangan keluar)
-            $isAtTimbangan = ($tx->currentLocation && (strtoupper($tx->currentLocation->s_loc ?? '') === 'TMB' || str_contains(strtolower($tx->currentLocation->name ?? ''), 'timbangan')))
-                || str_contains(strtolower($tx->status ?? ''), 'timbangan');
-
-            $isMauCheckout = in_array($tx->status, ['timbangan_out', 'completed'])
-                || !empty($tx->timbangan_out_time)
-                || !empty($tx->check_out_time)
-                || $tx->unloading_status === 'completed'
-                || !empty($tx->finish_loading_time);
-
-            if ($isAtTimbangan || $isMauCheckout) {
-                continue;
-            }
-
-            $checkIn = $tx->check_in_time ? Carbon::parse($tx->check_in_time) : null;
-            if ($checkIn) {
-                $totalMinutes = $checkIn->diffInMinutes($now);
-
-                if ($totalMinutes >= 450) {
-                    $cacheKey = "alert_overdue_duration_7h5_{$tx->id}_{$today}";
-                    $alreadySentToday = Cache::has($cacheKey) ||
-                        (!empty($tx->last_duration_alert_at) && Carbon::parse($tx->last_duration_alert_at)->isToday());
-
-                    if (!$alreadySentToday) {
-                        // Kunci status alert di Cache & DB sebelum kirim pesan untuk mencegah race condition
-                        Cache::put($cacheKey, $now->toDateTimeString(), now()->endOfDay());
-                        try {
-                            $tx->update(['last_duration_alert_at' => $now]);
-                        } catch (\Throwable $th) {
-                            Log::warning("[VehicleTracking] Kolom last_duration_alert_at belum ada di DB. Harap jalankan migrasi: " . $th->getMessage());
-                        }
-
-                        $this->sendOverdueDurationAlert($tx, $area, $totalMinutes, $checkIn);
                         $alertsSent++;
                     }
                 }
